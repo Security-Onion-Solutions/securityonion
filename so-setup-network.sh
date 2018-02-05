@@ -107,11 +107,26 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   chown -R 939:939 /opt/so
 
+  # Add the grain
+  # Create the sls file
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+
+    #Do the grains file
+
     service salt-minion start
     salt-call state.highstate
-    # Script to accept key on the master
+    touch /tmp/$HOSTNAME.sls
+    echo "sensor:" > /tmp/$HOSTNAME.sls
+    echo "  interface: bond0" >> /tmp/$HOSTNAME
+    echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME
 
+    # SCP the pillar file to the master
+    scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
+
+    # Accept the key on the master
+    ssh socore@$MASTERSRV 'sudo salt-key -qa $HOSTNAME'
+
+  fi
 
 # They did not want to do the install
 else
