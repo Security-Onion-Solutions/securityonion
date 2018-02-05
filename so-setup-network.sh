@@ -46,6 +46,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
     # Get pulled pork info
+    # Set password for socore
+
   fi
 
   #########################
@@ -100,21 +102,36 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Create so-core user
   mkdir -p /opt/so/conf
-  mkdir -p /opt/so/saltstack/salt
-  mkdir -p /opt/so/saltstack/pillar
+
+  # Create the salt directories if this isn't a stadnalone sensor
+  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+    mkdir -p /opt/so/saltstack/salt
+    mkdir -p /opt/so/saltstack/pillar
+  fi
+
+  # Add socore user to the system
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
 
   chown -R 939:939 /opt/so
 
-  # Add the grain
-  # Create the sls file
+  # Add the grain on the sensor
+
+  # Create the salt goodness
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
-    #Do the grains file
+    # Create the grains file for the sensor
+    touch /etc/salt/grain
+    echo "grains:" > /etc/salt/grains
+    echo "  role: so-sensor" >> /etc/salt/gains
 
+    # Start the salt agent
     service salt-minion start
+
+    # Do a checkin so the key gets there. Need to add some error checking here
     salt-call state.highstate
+
+    # Create the pillar file for the sensor
     touch /tmp/$HOSTNAME.sls
     echo "sensor:" > /tmp/$HOSTNAME.sls
     echo "  interface: bond0" >> /tmp/$HOSTNAME
@@ -125,11 +142,14 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Accept the key on the master
     ssh socore@$MASTERSRV 'sudo salt-key -qa $HOSTNAME'
+    # Grab the ssl key for lumberjack from the master
+    scp socore@$MASTERSRV:/some/path /some/path
+
 
   fi
-  
+
 ##MASTER
-# Add salt-key to suduers file for socore with no password required
+# Add salt-key to sudoers file for socore with no password required
 
 # They did not want to do the install
 else
