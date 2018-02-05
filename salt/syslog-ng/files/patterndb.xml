@@ -1,0 +1,2333 @@
+<patterndb version='3' pub_date='2009-11-04'>
+	<ruleset name="FWSM" id='2'>
+		<pattern>%FWSM</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>Deny@QSTRING:i0: @src@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ dst@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ by access-group @QSTRING:s2:"@</pattern>
+					<pattern>Deny @ESTRING:: @@ESTRING:i0: @src @ESTRING:s0::@@IPv4:i1:@/@NUMBER:i2:@ dst @ESTRING:s1::@@IPv4:i3:@/@NUMBER:i4:@</pattern>
+					<pattern>Shunned packet: @IPv4:i1:@ ==> @IPv4:i3:@ on interface @ANYSTRING:s0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%FWSM-3-106010">Deny inbound tcp src OUTSIDE:2.116.180.66/3116 dst INSIDE:10.0.0.0/445</test_message>
+						<test_values>
+							<test_value name="i0">tcp</test_value>
+							<test_value name="s0">OUTSIDE</test_value>
+							<test_value name="i1">2.116.180.66</test_value>
+							<test_value name="i2">3116</test_value>
+							<test_value name="s1">INSIDE</test_value>
+							<test_value name="i3">10.0.0.0</test_value>
+							<test_value name="i4">445</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='3' id='3'>
+				<patterns>
+					<pattern>Teardown@QSTRING:i0: @connection @NUMBER::@ for@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ to@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ duration@QSTRING:s2: @bytes @NUMBER:i5:@</pattern>
+				</patterns>
+			</rule>
+			<rule provider="ELSA" class='7' id='7'>
+				<patterns>
+					<pattern>@IPv4:i0:@ Accessed URL @IPv4:i1:@:@ESTRING::/@/@ESTRING:s1:/@@ANYSTRING:s2:@</pattern>
+					<pattern>@IPv4:i0:@ Accessed URL @IPv4:i1:@:@ESTRING::/@/@ESTRING:s1:/@</pattern>
+					<pattern>Access denied URL @ESTRING::/@/@ESTRING:s1:/@@ESTRING:s2: @SRC @IPv4:i0:@ DEST @IPv4:i1:@ on interface </pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%FWSM-5-304001">192.168.1.1 Accessed URL 10.0.0.0:http://www.example.com/wp-content/plugins/wp-spamfree/img/wpsf-img.php</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">10.0.0.0</test_value>
+							<test_value name="s1">www.example.com</test_value>
+							<test_value name="s2">wp-content/plugins/wp-spamfree/img/wpsf-img.php</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="%FWSM-5-304002">Access denied URL http://www.example.com/feedout/content SRC 192.168.1.1 DEST 72.246.55.49 on interface inside</test_message>
+							<test_values>
+								<test_value name="s1">www.example.com</test_value>
+								<test_value name="s2">feedout/content</test_value>
+								<test_value name="i0">192.168.1.1</test_value>
+								<test_value name="i1">72.246.55.49</test_value>
+							</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='36' id='36'>
+				<patterns>
+					<pattern>Group =@QSTRING:s0: ,@ Username =@QSTRING:s1: ,@ IP = @IPv4:i0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%FWSM-4-113019">Group = Produccion, Username = pepe, IP = 10.245.102.86, Session disconnected. Session Type: IPsecOverNatT, Duration: 1h:38m:44s, Bytes xmt: 24545367, Bytes rcv: 3046464, Reason: Lost Service</test_message>
+						<test_value name="i0">10.245.102.86</test_value>
+						<test_value name="s0">Produccion</test_value>
+						<test_value name="s1">pepe</test_value>
+					</example>
+					<example>
+						<test_message program="%FWSM-4-113019">Group = Acceso, Username = juan, IP = 10.229.201.171, Session disconnected. Session Type: IPsecOverNatT, Duration: 0h:05m:56s, Bytes xmt: 122161, Bytes rcv: 28794, Reason: User Requested</test_message>
+						<test_value name="i0">10.229.201.171</test_value>
+						<test_value name="s0">Acceso</test_value>
+						<test_value name="s1">juan</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="ASA" id='2_ASA'>
+		<pattern>%ASA</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>Inbound @ESTRING:i0: @connection denied from @ESTRING:i1:/@@ESTRING:i2: @to @ESTRING:i3:/@@ESTRING:i4: @@ESTRING::interface @@ANYSTRING:s0:@</pattern>
+					<pattern>Deny@QSTRING:i0: @src@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ dst@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ by access-group @QSTRING:s2:"@</pattern>
+					<pattern>Deny @ESTRING:i0: @src @ESTRING:s0::@@IPv4:i1:@/@NUMBER:i2:@ dst @ESTRING:s1::@@IPv4:i3:@/@NUMBER:i4:@ by access-group @ESTRING:s2: @</pattern>
+					<pattern>Deny @ESTRING:i0: @src @ESTRING:s0::@@IPv4:i1:@/@NUMBER:i2:@ dst @ESTRING:s1::@@ESTRING::/@@NUMBER:i4:@ by access-group @ESTRING:s2: @</pattern>
+					<pattern>Deny @ESTRING:i0: @src @ESTRING:s0::@@ESTRING::/@@NUMBER:i2:@ dst @ESTRING:s1::@@IPv4:i3:@/@NUMBER:i4:@ by access-group @ESTRING:s2: @</pattern>
+					<pattern>Deny @ESTRING:i0: @src @ESTRING:s0::@@IPv4:i1:@ dst @ESTRING:s1::@@IPv4:i3:@ (type @NUMBER::@, code @NUMBER::@) by access-group @ESTRING:s2: @</pattern>
+					<pattern>Shunned packet: @IPv4:i1:@ ==> @IPv4:i3:@ on interface @ANYSTRING:s0:@</pattern>
+					<pattern>Deny @ESTRING:i0: @@ESTRING::from @@ESTRING:s0:-@@ESTRING:i1:-@@ESTRING::/@@ESTRING:i2: @to @ESTRING:s1:-@@ESTRING:i3:-@@ESTRING::/@@ESTRING:i4: @</pattern>
+					<pattern>Deny inbound @ESTRING:i0: @from @ESTRING:i1:/@@ESTRING:i2: @to @ESTRING:i3:/@@ESTRING:i4: @on interface @ANYSTRING:s0:@</pattern>
+					<pattern>Deny outbound @ESTRING:i0: @from @ESTRING:i1:/@@ESTRING:i2: @to @ESTRING:i3:/@@ESTRING:i4: @on interface @ANYSTRING:s0:@</pattern>
+					<pattern>Deny IP spoof @ESTRING::to @@ESTRING:i3: @on interface @ANYSTRING:s0:@</pattern>
+					<pattern>Deny inbound @ESTRING:i0: @src @ESTRING:s0::@@ESTRING:i1: @dst @ESTRING:s1::@@ESTRING:i3: @</pattern>
+					<pattern>Deny @ESTRING:i0: @@ESTRING::from @@ESTRING:i1:/@@ESTRING:i2: @to @ESTRING:i3:/@@ESTRING:i4: @@ESTRING::interface @@ANYSTRING:s0:@</pattern>
+					<pattern>Deny IP from @ESTRING:i1: @to @ESTRING:i3: @</pattern>
+					<pattern>@ESTRING:i0: @access discarded from @ESTRING:i1:/@@NUMBER:i2:@ to @ESTRING:s0::@@ESTRING:i3:/@</pattern>
+				</patterns>
+			</rule>
+			<rule provider="ELSA" class='3' id='3'>
+				<patterns>
+					<pattern>Teardown@QSTRING:i0: @connection @NUMBER::@ for@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ to@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ duration@QSTRING:s2: @bytes @NUMBER:i5:@</pattern>
+					<pattern>access-list @ESTRING:: @permitted @ESTRING:i0: @@ESTRING:s0:/@@ESTRING:i1:(@@NUMBER:i2:@) -&gt; @ESTRING:s1:/@@ESTRING:i3:(@@NUMBER:i4:@) hit-cnt @NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:i0: @access permitted from @ESTRING:i1:/@@NUMBER:i2:@ to @ESTRING:s0::@@ESTRING:i3:/@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%ASA-7-106100">access-list access_out permitted tcp INSIDE/10.221.221.21(52427) -&gt; OUTSIDE/10.222.222.22(80) hit-cnt 1 first hit [0x487d4278, 0x0]</test_message>
+						<test_value name="i0">tcp</test_value>
+						<test_value name="i1">10.221.221.21</test_value>
+						<test_value name="i2">52427</test_value>
+						<test_value name="i3">10.222.222.22</test_value>
+						<test_value name="i4">80</test_value>
+						<test_value name="i5">1</test_value>
+						<test_value name="s0">INSIDE</test_value>
+						<test_value name="s1">OUTSIDE</test_value>
+					</example>
+					<example>
+						<test_message program="%ASA-6-302013">Built inbound TCP connection 740617324 for inside:10.21.21.221/4087 (10.21.21.221/4087) to CWWAN:172.17.6.80/8192 (172.17.6.80/8192)</test_message>
+						<test_value name="i0">tcp</test_value>
+						<test_value name="i1">10.221.221.21</test_value>
+						<test_value name="i2">4087</test_value>
+						<test_value name="i3">172.17.6.80</test_value>
+						<test_value name="i4">8192</test_value>
+						<test_value name="s0">INSIDE</test_value>
+						<test_value name="s1">OUTSIDE</test_value>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='7' id='7'>
+				<patterns>
+					<pattern>@IPv4:i0:@ Accessed URL @IPv4:i1:@:@ESTRING::/@/@ESTRING:s1:/@@ANYSTRING:s2:@</pattern>
+					<pattern>@IPv4:i0:@ Accessed URL @IPv4:i1:@:@ESTRING::/@/@ESTRING:s1:/@</pattern>
+					<pattern>Access denied URL @ESTRING::/@/@ESTRING:s1:/@@ESTRING:s2: @SRC @IPv4:i0:@ DEST @IPv4:i1:@ on interface </pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%ASA-5-304001">192.168.1.1 Accessed URL 10.0.0.0:http://www.example.com/wp-content/plugins/wp-spamfree/img/wpsf-img.php</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">10.0.0.0</test_value>
+							<test_value name="s1">www.example.com</test_value>
+							<test_value name="s2">wp-content/plugins/wp-spamfree/img/wpsf-img.php</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="%ASA-5-304002">Access denied URL http://www.example.com/feedout/content SRC 192.168.1.1 DEST 72.246.55.49 on interface inside</test_message>
+							<test_values>
+								<test_value name="s1">www.example.com</test_value>
+								<test_value name="s2">feedout/content</test_value>
+								<test_value name="i0">192.168.1.1</test_value>
+								<test_value name="i1">72.246.55.49</test_value>
+							</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='36' id='36'>
+				<patterns>
+					<pattern>Group =@QSTRING:s0: ,@ Username =@QSTRING:s1: ,@ IP = @IPv4:i0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%ASA-4-113019">Group = Produccion, Username = pepe, IP = 10.245.102.86, Session disconnected. Session Type: IPsecOverNatT, Duration: 1h:38m:44s, Bytes xmt: 24545367, Bytes rcv: 3046464, Reason: Lost Service</test_message>
+						<test_value name="i0">10.245.102.86</test_value>
+						<test_value name="s0">Produccion</test_value>
+						<test_value name="s1">pepe</test_value>
+					</example>
+					<example>
+						<test_message program="%ASA-4-113019">Group = Acceso, Username = juan, IP = 10.229.201.171, Session disconnected. Session Type: IPsecOverNatT, Duration: 0h:05m:56s, Bytes xmt: 122161, Bytes rcv: 28794, Reason: User Requested</test_message>
+						<test_value name="i0">10.229.201.171</test_value>
+						<test_value name="s0">Acceso</test_value>
+						<test_value name="s1">juan</test_value>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='38' id='38'>
+				<patterns>
+					<pattern>FTP connection from @ESTRING:s0::@@ESTRING:i0:/@@NUMBER:i1:@ to @ESTRING:s1::@@ESTRING:i2:/@@NUMBER:i3:@, user @ESTRING:s2: @@ESTRING:s3: @@ANYSTRING:s4:@</pattern>
+				</patterns>
+			</rule>
+			<rule provider="ELSA" class='39' id='39'>
+				<patterns>
+					<pattern>Cleared @ESTRING:i0: @urgent flag from @ESTRING:s0::@@ESTRING:i1:/@@NUMBER:i2:@ to @ESTRING:s1::@@ESTRING:i3:/@@NUMBER:i4:@</pattern>
+					<pattern>regular translation creation failed for @ESTRING:i0: @src @ESTRING:s0::@@ESTRING:i1: @dst @ESTRING:s1::@@ESTRING:i3: @(type @NUMBER:i2:@, code @NUMBER:i4:@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="PIX" id='2_PIX'>
+		<pattern>%PIX</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>Deny@QSTRING:i0: @src@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ dst@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ by access-group @QSTRING:s2:"@</pattern>
+					<pattern>Shunned packet: @IPv4:i1:@ ==> @IPv4:i3:@ on interface @ANYSTRING:s0:@</pattern>
+				</patterns>
+			</rule>
+			<rule provider="ELSA" class='3' id='3'>
+				<patterns>
+					<pattern>Teardown@QSTRING:i0: @connection @NUMBER::@ for@QSTRING:s0: :@@IPv4:i1:@/@NUMBER:i2:@ to@QSTRING:s1: :@@IPv4:i3:@/@NUMBER:i4:@ duration@QSTRING:s2: @bytes @NUMBER:i5:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%PIX-6-302014">Teardown TCP connection 2050472353 for outside:10.65.200.34/1252 to inside:10.0.0.0/135 duration 0:00:00 bytes 1476 TCP FINs</test_message>
+						<test_values>
+							<test_value name="i0">TCP</test_value>
+							<test_value name="s0">outside</test_value>
+							<test_value name="i1">10.65.200.34</test_value>
+							<test_value name="i2">1252</test_value>
+							<test_value name="s1">inside</test_value>
+							<test_value name="i3">10.0.0.0</test_value>
+							<test_value name="i4">135</test_value>
+							<test_value name="s2">0:00:00</test_value>
+							<test_value name="i5">1476</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='36' id='36'>
+				<patterns>
+					<pattern>Group =@QSTRING:s0: ,@ Username =@QSTRING:s1: ,@ IP = @IPv4:i0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%PIX-4-113019">Group = Produccion, Username = pepe, IP = 10.245.102.86, Session disconnected. Session Type: IPsecOverNatT, Duration: 1h:38m:44s, Bytes xmt: 24545367, Bytes rcv: 3046464, Reason: Lost Service</test_message>
+						<test_value name="i0">10.245.102.86</test_value>
+						<test_value name="s0">Produccion</test_value>
+						<test_value name="s1">pepe</test_value>
+					</example>
+					<example>
+						<test_message program="%PIX-4-113019">Group = Acceso, Username = juan, IP = 10.229.201.171, Session disconnected. Session Type: IPsecOverNatT, Duration: 0h:05m:56s, Bytes xmt: 122161, Bytes rcv: 28794, Reason: User Requested</test_message>
+						<test_value name="i0">10.229.201.171</test_value>
+						<test_value name="s0">Acceso</test_value>
+						<test_value name="s1">juan</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Cisco IOS XE Translations" id='3'>
+		<pattern>%IOSXE-6-PLATFORM</pattern>
+		<rules>
+			<rule provider="ELSA" class='3' id='3'>
+				<patterns>
+					<pattern>@ESTRING::%NAT-6-LOG_TRANSLATION: Created Translation @@ESTRING:i0: @@IPv4:i1:@:@NUMBER:i2:@ @IPv4::@:@NUMBER::@ @IPv4::@:@NUMBER::@ @IPv4:i3:@:@NUMBER:i4:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%IOSXE-6-PLATFORM">F0: cpp_cp: QFP:0.0 Thread:031 TS:00000428205839105179 %NAT-6-LOG_TRANSLATION: Created Translation TCP 1.1.1.1:4227 1.1.1.1:1043 2.2.2.2:80 2.2.2.2:80 0</test_message>
+						<test_values>
+							<test_value name="i0">TCP</test_value>
+							<test_value name="i1">1.1.1.1</test_value>
+							<test_value name="i2">4227</test_value>
+							<test_value name="i3">2.2.2.2</test_value>
+							<test_value name="i4">80</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Cisco IOS XE Denies" id='2'>
+		<pattern>%SEC-6-IPACCESSLOGS</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>list @ESTRING::denied @@IPv4:i3:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%SEC-6-IPACCESSLOGS">list REMOTE-MGMT denied 1.1.1.1 1 packet [0x7EAD30FB]</test_message>
+						<test_values>
+							<test_value name="i3">1.1.1.1</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Cisco IOS XE Denies" id='2'>
+		<pattern>%FMANFP-6-IPACCESSLOGP</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>F@ESTRING::denied @@ESTRING:i0: @@IPv4:i1:@(@NUMBER:i2:@) -&gt; @IPv4:i3:@(@NUMBER:i4:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%FMANFP-6-IPACCESSLOGP">F0: fman_fp_image: list IPV4-INTERNET-OUTBOUND denied udp 1.1.1.1(49610) -&gt; 2.2.2.2(53), 1 packet</test_message>
+						<test_values>
+							<test_value name="i0">udp</test_value>
+							<test_value name="i1">1.1.1.1</test_value>
+							<test_value name="i2">49610</test_value>
+							<test_value name="i3">2.2.2.2</test_value>
+							<test_value name="i4">53</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Cisco IOS XE Denies" id='2'>
+		<pattern>%FMANFP-6-IPV6ACCESSLOGP</pattern>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>F@ESTRING::denied @@ESTRING:i0: @@ESTRING:s0:(@@NUMBER:i2:@) -&gt; @ESTRING:s1:(@@NUMBER:i4:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="%FMANFP-6-IPV6ACCESSLOGP">F0: fman_fp_image: list IPV6-INTERNET-INBOUND denied udp ffe:4e0::(38346) -&gt; ffe:4e0::(40322), 1 packet</test_message>
+						<test_values>
+							<test_value name="i0">udp</test_value>
+							<test_value name="s0">ffe:4e0::</test_value>
+							<test_value name="i2">38346</test_value>
+							<test_value name="s1">ffe:4e0::</test_value>
+							<test_value name="i4">40322</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Windows_Snare" id='4'>
+		<pattern>MSWinEventLog</pattern>
+		<pattern>Application</pattern>
+		<pattern>Security</pattern>
+		<pattern>System</pattern>
+		<rules>
+			<rule provider="ELSA" class='4' id='4'>
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING:i0:|@@ESTRING::Account Name@:  @ESTRING:s1: @@ESTRING::Account Domain@:  @ESTRING:s2: @</pattern>
+					<pattern>@STRING::@ @NUMBER::@ @NUMBER::@:@NUMBER::@:@NUMBER::@ @NUMBER::@	@ESTRING:i0:	@@ESTRING:s0:	@@ESTRING:s1:	@@ESTRING:s2:	@@ESTRING:s3:	@@ESTRING:s4:	@@ESTRING:s5:	@@ESTRING::	@@ESTRING::	@</pattern>
+					<pattern>@STRING::@ @NUMBER::@ @NUMBER::@:@NUMBER::@:@NUMBER::@ @NUMBER::@|@ESTRING:i0:|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@|Logon Failure:@ESTRING::	@Reason:		@ESTRING:s2:	@User Name:	@ESTRING:s1: @</pattern>
+					<pattern>@STRING::@ @NUMBER::@ @NUMBER::@:@NUMBER::@:@NUMBER::@ @NUMBER::@|@ESTRING:i0:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING::|@@ESTRING::|@</pattern>
+					<pattern>@STRING::@ @NUMBER::@ @NUMBER::@:@NUMBER::@:@NUMBER::@ @NUMBER::@|@ESTRING:i0:|@@ESTRING:s0:|@@ESTRING:s1:|@@ANYSTRING@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Windows_evtsys" id='4'>
+		<pattern>Application</pattern>
+		<pattern>Security</pattern>
+		<pattern>System</pattern>
+		<rules>
+			<rule provider="ELSA" class='4' id='4'>
+				<patterns>
+					<pattern>@NUMBER:i0:@: A network share object was accessed. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: Account Domain@: @ESTRING:s2: Logon ID@: @ESTRING:: @Network Information: Object Type: File Source Address: @IPv4:i1:@ Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: Share Path:@ @ESTRING:s4: Access Request Information:@ </pattern>
+					<pattern>@NUMBER:i0:@: A network share object was accessed. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: Account Domain@: @ESTRING:s2: Logon ID@: @ESTRING:: @Network Information: Object Type: File Source Address: @IPv4:i1:@ Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: Share Path:@</pattern>
+					<pattern>@NUMBER:i0:@: A network share object was checked to see whether client can be granted desired access. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: @Account Domain: @ESTRING:s2: @Logon ID: @ESTRING:: @Network Information: Object Type: File Source Address: @ESTRING:i1: @Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: @Share Path: @ESTRING:s4: @Relative Target Name: @ESTRING:s5: @Access</pattern>
+					<pattern>@NUMBER:i0:@: @ESTRING::.@ Client IP address: @IPv4:s0::@</pattern>
+					<pattern>@NUMBER:i0:@: @ESTRING:s0::@</pattern>
+					<pattern>@NUMBER:i0:@: @ANYSTRING::@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="Service_Control_Manager">7035: NT AUTHORITYSYSTEM: The COH_Mon service was successfully sent a start control.</test_message>
+						<test_values>
+							<test_value name="i0">7035</test_value>
+							<test_value name="s0">NT AUTHORITYSYSTEM</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="SceCli">1202: Security policies were propagated with warning. 0x4b8 : An extended error has occurred. For best results in resolving this event, log on with a non-administrative account and search http://support.microsoft.com for "Troubleshooting Event 1202's".</test_message>
+						<test_value name="i0">1202</test_value>
+						<test_value name="s0">Security policies were propagated with warning. 0x4b8 </test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Windows_evtsys" id='4'>
+		<!-- no program pattern -->
+		<rules>
+			<rule provider="ELSA" class='4' id='4'>
+				<patterns>
+					<pattern>@NUMBER:i0:@: @ESTRING::Account Name@@ESTRING::Account Name@:  @ESTRING:s1: @@ESTRING::Account Domain@:  @ESTRING:s2: @@ESTRING::Source Network Address@: @IPv4:i1:@</pattern>
+					<pattern>@NUMBER:i0:@: A network share object was accessed. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: Account Domain@: @ESTRING:s2: Logon ID@: @ESTRING:: @Network Information: Object Type: File Source Address: @IPv4:i1:@ Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: Share Path:@ @ESTRING:s4: Access Request Information:@ </pattern>
+					<pattern>@NUMBER:i0:@: A network share object was accessed. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: Account Domain@: @ESTRING:s2: Logon ID@: @ESTRING:: @Network Information: Object Type: File Source Address: @IPv4:i1:@ Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: Share Path:@</pattern>
+					<pattern>@NUMBER:i0:@: A network share object was checked to see whether client can be granted desired access. Subject: Security ID: @ESTRING:: @Account Name: @ESTRING:s1: @Account Domain: @ESTRING:s2: @Logon ID: @ESTRING:: @Network Information: Object Type: File Source Address: @ESTRING:i1: @Source Port: @NUMBER::@ Share Information: Share Name: @ESTRING:s3: @Share Path: @ESTRING:s4: @Relative Target Name: @ESTRING:s5: @Access</pattern>
+					<pattern>@NUMBER:i0:@: @ESTRING::.@ Client IP address: @IPv4:s0::@</pattern>
+					<pattern>@NUMBER:i0:@: @ESTRING:s0::@</pattern>
+					<pattern>@NUMBER:i0:@: @ANYSTRING::@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="security-auditing">4624: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  MYDOMAIN-DC-1$  Account Domain:  MYDOMAIN  Logon ID:  0x3e7  Logon Type:   3  New Logon:  Security ID:  S-1-5-21-3113823999-9998615402-9997257512-9966  Account Name:  myuser  Account Domain:  MYDOMAIN  Logon ID:  0x2339f787  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1e8  Process Name:  C:\\Windows\\System32\\lsass.exe  Network Information:  Workstation Name: MYDOMAIN-DC-1  Source Network Address: 172.24.248.117  Source Port:  54265  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: MICROSOFT_AUTHENTICATION_PACKAGE_V1_0  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.</test_message>
+						<test_values>
+							<test_value name="i0">4624</test_value>
+							<test_value name="s1">myuser</test_value>
+							<test_value name="s2">MYDOMAIN</test_value>
+							<test_value name="i1">172.24.248.117</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="Service_Control_Manager">7035: NT AUTHORITYSYSTEM: The COH_Mon service was successfully sent a start control.</test_message>
+						<test_values>
+							<test_value name="i0">7035</test_value>
+							<test_value name="s0">NT AUTHORITYSYSTEM</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="SceCli">1202: Security policies were propagated with warning. 0x4b8 : An extended error has occurred. For best results in resolving this event, log on with a non-administrative account and search http://support.microsoft.com for "Troubleshooting Event 1202's".</test_message>
+						<test_value name="i0">1202</test_value>
+						<test_value name="s0">Security policies were propagated with warning. 0x4b8 </test_value>
+					</example>
+					<example>
+						<test_message program="security-auditing">5140: A network share object was accessed. Subject: Security ID: S-1-5-18 Account Name: MYUSER Account Domain: MYDOMAIN Logon ID: 0x3e7 Network Information: Object Type: File Source Address: 192.168.148.5 Source Port: 49206 Share Information: Share Name: \\*\ADMIN$ Share Path: \??\C:\Windows Access Request Information: Access Mask: 0x1 Accesses: ReadData (or ListDirectory)</test_message>
+						<test_value name="i0">5140</test_value>
+						<test_value name="s1">MYUSER</test_value>
+						<test_value name="s2">MYDOMAIN</test_value>
+						<test_value name="i1">192.168.148.5</test_value>
+						<test_value name="s3">\\*\ADMIN$</test_value>
+						<test_value name="s4">\??\C:\Windows</test_value>
+					</example>
+					<example>
+						<test_message program="security-auditing">5140: A network share object was accessed. Subject: Security ID: S-1-5-7 Account Name: ANONYMOUS LOGON Account Domain: NT AUTHORITY Logon ID: 0x1e05bb9b Network Information: Object Type: File Source Address: 192.168.148.5 Source Port: 65518 Share Information: Share Name: \\\\*\\IPC$ Share Path: Access Request Information: Access Mask: 0x1 Accesses: ReadData (or ListDirectory)</test_message>
+						<test_value name="i0">5140</test_value>
+						<test_value name="s1">ANONYMOUS LOGON</test_value>
+						<test_value name="s2">NT AUTHORITY</test_value>
+						<test_value name="i1">192.168.148.5</test_value>
+						<test_value name="s3">\\\\*\\IPC$</test_value>
+					</example>
+					<example>
+						<test_message program="security-auditing">5145: A network share object was checked to see whether client can be granted desired access. Subject: Security ID: S-1-5-21-518783779-1162290680-929701000-2097 Account Name: MYUSER Account Domain: MYDOMAIN Logon ID: 0x19789189 Network Information: Object Type: File Source Address: 192.168.148.5 Source Port: 4235 Share Information: Share Name: \\*\SHARE_NAME Share Path: \??\C:\SHARE_PATH Relative Target Name: MYFILE Access Request Information: Access Mask: 0x80 Accesses: ReadAttributes Access Check Results: ReadAttributes: Granted by D:(A;;FA;;;WD)</test_message>
+						<test_value name="i0">5145</test_value>
+						<test_value name="s1">MYUSER</test_value>
+						<test_value name="s2">MYDOMAIN</test_value>
+						<test_value name="i1">192.168.148.5</test_value>
+						<test_value name="s3">\\*\SHARE_NAME</test_value>
+						<test_value name="s4">\??\C:\SHARE_PATH</test_value>
+						<test_value name="s5">MYFILE</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Windows_dhcp" id='4_dhcp'>
+		<pattern>GenericLog</pattern>
+		<rules>
+			<rule provider="ELSA" class='4' id='4'>
+				<patterns>
+					<pattern>@NUMBER::@,@ANYSTRING::@</pattern>
+					<values>
+						<value name="i0">0</value>
+						<value name="s0">dhcplog</value>
+						<value name="PROGRAM">dhcplog</value>
+					</values>
+					<!--<pattern>@NUMBER:i0:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:,@</pattern>
+					<pattern>@NUMBER:i0:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:,@@ESTRING:s5:,@</pattern>-->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="GenericLog">30,11/16/10,12:25:04,DNS Update Request,x.x.x.x,hostname,,</test_message>
+						<test_value name="i0">0</test_value>
+						<test_value name="s0">dhcplog</test_value>
+						<test_value name="PROGRAM">dhcplog</test_value>
+					</example>
+					<example>
+						<test_message program="GenericLog">11,11/16/10,12:25:04,Renew,x.x.x.x,hostname,macaddr,</test_message>
+						<test_value name="i0">0</test_value>
+						<test_value name="s0">dhcplog</test_value>
+						<test_value name="PROGRAM">dhcplog</test_value>
+					</example>
+				</examples>
+				<tags>
+					<tag>4</tag>
+				</tags>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Adiscon" id="4_adiscon">
+		<rules>
+			<rule provider="ELSA" class='4' id='4'>
+				<pattern>@ESTRING::Event ID@: @NUMBER:i0:@ &lt;Data Name='TargetUserName'&gt;@ESTRING:s0:&lt;@</pattern>
+				<pattern>@ESTRING::Event ID@: @NUMBER:i0:@</pattern>
+				<examples>
+					<example>
+						<test_message program="">Mar  9 22:35:10 IU-MSSG-ADSDC01.domain Event ID: 5157 &lt;Data Name='ProcessID'&gt;180&lt;/Data&gt;&lt;Data Name='Application'&gt;\device\harddiskvolume2\windows\system32\svchost.exe&lt;/Data&gt;&lt;Data Name='Direction'&gt;%14592&lt;/Data&gt;&lt;Data Name='SourceAddress'&gt;10.68.239.128&lt;/Data&gt;&lt;Data Name='SourcePort'&gt;500&lt;/Data&gt;&lt;Data Name='DestAddress'&gt;10.166.175.52&lt;/Data&gt;&lt;Data Name='DestPort'&gt;500&lt;/Data&gt;&lt;Data Name='Protocol'&gt;17&lt;/Data&gt;&lt;Data Name='FilterRTID'&gt;73486&lt;/Data&gt;&lt;Data Name='LayerName'&gt;%14610&lt;/Data&gt;&lt;Data Name='LayerRTID'&gt;44&lt;/Data&gt;&lt;Data Name='RemoteUserID'&gt;S-1-0-0&lt;/Data&gt;&lt;Data Name='RemoteMachineID'&gt;S-1-0-0&lt;/Data&gt;</test_message>
+						<test_value name="i0">5157</test_value>
+					</example>
+					<example>
+						<test_message program="">Mar  9 22:35:10 IU-MSSG-ADSDC04.domain Event ID: 4769 &lt;Data Name='TargetUserName'&gt;user@domain&lt;/Data&gt;&lt;Data Name='TargetDomainName'&gt;domain&lt;/Data&gt;&lt;Data Name='ServiceName'&gt;IU-MSSG-ADSDC04$&lt;/Data&gt;&lt;Data Name='ServiceSid'&gt;S-1-5-21-1085031214-1292428093-527237240-496356&lt;/Data&gt;&lt;Data Name='TicketOptions'&gt;0x40810000&lt;/Data&gt;&lt;Data Name='TicketEncryptionType'&gt;0x12&lt;/Data&gt;&lt;Data Name='IpAddress'&gt;::ffff:10.160.118.87&lt;/Data&gt;&lt;Data Name='IpPort'&gt;54144&lt;/Data&gt;&lt;Data Name='Status'&gt;0x0&lt;/Data&gt;&lt;Data Name='LogonGuid'&gt;{CD66EF59-4404-F056-C1CC-5E12BE6B978E}&lt;/Data&gt;&lt;Data Name='TransmittedServices'&gt;-&lt;/Data&gt;</test_message>
+						<test_value name="i0">4769</test_value>
+						<test_value name="s0">user@domain</test_value>
+					</example>
+						
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="url" id='7'>
+		<pattern>url</pattern>
+		<rules>
+			<rule provider="ELSA" class='7' id='7'>
+				<patterns>
+					<!--<pattern>@IPv4:i0:@,@IPv4:i1:@,@ESTRING:s0:,@@ESTRING:s5:,@@ESTRING:s2:,@@ESTRING:s3:,@@STRING:s4: :/;,.-()@</pattern>-->
+					<!--<pattern>@IPv4:i0:@,@IPv4:i1:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:|@@STRING:s5:,.-@</pattern>-->
+					<!-- httpry_logger.pl -->
+					<pattern>@IPv4:i0:@,@IPv4:i1:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@@NUMBER:i3:@|@NUMBER:i4:@</pattern>
+					<pattern>@IPv4:i0:@,@IPv4:i1:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@|@NUMBER:i4:@</pattern>
+					<pattern>@IPv4:i0:@,@IPv4:i1:@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@</pattern>
+					<pattern>@IPv4:i0:@|@IPv4:i1:@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@NUMBER:i5@</pattern>
+					<pattern>@IPv4:i0:@|@IPv4:i1:@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@@NUMBER:i3:@|@NUMBER:i4:@</pattern>
+					<pattern>@IPv4:i0:@|@IPv4:i1:@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@|@NUMBER:i4:@</pattern>
+					<pattern>@IPv4:i0:@|@IPv4:i1:@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@@NUMBER:i3:@|</pattern>
+					<pattern>@IPv4:i0:@|@IPv4:i1:@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@ESTRING:i2:|@</pattern>
+					<!-- suricata -->
+					<pattern>@ESTRING:: @@ESTRING:s1: [**] @@ESTRING:s2: [**] @@ESTRING:s4: [**] @@IPv4:i0:@:@NUMBER:i1:@ -> @IPv4:i2:@:@NUMBER:i3:@</pattern>
+					<!-- suricata extended -->
+					<pattern>@ESTRING:: @@ESTRING:s1: [**] @@ESTRING:s2: [**] @@ESTRING:s4: [**] @@ESTRING:s3: [**] @@ESTRING:s0: [**] @@ESTRING:: [**] @@ESTRING:i2: [**] @@NUMBER:i3:@ bytes [**] @IPv4:i0:@:@NUMBER:i4:@ -> @IPv4:i1:@:@NUMBER:i5:@</pattern>
+					<!--Common Log Format-->
+					<pattern>@IPv4:i0:@ @ESTRING:: @@ESTRING:s5: @@ESTRING:: "@@ESTRING:s0: @@ESTRING:s2: @HTTP/1.@NUMBER::@" @NUMBER:i2:@ @NUMBER:i3:@ @QSTRING:s3:"@ @QSTRING:s4:"@</pattern>
+					<!--%{HOST} + Common Log Format-->
+					<pattern>@ESTRING:s1: @@IPv4:i0:@ @ESTRING:: @@ESTRING:s5: @@ESTRING:: "@@ESTRING:s0: @@ESTRING:s2: @HTTP/1.@NUMBER::@" @NUMBER:i2:@ @NUMBER:i3:@ @QSTRING:s3:"@ @QSTRING:s4:"@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="url">192.168.1.1,10.0.0.0,GET,ajax.googleapis.com,/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js,http://slickdeals.net/,Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)|,com,googleapis.com,ajax.googleapis.com|200|46142|8583</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">10.0.0.0</test_value>
+							<test_value name="s0">GET</test_value>
+							<test_value name="s1">ajax.googleapis.com</test_value>
+							<test_value name="s2">/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js</test_value>
+							<test_value name="s3">http://slickdeals.net/</test_value>
+							<test_value name="s4">Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)</test_value>
+							<test_value name="s5">,com,googleapis.com,ajax.googleapis.com</test_value>
+							<test_value name="i2">200</test_value>
+							<test_value name="i3">46142</test_value>
+							<test_value name="i4">8583</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="url">192.168.1.1,10.0.0.0,GET,ajax.googleapis.com,/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js,http://slickdeals.net/,Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)|,com,googleapis.com,ajax.googleapis.com|200||8583</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">10.0.0.0</test_value>
+							<test_value name="s0">GET</test_value>
+							<test_value name="s1">ajax.googleapis.com</test_value>
+							<test_value name="s2">/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js</test_value>
+							<test_value name="s3">http://slickdeals.net/</test_value>
+							<test_value name="s4">Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)</test_value>
+							<test_value name="s5">,com,googleapis.com,ajax.googleapis.com</test_value>
+							<test_value name="i2">200</test_value>
+							<test_value name="i3"></test_value>
+							<test_value name="i4">8583</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="url">192.168.1.1,10.0.0.0,GET,ajax.googleapis.com,/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js,http://slickdeals.net/,Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)|,com,googleapis.com,ajax.googleapis.com|200||</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">10.0.0.0</test_value>
+							<test_value name="s0">GET</test_value>
+							<test_value name="s1">ajax.googleapis.com</test_value>
+							<test_value name="s2">/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js</test_value>
+							<test_value name="s3">http://slickdeals.net/</test_value>
+							<test_value name="s4">Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)</test_value>
+							<test_value name="s5">,com,googleapis.com,ajax.googleapis.com</test_value>
+							<test_value name="i2">200</test_value>
+							<test_value name="i3"></test_value>
+							<test_value name="i4"></test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="url">127.0.0.1 - - [09/Dec/2012:23:20:27 -0600] "HEAD / HTTP/1.1" 200 334 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.11 (KHTML, like Gecko) Ubuntu/12.04 Chromium/20.0.1132.47 Chrome/20.0.1132.47 Safari/536.11"</test_message>
+						<test_values>
+							<test_value name="i0">127.0.0.1</test_value>
+							<test_value name="s0">HEAD</test_value>
+							<test_value name="s2">/</test_value>
+							<test_value name="s3">-</test_value>
+							<test_value name="s4">Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.11 (KHTML, like Gecko) Ubuntu/12.04 Chromium/20.0.1132.47 Chrome/20.0.1132.47 Safari/536.11</test_value>
+							<test_value name="s5">-</test_value>
+							<test_value name="i2">200</test_value>
+							<test_value name="i3">334</test_value>
+						</test_values>
+					</example>
+					</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="snort" id='8'>
+		<pattern>snort</pattern>
+		<rules>
+			<rule provider="ELSA" class='8' id='8'>
+				<patterns>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -> @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@ -> @IPv4:i4:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -> @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@ -> @IPv4:i4:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1: {@@ESTRING:i1:}@ @IPv4:i2:@:@NUMBER:i3:@ -> @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<!--<pattern>@QSTRING:s0:[]@@QSTRING:s1: @[Classification:@QSTRING:s2: ]@ [Priority@QSTRING:i0: ]@: @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -> @IPv4:i4:@:@NUMBER:i5:@</pattern>-->
+				</patterns>
+				<example>
+					<test_message program="snort">[1:485:5] ICMP Destination Unreachable Communication Administratively Prohibited [Classification: Misc activity] [Priority: 3] {ICMP} 192.168.1.1 -> 10.0.0.0</test_message>
+					<test_value name="s0">1:485:5</test_value>
+					<test_value name="s1">ICMP Destination Unreachable Communication Administratively Prohibited </test_value>
+					<test_value name="s2">Misc activity</test_value>
+					<test_value name="i0">3</test_value>
+					<test_value name="i1">ICMP</test_value>
+					<test_value name="i2">192.168.1.1</test_value>
+					<test_value name="i4">10.0.0.0</test_value>
+				</example>
+			</rule>
+			<rule provider="Laurel" class='8' id='8'>
+				<!-- Rules for logs with interface included -->
+				<patterns>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1: [@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+					<pattern>@QSTRING:s0:[]@@QSTRING:s1: @[Classification:@QSTRING:s2: ]@ [Priority@QSTRING:i0: ]@: @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+				</patterns>
+				<example>
+					<test_message program="snort">[1:2010939:2] ET POLICY Suspicious inbound to PostgreSQL port 5432 [Classification: Potentially Bad Traffic] [Priority: 2]: &lt;eth1&gt; {TCP} 192.168.193.245:38472 -> 192.168.193.1:5432</test_message>
+					<test_value name="s0">1:2010939:2</test_value>
+					<test_value name="s1">ET POLICY Suspicious inbound to PostgreSQL port 5432 </test_value>
+					<test_value name="s2">Potentially Bad Traffic</test_value>
+					<test_value name="s3">eth1</test_value>
+					<test_value name="i0">2</test_value>
+					<test_value name="i1">TCP</test_value>
+					<test_value name="i2">192.168.193.245</test_value>
+					<test_value name="i3">38472</test_value>
+					<test_value name="i4">192.168.193.1</test_value>
+					<test_value name="i5">5432</test_value>
+				</example>
+			</rule>
+			<rule provider="A Ratcliffe" class='8' id='8'>
+				<patterns>
+					<!-- via Sagan which has an extra colon in it-->
+					<pattern>@QSTRING:s0:[]@ @ESTRING:s1: [Classification@:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<!-- via Sagan with extra text -->
+					<pattern>@QSTRING:s0:[]@ [@ESTRING::]@ @ESTRING:s1: [Classification@:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@]: @QSTRING:s3:&lt;&gt;@ @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+				</patterns>
+			</rule>
+			<rule class='8' id='8'>
+				<!--via barnyard2 using config to include year with date extracted-->
+				<patterns>
+					<pattern>@NUMBER:pdb_extracted_month:@/@NUMBER:pdb_extracted_day:@/@NUMBER:pdb_extracted_shortyear:@-@NUMBER:pdb_extracted_hour:@:@NUMBER:pdb_extracted_minute:@:@NUMBER:pdb_extracted_second:@.@NUMBER::@@ESTRING::[**]@ @QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@ESTRING:s2:] @[Priority: @NUMBER:i0:@] {@ESTRING:i1:}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@NUMBER:pdb_extracted_month:@/@NUMBER:pdb_extracted_day:@/@NUMBER:pdb_extracted_shortyear:@-@NUMBER:pdb_extracted_hour:@:@NUMBER:pdb_extracted_minute:@:@NUMBER:pdb_extracted_second:@.@NUMBER::@@ESTRING::[**]@ @QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@ESTRING:s2:] @[Priority: @NUMBER:i0:@] {@ESTRING:i1:}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+				</patterns>	
+				<values>
+					<value name="pdb_extracted_timestamp">20$pdb_extracted_shortyear-$pdb_extracted_month-$pdb_extracted_day $pdb_extracted_hour:$pdb_extracted_minute:$pdb_extracted_second</value>
+				</values>
+			</rule>
+			<rule provider="C Martinez" class='8' id='8'>
+				<!-- Patterns for forwarded messages from fast.log which contain [**]-->
+				<patterns>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt;@IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@ -&gt;@IPv4:i4:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt;@IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1:[@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@ -&gt;@IPv4:i4:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: {@@ESTRING:i1:}@ @IPv4:i2:@:@NUMBER:i3:@-&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+					<pattern>@ESTRING:: [**]@ @QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@ @QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@ [Priority: @NUMBER:i0:@] @QSTRING:i1:{}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: [**] [@Classification:@QSTRING:s2: ]@[Priority: @NUMBER:i0:@]: @QSTRING:i1:{}@ @IPv4:i2:@ -&gt; @IPv4:i4:@</pattern>
+					<pattern>@ESTRING:: [**]@@QSTRING:s0:[]@ @ESTRING:s1: [**] {@@ESTRING:i1:}@@IPv4:i2:@:@NUMBER:i3:@ -&gt; @IPv4:i4:@:@NUMBER:i5:@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<!--<ruleset>
+		<rules>
+			<rule class="10" id="10" context-id="ironport-icid" context-timeout="10" context-scope="program">
+				<patterns>
+					<pattern>Info: New SMTP ICID @NUMBER:icid:@ interface @ESTRING:interface_name: @(@IPv4:interface_ip:@) address @IPv4:sender_ip:@ reverse dns host @ESTRING:sender_dns: @verified yes</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="ironport_mail_logs">Info: New SMTP ICID 696117306 interface InternalNet (192.168.1.1) address 192.168.1.1 reverse dns host hostname verified yes</test_message>
+						<test_value name="icid">696117306</test_value>
+						<test_value name="interface_name">InternalNet</test_value>
+						<test_value name="interface_ip">192.168.1.1</test_value>
+						<test_value name="sender_ip">192.168.1.1</test_value>
+						<test_value name="sender_dns">hostname</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>-->
+	<ruleset name="ssh">
+		<pattern>sshd</pattern>
+		<rules>
+			<rule class="11" id="11">
+				<patterns>
+					<!-- s0=usracct.authmethod, s1=usracct.username, s2=usracct.device, i0=port, s3=usracct.service -->
+					<pattern>Accepted @ESTRING:s0: @for @ESTRING:s1: @from @ESTRING:s2: @port @ESTRING:i0: @@ANYSTRING:s3@</pattern>
+				</patterns>
+			</rule>
+			<rule class="12" id="12">
+				<patterns>
+					<!-- s0=usracct.authmethod, s1=usracct.username, s2=usracct.device, i0=port, s3=usracct.service -->
+					<pattern>Failed @ESTRING:s0: @for @ESTRING:s1: @from @ESTRING:s2: @port @ESTRING:i0: @@ANYSTRING:s3@</pattern>
+					<pattern>Failed @ESTRING:s0: @for invalid user @ESTRING:s1: @from @ESTRING:s2: @port @ESTRING:i0: @@ANYSTRING:s3@</pattern>
+					<pattern>Failed @ESTRING:s0: @for illegal user @ESTRING:s1: @from @ESTRING:s2: @port @ESTRING:i0: @@ANYSTRING:s3@</pattern>
+				</patterns>
+			</rule>
+			<rule class="13" id="13">
+				<patterns>
+					<!-- s0=usracct.username -->
+					<pattern>pam_unix(sshd:session): session closed for user @ANYSTRING:s0:@</pattern>
+					<pattern>session closed for user @ANYSTRING:s0:@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_dns</pattern>
+		<rules>
+			<rule class="14" id="14">
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ANYSTRING:s1@</pattern>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_dns">1318443095.831281|0L5Ro2iPit1|10.0.0.0|23657|69.22.154.225|53|udp|31608|e2932.c.akamaiedge.net|1|C_INTERNET|1|A|0|NOERROR|F|T|F|F|F|1|20.000000|23.0.124.9</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.0.0.0</test_value>
+						<!-- srcport -->
+						<test_value name="i1">23657</test_value>
+						<!-- dstip -->
+						<test_value name="i2">69.22.154.225</test_value>
+						<!-- dstport -->
+						<test_value name="i3">53</test_value>
+						<!-- proto -->
+						<test_value name="i4">udp</test_value>
+						<!-- hostname -->
+						<test_value name="s0">e2932.c.akamaiedge.net</test_value>
+						<!-- answer -->
+						<test_value name="s1">23.0.124.9</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_notice</pattern>
+		<rules>
+			<rule class="41" id="Bro file transfer via bro_notice">
+				<patterns>
+					<pattern description="bro-2.1">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@tcp|HTTP::MD5|@IPv4::@ @ESTRING:s0: @http@ESTRING:://@@ESTRING:s1:/@@ESTRING:s2:|@@ESTRING::|@@IPv4::@|@IPv4::@|@NUMBER::@|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@HTTP::MD5|@IPv4::@ @ESTRING:s0: @http@ESTRING:://@@ESTRING:s1:/@@ESTRING:s2:|@</pattern>
+				</patterns>
+				<values>
+					<value name="s2">/$s2</value>
+				</values>
+			</rule>
+			<rule class='15' id='15'>
+				<patterns>
+					<pattern description="bro-2.2">@ESTRING::|@@ESTRING::|@@IPv4:i0@|@NUMBER:i1@|@IPv4:i2@|@NUMBER:i3@|@ESTRING::|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@IPv4:@|@IPv4:@|@NUMBER:@|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.2">@ESTRING::|@-|-|@ESTRING:i1:|@@ESTRING:i2:|@-|-|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@IPv4:i0@|-|@NUMBER:i3@|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.2">@ESTRING::|@-|-|@ESTRING:i1:|@-|@ESTRING:i3:|@-|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@IPv4:i0@|@IPv4:i2@|-|-|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.2">@ESTRING::|@-|-|@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@-|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@@IPv4:i0@|-|-|-|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.2">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:s5:|@-|-|-|-|@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@tcp|@ESTRING:s0:|@@ESTRING:s1:|@@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@udp|@ESTRING:s0:|@@ESTRING:s1:|@@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@icmp|@ESTRING:s0:|@@ESTRING:s1:|@@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@-|-|-|-|-|-|@ESTRING:s0:|@@ESTRING:s1:|@-|-|-|-|-@ANYSTRING::@</pattern>
+					<pattern description="bro-2.1">@ESTRING::|@-|-|-|-|-|-|@ESTRING:s0:|@@ESTRING:s1:|@-|@IPv4:i0:@|@ANYSTRING::@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern description='bro-2.2'>bro_files</pattern>
+		<rules>
+			<rule class='54' id='54'>
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING::|@@ESTRING::|@@ESTRING:i2:|@@ESTRING::|@@ESTRING:i3:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:s4:|@@ESTRING:s5:|@@ANYSTRING::@</pattern>
+				</patterns>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_smtp</pattern>
+		<rules>
+			<rule class="16" id="16">
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:s3:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:s4:|@@ESTRING:s5:|@@ANYSTRING::@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_smtp">1320612601.697404|SFiDYDwOSl8|10.0.0.0|45765|66.94.25.228|25|@woMgeVXDE|server.example.com|&lt;prvs=284e51a33=user@domain.com&gt;|&lt;user@example.com&gt;|Sun, 6 Nov 2011 14:50:00 -0600|"user" &lt;user@domain.com&gt;|"'user@example.com'" &lt;user@example.com&gt;|-|&lt;F3AC33A1A5033546890246040DCA32E303CDF29D5FE6@mailserver.domain.com&gt;|&lt;user@example.com&gt;|RE: some subject|-|from mailserver.domain.com ([10.0.0.0]) with mapi; Sun, 6 Nov 2011 14:50:01 -0600|from mailserver.domain.com ([10.0.0.0]) by mailserver.domain.com with ESMTP/TLS/RC4-MD5; 06 Nov 2011 14:50:01 -0600|250 2.0.0 10wk4g5v6k-1 Message accepted for delivery|192.168.1.1,10.0.0.0|-|F</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.0.0.0</test_value>
+						<!-- srcport -->
+						<test_value name="i1">45765</test_value>
+						<!-- dstip -->
+						<test_value name="i2">66.94.25.228</test_value>
+						<!-- dstport -->
+						<test_value name="i3">25</test_value>
+						<!-- server -->
+						<test_value name="s0">server.example.com</test_value>
+						<!-- from -->
+						<test_value name="s1">"user" &lt;user@domain.com&gt;</test_value>
+						<!-- to -->
+						<test_value name="s2">"'user@example.com'" &lt;user@example.com&gt;</test_value>
+						<!-- subject -->
+						<test_value name="s3">RE: some subject</test_value>
+						<!-- last_reply -->
+						<test_value name="s4">250 2.0.0 10wk4g5v6k-1 Message accepted for delivery</test_value>
+						<!-- path -->
+						<test_value name="s5">192.168.1.1,10.0.0.0</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_smtp_entities</pattern>
+		<rules>
+			<rule class="17" id="17">
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING:i4:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_smtp_entities">1320613389.303478|zQQiHb1x3fj|216.33.127.82|37295|10.0.0.0|25|@VqmVdbY2Mm3|CDocuments and SettingsckaiserLocal SettingsTemporary Internet FilesContent.IE535ZF226Areport[3].pdf|54399|application/pdf|-|-|-</test_message>
+						<!-- srcip -->
+						<test_value name="i0">216.33.127.82</test_value>
+						<!-- srcport -->
+						<test_value name="i1">37295</test_value>
+						<!-- dstip -->
+						<test_value name="i2">10.0.0.0</test_value>
+						<!-- dstport -->
+						<test_value name="i3">25</test_value>
+						<!-- filename -->
+						<test_value name="s0">CDocuments and SettingsckaiserLocal SettingsTemporary Internet FilesContent.IE535ZF226Areport[3].pdf</test_value>
+						<!-- content_len -->
+						<test_value name="i4">54399</test_value>
+						<!-- mime_type -->
+						<test_value name="s1">application/pdf</test_value>
+						<!-- md5 -->
+						<test_value name="s2">-</test_value>
+						<!-- extraction_file -->
+						<test_value name="s3">-</test_value>
+						<!-- excerpt -->
+						<test_value name="s4">-</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_ssl</pattern>
+		<rules>
+			<rule class="18" id="18">
+				<patterns>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING::|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING:s1:|@@ESTRING::|@@ESTRING:i4:|@@ANYSTRING::@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_ssl">1319824864.447838|g6XHk1uplZc|10.0.0.0|19427|80.175.58.76|443|TLSv10|TLS_RSA_WITH_RC4_128_MD5|-|48eacd8fda1a4f48188288ce09ba84d93b8b40aaafdeafd8bace5a1ba9f7c3ce|CN=www.forneymaterialstesting.com,OU=Comodo InstantSSL,OU=Online Sales,O=Forney Inc,streetAddress=One Adams Place,L=Seven Fields\,,ST=Pennsylvania,postalCode=16046,C=US|1286341200.000000|1381035599.000000|04918ecb442ca62e6e8f29272b9cff42|ok</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.0.0.0</test_value>
+						<!-- srcport -->
+						<test_value name="i1">19427</test_value>
+						<!-- dstip -->
+						<test_value name="i2">80.175.58.76</test_value>
+						<!-- dstport -->
+						<test_value name="i3">443</test_value>
+						<!-- hostname -->
+						<test_value name="s0">-</test_value>
+						<!-- subject -->
+						<test_value name="s1">CN=www.forneymaterialstesting.com,OU=Comodo InstantSSL,OU=Online Sales,O=Forney Inc,streetAddress=One Adams Place,L=Seven Fields\,,ST=Pennsylvania,postalCode=16046,C=US</test_value>
+						<!-- expiration -->
+						<test_value name="i4">1381035599.000000</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_http</pattern>
+		<rules>
+			<rule class="19" id="19">
+				<patterns>
+					<!--ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       trans_depth     method  
+					  host    uri     referrer        user_agent      request_body_len        response_body_len       status_code     
+					  status_msg      info_code       info_msg        filename        tags    username        password        
+					  proxied mime_type       md5     extraction_file-->
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@NUMBER::@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING::|@@ESTRING:i5:|@@ESTRING:i4:|@</pattern>
+					<!--ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       method  
+					host    uri     referrer        user_agent      request_body_len       
+					 request_body_interrupted        response_body_len       response_body_interrupted       status_code     
+					 status_msg      filename        tags    username        password        proxied mime_type
+       md5     extraction_file-->
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING::|@@ESTRING::|@@ESTRING:i5:|@@ESTRING::|@@ESTRING:i4:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_http">1319824864.447838|g6XHk1uplZc|10.0.0.0|19427|80.175.58.76|80|GET|www.google.com|/|http://example.com|myagent|-|-|1000|0|200|</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.0.0.0</test_value>
+						<!-- srcport -->
+						<test_value name="i1">19427</test_value>
+						<!-- dstip -->
+						<test_value name="i2">80.175.58.76</test_value>
+						<!-- dstport -->
+						<test_value name="i3">80</test_value>
+						<!-- method -->
+						<test_value name="s0">GET</test_value>
+						<!-- host -->
+						<test_value name="s1">www.google.com</test_value>
+						<!-- uri -->
+						<test_value name="s2">/</test_value>
+						<!-- referer -->
+						<test_value name="s3">http://example.com</test_value>
+						<!-- user_agent -->
+						<test_value name="s4">myagent</test_value>
+						<!-- status_code -->
+						<test_value name="i4">200</test_value>
+						<!-- content_length -->
+						<test_value name="i5">1000</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_conn</pattern>
+		<rules>
+			<rule class="20" id="20">
+				<patterns>
+					<!--ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	service	duration	orig_bytes	resp_bytes	
+					conn_state	local_orig	missed_bytes	history	orig_pkts	orig_ip_bytes	resp_pkts	resp_ip_bytes-->
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:i5:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:s3:|@@ESTRING::|@@ESTRING:s4:|@</pattern>
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_conn">1319824864.447838|g6XHk1uplZc|10.0.0.0|19427|80.175.58.76|80|tcp|...</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.0.0.0</test_value>
+						<!-- srcport -->
+						<test_value name="i1">19427</test_value>
+						<!-- dstip -->
+						<test_value name="i2">80.175.58.76</test_value>
+						<!-- dstport -->
+						<test_value name="i3">80</test_value>
+						<!-- proto -->
+						<test_value name="i4">tcp</test_value>
+					</example>
+					<example>
+						<test_message program="bro_conn">1355091922.994655|fOFtbJ91cG7|192.168.1.103|52949|206.12.19.9|80|tcp|http|3.970039|2829|574725|SF|-|3706|ShADadFf|200|14697|403|591995</test_message>
+						<!-- srcip -->
+						<test_value name="i0">192.168.1.103</test_value>
+						<!-- srcport -->
+						<test_value name="i1">52949</test_value>
+						<!-- dstip -->
+						<test_value name="i2">206.12.19.9</test_value>
+						<!-- dstport -->
+						<test_value name="i3">80</test_value>
+						<!-- proto -->
+						<test_value name="i4">tcp</test_value>
+						<!-- service -->
+						<test_value name="s0">http</test_value>
+						<!-- duration -->
+						<test_value name="s1">3.970039</test_value>
+						<!-- orig_bytes -->
+						<test_value name="s2">2829</test_value>
+						<!-- resp_bytes -->
+						<test_value name="i5">574725</test_value>
+						<!-- orig_pkts -->
+						<test_value name="s3">200</test_value>
+						<!-- resp_pkts -->
+						<test_value name="s4">403</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="fortinet_url" id='21'>
+		<pattern>kernel</pattern>
+		<rules>
+			<rule provider="ELSA" class='21' id='21'>
+				<patterns>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @subtype=@ESTRING:: @type=webfilter pri=@ESTRING:: @vd=@ESTRING:: @policyid=@ESTRING:: @identidx=@ESTRING:: @serial=@ESTRING:: @user=@ESTRING:s0: @group=@ESTRING:s1: @src=@IPv4:i0:@ sport=@ESTRING:i1: @src_port=@ESTRING:: @src_int=@ESTRING:: @dst=@IPv4:i2:@ dport=@ESTRING:i3: @dst_port=@ESTRING:: @dst_int=@ESTRING:: @service=@ESTRING:s2: @hostname=@ESTRING:s3: @profiletype=@ESTRING:: @profile=@ESTRING:: @status=@ESTRING:s4: @req_type=@ESTRING:: @url=@ESTRING:s5: @method=@ESTRING:: @class=@ESTRING:: @cat=@ESTRING:i4: @cat_desc=@QSTRING::""@ carrier_ep=@ESTRING:: @msg=@QSTRING::""@ class_desc=@ESTRING:: @profilegroup=</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="kernel">date=2012-02-10 time=11:27:01 devname=CUSTID01-SITEID-FW device_id=FG100C999999999 log_id=13312 subtype=ftgd_allow type=webfilter pri=notice vd=VDOM policyid=44 identidx=1 serial=369298248 user=USER group=AD/GROUP src=10.1.2.3 sport=2163 src_port=2163 src_int=INT dst=4.3.2.1 dport=80 dst_port=80 dst_int=WAN service=http hostname=col.stb.s-msn.com profiletype=Webfilter_Profile profile=PROFILE status=passthrough req_type=referral url=/i/79/65F987C952BDA0E84AE52464ADD59.jpg method=domain class=0 cat=41 cat_desc="Search Engines and Portals" carrier_ep=N/A msg="URL belongs to an allowed category in policy" class_desc=N/A profilegroup=N/A</test_message>
+						<test_values>
+							<test_value name="i0">10.1.2.3</test_value>
+							<test_value name="i1">2163</test_value>
+							<test_value name="i2">4.3.2.1</test_value>
+							<test_value name="i3">80</test_value>
+							<test_value name="s0">USER</test_value>
+							<test_value name="s1">AD/GROUP</test_value>
+							<test_value name="s2">http</test_value>
+							<test_value name="s3">col.stb.s-msn.com</test_value>
+							<test_value name="s4">passthrough</test_value>
+							<test_value name="s5">/i/79/65F987C952BDA0E84AE52464ADD59.jpg</test_value>
+							<test_value name="i4">41</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="fortinet_traffic" id='22'>
+		<pattern>kernel</pattern>
+		<rules>
+			<rule provider="ELSA" class='22' id='22'>
+				<patterns>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @subtype=@ESTRING:: @type=traffic pri=@ESTRING:: @vd=@ESTRING:: @dir_disp=@ESTRING:: @tran_disp=@ESTRING:: @src=@IPv4:i0:@ srcname=@ESTRING:: @src_port=@NUMBER:i1:@ dst=@IPv4:i2:@ dstname=@ESTRING:: @dst_port=@NUMBER:i3:@ tran_ip=@ESTRING:: @tran_port=@ESTRING:: @service=@ESTRING:: @proto=@NUMBER:i4@ app_type=@ESTRING:: @duration=@NUMBER:i5@ rule=@ESTRING:: @policyid=@ESTRING:: @identidx=@ESTRING:: @sent=@ESTRING:: @rcvd=@ESTRING:: @shaper_drop_sent=@ESTRING:: @shaper_drop_rcvd=@ESTRING:: @perip_drop=@ESTRING:: @sent_pkt=@ESTRING:: @rcvd_pkt=@ESTRING:: @src_int=@ESTRING:: @dst_int=@ESTRING:: @SN=@ESTRING:: @app=@ESTRING:: @app_cat=@ESTRING:: @carrier_ep=@ESTRING:: @vpn=@ESTRING:: @status=@ESTRING:: @user=@ESTRING:: @group=@ESTRING:: @shaper_sent_name=@ESTRING:: @shaper_rcvd_name=@ESTRING:: @perip_name</pattern>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @devid=@ESTRING:: @logid=@ESTRING:: @type=traffic subtype=@ESTRING:: @level=@ESTRING:: @vd=@ESTRING:: @srcip=@IPv4:i0:@ srcport=@NUMBER:i1:@ srcintf=@QSTRING::""@ dstip=@IPv4:i2:@ dstport=@NUMBER:i3:@ dstintf=@QSTRING::""@ sessionid=@ESTRING:: @status=@ESTRING:: @policyid=@ESTRING:: @dstcountry=@QSTRING::""@ srccountry=@QSTRING::""@ trandisp=@ESTRING:: @tranip=@ESTRING:: @tranport=@ESTRING:: @service=@ESTRING:: @proto=@NUMBER:i4:@ duration=@NUMBER:i5:@ sentbyte=@ESTRING:: @rcvdbyte=@ESTRING:: @sentpkt=@ESTRING:: @rcvdpkt</pattern>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @devid=@ESTRING:: @logid=@ESTRING:: @type=traffic subtype=@ESTRING:: @level=@ESTRING:: @vd=@ESTRING:: @srcip=@IPv4:i0:@ srcport=@NUMBER:i1:@ srcintf=@QSTRING::""@ dstip=@IPv4:i2:@ dstport=@NUMBER:i3:@ dstintf=@QSTRING::""@ sessionid=@ESTRING:: @status=@ESTRING:: @policyid=@ESTRING:: @dstcountry=@QSTRING::""@ srccountry=@QSTRING::""@ trandisp=@ESTRING:: @tranip=@ESTRING:: @tranport=@ESTRING:: @transip=@ESTRING:: @transport=@ESTRING:: @service=@ESTRING:: @proto=@NUMBER:i4:@ duration=@NUMBER:i5:@ sentbyte=@ESTRING:: @rcvdbyte=@ESTRING:: @sentpkt=@ESTRING:: @rcvdpkt</pattern>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @type=traffic subtype=@ESTRING:: @pri=@ESTRING:: @vd=@ESTRING:: @src=@IPv4:i0:@ src_port=@NUMBER:i1:@ src_int=@QSTRING::""@ dst=@IPv4:i2:@ dst_port=@NUMBER:i3:@ dst_int=@QSTRING::""@ SN=@ESTRING:: @status=@ESTRING:: @policyid=@ESTRING:: @dst_country=@QSTRING::""@ src_country=@QSTRING::""@ service=@ESTRING:: @proto=@NUMBER:i4:@ duration=@NUMBER:i5:@ sent=@ESTRING:: @rcvd=@ESTRING:: @msg</pattern>
+					<!-- Complete pattern, not used now because we aren't capturing later strings 
+						<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @type=traffic subtype=@ESTRING:: @pri=@ESTRING:: @status=@ESTRING:: @vd=@ESTRING:: @dir_disp=@ESTRING:: @tran_disp=@ESTRING:: @src=@IPv4:i0:@ srcname=@ESTRING:: @src_port=@NUMBER:i1:@ dst=@IPv4:i2:@ dstname=@ESTRING:: @dst_port=@NUMBER:i3:@ tran_ip=@ESTRING:: @tran_port=@ESTRING:: @service=@ESTRING:: @proto=@NUMBER:i4:@ app_type=@ESTRING:: @duration=@NUMBER:i5:@ rule=@ESTRING:: @policyid=@ESTRING:: @identidx=@ESTRING:: @sent=@ESTRING:: @rcvd=@ESTRING:: @shaper_drop_sent=@ESTRING:: @shaper_drop_rcvd=@ESTRING:: @perip_drop=@ESTRING:: @shaper_sent_name=@QSTRING::""@ shaper_rcvd_name=@QSTRING::""@ perip_name=@QSTRING::""@ sent_pkt=@ESTRING:: @rcvd_pkt=@ESTRING:: @vpn=@QSTRING::""@ src_int=@QSTRING::""@ dst_int=@QSTRING::""@ SN=@ESTRING:: @app=@QSTRING::""@ app_cat=@QSTRING::""@ user=@QSTRING::""@ group=@QSTRING::""@ carrier_ep=@QSTRING::""@</pattern>
+					-->
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @type=traffic subtype=@ESTRING:: @pri=@ESTRING:: @status=@ESTRING:: @vd=@ESTRING:: @dir_disp=@ESTRING:: @tran_disp=@ESTRING:: @src=@IPv4:i0:@ srcname=@ESTRING:: @src_port=@NUMBER:i1:@ dst=@IPv4:i2:@ dstname=@ESTRING:: @dst_port=@NUMBER:i3:@ tran_ip=@ESTRING:: @tran_port=@ESTRING:: @service=@ESTRING:: @proto=@NUMBER:i4:@ app_type=@ESTRING:: @duration=@NUMBER:i5:@</pattern>
+					<pattern>date=@ESTRING:: @time=@ESTRING:: @devname=@ESTRING:: @device_id=@ESTRING:: @log_id=@ESTRING:: @type=traffic subtype=@ESTRING:: @pri=@ESTRING:: @status=@ESTRING:: @vd=@ESTRING:: @src=@IPv4:i0:@ srcname=@ESTRING:: @src_port=@NUMBER:i1:@ dst=@IPv4:i2:@ dstname=@ESTRING:: @dst_port=@NUMBER:i3:@ service=@ESTRING:: @proto=@NUMBER:i4:@ app_type=@ESTRING:: @duration=@NUMBER:i5:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="kernel">date=2012-02-10 time=11:27:01 devname=CUSTID01-SITEID-FW device_id=FGT80C9999999999 log_id=2 subtype=allowed type=traffic pri=notice vd=VDOM dir_disp=org tran_disp=snat src=10.1.2.3 srcname=10.1.2.3 src_port=53624 dst=4.3.2.2 dstname=4.3.2.2 dst_port=80 tran_ip=5.4.3.2 tran_port=49648 service=80/tcp proto=6 app_type=N/A duration=120 rule=49 policyid=49 identidx=0 sent=1221 rcvd=2062 shaper_drop_sent=0 shaper_drop_rcvd=0 perip_drop=0 sent_pkt=7 rcvd_pkt=6 src_int=INT dst_int=WAN SN=16349534 app=N/A app_cat=N/A carrier_ep=N/A vpn=N/A status=accept user=N/A group=N/A shaper_sent_name=N/A shaper_rcvd_name=N/A perip_name=N/A</test_message>
+						<test_values>
+							<test_value name="i0">10.1.2.3</test_value>
+							<test_value name="i1">53624</test_value>
+							<test_value name="i2">4.3.2.2</test_value>
+							<test_value name="i3">80</test_value>
+							<test_value name="i4">6</test_value>
+							<test_value name="i5">120</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="checkpoint_deny" id='23'>
+		<rules>
+			<rule provider="ELSA" class='23' id='23'>
+				<patterns>
+					<pattern>@QSTRING:i0:""@ @QSTRING::""@ @QSTRING::""@ @QSTRING:s0:""@ @QSTRING:s1:""@ @QSTRING:s2:""@ @QSTRING:s3:""@ @QSTRING:s4:""@ @QSTRING::""@ @QSTRING:i1:""@ @QSTRING:i2:""@ @QSTRING:i3:""@ @QSTRING::""@ @QSTRING::""@ @QSTRING::""@ @QSTRING::""@ "message_info: @ESTRING:s5:"@ @QSTRING::""@ @QSTRING::""@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="">"1" "12Feb2012" "23:59:04" "bond0.30" "FW-INT-CHCKPNT1" "Log" "Drop" "ntp-udp" "ntp-udp" "192.168.1.210" "10.133.3.10" "udp" "" "" "" "" "message_info: Address spoofing" "VPN-1 Power/UTM" "" ""</test_message>
+						<test_values>
+							<test_value name="i0">1</test_value>
+							<test_value name="s0">bond0.30</test_value>
+							<test_value name="s1">FW-INT-CHCKPNT1</test_value>
+							<test_value name="s2">Log</test_value>
+							<test_value name="s3">Drop</test_value>
+							<test_value name="s4">ntp-udp</test_value>
+							<test_value name="i1">192.168.1.210</test_value>
+							<test_value name="i2">10.133.3.10</test_value>
+							<test_value name="i3">udp</test_value>
+							<test_value name="s5">Address spoofing</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="palo_alto_url" id='24'>
+		<rules>
+			<rule provider="ELSA" class='24' id='24'>
+				<patterns>
+					<pattern>@NUMBER::@:@NUMBER::@,@NUMBER::@,@ESTRING::,@url,@NUMBER::@,@ESTRING::,@@IPv4:i0:@,@IPv4:i1:@,@IPv4::@,@IPv4::@,@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING::,@@ESTRING:s2:,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:i2:,@1@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@"@ESTRING:s3:/@@ESTRING:s4:"@,(@NUMBER::@),@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:s5:,@</pattern>
+					<!-- Alternative pattern for PAN with columns listed -->
+					<pattern>@ESTRING::,@ TYPE: THREAT, SUBTYPE: url, THREAT_ID: (@NUMBER::@), ACTION: @ESTRING::,@ RULE: @ESTRING::,@ MISC: "@ESTRING:s3:/@@ESTRING:s4:"@</pattern>
+					<values>
+						<value name="s4">/$s4</value>
+					</values>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="">46:31,002501000259,THREAT,url,0,2012/02/21 09:46:31,192.168.1.1,208.71.123.129,0.0.0.0,0.0.0.0,USERS-Network-AllowAll-to-EXT,domain\joeschmo,,web-browsing,vsys1,Users,External,ethernet1/3,ethernet1/5,forward-syslog-to-elsa,2012/02/2109:46:30,156730,1,50836,80,0,0,0x8000,tcp,alert,"network.realmedia.com/RealMedia/ads/adstream_sx.ads/newsinc_ap_video_us/preroll/vast/sx/ss/a/@x75",(9999),All,informational,client-to-server,19630699,0x0,United States,United States,0,text/xml</test_message>
+						<test_values>
+							<test_value name="i0">192.168.1.1</test_value>
+							<test_value name="i1">208.71.123.129</test_value>
+							<test_value name="s0">USERS-Network-AllowAll-to-EXT</test_value>
+							<test_value name="s1">domain\joeschmo</test_value>
+							<test_value name="s2">web-browsing</test_value>
+							<test_value name="i2">156730</test_value>
+							<test_value name="s3">network.realmedia.com</test_value>
+							<test_value name="s4">/RealMedia/ads/adstream_sx.ads/newsinc_ap_video_us/preroll/vast/sx/ss/a/@x75</test_value>
+							<test_value name="s5">United States</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="palo_alto_traffic" id='25'>
+		<rules>
+			<rule provider="ELSA" class='25' id='25'>
+				<patterns>
+					<pattern>@NUMBER::@:@NUMBER::@,@ESTRING::TRAFFIC,@@ESTRING:s5:,@@NUMBER::@,@ESTRING::,@@IPv4:i0:@,@IPv4:i1:@,@IPv4::@,@IPv4::@,@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:s0:,@@ESTRING:s1:,@@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:i2:,@@ESTRING:i3:,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:i4:,@@ESTRING::,@@ESTRING:i5:,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:s4:,@</pattern>
+					<!-- Alternative pattern for PAN with columns listed -->
+					<pattern>@ESTRING::,@ TYPE: TRAFFIC, SUBTYPE: @ESTRING:s5:,@ RULE: @ESTRING::,@ ACTION: @ESTRING::,@ INBOUND_INTERFACE: @ESTRING:s2:,@ FROM_ZONE: @ESTRING:s0:,@ SOURCE_USER: @ESTRING::,@ SOURCE_IP: @ESTRING:i0:,@ NAT_SOURCE_IP: @ESTRING::,@ SOURCE_PORT: @ESTRING:i2:,@ OUTBOUND_INTERFACE: @ESTRING:s3:,@ TO_ZONE: @ESTRING:s1:,@ DESTINATION_USER: @ESTRING::,@ DESTINATION_IP: @ESTRING:i1:,@ DESTINATION_PORT: @ESTRING:i3:,@ DESTINATION_LOCATION: @ESTRING:s4:,@ CATEGORY: @ESTRING:s5:,@ PROTOCOL: @ESTRING:i4:,@ APPLICATION: @ESTRING::,@ ELAPSED_TIME: @ESTRING::,@ BYTES: @ESTRING:i5:,@ BYTES_RECEIVED: @ESTRING::,@ BYTES_SENT: @ESTRING::,@ TOTAL_PACKETS: @ESTRING::,@ PACKETS_RECEIVED: @ESTRING::,@ PACKETS_SENT: @ESTRING::,@ REPEAT_COUNT_5sec: </pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="">46:31,002501000259,TRAFFIC,end,0,2012/02/21 09:46:31,10.10.10.10,192.168.1.1,0.0.0.0,0.0.0.0,ALL-http-https-to-BASTION,,,web-browsing,vsys1,External,Bastion,ethernet1/5,ethernet1/2,forward-syslog-to-elsa,2012/02/21 09:46:30,632179,1,4074,80,0,0,0x0,tcp,allow,2986,1493,1493,19,2012/02/21 09:45:57,31,not-resolved,0,453403179,0x0,United States,United States,0,10,9</test_message>
+						<test_values>
+							<test_value name="i0">10.10.10.10</test_value>
+							<test_value name="i1">192.168.1.1</test_value>
+							<test_value name="s0">External</test_value>
+							<test_value name="s1">Bastion</test_value>
+							<test_value name="s2">ethernet1/5</test_value>
+							<test_value name="s3">ethernet1/2</test_value>
+							<test_value name="i2">4074</test_value>
+							<test_value name="i3">80</test_value>
+							<test_value name="i4">tcp</test_value>
+							<test_value name="i5">2986</test_value>
+							<test_value name="s4">United States</test_value>
+							<test_value name="s5">end</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="ossec" id='26'>
+		<rules>
+			<rule provider="ELSA" class="4" id="26">
+				<patterns>
+					<pattern>@NUMBER::@@ESTRING::(@@ESTRING::)@ @IPv4:pdb_extracted_sourceip:@->WinEvtLog WinEvtLog: @ESTRING:pdb_extracted_program::@ AUDIT_@ESTRING::(@@ESTRING:i0:)@@ESTRING::Account Name@@ESTRING::Account Name@:  @ESTRING:s1: @@ESTRING::Account Domain@:  @ESTRING:s2: @@ESTRING::Source Network Address@: @IPv4:i1:@</pattern>
+					<values>
+						<value name="PROGRAM">$pdb_extracted_program</value>
+					</values>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="">2013 Jan 18 20:25:08 (host.example.com) 172.20.0.23->WinEvtLog WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: myuser: MYDOMAIN: MYDOMAIN-DC-1.example.com: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  MYDOMAIN-DC-1$  Account Domain:  MYDOMAIN  Logon ID:  0x3e7  Logon Type:   3  New Logon:  Security ID:  S-1-5-21-3113823999-9998615402-9997257512-9966  Account Name:  myuser  Account Domain:  MYDOMAIN  Logon ID:  0x2339f787  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1e8  Process Name:  C:\\Windows\\System32\\lsass.exe  Network Information:  Workstation Name: MYDOMAIN-DC-1  Source Network Address: 172.24.248.117  Source Port:  54265  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: MICROSOFT_AUTHENTICATION_PACKAGE_V1_0  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.</test_message>
+						<test_values>
+							<test_value name="i0">4624</test_value>
+							<test_value name="s1">myuser</test_value>
+							<test_value name="s2">MYDOMAIN</test_value>
+							<test_value name="i1">172.24.248.117</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='4' id='26'>
+				<patterns>
+					<pattern>@NUMBER::@@ESTRING::(@@ESTRING::)@ @IPv4:pdb_extracted_sourceip:@->WinEvtLog WinEvtLog: @ESTRING:pdb_extracted_program::@ AUDIT_@ESTRING::(@@ESTRING:i0:)@</pattern>
+					<values>
+						<value name="PROGRAM">$pdb_extracted_program</value>
+					</values>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="">2012 Feb 20 09:04:41 (serverb) 123.123.40.23->WinEvtLog WinEvtLog: Security: AUDIT_SUCCESS(4769): Microsoft-Windows-Security-Auditing: bgreen@DOM1.A.COM: DOM1.A.COM: serverb.dom1.a.com: A Kerberos service ticket was requested. Account Information:  Account Name: bgreen@DOM1.A.COM  Account Domain:  DOM1.A.COM  Logon GUID: {CBB22EBF-4367-CB43-E5AC-2A8C13FD9641}  Service Information:  Service Name:  SERVERC$  Service ID: S-1-5-21-117536760-2556423787-3220343774-160533  Network Information:Client Address:  ::ffff:123.123.39.33  Client Port:  62513  Additional Information:  Ticket Options:  0x40810000  Ticket Encryption Type: 0x12  Failure Code:  0x0  Transited Services: -  This event is generated every time access is requested to a resource such as a computer or a Windows service.  The service name indicates the resource to which access was requested.</test_message>
+						<test_values>
+							<test_value name="i0">4769</test_value>
+							<test_value name="PROGRAM">Security</test_value>
+							<test_value name="pdb_extracted_sourceip">123.123.40.23</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="barracuda" id='27'>
+		<pattern>from</pattern>
+		<rules>
+			<rule provider="ELSA" class='27' id='27'>
+				<patterns>
+					<pattern>@IPv4:pdb_extracted_sourceip:@: scan[@NUMBER::@]@ESTRING::[@@IPv4:i0:@] @ESTRING:: @@ESTRING:: @@ESTRING:: @SCAN @ESTRING:: @@ESTRING:s0: @@ESTRING:s1: @@ESTRING:: @@ESTRING:i1: @@ESTRING:i2: @@ESTRING:s2: @SZ:@NUMBER::@ SUBJ:@ANYSTRING:s3:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="from">192.168.1.10: scan[8077]: UNKNOWN[10.37.80.102] 1329946623-01792678721d5b70001-uwIQq5 1329946623 1329946623 SCAN - sender@example.com recipient@example.com 0.341 0 0 - SZ:1634 SUBJ:Service - Flow Capture (inside)|status.example.com|PROBLEM</test_message>
+						<test_values>
+							<test_value name="i0">10.37.80.102</test_value>
+							<test_value name="s0">sender@example.com</test_value>
+							<test_value name="s1">recipient@example.com</test_value>
+							<test_value name="i1">0</test_value>
+							<test_value name="i2">0</test_value>
+							<test_value name="s2">-</test_value>
+							<test_value name="s3">Service - Flow Capture (inside)|status.example.com|PROBLEM</test_value>
+							<test_value name="pdb_extracted_sourceip">192.168.1.10</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='28' id='28'>
+				<patterns>
+					<pattern>@IPv4:pdb_extracted_sourceip:@: inbound/pass@NUMBER::@[@NUMBER::@]@ESTRING::[@@IPv4:i0:@] @ESTRING:: @@ESTRING:: @@ESTRING:: @RECV @ESTRING:s0: @@ESTRING:s1: @@ESTRING:i1: @@ESTRING:i2: @@ANYSTRING:s2:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="from">192.168.1.10: inbound/pass1[22443]: host.com[8.7.24.13] 1329330589-01792657ab486050001-5NcMI6 1329330589 1329330590 RECV test@test.com test1@test.ca 2 62 8.7.24.13</test_message>
+						<test_values>
+							<test_value name="i0">8.7.24.13</test_value>
+							<test_value name="s0">test@test.com</test_value>
+							<test_value name="s1">test1@test.ca</test_value>
+							<test_value name="i1">2</test_value>
+							<test_value name="i2">62</test_value>
+							<test_value name="s2">8.7.24.13</test_value>
+							<test_value name="pdb_extracted_sourceip">192.168.1.10</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class='29' id='29'>
+				<patterns>
+					<pattern>@IPv4:pdb_extracted_sourceip:@: outbound/smtp[@NUMBER::@]: @IPv4:i0:@ @ESTRING:: @@ESTRING:: @@ESTRING:: @SEND @ESTRING:: @@ESTRING:i1: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ANYSTRING:s0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="from">192.168.1.10: outbound/smtp[17580]: 127.0.0.1 1329330593-01792657ab486060001-slQ29D 0 0 SEND - 1 40FD5C6C659 250 &lt;0be658c5d60e4a0ea51a0a4745d6115e@mail.ca&gt; Queued mail for delivery</test_message>
+						<test_values>
+							<test_value name="i0">127.0.0.1</test_value>
+							<test_value name="s0">Queued mail for delivery</test_value>
+							<test_value name="i1">1</test_value>
+							<test_value name="pdb_extracted_sourceip">192.168.1.10</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="barracuda_scan" id='27_scan'>
+		<pattern>scan</pattern>
+		<rules>
+			<rule provider="ELSA" class='27' id='27'>
+				<patterns>
+					<pattern>@ESTRING::[@@IPv4:i0:@] @ESTRING:: @@ESTRING:: @@ESTRING:: @SCAN @ESTRING:: @@ESTRING:s0: @@ESTRING:s1: @@ESTRING:: @@ESTRING:i1: @@ESTRING:i2: @@ESTRING:s2: @SZ:@NUMBER::@ SUBJ:@ANYSTRING:s3:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="scan">UNKNOWN[10.37.80.102] 1329946623-01792678721d5b70001-uwIQq5 1329946623 1329946623 SCAN - sender@example.com recipient@example.com 0.341 0 0 - SZ:1634 SUBJ:Service - Flow Capture (inside)|status.example.com|PROBLEM</test_message>
+						<test_values>
+							<test_value name="i0">10.37.80.102</test_value>
+							<test_value name="s0">sender@example.com</test_value>
+							<test_value name="s1">recipient@example.com</test_value>
+							<test_value name="i1">0</test_value>
+							<test_value name="i2">0</test_value>
+							<test_value name="s2">-</test_value>
+							<test_value name="s3">Service - Flow Capture (inside)|status.example.com|PROBLEM</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>		
+	<ruleset name="barracuda_inbound" id='27_inbound'>
+		<pattern>inbound</pattern>
+		<rules>
+			<rule provider="ELSA" class='28' id='28'>
+				<patterns>
+					<pattern>@ESTRING::[@@IPv4:i0:@] @ESTRING:: @@ESTRING:: @@ESTRING:: @RECV @ESTRING:s0: @@ESTRING:s1: @@ESTRING:i1: @@ESTRING:i2: @@ANYSTRING:s2:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="inbound/pass1">host.com[8.7.24.13] 1329330589-01792657ab486050001-5NcMI6 1329330589 1329330590 RECV test@test.com test1@test.ca 2 62 8.7.24.13</test_message>
+						<test_values>
+							<test_value name="i0">8.7.24.13</test_value>
+							<test_value name="s0">test@test.com</test_value>
+							<test_value name="s1">test1@test.ca</test_value>
+							<test_value name="i1">2</test_value>
+							<test_value name="i2">62</test_value>
+							<test_value name="s2">8.7.24.13</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>		
+	<ruleset name="barracuda_outbound" id='27_outbound'>
+		<pattern>outbound</pattern>
+		<rules>
+			<rule provider="ELSA" class='29' id='29'>
+				<patterns>
+					<pattern>@IPv4:i0:@ @ESTRING:: @@ESTRING:: @@ESTRING:: @SEND @ESTRING:: @@ESTRING:i1: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ANYSTRING:s0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="outbound/smtp">192.168.1.10: outbound/smtp[17580]: 127.0.0.1 1329330593-01792657ab486060001-slQ29D 0 0 SEND - 1 40FD5C6C659 250 &lt;0be658c5d60e4a0ea51a0a4745d6115e@mail.ca&gt; Queued mail for delivery</test_message>
+						<test_values>
+							<test_value name="i0">127.0.0.1</test_value>
+							<test_value name="s0">Queued mail for delivery</test_value>
+							<test_value name="i1">1</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name='Microsoft Exchange via Epilog' id='30'>
+		<patterns>exchmtlog</patterns>
+		<rules>
+			<rule provider='ELSA' class='30' id='30'>
+				<patterns>
+					<pattern>@ESTRING::,@@ESTRING::,@@ESTRING:s0:,@@ESTRING::,@@ESTRING:s1:,@@ESTRING::,@@ESTRING::,@STOREDRIVER,DELIVER,@NUMBER::@,@ESTRING:s2:,@@ESTRING:s3:,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING::,@@ESTRING:s4:,@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="exchmtlog">2012-03-16T17:13:16.475Z,,servername,,casservername,,,STOREDRIVER,DELIVER,23065261,sender@some.org,recipient@other.org,,156558,1,,,TEST MESSAGE SUBJECT,sender@some.org,sender@some.org,2012-03-16T17:13:16.147Z</test_message>
+						<test_value name="s0">servername</test_value>
+						<test_value name="s1">casservername</test_value>
+						<test_value name="s2">sender@some.org</test_value>
+						<test_value name="s3">recipient@other.org</test_value>
+						<test_value name="s4">TEST MESSAGE SUBJECT</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name='URL via Novell forwarder script' id='31'>
+		<patterns>novell_logs_</patterns>
+		<rules>
+			<rule provider='ELSA' class='7' id='7'>
+				<patterns>
+					<!-- date time c-ip cs-username s-ip s-sitename cs-method cs-uri cs-uri-stem cs-uri-query c-version sc-status x-cache-info sc-header-size sc(Content-Length) sc-completed sc-bytes
+	 cs-bytes time-taken cs(User-Agent) cs(Cookie) cs(Referer) cs(X-Forwarded-For) cached x-fill-proxy-ip x-origin-ip rs-bytes sc(ETag) cs(If-Range) cs(Range) sc(Content-Range) cs(Pragma
+	) sc(Pragma)-->
+					<pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:username:|@@ESTRING:i1:|@@ESTRING:s1:|@@ESTRING:s0:|@@ESTRING::|@"@ESTRING:s2:"@|"@ESTRING::|@@ESTRING::|@@ESTRING:i2:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:i3:|@@ESTRING:i5:|@"@ESTRING:s4:"@|@ESTRING::|@"@ESTRING:s3:"@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="novell_logs_test">2012-04-06|15:57:49|10.124.19.11|-|10.0.59.189|dev.mail.example.com|GET|"https://dev.mail.example.com:443/owa/auth/preload.htm"|"/owa/auth/preload.htm"|""|HTTP/1.1|200|"In Cache, Fresh"|550|"1527"|Success|2077|916|0.000|"Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; .NET CLR 1.1.4322; InfoPath.3)"|"ASPSESSIONIDSSDSDRTA=JPNHAEECMAIOIDMIHNPJGOKE; ASPSESSIONIDSQDSCQSA=FGPFCJECCJAGBFBHLPHPKMPD"|"https://dev.mail.example.com/exchweb/bin/auth/owalogon.asp?url=https://dev.mail.example.com/exchange&amp;reason=0&amp;replaceCurrent=1"|""|1|-|-|""|""|""|""|""|""</test_message>
+						<test_value name="i0">10.124.19.11</test_value>
+						<test_value name="i1">10.0.59.189</test_value>
+						<test_value name="s0">GET</test_value>
+						<test_value name="s1">dev.mail.example.com</test_value>
+						<test_value name="s2">/owa/auth/preload.htm</test_value>
+						<test_value name="s3">https://dev.mail.example.com/exchweb/bin/auth/owalogon.asp?url=https://dev.mail.example.com/exchange&amp;reason=0&amp;replaceCurrent=1</test_value>
+						<test_value name="s4">Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; .NET CLR 1.1.4322; InfoPath.3)</test_value>
+						<test_value name="i2">200</test_value>
+						<test_value name="i3">916</test_value>
+						<test_value name="i5">0.000</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Windows Event log Firewall Filtering" id='32'>
+		<pattern>Security-Auditing</pattern>
+		<rules>
+			<rule provider="M Smith" class='3' id='1000'>
+				<patterns>
+					<pattern>@ESTRING:: @The Windows Filtering Platform has @ESTRING:: @a connection. Application Information: Process ID: @ESTRING:: @Application Name: @ESTRING:: @Network Information: Direction: @ESTRING:: @Source Address: @IPv4:i1@ Source Port: @NUMBER:i2:@ Destination Address: @IPv4:i3:@ Destination Port: @NUMBER:i4:@ Protocol: @NUMBER:i0:@ Filter Information: Filter Run-Time ID: @ESTRING:: @Layer Name: @ESTRING:: @Layer Run-Time ID: @NUMBER::@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="Security-Auditing">5156: The Windows Filtering Platform has permitted a connection. Application Information: Process ID: 1924 Application Name: \device\harddiskvolume1\users\admin\appdata\local\dude\win.exe Network Information: Direction: Outbound Source Address: 1.1.1.1 Source Port: 1234 Destination Address: 2.2.2.2 Destination Port: 4567 Protocol: 17 Filter Information: Filter Run-Time ID: 70078 Layer Name: Connect Layer Run-Time ID: 48</test_message>
+							<!-- srcip -->
+							<test_value name="i1">1.1.1.1</test_value>
+							<!-- srcport -->
+							<test_value name="i2">1234</test_value>
+							<!-- dstip -->
+							<test_value name="i3">2.2.2.2</test_value>
+							<!-- dstport -->
+							<test_value name="i4">4567</test_value>
+							<!-- proto -->
+							<test_value name="i0">17</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="TMG-Gateway-W3C-Logs-via-Epilog" id='10099'>
+            <rules>
+                    <rule provider="bgreen" class='3' id='10099'>
+                            <patterns>
+                                    <pattern>@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:::@@ESTRING:i2:|@@ESTRING:i3::@@ESTRING:i4:|@@ESTRING:i1:|@@ESTRING:s0:|@@ESTRING:s1:|@</pattern>
+                            </patterns>
+                            <examples>
+                                    <example>
+                                            <test_message program="ISAFWSLOG">BOB|2012-07-05|15:05:11|TCP|123.123.123.222:40521|123.123.123.111:443|123.123.111.111|Local Host|Internal|Establish|0x0|-|HTTPS|0|0|0|0|-|-|-|-|4|1874698|-|-|::|-|1048575|-</test_message>
+                                            <!-- proto -->
+                                            <test_value name="i0">TCP</test_value>
+                                            <!-- srcip -->
+                                            <test_value name="i1">123.123.111.111</test_value>
+                                            <!-- srcport -->
+                                            <test_value name="i2">40521</test_value>
+                                            <!-- dstip -->
+                                            <test_value name="i3">123.123.123.111</test_value>
+                                            <!-- dstport -->
+                                            <test_value name="i4">443</test_value>
+											<!-- inside interface -->
+											<test_value name="s0">Local Host</test_value>
+											<!-- outside interface -->
+											<test_value name="s1">Internal</test_value>
+                                    </example>
+                            </examples>
+                    </rule>
+            </rules>
+    </ruleset>
+    <ruleset name="ISAFWSLog-via-Epilog">
+    		<patterns>
+    			<pattern>ISAFWSLog</pattern>
+    		</patterns>
+            <rules>
+                    <rule provider="ELSA" class='7' id='7'>
+                            <patterns>
+                                    <pattern>@ESTRING:i0:|@@ESTRING::|@@ESTRING:s4:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:i1:|@@ESTRING::|@@ESTRING::|@@ESTRING:s0:|@@ESTRING:://@@ESTRING:s1:/@@ESTRING:s2:|@@ESTRING:i2:|@</pattern>
+                                    <pattern>@ESTRING:i0:|@@ESTRING::|@@ESTRING:s4:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING:i1:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING:s1:|@</pattern>
+                            </patterns>
+                            <examples>
+                                    <example>
+                                    		<test_message program="ISAFWSLog">1.1.1.1|domainname\username|Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; InfoPath.2)|2012-08-27|18:59:49|MAD00GS6|2.2.2.2|2.2.2.2|80|http|GET|http://search.twitter.com/search.json?q=hp%2520dell%2520problems&amp;since_id=240160211699122180&amp;callback=twitter._queue_callback&amp;result_type=mixed|200|Internet Access to Users|Req ID: 1f449904 |Internal|External|0x480|Allowed|-</test_message>
+                                            <test_value name="i0">1.1.1.1</test_value>
+											<test_value name="i1">2.2.2.2</test_value>
+											<test_value name="s0">GET</test_value>
+											<test_value name="s1">search.twitter.com</test_value>
+											<test_value name="s2">search.json?q=hp%2520dell%2520problems&amp;since_id=240160211699122180&amp;callback=twitter._queue_callback&amp;result_type=mixed</test_value>
+											<test_value name="s3"></test_value>
+											<test_value name="s4">Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; InfoPath.2)</test_value>
+											<test_value name="s5"></test_value>
+											<test_value name="i2">200</test_value>
+											<test_value name="i3"></test_value>
+											<test_value name="i4"></test_value>
+                                    </example>
+                            </examples>
+                    </rule>
+            </rules>
+    </ruleset>
+    <ruleset name="Cisco SEC">
+    	<pattern>%SEC-</pattern>
+    	<rules>
+    		<rule provider="ELSA" class="2" id="2">
+    			<pattern>list @ESTRING:s2: @denied @ESTRING:i0: @@ESTRING:i1:(@@NUMBER:i2:@) -> @ESTRING:i3:(@@NUMBER:i4:@@ANYSTRING@</pattern>
+    			<examples>
+	    			<example>
+	    				<test_message program="%SEC-6-IPACCESSLOGP">list FILTER-INTERNET-IN denied tcp 1.2.3.4(53420) -> 5.6.7.8(23), 1 packet</test_message>
+	    				<test_value name="s2">FILTER-INTERNET-IN</test_value>
+	    				<test_value name="i0">tcp</test_value>
+	    				<test_value name="i1">1.2.3.4</test_value>
+	    				<test_value name="i2">53420</test_value>
+	    				<test_value name="i3">5.6.7.8</test_value>
+	    				<test_value name="i4">23</test_value>
+	    			</example>
+	    		</examples>
+	    	</rule>
+    	</rules>
+    	<rules>
+    		<rule provider="ELSA" class="3" id="3">
+    			<pattern>list @ESTRING:s2: @permitted @ESTRING:i0: @@ESTRING:i1:(@@NUMBER:i2:@) -> @ESTRING:i3:(@@NUMBER:i4:@@ANYSTRING@</pattern>
+    			<examples>
+	    			<example>
+	    				<test_message program="%SEC-6-IPACCESSLOGP">list FILTER-INTERNET-IN permitted tcp 1.2.3.4(53420) -> 5.6.7.8(23), 1 packet</test_message>
+	    				<test_value name="s2">FILTER-INTERNET-IN</test_value>
+	    				<test_value name="i0">tcp</test_value>
+	    				<test_value name="i1">1.2.3.4</test_value>
+	    				<test_value name="i2">53420</test_value>
+	    				<test_value name="i3">5.6.7.8</test_value>
+	    				<test_value name="i4">23</test_value>
+	    			</example>
+	    		</examples>
+	    	</rule>
+    	</rules>
+    </ruleset>
+    <ruleset name="CEF">
+    	<rules>
+    		<rule provider="ELSA" class="32" id="32">
+    			<pattern>CEF:@NUMBER::@|@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@NUMBER:i0:@|@ANYSTRING:s5:@</pattern>
+    			<examples>
+	    			<example>
+	    				<test_message program="">CEF:0|security|threatmanager|1.0|100|worm successfully stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232</test_message>
+	    				<test_value name="i0">10</test_value>
+	    				<test_value name="s0">security</test_value>
+	    				<test_value name="s1">threatmanager</test_value>
+	    				<test_value name="s2">1.0</test_value>
+	    				<test_value name="s3">100</test_value>
+	    				<test_value name="s4">worm successfully stopped</test_value>
+	    				<test_value name="s5">src=10.0.0.1 dst=2.1.2.2 spt=1232</test_value>
+	    			</example>
+	    		</examples>
+	    	</rule>
+    	</rules>
+	</ruleset>
+	<ruleset name="Watchguard Firewall">
+		<pattern>firewall</pattern>
+		<rules>
+			<rule provider="ELSA" class="2" id="2">
+				<pattern>Deny @ESTRING:s0: @@ESTRING:s1: @@NUMBER::@ @ESTRING:i0: @@NUMBER::@ @NUMBER::@ @ESTRING:i1: @@ESTRING:i3: @@ESTRING:i2: @@ESTRING:i4: @</pattern>
+				<examples>
+					<example>
+						<test_message program="firewall">Deny 0-External Firebox 1340 tcp 20 56 74.125.225.143 10.0.1.1 443 3449 offset 5 A 451109382 win 257 (Unhandled External Packet-00)</test_message>
+						<test_value name="i0">tcp</test_value>
+						<test_value name="i1">74.125.225.143</test_value>
+						<test_value name="i2">443</test_value>
+						<test_value name="i3">10.0.1.1</test_value>
+						<test_value name="i4">3449</test_value>
+						<test_value name="s0">0-External</test_value>
+						<test_value name="s1">Firebox</test_value>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class="3" id="3">
+				<pattern>Allow @ESTRING:s1: @@ESTRING:s0: @@NUMBER::@ @ESTRING:i0: @@NUMBER::@ @NUMBER::@ @ESTRING:i1: @@ESTRING:i3: @@ESTRING:i2: @@ESTRING:i4: @</pattern>
+				<examples>
+					<example>
+						<test_message program="firewall">Allow 1-Trusted 0-External 52 tcp 20 127 192.168.1.31 96.60.118.121 55185 8005 offset 8 S 1125590318 win 32 (ATSBDR-00)</test_message>
+						<test_value name="i0">tcp</test_value>
+						<test_value name="i1">192.168.1.31</test_value>
+						<test_value name="i2">55185</test_value>
+						<test_value name="i3">96.60.118.121</test_value>
+						<test_value name="i4">8005</test_value>
+						<test_value name="s0">0-External</test_value>
+						<test_value name="s1">1-Trusted</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Watchguard URL">
+		<pattern>http-proxy</pattern>
+		<rules>
+			<rule provider="ELSA" class="7" id="7">
+				<pattern>Deny @ESTRING:: @@ESTRING:: @tcp @ESTRING:i0: @@ESTRING:i1: @@NUMBER::@ @NUMBER::@ msg="@ESTRING::"@ proxy_act="@ESTRING::"@ op="@ESTRING:s0:"@ dstname="@ESTRING:s1:"@ arg="@ESTRING:s2:"@ sent_bytes="@NUMBER::@" rcvd_bytes="@NUMBER:i3:@</pattern>
+				<examples>
+					<example>
+						<test_message program="http-proxy">Deny 1-Trusted 0-External tcp 192.168.1.17 23.21.13.155 62115 80 msg="HTTP Request" proxy_act="HTTP-Client.1" op="" dstname="23.21.13.155" arg="" sent_bytes="1" rcvd_bytes="0" (HTTP-proxy-ExceptLunch-00)</test_message>
+						<test_value name="i0">192.168.1.17</test_value>
+						<test_value name="i1">23.21.13.155</test_value>
+						<test_value name="i3">0</test_value>
+						<test_value name="s0"></test_value>
+						<test_value name="s1">23.21.13.155</test_value>
+						<test_value name="s2"></test_value>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class="7" id="7">
+				<pattern>Allow @ESTRING:: @@ESTRING:: @tcp @ESTRING:i0: @@ESTRING:i1: @@NUMBER::@ @NUMBER::@ msg="@ESTRING::"@ proxy_act="@ESTRING::"@ op="@ESTRING:s0:"@ dstname="@ESTRING:s1:"@ arg="@ESTRING:s2:"@ sent_bytes="@NUMBER::@" rcvd_bytes="@NUMBER:i3:@</pattern>
+				<examples>
+					<example>
+						<test_message program="http-proxy">Allow 1-Trusted 0-External tcp 192.168.1.22 74.125.142.95 2597 80 msg="HTTP Request" proxy_act="HTTP-Client.1" op="GET" dstname="ajax.googleapis.com" arg="/ajax/libs/jquery/1.5/jquery.min.js" sent_bytes="363" rcvd_bytes="30368" (HTTP-proxy-ExceptLunch-00)</test_message>
+						<test_value name="i0">192.168.1.22</test_value>
+						<test_value name="i1">74.125.142.95</test_value>
+						<test_value name="i3">30368</test_value>
+						<test_value name="s0">GET</test_value>
+						<test_value name="s1">ajax.googleapis.com</test_value>
+						<test_value name="s2">/ajax/libs/jquery/1.5/jquery.min.js</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Sidewinder Firewall">
+		<pattern>auditd</pattern>
+		<rules>
+			<rule provider="ELSA" class="2" id="2">
+				<pattern>date@ESTRING::event=@ACL deny@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@dstip=@IPv4:i3:@,dstport=@NUMBER:i4:@,dstburb=@ESTRING:s0:,@protocol=@NUMBER:i0:@</pattern>
+				<pattern>date@ESTRING::event=@ACL deny@ESTRING::srcip=@@IPv4:i1:@,srcburb=@ESTRING:s1:,@dstip=@IPv4:i3:@,dstburb=@ESTRING:s0:,@protocol=@NUMBER:i0:@</pattern>
+				<pattern>date@ESTRING::type=@t_attack@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@@ESTRING::protocol=@@NUMBER:i0:@@ESTRING::dstip=@@IPv4:i3:@,dstport=@NUMBER:i4:@,dstburb=@ESTRING:s0:,@</pattern>
+				<pattern>date@ESTRING::type=@t_netprobe@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@dstip=@IPv4:i3:@,dstport=@NUMBER:i4:@,protocol=@NUMBER:i0:@,interface=@ESTRING:s0:,@</pattern>
+				<examples>
+					<example>
+						<test_message program="auditd">date="Oct 1 16:24:57 2012 UTC",fac=f_kernel_ipfilter,area=a_general_area,type=t_ipftraffic,pri=p_major,pid=0,ruid=0,euid=0,pgid=0,logid=0,cmd=kernel,domain=htpp,edomain=htpp,hostname=localhost,event=IP Filter session open,rule_name=myrule-out,srcip=1.1.1.1,srcport=1,srcburb=internal2,dstip=2.2.2.2,dstport=2,dstburb=external1,protocol=6,netsessid=5069c3d9000c7831</test_message>
+						<test_value name="i0">6</test_value>
+						<test_value name="i1">1.1.1.1</test_value>
+						<test_value name="i2">1</test_value>
+						<test_value name="i3">2.2.2.2</test_value>
+						<test_value name="i4">2</test_value>
+						<test_value name="s0">external1</test_value>
+						<test_value name="s1">internal2</test_value>
+					</example>
+				</examples>
+			</rule>
+			<rule provider="ELSA" class="3" id="3">
+				<pattern>date@ESTRING::event=@proxy traffic end@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@protocol=@NUMBER:i0:@,dstip=@IPv4:i3:@,dstport=@NUMBER:i4:@,dstburb=@ESTRING:s0:,@bytes_written_to_client=@NUMBER:i5:@</pattern>
+				<pattern>date@ESTRING::event=@proxy traffic end@ESTRING::srcip=@@IPv4:i1:@,srcburb=@ESTRING:s1:,@protocol=@NUMBER:i0:@,dstip=@IPv4:i3:@,dstburb=@ESTRING:s0:,@bytes_written_to_client=@NUMBER:i5:@</pattern>
+				<pattern>date@ESTRING::event=@IP Filter session close@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@dstip=@IPv4:i3:@,dstport=@NUMBER:i4:@,dstburb=@ESTRING:s0:,@bytes_written_to_client=@NUMBER:i5:@@ESTRING::protocol=@@NUMBER:i0:@</pattern>
+				<pattern>date@ESTRING::event=@IP Filter session timeout@ESTRING::srcip=@@IPv4:i1:@,srcport=@NUMBER:i2:@,srcburb=@ESTRING:s1:,@dstip=@IPv4:i3:@,dstport=@NUMBER:i4:@,dstburb=@ESTRING:s0:,@bytes_written_to_client=@NUMBER:i5:@@ESTRING::protocol=@@NUMBER:i0:@</pattern>
+				<examples>
+					<example>
+						<test_message program="auditd">date="Oct 1 16:24:57 2012 UTC",fac=f_http_proxy,area=a_libproxycommon,type=t_nettraffic,pri=p_major,pid=28529,ruid=0,euid=0,pgid=28529,logid=0,cmd=httpp,domain=htpp,edomain=htpp,hostname=localhost,event=proxy traffic end,service_name=http,netsessid=5069c3d9000ab8ce,srcip=1.1.1.1,srcport=1,srcburb=internal2,protocol=6,dstip=2.2.2.2,dstport=2,dstburb=external1,bytes_written_to_client=1297,bytes_written_to_server=421,rule_name=www.isa.webproxy,cache_hit=0,request_status=0,start_time="Mon Oct 1 11:24:57 2012"</test_message>
+						<test_value name="i0">6</test_value>
+						<test_value name="i1">1.1.1.1</test_value>
+						<test_value name="i2">1</test_value>
+						<test_value name="i3">2.2.2.2</test_value>
+						<test_value name="i4">2</test_value>
+						<test_value name="s0">external1</test_value>
+						<test_value name="s1">internal2</test_value>
+						<test_value name="i5">1297</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Websense">
+		<pattern></pattern>
+		<rules>
+			<rule provider="ELSA" class="33" id="33">
+				<pattern>vendor=Websense@ESTRING::action=@@ESTRING:s5: @severity=@ESTRING::category=@@ESTRING:s3: @user=@ESTRING:s0: @src_host=@IPv4:i0:@@ESTRING::dst_host=@@ESTRING:s1: @dst_ip=@IPv4:i1:@@ESTRING::http_response=@@NUMBER:i2:@@ESTRING::http_user_agent=@@ESTRING:s4: @@ESTRING::disposition=@@ESTRING:s3: @@ESTRING:://@@ESTRING::/@@ANYSTRING:s2:@</pattern>
+				<pattern>vendor=Websense@ESTRING::action=@@ESTRING:s5: @severity=@ESTRING::category=@@ESTRING:s3: @user=@ESTRING:s0: @src_host=@IPv4:i0:@@ESTRING::dst_host=@@ESTRING:s1: @dst_ip=@IPv4:i1:@@ESTRING::http_response=@@NUMBER:i2:@@ESTRING::http_user_agent=@@ESTRING:s4: @@ESTRING::disposition=@@ESTRING:s3: @</pattern>
+				<values>
+					<value name="s2">/$s2</value>
+				</values>
+				<examples>
+					<example>
+						<test_message program="">vendor=Websense product=Security product_version=7.7.0 action=permitted severity=1 category=153 user=- src_host=10.64.134.74 src_port=62189 dst_host=mail.google.com dst_ip=74.125.224.53 dst_port=443 bytes_out=197 bytes_in=76 http_response=200 http_method=CONNECT http_content_type=- http_user_agent=Mozilla/5.0_(Windows;_U;_Windows_NT_6.1;_en-US;_rv:1.9.2.23)_Gecko/20110920_Firefox/3.6.23 http_proxy_status_code=200 reason=- disposition=1034 policy=- role=8 duration=0 url=https://mail.google.com/index.html</test_message>
+						<test_value name="i0">10.64.134.74</test_value>
+						<test_value name="i1">74.125.224.53</test_value>
+						<test_value name="i2">200</test_value>
+						<test_value name="s0">-</test_value>
+						<test_value name="s1">mail.google.com</test_value>
+						<test_value name="s2">/index.html</test_value>
+						<test_value name="s3">1034</test_value>
+						<test_value name="s4">Mozilla/5.0_(Windows;_U;_Windows_NT_6.1;_en-US;_rv:1.9.2.23)_Gecko/20110920_Firefox/3.6.23</test_value>
+						<test_value name="s5">permitted</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="McAfee SmartFilter">
+		<pattern></pattern>
+		<rules>
+			<rule provider="ELSA" class="33" id="33">
+				<pattern>@IPv4:i0@ - @ESTRING:s0: @@ESTRING::"@@ESTRING:://@@ESTRING:s1:/@@ESTRING:s2:"@ @NUMBER:i2:@ @ESTRING:s5: @@QSTRING:s3:"@</pattern>
+				<values>
+					<value name="s2">/$s2</value>
+				</values>
+				<examples>
+					<example>
+						<test_message program="McAfee SmartFilter">1.1.1.1 - username [03/Oct/2012:06:52:51 +0100]  "GET http://a.nice.url/some/uri?parameters=go&amp;in=here" 200 ALLOW "Blogs/Wiki, Entertainment"</test_message>
+						<test_value name="i0">1.1.1.1</test_value>
+						<test_value name="i2">200</test_value>
+						<test_value name="s0">username</test_value>
+						<test_value name="s1">a.nice.url</test_value>
+						<test_value name="s2">/some/uri?parameters=go&amp;in=here</test_value>
+						<test_value name="s3">Blogs/Wiki, Entertainment</test_value>
+						<test_value name="s5">ALLOW</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="Netflow" id='Netflow'>
+		<pattern>netflow_syslog</pattern>
+		<rules>
+			<rule provider="ELSA" class='34' id='34'>
+				<patterns>
+					<pattern>@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING:i5:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ANYSTRING:s5:@</pattern>
+					<pattern>@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING:i5:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@</pattern>
+					<pattern>@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING:i5:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:s2:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="netflow_syslog">tcp|192.85.128.47|35843|1.1.1.1|443|30486|2173|US|Palo Alto, CA|37.376202|-122.182602|HPES - Hewlett-Packard Company</test_message>
+						<test_values>
+							<test_value name="i0">tcp</test_value>
+							<test_value name="i1">192.85.128.47</test_value>
+							<test_value name="i2">35843</test_value>
+							<test_value name="i3">1.1.1.1</test_value>
+							<test_value name="i4">443</test_value>
+							<test_value name="i5">30486</test_value>
+							<test_value name="s0">2173</test_value>
+							<test_value name="s1">US</test_value>
+							<test_value name="s2">Palo Alto, CA</test_value>
+							<test_value name="s3">37.376202</test_value>
+							<test_value name="s4">-122.182602</test_value>
+							<test_value name="s5">HPES - Hewlett-Packard Company</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="BIND">
+		<pattern>BIND</pattern>
+		<rules>
+			<rule provider="ELSA" class='35' id='35'>
+				<patterns>
+					<pattern>@ESTRING::client @@ESTRING:i0:#@@NUMBER::@: query: @ESTRING:s0: @IN @ESTRING:s1: @@ESTRING:: @(@ESTRING:s2:)@</pattern>
+					<pattern>@ESTRING::client @@ESTRING:i0:#@@NUMBER::@ (@ESTRING::)@: query: @ESTRING:s0: @IN @ESTRING:s1: @@ESTRING:: @(@ESTRING:s2:)@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="BIND-DNS">02-Nov-2012 15:49:58.516 queries: info: client 198.211.94.24#55557: query: 174.2.219.178.in-addr.arpa IN PTR + (198.211.94.23)</test_message>
+						<test_values>
+							<test_value name="i0">198.211.94.24</test_value>
+							<test_value name="s0">174.2.219.178.in-addr.arpa</test_value>
+							<test_value name="s1">PTR</test_value>
+							<test_value name="s2">198.211.94.23</test_value>
+						</test_values>
+					</example>
+					<example>
+						<test_message program="BIND-DNS">02-Nov-2012 16:01:27.731 client 10.10.10.185#49999 (10.10.10.185): query: p.twitter.com IN A + (10.10.210.210)</test_message>
+						<test_values>
+							<test_value name="i0">10.10.10.185</test_value>
+							<test_value name="s0">p.twitter.com</test_value>
+							<test_value name="s1">A</test_value>
+							<test_value name="s2">10.10.210.210</test_value>
+						</test_values>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="IISWebLog">
+		<pattern>IISWebLog</pattern>
+		<rule provider="ELSA" class="7" id="IIS_7">
+			<pattern>@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@IPv4:i1:@ @ESTRING:s0: @@ESTRING:s2: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@IPv4:i0:@ @ESTRING:: @@ESTRING:s4: @@ESTRING:: @@ESTRING:s3: @@ESTRING:s1: @@NUMBER:i2:@ @NUMBER::@ @NUMBER::@ @NUMBER:i3:@ @NUMBER::@ @NUMBER:i5:@</pattern>
+			<examples>
+				<example>
+					<test_message program="IISWebLog">2012-12-13 13:39:16 W3SVC1 MYSERVERNAME 1.1.1.1 GET / - 80 - 2.2.2.2 HTTP/1.1 Mozilla/5.0+(Windows+NT+6.1;+WOW64)+AppleWebKit/537.11+(KHTML,+like+Gecko)+Chrome/23.0.1271.95+Safari/537.11 - - www.fqdn.of.website.from.host.header.com 301 0 0 401 408 453</test_message>
+					<test_values>
+						<test_value name="i0">2.2.2.2</test_value>
+						<test_value name="i1">1.1.1.1</test_value>
+						<test_value name="i2">301</test_value>
+						<test_value name="i3">401</test_value>
+						<test_value name="i5">453</test_value>
+						<test_value name="s0">GET</test_value>
+						<test_value name="s1">www.fqdn.of.website.from.host.header.com</test_value>
+						<test_value name="s2">/</test_value>
+						<test_value name="s3">-</test_value>
+						<test_value name="s4">Mozilla/5.0+(Windows+NT+6.1;+WOW64)+AppleWebKit/537.11+(KHTML,+like+Gecko)+Chrome/23.0.1271.95+Safari/537.11</test_value>
+					</test_values>
+				</example>
+			</examples>
+		</rule>
+	</ruleset>
+	<ruleset name="Vyatta FW">
+		<!-- Note: Vyatta bug id:7640 https://bugzilla.vyatta.com/show_bug.cgi?id=7640 Trailing space missing from default log prefix "-R]IN" should be "-R] "-->
+		<pattern>kernel-</pattern>
+		<rules>
+			<rule provider="ELSA" class="2" id="2">
+				<patterns>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-R]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-D]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING:: SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="kernel">[100100.226323] [WEB_IN-default-R]IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.105 LEN=44 TOS=0x00 PREC=0x00 TTL=41 ID=16822 PROTO=TCP SPT=51425 DPT=23 WINDOW=1024 RES=0x00 SYN URGP=0</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-default</test_value>
+						<test_value name="i0">TCP</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2">51425</test_value>
+						<test_value name="i3">172.31.253.105</test_value>
+						<test_value name="i4">23</test_value>
+					</example>
+					<example>
+						<test_message program="kernel">[382188.344294] [WEB_IN-default-D]IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.109 LEN=44 TOS=0x00 PREC=0x00 TTL=45 ID=55452 PROTO=TCP SPT=51809 DPT=80 WINDOW=1024 RES=0x00 SYN URGP=0</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-default</test_value>
+						<test_value name="i0">TCP</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2">51809</test_value>
+						<test_value name="i3">172.31.253.109</test_value>
+						<test_value name="i4">80</test_value>
+					</example>
+					<example>
+						<test_message program="kernel">[387123.927635] [WEB_IN-8-D] IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.103 LEN=28 TOS=0x00 PREC=0x00 TTL=47 ID=49372 PROTO=ICMP TYPE=8 CODE=0 ID=5799 SEQ=0</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-8</test_value>
+						<test_value name="i0">ICMP</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2"></test_value>
+						<test_value name="i3">172.31.253.103</test_value>
+						<test_value name="i4"></test_value>
+					</example>
+					<example>
+						<test_message program="kernel">[466981.095849] [WEB_IN-default-D]IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.106 LEN=20 TOS=0x00 PREC=0x00 TTL=44 ID=39983 PROTO=135</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-default</test_value>
+						<test_value name="i0">135</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2"></test_value>
+						<test_value name="i3">172.31.253.106</test_value>
+						<test_value name="i4"></test_value>
+					</example>
+					<example>
+						<test_message program="kernel">[451134.428328] [WEB_IN-9-R] IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.107 LEN=20 TOS=0x00 PREC=0x00 TTL=37 ID=12252 PROTO=ESP INCOMPLETE [0 bytes]</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-9</test_value>
+						<test_value name="i0">ESP</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2"></test_value>
+						<test_value name="i3">172.31.253.107</test_value>
+						<test_value name="i4"></test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+		<rules>
+			<rule provider="ELSA" class="3" id="3">
+				<patterns>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @SPT=@ESTRING:i2: @DPT=@ESTRING:i4: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@ESTRING:i0: @@ANYSTRING@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+					<pattern>@QSTRING::[]@ [@ESTRING:s2:-A]@ IN=@ESTRING:s1: @OUT=@ESTRING:s0: @@ESTRING::SRC=@@IPv4:i1:@ DST=@IPv4:i3:@ @ESTRING::PROTO=@@STRING:i0:@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="kernel">[88829.069484] [WEB_IN-7-A] IN=eth0 OUT=eth1 MAC=00:50:56:a6:00:13:00:50:56:a6:1f:41:08:00 SRC=172.31.254.28 DST=172.31.253.102 LEN=44 TOS=0x00 PREC=0x00 TTL=46 ID=22533 PROTO=TCP SPT=59995 DPT=3306 WINDOW=1024 RES=0x00 SYN URGP=0</test_message>
+						<test_value name="s0">eth1</test_value>
+						<test_value name="s1">eth0</test_value>
+						<test_value name="s2">WEB_IN-7</test_value>
+						<test_value name="i0">TCP</test_value>
+						<test_value name="i1">172.31.254.28</test_value>
+						<test_value name="i2">59995</test_value>
+						<test_value name="i3">172.31.253.102</test_value>
+						<test_value name="i4">3306</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="OSSEC_ALERTS">
+		<pattern>ossec</pattern>
+		<rules>
+			<rule provider="shadejinx" class='35' id='35'>
+				<pattern>Alert Level: @NUMBER:i0:@; Rule: @NUMBER:i1:@ - @ESTRING:s0:;@ Location: @ESTRING:s1:-@@ESTRING::;@ user: @ESTRING:s2:;@</pattern>
+				<examples>
+					<example>
+						<test_message program="ossec">Alert Level: 4; Rule: 18105 - Windows audit failure event.; Location: %SERVER.DOMAIN.LOCAL%->/var/log/ossec_in; user: %USERNAME%; Jan 12 13:51:34 %SERVER.DOMAIN.LOCAL% MSWinEventLog|1|Security|3151378|Sat Jan 12 13:51:32 2013|4776|Microsoft-Windows-Security-Auditing|%USERNAME%|N/A|Failure Audit|%SERVER.DOMAIN.LOCAL%|None||The computer attempted to validate the credentials for an account. Authentication Package: MICROSOFT_AUTHENTICATION_PACKAGE_V1_0 Logon Account: %USERNAME% Source Workstation: %WORKSTATION_NAME% Error Code: 0xc0000064|3147595</test_message>
+						<test_value name="i0">4</test_value>
+						<test_value name="i1">18105</test_value>
+						<test_value name="s0">Windows audit failure event.</test_value>
+						<test_value name="s1">%SERVER.DOMAIN.LOCAL%</test_value>
+						<test_value name="s2">%USERNAME%</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="NetScreen" id='1001'>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>NetScreen device_id=@ESTRING:: @@ESTRING:: start_time="@@ESTRING::"@ duration=@ESTRING:: @policy_id=@ESTRING:s2: @service=@ESTRING:: @proto=@ESTRING:i0: @src zone=@ESTRING:s1: @dst zone=@ESTRING:s0: @action=Deny sent=@ESTRING:: @rcvd=@ESTRING:: @src=@ESTRING:i1: @dst=@ESTRING:i3: @src_port=@ESTRING:i2: @dst_port=@ESTRING:i4: @</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="fwgate-1">NetScreen device_id=fw [Root]system-notification-00257(traffic): start_time="2012-10-02 09:46:20" duration=0 policy_id=10005 service=http proto=6 src zone=OUT dst zone=IN action=Deny sent=0 rcvd=40 src=192.168.0.1 dst=192.168.1.1 src_port=51271 dst_port=80 session_id=0 reason=Traffic Denied</test_message>
+						<test_value name="i0">6</test_value>
+						<test_value name="s0">IN</test_value>
+						<test_value name="i1">192.168.0.1</test_value>
+						<test_value name="s1">OUT</test_value>
+						<test_value name="i2">51271</test_value>
+						<test_value name="i3">192.168.1.1</test_value>
+						<test_value name="i4">80</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+		<rules>
+			<rule provider="ELSA" class='3' id='3'>
+				<patterns>
+					<pattern>NetScreen device_id=@ESTRING:: @@ESTRING:: start_time="@@ESTRING::"@ duration=@ESTRING:s2: @policy_id=@ESTRING:: @service=@ESTRING:: @proto=@ESTRING:i0: @src zone=@ESTRING:s1: @dst zone=@ESTRING:s0: @action=Permit sent=@ESTRING:: @rcvd=@ESTRING:i5: @src=@ESTRING:i1: @dst=@ESTRING:i3: @src_port=@ESTRING:i2: @dst_port=@ESTRING:i4: @</pattern>
+				</patterns>
+				<examples>
+					<example>
+					    <test_message program="fwgate-1">NetScreen device_id=fwgate-1 [Root]system-notification-00257(traffic): start_time="2013-02-14 15:37:46" duration=2 policy_id=8 service=tcp/port:10050 proto=6 src zone=Trust dst zone=DMZ action=Permit sent=379 rcvd=377 src=192.168.1.XX dst=192.168.XXX.XXX src_port=36033 dst_port=10050 src-xlated ip=192.168.XX.XX port=36033 dst-xlated ip=192.168.XXX.XXX port=10050 session_id=253315 reason=Close - TCP FIN</test_message>
+						<test_value name="i0">6</test_value>
+						<test_value name="i1">192.168.1.XX</test_value>
+						<test_value name="i2">36033</test_value>
+						<test_value name="i3">192.168.XXX.XXX</test_value>
+						<test_value name="i4">10050</test_value>
+						<test_value name="i5">377</test_value>
+						<test_value name="s0">DMZ</test_value>
+						<test_value name="s1">Trust</test_value>
+						<test_value name="s2">2</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="ATT Uverse" id='1001'>
+		<rules>
+			<rule provider="ELSA" class='2' id='2'>
+				<patterns>
+					<pattern>src=@ESTRING:i1: @dst=@ESTRING:i3: @ipprot=@ESTRING:i0: @sport=@ESTRING:i2: @dport=@ESTRING:i4: @</pattern>
+					<pattern>src=@ESTRING:i1: @dst=@ESTRING:i3: @ipprot=@ESTRING:i0: @</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="fw,fwmon">src=192.168.1.65 dst=192.168.2.8 ipprot=17 sport=7547 dport=3478 Drop traffic to 192.168.0.0/16</test_message>
+						<test_value name="i0">17</test_value>
+						<test_value name="i1">192.168.1.65</test_value>
+						<test_value name="i2">7547</test_value>
+						<test_value name="i3">192.168.2.8</test_value>
+						<test_value name="i4">3478</test_value>
+					</example>
+					<example>
+						<test_message program="fw,fwmon">src=192.168.2.8 dst=192.168.1.72 ipprot=17 (layer 4 info unknown) Unknown inbound session stopped</test_message>
+						<test_value name="i0">17</test_value>
+						<test_value name="i1">192.168.2.8</test_value>
+						<test_value name="i3">192.168.1.72</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<!-- Bluecoat requires using a separate TCP destination in syslog-ng with the no-parse flag set and program_override("url")-->
+	<ruleset name='bluecoat'>
+		<pattern>url</pattern>
+		<rules>
+			<rule class='7' id='7'>
+				<patterns>
+					<pattern>@ESTRING:: @@ESTRING:: @@NUMBER:i5:@ @IPv4:i0:@ @NUMBER:i2:@ @ESTRING:: @@NUMBER::@ @NUMBER:i3:@ @ESTRING:s0: @@ESTRING:: @@ESTRING:s1: @@ESTRING:: @@ESTRING:s2_a: @@ESTRING:s2_b: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:s4: @@ESTRING:s5: @</pattern>
+					<pattern>20@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:i0: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:: @@ESTRING:s1: @</pattern>
+				</patterns>
+				<values>
+					<value name="s2">$s2_a$s2_b</value>
+				</values>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="infoblox_dhcp" id='40'>
+		<pattern>dhcpd</pattern>
+		<rules>
+			<rule provider="ELSA" class='40' id='40'>
+				<!-- i0 = srcip, s0=MAC address, s1=domain, s2=hostname -->
+				<patterns>
+					<pattern>DHCPDISCOVER from @ESTRING:s0: @via @ESTRING:i0::@</pattern>
+					<pattern>bind update on @ESTRING:i0: @from @ESTRING:s1:(@@NUMBER::@)</pattern>
+					<pattern>Forward map from @ESTRING:s2: @to @ESTRING:i0: @</pattern>
+					<pattern>Abandoning IP address @ESTRING:i0::@</pattern>
+					<pattern>Reclaiming abandoned lease @IPvANY:i0:@</pattern>
+					<pattern>client @ESTRING:i0:#@@NUMBER::@: update forwarding '@ESTRING:s1:/@</pattern>
+					<pattern>DNS format error from @ESTRING:i1:#@@NUMBER:i2:@ resolving </pattern>
+					<pattern>DHCPACK on @ESTRING:i0: @to @ESTRING:s0: @(@ESTRING:s2:)@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="dhcpd">DHCPDISCOVER from aa:aa:aa:aa:aa:aa via 10.1.52.31: peer holds all free leases</test_message>
+						<test_value name="s0">aa:aa:aa:aa:aa:aa</test_value>
+						<test_value name="i0">10.1.52.31</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">bind update on 1.1.1.1 from corp-test(1368109376) rejected: incoming update is less critical than outgoing update</test_message>
+						<test_value name="i0">1.1.1.1</test_value>
+						<test_value name="s1">corp-test</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">Forward map from host.test.com to 1.1.1.1 FAILED: Has an address record but no DHCID, not mine.</test_message>
+						<test_value name="i0">1.1.1.1</test_value>
+						<test_value name="s2">host.test.com</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">Abandoning IP address 1.1.1.1: pinged before offer</test_message>
+						<test_value name="i0">1.1.1.1</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">Reclaiming abandoned lease 10.1.52.207.</test_message>
+						<test_value name="i0">10.1.52.207</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">client 1.1.1.1#64919: update forwarding 'test.com/IN' denied</test_message>
+						<test_value name="i0">1.1.1.1</test_value>
+						<test_value name="s1">test.com</test_value>
+					</example>
+					<example>
+						<test_message program="dhcpd">DHCPACK on 192.168.208.64 to aa:aa:aa:aa:aa:aa (JT-Mac) via 192.168.208.8</test_message>
+						<test_value name="i0">192.168.208.64</test_value>
+						<test_value name="s0">aa:aa:aa:aa:aa:aa</test_value>
+						<test_value name="s2">JT-Mac</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset name="FIREEYE" id='10003'>
+        <pattern>fenotify</pattern>
+		<rules>
+			<rule provider="ELSA" class='42' id='42'>
+				<patterns>
+					<pattern>@ESTRING::cnchost=@@ESTRING:i0:,@alertType=@ESTRING:s0:,@shost=@ESTRING:s1:,@dst=@ESTRING:i1:,@@ESTRING::sname=@@ESTRING:s2:,@fileHash=@ESTRING:s3:,@@ESTRING::occurred=@@ESTRING:i2:,@@ESTRING::cncport=@@ESTRING:i3:,@src=@ESTRING:i4:,@dpt=@ESTRING:i5:,@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="fenotify">CSV:0:FireEye:Web MPS:7.0.0.138133:IM:infection-match,osinfo=,sev=minr,malware_type=,alertid=16232,app=,spt=2791,locations=,smac=c4:7d:4f:ef:e0:03,header=,cnchost=127.0.0.1,alertType=infection-match,shost=thegibson.domain.com,dst=127.0.0.1,original_name=,application=,sid=504606,malware-note=,objurl=,mwurl=,profile=,dmac=00:0a:42:f4:94:00,product=Web MPS,sname=Local.Infection,fileHash=351f1dc4e958975661f02c86a485431e,dvchost=,occurred=2013-01-14T16:58:18Z,release=7.0.0.138133,link=,cncport=80,src=10.10.10.10,dpt=80,anomaly=,dvc=,channel=,action=notified,os=,stype=bot-command,</test_message>
+						<test_value name="s0">infection-match</test_value>
+						<test_value name="s1">thegibson.domain.com</test_value>
+						<test_value name="s2">Local.Infection</test_value>
+						<test_value name="s3">351f1dc4e958975661f02c86a485431e</test_value>
+						<test_value name="s4">bot-command</test_value>
+						<test_value name="i0">127.0.0.1</test_value>
+						<test_value name="i1">127.0.0.1</test_value>
+						<test_value name="i2">2013-01-14T16:58:18Z</test_value>
+						<test_value name="i3">80</test_value>
+						<test_value name="i4">10.10.10.10</test_value>
+						<test_value name="i5">80</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_ftp</pattern>
+		<rules>
+			<rule class="43" id="43">
+				<patterns>
+				  <!-- start securityonion -->
+                  <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s0:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@</pattern>
+                  <!-- end securityonion -->
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ANYSTRING:s1@</pattern>
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_ftp">1360158824.989266|B6a0lYqUPm4|10.1.10.64|2504|10.2.20.40|21|redcell|hidden|RETR|ftp://10.2.20.40/./bandook.exe|-|-|-|-|-|-|-</test_message>
+						<!-- eventid -->
+						<test_value name="s0">B6a0lYqUPm4</test_value>
+						<!-- srcip -->
+						<test_value name="i0">10.1.10.64</test_value>
+						<!-- srcport -->
+						<test_value name="i1">2504</test_value>
+						<!-- dstip -->
+						<test_value name="i2">10.2.20.40</test_value>
+						<!-- dstport -->
+						<test_value name="i3">21</test_value>
+						<!-- username -->
+						<test_value name="s1">redcell</test_value>
+						<!-- password -->
+						<test_value name="s2">hidden</test_value>
+						<!-- command -->
+						<test_value name="s3">RETR</test_value>
+						<!-- arg -->
+						<test_value name="s4">ftp://10.2.20.40/./bandook.exe</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_weird</pattern>
+		<rules>
+			<rule class="44" id="44">
+				<patterns>
+                <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:s3:|@</pattern>  
+                </patterns>
+				<examples>
+					<example>
+						<test_message program="bro_weird">1351197195.607686|mHKKLqyI4mf|192.168.1.12|137|192.168.1.13|137|DNS_label_len_gt_pkt|-|F|bro</test_message>
+						<!-- eventid -->
+						<test_value name="s0">mHKKLqyI4mf</test_value>
+						<!-- srcip -->
+						<test_value name="i0">192.168.1.12</test_value>
+						<!-- srcport -->
+						<test_value name="i1">137</test_value>
+						<!-- dstip -->
+						<test_value name="i2">192.168.1.13</test_value>
+						<!-- dstport -->
+						<test_value name="i3">137</test_value>
+						<!-- name -->
+						<test_value name="s3">DNS_label_len_gt_pkt</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_tunnel</pattern>
+		<rules>
+			<rule class="45" id="45">
+				<patterns>
+                  <!-- start securityonion -->
+                  <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:s1:|@@ESTRING:s2:@</pattern>
+                  <!-- end securityonion -->
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ANYSTRING:s1@</pattern>
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_tunnel">1360153388.439863|FIRbnuXCRqh|70.55.213.211|0|192.88.99.1|0|Tunnel::IP|Tunnel::DISCOVER</test_message>
+						<!-- eventid -->
+						<test_value name="s0">FIRbnuXCRqh</test_value>
+						<!-- srcip -->
+						<test_value name="i0">70.55.213.211</test_value>
+						<!-- srcport -->
+						<test_value name="i1">0</test_value>
+						<!-- dstip -->
+						<test_value name="i2">192.88.99.1</test_value>
+						<!-- dstport -->
+						<test_value name="i3">0</test_value>
+						<!-- name -->
+						<test_value name="s1">Tunnel::IP</test_value>
+						<!-- desc -->
+						<test_value name="s2">Tunnel::DISCOVER</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_software</pattern>
+		<rules>
+			<rule class="46" id="46">
+				<patterns>
+                  <pattern>@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:s0:|@@ESTRING:s1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING::|@@ESTRING::|@@ESTRING:s2:@</pattern>
+                  </patterns>
+				<examples>
+					<example>
+						<test_message program="bro_software">1360157307.572112|10.1.50.5|-|HTTP::BROWSER|MSIE|5|1|-|-|Mozilla/4.0 (compatible; MSIE 5.01; Windows NT)</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.1.50.5</test_value>
+						<!-- srcport -->
+						<test_value name="i1">-</test_value>
+						<!-- type -->
+						<test_value name="s0">HTTP::BROWSER</test_value>
+						<!-- name -->
+						<test_value name="s1">MSIE</test_value>
+						<!-- version_major -->
+						<test_value name="i2">5</test_value>
+						<!-- version_minor -->
+						<test_value name="i3">1</test_value>
+						<!-- product -->
+						<test_value name="s2">Mozilla/4.0 (compatible; MSIE 5.01; Windows NT)</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_ssh</pattern>
+		<rules>
+			<rule class="47" id="47">
+				<patterns>
+                  <!-- start securityonion -->
+                  <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:s1:|@@ESTRING:s2:|@@ESTRING:s3:|@@ESTRING:s4:|@@ESTRING:i4:|@</pattern>
+                  <!-- end securityonion -->
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ESTRING::|@@ANYSTRING:s1@</pattern>
+				  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING::|@@ESTRING:s0:|@</pattern>
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_ssh">1360157311.364242|YDPUHZNdL05|10.2.199.248|41392|10.1.40.1|22|failure|OUTBOUND|-|SSH-2.0-Cisco-1.25|1119|-|-|-|-|-</test_message>
+						<!-- eventid -->
+						<test_value name="s0">YDPUHZNdL05</test_value>
+						<!-- srcip -->
+						<test_value name="i0">10.2.199.248</test_value>
+						<!-- srcport -->
+						<test_value name="i1">41392</test_value>
+						<!-- dstip -->
+						<test_value name="i2">10.1.40.1</test_value>
+						<!-- dstport -->
+						<test_value name="i3">22</test_value>
+						<!-- status -->
+						<test_value name="s1">failure</test_value>
+						<!-- direction -->
+						<test_value name="s2">OUTBOUND</test_value>
+						<!-- client -->
+						<test_value name="s3">-</test_value>
+						<!-- server -->
+						<test_value name="s4">SSH-2.0-Cisco-1.25</test_value>
+						<!-- conn_bytes -->
+						<test_value name="i4">1119</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_syslog</pattern>
+		<rules>
+			<rule class="48" id="48">
+				<patterns>
+                  <!-- start securityonion -->
+                  <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ESTRING:i4:|@@ESTRING:s1:|@@ESTRING:s2:|@@ANYSTRING:s3:@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_syslog">1375571619.507641|QMOWsHjZqde|192.168.1.1|514|192.168.1.116|514|udp|LOCAL0|INFO|Aug  3 23:13:39 pf: 00:00:00.804184 rule 36/0(match): pass in on vr0: (tos 0x0, ttl 64, id 11232, offset 0, flags [DF], proto UDP (17), length 55)   192.168.1.116.43172 > 192.168.1.1.53: 40972+ A? localhost. (27)</test_message>
+						<!-- eventid -->
+						<test_value name="s0">QMOWsHjZqde</test_value>
+						<!-- srcip -->
+						<test_value name="i0">192.168.1.1</test_value>
+						<!-- srcport -->
+						<test_value name="i1">514</test_value>
+						<!-- dstip -->
+						<test_value name="i2">192.168.1.116</test_value>
+						<!-- dstport -->
+						<test_value name="i3">514</test_value>
+						<!-- proto -->
+						<test_value name="i4">udp</test_value>
+						<!-- bro_syslog_facility -->
+						<test_value name="s1">LOCAL0</test_value>
+						<!-- bro_syslog_severity -->
+						<test_value name="s2">INFO</test_value>
+						<!-- bro_syslog_message -->
+						<test_value name="s3">Aug  3 23:13:39 pf: 00:00:00.804184 rule 36/0(match): pass in on vr0: (tos 0x0, ttl 64, id 11232, offset 0, flags [DF], proto UDP (17), length 55)   192.168.1.116.43172 > 192.168.1.1.53: 40972+ A? localhost. (27)</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_irc</pattern>
+		<rules>
+			<rule class="49" id="49">
+				<patterns>
+                  <!-- start securityonion -->      
+                  <pattern>@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:i3:|@@ANYSTRING:s1:@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_irc">1352413490.163439|FB2AqwMeEy4|192.168.1.12|1045|212.48.121.249|5050|NEW-[USA|00|P|23733]|XP-1630|JOIN|#!nn!| with channel key: 'test'|-|-|-|-</test_message>
+						<!-- eventid -->
+						<test_value name="s0">FB2AqwMeEy4</test_value>
+						<!-- srcip -->
+						<test_value name="i0">192.168.1.12</test_value>
+						<!-- srcport -->
+						<test_value name="i1">1045</test_value>
+						<!-- dstip -->
+						<test_value name="i2">212.48.121.249</test_value>
+						<!-- dstport -->
+						<test_value name="i3">5050</test_value>
+						<!-- bro_syslog_facility -->
+						<test_value name="s1">NEW-[USA|00|P|23733]|XP-1630|JOIN|#!nn!| with channel key: 'test'|-|-|-|-</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_known_cert</pattern>
+		<rules>
+			<rule class="50" id="50">
+				<patterns>
+                  <!-- start securityonion -->      
+                  <pattern>@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING::CN=@@ESTRING:s0:,@@ESTRING::OU=@@ESTRING:s1:@@ESTRING::O=@@ESTRING:s2:,@@ESTRING::emailAddress=@@ESTRING:s3:,@</pattern>
+                  <pattern>@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING::CN=@@ESTRING:s0:,@@ESTRING::OU=@@ESTRING:s1:@@ESTRING::O=@@ESTRING:s2:,@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_known_cert">1360154644.236015|10.2.20.60|443|emailAddress=webmaster@dox.site,CN=dox.site,OU=web server,O=SuSE Linux Web Server,L=unknown,ST=unknown,C=XY|emailAddress=webmaster@dox.site,CN=dox.site,OU=CA,O=SuSE Linux Web Server,L=unknown,ST=unknown,C=XY|02</test_message>
+						<!-- srcip -->
+						<test_value name="i0">10.2.20.60</test_value>
+						<!-- srcport -->
+						<test_value name="i1">443</test_value>
+						<!-- common_name -->
+						<test_value name="s0">dox.site</test_value>
+						<!-- organizational unit -->
+						<test_value name="s1">web server</test_value>
+						<!-- organization -->
+						<test_value name="s2">SuSE Linux Web Server</test_value>
+						<!-- email_address -->
+						<test_value name="s3">webmaster@dox.site</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_known_hosts</pattern>
+		<rules>
+			<rule class="51" id="51">
+				<patterns>
+                  <!-- start securityonion -->      
+                  <pattern>@ESTRING::|@@ESTRING:i0:@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_known_hosts">1360154565.568704|192.168.3.35</test_message>
+						<!-- srcip -->
+						<test_value name="i0">192.168.3.35</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_known_services</pattern>
+		<rules>
+			<rule class="52" id="52">
+				<patterns>
+                  <!-- start securityonion -->      
+                  <pattern>@ESTRING::|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:i2:|@@ESTRING:s0:@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_known_services">1360154567.821951|192.168.10.100|2869|tcp|HTTP</test_message>
+						<!-- srcip -->
+						<test_value name="i0">192.168.10.100</test_value>
+						<!-- srcport -->
+						<test_value name="i1">2869</test_value>
+						<!-- proto -->
+						<test_value name="i2">tcp</test_value>
+						<!-- service -->
+						<test_value name="s0">HTTP</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+	<ruleset>
+		<pattern>bro_capture_loss</pattern>
+		<rules>
+			<rule class="53" id="53">
+				<patterns>
+                  <!-- start securityonion -->      
+                  <pattern>@ESTRING::|@@ESTRING::|@@ESTRING:s0:|@@ESTRING:i0:|@@ESTRING:i1:|@@ESTRING:s1:@</pattern>
+                  <!-- end securityonion -->
+				</patterns>
+				<examples>
+					<example>
+						<test_message program="bro_capture_loss">1377263179.538810|900.000092|so12-eth1-1|0|3991|0.000%</test_message>
+						<!-- interface -->
+						<test_value name="s0">so12-eth1-1</test_value>
+						<!-- gaps -->
+						<test_value name="i0">0</test_value>
+						<!-- acks -->
+						<test_value name="i1">3991</test_value>
+						<!-- percent_loss -->
+						<test_value name="s1">0.000%</test_value>
+					</example>
+				</examples>
+			</rule>
+		</rules>
+	</ruleset>
+</patterndb>
