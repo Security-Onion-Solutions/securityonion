@@ -31,6 +31,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 	  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interfave" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
   fi
+
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
     # Get the master server for the install
@@ -40,7 +41,30 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Time to get asnwers to questions so we can fill out the pillar file
   if [ $INSTALLTYPE != 'MASTERONLY' ]; then
-    # Ask what IDS to use
+    NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
+    "Choose which IDS to run:" 20 78 4 \
+    "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+    # Commented out until Snort releases 3.x Duke Nukem Edition
+    #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
+
+    NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+    "What type of config would you like to use?:" 20 78 4 \
+    "BASIC" "Install NSM components with recommended settings" ON \
+    "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+    if [ $NSMSETUP == 'BASIC' ]; then
+      # Calculate LB_Procs
+      $LBPROCS=some math
+
+      # Calculate Suricata stuff
+    fi
+    if [ $NSMSETUP == 'ADVANCED' ]; then
+      # Display CPU list for pinning
+      $LBPROCS=Add the pins together that bro is using
+      # Pin steno
+      # Pin Bro
+      # Pin Suricata
+    fi
     # Ask how many CPUs to use for bro
   fi
 
@@ -134,8 +158,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Create the pillar file for the sensor
     touch /tmp/$HOSTNAME.sls
     echo "sensor:" > /tmp/$HOSTNAME.sls
-    echo "  interface: bond0" >> /tmp/$HOSTNAME
-    echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME
+    echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
+    echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
 
     # SCP the pillar file to the master
     scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
