@@ -21,7 +21,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Get list of NICS if it isn't master only
   if [ $INSTALLTYPE != 'MASTERONLY' ]; then
-
+    # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
     NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
     # Pick which interface you want to use as the Management
@@ -32,8 +32,10 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 	  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interfave" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+
     # Get the master server for the install
-    MASTERSRV=$(whiptail --title "Enter your Master Server IP Address")
+    MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
+
   fi
 
   # Time to get asnwers to questions so we can fill out the pillar file
@@ -49,6 +51,15 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   #########################
   ## Do all the things!! ##
   #########################
+
+  # Copy over the SSH key
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+    # Generate SSH Key
+    cat /dev/zero | ssh-keygen -t rsa -q -N ""
+
+    #Copy the key over to the master
+    ssh-copy-id socore@MASTERSRV
+  fi
 
   # Detect Base OS
   if [ -f /etc/redhat-release ]; then
@@ -77,9 +88,14 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   else
     ADDUSER=useradd
     apt-get -y upgrade
-    wget -O - https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+    # grab the version from the os-release file
+    UVER=$(grep VERSION_ID /etc/os-release | awk)
+    wget -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
     apt-get update
-    apt-get install salt-minion
+    apt-get -y install salt-minion
+    if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+      apt-get -y install salt-master
+    fi
   fi
 
   # Create so-core user
