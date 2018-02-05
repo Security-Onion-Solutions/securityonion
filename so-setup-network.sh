@@ -59,6 +59,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
       # Calculate Suricata stuff
     fi
     if [ $NSMSETUP == 'ADVANCED' ]; then
+      # Ask if this is a VM
       # Display CPU list for pinning
       $LBPROCS=Add the pins together that bro is using
       # Pin steno
