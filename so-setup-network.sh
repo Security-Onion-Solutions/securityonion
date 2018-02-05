@@ -127,6 +127,9 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     ssh socore@$MASTERSRV 'sudo salt-key -qa $HOSTNAME'
 
   fi
+  
+##MASTER
+# Add salt-key to suduers file for socore with no password required
 
 # They did not want to do the install
 else
