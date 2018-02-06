@@ -33,7 +33,7 @@ Etc/UTC:
   timezone.system
 
 # Set up docker network
-#dockernet:
-#  dockerng.network_present:
-#    - name: so-docker-net
-#    - driver: bridge
+dockernet:
+  docker_network.present:
+    - name: so-elastic-net
+    - driver: bridge
