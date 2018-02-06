@@ -1,5 +1,5 @@
 base:
-  'G@so-role:sensor':
+  'G@role:sensor':
     - common
     - pcap
     - logstash
@@ -7,17 +7,17 @@ base:
     - syslog-ng
     - bro
 
-  'G@so-role:eval':
+  'G@role:eval':
     - common
     - sensor
     - master
     - eval
 
-  'G@so-role:so-master':
+  'G@role:so-master':
     - common
     - master
 
-  'G@so-role:mastersensor':
+  'G@role:mastersensor':
     - common
     - sensor
     - master
