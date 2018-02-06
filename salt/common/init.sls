@@ -24,7 +24,7 @@ alwaysupdated:
       - openssl
       - openssh-server
       - bash
-  - skip_suggestions: True
+    - skip_suggestions: True
 
 # Set time to UTC
 
