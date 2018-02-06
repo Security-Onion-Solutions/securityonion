@@ -14,7 +14,7 @@ sensorpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
-      - docker
+      - docker-ce
 
 # Always keep these packages up to date
 
@@ -32,7 +32,7 @@ Etc/UTC:
   timezone.system
 
 # Set up docker network
-dockernet:
-  dockerng.network_present
-    - name: so-docker-net
-    - driver: bridge
+#dockernet:
+#  dockerng.network_present:
+#    - name: so-docker-net
+#    - driver: bridge
