@@ -4,5 +4,5 @@ base:
     - sensors.{{ grains.host }}
 
   'G@role:so-master':
-    - master.schedule
+    - masters.schedule
     - masters.{{ grains.host }}

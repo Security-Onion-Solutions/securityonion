@@ -20,9 +20,10 @@ sensorpkgs:
 
 alwaysupdated:
   pkg.latest:
-    - openssl
-    - openssh-server
-    - bash
+    - pkgs:
+      - openssl
+      - openssh-server
+      - bash
   - skip_suggestions: True
 
 # Set time to UTC
