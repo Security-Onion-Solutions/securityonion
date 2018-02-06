@@ -198,7 +198,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Copy the master config over
     cp files/master /etc/salt/master
-    chown -R socore:socore /etc/salt
+    # Comment this out for now
+    # chown -R socore:socore /etc/salt
 
     # Start salt master and minion
     service salt-master start
@@ -208,7 +209,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
     salt-call state.highstate
-    salt-key -ya $HOSTNAME
+    salt-key -qya $HOSTNAME
     salt-call state.highstate
 
     # Determine Disk space
