@@ -1,7 +1,7 @@
 base:
   'G@role:so-sensor'
     - sensor.schedule
-    - sensors.{{ hostname }}
+    - sensors.{{ grains.host }}
   'G@role:so-master'
     - master.schedule
-    - masters.{{ hostname }}
+    - masters.{{ grains.host }}
