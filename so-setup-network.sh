@@ -112,7 +112,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   # Install Updates and the Docker Package
-  if [ $OS == 'centos']; then
+  if [ $OS == 'centos' ]; then
     ADDUSER=adduser
     yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
     yum clean expire-cache
