@@ -124,10 +124,12 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     ADDUSER=useradd
     apt-get -y upgrade
     # grab the version from the os-release file
-    UVER=$(grep VERSION_ID /etc/os-release | awk)
+    UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
     wget -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+    echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
     apt-get update
     apt-get -y install salt-minion
+
     if [ $INSTALLTYPE != 'SENSORONLY' ]; then
       apt-get -y install salt-master
     fi
