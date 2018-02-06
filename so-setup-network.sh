@@ -160,7 +160,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Create the grains file for the sensor
     touch /etc/salt/grains
     echo "grains:" > /etc/salt/grains
-    echo "  role: so-sensor" >> /etc/salt/gains
+    echo "  role: so-sensor" >> /etc/salt/grains
 
     # Start the salt agent
     service salt-minion start
@@ -191,7 +191,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Create the grains file for the Master
     touch /etc/salt/grains
     echo "grains:" > /etc/salt/grains
-    echo "  role: so-master" >> /etc/salt/gains
+    echo "  role: so-master" >> /etc/salt/grains
 
     # Start salt master
     service salt-master start
