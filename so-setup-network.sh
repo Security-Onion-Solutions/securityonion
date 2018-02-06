@@ -71,6 +71,13 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
     # Get pulled pork info
+    RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+    "What IDS rules to use?:" 20 78 4 \
+    "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
+    "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
+    "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
+    "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
+
     # Set password for socore
 
   fi
@@ -176,7 +183,26 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   # Do that same thing on all the others but drop em into the right place
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
 
+    # Determine Disk space
+    # Calculate half of available disk space for ELSA log_size_limit
+    DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
+    let DISK_SIZE=DISK_SIZE_K*1000
+    let LOG_SIZE_LIMIT=DISK_SIZE/2
+    let LOG_SIZE_LIMIT_GB=LOG_SIZE_LIMIT/1000000000
+    let DISK_SIZE_GB=DISK_SIZE/1000000000
+    let LOG_SIZE_LIMIT=LOG_SIZE_LIMIT_GB*1000000000
+    # Check amount of system RAM (MB)
+    TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
+    # Make RAM # human readable (GB)
+    HR_MEM=$((TOTAL_MEM / 1000))
+    # Text for minimum memory check
+    MEM_TEXT="This machine currently has "$HR_MEM"GB of RAM allocated.\n\For best performance, please ensure the machine is allocated at least 3GB of RAM.\n\n\Please consult the following link for more information:\n\https://github.com/Security-Onion-Solutions/security-onion/wiki/Hardware\n\n\
+    Click 'No' to stop setup and adjust the amount of RAM allocated to this machine.\n\
+    Otherwise, click 'Yes' to continue."
+
   fi
+
+
 ##MASTER
 # Add salt-key to sudoers file for socore with no password required
 
