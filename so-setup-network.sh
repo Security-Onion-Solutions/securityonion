@@ -198,6 +198,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Copy the master config over
     cp files/master /etc/salt/master
+    chown -R socore:socore /etc/salt
 
     # Start salt master and minion
     service salt-master start
