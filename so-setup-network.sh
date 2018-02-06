@@ -194,7 +194,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     echo "  role: so-master" >> /etc/salt/grains
 
     # Set up the minion to talk to itself
-    echo "master: localhost" > /etc/salt/minion
+    echo "master: $HOSTNAME" > /etc/salt/minion
 
     # Copy the master config over
     cp files/master /etc/salt/master
@@ -202,8 +202,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # chown -R socore:socore /etc/salt
 
     # Start salt master and minion
-    service salt-master start
-    service salt-minion start
+    service salt-master restart
+    service salt-minion restart
 
     # Create the pillar
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
