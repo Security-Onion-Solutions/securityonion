@@ -193,11 +193,17 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     echo "grains:" > /etc/salt/grains
     echo "  role: so-master" >> /etc/salt/grains
 
+    cp files/master /etc/salt/master
+
     # Start salt master
     service salt-master start
     service salt-minion start
 
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+
+    salt-call state.highstate
+    salt-key -qa $HOSTNAME
+    salt-call state.highstate
 
     # Determine Disk space
     # Calculate half of available disk space for ELSA log_size_limit
