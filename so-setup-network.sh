@@ -208,7 +208,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
     salt-call state.highstate
-    salt-key -qa $HOSTNAME
+    salt-key -ya $HOSTNAME
     salt-call state.highstate
 
     # Determine Disk space
