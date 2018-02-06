@@ -158,7 +158,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
     # Create the grains file for the sensor
-    touch /etc/salt/grain
+    touch /etc/salt/grains
     echo "grains:" > /etc/salt/grains
     echo "  role: so-sensor" >> /etc/salt/gains
 
@@ -189,7 +189,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     # Create the grains file for the Master
-    touch /etc/salt/grain
+    touch /etc/salt/grains
     echo "grains:" > /etc/salt/grains
     echo "  role: so-master" >> /etc/salt/gains
 
