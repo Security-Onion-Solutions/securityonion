@@ -140,6 +140,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
     mkdir -p /opt/so/saltstack/salt
     mkdir -p /opt/so/saltstack/pillar
+    cp -Rv pillar/* /opt/so/saltstack/pillar/
+    cp -Rv salt/* /opt/so/saltstack/salt/
   fi
 
   # Add socore user to the system
@@ -182,24 +184,35 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   # Do that same thing on all the others but drop em into the right place
-  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+
+    # Create the grains file for the Master
+    touch /etc/salt/grain
+    echo "grains:" > /etc/salt/grains
+    echo "  role: so-master" >> /etc/salt/gains
+
+    # Start salt master
+    service salt-master start
+    service salt-minion start
+
+    touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
     # Determine Disk space
     # Calculate half of available disk space for ELSA log_size_limit
-    DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
-    let DISK_SIZE=DISK_SIZE_K*1000
-    let LOG_SIZE_LIMIT=DISK_SIZE/2
-    let LOG_SIZE_LIMIT_GB=LOG_SIZE_LIMIT/1000000000
-    let DISK_SIZE_GB=DISK_SIZE/1000000000
-    let LOG_SIZE_LIMIT=LOG_SIZE_LIMIT_GB*1000000000
+    #DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
+    #let DISK_SIZE=DISK_SIZE_K*1000
+    #let LOG_SIZE_LIMIT=DISK_SIZE/2
+    #let LOG_SIZE_LIMIT_GB=LOG_SIZE_LIMIT/1000000000
+    #let DISK_SIZE_GB=DISK_SIZE/1000000000
+    #let LOG_SIZE_LIMIT=LOG_SIZE_LIMIT_GB*1000000000
     # Check amount of system RAM (MB)
-    TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
+    #TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
     # Make RAM # human readable (GB)
-    HR_MEM=$((TOTAL_MEM / 1000))
+    #HR_MEM=$((TOTAL_MEM / 1000))
     # Text for minimum memory check
-    MEM_TEXT="This machine currently has "$HR_MEM"GB of RAM allocated.\n\For best performance, please ensure the machine is allocated at least 3GB of RAM.\n\n\Please consult the following link for more information:\n\https://github.com/Security-Onion-Solutions/security-onion/wiki/Hardware\n\n\
-    Click 'No' to stop setup and adjust the amount of RAM allocated to this machine.\n\
-    Otherwise, click 'Yes' to continue."
+    #MEM_TEXT="This machine currently has "$HR_MEM"GB of RAM allocated.\n\For best performance, please ensure the machine is allocated at least 3GB of RAM.\n\n\Please consult the following link for more information:\n\https://github.com/Security-Onion-Solutions/security-onion/wiki/Hardware\n\n\
+    #Click 'No' to stop setup and adjust the amount of RAM allocated to this machine.\n\
+    #Otherwise, click 'Yes' to continue."
 
   fi
 
