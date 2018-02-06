@@ -44,7 +44,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
     "Choose which IDS to run:" 20 78 4 \
     "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
-    # Commented out until Snort releases 3.x Duke Nukem Edition
+    # Commented out until Snort releases 3.x 
     #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
 
     NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
