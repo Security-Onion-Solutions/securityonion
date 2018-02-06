@@ -111,7 +111,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     echo "Setting up Bond"
   fi
 
-  # Install Updates and the Docker Package
+  # Install Updates and the Salt Package
   if [ $OS == 'centos' ]; then
     ADDUSER=adduser
     yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
@@ -123,10 +123,22 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   else
     ADDUSER=useradd
     apt-get -y upgrade
+
+    # Add the pre-requisites for installing docker-ce
+    apt-get -y install ca-certificates curl software-properties-common apt-transport-https
+
     # grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
+
+    # Install the repo for salt
     wget -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
     echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+
+    # Lets get the docker repo added
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+    # Initialize the new repos
     apt-get update
     apt-get -y install salt-minion
 
