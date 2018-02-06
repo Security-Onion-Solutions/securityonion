@@ -13,7 +13,7 @@ base:
     - master
     - eval
 
-  'G@so-role:master'
+  'G@so-role:so-master'
     - common
     - master
 

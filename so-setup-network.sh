@@ -1,5 +1,7 @@
 #!/bin/bash
 
+HOSTNAME=$(cat /etc/hostname)
+
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
         echo "This script must be run using sudo!"
@@ -78,7 +80,6 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
     "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
-    # Set password for socore
 
   fi
 
