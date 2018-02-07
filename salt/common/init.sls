@@ -38,9 +38,21 @@ dockernet:
     - name: so-elastic-net
     - driver: bridge
 
+# Snag the so-core docker
 toosmooth/so-core:test2:
   docker_image.present
 
+# Drop the correct nginx config based on role
+
+nginxconf:
+  file.managed:
+    - name: /opt/so/conf/nginx/nginx.conf
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://conf/nginx/nginx.conf.{{ grains.role }}
+
+# Start the core docker
 so-core:
   docker_container.running:
     - image: toosmooth/so-core:test2
@@ -48,4 +60,9 @@ so-core:
     - user: socore
     - binds:
       - /opt/so:/opt/so:rw
+      - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     - network_mode: so-elastic-net
+    - cap_add: NET_BIND_SERVICE
+    - ports:
+      - 80
+      - 443
