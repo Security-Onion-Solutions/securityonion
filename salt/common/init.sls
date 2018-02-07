@@ -37,3 +37,12 @@ dockernet:
   docker_network.present:
     - name: so-elastic-net
     - driver: bridge
+
+so-core:
+  docker_container.running:
+    - image: toosmooth/so-bro:test1
+    - hostname: so-core
+    - user: socore
+    - binds:
+      - /opt/so:/opt/so:rw
+    - network_mode: so-elastic-net
