@@ -59,6 +59,19 @@ nginxconf:
     - template: jinja
     - source: salt://common/nginx/nginx.conf.{{ grains.role }}
 
+nginxlogdir:
+  file.directory:
+    - name: /opt/so/log/nginx/
+    - user: 939
+    - group: 939
+
+nginxtmp:
+  file.directory:
+    - name: /opt/so/tmp/nginx/tmp
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 # Start the core docker
 so-core:
   docker_container.running:
@@ -68,8 +81,11 @@ so-core:
     - binds:
       - /opt/so:/opt/so:rw
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/so/log/nginx/:/var/log/nginx:rw
+      - /opt/so/tmp/nginx/:/var/lib/nginx:rw
+      - /opt/so/tmp/nginx/:/run:rw
     - network_mode: so-elastic-net
     - cap_add: NET_BIND_SERVICE
-    - ports:
-      - 80
-      - 443
+    - port_bindings:
+      - 80:80
+      - 443:443
