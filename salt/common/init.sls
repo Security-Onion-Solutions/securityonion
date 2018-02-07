@@ -44,13 +44,20 @@ toosmooth/so-core:test2:
 
 # Drop the correct nginx config based on role
 
+nginxconfdir:
+  file.directory:
+    - name: /opt/so/conf/nginx
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 nginxconf:
   file.managed:
     - name: /opt/so/conf/nginx/nginx.conf
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://conf/nginx/nginx.conf.{{ grains.role }}
+    - source: salt://common/nginx/nginx.conf.{{ grains.role }}
 
 # Start the core docker
 so-core:
