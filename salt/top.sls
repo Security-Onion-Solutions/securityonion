@@ -16,6 +16,7 @@ base:
   'G@role:so-master':
     - common
     - master
+    - pulledpork
 
   'G@role:mastersensor':
     - common

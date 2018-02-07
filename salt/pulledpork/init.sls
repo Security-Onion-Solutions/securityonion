@@ -16,7 +16,7 @@ rulesdir:
 toosmooth/so-pulledpork:test2:
   docker_image.present
 
-so-core:
+so-pulledpork:
   docker_container.running:
     - image: toosmooth/so-pulledpork:test2
     - hostname: so-pulledpork
