@@ -1,4 +1,7 @@
-# ES
+{% set esclustername = salt['pillar.get'](master:esclustername) %}
+{% set esheap = salt['pillar.get'](master:esheap) %}
+{% set esaccessip = salt['pillar.get'](master:esaccessip) %}
+
 so-elasticsearch:
   dockerng.running:
     - image: pillaritem/so-logstash
