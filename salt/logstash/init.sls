@@ -15,6 +15,9 @@
 
 # Logstash Section
 
+# Only run this is you are in the sensor role
+{% if grains['role'] == 'so-sensor' %}
+
 # Add Logstash user
 logstash:
   user.present:
@@ -22,34 +25,49 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
-# Copy all the files needed for logstash
-
+# Create logstash conf directory
 file.directory:
   - name: /opt/so/conf/logstash
   - user: 931
   - group: 939
+  - makedirs: True
 
+# Set the heap size from the sensor pillar
+{% set lsheap = salt['pillar.get'](sensor:lsheap) %}
+
+{% else %}
+
+# Set the heap size from the master pillar
+{% set lsheap = salt['pillar.get'](master:lsheap) %}
+
+{% endif %}
+
+# Create the conf/d logstash directory
 file.directory:
   - name: /opt/so/conf/logstash/conf.d
   - user: 931
   - group: 939
 
+# Copy down all the configs
 file.recurse:
   - name: /opt/so/conf/logstash
   - source: salt://sensor/files/logstash
   - user: 931
   - group: 939
 
+# Create the import directory
 file.directory:
   - name: /nsm/import
   - user: 931
   - group: 939
 
+# Create the logstash data directory
 file.directory:
   - name: /nsm/logstash
   - user: 931
   - group: 939
 
+# Create the log directory
 file.directory:
   - name: /opt/so/log/logstash
   - user: 931
@@ -64,7 +82,7 @@ so-logstash:
     - hostname: logstash
     - user: logstash
     - environment:
-      - LS_JAVA_OPTS="-Xms$LOGSTASH_HEAP -Xmx$LOGSTASH_HEAP"
+      - LS_JAVA_OPTS="-Xms{{ lsheap }} -Xmx{{ lsheap }}"
     - ports:
       - 5044
       - 6050
