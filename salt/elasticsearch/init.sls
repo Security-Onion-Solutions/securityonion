@@ -17,6 +17,10 @@
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
 
+vm.max_map_count:
+  sysctl.present:
+    - value: 262144
+
 # Add ES Group
 elasticsearchgroup:
   group.present:
@@ -32,16 +36,16 @@ elasticsearch:
 
 eslog4jfile:
   file.managed:
-    - name: /opt/so/conf/elastic/log4j2.properties
-    - source: salt://elastic/files/log4j2.properties
+    - name: /opt/so/conf/elasticsearch/log4j2.properties
+    - source: salt://elasticsearch/files/log4j2.properties
     - user: 930
     - group: 939
     - template: jinja
 
 esyml:
   file.managed:
-    - name: /opt/so/conf/elastic/elasticsearch.yml
-    - source: salt://elastic/files/elasticsearch.yml
+    - name: /opt/so/conf/elasticsearch/elasticsearch.yml
+    - source: salt://elasticsearch/files/elasticsearch.yml
     - user: 930
     - group: 939
     - template: jinja
@@ -68,7 +72,7 @@ so-elasticsearch:
     - environment:
       - bootstrap.memory_lock=true
       - cluster.name={{ esclustername }}
-      - ES_JAVA_OPTS="-Xms{{ esheap }} -Xmx{{ esheap }}"
+      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
       - http.host=0.0.0.0
       - transport.host=127.0.0.1
     - ulimits:
