@@ -24,6 +24,42 @@ elasticsearch:
     - gid: 930
     - home: /opt/so/conf/elasticsearch
 
+# Add the logstash user for the jog4j settings
+logstash:
+  user.present:
+    - uid: 931
+    - gid: 931
+    - home: /opt/so/conf/logstash
+
+file.directory:
+  - name: /opt/so/conf/logstash
+  - user: 931
+  - group: 939
+  - makedirs: True
+
+file.manage:
+  - name: /opt/so/conf/logstash/log4j2.properties
+  - source: salt://logstash/files/log4j2.properties
+  - user: 931
+  - group: 939
+
+file.directory:
+  - name: /opt/so/conf/elasticsearch
+  - user: 930
+  - group: 939
+
+file.directory:
+  - name: /nsm/elasticsearch
+  - user: 930
+  - group: 939
+  - makedirs: True
+
+file.directory:
+  - name: /opt/so/log/elasticsearch
+  - user: 930
+  - group: 939
+  - makedirs: True
+
 so-elasticsearch:
   dockerng.running:
     - image: pillaritem/so-elasticsearch
