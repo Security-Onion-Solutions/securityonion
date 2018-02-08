@@ -29,49 +29,42 @@ logstash:
 
 lsconfdir:
   file.directory:
-    - name: /opt/so/conf/logstash
+    - name: /opt/so/conf/logstash/conf.d
     - user: 931
     - group: 939
     - makedirs: True
 
-log4jfile:
-  file.managed:
-    - name: /opt/so/conf/logstash/log4j2.properties
-    - source: salt://logstash/files/log4j2.properties
+# Copy down all the configs
+lssync:
+  file.recurse:
+    - name: /opt/so/conf/logstash
+    - source: salt://logstash/files
     - user: 931
     - group: 939
 
-
-# Create the conf/d logstash directory
-file.directory:
-  - name: /opt/so/conf/logstash/conf.d
-  - user: 931
-  - group: 939
-
-# Copy down all the configs
-file.recurse:
-  - name: /opt/so/conf/logstash
-  - source: salt://sensor/files/logstash
-  - user: 931
-  - group: 939
-
 # Create the import directory
-file.directory:
-  - name: /nsm/import
-  - user: 931
-  - group: 939
+importdir:
+  file.directory:
+    - name: /nsm/import
+    - user: 931
+    - group: 939
+    - makedirs: True
 
 # Create the logstash data directory
-file.directory:
-  - name: /nsm/logstash
-  - user: 931
-  - group: 939
+nsmlsdir:
+  file.directory:
+    - name: /nsm/logstash
+    - user: 931
+    - group: 939
+    - makedirs: True
 
 # Create the log directory
-file.directory:
-  - name: /opt/so/log/logstash
-  - user: 931
-  - group: 939
+lslogdir:
+  file.directory:
+    - name: /opt/so/log/logstash
+    - user: 931
+    - group: 939
+    - makedirs: True
 
 
 # Add the container
