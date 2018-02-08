@@ -3,11 +3,11 @@ so-elasticsearch:
   dockerng.running:
     - image: pillaritem/so-logstash
     - hostname: elasticsearch
-    - user:
+    - user: elasticsearch
     - environment:
       - bootstrap.memory_lock=true
-      - cluster.name={{ grains.host }}
-      - ES_JAVA_OPTS="-Xms$ELASTICSEARCH_HEAP -Xmx$ELASTICSEARCH_HEAP"
+      - cluster.name={{ esclustername }}
+      - ES_JAVA_OPTS="-Xms{{ esheap }} -Xmx{{ esheap }}"
       - http.host=0.0.0.0
       - transport.host=127.0.0.1
     - ulimits:
@@ -15,8 +15,8 @@ so-elasticsearch:
       - nofile=65536:65536
       - nproc=4096
     - port_bindings:
-      - 9200
-      - 9300
+      - {{ esaccessip }}:9200:9200
+      - {{ esaccessip }}:9300:9300
     - binds:
       - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro

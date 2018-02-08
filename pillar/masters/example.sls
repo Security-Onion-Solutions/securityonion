@@ -1,4 +1,5 @@
-# Example Pillar file for a sensor
+# Example Pillar file for a master
 master:
-  interface: CHANGEME
-  lbprocs: CHANGEME
+  esaccessip: CHANGEME
+  esheap: CHANGEME
+  esclustername: CHANGEME
