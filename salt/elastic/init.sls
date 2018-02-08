@@ -32,16 +32,16 @@ elasticsearch:
 
 eslog4jfile:
   file.managed:
-    - name: /opt/so/conf/elasticsearch/log4j2.properties
-    - source: salt://elasticsearch/files/log4j2.properties
+    - name: /opt/so/conf/elastic/log4j2.properties
+    - source: salt://elastic/files/log4j2.properties
     - user: 930
     - group: 939
     - template: jinja
 
 esyml:
   file.managed:
-    - name: /opt/so/conf/elasticsearch/elasticsearch.yml
-    - source: salt://elasticsearch/files/elasticsearch.yml
+    - name: /opt/so/conf/elastic/elasticsearch.yml
+    - source: salt://elastic/files/elasticsearch.yml
     - user: 930
     - group: 939
     - template: jinja
@@ -62,7 +62,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: securityonion/so-elasticsearch:latest
+    - image: securityonionsolutions/so-elasticsearch:latest
     - hostname: elasticsearch
     - user: elasticsearch
     - environment:
