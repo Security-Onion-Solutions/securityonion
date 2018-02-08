@@ -13,9 +13,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set esclustername = salt['pillar.get'](master:esclustername) %}
-{% set esheap = salt['pillar.get'](master:esheap) %}
-{% set esaccessip = salt['pillar.get'](master:esaccessip) %}
+{% set esclustername = salt['pillar.get']('master:esclustername', '') %}
+{% set esheap = salt['pillar.get']('master:esheap', '') %}
+{% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
+
+# Add ES Group
+elasticsearchgroup:
+  group.present:
+    - name: elasticsearch
+    - gid: 930
 
 # Add ES user
 elasticsearch:
@@ -24,45 +30,39 @@ elasticsearch:
     - gid: 930
     - home: /opt/so/conf/elasticsearch
 
-# Add the logstash user for the jog4j settings
-logstash:
-  user.present:
-    - uid: 931
-    - gid: 931
-    - home: /opt/so/conf/logstash
+eslog4jfile:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/log4j2.properties
+    - source: salt://elasticsearch/files/log4j2.properties
+    - user: 930
+    - group: 939
+    - template: jinja
 
-file.directory:
-  - name: /opt/so/conf/logstash
-  - user: 931
-  - group: 939
-  - makedirs: True
+esyml:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/elasticsearch.yml
+    - source: salt://elasticsearch/files/elasticsearch.yml
+    - user: 930
+    - group: 939
+    - template: jinja
 
-file.manage:
-  - name: /opt/so/conf/logstash/log4j2.properties
-  - source: salt://logstash/files/log4j2.properties
-  - user: 931
-  - group: 939
+nsmesdir:
+  file.directory:
+    - name: /nsm/elasticsearch
+    - user: 930
+    - group: 939
+    - makedirs: True
 
-file.directory:
-  - name: /opt/so/conf/elasticsearch
-  - user: 930
-  - group: 939
-
-file.directory:
-  - name: /nsm/elasticsearch
-  - user: 930
-  - group: 939
-  - makedirs: True
-
-file.directory:
-  - name: /opt/so/log/elasticsearch
-  - user: 930
-  - group: 939
-  - makedirs: True
+eslogdir:
+  file.directory:
+    - name: /opt/so/log/elasticsearch
+    - user: 930
+    - group: 939
+    - makedirs: True
 
 so-elasticsearch:
-  dockerng.running:
-    - image: pillaritem/so-elasticsearch
+  docker_container.running:
+    - image: securityonion/so-elasticsearch:latest
     - hostname: elasticsearch
     - user: elasticsearch
     - environment:
@@ -79,7 +79,6 @@ so-elasticsearch:
       - {{ esaccessip }}:9200:9200
       - {{ esaccessip }}:9300:9300
     - binds:
-      - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
