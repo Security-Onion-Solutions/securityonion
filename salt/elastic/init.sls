@@ -2,9 +2,16 @@
 {% set esheap = salt['pillar.get'](master:esheap) %}
 {% set esaccessip = salt['pillar.get'](master:esaccessip) %}
 
+# Add ES user
+elasticsearch:
+  user.present:
+    - uid: 930
+    - gid: 930
+    - home: /opt/so/conf/elasticsearch
+
 so-elasticsearch:
   dockerng.running:
-    - image: pillaritem/so-logstash
+    - image: pillaritem/so-elasticsearch
     - hostname: elasticsearch
     - user: elasticsearch
     - environment:
