@@ -99,6 +99,6 @@ so-logstash:
       - /opt/so/rules:/etc/nsm/rules:ro
       - /opt/so/conf/logstash/dictionaries:/lib/dictionaries:ro
       - /nsm/import:/nsm/import:ro
-      - /nsm/logstash:/usr/share/logstash/data/
-      - /opt/so/log/logstash:/var/log/logstash
+      - /nsm/logstash:/usr/share/logstash/data:rw
+      - /opt/so/log/logstash:/var/log/logstash:rw
     - network_mode: so-elastic-net
