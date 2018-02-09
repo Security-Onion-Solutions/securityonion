@@ -54,6 +54,7 @@ lssync:
     - source: salt://logstash/files
     - user: 931
     - group: 939
+    - template: jinja
 
 # Create the import directory
 importdir:
