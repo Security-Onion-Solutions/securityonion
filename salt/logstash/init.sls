@@ -15,6 +15,11 @@
 
 # Logstash Section
 
+{% if grains['role'] == 'so-sensor' %}
+{% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
+{% else %}
+{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+{% endif %}
 logstashgroup:
   group.present:
     - name: logstash
