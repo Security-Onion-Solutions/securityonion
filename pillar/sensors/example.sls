@@ -2,5 +2,5 @@
 sensor:
   interface: CHANGEME
   lbprocs: CHANGEME
-
-  
+  lsheap:
+  lsaccessip:
