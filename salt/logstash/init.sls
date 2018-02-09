@@ -78,12 +78,12 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-      - 0.0.0.0:5044:5044
+      - 127.0.0.1:5044:5044
       - 127.0.0.1:6050:6050
       - 127.0.0.1:6051:6051
       - 127.0.0.1:6052:6052
       - 127.0.0.1:6053:6053
-      - 0.0.0.0:9600:9600
+      - 127.0.0.1:9600:9600
     - binds:
       - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
