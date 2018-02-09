@@ -27,14 +27,15 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
-lsconfdir:
+# Create a directory for people to drop their own custom parsers into
+lscustdir:
   file.directory:
-    - name: /opt/so/conf/logstash/conf.d
+    - name: /opt/so/conf/logstash/custom
     - user: 931
     - group: 939
     - makedirs: True
 
-# Copy down all the configs
+# Copy down all the configs including custom
 lssync:
   file.recurse:
     - name: /opt/so/conf/logstash
@@ -71,26 +72,25 @@ lslogdir:
 
 so-logstash:
   dockerng.running:
-    - image: pillaritem/so-logstash
+    - image: toosmooth/so-logstash:test2
     - hostname: logstash
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-      - 5044
-      - 6050
-      - 6051
-      - 6052
-      - 6053
-      - 9600
+      - 0.0.0.0:5044:5044
+      - 127.0.0.1:6050:6050
+      - 127.0.0.1:6051:6051
+      - 127.0.0.1:6052:6052
+      - 127.0.0.1:6053:6053
+      - 0.0.0.0:9600:9600
     - binds:
       - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
-      - /opt/so/conf/logstash/conf.d:/usr/share/logstash/pipeline/:ro
+      - /opt/so/conf/logstash/custom:/usr/share/logstash/custom/:ro
       - /opt/so/rules:/etc/nsm/rules:ro
-      - /opt/so/conf/logstash/dictionaries:/lib/dictionaries:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
       - /opt/so/log/logstash:/var/log/logstash:rw
