@@ -13,13 +13,18 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Logstash Section
-
+# Logstash Section - Decide which pillar to use
 {% if grains['role'] == 'so-sensor' %}
+
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
+
 {% else %}
+
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+
 {% endif %}
+
+# Create the logstash group
 logstashgroup:
   group.present:
     - name: logstash
@@ -40,7 +45,7 @@ lscustdir:
     - group: 939
     - makedirs: True
 
-# Copy down all the configs including custom
+# Copy down all the configs including custom - TODO add watch restart
 lssync:
   file.recurse:
     - name: /opt/so/conf/logstash
@@ -76,7 +81,7 @@ lslogdir:
 # Add the container
 
 so-logstash:
-  dockerng.running:
+  docker_container.running:
     - image: toosmooth/so-logstash:test2
     - hostname: logstash
     - user: logstash
