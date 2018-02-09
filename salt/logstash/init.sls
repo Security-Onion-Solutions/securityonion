@@ -89,7 +89,7 @@ so-logstash:
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
-      - /opt/so/conf/logstash/custom:/usr/share/logstash/custom/:ro
+      - /opt/so/conf/logstash/custom:/usr/share/logstash/custom:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
