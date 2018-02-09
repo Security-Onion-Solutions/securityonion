@@ -75,8 +75,8 @@ so-logstash:
     - hostname: logstash
     - user: logstash
     - environment:
-      - LS_JAVA_OPTS="-Xms{{ lsheap }} -Xmx{{ lsheap }}"
-    - ports:
+      - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
+    - port_bindings:
       - 5044
       - 6050
       - 6051
