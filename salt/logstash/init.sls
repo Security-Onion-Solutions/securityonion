@@ -17,10 +17,12 @@
 {% if grains['role'] == 'so-sensor' %}
 
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
+{% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 
 {% else %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 
 {% endif %}
 

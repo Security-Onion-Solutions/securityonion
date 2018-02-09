@@ -17,6 +17,8 @@ base:
     - common
     - master
     - pulledpork
+    - elasticsearch
+    - logstash
 
   'G@role:mastersensor':
     - common
