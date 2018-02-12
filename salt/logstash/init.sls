@@ -23,6 +23,8 @@
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
+{% set freq = salt['pillar.get']('master:freq', '0') %}
+{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
 {% endif %}
 
@@ -80,6 +82,59 @@ lslogdir:
     - group: 939
     - makedirs: True
 
+# Drop the ruleset file so it can be appended if needed.
+
+
+{% if freq == '0' and dstats == '0' %}
+
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
+      - FREQ=0
+      - DSTATS=0
+
+removefreq:
+  - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+
+removedstats1:
+  - name: 8007_postprocess_dns_top1m_tagging.conf
+removedstats2:
+  - name: 8008_postprocess_dns_whois_age.conf
+
+{% elif freq == '1' and dstats == '0' %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
+      - FREQ=1
+      - DSTATS=0
+
+removedstats1:
+  - name: 8007_postprocess_dns_top1m_tagging.conf
+removedstats2:
+  - name: 8008_postprocess_dns_whois_age.conf
+
+{% elif freq == '1' and dstats == '1' %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
+      - FREQ=1
+      - DSTATS=1
+
+{% elif freq == '0' and dstats == '1' %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
+      - FREQ=0
+      - DSTATS=1
+
+removefreq:
+  - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+
+{% endif %}
 
 # Add the container
 
@@ -103,6 +158,7 @@ so-logstash:
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/pipeline:/usr/share/logstash/pipeline:rw
+      - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
