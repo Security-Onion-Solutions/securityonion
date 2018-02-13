@@ -35,6 +35,14 @@ elasticsearch:
     - uid: 930
     - gid: 930
     - home: /opt/so/conf/elasticsearch
+    - createhome: False
+
+esconfdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch
+    - user: 930
+    - group: 939
+    - makedirs: True
 
 eslog4jfile:
   file.managed:
@@ -107,6 +115,7 @@ freqserver:
     - uid: 935
     - gid: 935
     - home: /opt/so/conf/freqserver
+    - createhome: False
 
 # Create the log directory
 freqlogdir:
@@ -123,6 +132,42 @@ so-freq:
     - user: freqserver
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
+    - network_mode: so-elastic-net
+
+{% endif %}
+
+{% if dstats == 1 %}
+
+# Create the group
+dstatsgroup:
+  group.present:
+    - name: domainstats
+    - gid: 936
+
+# Add user
+domainstats:
+  user.present:
+    - uid: 936
+    - gid: 936
+    - home: /opt/so/conf/domainstats
+    - createhome: False
+
+# Create the log directory
+dstatslogdir:
+  file.directory:
+    - name: /opt/so/log/domainstats
+    - user: 936
+    - group: 936
+    - makedirs: True
+
+so-domainstats:
+  docker_container.running:
+    - image: securityonionsolutions/so-domainstats
+    - hostname: domainstats
+    - name: domainstats
+    - user: domainstats
+    - binds:
+      - /opt/so/log/domainstats:/var/log/domain_stats
     - network_mode: so-elastic-net
 
 {% endif %}

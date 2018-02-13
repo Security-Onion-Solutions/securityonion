@@ -5,5 +5,6 @@ master:
   esclustername: {{ grains.host }}
   freq: 0
   domainstats: 0
-  lsheap:
-  lsaccessip:
+  lsheap: 1500m
+  lsaccessip: 127.0.0.1
+  elastalert: 1
