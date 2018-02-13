@@ -18,6 +18,7 @@
 {% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
+{% set ealert = salt['pillar.get']('master:elastalert', '1') %}
 
 vm.max_map_count:
   sysctl.present:
@@ -157,7 +158,7 @@ dstatslogdir:
   file.directory:
     - name: /opt/so/log/domainstats
     - user: 936
-    - group: 936
+    - group: 939
     - makedirs: True
 
 so-domainstats:
@@ -171,3 +172,68 @@ so-domainstats:
     - network_mode: so-elastic-net
 
 {% endif %}
+
+# Curator
+# Create the group
+curatorgroup:
+  group.present:
+    - name: curator
+    - gid: 934
+
+# Add user
+curator:
+  user.present:
+    - uid: 934
+    - gid: 934
+    - home: /opt/so/conf/curator
+    - createhome: False
+
+# Create the log directory
+curactiondir:
+  file.directory:
+    - name: /opt/so/conf/curator/action
+    - user: 934
+    - group: 939
+    - makedirs: True
+
+curlogdir:
+  file.directory:
+    - name: /opt/so/log/curator
+    - user: 934
+    - group: 939
+
+curclose:
+  file.managed:
+    - name: /opt/so/conf/curator/action/close.yml
+    - source: salt://elasticsearch/files/curator/action/close.yml
+    - user: 934
+    - group: 939
+    - template: jinja
+
+curdel:
+  file.managed:
+    - name: /opt/so/conf/curator/action/delete.yml
+    - source: salt://elasticsearch/files/curator/action/delete.yml
+    - user: 934
+    - group: 939
+    - template: jinja
+
+curconf:
+  file.managed:
+    - name: /opt/so/conf/curator/curator.yml
+    - source: salt://elasticsearch/files/curator/curator.yml
+    - user: 934
+    - group: 939
+    - template: jinja
+
+so-curator:
+  docker_container.running:
+    - image: securityonionsolutions/so-curator
+    - hostname: curator
+    - name: curator
+    - user: curator
+    - binds:
+      - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
+      - /opt/so/conf/curator/action/:/etc/curator/action:ro
+      - /opt/so/log/curator:/var/log/curator
+    - network_mode: so-elastic-net
