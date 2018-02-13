@@ -82,15 +82,11 @@ lslogdir:
     - group: 939
     - makedirs: True
 
-# Drop the ruleset file so it can be appended if needed.
-
-
 {% if freq == '0' and dstats == '0' %}
 
 /opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
-      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
       - FREQ=0
       - DSTATS=0
 
@@ -98,28 +94,26 @@ removefreq:
   - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
 
 removedstats1:
-  - name: 8007_postprocess_dns_top1m_tagging.conf
+  - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
 removedstats2:
-  - name: 8008_postprocess_dns_whois_age.conf
+  - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
 {% elif freq == '1' and dstats == '0' %}
 /opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
-      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
       - FREQ=1
       - DSTATS=0
 
 removedstats1:
-  - name: 8007_postprocess_dns_top1m_tagging.conf
+  - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
 removedstats2:
-  - name: 8008_postprocess_dns_whois_age.conf
+  - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
 {% elif freq == '1' and dstats == '1' %}
 /opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
-      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
       - FREQ=1
       - DSTATS=1
 
@@ -127,7 +121,6 @@ removedstats2:
 /opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
-      - # Do nto edit this file. Change in salt otherwise changes will be overwritten
       - FREQ=0
       - DSTATS=1
 
@@ -142,6 +135,7 @@ so-logstash:
   docker_container.running:
     - image: toosmooth/so-logstash:test2
     - hostname: logstash
+    - name: logstash
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
