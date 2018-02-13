@@ -18,7 +18,7 @@
 {% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
-{% set ealert = salt['pillar.get']('master:elastalert', '1') %}
+{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
 vm.max_map_count:
   sysctl.present:
@@ -232,8 +232,62 @@ so-curator:
     - hostname: curator
     - name: curator
     - user: curator
+    - interactive: True
+    - tty: True
     - binds:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
       - /opt/so/log/curator:/var/log/curator
     - network_mode: so-elastic-net
+
+# Elastalert
+{% if esalert == 1 %}
+
+# Create the group
+elastagroup:
+  group.present:
+    - name: curator
+    - gid: 934
+
+# Add user
+elastalert:
+  user.present:
+    - uid: 934
+    - gid: 934
+    - home: /opt/so/conf/elastalert
+    - createhome: False
+
+elastalogdir:
+  file.directory:
+    - name: /opt/so/log/elastalert
+    - user: 934
+    - group: 939
+    - makedirs: True
+
+elastarules:
+  file.directory:
+    - name: /opt/so/rules/elastalert
+    - user: 934
+    - group: 939
+    - makedirs: True
+
+elastaconf:
+  file.directory:
+    - name: /opt/so/conf/elastalert
+    - user: 934
+    - group: 939
+    - makedirs: True
+
+so-elastalert:
+  docker_container.running:
+    - image: securityonionsolutions/so-elastalert
+    - hostname: elastalert
+    - name: elastalert
+    - user: elastalert
+    - detach: True
+    - binds:
+      - /etc/elastalert/rules/:/etc/elastalert/rules/
+      - /opt/so/log/elastalert:/var/log/elastalert
+    - network_mode: so-elastic-net
+
+{% endif %}
