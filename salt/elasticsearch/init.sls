@@ -16,6 +16,8 @@
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
+{% set freq = salt['pillar.get']('master:freq', '0') %}
+{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
 vm.max_map_count:
   sysctl.present:
@@ -87,4 +89,29 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
+    - network_mode: so-elastic-net
+
+# See if Freqserver is enabled
+{% if freq == 1 }
+
+# Create the user
+fservergroup:
+  group.present:
+    - name: freqserver
+    - gid: 935
+
+# Add ES user
+freqserver:
+  user.present:
+    - uid: 935
+    - gid: 935
+    - home: /opt/so/conf/freqserver
+
+so-freq:
+  docker_container.running:
+    - image: securityonionsolutions/so-freqserver
+    - hostname: freqserver
+    - user: freqserver
+    - binds:
+      - /var/log/freq_server:/var/log/freq_server:rw
     - network_mode: so-elastic-net
