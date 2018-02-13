@@ -70,6 +70,7 @@ so-elasticsearch:
   docker_container.running:
     - image: securityonionsolutions/so-elasticsearch:latest
     - hostname: elasticsearch
+    - name: elasticsearch
     - user: elasticsearch
     - environment:
       - bootstrap.memory_lock=true
@@ -92,7 +93,7 @@ so-elasticsearch:
     - network_mode: so-elastic-net
 
 # See if Freqserver is enabled
-{% if freq == 1 }
+{% if freq == 1 %}
 
 # Create the user
 fservergroup:
@@ -107,11 +108,21 @@ freqserver:
     - gid: 935
     - home: /opt/so/conf/freqserver
 
+# Create the log directory
+freqlogdir:
+  file.directory:
+    - name: /opt/so/log/freq_server
+    - user: 935
+    - group: 935
+    - makedirs: True
+
 so-freq:
   docker_container.running:
     - image: securityonionsolutions/so-freqserver
     - hostname: freqserver
     - user: freqserver
     - binds:
-      - /var/log/freq_server:/var/log/freq_server:rw
+      - /opt/so/log/freq_server:/var/log/freq_server:rw
     - network_mode: so-elastic-net
+
+{% endif %}
