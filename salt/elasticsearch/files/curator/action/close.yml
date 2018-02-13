@@ -1,0 +1,30 @@
+---
+# Remember, leave a key empty if there is no value.  None will be a string,
+# not a Python "NoneType"
+#
+# Also remember that all examples have 'disable_action' set to True.  If you
+# want to use this action as a template, be sure to set this to False after
+# copying it.
+actions:
+  1:
+    action: close
+    description: >-
+      Close indices older than 2 days (based on index name), for logstash-
+      prefixed indices.
+    options:
+      delete_aliases: False
+      timeout_override:
+      continue_if_exception: False
+      disable_action: False
+    filters:
+    - filtertype: pattern
+      kind: prefix
+      value: logstash-
+      exclude:
+    - filtertype: age
+      source: name
+      direction: older
+      timestring: '%Y.%m.%d'
+      unit: days
+      unit_count: 2
+      exclude:
