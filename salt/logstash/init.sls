@@ -91,12 +91,16 @@ lslogdir:
       - DSTATS=0
 
 removefreq:
-  - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
 
 removedstats1:
-  - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
+
 removedstats2:
-  - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
 {% elif freq == '1' and dstats == '0' %}
 /opt/so/conf/logstash/rulesets:
@@ -106,9 +110,11 @@ removedstats2:
       - DSTATS=0
 
 removedstats1:
-  - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
 removedstats2:
-  - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
 {% elif freq == '1' and dstats == '1' %}
 /opt/so/conf/logstash/rulesets:
@@ -125,7 +131,8 @@ removedstats2:
       - DSTATS=1
 
 removefreq:
-  - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
 
 {% endif %}
 
