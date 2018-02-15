@@ -36,7 +36,7 @@ Etc/UTC:
 docker:
   service.running:
     - enable: True
-    
+
 # Set up docker network
 dockernet:
   docker_network.present:
@@ -69,6 +69,7 @@ nginxlogdir:
     - name: /opt/so/log/nginx/
     - user: 939
     - group: 939
+    - makedirs: True
 
 nginxtmp:
   file.directory:
