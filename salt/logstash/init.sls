@@ -159,7 +159,7 @@ so-logstash:
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/pipeline:/usr/share/logstash/pipeline:rw
-      - /opt/so/conf/logstash/rulesets.txt:/usr/share/logstash/rulesets.txt:ro
+      - /opt/so/conf/logstash/rulesets.txt:/usr/share/logstash/rulesets:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
