@@ -24,7 +24,7 @@
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:dstats', '0') %}
+{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 
 {% endif %}
 
@@ -82,9 +82,9 @@ lslogdir:
     - group: 939
     - makedirs: True
 
-{% if freq == '0' and dstats == '0' %}
+{% if freq == 0 and dstats == 0 %}
 
-/opt/so/conf/logstash/rulesets.txt:
+/opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
       - FREQ=0
@@ -102,8 +102,8 @@ removedstats2:
   file.absent:
     - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
-{% elif freq == '1' and dstats == '0' %}
-/opt/so/conf/logstash/rulesets.txt:
+{% elif freq == 1 and dstats == 0 %}
+/opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
       - FREQ=1
@@ -116,15 +116,15 @@ removedstats2:
   file.absent:
     - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
 
-{% elif freq == '1' and dstats == '1' %}
-/opt/so/conf/logstash/rulesets.txt:
+{% elif freq == 1 and dstats == 1 %}
+/opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
       - FREQ=1
       - DSTATS=1
 
-{% elif freq == '0' and dstats == '1' %}
-/opt/so/conf/logstash/rulesets.txt:
+{% elif freq == 0 and dstats == 1 %}
+/opt/so/conf/logstash/rulesets:
   file.managed:
     - contents:
       - FREQ=0
@@ -159,7 +159,7 @@ so-logstash:
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/pipeline:/usr/share/logstash/pipeline:rw
-      - /opt/so/conf/logstash/rulesets.txt:/usr/share/logstash/rulesets:ro
+      - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
