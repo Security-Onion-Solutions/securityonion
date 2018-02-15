@@ -32,6 +32,11 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+# Make sure Docker is running!
+docker:
+  service.running:
+    - enable: True
+    
 # Set up docker network
 dockernet:
   docker_network.present:
