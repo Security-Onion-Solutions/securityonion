@@ -147,7 +147,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2
-    yum-config-manager -y --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
     if [ $INSTALLTYPE != 'SENSORONLY' ]; then
       yum -y install salt-master
