@@ -15,7 +15,9 @@ sensorpkgs:
     - skip_suggestions: True
     - pkgs:
       - docker-ce
+      {% if grains.os = Ubuntu %}
       - python-docker
+      {% endif %}
 
 # Always keep these packages up to date
 
