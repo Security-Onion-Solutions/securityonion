@@ -118,7 +118,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 # End Global Variable Section
 
   # Copy over the SSH key
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'BACKENDNODE' ]; then
     # Generate SSH Key
     cat /dev/zero | ssh-keygen -t rsa -q -N ""
 
@@ -137,7 +137,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   # Create bond interface
-  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     echo "Setting up Bond"
   fi
 
@@ -172,7 +172,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     apt-get update
     apt-get -y install salt-minion
 
-    if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+    if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
       apt-get -y install salt-master
     fi
   fi
@@ -181,7 +181,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   mkdir -p /opt/so/conf
 
   # Create the salt directories if this isn't a stadnalone sensor
-  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     mkdir -p /opt/so/saltstack/salt
     mkdir -p /opt/so/saltstack/pillar
     cp -Rv pillar/* /opt/so/saltstack/pillar/
