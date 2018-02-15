@@ -15,7 +15,7 @@ sensorpkgs:
     - skip_suggestions: True
     - pkgs:
       - docker-ce
-      {% if grains.os = Ubuntu %}
+      {% if grains.os == Ubuntu %}
       - python-docker
       {% endif %}
 
