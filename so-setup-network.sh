@@ -97,7 +97,10 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
     # Get the code if it isn't ET Open
-    if
+    if [ $RULESETUP != 'ETOPEN' ]; then
+      # Get the code
+      OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
+      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3))
     fi
 
 
@@ -272,7 +275,11 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     fi
     echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    if [ $INSTALLTYPE == 'BACKENDNODE' ]; then
+      echo "  elastalert: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    else
+      echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    fi
 
     salt-call state.highstate
     salt-key -qya $HOSTNAME
