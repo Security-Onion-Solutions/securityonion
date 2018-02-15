@@ -246,35 +246,35 @@ so-curator:
 # Create the group
 elastagroup:
   group.present:
-    - name: curator
-    - gid: 934
+    - name: elastalert
+    - gid: 933
 
 # Add user
 elastalert:
   user.present:
-    - uid: 934
-    - gid: 934
+    - uid: 933
+    - gid: 933
     - home: /opt/so/conf/elastalert
     - createhome: False
 
 elastalogdir:
   file.directory:
     - name: /opt/so/log/elastalert
-    - user: 934
+    - user: 933
     - group: 939
     - makedirs: True
 
 elastarules:
   file.directory:
     - name: /opt/so/rules/elastalert
-    - user: 934
+    - user: 933
     - group: 939
     - makedirs: True
 
 elastaconf:
   file.directory:
     - name: /opt/so/conf/elastalert
-    - user: 934
+    - user: 933
     - group: 939
     - makedirs: True
 
