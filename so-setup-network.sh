@@ -100,7 +100,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     if [ $RULESETUP != 'ETOPEN' ]; then
       # Get the code
       OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
-      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3))
+      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
     fi
 
 
