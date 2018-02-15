@@ -35,7 +35,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   "EVALMODE" "Evaluate all the things" ON \
   "SENSORONLY" "Sensor join existing grid" OFF \
   "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
-  "MASTERSENSOR" "Start a new grid with a sensor" OFF 3>&1 1>&2 2>&3 )
+  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
 
   # Get list of NICS if it isn't master only
   if [ $INSTALLTYPE != 'MASTERONLY' ]; then
@@ -96,12 +96,23 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
     "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
+    # Get the code if it isn't ET Open
+    if
+    fi
+
 
   fi
 
   #########################
   ## Do all the things!! ##
   #########################
+
+# Global Variable Section
+
+  # Find out the total megarams
+  TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
+
+# End Global Variable Section
 
   # Copy over the SSH key
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
@@ -213,7 +224,22 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   # Do that same thing on all the others but drop em into the right place
-  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+    # Do some math
+    # If total memory is less than 8GB, we keep the default of 600m for heap size
+    if [ $TOTAL_MEM -lt 8000 ] ; then
+        ES_HEAP_SIZE="600m"
+        LS_HEAP_SIZE="1g"
+    elif [ $TOTAL_MEM -ge 124000 ]; then
+        # Set a max of 31GB for heap size
+        # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+        ES_HEAP_SIZE="31000m"
+        LS_HEAP_SIZE="$ES_HEAP_SIZE"
+    else
+        # Set heap size to 25% of available memory
+        ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
+        LS_HEAP_SIZE="$ES_HEAP_SIZE"
+    fi
 
     # Create the grains file for the Master
     touch /etc/salt/grains
@@ -233,6 +259,20 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Create the pillar
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "master:" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    else
+      echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    fi
+    echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
     salt-call state.highstate
     salt-key -qya $HOSTNAME
