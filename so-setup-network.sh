@@ -201,7 +201,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Create the grains file for the sensor
     touch /etc/salt/grains
-    echo "role: so-sensor" >> /etc/salt/grains
+    echo "role: so-sensor" > /etc/salt/grains
 
     # Start the salt agent
     service salt-minion start
@@ -246,7 +246,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Create the grains file for the Master
     touch /etc/salt/grains
-    echo "role: so-master" >> /etc/salt/grains
+    echo "role: so-master" > /etc/salt/grains
 
     # Set up the minion to talk to itself
     echo "master: $HOSTNAME" > /etc/salt/minion
@@ -262,7 +262,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Create the pillar
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "master:" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
