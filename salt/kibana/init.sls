@@ -21,6 +21,19 @@ kibanaconfdir:
     - group: 939
     - makedirs: True
 
+kibanalogdir:
+  file.directory:
+    - name: /opt/so/log/kibana
+    - user: 932
+    - group: 939
+    - makedirs: True
+
+kibanalogdir:
+  file.directory:
+    - name: /opt/so/conf/kibana/customdashboards
+    - user: 932
+    - group: 939
+    - makedirs: True
 
 # Start the kibana docker
 so-kibana:
@@ -28,12 +41,11 @@ so-kibana:
     - image: toosmooth/so-kibana:test2
     - hostname: kibana
     - user: kibana
+    - environment:
+      - KIBANA_DEFAULTAPPID=$KIBANA_DEFAULTAPPID
     - binds:
-      - /opt/so:/opt/so:rw
-      - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /opt/so/log/nginx/:/var/log/nginx:rw
-      - /opt/so/tmp/nginx/:/var/lib/nginx:rw
-      - /opt/so/tmp/nginx/:/run:rw
+      - /opt/so/conf/kibana/:/usr/share/kibana/config/:ro
+      - /opt/so/log/kibana:/var/log/kibana:rw
     - network_mode: so-elastic-net
     - port_bindings:
       - 127.0.01:5601:5601
