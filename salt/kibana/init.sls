@@ -55,4 +55,4 @@ so-kibana:
       - /opt/so/conf/kibana/custdashboards/:/usr/share/kibana/custdashboards/:ro
     - network_mode: so-elastic-net
     - port_bindings:
-      - 127.0.01:5601:5601
+      - 127.0.0.1:5601:5601
