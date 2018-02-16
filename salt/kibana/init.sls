@@ -46,7 +46,7 @@ so-kibana:
     - hostname: kibana
     - user: kibana
     - environment:
-      - KIBANA_DEFAULTAPPID=$KIBANA_DEFAULTAPPID
+      - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
       - ELASTICSEARCH_HOST={{ grains.host }}
       - ELASTICSEARCH_PORT=9200
     - binds:
