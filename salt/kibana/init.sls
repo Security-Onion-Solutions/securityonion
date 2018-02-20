@@ -47,12 +47,13 @@ so-kibana:
     - user: kibana
     - environment:
       - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
-      - ELASTICSEARCH_HOST={{ grains.host }}
+      - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
     - binds:
       - /opt/so/conf/kibana/:/usr/share/kibana/config/:ro
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/custdashboards/:/usr/share/kibana/custdashboards/:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - network_mode: so-elastic-net
     - port_bindings:
       - 127.0.0.1:5601:5601

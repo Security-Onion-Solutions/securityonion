@@ -164,4 +164,5 @@ so-logstash:
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
       - /opt/so/log/logstash:/var/log/logstash:rw
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - network_mode: so-elastic-net
