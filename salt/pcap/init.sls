@@ -18,11 +18,11 @@
 # Create the logstash group
 stenographergroup:
   group.present:
-    - name: stenographer
+    - name: steno
     - gid: 941
 
 # Add the logstash user for the jog4j settings
-stenographer:
+steno:
   user.present:
     - uid: 941
     - gid: 941
