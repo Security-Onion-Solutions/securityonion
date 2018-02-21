@@ -15,9 +15,11 @@ sensorpkgs:
     - skip_suggestions: True
     - pkgs:
       - docker-ce
-      - python-docker
+      {% if grains.os == 'Centos' %}
+      - python-docker-py
+      {% endif %}
       {% if grains.os == 'Ubuntu' %}
-      # Put stuff here for Ubuntu specific naming etc
+      - python-dockerng
       {% endif %}
 
 # Always keep these packages up to date
