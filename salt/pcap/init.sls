@@ -61,7 +61,6 @@ so-steno:
   docker_container.running:
     - image: toosmooth/so-steno:test2
     - network_mode: host
-    - user: 941
     - priviledged: true
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
