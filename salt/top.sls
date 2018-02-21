@@ -2,11 +2,7 @@ base:
   'G@role:sensor':
     - common
     - pcap
-    - logstash
-    - nids
-    - syslog-ng
-    - bro
-
+    
   'G@role:eval':
     - common
     - sensor

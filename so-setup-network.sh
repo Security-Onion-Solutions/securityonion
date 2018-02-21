@@ -139,6 +139,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   # Create bond interface
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     echo "Setting up Bond"
+    alias bond0 bonding
+    mode=0
   fi
 
   # Install Updates and the Salt Package

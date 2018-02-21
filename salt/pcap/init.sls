@@ -15,13 +15,24 @@
 
 # PCAP Section
 
-file.directory:
-  - name: /opt/so/conf/steno
+stenoconfdir:
+  file.directory:
+    - name: /opt/so/conf/steno
+    - user: 941
+    - group: 939
+    - makedirs: True
 
-file.directory:
-  - name: /nsm/pcap
+pcapdir:
+  file.directory:
+    - name: /nsm/pcap
+
+pcapindexdir:
+  file.directory:
+    - name: /nsm/pcapindex
 
 so-steno:
   dockerng.running:
     - image: pillaritem/so-steno
     - network_mode: host
+    - /opt/so/conf/stenographer/certs:/etc/stenographer/certs:rw
+    - /opt/so/conf/stenographer/config:/etc/stenographer/config:ro

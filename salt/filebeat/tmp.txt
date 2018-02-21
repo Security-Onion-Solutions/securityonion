@@ -1,0 +1,58 @@
+#!/bin/bash
+
+DIR=/etc/filebeat
+YML=$DIR/filebeat.yml
+
+mkdir -p $DIR
+
+cat << EOF > $YML
+filebeat.prospectors:
+
+EOF
+
+# For each Bro log type, watch current and import
+grep "source(s_bro_" /etc/syslog-ng/syslog-ng.conf |cut -d\( -f2 | cut -d\) -f1 | sed 's|s_bro_||g' |sort -u | while read LOG; do
+cat << EOF
+- type: log
+  paths:
+    - /nsm/bro/logs/current/$LOG*.log
+  fields:
+    type: bro_$LOG
+  fields_under_root: true
+  tags: ["bro"]
+  clean_removed: false
+  close_removed: false
+
+- type: log
+  paths:
+    - /nsm/import/bro/$LOG*.log
+  fields:
+    type: bro_$LOG
+  fields_under_root: true
+  tags: ["bro", "import"]
+  clean_removed: false
+  close_removed: false
+
+EOF
+     done >> $YML
+
+# Change tunnels.log to tunnel.log
+sed -i 's|tunnels\*.log|tunnel*.log|g' $YML
+
+# Output to logstash
+cat << EOF >> $YML
+output.logstash:
+  enabled: true
+  hosts: ["logstash:5044"]
+
+EOF
+
+# syslog-ng doesn't need to monitor Bro logs anymore
+grep -v "source(s_bro_" /etc/syslog-ng/syslog-ng.conf > /etc/syslog-ng/syslog-ng.conf.without.bro
+mv /etc/syslog-ng/syslog-ng.conf /etc/syslog-ng/syslog-ng.conf.with.bro
+mv /etc/syslog-ng/syslog-ng.conf.without.bro /etc/syslog-ng/syslog-ng.conf
+service syslog-ng restart
+
+# start filebeat and allow it to connect to logstash
+docker run --detach --name so-filebeat  -v /etc/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro -v /nsm/bro:/nsm/bro:ro  docker.elastic.co/beats/filebeat:6.2.1
+docker network connect --alias filebeat so-elastic-net so-filebeat
