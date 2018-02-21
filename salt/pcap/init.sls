@@ -22,17 +22,36 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
+stenoconf:
+  file.managed:
+    - name: /opt/so/conf/steno/config
+    - source: salt://pcap/files/config
+    - user: 941
+    - group: 939
+    - template: jinja
+
 pcapdir:
   file.directory:
     - name: /nsm/pcap
+    - user: 941
+    - group: 939
+    - makedirs: True
 
 pcapindexdir:
   file.directory:
     - name: /nsm/pcapindex
+    - user: 941
+    - group: 939
+    - makedirs: True
 
 so-steno:
   dockerng.running:
-    - image: pillaritem/so-steno
+    - image: toosmooth/so-steno:test2
     - network_mode: host
-    - /opt/so/conf/stenographer/certs:/etc/stenographer/certs:rw
-    - /opt/so/conf/stenographer/config:/etc/stenographer/config:ro
+    - user: 941
+    - priviledged: true
+    - binds:
+      - /opt/so/conf/stenographer/certs:/etc/stenographer/certs:rw
+      - /opt/so/conf/stenographer/config:/etc/stenographer/config:ro
+      - /nsm/pcap:/nsm/pcap:rw
+      - /nsm/pcapindex:/nsm/pcapindex:rw
