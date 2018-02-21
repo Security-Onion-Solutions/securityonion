@@ -18,11 +18,11 @@
 # Create the logstash group
 stenographergroup:
   group.present:
-    - name: steno
+    - name: stenographer
     - gid: 941
 
 # Add the logstash user for the jog4j settings
-steno:
+stenographer:
   user.present:
     - uid: 941
     - gid: 941
@@ -64,6 +64,6 @@ so-steno:
     - priviledged: true
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
-      - /opt/so/conf/steno/config:/etc/stenographer/config:ro
+      - /opt/so/conf/steno/config:/etc/stenographer/config:rw
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/pcapindex:/nsm/pcapindex:rw
