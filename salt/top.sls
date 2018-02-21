@@ -1,8 +1,8 @@
 base:
-  'G@role:sensor':
+  'G@role:so-sensor':
     - common
     - pcap
-    
+
   'G@role:eval':
     - common
     - sensor
