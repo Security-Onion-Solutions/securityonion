@@ -15,6 +15,19 @@
 
 # PCAP Section
 
+# Create the logstash group
+stenographergroup:
+  group.present:
+    - name: stenographer
+    - gid: 941
+
+# Add the logstash user for the jog4j settings
+stenographer:
+  user.present:
+    - uid: 941
+    - gid: 941
+    - home: /opt/so/conf/steno
+
 stenoconfdir:
   file.directory:
     - name: /opt/so/conf/steno
@@ -45,7 +58,7 @@ pcapindexdir:
     - makedirs: True
 
 so-steno:
-  dockerng.running:
+  docker_container.running:
     - image: toosmooth/so-steno:test2
     - network_mode: host
     - user: 941
