@@ -139,8 +139,14 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   # Create bond interface
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     echo "Setting up Bond"
-    alias bond0 bonding
-    mode=0
+    if [ $OS == 'centos' ]; then
+      alias bond0 bonding
+      mode=0
+      # Create Bond files
+
+    else
+      echo bonding >> /etc/modules
+      modprobe bonding
   fi
 
   # Install Updates and the Salt Package
@@ -206,7 +212,8 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Create the grains file for the sensor
     touch /etc/salt/grains
     echo "role: so-sensor" > /etc/salt/grains
-
+    # Master server
+    echo "master: $MASTER" > /etc/salt/minion
     # Start the salt agent
     service salt-minion start
 
@@ -223,7 +230,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
 
     # Accept the key on the master
-    ssh socore@$MASTERSRV 'sudo salt-key -qa $HOSTNAME'
+    ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
     # Grab the ssl key for lumberjack from the master
     scp socore@$MASTERSRV:/some/path /some/path
 
@@ -263,6 +270,9 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Start salt master and minion
     service salt-master restart
     service salt-minion restart
+
+    # Sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
 
     # Create the pillar
     touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
