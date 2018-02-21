@@ -51,7 +51,7 @@ so-steno:
     - user: 941
     - priviledged: true
     - binds:
-      - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
-      - /opt/so/conf/steno/config:/etc/stenographer/config:ro
+      - /opt/so/conf/steno/certs:/etc/steno/certs:rw
+      - /opt/so/conf/steno/config:/etc/steno/config:ro
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/pcapindex:/nsm/pcapindex:rw
