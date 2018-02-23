@@ -223,7 +223,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
     # Create the pillar file for the sensor
     touch /tmp/$HOSTNAME.sls
-    echo "sensor:" > /tmp/$HOSTNAME.sls
+    echo "sensors:" > /tmp/$HOSTNAME.sls
     echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
     echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
 
