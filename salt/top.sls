@@ -2,6 +2,7 @@ base:
   'G@role:so-sensor':
     - common
     - pcap
+    - suricata
 
   'G@role:eval':
     - common

@@ -27,6 +27,12 @@ suriruledir:
     - group: 940
     - makedirs: True
 
+surilogdir:
+  file.directory:
+    - name: /opt/so/log/suricata
+    - user: 940
+    - group: 939
+
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules
@@ -49,5 +55,5 @@ so-suricata:
     - priviledged: True
     - binds:
       - /opt/so/suricata/conf/rules:/usr/local/etc/suricata/rules:ro
-      - /opt/so/rules/nids:/opt/so/rules/nids:rw
+      - /opt/so/log/suricata:/usr/local/var/log/suricata/:rw
     - network_mode: host
