@@ -14,33 +14,37 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Suricata
-ppdir:
+suridir:
   file.directory:
-    - name: /opt/so/pulledpork
-    - user: 939
-    - group: 939
+    - name: /opt/so/conf/suricata
+    - user: 940
+    - group: 940
 
-rulesdir:
+suriruledir:
   file.directory:
-    - name: /opt/so/rules/nids
-    - user: 939
-    - group: 939
+    - name: /opt/so/conf/suricata/rules
+    - user: 940
+    - group: 940
     - makedirs: True
 
-ruleslink:
-  file.symlink:
-    - name: /opt/so/saltstack/salt/pulledpork/rules
-    - target: /opt/so/rules/nids
+surirulesync:
+  file.recurse:
+    - name: /opt/so
 
-toosmooth/so-pulledpork:test2:
-  docker_image.present
+suriconfigsync:
+  file.recurse:
+    - name: /opt/so/conf/suricata
+    - source: salt://pulledpork/rules
+    - user: 940
+    - group: 940
 
-so-pulledpork:
+so-suricata:
   docker_container.running:
-    - image: toosmooth/so-pulledpork:test2
-    - hostname: so-pulledpork
-    - user: socore
+    - image: toosmooth/so-suricata:test2
+    - hostname: so-suricata
+    - user: suricata
+    - priviledged: True
     - binds:
-      - /opt/so/pulledpork/etc:/opt/pulledpork/etc:ro
+      - /opt/so/suricata/conf/rules:/usr/local/etc/suricata/rules:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
-    - network_mode: so-elastic-net
+    - network_mode: host
