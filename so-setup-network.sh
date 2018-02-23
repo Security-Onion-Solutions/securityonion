@@ -147,6 +147,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     else
       echo bonding >> /etc/modules
       modprobe bonding
+    fi
   fi
 
   # Install Updates and the Salt Package
