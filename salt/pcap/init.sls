@@ -39,9 +39,16 @@ stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
     - source: salt://pcap/files/config
-    - user: 941
-    - group: 939
+    - user: root
+    - group: root
+    - mode: 644
     - template: jinja
+
+stenoca:
+  file.directory:
+    - name: /opt/so/conf/steno/certs
+    - user: root
+    - group: root
 
 pcapdir:
   file.directory:
@@ -62,6 +69,7 @@ so-steno:
     - image: toosmooth/so-steno:test2
     - network_mode: host
     - priviledged: true
+    - user: 941
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
