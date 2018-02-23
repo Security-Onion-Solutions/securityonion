@@ -15,9 +15,8 @@ sensorpkgs:
     - skip_suggestions: False
     - pkgs:
       - docker-ce
-      - python-dockerng
       - python-docker
-      
+
 # Always keep these packages up to date
 
 alwaysupdated:
