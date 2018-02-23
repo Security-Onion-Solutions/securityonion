@@ -29,7 +29,10 @@ suriruledir:
 
 surirulesync:
   file.recurse:
-    - name: /opt/so
+    - name: /opt/so/conf/suricata/rules
+    - source: salt://pulledpork/rules
+    - user: 940
+    - group: 940
 
 suriconfigsync:
   file.recurse:
