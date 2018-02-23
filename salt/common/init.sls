@@ -12,14 +12,15 @@ salttmp:
 
 sensorpkgs:
   pkg.installed:
-    - skip_suggestions: True
+    - skip_suggestions: False
     - pkgs:
       - docker-ce
       {% if grains.os == 'Centos' %}
-      - python-docker-py
+      - python-docker
       {% endif %}
       {% if grains.os == 'Ubuntu' %}
       - python-dockerng
+      - python-docker
       {% endif %}
 
 # Always keep these packages up to date
