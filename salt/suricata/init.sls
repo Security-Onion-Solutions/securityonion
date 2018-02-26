@@ -50,8 +50,6 @@ suriconfigsync:
 so-suricata:
   docker_container.running:
     - image: toosmooth/so-suricata:test2
-    - hostname: so-suricata
-    - user: suricata
     - priviledged: True
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
