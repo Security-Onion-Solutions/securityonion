@@ -36,14 +36,14 @@ surilogdir:
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules
-    - source: salt://pulledpork/rules
+    - source: salt://rules/nids
     - user: 940
     - group: 940
 
 suriconfigsync:
   file.recurse:
-    - name: /opt/so/conf/suricata
-    - source: salt://pulledpork/rules
+    - name: /opt/so/conf/suricata/suricata.yaml
+    - source: salt://suricata/files/suricata.yaml
     - user: 940
     - group: 940
 
