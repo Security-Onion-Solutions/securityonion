@@ -41,7 +41,7 @@ surirulesync:
     - group: 940
 
 suriconfigsync:
-  file.recurse:
+  file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
     - source: salt://suricata/files/suricata.yaml
     - user: 940
