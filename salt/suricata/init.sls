@@ -54,6 +54,7 @@ so-suricata:
     - user: suricata
     - priviledged: True
     - binds:
-      - /opt/so/suricata/conf/rules:/usr/local/etc/suricata/rules:ro
-      - /opt/so/log/suricata:/usr/local/var/log/suricata/:rw
+      - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
+      - /opt/so/conf/suricata/rules:/usr/local/etc/suricata/rules:ro
+      - /opt/so/log/suricata/:/usr/local/var/log/suricata/:rw
     - network_mode: host
