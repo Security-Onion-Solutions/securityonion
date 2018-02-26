@@ -50,7 +50,7 @@ suriconfigsync:
 so-suricata:
   docker_container.running:
     - image: toosmooth/so-suricata:test2
-    - priviledged: True
+    - privileged: True
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/rules:/usr/local/etc/suricata/rules:ro
