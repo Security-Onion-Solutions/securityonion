@@ -35,8 +35,8 @@ surilogdir:
 
 surirulesync:
   file.recurse:
-    - name: /opt/so/conf/suricata/rules
-    - source: salt://rules/nids
+    - name: /opt/so/conf/suricata/rules/
+    - source: salt://suricata/rules/
     - user: 940
     - group: 940
 
