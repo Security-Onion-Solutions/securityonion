@@ -69,7 +69,7 @@ so-suricata:
     - image: toosmooth/so-suricata:test2
     - privileged: True
     - environment:
-      - interface={{ interface }}
+      - INTERFACE={{ interface }}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/rules:/usr/local/etc/suricata/rules:ro
