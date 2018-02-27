@@ -13,7 +13,24 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+
 # Suricata
+
+# Add Suricata Group
+suricatagroup:
+  group.present:
+    - name: suricata
+    - gid: 940
+
+# Add ES user
+suricata:
+  user.present:
+    - uid: 940
+    - gid: 940
+    - home: /opt/so/conf/suricata
+    - createhome: False
+
 suridir:
   file.directory:
     - name: /opt/so/conf/suricata
@@ -51,6 +68,8 @@ so-suricata:
   docker_container.running:
     - image: toosmooth/so-suricata:test2
     - privileged: True
+    - environment:
+      - interface={{ interface }}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/rules:/usr/local/etc/suricata/rules:ro
