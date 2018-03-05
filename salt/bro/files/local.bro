@@ -90,7 +90,8 @@
 # @load policy/protocols/ssl/heartbleed
 
 # Uncomment the following line to enable logging of connection VLANs. Enabling
-# this adds two VLAN fields to the conn.log file.
+# this adds two VLAN fields to the conn.log file. This may not work properly
+# since we use AF_PACKET and it strips VLAN tags.
 # @load policy/protocols/conn/vlan-logging
 
 # Uncomment the following line to enable logging of link-layer addresses. Enabling
@@ -99,10 +100,17 @@
 
 # Uncomment the following line to enable the SMB analyzer.  The analyzer
 # is currently considered a preview and therefore not loaded by default.
-# @load policy/protocols/smb
+@load policy/protocols/smb
 
-# Security Onion default scripts
-@load securityonion
+######################################
+##  Security Onion Scripts Section  ##
+######################################
+
+# Add the interface to the log event
+@load securityonion/add-interface-to-logs.bro
+
+# Add Sensor Name to the conn.log
+@load securityonion/conn-add-sensorname.bro
 
 # File Extraction
 @load file-extraction
@@ -110,9 +118,21 @@
 # Intel from Mandiant APT1 Report
 #@load apt1
 
-# You can load your own intel into:
-# /opt/bro/share/bro/intel/
-@load intel
-
 # ShellShock - detects successful exploitation of Bash vulnerability CVE-2014-6271
 @load shellshock
+
+#############################
+##  End SO Scrips Section  ##
+#############################
+
+#############################
+##  Custom Script Section  ##
+#############################
+
+# You can load your own intel into:
+# /opt/so/saltstack/bro/policy/intel/ on the master
+@load intel
+
+# Load a custom Bro policy
+# /opt/so/saltstack/bro/policy/custom/ on the master
+#@load custom/somebropolicy.bro

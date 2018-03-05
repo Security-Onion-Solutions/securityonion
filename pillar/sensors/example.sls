@@ -2,5 +2,6 @@
 sensor:
   interface: CHANGEME
   lbprocs: CHANGEME
-  lsheap:
-  lsaccessip:
+  brobpf:
+  pcapbpf:
+  nidsbpf:
