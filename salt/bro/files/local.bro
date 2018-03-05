@@ -113,13 +113,13 @@
 @load securityonion/conn-add-sensorname.bro
 
 # File Extraction
-@load file-extraction
+@load securityonion/file-extraction
 
 # Intel from Mandiant APT1 Report
-#@load apt1
+#@load securityonion/apt1
 
 # ShellShock - detects successful exploitation of Bash vulnerability CVE-2014-6271
-@load shellshock
+@load securityonion/shellshock
 
 #############################
 ##  End SO Scrips Section  ##
