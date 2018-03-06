@@ -61,7 +61,6 @@ nodecfgsync:
 so-bro:
   docker_container.running:
     - image: toosmooth/so-bro:test2
-    - user: bro
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
