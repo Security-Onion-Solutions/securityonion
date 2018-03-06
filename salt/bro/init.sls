@@ -59,7 +59,7 @@ nodecfgsync:
 # Add the container
 
 so-bro:
-  dockerng.running:
+  docker_container.running:
     - image: toosmooth/so-bro:test2
     - user: bro
     - priviledged: true
