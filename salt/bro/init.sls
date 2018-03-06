@@ -40,12 +40,12 @@ nodecfgsync:
     - user: 937
     - group: 939
     - template: jinja
-    
+
 # Add the container
 
 #so-bro:
 #  dockerng.running:
-#    - image: {{ dockerrepo }}/so-bro:{{ broversion }}
+#    - image: dockerrepo/so-bro:
 #    - hostname: bro
 #    - user: bro
 #    - priviledged: true
