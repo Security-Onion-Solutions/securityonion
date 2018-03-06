@@ -119,7 +119,7 @@
 #@load securityonion/apt1
 
 # ShellShock - detects successful exploitation of Bash vulnerability CVE-2014-6271
-@load securityonion/shellshock
+#@load securityonion/shellshock
 
 #############################
 ##  End SO Scripts Section  ##
