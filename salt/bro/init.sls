@@ -36,7 +36,7 @@ localbrosync:
 nodecfgsync:
   file.managed:
     - name: /opt/so/conf/bro/node.cfg
-    - source: salt://bro/files/node.config
+    - source: salt://bro/files/node.cfg
     - user: 937
     - group: 939
     - template: jinja
