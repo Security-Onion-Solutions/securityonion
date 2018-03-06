@@ -6,5 +6,5 @@ redef record Conn::Info += {
 
 event connection_state_remove(c: connection)
 	{
-	c$conn$sensorname = SecurityOnion::sensorname;
+	c$conn$sensorname = sensorname;
 	}
