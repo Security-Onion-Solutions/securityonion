@@ -62,7 +62,7 @@ so-bro:
   docker_container.running:
     - image: toosmooth/so-bro:test2
     - user: bro
-    - cap_add: NET_RAW,NET_ADMIN=eip
+    - cap_add: NET_RAW,NET_ADMIN
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
       - /nsm/bro/spool:/nsm/bro/spool:rw
