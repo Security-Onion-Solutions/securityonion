@@ -60,7 +60,7 @@ nodecfgsync:
 
 so-bro:
   dockerng.running:
-    - image: dockerrepo/so-bro:
+    - image: toosmooth/so-bro:test2
     - hostname: bro
     - user: bro
     - priviledged: true
