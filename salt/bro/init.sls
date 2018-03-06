@@ -14,6 +14,21 @@ bropolicydir:
     - group: 939
     - makedirs: True
 
+# Bro Log Directory
+brologdir:
+  file.directory:
+    - name: /nsm/bro/logs
+    - user: 937
+    - group: 939
+    - makedirs: True
+
+# Bro Spool Directory
+brospooldir:
+  file.directory:
+    - name: /nsm/bro/spool
+    - user: 937
+    - makedirs: true
+
 # Sync the policies
 bropolicysync:
   file.recurse:
@@ -43,16 +58,16 @@ nodecfgsync:
 
 # Add the container
 
-#so-bro:
-#  dockerng.running:
-#    - image: dockerrepo/so-bro:
-#    - hostname: bro
-#    - user: bro
-#    - priviledged: true
-#    - binds:
-#      - /nsm/bro/logs:/nsm/bro/logs:rw
-#      - /nsm/bro/spool:/nsm/bro/spool:rw
-#      - /opt/so/conf/bro/etc:/opt/bro/etc:ro
-#      - /opt/so/conf/bro/etc/node.cfg:/opt/bro/etc/node.cfg:ro
-#      - /opt/so/conf/share/bro:/opt/bro/share/bro:ro
-#    - network_mode: host
+so-bro:
+  dockerng.running:
+    - image: dockerrepo/so-bro:
+    - hostname: bro
+    - user: bro
+    - priviledged: true
+    - binds:
+      - /nsm/bro/logs:/nsm/bro/logs:rw
+      - /nsm/bro/spool:/nsm/bro/spool:rw
+      - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
+      - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
+      - /opt/so/conf/bro/policy:/opt/bro/share/bro/policy:ro
+    - network_mode: host
