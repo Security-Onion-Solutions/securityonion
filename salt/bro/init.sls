@@ -68,5 +68,7 @@ so-bro:
       - /nsm/bro/spool:/nsm/bro/spool:rw
       - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
       - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
-      - /opt/so/conf/bro/policy:/opt/bro/share/bro/policy:ro
+      - /opt/so/conf/bro/policy/securityonion:/opt/bro/share/bro/policy/securityonion:ro
+      - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
+      - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
     - network_mode: host
