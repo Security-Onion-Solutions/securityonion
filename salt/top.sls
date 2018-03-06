@@ -3,6 +3,7 @@ base:
     - common
     - pcap
     - suricata
+    - bro
 
   'G@role:eval':
     - common

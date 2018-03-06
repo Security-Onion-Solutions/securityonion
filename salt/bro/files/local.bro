@@ -122,7 +122,7 @@
 @load securityonion/shellshock
 
 #############################
-##  End SO Scrips Section  ##
+##  End SO Scripts Section  ##
 #############################
 
 #############################
