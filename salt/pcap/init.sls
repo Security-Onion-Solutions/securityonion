@@ -68,7 +68,7 @@ so-steno:
   docker_container.running:
     - image: toosmooth/so-steno:test2
     - network_mode: host
-    - priviledged: true
+    - privileged: True
     - port_bindings:
       - 127.0.0.1:1234:1234
     - binds:
