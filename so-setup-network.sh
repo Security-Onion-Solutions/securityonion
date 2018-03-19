@@ -19,7 +19,7 @@
 HOSTNAME=$(cat /etc/hostname)
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-
+CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 # End Global Variable Section
 
@@ -129,15 +129,27 @@ master_pillar () {
   fi
   echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  if [ $INSTALLTYPE == 'BACKENDNODE' ]; then
-    echo "  elastalert: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  else
-    echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  fi
+  echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   salt-call state.highstate
   salt-key -qya $HOSTNAME
   salt-call state.highstate
+
+node_pillar () {
+  # Create the node pillar
+  touch /tmp/$HOSTNAME.sls
+  echo "node:" > /tmp/$HOSTNAME.sls
+  echo "  esaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
+  echo "  esheap: $ES_HEAP_SIZE" >> /tmp/$HOSTNAME.sls
+  echo "  esclustername: {{ grains.host }}" >> /tmp/$HOSTNAME.sls
+  echo "  lsheap: $LS_HEAP_SIZE" >> /tmp/$HOSTNAME.sls
+  echo "  lsaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
+  echo "  ls_pipeline_workers: $CPUCORES" >> /tmp/$HOSTNAME.sls
+  echo "  ls_pipeline_batch_size: 125" >> /tmp/$HOSTNAME.sls
+  echo "  ls_input_threads: 1" >> /tmp/$HOSTNAME.sls
+  echo "  ls_batch_count: 125" >> /tmp/$HOSTNAME.sls
+}
 
 
 }
@@ -187,6 +199,11 @@ whiptail_nids () {
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
   "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+}
+
+whiptail_oinkcode () {
+  OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
 }
 
 whiptail_management_server () {
@@ -272,8 +289,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Get the code if it isn't ET Open
     if [ $RULESETUP != 'ETOPEN' ]; then
       # Get the code
-      OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
-      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
+      whiptail_oinkcode
     fi
 
 
