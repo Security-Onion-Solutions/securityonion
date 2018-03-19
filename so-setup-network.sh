@@ -87,6 +87,10 @@ create_bond () {
   fi
 }
 
+create_socore_password () {
+  # Enter a password for socore
+}
+
 detect_os () {
   # Detect Base OS
   if [ -f /etc/redhat-release ]; then
@@ -112,6 +116,10 @@ got_root () {
           echo "This script must be run using sudo!"
           exit 1
   fi
+}
+
+install_master () {
+  yum -y install salt-master
 }
 master_pillar () {
   # Create the master pillar
@@ -191,7 +199,7 @@ whiptail_install_type () {
   "SENSORONLY" "Sensor join existing grid" OFF \
   "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
   "HEAVY" "Create a Heavy sensor. (Bad Idea)" OFF \
-  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
+  "STORAGENODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
 
 }
 
@@ -234,6 +242,9 @@ whiptail_sensor_config () {
 
 # Check for prerequisites
 got_root
+detect_os
+
+# Question Time
 
 if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
 
@@ -244,7 +255,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   whiptail_install_type
 
   # Get list of NICS if it isn't master only
-  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
     # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
 
     # Pick which interface you want to use as the Management
@@ -254,7 +265,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     whiptail_bond_nics
   fi
 
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'STORAGENODE' ]; then
 
     # Get the master server for the install
     whiptail_management_server
@@ -262,7 +273,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   # Time to get asnwers to questions so we can fill out the pillar file
-  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
     whiptail_nids
 
     # Commented out until Snort releases 3.x
@@ -287,7 +298,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     # Ask how many CPUs to use for bro
   fi
 
-  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
     whiptail_rule_setup
 
     # Get the code if it isn't ET Open
@@ -303,15 +314,14 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   ## Do all the things!! ##
   #########################
 
-  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'BACKENDNODE' ]; then
+  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'STORAGENODE' ]; then
 
     copy_ssh_key
 
   fi
 
-detect_os
   # Create bond interface
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
     echo "Setting up Bond"
     create_bond
   fi
@@ -324,8 +334,8 @@ detect_os
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-    if [ $INSTALLTYPE != 'SENSORONLY' ]; then
-      yum -y install salt-master
+    if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
+      install_master
     fi
   else
     ADDUSER=useradd
@@ -349,7 +359,7 @@ detect_os
     apt-get update
     apt-get -y install salt-minion
 
-    if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
+    if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
       apt-get -y install salt-master
     fi
   fi
@@ -358,7 +368,7 @@ detect_os
   mkdir -p /opt/so/conf
 
   # Create the salt directories if this isn't a stadnalone sensor
-  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
+  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
     salt_directories
   fi
 
