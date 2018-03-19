@@ -123,6 +123,10 @@ master_pillar () {
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
     echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
