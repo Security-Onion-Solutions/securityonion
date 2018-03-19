@@ -117,13 +117,131 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
 # End Global Variable Section
 
+# Functions
+es_heapsize () {
+  # Determine ES Heap Size
+  if [ $TOTAL_MEM -lt 8000 ] ; then
+      ES_HEAP_SIZE="600m"
+  elif [ $TOTAL_MEM -ge 124000 ]; then
+      # Set a max of 31GB for heap size
+      # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+      ES_HEAP_SIZE="31000m"
+  else
+      # Set heap size to 25% of available memory
+      ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
+  fi
+}
+
+ls_heapsize () {
+  # Determine LS Heap Size
+  if [ $TOTAL_MEM -lt 8000 ] ; then
+      LS_HEAP_SIZE="1g"
+  else [ $TOTAL_MEM -ge 16000 ]; then
+      # Set a max of 31GB for heap size
+      # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+      LS_HEAP_SIZE="4192m"
+  fi
+}
+
+configure_sensor () {
+  # Configure Sensor
+  touch /etc/salt/grains
+  echo "role: so-sensor" > /etc/salt/grains
+  # Master server
+  echo "master: $MASTER" > /etc/salt/minion
+  # Start the salt agent
+  service salt-minion start
+
+  # Do a checkin so the key gets there. Need to add some error checking here
+  salt-call state.highstate
+
+  # Create the pillar file for the sensor
+  touch /tmp/$HOSTNAME.sls
+  echo "sensors:" > /tmp/$HOSTNAME.sls
+  echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
+  echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
+
+}
+copy_ssh_key () {
+  # Generate and copy SSH key
+  cat /dev/zero | ssh-keygen -t rsa -q -N ""
+  #Copy the key over to the master
+  ssh-copy-id socore@MASTERSRV
+}
+
+create_bond () {
+  # Create the bond interface
+  if [ $OS == 'centos' ]; then
+    alias bond0 bonding
+    mode=0
+    # Create Bond files
+
+  else
+    echo bonding >> /etc/modules
+    modprobe bonding
+  fi
+}
+
+disk_space () {
+  # Give me Disk Space
+}
+
+master_pillar () {
+  # Create the master pillar
+  touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  else
+    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  fi
+  echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  if [ $INSTALLTYPE == 'BACKENDNODE' ]; then
+    echo "  elastalert: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  else
+    echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  fi
+
+  salt-call state.highstate
+  salt-key -qya $HOSTNAME
+  salt-call state.highstate
+
+
+}
+saltify_centos () {
+  # Install updates and Salt on CentOS
+
+}
+
+saltify () {
+  # Install updates and Salt
+}
+
+salt_directories () {
+  # Create salt directories
+  mkdir -p /opt/so/saltstack/salt
+  mkdir -p /opt/so/saltstack/pillar
+  cp -Rv pillar/* /opt/so/saltstack/pillar/
+  cp -Rv salt/* /opt/so/saltstack/salt/
+}
+
+update_sudoers () {
+  # Update Sudoers
+  echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
+
+}
+# End Functions
   # Copy over the SSH key
   if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'BACKENDNODE' ]; then
-    # Generate SSH Key
-    cat /dev/zero | ssh-keygen -t rsa -q -N ""
 
-    #Copy the key over to the master
-    ssh-copy-id socore@MASTERSRV
+    copy_ssh_key
+
   fi
 
   # Detect Base OS
@@ -139,15 +257,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   # Create bond interface
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     echo "Setting up Bond"
-    if [ $OS == 'centos' ]; then
-      alias bond0 bonding
-      mode=0
-      # Create Bond files
-
-    else
-      echo bonding >> /etc/modules
-      modprobe bonding
-    fi
+    create_bond
   fi
 
   # Install Updates and the Salt Package
@@ -193,10 +303,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Create the salt directories if this isn't a stadnalone sensor
   if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
-    mkdir -p /opt/so/saltstack/salt
-    mkdir -p /opt/so/saltstack/pillar
-    cp -Rv pillar/* /opt/so/saltstack/pillar/
-    cp -Rv salt/* /opt/so/saltstack/salt/
+    salt_directories
   fi
 
   # Add socore user to the system
@@ -211,21 +318,6 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
     # Create the grains file for the sensor
-    touch /etc/salt/grains
-    echo "role: so-sensor" > /etc/salt/grains
-    # Master server
-    echo "master: $MASTER" > /etc/salt/minion
-    # Start the salt agent
-    service salt-minion start
-
-    # Do a checkin so the key gets there. Need to add some error checking here
-    salt-call state.highstate
-
-    # Create the pillar file for the sensor
-    touch /tmp/$HOSTNAME.sls
-    echo "sensors:" > /tmp/$HOSTNAME.sls
-    echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
-    echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
 
     # SCP the pillar file to the master
     scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
@@ -240,21 +332,6 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Do that same thing on all the others but drop em into the right place
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
-    # Do some math
-    # If total memory is less than 8GB, we keep the default of 600m for heap size
-    if [ $TOTAL_MEM -lt 8000 ] ; then
-        ES_HEAP_SIZE="600m"
-        LS_HEAP_SIZE="1g"
-    elif [ $TOTAL_MEM -ge 124000 ]; then
-        # Set a max of 31GB for heap size
-        # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
-        ES_HEAP_SIZE="31000m"
-        LS_HEAP_SIZE="$ES_HEAP_SIZE"
-    else
-        # Set heap size to 25% of available memory
-        ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
-        LS_HEAP_SIZE="$ES_HEAP_SIZE"
-    fi
 
     # Create the grains file for the Master
     touch /etc/salt/grains
@@ -273,32 +350,11 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
     service salt-minion restart
 
     # Sudoers
-    echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
 
-    # Create the pillar
-    touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    if [ $INSTALLTYPE == 'EVALMODE' ]; then
-      echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    else
-      echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    fi
-    echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    if [ $INSTALLTYPE == 'BACKENDNODE' ]; then
-      echo "  elastalert: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    else
-      echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    fi
-
-    salt-call state.highstate
-    salt-key -qya $HOSTNAME
-    salt-call state.highstate
+    # Create the Master Pillar
+    es_heapsize
+    ls_heapsize
+    master_pillar
 
     # Determine Disk space
     # Calculate half of available disk space for ELSA log_size_limit
