@@ -77,6 +77,7 @@ copy_ssh_key () {
 
 create_bond () {
   # Create the bond interface
+  echo "Setting up Bond"
   if [ $OS == 'centos' ]; then
     alias bond0 bonding
     mode=0
@@ -351,8 +352,9 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Create bond interface
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-    echo "Setting up Bond"
+
     create_bond
+
   fi
 
   # Install Updates and the Salt Package
