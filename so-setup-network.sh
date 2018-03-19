@@ -18,6 +18,7 @@
 # Global Variable Section
 HOSTNAME=$(cat /etc/hostname)
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
+NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 
 # End Global Variable Section
@@ -39,12 +40,11 @@ es_heapsize () {
 
 ls_heapsize () {
   # Determine LS Heap Size
-  if [ $TOTAL_MEM -lt 8000 ] ; then
-      LS_HEAP_SIZE="1g"
-  else [ $TOTAL_MEM -ge 16000 ]; then
-      # Set a max of 31GB for heap size
-      # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+  if [ $TOTAL_MEM -ge 16000 ] ; then
       LS_HEAP_SIZE="4192m"
+  else
+      # Set a max of 1GB heap if you have less than 16GB RAM
+      LS_HEAP_SIZE="1g"
   fi
 }
 
@@ -87,10 +87,32 @@ create_bond () {
   fi
 }
 
+detect_os () {
+  # Detect Base OS
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+  elif [ -f /etc/os-release ]; then
+    OS=ubuntu
+  else
+    echo "We were unable to determine if you are using a supported OS."
+    exit
+  fi
+}
+
 disk_space () {
   # Give me Disk Space
 }
 
+filter_nics () {
+  FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+}
+
+got_root () {
+  if [ "$(id -u)" -ne 0 ]; then
+          echo "This script must be run using sudo!"
+          exit 1
+  fi
+}
 master_pillar () {
   # Create the master pillar
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -139,15 +161,58 @@ salt_directories () {
 update_sudoers () {
   # Update Sudoers
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
+}
 
+whiptail_bond_nics () {
+  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+}
+
+whiptail_install_type () {
+  # What kind of install are we doing?
+  INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose Install Type:" 20 78 4 \
+  "EVALMODE" "Evaluate all the things" ON \
+  "SENSORONLY" "Sensor join existing grid" OFF \
+  "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
+  "HEAVY" "Create a Heavy sensor. (Bad Idea)" OFF \
+  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
+
+}
+
+whiptail_management_nic () {
+  MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
+}
+
+whiptail_nids () {
+  NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose which IDS to run:" 20 78 4 \
+  "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+}
+
+whiptail_management_server () {
+  MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
+}
+
+whiptail_rule_setup () {
+  # Get pulled pork info
+  RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+  "What IDS rules to use?:" 20 78 4 \
+  "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
+  "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
+  "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
+  "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
+
+}
+whiptail_sensor_config () {
+  NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+  "What type of config would you like to use?:" 20 78 4 \
+  "BASIC" "Install NSM components with recommended settings" ON \
+  "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
 }
 # End Functions
 
 # Check for prerequisites
-if [ "$(id -u)" -ne 0 ]; then
-        echo "This script must be run using sudo!"
-        exit 1
-fi
+got_root
 
 if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
 
@@ -155,45 +220,34 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 	whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
 
   # What kind of install are we doing?
-  INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 78 4 \
-  "EVALMODE" "Evaluate all the things" ON \
-  "SENSORONLY" "Sensor join existing grid" OFF \
-  "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
-  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
+  whiptail_install_type
 
   # Get list of NICS if it isn't master only
   if [ $INSTALLTYPE != 'MASTERONLY' ]; then
     # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
-    NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
     # Pick which interface you want to use as the Management
-  	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-
+    whiptail_management_nic
     # Filter out the management NIC from the monitor NICs
-    FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-	  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interfave" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+    filter_nics
+    whiptail_bond_nics
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
     # Get the master server for the install
-    MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
+    whiptail_management_server
 
   fi
 
   # Time to get asnwers to questions so we can fill out the pillar file
   if [ $INSTALLTYPE != 'MASTERONLY' ]; then
-    NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
-    "Choose which IDS to run:" 20 78 4 \
-    "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+    whiptail_nids
+
     # Commented out until Snort releases 3.x
     #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
 
-    NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-    "What type of config would you like to use?:" 20 78 4 \
-    "BASIC" "Install NSM components with recommended settings" ON \
-    "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+    whiptail_sensor_config
 
     if [ $NSMSETUP == 'BASIC' ]; then
       # Calculate LB_Procs
@@ -213,13 +267,7 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   fi
 
   if [ $INSTALLTYPE != 'SENSORONLY' ]; then
-    # Get pulled pork info
-    RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-    "What IDS rules to use?:" 20 78 4 \
-    "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
-    "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
-    "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
-    "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
+    whiptail_rule_setup
 
     # Get the code if it isn't ET Open
     if [ $RULESETUP != 'ETOPEN' ]; then
@@ -235,31 +283,13 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   ## Do all the things!! ##
   #########################
 
-# Global Variable Section
-
-  # Find out the total megarams
-  TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
-
-# End Global Variable Section
-
-
-  # Copy over the SSH key
   if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'BACKENDNODE' ]; then
 
     copy_ssh_key
 
   fi
 
-  # Detect Base OS
-  if [ -f /etc/redhat-release ]; then
-    OS=centos
-  elif [ -f /etc/os-release ]; then
-    OS=ubuntu
-  else
-    echo "We were unable to determine if you are using a supported OS."
-    exit
-  fi
-
+detect_os
   # Create bond interface
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'BACKENDNODE' ]; then
     echo "Setting up Bond"
