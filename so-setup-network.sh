@@ -15,105 +15,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-HOSTNAME=$(cat /etc/hostname)
-
-# Check for prerequisites
-if [ "$(id -u)" -ne 0 ]; then
-        echo "This script must be run using sudo!"
-        exit 1
-fi
-
-if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
-
-	# Let folks know they need their management interface already set up.
-	whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
-
-  # What kind of install are we doing?
-  INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 78 4 \
-  "EVALMODE" "Evaluate all the things" ON \
-  "SENSORONLY" "Sensor join existing grid" OFF \
-  "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
-  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
-
-  # Get list of NICS if it isn't master only
-  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
-    # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
-    NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-
-    # Pick which interface you want to use as the Management
-  	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-
-    # Filter out the management NIC from the monitor NICs
-    FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-	  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interfave" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
-  fi
-
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-
-    # Get the master server for the install
-    MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
-
-  fi
-
-  # Time to get asnwers to questions so we can fill out the pillar file
-  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
-    NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
-    "Choose which IDS to run:" 20 78 4 \
-    "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
-    # Commented out until Snort releases 3.x
-    #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
-
-    NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-    "What type of config would you like to use?:" 20 78 4 \
-    "BASIC" "Install NSM components with recommended settings" ON \
-    "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
-
-    if [ $NSMSETUP == 'BASIC' ]; then
-      # Calculate LB_Procs
-      $LBPROCS=some math
-
-      # Calculate Suricata stuff
-    fi
-    if [ $NSMSETUP == 'ADVANCED' ]; then
-      # Ask if this is a VM
-      # Display CPU list for pinning
-      $LBPROCS=Add the pins together that bro is using
-      # Pin steno
-      # Pin Bro
-      # Pin Suricata
-    fi
-    # Ask how many CPUs to use for bro
-  fi
-
-  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
-    # Get pulled pork info
-    RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-    "What IDS rules to use?:" 20 78 4 \
-    "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
-    "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
-    "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
-    "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
-
-    # Get the code if it isn't ET Open
-    if [ $RULESETUP != 'ETOPEN' ]; then
-      # Get the code
-      OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
-      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
-    fi
-
-
-  fi
-
-  #########################
-  ## Do all the things!! ##
-  #########################
-
 # Global Variable Section
+HOSTNAME=$(cat /etc/hostname)
+TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 
-  # Find out the total megarams
-  TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 
 # End Global Variable Section
 
@@ -237,6 +142,107 @@ update_sudoers () {
 
 }
 # End Functions
+
+# Check for prerequisites
+if [ "$(id -u)" -ne 0 ]; then
+        echo "This script must be run using sudo!"
+        exit 1
+fi
+
+if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
+
+	# Let folks know they need their management interface already set up.
+	whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+
+  # What kind of install are we doing?
+  INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose Install Type:" 20 78 4 \
+  "EVALMODE" "Evaluate all the things" ON \
+  "SENSORONLY" "Sensor join existing grid" OFF \
+  "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
+  "BACKENDNODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
+
+  # Get list of NICS if it isn't master only
+  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
+    # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
+    NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+
+    # Pick which interface you want to use as the Management
+  	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
+
+    # Filter out the management NIC from the monitor NICs
+    FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+	  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interfave" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+  fi
+
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+
+    # Get the master server for the install
+    MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
+
+  fi
+
+  # Time to get asnwers to questions so we can fill out the pillar file
+  if [ $INSTALLTYPE != 'MASTERONLY' ]; then
+    NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
+    "Choose which IDS to run:" 20 78 4 \
+    "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+    # Commented out until Snort releases 3.x
+    #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
+
+    NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+    "What type of config would you like to use?:" 20 78 4 \
+    "BASIC" "Install NSM components with recommended settings" ON \
+    "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+    if [ $NSMSETUP == 'BASIC' ]; then
+      # Calculate LB_Procs
+      $LBPROCS=some math
+
+      # Calculate Suricata stuff
+    fi
+    if [ $NSMSETUP == 'ADVANCED' ]; then
+      # Ask if this is a VM
+      # Display CPU list for pinning
+      $LBPROCS=Add the pins together that bro is using
+      # Pin steno
+      # Pin Bro
+      # Pin Suricata
+    fi
+    # Ask how many CPUs to use for bro
+  fi
+
+  if [ $INSTALLTYPE != 'SENSORONLY' ]; then
+    # Get pulled pork info
+    RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+    "What IDS rules to use?:" 20 78 4 \
+    "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
+    "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
+    "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
+    "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
+
+    # Get the code if it isn't ET Open
+    if [ $RULESETUP != 'ETOPEN' ]; then
+      # Get the code
+      OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
+      "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
+    fi
+
+
+  fi
+
+  #########################
+  ## Do all the things!! ##
+  #########################
+
+# Global Variable Section
+
+  # Find out the total megarams
+  TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
+
+# End Global Variable Section
+
+
   # Copy over the SSH key
   if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'BACKENDNODE' ]; then
 
