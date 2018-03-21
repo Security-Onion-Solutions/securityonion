@@ -25,6 +25,9 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 # Functions
 
+bro_calculate_lbprocs () {
+  #Calculate total lbprocs for basic install
+}
 configure_minion () {
   local TYPE=$1
 
@@ -41,7 +44,15 @@ copy_pillar () {
   else
     PLOC="sensors"
   fi
+
+  # Make the minion check in so the key gets there
+  salt-call state.highstate
+
+  # Copy over the pillar
   scp /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/
+
+  # Accept the key
+  ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
 }
 configure_sensor () {
 
@@ -53,11 +64,12 @@ configure_sensor () {
   # Need to add pins loop
 
 }
+
 copy_ssh_key () {
   # Generate and copy SSH key
   cat /dev/zero | ssh-keygen -t rsa -q -N ""
   #Copy the key over to the master
-  ssh-copy-id socore@MASTERSRV
+  ssh-copy-id socore@$MASTER
 }
 
 create_bond () {
@@ -177,10 +189,6 @@ node_pillar () {
 
 
 }
-saltify_centos () {
-  # Install updates and Salt on CentOS
-
-}
 
 saltify () {
   # Install updates and Salt
@@ -214,7 +222,7 @@ saltify () {
   fi
 }
 
-salt_directories () {
+salt_master_directories () {
   # Create salt directories
   mkdir -p /opt/so/saltstack/salt
   mkdir -p /opt/so/saltstack/pillar
@@ -223,50 +231,68 @@ salt_directories () {
 }
 
 update_sudoers () {
+
   # Update Sudoers
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
+
 }
 
+whiptail_bro_pins () {
+
+}
 whiptail_bond_nics () {
+
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+
 }
 
 whiptail_install_type () {
+
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose Install Type:" 20 78 4 \
   "EVALMODE" "Evaluate all the things" ON \
-  "SENSORONLY" "Sensor join existing grid" OFF \
-  "MASTERONLY" "Start a new grid with no sensor running on it" OFF \
-  "HEAVY" "Create a Heavy sensor. (Bad Idea)" OFF \
-  "STORAGENODE" "Add a node to the back end" OFF 3>&1 1>&2 2>&3 )
+  "SENSORONLY" "Create a forward only sensor" OFF \
+  "MASTERONLY" "Start a new grid" OFF \
+  "STORAGENODE" "Add a Storage Node" OFF 3>&1 1>&2 2>&3 )
 
 }
 
 whiptail_management_nic () {
+
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
+
 }
 
 whiptail_nids () {
+
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
   "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+
 }
 
 whiptail_oinkcode () {
+
   OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
+
 }
 
 whiptail_management_server () {
+
   MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
+
 }
 
 whiptail_network_notice () {
+
   whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+
 }
 
 whiptail_rule_setup () {
+
   # Get pulled pork info
   RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
   "What IDS rules to use?:" 20 78 4 \
@@ -276,11 +302,20 @@ whiptail_rule_setup () {
   "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
 }
+
 whiptail_sensor_config () {
+
   NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
   "What type of config would you like to use?:" 20 78 4 \
   "BASIC" "Install NSM components with recommended settings" ON \
   "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+}
+
+whiptail_you_sure() {
+
+  whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
+
 }
 # End Functions
 
@@ -290,7 +325,7 @@ detect_os
 
 # Question Time
 
-if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
+if (whiptail_you_sure) then
 
 	# Let folks know they need their management interface already set up.
 	whiptail_network_notice
@@ -298,15 +333,16 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   # What kind of install are we doing?
   whiptail_install_type
 
-  # Get list of NICS if it isn't master only
+  # Configure NICs for boxes that will be running a sensor
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-    # Another option: cat /proc/net/dev | awk -F: '{print $1}' | grep -v  'lo\|veth\|br\|dock\|Inter\|byte'
 
     # Pick which interface you want to use as the Management
     whiptail_management_nic
     # Filter out the management NIC from the monitor NICs
     filter_nics
+    # Choose what NICS to include in the bond
     whiptail_bond_nics
+
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'STORAGENODE' ]; then
@@ -318,25 +354,22 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
 
   # Time to get asnwers to questions so we can fill out the pillar file
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
+
+    # Pick you NIDS. Currently on Suricata
     whiptail_nids
-
-    # Commented out until Snort releases 3.x
-    #"Snort" "Sensor join existing grid" OFF 3>&1 1>&2 2>&3 )
-
+    # Basic or Advanced setup?
     whiptail_sensor_config
 
     if [ $NSMSETUP == 'BASIC' ]; then
-      # Calculate LB_Procs
-      $LBPROCS=some math
 
-      # Calculate Suricata stuff
+      bro_calculate_lbprocs
+
     fi
+
     if [ $NSMSETUP == 'ADVANCED' ]; then
-      # Ask if this is a VM
       # Display CPU list for pinning
-      $LBPROCS=Add the pins together that bro is using
+      whiptail_bro_pins
       # Pin steno
-      # Pin Bro
       # Pin Suricata
     fi
     # Ask how many CPUs to use for bro
@@ -358,21 +391,36 @@ if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to in
   ## Do all the things!! ##
   #########################
 
-  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'STORAGENODE' ]; then
+  # Need to ask if you are sure before proceeding
 
+  if [ $INSTALLTYPE == 'MASTERONLY']; then
+
+  fi
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+    # Make this a sensor
+
+    # Copy over the ssh key
     copy_ssh_key
-
-  fi
-
-  # Create bond interface
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-
+    # Create the bond interface
     create_bond
+    # Install Salt
+    saltify
+
 
   fi
+  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+    # Make this a storage node
+    # Copy over the ssh key
+    copy_ssh_key
+    # Install Salt
+    saltify
+  fi
+  if [ $INSTALLTYPE == 'EVALMODE']; then
+    create_bond
+  fi
 
-  # Install Updates and the Salt Package
-  saltify
+
+
 
   if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
       install_master
