@@ -24,47 +24,32 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 # End Global Variable Section
 
 # Functions
-es_heapsize () {
-  # Determine ES Heap Size
-  if [ $TOTAL_MEM -lt 8000 ] ; then
-      ES_HEAP_SIZE="600m"
-  elif [ $TOTAL_MEM -ge 124000 ]; then
-      # Set a max of 31GB for heap size
-      # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
-      ES_HEAP_SIZE="31000m"
-  else
-      # Set heap size to 25% of available memory
-      ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
-  fi
-}
 
-ls_heapsize () {
-  # Determine LS Heap Size
-  if [ $TOTAL_MEM -ge 16000 ] ; then
-      LS_HEAP_SIZE="4192m"
-  else
-      # Set a max of 1GB heap if you have less than 16GB RAM
-      LS_HEAP_SIZE="1g"
-  fi
-}
+configure_minion () {
+  local TYPE=$1
 
-configure_sensor () {
-  # Configure Sensor
   touch /etc/salt/grains
-  echo "role: so-sensor" > /etc/salt/grains
-  # Master server
+  echo "role: so-$TYPE" > /etc/salt/grains
   echo "master: $MASTER" > /etc/salt/minion
-  # Start the salt agent
   service salt-minion start
+}
+copy_pillar () {
+  local TYPE=$1
 
-  # Do a checkin so the key gets there. Need to add some error checking here
-  salt-call state.highstate
+  if [ $TYPE = 'STORAGENODE' ]; then
+    PLOC="nodes"
+  else
+    PLOC="sensors"
+  fi
+  scp /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/
+}
+configure_sensor () {
 
   # Create the pillar file for the sensor
   touch /tmp/$HOSTNAME.sls
   echo "sensors:" > /tmp/$HOSTNAME.sls
   echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
-  echo "  lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
+  echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
   # Need to add pins loop
 
 }
@@ -109,6 +94,20 @@ disk_space () {
   # Give me Disk Space
 }
 
+es_heapsize () {
+  # Determine ES Heap Size
+  if [ $TOTAL_MEM -lt 8000 ] ; then
+      ES_HEAP_SIZE="600m"
+  elif [ $TOTAL_MEM -ge 124000 ]; then
+      # Set a max of 31GB for heap size
+      # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+      ES_HEAP_SIZE="31000m"
+  else
+      # Set heap size to 25% of available memory
+      ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
+  fi
+}
+
 filter_nics () {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 }
@@ -123,6 +122,17 @@ got_root () {
 install_master () {
   yum -y install salt-master
 }
+
+ls_heapsize () {
+  # Determine LS Heap Size
+  if [ $TOTAL_MEM -ge 16000 ] ; then
+      LS_HEAP_SIZE="4192m"
+  else
+      # Set a max of 1GB heap if you have less than 16GB RAM
+      LS_HEAP_SIZE="1g"
+  fi
+}
+
 master_pillar () {
   # Create the master pillar
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -252,6 +262,10 @@ whiptail_management_server () {
   MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
 }
 
+whiptail_network_notice () {
+  whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+}
+
 whiptail_rule_setup () {
   # Get pulled pork info
   RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -279,7 +293,7 @@ detect_os
 if (whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78) then
 
 	# Let folks know they need their management interface already set up.
-	whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+	whiptail_network_notice
 
   # What kind of install are we doing?
   whiptail_install_type
