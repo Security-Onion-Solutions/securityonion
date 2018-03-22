@@ -392,7 +392,7 @@ if (whiptail_you_sure) then
     copy_ssh_key
     copy_minion_pillar SENSORONLY
   fi
-  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     whiptail_management_nic
     filter_nics
     whiptail_bond_nics
