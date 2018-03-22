@@ -337,7 +337,7 @@ if (whiptail_you_sure) then
   # What kind of install are we doing?
   whiptail_install_type
 
-  if [ $INSTALLTYPE == 'MASTERONLY']; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     whiptail_management_nic
     whiptail_nids
@@ -351,7 +351,7 @@ if (whiptail_you_sure) then
 
   fi
 
-  if [ $INSTALLTYPE == 'SENSORONLY']; then
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     whiptail_management_nic
     filter_nics
     whiptail_bond_nics
