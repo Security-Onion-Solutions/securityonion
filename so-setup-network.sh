@@ -337,6 +337,19 @@ if (whiptail_you_sure) then
   # What kind of install are we doing?
   whiptail_install_type
 
+  if [ $INSTALLTYPE == 'MASTERONLY']; then
+
+    whiptail_management_nic
+    whiptail_nids
+    whiptail_rule_setup
+
+    # Get the code if it isn't ET Open
+    if [ $RULESETUP != 'ETOPEN' ]; then
+      # Get the code
+      whiptail_oinkcode
+    fi
+
+  fi
   # Configure NICs for boxes that will be running a sensor
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
 
