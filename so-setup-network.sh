@@ -25,9 +25,10 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 # Functions
 
-bro_calculate_lbprocs() {
+#bro_calculate_lbprocs() {
   #Calculate total lbprocs for basic install
-}
+#}
+
 configure_minion() {
   local TYPE=$1
 
@@ -36,6 +37,7 @@ configure_minion() {
   echo "master: $MASTER" > /etc/salt/minion
   service salt-minion start
 }
+
 copy_pillar() {
   local TYPE=$1
 
@@ -54,6 +56,7 @@ copy_pillar() {
   # Accept the key
   ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
 }
+
 configure_sensor() {
 
   # Create the pillar file for the sensor
@@ -86,9 +89,9 @@ create_bond() {
   fi
 }
 
-create_socore_password() {
+#create_socore_password() {
   # Enter a password for socore
-}
+#}
 
 detect_os() {
   # Detect Base OS
@@ -102,9 +105,9 @@ detect_os() {
   fi
 }
 
-disk_space() {
+#disk_space() {
   # Give me Disk Space
-}
+#}
 
 es_heapsize() {
   # Determine ES Heap Size
@@ -237,9 +240,10 @@ update_sudoers() {
 
 }
 
-whiptail_bro_pins() {
+#whiptail_bro_pins() {
+#
+#}
 
-}
 whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
