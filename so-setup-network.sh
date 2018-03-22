@@ -350,59 +350,16 @@ if (whiptail_you_sure) then
     fi
 
   fi
-  # Configure NICs for boxes that will be running a sensor
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
 
-    # Pick which interface you want to use as the Management
+  if [ $INSTALLTYPE == 'SENSORONLY']; then
     whiptail_management_nic
-    # Filter out the management NIC from the monitor NICs
     filter_nics
-    # Choose what NICS to include in the bond
     whiptail_bond_nics
-
-  fi
-
-  if [ $INSTALLTYPE == 'SENSORONLY' ] || [ $INSTALLTYPE == 'STORAGENODE' ]; then
-
-    # Get the master server for the install
     whiptail_management_server
-
-  fi
-
-  # Time to get asnwers to questions so we can fill out the pillar file
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-
-    # Pick you NIDS. Currently on Suricata
     whiptail_nids
-    # Basic or Advanced setup?
     whiptail_sensor_config
-
-    if [ $NSMSETUP == 'BASIC' ]; then
-
-      bro_calculate_lbprocs
-
-    fi
-
-    if [ $NSMSETUP == 'ADVANCED' ]; then
-      # Display CPU list for pinning
-      whiptail_bro_pins
-      # Pin steno
-      # Pin Suricata
-    fi
-    # Ask how many CPUs to use for bro
   fi
 
-  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-    whiptail_rule_setup
-
-    # Get the code if it isn't ET Open
-    if [ $RULESETUP != 'ETOPEN' ]; then
-      # Get the code
-      whiptail_oinkcode
-    fi
-
-
-  fi
 
   #########################
   ## Do all the things!! ##
@@ -410,96 +367,96 @@ if (whiptail_you_sure) then
 
   # Need to ask if you are sure before proceeding
 
-  if [ $INSTALLTYPE == 'MASTERONLY']; then
-    echo "blah"
-  fi
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-    # Make this a sensor
+#  if [ $INSTALLTYPE == 'MASTERONLY']; then
+#    echo "blah"
+#  fi
+#  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+#    # Make this a sensor
 
     # Copy over the ssh key
-    copy_ssh_key
+#    copy_ssh_key
     # Create the bond interface
-    create_bond
+#    create_bond
     # Install Salt
-    saltify
+#    saltify
 
 
-  fi
-  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+#  fi
+#  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     # Make this a storage node
     # Copy over the ssh key
-    copy_ssh_key
+#    copy_ssh_key
     # Install Salt
-    saltify
-  fi
-  if [ $INSTALLTYPE == 'EVALMODE']; then
-    create_bond
-  fi
+#    saltify
+#  fi
+#  if [ $INSTALLTYPE == 'EVALMODE']; then
+#    create_bond
+#  fi
 
 
 
 
-  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-      install_master
-  fi
+#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
+#      install_master
+#  fi
 
   # Create so-core user
-  mkdir -p /opt/so/conf
+#  mkdir -p /opt/so/conf
 
   # Create the salt directories if this isn't a stadnalone sensor
-  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-    salt_directories
-  fi
+#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
+#    salt_directories
+#  fi
 
   # Add socore user to the system
-  groupadd --gid 939 socore
-  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
+#  groupadd --gid 939 socore
+#  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
 
-  chown -R 939:939 /opt/so
+#  chown -R 939:939 /opt/so
 
   # Add the grain on the sensor
 
   # Create the salt goodness
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+#  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
     # Create the grains file for the sensor
 
     # SCP the pillar file to the master
-    scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
+#    scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
 
     # Accept the key on the master
-    ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
+#    ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
     # Grab the ssl key for lumberjack from the master
-    scp socore@$MASTERSRV:/some/path /some/path
+#    scp socore@$MASTERSRV:/some/path /some/path
 
 
-  fi
+#  fi
 
   # Do that same thing on all the others but drop em into the right place
-  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
+#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
 
     # Create the grains file for the Master
-    touch /etc/salt/grains
-    echo "role: so-master" > /etc/salt/grains
+#    touch /etc/salt/grains
+#    echo "role: so-master" > /etc/salt/grains
 
     # Set up the minion to talk to itself
-    echo "master: $HOSTNAME" > /etc/salt/minion
+#    echo "master: $HOSTNAME" > /etc/salt/minion
 
     # Copy the master config over
-    cp files/master /etc/salt/master
+#    cp files/master /etc/salt/master
     # Comment this out for now
     # chown -R socore:socore /etc/salt
 
     # Start salt master and minion
-    service salt-master restart
-    service salt-minion restart
+#    service salt-master restart
+#    service salt-minion restart
 
     # Sudoers
 
     # Create the Master Pillar
-    es_heapsize
-    ls_heapsize
-    master_pillar
+#    es_heapsize
+#    ls_heapsize
+#    master_pillar
 
     # Determine Disk space
     # Calculate half of available disk space for ELSA log_size_limit
@@ -518,7 +475,7 @@ if (whiptail_you_sure) then
     #Click 'No' to stop setup and adjust the amount of RAM allocated to this machine.\n\
     #Otherwise, click 'Yes' to continue."
 
-  fi
+#  fi
 
 
 ##MASTER
