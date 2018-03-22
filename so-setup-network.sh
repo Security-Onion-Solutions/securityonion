@@ -398,7 +398,7 @@ if (whiptail_you_sure) then
   # Need to ask if you are sure before proceeding
 
   if [ $INSTALLTYPE == 'MASTERONLY']; then
-
+    echo "blah"
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     # Make this a sensor
