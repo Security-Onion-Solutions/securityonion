@@ -354,7 +354,7 @@ if (whiptail_you_sure) then
 
     # Install salt and dependencies
     saltify
-    configure_minion
+    configure_minion master
     install_master
     salt_master_directories
     add_socore_user
@@ -372,22 +372,45 @@ if (whiptail_you_sure) then
     copy_ssh_key
     create_bond
     saltify
+    configure_minion sensors
     copy_ssh_key
     copy_minion_pillar SENSORONLY
 
+  fi
+  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    whiptail_management_nic
+    filter_nics
+    whiptail_bond_nics
+    whiptail_management_server
+    whiptail_nids
+    whiptail_sensor_config
+    configure_minion
+    copy_ssh_key
+    create_bond
+    saltify
+    configure_minion sensors
+    copy_ssh_key
+    copy_minion_pillar SENSORONLY
+  fi
+  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    whiptail_management_nic
+    filter_nics
+    whiptail_bond_nics
+    whiptail_management_server
+    whiptail_nids
+    whiptail_sensor_config
+    configure_minion
+    copy_ssh_key
+    create_bond
+    saltify
+    configure_minion sensors
+    copy_ssh_key
+    copy_minion_pillar SENSORONLY
   fi
 
 
 
 
-
-  # Create so-core user
-#  mkdir -p /opt/so/conf
-
-  # Create the salt directories if this isn't a stadnalone sensor
-#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-#    salt_directories
-#  fi
 
   # Add socore user to the system
 #  groupadd --gid 939 socore
