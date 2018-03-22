@@ -354,6 +354,7 @@ if (whiptail_you_sure) then
 
     # Install salt and dependencies
     saltify
+    configure_minion
     install_master
     salt_master_directories
     add_socore_user
@@ -367,6 +368,7 @@ if (whiptail_you_sure) then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
+    configure_minion
     copy_ssh_key
     create_bond
     saltify
