@@ -25,10 +25,10 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 # Functions
 
-bro_calculate_lbprocs () {
+bro_calculate_lbprocs() {
   #Calculate total lbprocs for basic install
 }
-configure_minion () {
+configure_minion() {
   local TYPE=$1
 
   touch /etc/salt/grains
@@ -36,7 +36,7 @@ configure_minion () {
   echo "master: $MASTER" > /etc/salt/minion
   service salt-minion start
 }
-copy_pillar () {
+copy_pillar() {
   local TYPE=$1
 
   if [ $TYPE = 'STORAGENODE' ]; then
@@ -54,7 +54,7 @@ copy_pillar () {
   # Accept the key
   ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
 }
-configure_sensor () {
+configure_sensor() {
 
   # Create the pillar file for the sensor
   touch /tmp/$HOSTNAME.sls
@@ -65,14 +65,14 @@ configure_sensor () {
 
 }
 
-copy_ssh_key () {
+copy_ssh_key() {
   # Generate and copy SSH key
   cat /dev/zero | ssh-keygen -t rsa -q -N ""
   #Copy the key over to the master
   ssh-copy-id socore@$MASTER
 }
 
-create_bond () {
+create_bond() {
   # Create the bond interface
   echo "Setting up Bond"
   if [ $OS == 'centos' ]; then
@@ -86,11 +86,11 @@ create_bond () {
   fi
 }
 
-create_socore_password () {
+create_socore_password() {
   # Enter a password for socore
 }
 
-detect_os () {
+detect_os() {
   # Detect Base OS
   if [ -f /etc/redhat-release ]; then
     OS=centos
@@ -102,11 +102,11 @@ detect_os () {
   fi
 }
 
-disk_space () {
+disk_space() {
   # Give me Disk Space
 }
 
-es_heapsize () {
+es_heapsize() {
   # Determine ES Heap Size
   if [ $TOTAL_MEM -lt 8000 ] ; then
       ES_HEAP_SIZE="600m"
@@ -120,22 +120,22 @@ es_heapsize () {
   fi
 }
 
-filter_nics () {
+filter_nics() {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 }
 
-got_root () {
+got_root() {
   if [ "$(id -u)" -ne 0 ]; then
           echo "This script must be run using sudo!"
           exit 1
   fi
 }
 
-install_master () {
+install_master() {
   yum -y install salt-master
 }
 
-ls_heapsize () {
+ls_heapsize() {
   # Determine LS Heap Size
   if [ $TOTAL_MEM -ge 16000 ] ; then
       LS_HEAP_SIZE="4192m"
@@ -145,7 +145,7 @@ ls_heapsize () {
   fi
 }
 
-master_pillar () {
+master_pillar() {
   # Create the master pillar
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -172,7 +172,7 @@ master_pillar () {
   salt-key -qya $HOSTNAME
   salt-call state.highstate
 
-node_pillar () {
+node_pillar() {
   # Create the node pillar
   touch /tmp/$HOSTNAME.sls
   echo "node:" > /tmp/$HOSTNAME.sls
@@ -190,7 +190,7 @@ node_pillar () {
 
 }
 
-saltify () {
+saltify() {
   # Install updates and Salt
   if [ $OS == 'centos' ]; then
     ADDUSER=adduser
@@ -222,7 +222,7 @@ saltify () {
   fi
 }
 
-salt_master_directories () {
+salt_master_directories() {
   # Create salt directories
   mkdir -p /opt/so/saltstack/salt
   mkdir -p /opt/so/saltstack/pillar
@@ -230,23 +230,23 @@ salt_master_directories () {
   cp -Rv salt/* /opt/so/saltstack/salt/
 }
 
-update_sudoers () {
+update_sudoers() {
 
   # Update Sudoers
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
 
 }
 
-whiptail_bro_pins () {
+whiptail_bro_pins() {
 
 }
-whiptail_bond_nics () {
+whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
 
 }
 
-whiptail_install_type () {
+whiptail_install_type() {
 
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -258,13 +258,13 @@ whiptail_install_type () {
 
 }
 
-whiptail_management_nic () {
+whiptail_management_nic() {
 
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
 
 }
 
-whiptail_nids () {
+whiptail_nids() {
 
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
@@ -272,26 +272,26 @@ whiptail_nids () {
 
 }
 
-whiptail_oinkcode () {
+whiptail_oinkcode() {
 
   OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
 
 }
 
-whiptail_management_server () {
+whiptail_management_server() {
 
   MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
 
 }
 
-whiptail_network_notice () {
+whiptail_network_notice() {
 
   whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
 
 }
 
-whiptail_rule_setup () {
+whiptail_rule_setup() {
 
   # Get pulled pork info
   RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -303,7 +303,7 @@ whiptail_rule_setup () {
 
 }
 
-whiptail_sensor_config () {
+whiptail_sensor_config() {
 
   NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
   "What type of config would you like to use?:" 20 78 4 \
