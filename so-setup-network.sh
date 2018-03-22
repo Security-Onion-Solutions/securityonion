@@ -38,7 +38,7 @@ configure_minion() {
   service salt-minion start
 }
 
-copy_pillar() {
+copy_minion_pillar() {
   local TYPE=$1
 
   if [ $TYPE = 'STORAGENODE' ]; then
@@ -339,8 +339,11 @@ if (whiptail_you_sure) then
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
+    # Pick the Management NIC
     whiptail_management_nic
+    # Select Snort or Suricata
     whiptail_nids
+    # Pick your Ruleset
     whiptail_rule_setup
 
     # Get the code if it isn't ET Open
@@ -349,6 +352,12 @@ if (whiptail_you_sure) then
       whiptail_oinkcode
     fi
 
+    # Install salt and dependencies
+    saltify
+    install_master
+    salt_master_directories
+    add_socore_user
+    chmod_salt
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
@@ -358,47 +367,17 @@ if (whiptail_you_sure) then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
+    copy_ssh_key
+    create_bond
+    saltify
+    copy_ssh_key
+    copy_minion_pillar SENSORONLY
+
   fi
 
 
-  #########################
-  ## Do all the things!! ##
-  #########################
-
-  # Need to ask if you are sure before proceeding
-
-#  if [ $INSTALLTYPE == 'MASTERONLY']; then
-#    echo "blah"
-#  fi
-#  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-#    # Make this a sensor
-
-    # Copy over the ssh key
-#    copy_ssh_key
-    # Create the bond interface
-#    create_bond
-    # Install Salt
-#    saltify
 
 
-#  fi
-#  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    # Make this a storage node
-    # Copy over the ssh key
-#    copy_ssh_key
-    # Install Salt
-#    saltify
-#  fi
-#  if [ $INSTALLTYPE == 'EVALMODE']; then
-#    create_bond
-#  fi
-
-
-
-
-#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-#      install_master
-#  fi
 
   # Create so-core user
 #  mkdir -p /opt/so/conf
