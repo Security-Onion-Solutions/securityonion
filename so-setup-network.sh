@@ -29,6 +29,28 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
   #Calculate total lbprocs for basic install
 #}
 
+accept_salt_key_local() {
+  # Accept the key
+  salt-key -ya $HOSTNAME
+}
+
+accept_salt_key_remote() {
+  # Accept the key
+  ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
+
+}
+
+add_socore_user_master() {
+
+}
+
+add_socore_user_notmaster() {
+  # Add socore user to the system
+  groupadd --gid 939 socore
+  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
+
+}
+
 configure_minion() {
   local TYPE=$1
 
@@ -47,17 +69,12 @@ copy_minion_pillar() {
     PLOC="sensors"
   fi
 
-  # Make the minion check in so the key gets there
-  salt-call state.highstate
-
   # Copy over the pillar
   scp /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/
 
-  # Accept the key
-  ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
-}
+  }
 
-configure_sensor() {
+configure_sensor_pillar() {
 
   # Create the pillar file for the sensor
   touch /tmp/$HOSTNAME.sls
@@ -412,37 +429,10 @@ if (whiptail_you_sure) then
 
 
 
-  # Add socore user to the system
-#  groupadd --gid 939 socore
-#  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
 
 #  chown -R 939:939 /opt/so
 
   # Add the grain on the sensor
-
-  # Create the salt goodness
-#  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-
-    # Create the grains file for the sensor
-
-    # SCP the pillar file to the master
-#    scp /tmp/$HOSTNAME.sls socore@$MASTERSRV:/opt/so/saltstack/pillar/sensors/
-
-    # Accept the key on the master
-#    ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
-    # Grab the ssl key for lumberjack from the master
-#    scp socore@$MASTERSRV:/some/path /some/path
-
-
-#  fi
-
-  # Do that same thing on all the others but drop em into the right place
-#  if [ $INSTALLTYPE != 'SENSORONLY' ] || [ $INSTALLTYPE != 'STORAGENODE' ]; then
-
-    # Create the grains file for the Master
-#    touch /etc/salt/grains
-#    echo "role: so-master" > /etc/salt/grains
-
     # Set up the minion to talk to itself
 #    echo "master: $HOSTNAME" > /etc/salt/minion
 
@@ -454,38 +444,6 @@ if (whiptail_you_sure) then
     # Start salt master and minion
 #    service salt-master restart
 #    service salt-minion restart
-
-    # Sudoers
-
-    # Create the Master Pillar
-#    es_heapsize
-#    ls_heapsize
-#    master_pillar
-
-    # Determine Disk space
-    # Calculate half of available disk space for ELSA log_size_limit
-    #DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
-    #let DISK_SIZE=DISK_SIZE_K*1000
-    #let LOG_SIZE_LIMIT=DISK_SIZE/2
-    #let LOG_SIZE_LIMIT_GB=LOG_SIZE_LIMIT/1000000000
-    #let DISK_SIZE_GB=DISK_SIZE/1000000000
-    #let LOG_SIZE_LIMIT=LOG_SIZE_LIMIT_GB*1000000000
-    # Check amount of system RAM (MB)
-    #TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
-    # Make RAM # human readable (GB)
-    #HR_MEM=$((TOTAL_MEM / 1000))
-    # Text for minimum memory check
-    #MEM_TEXT="This machine currently has "$HR_MEM"GB of RAM allocated.\n\For best performance, please ensure the machine is allocated at least 3GB of RAM.\n\n\Please consult the following link for more information:\n\https://github.com/Security-Onion-Solutions/security-onion/wiki/Hardware\n\n\
-    #Click 'No' to stop setup and adjust the amount of RAM allocated to this machine.\n\
-    #Otherwise, click 'Yes' to continue."
-
-#  fi
-
-
-##MASTER
-# Add salt-key to sudoers file for socore with no password required
-
-# They did not want to do the install
 else
     exit
 fi
