@@ -48,7 +48,7 @@ accept_salt_key_remote() {
 
 add_socore_user_master() {
   groupadd --gid 939 socore
-  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so
+  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
 }
 
 add_socore_user_notmaster() {
