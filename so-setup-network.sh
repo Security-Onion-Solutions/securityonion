@@ -25,9 +25,15 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 # Functions
 
-#bro_calculate_lbprocs() {
+bro_calculate_lbprocs() {
   #Calculate total lbprocs for basic install
-#}
+  local CORES4BRO=$(( $CPUCORES/2 ))
+  LBPROCS=$(printf "%.0f\n" $CORES4BRO)
+}
+
+bro_pins(){
+  echo "Bro Pins will go here"
+}
 
 accept_salt_key_local() {
   # Accept the key
@@ -41,11 +47,12 @@ accept_salt_key_remote() {
 }
 
 add_socore_user_master() {
-
+  groupadd --gid 939 socore
+  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so
 }
 
 add_socore_user_notmaster() {
-  # Add socore user to the system
+  # Add socore user to the system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
 
@@ -58,6 +65,10 @@ configure_minion() {
   echo "role: so-$TYPE" > /etc/salt/grains
   echo "master: $MASTER" > /etc/salt/minion
   service salt-minion start
+}
+
+copy_master_config() {
+  cp files/master /etc/salt/master
 }
 
 copy_minion_pillar() {
@@ -80,6 +91,7 @@ configure_sensor_pillar() {
   touch /tmp/$HOSTNAME.sls
   echo "sensors:" > /tmp/$HOSTNAME.sls
   echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
+  # Need to add logic here to determine if you are pinning or not or standalone
   echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
   # Need to add pins loop
 
@@ -153,6 +165,8 @@ got_root() {
 
 install_master() {
   yum -y install salt-master
+  copy_master_config
+  # If Centos Enable the service
 }
 
 ls_heapsize() {
@@ -377,6 +391,8 @@ if (whiptail_you_sure) then
     add_socore_user
     update_sudoers
     chmod_salt
+    es_heapsize
+    ls_heapsize
     master_pillar
     start_salt
     accept_salt_key_local
