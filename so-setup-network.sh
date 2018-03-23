@@ -296,8 +296,17 @@ whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
+whiptail_check_exitstatus() {
+  if [ $1 == '1' ]; then
+    echo " They hit cancel"
+    whiptail_cancel
+  fi
+}
 whiptail_install_type() {
 
   # What kind of install are we doing?
@@ -309,27 +318,21 @@ whiptail_install_type() {
   "STORAGENODE" "Add a Storage Node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
-  if [[ "$exitstatus" = 1 ]]; then
-    echo " They hit cancel"
-    whiptail_menu
-  fi
+  whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_nic() {
 
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
-whiptail_menu() {
-  MENU=$(whiptail --title "Menu example" --menu "Choose an option" 25 78 16 \
-"<-- Back" "Return to the main menu." \
-"Add User" "Add a user to the system." \
-"Modify User" "Modify an existing user." \
-"List Users" "List all users on the system." \
-"Add Group" "Add a user group to the system." \
-"Modify Group" "Modify a group and its list of members." \
-"List Groups" "List all groups on the system." 3>&2 2>&1 1>&3)
+whiptail_cancel() {
+  whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
+  exit
 }
 
 whiptail_nids() {
@@ -338,6 +341,9 @@ whiptail_nids() {
   "Choose which IDS to run:" 20 78 4 \
   "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_oinkcode() {
@@ -345,17 +351,26 @@ whiptail_oinkcode() {
   OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your oinkcode" 10 60 XXXXXXX 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_management_server() {
 
   MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_network_notice() {
 
   whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -369,6 +384,9 @@ whiptail_rule_setup() {
   "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
   "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_sensor_config() {
@@ -377,6 +395,9 @@ whiptail_sensor_config() {
   "What type of config would you like to use?:" 20 78 4 \
   "BASIC" "Install NSM components with recommended settings" ON \
   "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
