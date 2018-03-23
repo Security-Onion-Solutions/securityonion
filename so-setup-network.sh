@@ -165,7 +165,12 @@ got_root() {
 }
 
 install_master() {
-  yum -y install salt-master
+  if [ $OS == 'centos' ]; then
+    yum -y install salt-master
+  else
+    apt install -y salt-master
+  fi
+  
   copy_master_config
   # If Centos Enable the service
 }
@@ -411,7 +416,7 @@ if (whiptail_you_sure) then
     start_salt
     echo "accepting master key"
     accept_salt_key_local
-    
+
     whiptail_setup_complete
 
   fi
