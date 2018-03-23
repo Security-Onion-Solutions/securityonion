@@ -300,6 +300,14 @@ whiptail_bond_nics() {
   whiptail_check_exitstatus $exitstatus
 
 }
+whiptail_colors() {
+  NEWT_COLORS='
+    window=,red
+    border=white,red
+    textbox=white,red
+    button=black,white
+  ' \
+}
 
 whiptail_check_exitstatus() {
   if [ $1 == '1' ]; then
@@ -418,6 +426,7 @@ whiptail_you_sure() {
 # End Functions
 
 # Check for prerequisites
+whiptail_colors
 echo "Checking for Root"
 got_root
 echo "Detecting OS"
