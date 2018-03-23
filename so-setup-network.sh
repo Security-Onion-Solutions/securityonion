@@ -67,12 +67,18 @@ configure_minion() {
 
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
-  echo "master: $MASTER" > /etc/salt/minion
-  service salt-minion start
+  if [ $TYPE == 'master' ]; then
+    echo "master: $HOSTNAME" > /etc/salt/minion
+  else
+    echo "master: $MASTER" > /etc/salt/minion
+  fi
+
+  service salt-minion restart
 }
 
 copy_master_config() {
   cp files/master /etc/salt/master
+  service salt-master restart
 }
 
 copy_minion_pillar() {
