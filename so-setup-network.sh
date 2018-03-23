@@ -356,6 +356,12 @@ whiptail_oinkcode() {
 
 }
 
+whiptail_make_changes() {
+  whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $INSTALLTYPE. Please hit YES to make changes or NO to cancel." 8 78
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
 whiptail_management_server() {
 
   MASTERSRV=$(whiptail --title "Enter your Master Server IP Address" --inputbox 10 60 1.2.3.4 3>&1 1>&2 2>&3)
