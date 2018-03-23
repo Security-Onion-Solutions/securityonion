@@ -306,7 +306,7 @@ whiptail_colors() {
     border=white,red
     textbox=white,red
     button=black,white
-  ' \
+  '
 }
 
 whiptail_check_exitstatus() {
