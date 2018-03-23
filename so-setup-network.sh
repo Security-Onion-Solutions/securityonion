@@ -274,6 +274,19 @@ saltify() {
   fi
 }
 
+salt_checkin() {
+  salt-call state.highstate
+}
+
+salt_checkin_message() {
+  echo "####################################################"
+  echo "##                                                ##"
+  echo "##        Applying and Installing everything      ##"
+  echo "##             (This will take a while)           ##"
+  echo "##                                                ##"
+  echo "####################################################"
+}
+
 salt_master_directories() {
   # Create salt directories
   mkdir -p /opt/so/saltstack/salt
@@ -288,6 +301,7 @@ update_sudoers() {
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
 
 }
+
 
 #whiptail_bro_pins() {
 #
@@ -457,30 +471,27 @@ if (whiptail_you_sure) then
     whiptail_make_changes
 
     # Install salt and dependencies
-    echo "Saltifying"
     saltify
-    echo "Configuring minion master"
     configure_minion master
-    echo "Installing Master"
     install_master
-    echo "Creating Master Directories"
     salt_master_directories
-    echo "Adding socore user"
+    echo ""
+    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    echo ""
     add_socore_user_master
-    echo "Updating sudoers file"
     update_sudoers
-    echo "chown salt dirs"
     chown_salt_master
-    echo "calculating es heap size"
     es_heapsize
-    echo "calculating LS heap size"
     ls_heapsize
     echo "generating the master pillar"
     master_pillar
-    echo "starting salt"
-    start_salt
-    echo "accepting master key"
+    # Do a checkin to push the key up
+    salt_checkin
+    # Accept the Master Key
     accept_salt_key_local
+    # Do the big checkin
+    salt_checkin_message
+    start_salt
 
     whiptail_setup_complete
 
