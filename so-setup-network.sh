@@ -271,9 +271,6 @@ saltify() {
     apt-get update
     apt-get -y install salt-minion
 
-    # Override the horrible Ubuntu whiptail color pallete
-    update-alternatives --config newt-palette
-    
   fi
 }
 
@@ -435,6 +432,10 @@ echo "Checking for Root"
 got_root
 echo "Detecting OS"
 detect_os
+if [ $OS == ubuntu ]; then
+  # Override the horrible Ubuntu whiptail color pallete
+  update-alternatives --config newt-palette
+fi
 
 # Question Time
 
