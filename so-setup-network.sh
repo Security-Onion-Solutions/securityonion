@@ -375,7 +375,13 @@ if (whiptail_you_sure) then
     install_master
     salt_master_directories
     add_socore_user
+    update_sudoers
     chmod_salt
+    master_pillar
+    start_salt
+    accept_salt_key_local
+    whiptail_setup_complete
+
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
