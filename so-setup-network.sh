@@ -219,10 +219,6 @@ master_pillar() {
   echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
-  salt-call state.highstate
-  salt-key -qya $HOSTNAME
-  salt-call state.highstate
-
 node_pillar() {
   # Create the node pillar
   touch /tmp/$HOSTNAME.sls
@@ -491,6 +487,7 @@ if (whiptail_you_sure) then
     accept_salt_key_local
     # Do the big checkin
     salt_checkin_message
+    salt_checkin
     start_salt
 
     whiptail_setup_complete
