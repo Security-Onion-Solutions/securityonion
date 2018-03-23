@@ -406,7 +406,10 @@ whiptail_sensor_config() {
   whiptail_check_exitstatus $exitstatus
 
 }
-
+whiptail_setup_complete() {
+  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. A reboot is recommended." 8 78
+  exit
+}
 whiptail_you_sure() {
 
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
@@ -444,6 +447,9 @@ if (whiptail_you_sure) then
       # Get the code
       whiptail_oinkcode
     fi
+
+    # Last Chance to back out
+    whiptail_make_changes
 
     # Install salt and dependencies
     echo "Saltifying"
