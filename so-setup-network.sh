@@ -58,6 +58,10 @@ add_socore_user_notmaster() {
 
 }
 
+chown_salt_master() {
+  # Chown the salt dirs
+  chown -R socore:socore /opt/so
+}
 configure_minion() {
   local TYPE=$1
 
@@ -170,7 +174,7 @@ install_master() {
   else
     apt install -y salt-master
   fi
-  
+
   copy_master_config
   # If Centos Enable the service
 }
@@ -401,11 +405,11 @@ if (whiptail_you_sure) then
     echo "Creating Master Directories"
     salt_master_directories
     echo "Adding socore user"
-    add_socore_user
+    add_socore_user_master
     echo "Updating sudoers file"
     update_sudoers
-    echo "chmodding salt dirs"
-    chmod_salt
+    echo "chown salt dirs"
+    chown_salt_master
     echo "calculating es heap size"
     es_heapsize
     echo "calculating LS heap size"
