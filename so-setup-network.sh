@@ -310,6 +310,7 @@ whiptail_install_type() {
 
   local exitstatus=$?
   if [[ "$exitstatus" = 1 ]]; then
+    echo " They hit cancel"
     whiptail_menu
   fi
 }
