@@ -270,6 +270,10 @@ saltify() {
     # Initialize the new repos
     apt-get update
     apt-get -y install salt-minion
+
+    # Override the horrible Ubuntu whiptail color pallete
+    update-alternatives --config newt-palette
+    
   fi
 }
 
