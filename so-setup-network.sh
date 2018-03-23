@@ -541,25 +541,6 @@ if (whiptail_you_sure) then
     copy_minion_pillar SENSORONLY
   fi
 
-
-
-
-
-
-#  chown -R 939:939 /opt/so
-
-  # Add the grain on the sensor
-    # Set up the minion to talk to itself
-#    echo "master: $HOSTNAME" > /etc/salt/minion
-
-    # Copy the master config over
-#    cp files/master /etc/salt/master
-    # Comment this out for now
-    # chown -R socore:socore /etc/salt
-
-    # Start salt master and minion
-#    service salt-master restart
-#    service salt-minion restart
 else
     exit
 fi
