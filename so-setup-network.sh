@@ -270,8 +270,8 @@ salt_master_directories() {
   # Create salt directories
   mkdir -p /opt/so/saltstack/salt
   mkdir -p /opt/so/saltstack/pillar
-  cp -Rv pillar/* /opt/so/saltstack/pillar/
-  cp -Rv salt/* /opt/so/saltstack/salt/
+  cp -R pillar/* /opt/so/saltstack/pillar/
+  cp -R salt/* /opt/so/saltstack/salt/
 }
 
 update_sudoers() {
