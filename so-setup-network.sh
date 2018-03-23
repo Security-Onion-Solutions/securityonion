@@ -434,7 +434,7 @@ echo "Detecting OS"
 detect_os
 if [ $OS == ubuntu ]; then
   # Override the horrible Ubuntu whiptail color pallete
-  update-alternatives --config newt-palette
+  update-alternatives --set newt-palette /etc/newt/palette.original
 fi
 
 # Question Time
