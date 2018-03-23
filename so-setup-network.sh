@@ -92,6 +92,7 @@ configure_sensor_pillar() {
   echo "sensors:" > /tmp/$HOSTNAME.sls
   echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
   # Need to add logic here to determine if you are pinning or not or standalone
+
   echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
   # Need to add pins loop
 
@@ -355,7 +356,9 @@ whiptail_you_sure() {
 # End Functions
 
 # Check for prerequisites
+echo "Checking for Root"
 got_root
+echo "Detecting OS"
 detect_os
 
 # Question Time
@@ -384,18 +387,31 @@ if (whiptail_you_sure) then
     fi
 
     # Install salt and dependencies
+    echo "Saltifying"
     saltify
+    echo "Configuring minion master"
     configure_minion master
+    echo "Installing Master"
     install_master
+    echo "Creating Master Directories"
     salt_master_directories
+    echo "Adding socore user"
     add_socore_user
+    echo "Updating sudoers file"
     update_sudoers
+    echo "chmodding salt dirs"
     chmod_salt
+    echo "calculating es heap size"
     es_heapsize
+    echo "calculating LS heap size"
     ls_heapsize
+    echo "generating the master pillar"
     master_pillar
+    echo "starting salt"
     start_salt
+    echo "accepting master key"
     accept_salt_key_local
+    
     whiptail_setup_complete
 
   fi
