@@ -367,7 +367,7 @@ whiptail_management_server() {
 
 whiptail_network_notice() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. You must hit OK to continue." 8 78
+  whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Hit YES to continue." 8 78
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
