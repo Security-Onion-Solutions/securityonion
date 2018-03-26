@@ -421,7 +421,11 @@ whiptail_node_es_heap() {
   NODEESHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter ES Heap Size" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
 }
-#whiptail_node_ls_heap
+whiptail_node_ls_heap() {
+  ls_heapsize
+  NODELSHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter LogStash Heap Size: Recommended value is pre-populated" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
+}
 #whiptail_node_ls_pipeline_worker
 #whiptail_node_ls_pipline_batchsize
 #whiptail_node_ls_input_threads
@@ -570,7 +574,7 @@ if (whiptail_you_sure) then
     whiptail_node_advanced
     if [ $NODESETUP == 'NODEADVANCED' ]; then
       whiptail_node_es_heap
-      #whiptail_node_ls_heap
+      whiptail_node_ls_heap
       #whiptail_node_ls_pipeline_worker
       #whiptail_node_ls_pipline_batchsize
       #whiptail_node_ls_input_threads
