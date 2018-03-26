@@ -301,6 +301,11 @@ update_sudoers() {
 
 }
 
+###########################################
+##                                       ##
+##         Whiptail Menu Section         ##
+##                                       ##
+###########################################
 
 whiptail_bro_pins() {
 
@@ -319,6 +324,11 @@ whiptail_bond_nics() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_cancel() {
+  whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
+  exit
 }
 
 whiptail_check_exitstatus() {
@@ -348,11 +358,6 @@ whiptail_management_nic() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
-}
-
-whiptail_cancel() {
-  whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
-  exit
 }
 
 whiptail_nids() {
@@ -401,6 +406,26 @@ whiptail_network_notice() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_node_advanced() {
+
+  NODESETUP=$(whiptail --noitem --title "Security Onion Setup" --radiolist \
+  "What type of config would you like to use?:" 20 78 4 \
+  "NODEBASIC" "Install Storage Node with recommended settings" ON \
+  "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
+
+}
+
+whiptail_node_es_heap() {
+  es_heapsize
+  NODEESHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter ES Heap Size" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+}
+#whiptail_node_ls_heap
+#whiptail_node_ls_pipeline_worker
+#whiptail_node_ls_pipline_batchsize
+#whiptail_node_ls_input_threads
+#whiptail_node_ls_input_batch_count
 
 whiptail_rule_setup() {
 
@@ -542,6 +567,15 @@ if (whiptail_you_sure) then
     whiptail_management_nic
     echo "Why isn't this working"
     whiptail_management_server
+    whiptail_node_advanced
+    if [ $NODESETUP == 'NODEADVANCED' ]; then
+      whiptail_node_es_heap
+      #whiptail_node_ls_heap
+      #whiptail_node_ls_pipeline_worker
+      #whiptail_node_ls_pipline_batchsize
+      #whiptail_node_ls_input_threads
+      #whiptail_node_ls_input_batch_count
+    fi
     #configure_minion
     #copy_ssh_key
     #saltify
