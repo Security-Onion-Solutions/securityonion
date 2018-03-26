@@ -538,16 +538,11 @@ if (whiptail_you_sure) then
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     whiptail_management_nic
-    filter_nics
-    whiptail_bond_nics
     whiptail_management_server
-    whiptail_nids
-    whiptail_sensor_config
     configure_minion
     copy_ssh_key
-    create_bond
     saltify
-    configure_minion sensors
+    configure_minion node
     copy_ssh_key
     copy_minion_pillar STORAGENODE
   fi
