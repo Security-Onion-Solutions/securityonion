@@ -384,7 +384,7 @@ whiptail_make_changes() {
 }
 whiptail_management_server() {
 
-  MASTERSRV=$(whiptail --title "Enter your Master Server Name or IP Address" --inputbox 10 60 3>&1 1>&2 2>&3)
+  MASTERSRV=$(whiptail --title "Enter your Master Server Name or IP Address" --inputbox 10 60 XXXX 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -538,6 +538,7 @@ if (whiptail_you_sure) then
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     whiptail_management_nic
+    echo "Why isn't this working"
     whiptail_management_server
     #configure_minion
     #copy_ssh_key
