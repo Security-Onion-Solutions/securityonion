@@ -384,7 +384,7 @@ whiptail_make_changes() {
 }
 whiptail_management_server() {
 
-  MASTERSRV=$(whiptail --title "Enter your Master Server Name or IP Address" --inputbox 10 60 master or 1.2.3.4 3>&1 1>&2 2>&3)
+  MASTERSRV=$(whiptail --title "Enter your Master Server Name or IP Address" --inputbox 10 60 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
