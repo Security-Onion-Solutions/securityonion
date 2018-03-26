@@ -409,7 +409,7 @@ whiptail_network_notice() {
 
 whiptail_node_advanced() {
 
-  NODESETUP=$(whiptail --noitem --title "Security Onion Setup" --radiolist \
+  NODESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
   "What type of config would you like to use?:" 20 78 4 \
   "NODEBASIC" "Install Storage Node with recommended settings" ON \
   "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
