@@ -227,14 +227,14 @@ node_pillar() {
   touch /tmp/$HOSTNAME.sls
   echo "node:" > /tmp/$HOSTNAME.sls
   echo "  esaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
-  echo "  esheap: $ES_HEAP_SIZE" >> /tmp/$HOSTNAME.sls
+  echo "  esheap: $NODEESHEAP" >> /tmp/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /tmp/$HOSTNAME.sls
-  echo "  lsheap: $LS_HEAP_SIZE" >> /tmp/$HOSTNAME.sls
+  echo "  lsheap: $NODELSHEAP" >> /tmp/$HOSTNAME.sls
   echo "  lsaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
-  echo "  ls_pipeline_workers: $CPUCORES" >> /tmp/$HOSTNAME.sls
-  echo "  ls_pipeline_batch_size: 125" >> /tmp/$HOSTNAME.sls
-  echo "  ls_input_threads: 1" >> /tmp/$HOSTNAME.sls
-  echo "  ls_batch_count: 125" >> /tmp/$HOSTNAME.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> /tmp/$HOSTNAME.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> /tmp/$HOSTNAME.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> /tmp/$HOSTNAME.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /tmp/$HOSTNAME.sls
 }
 
 
@@ -608,9 +608,16 @@ if (whiptail_you_sure) then
       whiptail_node_ls_pipline_batchsize
       whiptail_node_ls_input_threads
       whiptail_node_ls_input_batch_count
+    else
+      NODEESHEAP=$ES_HEAP_SIZE
+      NODELSHEAP=$LS_HEAP_SIZE
+      LSPIPELINEWORKERS=1
+      LSPIPELINEBATCH=125
+      LSINPUTTHREADS=1
+      LSINPUTBATCHCOUNT=125
     fi
-    #configure_minion
-    #copy_ssh_key
+    configure_minion node
+    copy_ssh_key
     #saltify
     #configure_minion node
     #copy_ssh_key
