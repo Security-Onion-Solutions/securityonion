@@ -417,19 +417,48 @@ whiptail_node_advanced() {
 }
 
 whiptail_node_es_heap() {
+
   es_heapsize
   NODEESHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter ES Heap Size" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+  "\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+
 }
+
 whiptail_node_ls_heap() {
+
   ls_heapsize
   NODELSHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter LogStash Heap Size: Recommended value is pre-populated" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
+  "\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
+
 }
-#whiptail_node_ls_pipeline_worker
-#whiptail_node_ls_pipline_batchsize
-#whiptail_node_ls_input_threads
-#whiptail_node_ls_input_batch_count
+
+whiptail_node_ls_pipeline_worker() {
+
+  LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
+  "\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 60 $CPUCORES 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_node_ls_pipline_batchsize() {
+
+  LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
+  "\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_node_ls_input_threads() {
+
+  LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
+    "\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 60 1 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_node_ls_input_batch_count() {
+
+  LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
+  "\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
+
+}
 
 whiptail_rule_setup() {
 
@@ -575,10 +604,10 @@ if (whiptail_you_sure) then
     if [ $NODESETUP == 'NODEADVANCED' ]; then
       whiptail_node_es_heap
       whiptail_node_ls_heap
-      #whiptail_node_ls_pipeline_worker
-      #whiptail_node_ls_pipline_batchsize
-      #whiptail_node_ls_input_threads
-      #whiptail_node_ls_input_batch_count
+      whiptail_node_ls_pipeline_worker
+      whiptail_node_ls_pipline_batchsize
+      whiptail_node_ls_input_threads
+      whiptail_node_ls_input_batch_count
     fi
     #configure_minion
     #copy_ssh_key
