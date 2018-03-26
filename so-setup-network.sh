@@ -20,6 +20,7 @@ HOSTNAME=$(cat /etc/hostname)
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3}')
 
 # End Global Variable Section
 
@@ -218,6 +219,8 @@ master_pillar() {
   echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
 node_pillar() {
   # Create the node pillar
@@ -299,9 +302,15 @@ update_sudoers() {
 }
 
 
-#whiptail_bro_pins() {
-#
-#}
+whiptail_bro_pins() {
+
+  BROPINS=$(whiptail --title "Pin Bro CPUS" --checklist "Please Select Cores to Pin Bro to" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+
+}
 
 whiptail_bond_nics() {
 
@@ -485,10 +494,9 @@ if (whiptail_you_sure) then
     salt_checkin
     # Accept the Master Key
     accept_salt_key_local
-    # Do the big checkin
+    # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
-    start_salt
 
     whiptail_setup_complete
 
@@ -501,6 +509,9 @@ if (whiptail_you_sure) then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
+    if [ $NSMSETUP == 'ADVANCED' ]; then
+      whiptail_bro_pins
+    fi
     configure_minion
     copy_ssh_key
     create_bond
@@ -538,7 +549,7 @@ if (whiptail_you_sure) then
     saltify
     configure_minion sensors
     copy_ssh_key
-    copy_minion_pillar SENSORONLY
+    copy_minion_pillar STORAGENODE
   fi
 
 else
