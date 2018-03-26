@@ -20,7 +20,7 @@ HOSTNAME=$(cat /etc/hostname)
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
-LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3}')
+LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
 
 # End Global Variable Section
 
@@ -304,7 +304,7 @@ update_sudoers() {
 
 whiptail_bro_pins() {
 
-  BROPINS=$(whiptail --title "Pin Bro CPUS" --checklist "Please Select Cores to Pin Bro to" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
+  BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select Cores to Pin Bro to" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -404,7 +404,7 @@ whiptail_rule_setup() {
 
   # Get pulled pork info
   RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "What IDS rules to use?:" 20 78 4 \
+  "What IDS rules to use?:" 20 140 4 \
   "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
   "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
   "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
@@ -417,7 +417,7 @@ whiptail_rule_setup() {
 
 whiptail_sensor_config() {
 
-  NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+  NSMSETUP=$(whiptail --noitem --title "Security Onion Setup" --radiolist \
   "What type of config would you like to use?:" 20 78 4 \
   "BASIC" "Install NSM components with recommended settings" ON \
   "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
