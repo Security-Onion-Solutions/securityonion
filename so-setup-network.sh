@@ -43,7 +43,7 @@ accept_salt_key_local() {
 
 accept_salt_key_remote() {
   # Accept the key
-  ssh socore@$MSRV 'sudo salt-key -ya $HOSTNAME'
+  ssh -i ~/.ssh/so.key socore@$MSRV 'sudo salt-key -ya $HOSTNAME'
 
 }
 
@@ -93,7 +93,7 @@ copy_minion_pillar() {
   fi
 
   # Copy over the pillar
-  scp /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/
+  scp -i ~/.ssh/so.key /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/
 
   }
 
