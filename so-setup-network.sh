@@ -114,7 +114,7 @@ copy_ssh_key() {
   # Generate and copy SSH key
   cat /dev/zero | ssh-keygen -f /root/so.key -t rsa -q -N ""
   #Copy the key over to the master
-  ssh-copy-id -i /root/so.key socore@$MASTER
+  sudo ssh-copy-id -i /root/so.key socore@$MASTER
 }
 
 create_bond() {
