@@ -220,7 +220,7 @@ master_pillar() {
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
-}
+  }
 
 node_pillar() {
   # Create the node pillar
@@ -236,7 +236,7 @@ node_pillar() {
   echo "  ls_input_threads: $LSINPUTTHREADS" >> /tmp/$HOSTNAME.sls
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /tmp/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
-}
+  }
 
 #pcap_pin() {
 #  Array3=(`echo ${Array1[@]} ${Array2[@]} | tr ' ' '\n' | sort | uniq -u` )
