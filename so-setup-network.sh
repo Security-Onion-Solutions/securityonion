@@ -72,7 +72,7 @@ configure_minion() {
   if [ $TYPE == 'master' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
   else
-    echo "master: $MASTER" > /etc/salt/minion
+    echo "master: $MSRV" > /etc/salt/minion
   fi
 
   service salt-minion restart
