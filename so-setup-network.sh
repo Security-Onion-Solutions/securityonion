@@ -94,7 +94,8 @@ copy_minion_pillar() {
   fi
 
   # Copy over the pillar
-  scp -i ~/.ssh/so.key /tmp/$HOSTNAME.sls /opt/so/saltstack/pillar/$PLOC/$HOSTNAME.sls
+  echo "Copying the pillar over"
+  scp -i ~/.ssh/so.key /tmp/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$PLOC/$HOSTNAME.sls
 
   }
 
