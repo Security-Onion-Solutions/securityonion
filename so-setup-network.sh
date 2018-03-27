@@ -133,10 +133,6 @@ create_bond() {
   fi
 }
 
-#create_socore_password() {
-  # Enter a password for socore
-#}
-
 detect_os() {
   # Detect Base OS
   if [ -f /etc/redhat-release ]; then
@@ -224,6 +220,8 @@ master_pillar() {
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
+}
+
 node_pillar() {
   # Create the node pillar
   touch /tmp/$HOSTNAME.sls
@@ -237,10 +235,12 @@ node_pillar() {
   echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> /tmp/$HOSTNAME.sls
   echo "  ls_input_threads: $LSINPUTTHREADS" >> /tmp/$HOSTNAME.sls
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /tmp/$HOSTNAME.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
 }
 
-
-}
+#pcap_pin() {
+#  Array3=(`echo ${Array1[@]} ${Array2[@]} | tr ' ' '\n' | sort | uniq -u` )
+#}
 
 saltify() {
   # Install updates and Salt
