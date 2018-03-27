@@ -618,12 +618,19 @@ if (whiptail_you_sure) then
       LSINPUTTHREADS=1
       LSINPUTBATCHCOUNT=125
     fi
-    configure_minion node
     copy_ssh_key
-    #saltify
-    #configure_minion node
-    #copy_ssh_key
-    #copy_minion_pillar STORAGENODE
+    saltify
+    configure_minion node
+    node_pillar
+    copy_minion_pillar STORAGENODE
+    salt_checkin
+    # Accept the Salt Key
+    accept_salt_key_remote
+    # Do the big checkin but first let them know it will take a bit.
+    salt_checkin_message
+    salt_checkin
+
+    whiptail_setup_complete
   fi
 
 else
