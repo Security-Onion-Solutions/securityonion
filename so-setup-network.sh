@@ -112,9 +112,9 @@ configure_sensor_pillar() {
 
 copy_ssh_key() {
   # Generate and copy SSH key
-  cat /dev/zero | ssh-keygen -f /root/so.key -t rsa -q -N ""
+  cat /dev/zero | ssh-keygen -t rsa -q -N ""
   #Copy the key over to the master
-  ssh-copy-id -i /root/so.key socore@$MASTER
+  ssh-copy-id socore@$MASTER
 }
 
 create_bond() {
