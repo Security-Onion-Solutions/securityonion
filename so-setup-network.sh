@@ -43,7 +43,7 @@ accept_salt_key_local() {
 
 accept_salt_key_remote() {
   # Accept the key
-  ssh socore@$MASTERSRV 'sudo salt-key -ya $HOSTNAME'
+  ssh socore@$MSRV 'sudo salt-key -ya $HOSTNAME'
 
 }
 
