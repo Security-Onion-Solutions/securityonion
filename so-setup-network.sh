@@ -490,9 +490,22 @@ whiptail_sensor_config() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
 whiptail_setup_complete() {
   whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. A reboot is recommended." 8 78
   exit
+}
+
+whiptail_suricata_pins() {
+
+  whiptail --title "Security Onion Setup" --yesno "Do you want to choose what CPUs Suricata runs on? (Expert Mode)" 8 78
+}
+
+whiptail_suricata_ratio() {
+
+  SURIRATIO=$(whiptail --title "Security Onion Setup" --inputbox \
+    "\nEnter Suricata Detect Thread Ratio: \n \n(Half of all cores is default)" 10 60 0.5 3>&1 1>&2 2>&3)
+
 }
 whiptail_you_sure() {
 
@@ -575,6 +588,15 @@ if (whiptail_you_sure) then
     whiptail_sensor_config
     if [ $NSMSETUP == 'ADVANCED' ]; then
       whiptail_bro_pins
+      #whiptail_pcap_pin
+      #whiptail_suricata_ratio
+      #if (whiptail_suricata_pins) then
+      #  whiptail_suricata_pins_set_management
+      #  whiptail_suricata_pins_set_receive
+      #  whiptail_suricata_pins_set_decode_cpu
+      #  whiptail_suricata_pins_set_decode_mode
+      #  whiptail_suricata_pins_set_detect
+      #fi
     fi
     configure_minion
     copy_ssh_key
@@ -585,6 +607,7 @@ if (whiptail_you_sure) then
     copy_minion_pillar SENSORONLY
 
   fi
+
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
     whiptail_management_nic
     filter_nics
@@ -597,9 +620,13 @@ if (whiptail_you_sure) then
     create_bond
     saltify
     configure_minion sensors
-    copy_ssh_key
     copy_minion_pillar SENSORONLY
+    salt_checkin
+    accept_salt_key_local
+    salt_checkin_message
+    salt_checkin
   fi
+
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     whiptail_management_nic
     echo "Why isn't this working"
