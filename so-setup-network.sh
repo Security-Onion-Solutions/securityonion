@@ -130,7 +130,7 @@ create_bond() {
     # Create Bond files
 
   else
-    apt-get install ifenslave
+    apt -y install ifenslave
     echo "bonding" >> /etc/modules
     modprobe bonding
     # Backup and create a new interface file
