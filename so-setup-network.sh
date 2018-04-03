@@ -130,8 +130,13 @@ create_bond() {
     # Create Bond files
 
   else
-    echo bonding >> /etc/modules
+    apt-get install ifenslave
+    echo "bonding" >> /etc/modules
     modprobe bonding
+    echo "auto bond0" >> /etc/network/interfaces
+    echo "iface bond0 inet static" >> /etc/network/interfaces
+    echo "    bond-mode 0" >> /etc/network/interfaces
+    echo "    bond-slaves ${BNICS[@]}" >> /etc/network/interfaces
   fi
 }
 
@@ -603,7 +608,6 @@ if (whiptail_you_sure) then
     create_bond
     saltify
     configure_minion sensors
-    copy_ssh_key
     copy_minion_pillar SENSORONLY
 
   fi
