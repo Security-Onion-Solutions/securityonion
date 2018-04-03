@@ -133,6 +133,25 @@ create_bond() {
     apt-get install ifenslave
     echo "bonding" >> /etc/modules
     modprobe bonding
+    # Backup and create a new interface file
+    cp /etc/network/interfaces /etc/network/interfaces.sosetup
+    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
+    local MINT=$(awk '/auto $MNIC/,/^$/' /etc/network/interfaces)
+
+    # Let's set up the new interface file
+    echo $LBACK > /etc/network/interfaces
+    echo $MINT >> /etc/network/interfaces
+
+    # Create a for loop here
+    for BNIC in ${BNICS[@]}; do
+      echo "auto $BNIC" >> /etc/network/interfaces
+      echo "iface $BNIC inet static" >> /etc/network/interfaces
+      echo "  up ip link set \$IFACE promisc on arp off up"
+      echo "  down ip link set \$IFACE promisc off down"
+      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done"
+      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6"
+    done
+
     echo "auto bond0" >> /etc/network/interfaces
     echo "iface bond0 inet static" >> /etc/network/interfaces
     echo "    bond-mode 0" >> /etc/network/interfaces
