@@ -354,13 +354,16 @@ whiptail_bond_nics() {
 
 }
 
-#whiptail_bond_nics_mtu() {
+whiptail_bond_nics_mtu() {
 
-  # Add the ability to set the MTU on the monitor interface
-  #local exitstatus=$?
-  #whiptail_check_exitstatus $exitstatus
+  # Set the MTU on the monitor interface
+  MTU=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the MTU for the monitor NICs" 10 60 1500 3>&1 1>&2 2>&3)
 
-#}
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
 
 whiptail_cancel() {
   whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
@@ -400,7 +403,7 @@ whiptail_nids() {
 
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
-  "Suricata" "Evaluate all the things" ON 3>&1 1>&2 2>&3 )
+  "Suricata" "Suricata 4.X" ON 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
