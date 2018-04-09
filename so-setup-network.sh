@@ -127,7 +127,9 @@ create_bond() {
   if [ $OS == 'centos' ]; then
     alias bond0 bonding
     mode=0
-    # Create Bond files
+    # Create Bond files for the selected monitor interface
+    for BNIC in ${BNICS[@]}; do
+      echo "blah"
 
   else
     apt -y install ifenslave
@@ -154,8 +156,12 @@ create_bond() {
 
     echo "auto bond0" >> /etc/network/interfaces
     echo "iface bond0 inet static" >> /etc/network/interfaces
-    echo "    bond-mode 0" >> /etc/network/interfaces
-    echo "    bond-slaves ${BNICS[@]}" >> /etc/network/interfaces
+    echo "  bond-mode 0" >> /etc/network/interfaces
+    echo "  bond-slaves ${BNICS[@]}" >> /etc/network/interfaces
+    echo "  up ip link set \$IFACE promisc on arp off up"
+    echo "  down ip link set \$IFACE promisc off down"
+    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done"
+    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6"
   fi
 }
 
@@ -623,6 +629,7 @@ if (whiptail_you_sure) then
     whiptail_sensor_config
     if [ $NSMSETUP == 'ADVANCED' ]; then
       whiptail_bro_pins
+      whiptail_bond_nics_mtu
       #whiptail_pcap_pin
       #whiptail_suricata_ratio
       #if (whiptail_suricata_pins) then
@@ -633,6 +640,7 @@ if (whiptail_you_sure) then
       #  whiptail_suricata_pins_set_detect
       #fi
     fi
+    whiptail_make_changes
     configure_minion
     copy_ssh_key
     create_bond
