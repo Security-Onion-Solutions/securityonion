@@ -335,6 +335,19 @@ sensor_pillar() {
   touch /tmp/$HOSTNAME.sls
   echo "sensor:" > /tmp/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
+  echo "  interface: bond0"
+  if [ $NSMSETUP == 'ADVANCED' ]; then
+    echo "  bro_pins:" >> /tmp/$HOSTNAME.sls
+    for pin in $BROPINS; do
+    echo "    - $pin" >> /tmp/$HOSTNAME.sls
+    done
+  else
+    echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
+  fi
+  echo "  brobpf:" >> /tmp/$HOSTNAME.sls
+  echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
+  echo "  nidsbpf:" >> /tmp/$HOSTNAME.sls
+
 
 }
 update_sudoers() {
