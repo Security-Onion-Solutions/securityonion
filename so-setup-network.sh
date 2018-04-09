@@ -132,6 +132,7 @@ create_bond() {
       echo "blah"
 
   else
+    # Need to add 17.04 support still
     apt -y install ifenslave
     echo "bonding" >> /etc/modules
     modprobe bonding
