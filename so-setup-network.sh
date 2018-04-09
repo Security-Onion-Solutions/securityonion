@@ -329,6 +329,14 @@ salt_master_directories() {
   cp -R salt/* /opt/so/saltstack/salt/
 }
 
+sensor_pillar() {
+
+  # Create the sensor pillar
+  touch /tmp/$HOSTNAME.sls
+  echo "sensor:" > /tmp/$HOSTNAME.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
+
+}
 update_sudoers() {
 
   # Update Sudoers
