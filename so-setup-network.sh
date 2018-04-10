@@ -135,7 +135,7 @@ create_bond() {
     # Create Bond files for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
       echo "blah"
-
+    done
   else
     # Need to add 17.04 support still
     apt -y install ifenslave
