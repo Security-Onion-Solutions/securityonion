@@ -347,6 +347,7 @@ sensor_pillar() {
     done
   else
     echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
+    echo "  surithreads: $LBPROCS" >> /tmp/$HOSTNAME.sls
   fi
   echo "  brobpf:" >> /tmp/$HOSTNAME.sls
   echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
@@ -565,15 +566,14 @@ whiptail_setup_complete() {
 
 whiptail_suricata_pins() {
 
-  whiptail --title "Security Onion Setup" --yesno "Do you want to choose what CPUs Suricata runs on? (Expert Mode)" 8 78
-}
+  FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr ' ' '\n' | sort | uniq -u)
+  SURITHREADS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 78 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
 
-whiptail_suricata_ratio() {
-
-  SURIRATIO=$(whiptail --title "Security Onion Setup" --inputbox \
-    "\nEnter Suricata Detect Thread Ratio: \n \n(Half of all cores is default)" 10 60 0.5 3>&1 1>&2 2>&3)
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
+
 whiptail_you_sure() {
 
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
@@ -658,15 +658,9 @@ if (whiptail_you_sure) then
     if [ $NSMSETUP == 'ADVANCED' ]; then
       whiptail_bro_pins
       whiptail_bond_nics_mtu
-      #whiptail_pcap_pin
-      #whiptail_suricata_ratio
-      #if (whiptail_suricata_pins) then
-      #  whiptail_suricata_pins_set_management
-      #  whiptail_suricata_pins_set_receive
-      #  whiptail_suricata_pins_set_decode_cpu
-      #  whiptail_suricata_pins_set_decode_mode
-      #  whiptail_suricata_pins_set_detect
-      #fi
+      whiptail_suricata_pins
+    else
+      surithreads=$LBPROCS
     fi
     whiptail_make_changes
     configure_minion
@@ -675,6 +669,8 @@ if (whiptail_you_sure) then
     saltify
     configure_minion sensors
     copy_minion_pillar SENSORONLY
+    salt_checkin
+    whiptail_setup_complete
 
   fi
 
