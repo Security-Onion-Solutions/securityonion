@@ -377,6 +377,26 @@ update_sudoers() {
 ##                                       ##
 ###########################################
 
+whiptail_basic_bro() {
+
+  BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the number of bro processes:" 10 60 $LBPROCS 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_basic_suri() {
+
+  BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the number of Suricata Processes:" 10 60 $LBPROCS 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_bro_pins() {
 
   BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $LBPROCS cores to pin Bro to:" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
@@ -669,8 +689,8 @@ if (whiptail_you_sure) then
       whiptail_suricata_pins
       whiptail_bond_nics_mtu
     else
-      whiptail_bro_basic
-      whiptail_suri_basic
+      whiptail_basic_bro
+      whiptail_basic_suri
     fi
     whiptail_make_changes
     sensor_pillar
