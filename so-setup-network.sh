@@ -144,8 +144,9 @@ create_bond() {
     # Backup and create a new interface file
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
+    echo $MNIC
     local MINT=$(awk '/auto $MNIC/,/^$/' /etc/network/interfaces)
-
+    echo $MINT
     # Let's set up the new interface file
     echo $LBACK > /etc/network/interfaces
     echo $MINT >> /etc/network/interfaces
@@ -154,20 +155,20 @@ create_bond() {
     for BNIC in ${BNICS[@]}; do
       echo "auto $BNIC" >> /etc/network/interfaces
       echo "iface $BNIC inet static" >> /etc/network/interfaces
-      echo "  up ip link set \$IFACE promisc on arp off up"
-      echo "  down ip link set \$IFACE promisc off down"
-      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done"
-      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6"
+      echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
+      echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
+      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
+      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
     done
 
     echo "auto bond0" >> /etc/network/interfaces
     echo "iface bond0 inet static" >> /etc/network/interfaces
     echo "  bond-mode 0" >> /etc/network/interfaces
     echo "  bond-slaves ${BNICS[@]}" >> /etc/network/interfaces
-    echo "  up ip link set \$IFACE promisc on arp off up"
-    echo "  down ip link set \$IFACE promisc off down"
-    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done"
-    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6"
+    echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
+    echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
+    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
+    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
   fi
 }
 
