@@ -567,7 +567,7 @@ whiptail_setup_complete() {
 
 whiptail_suricata_pins() {
 
-  FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr ' ' '\n' | sort | uniq -u)
+  FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr -d '"' | tr ' ' '\n' | sort | uniq -u)
   echo $FILTEREDCORES
   SURITHREADS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 78 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
 
