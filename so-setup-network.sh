@@ -352,7 +352,7 @@ sensor_pillar() {
     echo "    - $PIN" >> /tmp/$HOSTNAME.sls
     done
     ST=("${SURITHREADS[@]//\"/}")
-    STHREADS=$(IFS=,; echo "$ST")
+    STHREADS=${ST// /,}
     echo "  surithreads: $STHREADS" >> /tmp/$HOSTNAME.sls
   else
     echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
