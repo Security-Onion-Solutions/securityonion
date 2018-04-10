@@ -659,19 +659,19 @@ if (whiptail_you_sure) then
     calculate_useable_cores
     if [ $NSMSETUP == 'ADVANCED' ]; then
       whiptail_bro_pins
-      whiptail_bond_nics_mtu
       whiptail_suricata_pins
+      whiptail_bond_nics_mtu
     else
       surithreads=$LBPROCS
     fi
     whiptail_make_changes
-    configure_minion
-    copy_ssh_key
+    #configure_minion
+    #copy_ssh_key
     create_bond
-    saltify
-    configure_minion sensors
-    copy_minion_pillar SENSORONLY
-    salt_checkin
+    #saltify
+    #configure_minion sensors
+    #copy_minion_pillar SENSORONLY
+    #salt_checkin
     whiptail_setup_complete
 
   fi
