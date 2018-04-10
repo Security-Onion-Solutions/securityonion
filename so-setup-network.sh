@@ -27,50 +27,60 @@ LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\"
 # Functions
 
 calculate_useable_cores() {
-  #Calculate total lbprocs for basic install
+
+  # Calculate reasonable core usage
   local CORES4BRO=$(( $CPUCORES/2 - 1 ))
   LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
+  # We don't want it to be 0
   if [ "$LBPROCSROUND" -lt 1 ]; then
     LBPROCS=1
   else
     LBPROCS=$LBPROCSROUND
   fi
-}
 
-bro_pins(){
-  echo "Bro Pins will go here"
 }
 
 accept_salt_key_local() {
-  # Accept the key
+
+  # Accept the key locally on the master
   salt-key -ya $HOSTNAME
 }
 
 accept_salt_key_remote() {
 
-  # Accept the key
+  # Accept the key remotely so the device can check in
   ssh -i ~/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
 
 }
 
 add_socore_user_master() {
+
+  # Add user "socore" to the master. This will be for things like accepting keys.
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
+  # Prompt the user to set a password for the user
   passwd socore
+
 }
 
 add_socore_user_notmaster() {
-  # Add socore user to the system. Probably not a bad idea to make system user
+
+  # Add socore user to the non master system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
 
 }
 
 chown_salt_master() {
-  # Chown the salt dirs
+
+  # Chown the salt dirs on the master for socore
   chown -R socore:socore /opt/so
+
 }
+
 configure_minion() {
+
+  # You have to pass the TYPE to this function so it knows if its a master or not
   local TYPE=$1
 
   touch /etc/salt/grains
@@ -82,14 +92,21 @@ configure_minion() {
   fi
 
   service salt-minion restart
+
 }
 
 copy_master_config() {
+
+  # Copy the master config template to the proper directory
   cp files/master /etc/salt/master
+  # Restart the service so it picks up the changes -TODO Enable service on CentOS
   service salt-master restart
+
 }
 
 copy_minion_pillar() {
+
+  # Pass the type so it knows where to copy the pillar
   local TYPE=$1
 
   if [ $TYPE = 'STORAGENODE' ]; then
@@ -104,43 +121,38 @@ copy_minion_pillar() {
 
   }
 
-configure_sensor_pillar() {
-
-  # Create the pillar file for the sensor
-  touch /tmp/$HOSTNAME.sls
-  echo "sensors:" > /tmp/$HOSTNAME.sls
-  echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
-  # Need to add logic here to determine if you are pinning or not or standalone
-
-  echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
-  # Need to add pins loop
-
-}
-
 copy_ssh_key() {
-  # Generate and copy SSH key
+
+  # Generate SSH key
   mkdir -p ~/.ssh
   cat /dev/zero | ssh-keygen -f ~/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER ~/.ssh
   #Copy the key over to the master
   sudo ssh-copy-id -i ~/.ssh/so.key socore@$MSRV
+
 }
 
 create_bond() {
+
   # Create the bond interface
   echo "Setting up Bond"
+
+  # Do something different based on the OS
   if [ $OS == 'centos' ]; then
     alias bond0 bonding
     mode=0
-    # Create Bond files for the selected monitor interface
+    # Create Bond files for the selected monitor interface - TODO
     for BNIC in ${BNICS[@]}; do
       echo "blah"
     done
+
   else
+
     # Need to add 17.04 support still
     apt -y install ifenslave
     echo "bonding" >> /etc/modules
     modprobe bonding
+
     # Backup and create a new interface file
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
 
@@ -148,11 +160,12 @@ create_bond() {
     local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
 
     # Let's set up the new interface file
+    # Populate lo and the management interface
     echo $LBACK > /tmp/interfaces
     echo $MINT >> /tmp/interfaces
     cp /tmp/interfaces /etc/network/interfaces
 
-    # Create a for loop here
+    # Create entries for each interface that is part of the bond.
     for BNIC in ${BNICS[@]}; do
       BNIC=$(echo $BNIC |  cut -d\" -f2)
       echo "auto $BNIC" >> /etc/network/interfaces
@@ -174,9 +187,11 @@ create_bond() {
     echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
     echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
   fi
+
 }
 
 detect_os() {
+
   # Detect Base OS
   if [ -f /etc/redhat-release ]; then
     OS=centos
@@ -186,38 +201,45 @@ detect_os() {
     echo "We were unable to determine if you are using a supported OS."
     exit
   fi
+
 }
 
-#disk_space() {
-  # Give me Disk Space
-#}
-
 es_heapsize() {
+
   # Determine ES Heap Size
   if [ $TOTAL_MEM -lt 8000 ] ; then
       ES_HEAP_SIZE="600m"
-  elif [ $TOTAL_MEM -ge 124000 ]; then
-      # Set a max of 31GB for heap size
+  elif [ $TOTAL_MEM -ge 100000 ]; then
+      # Set a max of 25GB for heap size  
       # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
-      ES_HEAP_SIZE="31000m"
+      ES_HEAP_SIZE="25000m"
   else
       # Set heap size to 25% of available memory
       ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
   fi
+
 }
 
 filter_nics() {
+
+  # Filter the NICs that we don't want to see in setup
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+
 }
 
 got_root() {
+
+  # Make sure you are root
   if [ "$(id -u)" -ne 0 ]; then
           echo "This script must be run using sudo!"
           exit 1
   fi
+
 }
 
 install_master() {
+
+  # Install the salt master package
   if [ $OS == 'centos' ]; then
     yum -y install salt-master
   else
@@ -225,10 +247,11 @@ install_master() {
   fi
 
   copy_master_config
-  # If Centos Enable the service
+
 }
 
 ls_heapsize() {
+
   # Determine LS Heap Size
   if [ $TOTAL_MEM -ge 16000 ] ; then
       LS_HEAP_SIZE="4192m"
@@ -236,9 +259,11 @@ ls_heapsize() {
       # Set a max of 1GB heap if you have less than 16GB RAM
       LS_HEAP_SIZE="1g"
   fi
+
 }
 
 master_pillar() {
+
   # Create the master pillar
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -266,6 +291,7 @@ master_pillar() {
   }
 
 node_pillar() {
+
   # Create the node pillar
   touch /tmp/$HOSTNAME.sls
   echo "node:" > /tmp/$HOSTNAME.sls
@@ -279,13 +305,11 @@ node_pillar() {
   echo "  ls_input_threads: $LSINPUTTHREADS" >> /tmp/$HOSTNAME.sls
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /tmp/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
-  }
 
-#pcap_pin() {
-#  Array3=(`echo ${Array1[@]} ${Array2[@]} | tr ' ' '\n' | sort | uniq -u` )
-#}
+}
 
 saltify() {
+
   # Install updates and Salt
   if [ $OS == 'centos' ]; then
     ADDUSER=adduser
@@ -300,7 +324,7 @@ saltify() {
     # Add the pre-requisites for installing docker-ce
     apt-get -y install ca-certificates curl software-properties-common apt-transport-https
 
-    # grab the version from the os-release file
+    # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
 
     # Install the repo for salt
@@ -316,27 +340,38 @@ saltify() {
     apt-get -y install salt-minion
 
   fi
+
 }
 
 salt_checkin() {
+
+  # Run Checkin
   salt-call state.highstate
+
 }
 
 salt_checkin_message() {
+
+  # Wann the user that this might take a while
   echo "####################################################"
   echo "##                                                ##"
   echo "##        Applying and Installing everything      ##"
   echo "##             (This will take a while)           ##"
   echo "##                                                ##"
   echo "####################################################"
+
 }
 
 salt_master_directories() {
-  # Create salt directories
+
+  # Create salt paster directories
   mkdir -p /opt/so/saltstack/salt
   mkdir -p /opt/so/saltstack/pillar
+
+  # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
   cp -R salt/* /opt/so/saltstack/salt/
+
 }
 
 sensor_pillar() {
@@ -362,11 +397,11 @@ sensor_pillar() {
   echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
   echo "  nidsbpf:" >> /tmp/$HOSTNAME.sls
 
-
 }
+
 update_sudoers() {
 
-  # Update Sudoers
+  # Update Sudoers so that socore can accept keys without a password
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
 
 }
@@ -428,16 +463,21 @@ whiptail_bond_nics_mtu() {
 }
 
 whiptail_cancel() {
+
   whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
   exit
+
 }
 
 whiptail_check_exitstatus() {
+
   if [ $1 == '1' ]; then
     echo " They hit cancel"
     whiptail_cancel
   fi
+
 }
+
 whiptail_install_type() {
 
   # What kind of install are we doing?
@@ -450,6 +490,7 @@ whiptail_install_type() {
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_management_nic() {
@@ -483,10 +524,12 @@ whiptail_oinkcode() {
 }
 
 whiptail_make_changes() {
+
   whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $INSTALLTYPE. Please hit YES to make changes or NO to cancel." 8 78
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_management_server() {
@@ -589,8 +632,10 @@ whiptail_sensor_config() {
 }
 
 whiptail_setup_complete() {
+
   whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. A reboot is recommended." 8 78
   exit
+
 }
 
 whiptail_suricata_pins() {
@@ -608,13 +653,25 @@ whiptail_you_sure() {
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
 
 }
-# End Functions
+########################
+##                    ##
+##   End Functions    ##
+##                    ##
+########################
+
+#####################
+##                 ##
+##    Let's Go!    ##
+##                 ##
+#####################
 
 # Check for prerequisites
 echo "Checking for Root"
 got_root
+
 echo "Detecting OS"
 detect_os
+
 if [ $OS == ubuntu ]; then
   # Override the horrible Ubuntu whiptail color pallete
   update-alternatives --set newt-palette /etc/newt/palette.original
