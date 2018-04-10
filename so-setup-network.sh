@@ -143,14 +143,15 @@ create_bond() {
     modprobe bonding
     # Backup and create a new interface file
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
-    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
-    echo $MNIC
-    local MINT=$(awk '/auto $MNIC/,/^$/' /etc/network/interfaces)
-    echo $MINT
-    # Let's set up the new interface file
-    echo $LBACK > /etc/network/interfaces
-    echo $MINT >> /etc/network/interfaces
 
+    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
+    local MINT=$(awk '/auto $MNIC/,/^$/' /etc/network/interfaces)
+
+    # Let's set up the new interface file
+    echo $LBACK > /tmp/interfaces
+    echo $MINT >> /tmp/interfaces
+    cp /tmp/interfaces /etc/network/interfaces
+    
     # Create a for loop here
     for BNIC in ${BNICS[@]}; do
       echo "auto $BNIC" >> /etc/network/interfaces
