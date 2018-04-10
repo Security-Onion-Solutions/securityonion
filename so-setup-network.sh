@@ -34,6 +34,7 @@ calculate_useable_cores() {
     LBPROCS=1
   else
     LBPROCS=$LBPROCSROUND
+  fi
 }
 
 bro_pins(){
@@ -653,7 +654,7 @@ if (whiptail_you_sure) then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
-    # Calculate bro lbprocs so we can call it in the prompts
+    # Calculate lbprocs so we can call it in the prompts
     calculate_useable_cores
     if [ $NSMSETUP == 'ADVANCED' ]; then
       whiptail_bro_pins
