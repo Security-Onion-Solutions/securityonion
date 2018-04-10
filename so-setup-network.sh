@@ -436,7 +436,7 @@ whiptail_management_nic() {
 whiptail_nids() {
 
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose which IDS to run:" 30 78 4 \
+  "Choose which IDS to run:" 20 78 4 \
   "Suricata" "Suricata 4.X" ON 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
@@ -551,7 +551,7 @@ whiptail_rule_setup() {
 whiptail_sensor_config() {
 
   NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "What type of configuration would you like to use?:" 40 78 4 \
+  "What type of configuration would you like to use?:" 20 78 4 \
   "BASIC" "Install NSM components with recommended settings" ON \
   "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
 
