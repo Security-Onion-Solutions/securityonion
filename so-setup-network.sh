@@ -344,12 +344,14 @@ sensor_pillar() {
   # Create the sensor pillar
   touch /tmp/$HOSTNAME.sls
   echo "sensor:" > /tmp/$HOSTNAME.sls
-  echo "  interface: bond0"
+  echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
     echo "  bro_pins:" >> /tmp/$HOSTNAME.sls
-    for pin in $BROPINS; do
-    echo "    - $pin" >> /tmp/$HOSTNAME.sls
+    for PIN in $BROPINS; do
+      PIN=$(echo $PIN |  cut -d\" -f2)
+    echo "    - $PIN" >> /tmp/$HOSTNAME.sls
     done
+    
   else
     echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
     echo "  surithreads: $LBPROCS" >> /tmp/$HOSTNAME.sls
