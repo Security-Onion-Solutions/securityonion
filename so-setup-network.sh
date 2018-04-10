@@ -355,8 +355,8 @@ sensor_pillar() {
     STHREADS=${ST// /,}
     echo "  surithreads: $STHREADS" >> /tmp/$HOSTNAME.sls
   else
-    echo "  bro_lbprocs: $LBPROCS" >> /tmp/$HOSTNAME.sls
-    echo "  surithreads: $LBPROCS" >> /tmp/$HOSTNAME.sls
+    echo "  bro_lbprocs: $BASICBRO" >> /tmp/$HOSTNAME.sls
+    echo "  surithreads: $BASICSURI" >> /tmp/$HOSTNAME.sls
   fi
   echo "  brobpf:" >> /tmp/$HOSTNAME.sls
   echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
@@ -669,16 +669,17 @@ if (whiptail_you_sure) then
       whiptail_suricata_pins
       whiptail_bond_nics_mtu
     else
-      surithreads=$LBPROCS
+      whiptail_bro_basic
+      whiptail_suri_basic
     fi
     whiptail_make_changes
     sensor_pillar
-    #copy_ssh_key
-    #create_bond
-    #saltify
-    #configure_minion sensors
-    #copy_minion_pillar SENSORONLY
-    #salt_checkin
+    copy_ssh_key
+    create_bond
+    saltify
+    configure_minion sensors
+    copy_minion_pillar SENSORONLY
+    salt_checkin
     whiptail_setup_complete
 
   fi
