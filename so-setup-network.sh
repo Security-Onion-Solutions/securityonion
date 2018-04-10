@@ -29,7 +29,11 @@ LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\"
 calculate_useable_cores() {
   #Calculate total lbprocs for basic install
   local CORES4BRO=$(( $CPUCORES/2 - 1 ))
-  LBPROCS=$(printf "%.0f\n" $CORES4BRO)
+  LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
+  if [ "$LBPROCSROUND" -lt 1 ]; then
+    LBPROCS=1
+  else
+    LBPROCS=$LBPROCSROUND
 }
 
 bro_pins(){
@@ -365,7 +369,7 @@ update_sudoers() {
 
 whiptail_bro_pins() {
 
-  BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select Cores to Pin Bro to" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
+  BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $LBPROCS cores to pin Bro to:" 20 78 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
