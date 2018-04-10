@@ -344,7 +344,6 @@ sensor_pillar() {
   # Create the sensor pillar
   touch /tmp/$HOSTNAME.sls
   echo "sensor:" > /tmp/$HOSTNAME.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
   echo "  interface: bond0"
   if [ $NSMSETUP == 'ADVANCED' ]; then
     echo "  bro_pins:" >> /tmp/$HOSTNAME.sls
@@ -670,9 +669,9 @@ if (whiptail_you_sure) then
       surithreads=$LBPROCS
     fi
     whiptail_make_changes
-    #configure_minion
+    sensor_pillar
     #copy_ssh_key
-    create_bond
+    #create_bond
     #saltify
     #configure_minion sensors
     #copy_minion_pillar SENSORONLY
