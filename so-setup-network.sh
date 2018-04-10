@@ -163,10 +163,12 @@ create_bond() {
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
     done
 
+    BN=("${BNICS[@]//\"/}")
+
     echo "auto bond0" >> /etc/network/interfaces
     echo "iface bond0 inet static" >> /etc/network/interfaces
     echo "  bond-mode 0" >> /etc/network/interfaces
-    echo "  bond-slaves ${BNICS[@]}" >> /etc/network/interfaces
+    echo "  bond-slaves $BN" >> /etc/network/interfaces
     echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
     echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
     echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
