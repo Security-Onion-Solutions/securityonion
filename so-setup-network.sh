@@ -145,13 +145,13 @@ create_bond() {
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
 
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
-    local MINT=$(awk '/auto $MNIC/,/^$/' /etc/network/interfaces)
+    local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
 
     # Let's set up the new interface file
     echo $LBACK > /tmp/interfaces
     echo $MINT >> /tmp/interfaces
     cp /tmp/interfaces /etc/network/interfaces
-    
+
     # Create a for loop here
     for BNIC in ${BNICS[@]}; do
       echo "auto $BNIC" >> /etc/network/interfaces
