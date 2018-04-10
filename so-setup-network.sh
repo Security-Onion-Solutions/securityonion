@@ -154,6 +154,7 @@ create_bond() {
 
     # Create a for loop here
     for BNIC in ${BNICS[@]}; do
+      BNIC=$(echo $BNIC |  cut -d\" -f2)
       echo "auto $BNIC" >> /etc/network/interfaces
       echo "iface $BNIC inet static" >> /etc/network/interfaces
       echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
