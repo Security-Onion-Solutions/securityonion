@@ -123,7 +123,7 @@ outputs:
               rule:
                 metadata: true
                 raw: true
-                
+
             # Enable the logging of tagged packets for rules using the
             # "tag" keyword.
             tagged-packets: no
@@ -1309,7 +1309,7 @@ spm-algo: auto
 
 # Suricata is multi-threaded. Here the threading can be influenced.
 threading:
-  set-cpu-affinity: no
+  set-cpu-affinity: yes
   # Tune cpu affinity of threads. Each family of threads can be bound
   # on specific CPUs.
   #
@@ -1321,22 +1321,38 @@ threading:
   # receive-cpu-set is used for capture threads
   # verdict-cpu-set is used for IPS verdict threads
   #
+  {%- if salt['pillar.get']('sensor:suriprocs') %}
   cpu-affinity:
     - management-cpu-set:
-        cpu: [ 0 ]  # include only these cpus in affinity settings
+        cpu: [ all ]  # include only these cpus in affinity settings
     - receive-cpu-set:
-        cpu: [ 0 ]  # include only these cpus in affinity settings
+        cpu: [ all ]  # include only these cpus in affinity settings
     - worker-cpu-set:
         cpu: [ "all" ]
         mode: "exclusive"
         # Use explicitely 3 threads and don't compute number by using
         # detect-thread-ratio variable:
-        # threads: 3
+        threads: {{ salt['pillar.get']('sensor:suriprocs') }}
         prio:
-          low: [ 0 ]
-          medium: [ "1-2" ]
-          high: [ 3 ]
           default: "medium"
+  {% endif %}
+  
+  {%- if salt['pillar.get']('sensor:suripins') %}
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [ {{ salt['pillar.get']('sensor:suripins') }} ]  # include only these cpus in affinity settings
+    - receive-cpu-set:
+        cpu: [ {{ salt['pillar.get']('sensor:suripins') }} ]  # include only these cpus in affinity settings
+    - worker-cpu-set:
+        cpu: [ {{ salt['pillar.get']('sensor:suripins') }} ]
+        mode: "exclusive"
+        # Use explicitely 3 threads and don't compute number by using
+        # detect-thread-ratio variable:
+        threads: {{ salt['pillar.get']('sensor:surithreads') }}
+        prio:
+          default: "high"
+  {% endif %}
+
     #- verdict-cpu-set:
     #    cpu: [ 0 ]
     #    prio:

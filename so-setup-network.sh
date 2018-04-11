@@ -210,7 +210,7 @@ es_heapsize() {
   if [ $TOTAL_MEM -lt 8000 ] ; then
       ES_HEAP_SIZE="600m"
   elif [ $TOTAL_MEM -ge 100000 ]; then
-      # Set a max of 25GB for heap size  
+      # Set a max of 25GB for heap size
       # https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
       ES_HEAP_SIZE="25000m"
   else
@@ -386,12 +386,15 @@ sensor_pillar() {
       PIN=$(echo $PIN |  cut -d\" -f2)
     echo "    - $PIN" >> /tmp/$HOSTNAME.sls
     done
-    ST=("${SURITHREADS[@]//\"/}")
-    STHREADS=${ST// /,}
-    echo "  surithreads: $STHREADS" >> /tmp/$HOSTNAME.sls
+    SP=("${SURIPINS[@]//\"/}")
+    SPINS=${SP// /,}
+    SCOUNT=${#SURIPINS[@]}
+
+    echo "  suripins: $SPINS" >> /tmp/$HOSTNAME.sls
+    echo "  surithreads: $SCOUNT"
   else
     echo "  bro_lbprocs: $BASICBRO" >> /tmp/$HOSTNAME.sls
-    echo "  surithreads: $BASICSURI" >> /tmp/$HOSTNAME.sls
+    echo "  suriprocs: $BASICSURI" >> /tmp/$HOSTNAME.sls
   fi
   echo "  brobpf:" >> /tmp/$HOSTNAME.sls
   echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
@@ -641,7 +644,7 @@ whiptail_setup_complete() {
 whiptail_suricata_pins() {
 
   FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
-  SURITHREADS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 78 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
+  SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 78 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
