@@ -161,19 +161,24 @@ create_bond() {
 
     # Let's set up the new interface file
     # Populate lo and the management interface
-    echo $LBACK > /$TMP/interfaces
-    echo $MINT >> /$TMP/interfaces
+    echo $LBACK > $TMP/interfaces
+    echo $MINT >> $TMP/interfaces
     cp /$TMP/interfaces /etc/network/interfaces
 
     # Create entries for each interface that is part of the bond.
     for BNIC in ${BNICS[@]}; do
+
       BNIC=$(echo $BNIC |  cut -d\" -f2)
+      echo ""
       echo "auto $BNIC" >> /etc/network/interfaces
-      echo "iface $BNIC inet static" >> /etc/network/interfaces
+      echo "iface $BNIC inet manual" >> /etc/network/interfaces
       echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
       echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
+      echo "  bond-master bond0"
+      echo ""
+
     done
 
     BN=("${BNICS[@]//\"/}")
