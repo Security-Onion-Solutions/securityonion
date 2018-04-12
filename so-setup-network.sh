@@ -658,6 +658,7 @@ whiptail_sensor_config() {
 whiptail_setup_complete() {
 
   whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. A reboot is recommended." 8 78
+  install_cleanup
   exit
 
 }
