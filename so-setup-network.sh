@@ -184,7 +184,7 @@ create_bond() {
     BN=("${BNICS[@]//\"/}")
 
     echo "auto bond0" >> /etc/network/interfaces
-    echo "iface bond0 inet static" >> /etc/network/interfaces
+    echo "iface bond0 inet manual" >> /etc/network/interfaces
     echo "  bond-mode 0" >> /etc/network/interfaces
     echo "  bond-slaves $BN" >> /etc/network/interfaces
     echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
