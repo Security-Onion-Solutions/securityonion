@@ -117,7 +117,7 @@ copy_minion_pillar() {
 
   # Copy over the pillar
   echo "Copying the pillar over"
-  scp -i ~/.ssh/so.key /tmp/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$PLOC/$HOSTNAME.sls
+  scp -i ~/.ssh/so.key /$TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$PLOC/$HOSTNAME.sls
 
   }
 
@@ -161,9 +161,9 @@ create_bond() {
 
     # Let's set up the new interface file
     # Populate lo and the management interface
-    echo $LBACK > /tmp/interfaces
-    echo $MINT >> /tmp/interfaces
-    cp /tmp/interfaces /etc/network/interfaces
+    echo $LBACK > /$TMP/interfaces
+    echo $MINT >> /$TMP/interfaces
+    cp /$TMP/interfaces /etc/network/interfaces
 
     # Create entries for each interface that is part of the bond.
     for BNIC in ${BNICS[@]}; do
@@ -237,6 +237,12 @@ got_root() {
 
 }
 
+install_prep() {
+
+  # Create a tmp space that isn't in /tmp
+  mkdir ./installtmp
+  TMP=./installtmp
+}
 install_master() {
 
   # Install the salt master package
@@ -298,18 +304,18 @@ master_static() {
 node_pillar() {
 
   # Create the node pillar
-  touch /tmp/$HOSTNAME.sls
-  echo "node:" > /tmp/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
-  echo "  esheap: $NODEESHEAP" >> /tmp/$HOSTNAME.sls
-  echo "  esclustername: {{ grains.host }}" >> /tmp/$HOSTNAME.sls
-  echo "  lsheap: $NODELSHEAP" >> /tmp/$HOSTNAME.sls
-  echo "  lsaccessip: 127.0.0.1" >> /tmp/$HOSTNAME.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> /tmp/$HOSTNAME.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> /tmp/$HOSTNAME.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> /tmp/$HOSTNAME.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /tmp/$HOSTNAME.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> /tmp/$HOSTNAME.sls
+  touch /$TMP/$HOSTNAME.sls
+  echo "node:" > /$TMP/$HOSTNAME.sls
+  echo "  esaccessip: 127.0.0.1" >> /$TMP/$HOSTNAME.sls
+  echo "  esheap: $NODEESHEAP" >> /$TMP/$HOSTNAME.sls
+  echo "  esclustername: {{ grains.host }}" >> /$TMP/$HOSTNAME.sls
+  echo "  lsheap: $NODELSHEAP" >> /$TMP/$HOSTNAME.sls
+  echo "  lsaccessip: 127.0.0.1" >> /$TMP/$HOSTNAME.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> /$TMP/$HOSTNAME.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> /$TMP/$HOSTNAME.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> /$TMP/$HOSTNAME.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /$TMP/$HOSTNAME.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> /$TMP/$HOSTNAME.sls
 
 }
 
@@ -382,29 +388,29 @@ salt_master_directories() {
 sensor_pillar() {
 
   # Create the sensor pillar
-  touch /tmp/$HOSTNAME.sls
-  echo "sensor:" > /tmp/$HOSTNAME.sls
-  echo "  interface: bond0" >> /tmp/$HOSTNAME.sls
+  touch /$TMP/$HOSTNAME.sls
+  echo "sensor:" > /$TMP/$HOSTNAME.sls
+  echo "  interface: bond0" >> /$TMP/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> /tmp/$HOSTNAME.sls
+    echo "  bro_pins:" >> /$TMP/$HOSTNAME.sls
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> /tmp/$HOSTNAME.sls
+    echo "    - $PIN" >> /$TMP/$HOSTNAME.sls
     done
     SP=("${SURIPINS[@]//\"/}")
     SPINS=${SP// /,}
     SCOUNT=${#SURIPINS[@]}
 
-    echo "  suripins: $SPINS" >> /tmp/$HOSTNAME.sls
+    echo "  suripins: $SPINS" >> /$TMP/$HOSTNAME.sls
     echo "  surithreads: $SCOUNT"
   else
-    echo "  bro_lbprocs: $BASICBRO" >> /tmp/$HOSTNAME.sls
-    echo "  suriprocs: $BASICSURI" >> /tmp/$HOSTNAME.sls
+    echo "  bro_lbprocs: $BASICBRO" >> /$TMP/$HOSTNAME.sls
+    echo "  suriprocs: $BASICSURI" >> /$TMP/$HOSTNAME.sls
   fi
-  echo "  brobpf:" >> /tmp/$HOSTNAME.sls
-  echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
-  echo "  nidsbpf:" >> /tmp/$HOSTNAME.sls
-  echo "  homenet:" >> /tmp/$HOSTNAME.sls
+  echo "  brobpf:" >> /$TMP/$HOSTNAME.sls
+  echo "  pcapbpf:" >> /$TMP/$HOSTNAME.sls
+  echo "  nidsbpf:" >> /$TMP/$HOSTNAME.sls
+  echo "  homenet:" >> /$TMP/$HOSTNAME.sls
 
 }
 
@@ -690,6 +696,9 @@ fi
 
 if (whiptail_you_sure) then
 
+  # Create a dir to get started
+  install_prep
+  
 	# Let folks know they need their management interface already set up.
 	whiptail_network_notice
 
