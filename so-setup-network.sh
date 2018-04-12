@@ -307,12 +307,12 @@ master_pillar() {
 master_static() {
 
   # Create a static file for global values
-  touch /opt/so/saltstack/pillar/static/static.sls
+  touch /opt/so/saltstack/pillar/static/init.sls
 
   echo "static:" > /opt/so/saltstack/pillar/static.sls
-  echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
-  echo "  ntpserver: $NTPSERVER"
-  echo "  proxy: $PROXY"
+  echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static/init.sls
+  echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static/init.sls
+  echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static/init.sls
 
 }
 
@@ -751,6 +751,8 @@ if (whiptail_you_sure) then
     whiptail_management_nic
     # Select Snort or Suricata
     whiptail_nids
+    # Snag the HOME_NET
+    whiptail_homenet_master
     # Pick your Ruleset
     whiptail_rule_setup
 
@@ -776,6 +778,7 @@ if (whiptail_you_sure) then
     chown_salt_master
     es_heapsize
     ls_heapsize
+    master_static
     echo "generating the master pillar"
     master_pillar
     # Do a checkin to push the key up
