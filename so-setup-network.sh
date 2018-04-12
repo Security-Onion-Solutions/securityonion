@@ -237,12 +237,20 @@ got_root() {
 
 }
 
+install_cleanup() {
+
+  # Clean up after ourselves
+  rm -rf ./installtmp
+
+}
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
   mkdir ./installtmp
   TMP=./installtmp
+
 }
+
 install_master() {
 
   # Install the salt master package
@@ -480,6 +488,7 @@ whiptail_bond_nics_mtu() {
 whiptail_cancel() {
 
   whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 78
+  install_cleanup
   exit
 
 }
@@ -698,7 +707,7 @@ if (whiptail_you_sure) then
 
   # Create a dir to get started
   install_prep
-  
+
 	# Let folks know they need their management interface already set up.
 	whiptail_network_notice
 
