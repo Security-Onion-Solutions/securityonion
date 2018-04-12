@@ -371,7 +371,7 @@ salt_master_directories() {
 
   # Create salt paster directories
   mkdir -p /opt/so/saltstack/salt
-  mkdir -p /opt/so/saltstack/pillar/static
+  mkdir -p /opt/so/saltstack/pillar
 
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
