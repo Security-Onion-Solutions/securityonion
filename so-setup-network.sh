@@ -109,15 +109,9 @@ copy_minion_pillar() {
   # Pass the type so it knows where to copy the pillar
   local TYPE=$1
 
-  if [ $TYPE = 'STORAGENODE' ]; then
-    PLOC="nodes"
-  else
-    PLOC="sensors"
-  fi
-
   # Copy over the pillar
   echo "Copying the pillar over"
-  scp -i ~/.ssh/so.key /$TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$PLOC/$HOSTNAME.sls
+  scp -i ~/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
 
   }
 
@@ -324,18 +318,18 @@ master_static() {
 node_pillar() {
 
   # Create the node pillar
-  touch /$TMP/$HOSTNAME.sls
-  echo "node:" > /$TMP/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> /$TMP/$HOSTNAME.sls
-  echo "  esheap: $NODEESHEAP" >> /$TMP/$HOSTNAME.sls
-  echo "  esclustername: {{ grains.host }}" >> /$TMP/$HOSTNAME.sls
-  echo "  lsheap: $NODELSHEAP" >> /$TMP/$HOSTNAME.sls
-  echo "  lsaccessip: 127.0.0.1" >> /$TMP/$HOSTNAME.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> /$TMP/$HOSTNAME.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> /$TMP/$HOSTNAME.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> /$TMP/$HOSTNAME.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> /$TMP/$HOSTNAME.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> /$TMP/$HOSTNAME.sls
+  touch $TMP/$HOSTNAME.sls
+  echo "node:" > $TMP/$HOSTNAME.sls
+  echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
+  echo "  esheap: $NODEESHEAP" >> $TMP/$HOSTNAME.sls
+  echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
+  echo "  lsheap: $NODELSHEAP" >> $TMP/$HOSTNAME.sls
+  echo "  lsaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$HOSTNAME.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$HOSTNAME.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$HOSTNAME.sls
 
 }
 
@@ -820,8 +814,8 @@ if (whiptail_you_sure) then
     copy_ssh_key
     create_bond
     saltify
-    configure_minion sensors
-    copy_minion_pillar SENSORONLY
+    configure_minion SENSOR
+    copy_minion_pillar sensors
     salt_checkin
     # Accept the Salt Key
     accept_salt_key_remote
@@ -844,8 +838,8 @@ if (whiptail_you_sure) then
     copy_ssh_key
     create_bond
     saltify
-    configure_minion sensors
-    copy_minion_pillar SENSORONLY
+    configure_minion sensor
+    copy_minion_pillar sensors
     salt_checkin
     accept_salt_key_local
     salt_checkin_message
@@ -876,7 +870,7 @@ if (whiptail_you_sure) then
     saltify
     configure_minion node
     node_pillar
-    copy_minion_pillar STORAGENODE
+    copy_minion_pillar nodes
     salt_checkin
     # Accept the Salt Key
     accept_salt_key_remote
