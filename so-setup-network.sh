@@ -818,6 +818,12 @@ if (whiptail_you_sure) then
     configure_minion sensors
     copy_minion_pillar SENSORONLY
     salt_checkin
+    # Accept the Salt Key
+    accept_salt_key_remote
+    # Do the big checkin but first let them know it will take a bit.
+    salt_checkin_message
+    salt_checkin
+
     whiptail_setup_complete
 
   fi
