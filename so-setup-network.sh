@@ -520,7 +520,7 @@ whiptail_homenet_master() {
 whiptail_homenet_sensor() {
 
   # Ask to inherit from master
-  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 78)
+  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 78
 
   local exitstatus=$?
   if [ $exitstatus == 0 ]; then
