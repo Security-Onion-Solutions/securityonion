@@ -290,6 +290,11 @@ master_pillar() {
 
   }
 
+master_static() {
+
+  # Create a static file for global values
+  touch /opt/so/saltstack/pillar/static/static.sls
+}
 node_pillar() {
 
   # Create the node pillar
@@ -366,7 +371,7 @@ salt_master_directories() {
 
   # Create salt paster directories
   mkdir -p /opt/so/saltstack/salt
-  mkdir -p /opt/so/saltstack/pillar
+  mkdir -p /opt/so/saltstack/pillar/static
 
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
@@ -399,6 +404,7 @@ sensor_pillar() {
   echo "  brobpf:" >> /tmp/$HOSTNAME.sls
   echo "  pcapbpf:" >> /tmp/$HOSTNAME.sls
   echo "  nidsbpf:" >> /tmp/$HOSTNAME.sls
+  echo "  homenet:" >> /tmp/$HOSTNAME.sls
 
 }
 
