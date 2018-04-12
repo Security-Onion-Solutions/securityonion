@@ -308,7 +308,14 @@ master_static() {
 
   # Create a static file for global values
   touch /opt/so/saltstack/pillar/static/static.sls
+
+  echo "static:" > /opt/so/saltstack/pillar/static.sls
+  echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
+  echo "  ntpserver: $NTPSERVER"
+  echo "  proxy: $PROXY"
+
 }
+
 node_pillar() {
 
   # Create the node pillar
@@ -418,7 +425,7 @@ sensor_pillar() {
   echo "  brobpf:" >> /$TMP/$HOSTNAME.sls
   echo "  pcapbpf:" >> /$TMP/$HOSTNAME.sls
   echo "  nidsbpf:" >> /$TMP/$HOSTNAME.sls
-  echo "  homenet:" >> /$TMP/$HOSTNAME.sls
+  echo "  homenet: $HNSENSOR" >> /$TMP/$HOSTNAME.sls
 
 }
 
@@ -502,6 +509,29 @@ whiptail_check_exitstatus() {
 
 }
 
+whiptail_homenet_master() {
+
+  # Ask for the HOME_NET on the master
+  HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_homenet_sensor() {
+
+  # Ask to inherit from master
+  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 78)
+
+  local exitstatus=$?
+  if [ $exitstatus == 0 ]; then
+    HNSENSOR=inherit
+  else
+    HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+  fi
+
+
+}
 whiptail_install_type() {
 
   # What kind of install are we doing?
