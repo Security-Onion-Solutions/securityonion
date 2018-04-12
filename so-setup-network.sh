@@ -403,29 +403,29 @@ salt_master_directories() {
 sensor_pillar() {
 
   # Create the sensor pillar
-  touch /$TMP/$HOSTNAME.sls
-  echo "sensor:" > /$TMP/$HOSTNAME.sls
-  echo "  interface: bond0" >> /$TMP/$HOSTNAME.sls
+  touch $TMP/$HOSTNAME.sls
+  echo "sensor:" > $TMP/$HOSTNAME.sls
+  echo "  interface: bond0" >> $TMP/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> /$TMP/$HOSTNAME.sls
+    echo "  bro_pins:" >> $TMP/$HOSTNAME.sls
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> /$TMP/$HOSTNAME.sls
+    echo "    - $PIN" >> $TMP/$HOSTNAME.sls
     done
     SP=("${SURIPINS[@]//\"/}")
     SPINS=${SP// /,}
     SCOUNT=${#SURIPINS[@]}
 
-    echo "  suripins: $SPINS" >> /$TMP/$HOSTNAME.sls
+    echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
     echo "  surithreads: $SCOUNT"
   else
-    echo "  bro_lbprocs: $BASICBRO" >> /$TMP/$HOSTNAME.sls
-    echo "  suriprocs: $BASICSURI" >> /$TMP/$HOSTNAME.sls
+    echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
+    echo "  suriprocs: $BASICSURI" >> $TMP/$HOSTNAME.sls
   fi
-  echo "  brobpf:" >> /$TMP/$HOSTNAME.sls
-  echo "  pcapbpf:" >> /$TMP/$HOSTNAME.sls
-  echo "  nidsbpf:" >> /$TMP/$HOSTNAME.sls
-  echo "  homenet: $HNSENSOR" >> /$TMP/$HOSTNAME.sls
+  echo "  brobpf:" >> $TMP/$HOSTNAME.sls
+  echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
+  echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
+  echo "  homenet: $HNSENSOR" >> $TMP/$HOSTNAME.sls
 
 }
 
