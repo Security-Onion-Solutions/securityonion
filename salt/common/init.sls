@@ -3,10 +3,12 @@
 statedir:
   file.directory:
     - name: /opt/so/state
+    - makedirs: True
 
 salttmp:
   file.directory:
     - name: /opt/so/tmp
+    - makedirs: True
 
 # Install packages needed for the sensor
 
