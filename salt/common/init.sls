@@ -1,10 +1,10 @@
-# Add Suricata Group
+# Add socore Group
 socoregroup:
   group.present:
     - name: socore
     - gid: 939
 
-# Add ES user
+# Add socore user
 socore:
   user.present:
     - uid: 939

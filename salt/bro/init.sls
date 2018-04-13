@@ -1,4 +1,10 @@
 # Bro Salt State
+# Add Bro group
+brogroup:
+  group.present:
+    - name: bro
+    - gid: 937
+
 # Add Bro User
 bro:
   user.present:
