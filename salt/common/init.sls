@@ -1,13 +1,31 @@
+# Add Suricata Group
+socoregroup:
+  group.present:
+    - name: socore
+    - gid: 939
+
+# Add ES user
+socore:
+  user.present:
+    - uid: 939
+    - gid: 939
+    - home: /opt/so
+    - createhome: True
+
 # Create a state directory
 
 statedir:
   file.directory:
     - name: /opt/so/state
+    - user: 939
+    - group: 939
     - makedirs: True
 
 salttmp:
   file.directory:
     - name: /opt/so/tmp
+    - user: 939
+    - group: 939
     - makedirs: True
 
 # Install packages needed for the sensor
