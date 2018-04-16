@@ -58,10 +58,11 @@ docker:
     - enable: True
 
 # Set up docker network
-dockernet:
-  docker_network.present:
-    - name: so-elastic-net
-    - driver: bridge
+# This is broken right now.
+#dockernet:
+#  docker_network.present:
+#    - name: so-elastic-net
+#    - driver: bridge
 
 # Snag the so-core docker
 toosmooth/so-core:test2:
