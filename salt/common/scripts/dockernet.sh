@@ -1,3 +1,8 @@
 #!/bin/#!/usr/bin/env bash
 
-docker network create -d bridge so-elastic-net
+if [ ! -f /opt/so/state/dockernet.state ]; then
+    docker network create -d bridge so-elastic-net
+    touch /opt/so/state/dockernet.state
+else
+    exit
+fi
