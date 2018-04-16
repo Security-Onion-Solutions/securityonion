@@ -64,6 +64,12 @@ docker:
 #    - name: so-elastic-net
 #    - driver: bridge
 
+# dockernet work around
+dockernet:
+  cmd.script:
+    - source: salt://common/scripts/dockernet.sh
+    
+
 # Snag the so-core docker
 toosmooth/so-core:test2:
   docker_image.present
