@@ -36,6 +36,13 @@ rulesdir:
     - group: 939
     - makedirs: True
 
+synclocalnidsrules:
+  file.managed:
+    - name: /opt/so/rules/local.rules
+    - source: salt://idstools/localrules/local.rules
+    - user: 939
+    - group: 939
+
 ruleslink:
   file.symlink:
     - name: /opt/so/saltstack/salt/idstools/rules
