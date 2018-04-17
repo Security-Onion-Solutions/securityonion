@@ -27,6 +27,7 @@ ppetcsync:
     - source: salt://pulledpork/etc
     - user: 939
     - group: 939
+    - template: jinja
 
 rulesdir:
   file.directory:
