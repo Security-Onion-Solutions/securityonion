@@ -16,7 +16,15 @@
 # PulledProk Setup
 ppdir:
   file.directory:
-    - name: /opt/so/pulledpork
+    - name: /opt/so/pulledpork/etc
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+ppetcsync:
+  file.recurse:
+    - name: /opt/so/pulledpork/etc
+    - source: salt://pulledpork/etc
     - user: 939
     - group: 939
 
