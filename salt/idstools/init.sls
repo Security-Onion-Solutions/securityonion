@@ -13,15 +13,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# PulledProk Setup
-ppdir:
+# IDSTools Setup
+idstoolsdir:
   file.directory:
     - name: /opt/so/conf/idstools/etc
     - user: 939
     - group: 939
     - makedirs: True
 
-ppetcsync:
+idstoolsetcsync:
   file.recurse:
     - name: /opt/so/conf/idstools/etc
     - source: salt://idstools/etc
@@ -38,13 +38,13 @@ rulesdir:
 
 ruleslink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/pulledpork/rules
+    - name: /opt/so/saltstack/salt/idstools/rules
     - target: /opt/so/rules/nids
 
-toosmooth/so-pulledpork:test2:
+toosmooth/so-idstools:test2:
   docker_image.present
 
-so-pulledpork:
+so-idstools:
   docker_container.running:
     - image: toosmooth/so-idstools:test2
     - hostname: so-idstools

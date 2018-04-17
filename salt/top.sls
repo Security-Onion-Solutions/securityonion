@@ -14,7 +14,7 @@ base:
   'G@role:so-master':
     - common
     - master
-    - pulledpork
+    - idstools
     - elasticsearch
     - logstash
 
