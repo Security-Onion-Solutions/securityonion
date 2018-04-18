@@ -44,7 +44,7 @@ logstash:
 # Create a directory for people to drop their own custom parsers into
 lscustdir:
   file.directory:
-    - name: /opt/so/conf/logstash/custom
+    - name: /opt/so/conf/logstash/pipeline
     - user: 931
     - group: 939
     - makedirs: True
@@ -82,6 +82,60 @@ lslogdir:
     - group: 939
     - makedirs: True
 
+{% if freq == 0 and dstats == 0 %}
+
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - FREQ=0
+      - DSTATS=0
+
+removefreq:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+
+removedstats1:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
+
+removedstats2:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
+
+{% elif freq == 1 and dstats == 0 %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - FREQ=1
+      - DSTATS=0
+
+removedstats1:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8007_postprocess_dns_top1m_tagging.conf
+removedstats2:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/8008_postprocess_dns_whois_age.conf
+
+{% elif freq == 1 and dstats == 1 %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - FREQ=1
+      - DSTATS=1
+
+{% elif freq == 0 and dstats == 1 %}
+/opt/so/conf/logstash/rulesets:
+  file.managed:
+    - contents:
+      - FREQ=0
+      - DSTATS=1
+
+removefreq:
+  file.absent:
+    - name: /opt/so/conf/logstash/pipeline/*_postprocess_freq_analysis_*.conf
+
+{% endif %}
+
 # Add the container
 
 so-logstash:
@@ -104,9 +158,8 @@ so-logstash:
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
-      - /opt/so/conf/logstash/custom:/usr/share/logstash/pipeline.custom:ro
+      - /opt/so/conf/logstash/pipeline:/usr/share/logstash/pipeline:rw
       - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
-      - /opt/so/conf/logstash/conf.enabled.txt:/usr/share/logstash/conf.enabled.txt:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
