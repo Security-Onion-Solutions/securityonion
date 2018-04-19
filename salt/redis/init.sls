@@ -12,8 +12,9 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 
-# IDSTools Setup
+# Redis Setup
 redisconfdir:
   file.directory:
     - name: /opt/so/conf/redis/etc
