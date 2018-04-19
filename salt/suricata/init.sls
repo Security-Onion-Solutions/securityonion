@@ -63,6 +63,7 @@ suriconfigsync:
     - source: salt://suricata/files/suricata.yaml
     - user: 940
     - group: 940
+    - template: jinja
 
 so-suricata:
   docker_container.running:
