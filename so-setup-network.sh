@@ -424,6 +424,7 @@ sensor_pillar() {
   echo "  brobpf:" >> $TMP/$HOSTNAME.sls
   echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
+  echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
   echo "  homenet: $HNSENSOR" >> $TMP/$HOSTNAME.sls
 
 }

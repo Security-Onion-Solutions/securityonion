@@ -4,6 +4,7 @@ base:
     - pcap
     - suricata
     - bro
+    - filebeat
 
   'G@role:eval':
     - common
