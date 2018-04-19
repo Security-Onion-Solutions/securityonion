@@ -93,6 +93,7 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
+      - {{ lsaccessip }}:514:514
       - {{ lsaccessip }}:5044:5044
       - {{ lsaccessip }}:6050:6050
       - {{ lsaccessip }}:6051:6051
