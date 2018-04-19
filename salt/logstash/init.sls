@@ -106,6 +106,7 @@ so-logstash:
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/custom:/usr/share/logstash/pipeline.custom:ro
       - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
+      - /opt/so/conf/logstash/dynamic:/usr/share/logstash/pipeline.dynamic
       - /opt/so/conf/logstash/conf.enabled.txt:/usr/share/logstash/conf.enabled.txt:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
