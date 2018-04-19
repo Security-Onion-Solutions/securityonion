@@ -270,7 +270,7 @@ ls_heapsize() {
       LS_HEAP_SIZE="4192m"
   else
       # Set a max of 1GB heap if you have less than 16GB RAM
-      LS_HEAP_SIZE="1g"
+      LS_HEAP_SIZE="2g"
   fi
 
 }
