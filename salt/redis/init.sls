@@ -46,7 +46,7 @@ so-redis:
     - hostname: so-redis
     - user: socore
     - port_bindings:
-      - {{ lsaccessip }}:6379:6379
+      - 0.0.0.0:6379:6379
     - binds:
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro

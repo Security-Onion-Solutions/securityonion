@@ -93,13 +93,13 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-      - {{ lsaccessip }}:514:514
-      - {{ lsaccessip }}:5044:5044
-      - {{ lsaccessip }}:6050:6050
-      - {{ lsaccessip }}:6051:6051
-      - {{ lsaccessip }}:6052:6052
-      - {{ lsaccessip }}:6053:6053
-      - {{ lsaccessip }}:9600:9600
+      - 0.0.0.0:514:514
+      - 0.0.0.0:5044:5044
+      - 0.0.0.0:6050:6050
+      - 0.0.0.0:6051:6051
+      - 0.0.0.0:6052:6052
+      - 0.0.0.0:6053:6053
+      - 0.0.0.0:9600:9600
     - binds:
       - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
