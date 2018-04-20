@@ -40,5 +40,5 @@ so-filebeat:
     - binds:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
       - /opt/so/conf/redis/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /nsm/bro/spool:/nsm/bro/spool:ro
+      - /nsm/bro/spool/manager:/nsm/bro/spool:ro
     - network_mode: so-elastic-net
