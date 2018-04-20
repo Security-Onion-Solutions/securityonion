@@ -39,6 +39,6 @@ so-filebeat:
     - hostname: so-filebeat
     - binds:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
-      - /opt/so/conf/redis/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/bro/spool/manager:/nsm/bro/spool:ro
     - network_mode: so-elastic-net
