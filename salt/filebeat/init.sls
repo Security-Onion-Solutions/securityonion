@@ -26,8 +26,8 @@ filebeatconfsync:
   file.recurse:
     - name: /opt/so/conf/filebeat/etc
     - source: salt://filebeat/etc
-    - user: 939
-    - group: 939
+    - user: 0
+    - group: 0
     - template: jinja
 
 docker.elastic.co/beats/filebeat:6.2.4:
@@ -37,6 +37,7 @@ so-filebeat:
   docker_container.running:
     - image: docker.elastic.co/beats/filebeat:6.2.4
     - hostname: so-filebeat
+    - user: root
     - binds:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
