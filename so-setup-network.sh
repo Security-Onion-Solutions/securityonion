@@ -170,7 +170,7 @@ create_bond() {
       echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
-      echo "  bond-master bond0"
+      echo "  bond-master bond0" >> /etc/network/interfaces
       echo ""
 
     done
