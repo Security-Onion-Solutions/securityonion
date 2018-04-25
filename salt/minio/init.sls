@@ -13,6 +13,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{% set access_key = salt['pillar.get']('master:access_key', '') %}
+{% set access_secret = salt['pillar.get']('master:access_secret', '') %}
+
 # Minio Setup
 minioconfdir:
   file.directory:
@@ -46,6 +49,9 @@ minio:
     - user: socore
     - port_bindings:
       - 0.0.0.0:9000:9000
+    - environment:
+      - MINIO_ACCESS_KEY: {{ access_key }}
+      - MINIO_SECRET_KEY: {{ access_secret }}
     - binds:
       - /nsm/minio/data:/data:rw
       - /opt/so/conf/minio/etc:/root/.minio:rw
