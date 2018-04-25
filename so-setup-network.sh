@@ -300,8 +300,8 @@ master_pillar() {
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_key: \"$ACCESS_KEY\"" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_secret: \"$ACCESS_SECRET\"" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
