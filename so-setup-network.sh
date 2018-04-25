@@ -791,6 +791,7 @@ if (whiptail_you_sure) then
     es_heapsize
     ls_heapsize
     master_static
+    minio_generate_keys
     echo "generating the master pillar"
     master_pillar
     # Do a checkin to push the key up
