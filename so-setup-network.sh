@@ -300,8 +300,8 @@ master_pillar() {
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_key: \x22$ACCESS_KEY\x22" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_secret: \x22$ACCESS_SECRET\x22" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -754,6 +754,8 @@ if (whiptail_you_sure) then
 	# Let folks know they need their management interface already set up.
 	whiptail_network_notice
 
+  # Go ahead and gen the keys so we can use them for any sensor type
+  minio_generate_keys
   # What kind of install are we doing?
   whiptail_install_type
 
@@ -777,21 +779,22 @@ if (whiptail_you_sure) then
     # Last Chance to back out
     whiptail_make_changes
 
+    # Add the user so we can sit back and relax
+    echo ""
+    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    echo ""
+    add_socore_user_master
+
     # Install salt and dependencies
     saltify
     configure_minion master
     install_master
     salt_master_directories
-    echo ""
-    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    echo ""
-    add_socore_user_master
     update_sudoers
     chown_salt_master
     es_heapsize
     ls_heapsize
     master_static
-    minio_generate_keys
     echo "generating the master pillar"
     master_pillar
     # Do a checkin to push the key up

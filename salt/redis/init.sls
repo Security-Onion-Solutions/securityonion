@@ -29,6 +29,13 @@ redisworkdir:
     - group: 939
     - makedirs: True
 
+redislogdir:
+  file.directory:
+    - name: /opt/so/log/redis
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 redisconfsync:
   file.recurse:
     - name: /opt/so/conf/redis/etc

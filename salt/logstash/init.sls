@@ -87,8 +87,8 @@ lslogdir:
 so-logstash:
   docker_container.running:
     - image: toosmooth/so-logstash:test2
-    - hostname: logstash
-    - name: logstash
+    - hostname: so-logstash
+    - name: so-logstash
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
