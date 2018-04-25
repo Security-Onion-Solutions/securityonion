@@ -300,6 +300,8 @@ master_pillar() {
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -315,6 +317,14 @@ master_static() {
 
 }
 
+minio_generate_keys() {
+
+  local charSet="[:graph:]"
+
+  ACCESS_KEY=$(cat /dev/urandom | tr -cd "$charSet" | head -c 20)
+  ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | head -c 40)
+
+}
 node_pillar() {
 
   # Create the node pillar
@@ -426,6 +436,8 @@ sensor_pillar() {
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
   echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
   echo "  homenet: $HNSENSOR" >> $TMP/$HOSTNAME.sls
+  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
 }
 
