@@ -37,12 +37,12 @@ redisconfsync:
     - group: 939
     - template: jinja
 
-redis:latest:
+toosmooth/so-redis:test2:
   docker_image.present
 
 so-redis:
   docker_container.running:
-    - image: redis:latest
+    - image: toosmooth/so-redis:test2
     - hostname: so-redis
     - user: socore
     - port_bindings:
