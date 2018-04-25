@@ -321,8 +321,8 @@ minio_generate_keys() {
 
   local charSet="[:graph:]"
 
-  ACCESS_KEY=$(cat /dev/urandom | tr -cd "$charSet" | head -c 20)
-  ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | head -c 40)
+  ACCESS_KEY=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 20)
+  ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 40)
 
 }
 node_pillar() {
