@@ -20,6 +20,11 @@ base:
     - elasticsearch
     - logstash
 
+  'G@role:so-node':
+    - common
+    - elasticsearch
+    - logstash
+
   'G@role:mastersensor':
     - common
     - sensor
