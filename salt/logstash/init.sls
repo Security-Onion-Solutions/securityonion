@@ -25,6 +25,7 @@
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+{% set nodetype = salt['pillar_get']('node:node_type', 'master') %}
 
 {% endif %}
 
@@ -54,6 +55,15 @@ lssync:
   file.recurse:
     - name: /opt/so/conf/logstash
     - source: salt://logstash/files
+    - user: 931
+    - group: 939
+    - template: jinja
+
+# Copy the config file for enabled logstash plugins/parsers
+lsconfsync:
+  file.managed:
+    - name: /opt/so/donf/logstash/conf.enabled.txt
+    - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
     - user: 931
     - group: 939
     - template: jinja
