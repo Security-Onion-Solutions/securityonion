@@ -15,7 +15,6 @@
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% set esaccessip = salt['pillar.get']('master:esaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
 {% set esalert = salt['pillar.get']('master:elastalert', '1') %}

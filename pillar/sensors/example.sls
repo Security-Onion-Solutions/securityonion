@@ -9,3 +9,6 @@ sensor:
   brobpf:
   pcapbpf:
   nidsbpf:
+  s3bucket:
+  s3key:
+
