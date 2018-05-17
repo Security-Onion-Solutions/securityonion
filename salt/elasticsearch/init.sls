@@ -239,6 +239,15 @@ so-curator:
       - /opt/so/log/curator:/var/log/curator
     - network_mode: so-elastic-net
 
+# Begin Curator Cron Jobs
+
+# Close
+# Delete
+# Hot Warm
+# Segment Merge
+
+# End Curator Cron Jobs
+
 # Elastalert
 {% if esalert == 1 %}
 
