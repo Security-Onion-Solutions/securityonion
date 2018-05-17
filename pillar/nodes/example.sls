@@ -2,3 +2,4 @@
 node:
   ls_heapsize: CHANGEME
   es_heapsize: CHANGEME
+  nodetype: CHANGEME

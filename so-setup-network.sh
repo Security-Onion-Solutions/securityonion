@@ -387,7 +387,7 @@ salt_checkin() {
 
 salt_checkin_message() {
 
-  # Wann the user that this might take a while
+  # Warn the user that this might take a while
   echo "####################################################"
   echo "##                                                ##"
   echo "##        Applying and Installing everything      ##"
@@ -552,7 +552,10 @@ whiptail_install_type() {
   "EVALMODE" "Evaluate all the things" ON \
   "SENSORONLY" "Create a forward only sensor" OFF \
   "MASTERONLY" "Start a new grid" OFF \
-  "STORAGENODE" "Add a Storage Node" OFF 3>&1 1>&2 2>&3 )
+  "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
+  "PARSINGNODE" "Add a dedicated Parsing Node" OFF \
+  "HOTNODE" "Add a Hot Node (Storage Node without Parsing)" OFF \
+  "WARMNODE" "Add a Warm Node to an existing Hot or Storage node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
