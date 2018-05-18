@@ -910,6 +910,7 @@ if (whiptail_you_sure); then
     configure_minion node
     set_node_type
     node_pillar
+    exit
     copy_minion_pillar nodes
     salt_checkin
     # Accept the Salt Key
