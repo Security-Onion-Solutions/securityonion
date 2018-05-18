@@ -766,7 +766,7 @@ fi
 
 # Question Time
 
-if (whiptail_you_sure) then
+if (whiptail_you_sure); then
 
   # Create a dir to get started
   install_prep
