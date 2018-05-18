@@ -1,3 +1,5 @@
+{% set nodetype = salt['pillar_get']('node:node_type', 'master') %}
+
 base:
   'G@role:so-sensor':
     - common
@@ -21,9 +23,21 @@ base:
     - logstash
 
   'G@role:so-node':
+    {% if nodetype == 'parsing' %}
+    - common
+    - logstash
+    {% elsif nodetype == 'hot' %}
+    - common
+    - logstash
+    - elasticsearch
+    {% elseif nodetype == 'warm' %}
     - common
     - elasticsearch
+    {% elseif nodetype == 'storage' %}
+    - common
     - logstash
+    - elasticsearch
+    {% endif %}
 
   'G@role:mastersensor':
     - common
