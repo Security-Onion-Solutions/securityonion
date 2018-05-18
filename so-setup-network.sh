@@ -881,8 +881,7 @@ if (whiptail_you_sure) then
     accept_salt_key_local
     salt_checkin_message
     salt_checkin
-  fi
-
+  
   else
     whiptail_management_nic
     echo "Why isn't this working"
