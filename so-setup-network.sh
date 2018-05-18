@@ -446,16 +446,16 @@ set_node_type() {
 
   # Determine the node type based on whiplash choice
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    NODETYPE="storage"
+    NODETYPE='storage'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
     NODETYPE='parser'
   fi
   if [ $INSTALLTYPE == 'HOTNODE' ]; then
-    NODETYPE="hot"
+    NODETYPE='hot'
   fi
   if [ $INSTALLTYPE == 'WARMNODE' ]; then
-    NODETYPE="warm"
+    NODETYPE='warm'
   fi
 
 }
@@ -910,7 +910,6 @@ if (whiptail_you_sure); then
     configure_minion node
     set_node_type
     node_pillar
-    exit
     copy_minion_pillar nodes
     salt_checkin
     # Accept the Salt Key
