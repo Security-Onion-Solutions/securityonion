@@ -458,7 +458,9 @@ set_node_type() {
     $NODETYPE=warm
   fi
 
-}update_sudoers() {
+}
+
+update_sudoers() {
 
   # Update Sudoers so that socore can accept keys without a password
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
