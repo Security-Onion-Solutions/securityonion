@@ -449,7 +449,7 @@ set_node_type() {
     $NODETYPE="storage"
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
-    $NODETYPE="parser"
+    $NODETYPE='parser'
   fi
   if [ $INSTALLTYPE == 'HOTNODE' ]; then
     $NODETYPE="hot"
