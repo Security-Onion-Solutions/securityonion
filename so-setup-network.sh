@@ -881,8 +881,9 @@ if (whiptail_you_sure) then
     accept_salt_key_local
     salt_checkin_message
     salt_checkin
-  
-  else
+  fi
+
+  if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_nic
     echo "Why isn't this working"
     whiptail_management_server
