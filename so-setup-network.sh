@@ -567,7 +567,7 @@ whiptail_install_type() {
 
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 78 4 \
+  "Choose Install Type:" 20 78 8 \
   "EVALMODE" "Evaluate all the things" ON \
   "SENSORONLY" "Create a forward only sensor" OFF \
   "MASTERONLY" "Start a new grid" OFF \
