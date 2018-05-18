@@ -1,4 +1,4 @@
-{% set nodetype = salt['pillar_get']('node:node_type', 'master') %}
+{% set nodetype = salt['pillar_get']('node:node_type', 'storage') %}
 
 base:
   'G@role:so-sensor':
