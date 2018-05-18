@@ -340,6 +340,7 @@ node_pillar() {
   echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$HOSTNAME.sls
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$HOSTNAME.sls
+  echo "  node_type: $NODETYPE" >> $TMP/$HOSTNAME.sls
 
 }
 
@@ -441,7 +442,23 @@ sensor_pillar() {
 
 }
 
-update_sudoers() {
+set_node_type() {
+
+  # Determine the node type based on whiplash choice
+  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+    $NODETYPE=storage
+  fi
+  if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
+    $NODETYPE=parser
+  fi
+  if [ $INSTALLTYPE == 'HOTNODE' ]; then
+    $NODETYPE=hot
+  fi
+  if [ $INSTALLTYPE == 'WARMNODE' ]; then
+    $NODETYPE=warm
+  fi
+
+}update_sudoers() {
 
   # Update Sudoers so that socore can accept keys without a password
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
@@ -866,7 +883,7 @@ if (whiptail_you_sure) then
     salt_checkin
   fi
 
-  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+  else
     whiptail_management_nic
     echo "Why isn't this working"
     whiptail_management_server
@@ -889,6 +906,7 @@ if (whiptail_you_sure) then
     copy_ssh_key
     saltify
     configure_minion node
+    set_node_type
     node_pillar
     copy_minion_pillar nodes
     salt_checkin

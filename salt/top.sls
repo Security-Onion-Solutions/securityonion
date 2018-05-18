@@ -23,7 +23,7 @@ base:
     - logstash
 
   'G@role:so-node':
-    {%- if nodetype == 'parsing' %}
+    {%- if nodetype == 'parser' %}
     - common
     - logstash
     {% elsif nodetype == 'hot' %}
