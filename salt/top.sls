@@ -26,14 +26,14 @@ base:
     {%- if nodetype == 'parser' %}
     - common
     - logstash
-    {% elsif nodetype == 'hot' %}
+    {% elif nodetype == 'hot' %}
     - common
     - logstash
     - elasticsearch
-    {% elseif nodetype == 'warm' %}
+    {% elif nodetype == 'warm' %}
     - common
     - elasticsearch
-    {% elseif nodetype == 'storage' %}
+    {% elif nodetype == 'storage' %}
     - common
     - logstash
     - elasticsearch
