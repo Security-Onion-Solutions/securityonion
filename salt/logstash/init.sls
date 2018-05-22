@@ -25,7 +25,16 @@
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
-{% set nodetype = salt['pillar_get']('node:node_type', 'master') %}
+
+  {% if grains['role'] == 'so-master' %}
+
+    {% set nodetype = 'master' %}
+
+  {% else %}
+
+  {% set nodetype = salt['pillar_get']('node:node_type', 'storage') %}
+
+  {% endif %}
 
 {% endif %}
 
