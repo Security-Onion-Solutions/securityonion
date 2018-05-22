@@ -71,7 +71,7 @@ lssync:
 # Copy the config file for enabled logstash plugins/parsers
 lsconfsync:
   file.managed:
-    - name: /opt/so/donf/logstash/conf.enabled.txt
+    - name: /opt/so/conf/logstash/conf.enabled.txt
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
     - user: 931
     - group: 939
