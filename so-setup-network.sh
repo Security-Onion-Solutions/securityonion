@@ -351,14 +351,14 @@ saltify() {
     ADDUSER=adduser
     yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
     yum clean expire-cache
-    yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2
+    yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
   else
     ADDUSER=useradd
     apt-get -y upgrade
 
     # Add the pre-requisites for installing docker-ce
-    apt-get -y install ca-certificates curl software-properties-common apt-transport-https
+    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl
 
     # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
