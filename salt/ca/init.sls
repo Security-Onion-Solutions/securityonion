@@ -15,7 +15,7 @@ pki_private_key:
         - passphrase:
         - cipher: aes_256_cbc
         - backup: True
-        
+
 /etc/pki/ca.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/ca.key

@@ -4,12 +4,12 @@
 
 /usr/local/share/ca-certificates/intca.crt:
   x509.pem_managed:
-    - text: {{ salt['mine.get']('ca', 'x509.get_pem_entries')['ca']['/etc/pki/ca.crt']|replace('\n', '') }}
+    - text: {{ salt['mine.get']('master', 'x509.get_pem_entries')['ca']['/etc/pki/ca.crt']|replace('\n', '') }}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
   x509.certificate_managed:
-    - ca_server: ca
+    - ca_server: ca.example.com
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
     - CN: security.onion
