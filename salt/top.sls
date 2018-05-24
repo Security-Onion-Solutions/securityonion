@@ -16,6 +16,8 @@ base:
     - common
     - master
     - idstools
+    - ca
+    - ssl
     - redis
     - elasticsearch
     - logstash
