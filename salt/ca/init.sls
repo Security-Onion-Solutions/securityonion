@@ -8,6 +8,14 @@
 /etc/pki/issued_certs:
   file.directory: []
 
+pki_private_key:
+    x509.private_key_managed:
+        - name: /etc/pki/ca.key
+        - bits: 4096
+        - passphrase:
+        - cipher: aes_256_cbc
+        - backup: True
+        
 /etc/pki/ca.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/ca.key
