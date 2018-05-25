@@ -28,7 +28,7 @@
 
   {% if grains['role'] == 'so-master' %}
 
-    {% set nodetype = master %}
+    {% set nodetype = salt['grains.get']('role', '')  %}
 
   {% else %}
 
