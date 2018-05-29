@@ -12,3 +12,17 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% set masterproxy = salt['pillar.get']('static:masterupdate', '0') %}
+
+{% if masterproxy == 1 %}
+
+# Create the config directory for apt-cacher-ng
+# Copy the config
+# Install the apt-cacher-ng container
+
+# Create the config directory for the docker registry
+# Copy the config
+# Install the registry container
+
+{% endif %}
