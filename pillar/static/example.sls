@@ -3,3 +3,4 @@ static:
   ntpserver:
   homenet:
   proxy:
+  masterupdate: 

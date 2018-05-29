@@ -314,7 +314,11 @@ master_static() {
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static/init.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static/init.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static/init.sls
-
+  if [ $MASTERUPDATES == 'MASTER' ]; then
+    echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static/init.sls
+  else
+    echo " masterupdate: 0" >> /opt/so/saltstack/pillar/static/init.sls
+  fi
 }
 
 minio_generate_keys() {
@@ -737,6 +741,24 @@ whiptail_suricata_pins() {
 
 }
 
+whiptail_master_updates() {
+
+  MASTERUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
+  "How would you like to download updates for your grid?:" 20 78 4 \
+  "MASTER" "Have the master node act as a proxy for OS/Docker updates." ON \
+  "OPEN" "Have each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+
+}
+
+whiptail_node_updates() {
+
+  NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
+  "How would you like to download updates for this node?:" 20 78 4 \
+  "MASTER" "Download OS/Docker updates from the Master." ON \
+  "OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
+
+}
+
 whiptail_you_sure() {
 
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
@@ -797,6 +819,9 @@ if (whiptail_you_sure); then
       # Get the code
       whiptail_oinkcode
     fi
+
+    # Find out how to handle updates
+    whiptail_master_updates
 
     # Last Chance to back out
     whiptail_make_changes
