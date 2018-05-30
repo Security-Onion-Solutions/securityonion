@@ -32,16 +32,15 @@ aptcacherlogdir:
     - group: 939
     - makedirs: true
 # Copy the config
-# Install the apt-cacher-ng container
+# Install the apt-cacher-ng container - TODO Create a so-docker for it
 so-aptcacherng:
   docker_container.running:
     - image: deployable/acng:latest-us
     - hostname: so-aptcacherng
-    - user: socore
     - port_bindings:
       - 0.0.0.0:3142:3142
     - binds:
-      - /opt/so/conf/aptcacher-ng/cache"/var/cache/apt-cacher-ng:rw
+      - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
 
 
 # Create the config directory for the docker registry
