@@ -384,7 +384,10 @@ saltify() {
 }
 
 salt_checkin() {
-
+  # Master State to Fix Mine Usage
+  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  salt-call state.apply ca
+  fi
   # Run Checkin
   salt-call state.highstate
 
