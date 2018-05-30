@@ -308,16 +308,16 @@ master_pillar() {
 master_static() {
 
   # Create a static file for global values
-  touch /opt/so/saltstack/pillar/static/init.sls
+  touch /opt/so/saltstack/pillar/static.sls
 
-  echo "static:" > /opt/so/saltstack/pillar/static.sls
-  echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static/init.sls
-  echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static/init.sls
-  echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static/init.sls
+  echo "static:" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
+  echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
+  echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
   if [ $MASTERUPDATES == 'MASTER' ]; then
-    echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static/init.sls
+    echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
-    echo " masterupdate: 0" >> /opt/so/saltstack/pillar/static/init.sls
+    echo " masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
   fi
 }
 
