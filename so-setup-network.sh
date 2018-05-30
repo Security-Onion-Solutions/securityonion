@@ -809,7 +809,7 @@ if (whiptail_you_sure); then
 	whiptail_network_notice
 
   # Go ahead and gen the keys so we can use them for any sensor type
-  minio_generate_keys
+  #minio_generate_keys
   # What kind of install are we doing?
   whiptail_install_type
 
