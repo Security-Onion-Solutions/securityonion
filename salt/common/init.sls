@@ -36,6 +36,7 @@ sensorpkgs:
     - pkgs:
       - docker-ce
       - python-docker
+      - m2crypto
 
 # Always keep these packages up to date
 
