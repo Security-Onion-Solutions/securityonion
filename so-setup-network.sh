@@ -460,6 +460,13 @@ sensor_pillar() {
 
 }
 
+set_updates() {
+
+  # Set it up so the updates roll through the master
+  echo "Acquire::http::Proxy "http://$MSRV:3142";" > /etc/apt/00Proxy
+
+}
+
 set_node_type() {
 
   # Determine the node type based on whiplash choice
@@ -875,6 +882,7 @@ if (whiptail_you_sure); then
     filter_nics
     whiptail_bond_nics
     whiptail_management_server
+    set_updates
     whiptail_nids
     whiptail_sensor_config
     # Calculate lbprocs so we can call it in the prompts
@@ -928,6 +936,7 @@ if (whiptail_you_sure); then
     whiptail_management_nic
     echo "Why isn't this working"
     whiptail_management_server
+    set_updates
     whiptail_node_advanced
     if [ $NODESETUP == 'NODEADVANCED' ]; then
       whiptail_node_es_heap
