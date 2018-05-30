@@ -54,7 +54,11 @@ accept_salt_key_remote() {
 }
 
 add_socore_user_master() {
-
+  if [ $OS == 'centos' ]; then
+    local ADDUSER=adduser
+  else
+    local ADDUSER=useradd
+  fi
   # Add user "socore" to the master. This will be for things like accepting keys.
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
