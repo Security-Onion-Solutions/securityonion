@@ -10,7 +10,7 @@
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
   x509.certificate_managed:
-    - ca_server: testnode1
+    - ca_server: {{ master }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
     - CN: ca.example.com
