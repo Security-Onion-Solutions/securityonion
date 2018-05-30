@@ -386,10 +386,17 @@ saltify() {
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  salt-call state.apply common
   salt-call state.apply ca
-  fi
+  service salt-minion restart
+  salt-call state.highstate
+
+  else
+
   # Run Checkin
   salt-call state.highstate
+
+  fi
 
 }
 
