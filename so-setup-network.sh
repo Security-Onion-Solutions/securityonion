@@ -472,7 +472,7 @@ sensor_pillar() {
 set_updates() {
 
   # Set it up so the updates roll through the master
-  echo "Acquire::http::Proxy "http://$MSRV:3142";" > /etc/apt/00Proxy
+  echo "Acquire::http::Proxy "http://$MSRV:3142";" > /etc/apt/apt.conf.d/00Proxy
 
 }
 
