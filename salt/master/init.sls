@@ -20,6 +20,13 @@
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
   file.directory:
+    - name: /opt/so/conf/aptcacher-ng/etc
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+aptcachercachedir:
+  file.directory:
     - name: /opt/so/conf/aptcacher-ng/cache
     - user: 939
     - group: 939
@@ -33,6 +40,12 @@ aptcacherlogdir:
     - makedirs: true
 
 # Copy the config
+
+acngcopyconf:
+  file.managed:
+    - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
+    - source: salt://master/files/acng/acng.conf
+
 # Install the apt-cacher-ng container - TODO Create a so-docker for it
 so-aptcacherng:
   docker_container.running:
@@ -42,6 +55,7 @@ so-aptcacherng:
       - 0.0.0.0:3142:3142
     - binds:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
+      - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apr-cacher-ng/acng.conf:ro
 
 
 # Create the config directory for the docker registry
