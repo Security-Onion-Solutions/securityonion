@@ -380,13 +380,34 @@ saltify() {
     # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
 
-    # Install the repo for salt
-    wget -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
-    echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+    # Nasty hack but required for now
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
 
-    # Lets get the docker repo added
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      # Install the repo for salt
+      wget -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+
+      # Lets get the docker repo added
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+      # Create a place for the keys
+      mkdir -p /opt/so/gpg
+      wget -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
+      wget -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+
+    else
+
+      # Copy down the gpg keys and install them from the master
+      mkdir $TMP/gpg
+      scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      apt-key add $TMP/gpg/docker.pub
+      apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+
+    fi
 
     # Initialize the new repos
     apt-get update
