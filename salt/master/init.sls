@@ -73,6 +73,7 @@ so-dockerregistry:
     - port_bindings:
       - 0.0.0.0:5000:5000
     - binds:
-      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml
+      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
+      - /opt/so/conf/docker-registry:/var/lib/registry:rw
 
 {% endif %}
