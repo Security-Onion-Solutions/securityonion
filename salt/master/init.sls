@@ -47,7 +47,7 @@ so-aptcacherng:
 # Create the config directory for the docker registry
 dockerregistryconfdir:
   file.directory:
-    - name: /opt/so/conf/docker-registry
+    - name: /opt/so/conf/docker-registry/etc
     - user: 939
     - group: 939
     - makedirs: True
@@ -60,6 +60,19 @@ dockerregistrylogdir:
     - makedirs: true
 
 # Copy the config
+dockerregistryconf:
+  file.managed:
+    - name: /opt/so/conf/docker-registry/etc/config.yml
+    - source: salt://master/files/registry/config.yml
+
 # Install the registry container
+so-dockerregistry:
+  docker_container.running:
+    - image: registry:2
+    - hostname: so-registry
+    - port_bindings:
+      - 0.0.0.0:5000:5000
+    - binds:
+      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml
 
 {% endif %}
