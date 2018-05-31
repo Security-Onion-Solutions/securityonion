@@ -207,6 +207,15 @@ detect_os() {
 
 }
 
+docker_registry() {
+
+  # Make the host use the master docker registry
+  echo "{" > /etc/docker/daemon.json
+  echo "  \"registry-mirrors\": [\"https://$MSRV\"]" >> /etc/docker/daemon.json
+  echo "}" >> /etc/docker/daemon.json
+
+}
+
 es_heapsize() {
 
   # Determine ES Heap Size

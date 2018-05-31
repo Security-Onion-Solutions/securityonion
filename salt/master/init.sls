@@ -31,6 +31,7 @@ aptcacherlogdir:
     - user: 939
     - group: 939
     - makedirs: true
+
 # Copy the config
 # Install the apt-cacher-ng container - TODO Create a so-docker for it
 so-aptcacherng:
@@ -44,6 +45,20 @@ so-aptcacherng:
 
 
 # Create the config directory for the docker registry
+dockerregistryconfdir:
+  file.directory:
+    - name: /opt/so/conf/docker-registry
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+dockerregistrylogdir:
+  file.directory:
+    - name: /opt/so/log/docker-registry
+    - user: 939
+    - group: 939
+    - makedirs: true
+
 # Copy the config
 # Install the registry container
 
