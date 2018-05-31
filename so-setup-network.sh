@@ -473,6 +473,7 @@ set_updates() {
 
   # Set it up so the updates roll through the master
   echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
+  echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
 
 }
 
