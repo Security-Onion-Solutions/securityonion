@@ -161,7 +161,7 @@ create_bond() {
     # Populate lo and the management interface
     echo $LBACK > $TMP/interfaces
     echo $MINT >> $TMP/interfaces
-    cp /$TMP/interfaces /etc/network/interfaces
+    cp $TMP/interfaces /etc/network/interfaces
 
     # Create entries for each interface that is part of the bond.
     for BNIC in ${BNICS[@]}; do
@@ -464,8 +464,8 @@ sensor_pillar() {
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
   echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
   echo "  homenet: $HNSENSOR" >> $TMP/$HOSTNAME.sls
-  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  access_key: $ACCESS_KEY" >> $TMP/$HOSTNAME.sls
+  echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$HOSTNAME.sls
 
 }
 
