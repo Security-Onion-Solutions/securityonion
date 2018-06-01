@@ -14,10 +14,10 @@ base:
 
   'G@role:so-master':
     - common
-    - master
-    - idstools
     - ca
     - ssl
+    - master
+    - idstools
     - redis
     - elasticsearch
     - logstash
