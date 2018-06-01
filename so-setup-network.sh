@@ -209,6 +209,7 @@ detect_os() {
 
 docker_registry() {
 
+  mkdir -p /etc/docker
   # Make the host use the master docker registry
   echo "{" > /etc/docker/daemon.json
   echo "  \"registry-mirrors\": [\"https://$MSRV\"]" >> /etc/docker/daemon.json
@@ -930,6 +931,7 @@ if (whiptail_you_sure); then
     sensor_pillar
     copy_ssh_key
     create_bond
+    docker_registry
     saltify
     configure_minion SENSOR
     copy_minion_pillar sensors
