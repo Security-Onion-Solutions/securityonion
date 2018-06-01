@@ -931,7 +931,6 @@ if (whiptail_you_sure); then
     sensor_pillar
     copy_ssh_key
     create_bond
-    docker_registry
     saltify
     configure_minion SENSOR
     copy_minion_pillar sensors
