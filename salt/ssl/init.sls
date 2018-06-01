@@ -22,3 +22,17 @@
         backup: True
 
 # Create Symlinks to the keys so I can distribute it to all the things
+
+# Create a cert for the docker registry
+/etc/pki/registry.crt:
+  x509.certificate_managed:
+    - ca_server: {{ master }}
+    - signing_policy: filebeat
+    - public_key: /etc/pki/registry.key
+    - CN: ca.example.com
+    - days_remaining: 3000
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/registry.key
+        bits: 4096
+        backup: True
