@@ -7,6 +7,7 @@
   x509.pem_managed:
     - text:  {{ salt['mine.get'](master, 'x509.get_pem_entries')[master]['/etc/pki/ca.crt']|replace('\n', '') }}
 
+{% if grains['role'] == 'so-master' %}
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
   x509.certificate_managed:
@@ -36,3 +37,5 @@
         name: /etc/pki/registry.key
         bits: 4096
         backup: True
+
+{% endif %}
