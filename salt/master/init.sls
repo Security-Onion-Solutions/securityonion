@@ -89,5 +89,7 @@ so-dockerregistry:
     - binds:
       - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
       - /opt/so/conf/docker-registry:/var/lib/registry:rw
+      - /etc/pki/resitry.crt:/etc/pki/registry.crt:ro
+      - /etc/pki/registry.key:/etc/pki/registry.key:ro
 
 {% endif %}
