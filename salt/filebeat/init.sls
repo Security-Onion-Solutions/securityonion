@@ -17,7 +17,7 @@
 # Redis Setup
 filebeatconfdir:
   file.directory:
-    - name: /opt/so/conf/filebeat
+    - name: /opt/so/conf/filebeat/etc/pki
     - user: 939
     - group: 939
     - makedirs: True
@@ -29,6 +29,16 @@ filebeatconfsync:
     - user: 0
     - group: 0
     - template: jinja
+
+filebeatcrt:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
+    - source: salt://filebeat/files/filebeat.crt
+
+filebeatkey:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - source: salt://filebeat/files/filebeat.key
 
 docker.elastic.co/beats/filebeat:6.2.4:
   docker_image.present
