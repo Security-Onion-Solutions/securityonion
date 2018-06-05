@@ -30,6 +30,18 @@ filebeatconfsync:
     - group: 0
     - template: jinja
 
+# Create Symlinks to the keys so I can distribute it to all the things
+
+fbkeylink:
+  file.symlink:
+    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.key
+    - target: /etc/pki/filebeat.key
+
+fbcrtlink:
+  file.symlink:
+    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.crt
+    - target: /etc/pki/filebeat.crt
+
 filebeatcrt:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
