@@ -53,6 +53,15 @@ accept_salt_key_remote() {
 
 }
 
+add_master_hostfile() {
+  # Pop up an input to get the IP address
+  local MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+
+  # Add the master to the host file if it doesn't resolve
+  echo "$MSRV   $MSRVIP" >> /etc/hosts
+}
+
 add_socore_user_master() {
   if [ $OS == 'centos' ]; then
     local ADDUSER=adduser
@@ -680,7 +689,15 @@ whiptail_make_changes() {
 whiptail_management_server() {
 
   MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Master Server Name or IP Address" 10 60 XXXX 3>&1 1>&2 2>&3)
+  "Enter your Master Server HOSTNAME" 10 60 XXXX 3>&1 1>&2 2>&3)
+
+  # See if it resolves. Otherwise prompt to add to host file
+  TESTHOST=$(host $MSRV)
+
+  if [[ $TESTHOST = *"not found"* ]]; then
+    add_master_hostfile
+  fi
+
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
