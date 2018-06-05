@@ -14,7 +14,7 @@
     - ca_server: {{ master }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-    - CN: ca.example.com
+    - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
     - managed_private_key:
@@ -40,7 +40,7 @@ fbcrtlink:
     - ca_server: {{ master }}
     - signing_policy: filebeat
     - public_key: /etc/pki/registry.key
-    - CN: ca.example.com
+    - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
     - managed_private_key:
