@@ -24,6 +24,16 @@
 
 # Create Symlinks to the keys so I can distribute it to all the things
 
+fbkeylink:
+  file.symlink:
+    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.key
+    - target: /etc/pki/filebeat.key
+
+fbcrtlink:
+  file.symlink:
+    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.crt
+    - target: /etc/pki/filebeat.crt
+
 # Create a cert for the docker registry
 /etc/pki/registry.crt:
   x509.certificate_managed:
