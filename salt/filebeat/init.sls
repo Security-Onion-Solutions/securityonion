@@ -47,17 +47,9 @@ filebeatcrt:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - source: salt://filebeat/files/filebeat.crt
 
-filebeatkey:
-  file.managed:
-    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - source: salt://filebeat/files/filebeat.key
-
-docker.elastic.co/beats/filebeat:6.2.4:
-  docker_image.present
-
 so-filebeat:
   docker_container.running:
-    - image: docker.elastic.co/beats/filebeat:6.2.4
+    - image: toosmoth/so-filebeat:beta
     - hostname: so-filebeat
     - user: root
     - binds:
