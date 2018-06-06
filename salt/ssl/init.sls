@@ -1,10 +1,11 @@
 {% set master = salt['grains.get']('master') %}
 # Trust the CA
-/usr/local/share/ca-certificates:
-  file.directory: []
+#/usr/local/share/ca-certificates:
+#  file.directory: []
 
-/usr/local/share/ca-certificates/intca.crt:
+trusttheca:
   x509.pem_managed:
+    - name: /etc/ssl/certs/intca.crt
     - text:  {{ salt['mine.get'](master, 'x509.get_pem_entries')[master]['/etc/pki/ca.crt']|replace('\n', '') }}
 
 {% if grains['role'] == 'so-master' %}
@@ -23,7 +24,11 @@
         backup: True
 
 # Create Symlinks to the keys so I can distribute it to all the things
-
+filebeatdir:
+  file.directory:
+    - name: /opt/so/saltstack/salt/filebeat/files
+    - mkdirs: True
+    
 fbkeylink:
   file.symlink:
     - name: /opt/so/saltstack/salt/filebeat/files/filebeat.key
