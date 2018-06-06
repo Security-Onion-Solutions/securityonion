@@ -423,7 +423,7 @@ saltify() {
 
     # Initialize the new repos
     apt-get update
-    apt-get -y install salt-minion docker-ce
+    apt-get -y install salt-minion docker-ce python-m2crypto
     docker_registry
     systemctl status docker
     systemctl restart docker
