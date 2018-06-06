@@ -1,5 +1,6 @@
 base:
   'G@role:so-sensor':
+    - ssl
     - common
     - pcap
     - suricata
