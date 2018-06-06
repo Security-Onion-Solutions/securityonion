@@ -28,7 +28,7 @@ filebeatdir:
   file.directory:
     - name: /opt/so/saltstack/salt/filebeat/files
     - mkdirs: True
-    
+
 fbkeylink:
   file.symlink:
     - name: /opt/so/saltstack/salt/filebeat/files/filebeat.key
