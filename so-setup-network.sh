@@ -425,7 +425,8 @@ saltify() {
     apt-get update
     apt-get -y install salt-minion docker-ce
     docker_registry
-    service docker restart
+    systemctl status docker
+    systemctl restart docker
 
   fi
 
