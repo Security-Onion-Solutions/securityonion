@@ -223,7 +223,7 @@ docker_registry() {
   mkdir -p /etc/docker
   # Make the host use the master docker registry
   echo "{" > /etc/docker/daemon.json
-  echo "  \"registry-mirrors\": [\"https://$MSRV\:5000\"]" >> /etc/docker/daemon.json
+  echo "  \"registry-mirrors\": [\"https://$MSRV:5000\"]" >> /etc/docker/daemon.json
   echo "}" >> /etc/docker/daemon.json
 
 }
