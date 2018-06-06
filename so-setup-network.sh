@@ -423,7 +423,9 @@ saltify() {
 
     # Initialize the new repos
     apt-get update
-    apt-get -y install salt-minion
+    apt-get -y install salt-minion docker-ce
+    docker_registry
+    service docker restart
 
   fi
 
@@ -947,7 +949,6 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
-    docker_registry
     sensor_pillar
     copy_ssh_key
     create_bond
