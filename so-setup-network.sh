@@ -945,6 +945,7 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    docker_registry
     sensor_pillar
     copy_ssh_key
     create_bond
