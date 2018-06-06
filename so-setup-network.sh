@@ -100,8 +100,10 @@ configure_minion() {
   echo "role: so-$TYPE" > /etc/salt/grains
   if [ $TYPE == 'master' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
+    echo "id: $HOSTNAME" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
+    echo "id: $HOSTNAME" >> /etc/salt/minion
   fi
 
   service salt-minion restart
