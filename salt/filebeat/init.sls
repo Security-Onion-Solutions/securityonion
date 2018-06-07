@@ -35,9 +35,15 @@ filebeatcrt:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - source: salt://filebeat/files/filebeat.crt
 
+filebeatkey:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - source: salt://filebeat/files/filebeat.key
+
+
 so-filebeat:
   docker_container.running:
-    - image: toosmoth/so-filebeat:beta
+    - image: toosmooth/so-filebeat:beta
     - hostname: so-filebeat
     - user: root
     - binds:
@@ -45,5 +51,6 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/bro/spool/manager:/nsm/bro/spool:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
+      - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - network_mode: so-elastic-net
