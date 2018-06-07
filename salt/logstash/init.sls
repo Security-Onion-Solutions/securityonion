@@ -133,4 +133,6 @@ so-logstash:
       - /nsm/logstash:/usr/share/logstash/data:rw
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
+      - /etc/pki/filebeat.key:/usr/share/logstash/filebeat.key:ro
     - network_mode: so-elastic-net
