@@ -1,3 +1,6 @@
+{% set minions = salt['pillar.get']('firewall.minions', {}) %}
+# Default Rules for everyone
+
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
@@ -43,7 +46,44 @@ enable_reject_policy:
     - chain: INPUT
     - policy: DROP
     - require:
-      - firewall: iptables_allow_localhost
-      - firewall: iptables_allow_established
-      - firewall: iptables_allow_ssh
-      - firewall: iptables_allow_pings
+      - iptables: iptables_allow_localhost
+      - iptables: iptables_allow_established
+      - iptables: iptables_allow_ssh
+      - iptables: iptables_allow_pings
+
+# Rules if you are a Master
+{% if grains['role'] == 'so-master' %}
+{% for ip in minions.get('minion_ips', []) %}
+
+  enable_salt_minions_4505:
+    iptables.append:
+      - table: filter
+      - chain: INPUT
+      - jump: ACCEPT
+      - proto: tcp
+      - source: {{ ip }}
+      - dport: 4505
+      - save: True
+
+  enable_salt_minions_4506:
+    iptables.append:
+      - table: filter
+      - chain: INPUT
+      - jump: ACCEPT
+      - proto: tcp
+      - source: {{ ip }}
+      - dport: 4506
+      - save: True
+{% endfor %}
+{% endif %}
+
+# Rules if you are a Storage Node
+
+# Rules if you are a Sensor
+{% if grains['role'] == 'so-sensor' %}
+
+{% endif %}
+
+# Rules if you are a Hot Node
+
+# Rules if you are a Warm Node
