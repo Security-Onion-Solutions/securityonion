@@ -52,10 +52,10 @@ enable_reject_policy:
 
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
-{% set minions = salt['pillar.get']('firewall.minions', {}) %}
-{% for ip in minions.get('minion_ips', []) %}
 
-enable_salt_minions_4505:
+{% for ip in pillar.get('minions')  %}
+
+enable_salt_minions_4505_{{ip}}:
   iptables.append:
     - table: filter
     - chain: INPUT
@@ -65,7 +65,7 @@ enable_salt_minions_4505:
     - dport: 4505
     - save: True
 
-enable_salt_minions_4506:
+enable_salt_minions_4506_{{ip}}:
   iptables.append:
     - table: filter
     - chain: INPUT
