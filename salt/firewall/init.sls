@@ -1,4 +1,3 @@
-{% set minions = salt['pillar.get']('firewall.minions', {}) %}
 # Default Rules for everyone
 
 # Keep localhost in the game
@@ -53,28 +52,31 @@ enable_reject_policy:
 
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
+{% set minions = salt['pillar.get']('firewall.minions', {}) %}
 {% for ip in minions.get('minion_ips', []) %}
 
-  enable_salt_minions_4505:
-    iptables.append:
-      - table: filter
-      - chain: INPUT
-      - jump: ACCEPT
-      - proto: tcp
-      - source: {{ ip }}
-      - dport: 4505
-      - save: True
+enable_salt_minions_4505:
+  iptables.append:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 4505
+    - save: True
 
-  enable_salt_minions_4506:
-    iptables.append:
-      - table: filter
-      - chain: INPUT
-      - jump: ACCEPT
-      - proto: tcp
-      - source: {{ ip }}
-      - dport: 4506
-      - save: True
+enable_salt_minions_4506:
+  iptables.append:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 4506
+    - save: True
+
 {% endfor %}
+
 {% endif %}
 
 # Rules if you are a Storage Node
