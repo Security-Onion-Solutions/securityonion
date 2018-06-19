@@ -50,10 +50,27 @@ enable_reject_policy:
       - iptables: iptables_allow_ssh
       - iptables: iptables_allow_pings
 
+# Delete the RETURN rule
+del_return_rule:
+  iptables.delete:
+    - chain: DOCKER-USER
+    - jump: RETURN
+
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
 
+# Make it so all the minions can talk to salt and update etc.
 {% for ip in pillar.get('minions')  %}
+
+enable_salt_minions_3142_{{ip}}:
+  iptables.append:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3142
+    - save: True
 
 enable_salt_minions_4505_{{ip}}:
   iptables.append:
@@ -75,6 +92,28 @@ enable_salt_minions_4506_{{ip}}:
     - dport: 4506
     - save: True
 
+enable_salt_minions_5000_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5000
+    - position: 1
+    - save: True
+
+enable_salt_minions_3142_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3142
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 {% endif %}
@@ -89,3 +128,12 @@ enable_salt_minions_4506_{{ip}}:
 # Rules if you are a Hot Node
 
 # Rules if you are a Warm Node
+
+# Some Fixer upper type rules
+
+# Enable global DOCKER-USER block rule
+enable_docker_user_fw_policy:
+  iptables.append:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: DROP
