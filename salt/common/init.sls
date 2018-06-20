@@ -66,9 +66,9 @@ docker:
 #    - driver: bridge
 
 # dockernet work around
-dockernet:
-  cmd.script:
-    - source: salt://common/scripts/dockernet.sh
+#dockernet:
+#  cmd.script:
+#    - source: salt://common/scripts/dockernet.sh
     
 
 # Snag the so-core docker
@@ -118,7 +118,6 @@ so-core:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-    - network_mode: so-elastic-net
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80

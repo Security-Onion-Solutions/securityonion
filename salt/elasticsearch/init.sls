@@ -98,7 +98,7 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
-    - network_mode: so-elastic-net
+
 
 # See if Freqserver is enabled
 {% if freq == 1 %}
@@ -132,7 +132,7 @@ so-freq:
     - user: freqserver
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
-    - network_mode: so-elastic-net
+
 
 {% endif %}
 
@@ -168,7 +168,7 @@ so-domainstats:
     - user: domainstats
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
-    - network_mode: so-elastic-net
+
 
 {% endif %}
 
@@ -237,7 +237,7 @@ so-curator:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
       - /opt/so/log/curator:/var/log/curator
-    - network_mode: so-elastic-net
+
 
 # Begin Curator Cron Jobs
 

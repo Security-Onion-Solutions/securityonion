@@ -62,16 +62,6 @@ del_return_rule:
 # Make it so all the minions can talk to salt and update etc.
 {% for ip in pillar.get('minions')  %}
 
-enable_salt_minions_3142_{{ip}}:
-  iptables.append:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 3142
-    - save: True
-
 enable_salt_minions_4505_{{ip}}:
   iptables.append:
     - table: filter
@@ -114,7 +104,21 @@ enable_salt_minions_3142_{{ip}}:
     - position: 1
     - save: True
 
+enable_salt_minions_5044_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5044
+    - position: 1
+    - save: True
+
 {% endfor %}
+
+# Rules for storage nodes connecting to master
+
 
 {% endif %}
 

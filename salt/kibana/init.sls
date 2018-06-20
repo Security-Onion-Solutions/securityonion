@@ -54,6 +54,5 @@ so-kibana:
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/custdashboards/:/usr/share/kibana/custdashboards/:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    - network_mode: so-elastic-net
     - port_bindings:
       - 127.0.0.1:5601:5601
