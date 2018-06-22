@@ -104,6 +104,27 @@ enable_salt_minions_3142_{{ip}}:
     - position: 1
     - save: True
 
+{% endfor %}
+
+# Allow Forward Nodes to send their beats traffic
+{% for ip in pillar.get('forward_nodes')  %}
+
+enable_salt_minions_5044_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5044
+    - position: 1
+    - save: True
+
+{% endfor %}
+
+# Allow Forward Nodes to send their beats traffic
+{% for ip in pillar.get('beats_endpoint')  %}
+
 enable_salt_minions_5044_{{ip}}:
   iptables.insert:
     - table: filter
