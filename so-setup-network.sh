@@ -251,7 +251,14 @@ filter_nics() {
 
 }
 
-got_root() {
+get_main_ip() {
+
+  # Get the main IP address the box is using
+  MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+
+}
+
+}got_root() {
 
   # Make sure you are root
   if [ "$(id -u)" -ne 0 ]; then
@@ -505,6 +512,11 @@ sensor_pillar() {
 
 }
 
+set_initial_firewall_policy() {
+
+  get_main_ip
+
+}
 set_updates() {
 
   # Set it up so the updates roll through the master
@@ -870,8 +882,8 @@ if (whiptail_you_sure); then
   # Create a dir to get started
   install_prep
 
-	# Let folks know they need their management interface already set up.
-	whiptail_network_notice
+  # Let folks know they need their management interface already set up.
+  whiptail_network_notice
 
   # Go ahead and gen the keys so we can use them for any sensor type
   #minio_generate_keys
@@ -919,6 +931,7 @@ if (whiptail_you_sure); then
     master_static
     echo "generating the master pillar"
     master_pillar
+    set_initial_firewall_policy
     # Do a checkin to push the key up
     salt_checkin
     # Accept the Master Key
