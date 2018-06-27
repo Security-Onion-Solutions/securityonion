@@ -476,6 +476,7 @@ salt_master_directories() {
 
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
+  chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
   cp -R salt/* /opt/so/saltstack/salt/
 
 }
@@ -515,6 +516,34 @@ sensor_pillar() {
 set_initial_firewall_policy() {
 
   get_main_ip
+  local POLICYPATH=/opt/so/salstack/pillar/firewall
+
+  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+
+    echo "  - $MAINIP" >> $POLICYPATH/minions.sls
+
+  fi
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo $POLICYPATH/addfirewall.sh minions $MAINIP
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo $POLICYPATH/addfirewall.sh forward_nodes $MAINIP
+
+  fi
+  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+
+  fi
+
+  if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
+
+  fi
+
+  if [ $INSTALLTYPE == 'HOTNODE' ]; then
+
+  fi
+
+  if [ $INSTALLTYPE == 'WARMNODE' ]; then
+
+  fi
 
 }
 set_updates() {
@@ -547,6 +576,7 @@ update_sudoers() {
 
   # Update Sudoers so that socore can accept keys without a password
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
+  echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
 
 }
 
@@ -963,8 +993,9 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
-    sensor_pillar
     copy_ssh_key
+    set_initial_firewall_policy
+    sensor_pillar
     create_bond
     saltify
     configure_minion SENSOR
