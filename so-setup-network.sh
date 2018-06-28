@@ -530,19 +530,19 @@ set_initial_firewall_policy() {
 
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-
+    echo "blah"
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
-
+    echo "blah"
   fi
-
+    echo "blah"
   if [ $INSTALLTYPE == 'HOTNODE' ]; then
-
+    echo "blah"
   fi
 
   if [ $INSTALLTYPE == 'WARMNODE' ]; then
-
+    echo "blah"
   fi
 
 }
