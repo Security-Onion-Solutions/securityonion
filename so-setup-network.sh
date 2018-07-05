@@ -137,7 +137,7 @@ copy_ssh_key() {
   cat /dev/zero | ssh-keygen -f ~/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER ~/.ssh
   #Copy the key over to the master
-  sudo ssh-copy-id -f -i ~/.ssh/so.key socore@$MSRV
+  ssh-copy-id -f -i ~/.ssh/so.key socore@$MSRV
 
 }
 
@@ -521,7 +521,7 @@ set_initial_firewall_policy() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
-    echo "  - $MAINIP" >> $POLICYPATH/minions.sls
+    printf "  - $MAINIP\n" >> $POLICYPATH/minions.sls
 
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
