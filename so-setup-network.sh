@@ -444,6 +444,7 @@ salt_checkin() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
   salt-call state.apply common
   salt-call state.apply ca
+  salt-call state.apply ssl
   service salt-minion restart
   salt-call state.highstate
 

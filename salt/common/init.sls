@@ -11,6 +11,7 @@ socore:
     - gid: 939
     - home: /opt/so
     - createhome: True
+    - shell: /bin/bash
 
 # Create a state directory
 
