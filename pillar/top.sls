@@ -8,4 +8,4 @@ base:
     - masters.schedule
     - masters.{{ grains.host }}
     - static
-    - firewall
+    - firewall.*

@@ -17,6 +17,7 @@ base:
     - common
     - ca
     - ssl
+    - firewall
     - master
     - idstools
     - redis

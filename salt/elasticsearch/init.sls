@@ -296,6 +296,5 @@ so-elastalert:
     - binds:
       - /etc/elastalert/rules/:/etc/elastalert/rules/
       - /opt/so/log/elastalert:/var/log/elastalert
-    - network_mode: so-elastic-net
 
 {% endif %}
