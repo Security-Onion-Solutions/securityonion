@@ -109,7 +109,7 @@ enable_salt_minions_3142_{{ip}}:
 # Allow Forward Nodes to send their beats traffic
 {% for ip in pillar.get('forward_nodes')  %}
 
-enable_salt_minions_5044_{{ip}}:
+enable_forwardnode_beats_5044_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -122,10 +122,10 @@ enable_salt_minions_5044_{{ip}}:
 
 {% endfor %}
 
-# Allow Forward Nodes to send their beats traffic
+# Allow Beats Endpoints to send their beats traffic
 {% for ip in pillar.get('beats_endpoint')  %}
 
-enable_salt_minions_5044_{{ip}}:
+enable_standard_beats_5044_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
