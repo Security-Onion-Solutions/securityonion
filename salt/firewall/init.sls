@@ -50,11 +50,16 @@ enable_reject_policy:
       - iptables: iptables_allow_ssh
       - iptables: iptables_allow_pings
 
-# Delete the RETURN rule
-del_return_rule:
-  iptables.delete:
+# Enable global DOCKER-USER block rule
+enable_docker_user_fw_policy:
+  iptables.insert:
+    - table: filter
     - chain: DOCKER-USER
-    - jump: RETURN
+    - jump: DROP
+    - in-interface: '!docker0'
+    - out-interface: docker0
+    - position: 1
+    - save: true
 
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
@@ -155,10 +160,3 @@ enable_standard_beats_5044_{{ip}}:
 # Rules if you are a Warm Node
 
 # Some Fixer upper type rules
-
-# Enable global DOCKER-USER block rule
-enable_docker_user_fw_policy:
-  iptables.append:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: DROP
