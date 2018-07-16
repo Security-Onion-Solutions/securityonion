@@ -26,6 +26,7 @@ m2cryptopkgs:
     - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
+    - extendedkeyUsage: "serverAuth, clientAuth"
     - managed_private_key:
         name: /etc/pki/filebeat.key
         bits: 4096
