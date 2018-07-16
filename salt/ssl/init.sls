@@ -26,7 +26,7 @@ m2cryptopkgs:
     - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
-    - keyUsage: "critical keyEncipherment"
+    - keyUsage: "digitalSignature, nonRepudiation"
     - extendedkeyUsage: "serverAuth, clientAuth"
     - managed_private_key:
         name: /etc/pki/filebeat.key
