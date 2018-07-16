@@ -25,7 +25,7 @@ pki_private_key:
     - ST: Utah
     - L: Salt Lake City
     - basicConstraints: "critical CA:true"
-    - keyUsage: "critical cRLSign, keyCertSign"
+    - keyUsage: "critical cRLSign, keyCertSign, serverAuth, clientAuth"
     - subjectKeyIdentifier: hash
     - authorityKeyIdentifier: keyid,issuer:always
     - days_valid: 3650
