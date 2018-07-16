@@ -30,15 +30,15 @@ filebeatconfsync:
     - group: 0
     - template: jinja
 
-filebeatcrt:
-  file.managed:
-    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
-    - source: salt://filebeat/files/filebeat.crt
+#filebeatcrt:
+#  file.managed:
+#    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
+#    - source: salt://filebeat/files/filebeat.crt
 
-filebeatkey:
-  file.managed:
-    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - source: salt://filebeat/files/filebeat.key
+#filebeatkey:
+#  file.managed:
+#    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+#    - source: salt://filebeat/files/filebeat.key
 
 
 so-filebeat:

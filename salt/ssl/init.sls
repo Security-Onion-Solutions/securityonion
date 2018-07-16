@@ -62,3 +62,19 @@ fbcrtlink:
         backup: True
 
 {% endif %}
+{% if grains['role'] == 'so-sensor' %}
+# Request a cert and drop it where it needs to go to be distributed
+/opt/so/conf/filebeat/etc/pki/filebeat.crt:
+  x509.certificate_managed:
+    - ca_server: {{ master }}
+    - signing_policy: filebeat
+    - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - CN: {{ master }}
+    - days_remaining: 3000
+    - backup: True
+    - managed_private_key:
+        name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+        bits: 4096
+        backup: True
+
+{% endif %}
