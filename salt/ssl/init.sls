@@ -26,8 +26,6 @@ m2cryptopkgs:
     - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
-    - keyUsage: "digitalSignature, nonRepudiation"
-    - extendedkeyUsage: "serverAuth, clientAuth"
     - managed_private_key:
         name: /etc/pki/filebeat.key
         bits: 4096
@@ -53,7 +51,7 @@ fbcrtlink:
 /etc/pki/registry.crt:
   x509.certificate_managed:
     - ca_server: {{ master }}
-    - signing_policy: filebeat
+    - signing_policy: registry
     - public_key: /etc/pki/registry.key
     - CN: {{ master }}
     - days_remaining: 3000
@@ -72,8 +70,6 @@ fbcrtlink:
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ master }}
-    - keyUsage: "digitalSignature, nonRepudiation"
-    - extendedkeyUsage: "serverAuth, clientAuth"
     - days_remaining: 3000
     - backup: True
     - managed_private_key:
