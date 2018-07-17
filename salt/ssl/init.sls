@@ -62,7 +62,7 @@ fbcrtlink:
         backup: True
 
 {% endif %}
-{% if grains['role'] == 'so-sensor' %}
+{% if grains['role'] == 'so-SENSOR' %}
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
   x509.certificate_managed:
