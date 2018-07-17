@@ -72,6 +72,8 @@ fbcrtlink:
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ master }}
+    - keyUsage: "digitalSignature, nonRepudiation"
+    - extendedkeyUsage: "serverAuth, clientAuth"
     - days_remaining: 3000
     - backup: True
     - managed_private_key:
