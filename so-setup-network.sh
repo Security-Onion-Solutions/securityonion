@@ -534,6 +534,7 @@ set_initial_firewall_policy() {
   local POLICYPATH=/opt/so/salstack/pillar/firewall
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+    ls -la /opt/so/saltstack/pillar/firewall/
     ls -la $POLICYPATH/
     printf "  - $MAINIP\n" >> $POLICYPATH/minions.sls
 
