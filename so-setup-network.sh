@@ -491,6 +491,7 @@ salt_master_directories() {
 
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
+  mkdir -p /opt/so/saltstack/pillar/firewall
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
   cp -R salt/* /opt/so/saltstack/salt/
 
@@ -963,20 +964,27 @@ if (whiptail_you_sure); then
     add_socore_user_master
 
     # Install salt and dependencies
-    saltify
+    echo " ** Installing Salt and Dependencies **"
+    saltify >/dev/null 2>&1
+    # Configure the Minion
+    echo " ** Configuring Minion **"
     configure_minion master
+    echo " ** Installing Salt Master **"
     install_master
+    # Copy the data over
     salt_master_directories
+
     update_sudoers
     chown_salt_master
     es_heapsize
     ls_heapsize
+    # Set the static values
     master_static
     echo "generating the master pillar"
     master_pillar
     set_initial_firewall_policy
     # Do a checkin to push the key up
-    salt_firstcheckin
+    salt_firstcheckin >/dev/null 2>&1
     # Accept the Master Key
     accept_salt_key_local
     # Do the big checkin but first let them know it will take a bit.
@@ -1037,7 +1045,7 @@ if (whiptail_you_sure); then
     saltify
     configure_minion sensor
     copy_minion_pillar sensors
-    salt_checkin
+    salt_firstcheckin
     accept_salt_key_local
     salt_checkin_message
     salt_checkin
