@@ -158,7 +158,7 @@ create_bond() {
   else
 
     # Need to add 17.04 support still
-    apt -y install ifenslave
+    apt-get -y install ifenslave
     echo "bonding" >> /etc/modules
     modprobe bonding
 
@@ -291,7 +291,7 @@ install_master() {
   if [ $OS == 'centos' ]; then
     yum -y install salt-master
   else
-    apt install -y salt-master
+    apt-get install -y salt-master
   fi
 
   copy_master_config
@@ -491,7 +491,6 @@ salt_master_directories() {
 
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
-  mkdir -p /opt/so/saltstack/pillar/firewall
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
   cp -R salt/* /opt/so/saltstack/salt/
 
@@ -536,7 +535,6 @@ set_initial_firewall_policy() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
-    touch $POLICYPATH/minions.sls
     printf "  - $MAINIP\n" >> $POLICYPATH/minions.sls
 
   fi
@@ -982,14 +980,14 @@ if (whiptail_you_sure); then
     master_static
     echo "** Generating the master pillar **"
     master_pillar
-    echo "** Setting the initial firewall policy **"
-    set_initial_firewall_policy
     # Do a checkin to push the key up
     echo "** Pushing the key up to Master **"
     salt_firstcheckin >>~/sosetup.log 2>&1
     # Accept the Master Key
     echo "** Accepting the key on the master **"
     accept_salt_key_local
+    echo "** Setting the initial firewall policy **"
+    set_initial_firewall_policy
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
