@@ -442,6 +442,13 @@ saltify() {
 
 }
 
+salt_firstcheckin() {
+
+  #First Checkin
+  salt-call state.highstate
+
+}
+
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
@@ -450,9 +457,9 @@ salt_checkin() {
   salt-call state.apply ssl
   echo "Restarting Salt to fix any SSL errors."
   service salt-master restart
-  sleep 10
+  sleep 5
   service salt-minion restart
-  sleep 10
+  sleep 5
   salt-call state.highstate
 
   else
@@ -969,7 +976,7 @@ if (whiptail_you_sure); then
     master_pillar
     set_initial_firewall_policy
     # Do a checkin to push the key up
-    salt_checkin
+    salt_firstcheckin
     # Accept the Master Key
     accept_salt_key_local
     # Do the big checkin but first let them know it will take a bit.
@@ -1006,7 +1013,7 @@ if (whiptail_you_sure); then
     saltify
     configure_minion SENSOR
     copy_minion_pillar sensors
-    salt_checkin
+    salt_firstcheckin
     # Accept the Salt Key
     accept_salt_key_remote
     # Do the big checkin but first let them know it will take a bit.
