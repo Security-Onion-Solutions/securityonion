@@ -448,7 +448,11 @@ salt_checkin() {
   salt-call state.apply common
   salt-call state.apply ca
   salt-call state.apply ssl
+  echo "Restarting Salt to fix any SSL errors."
+  service salt-master restart
+  sleep 10
   service salt-minion restart
+  sleep 10
   salt-call state.highstate
 
   else
@@ -898,10 +902,7 @@ whiptail_you_sure() {
 #####################
 
 # Check for prerequisites
-echo "Checking for Root"
 got_root
-
-echo "Detecting OS"
 detect_os
 
 if [ $OS == ubuntu ]; then
