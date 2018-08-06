@@ -531,18 +531,14 @@ sensor_pillar() {
 set_initial_firewall_policy() {
 
   get_main_ip
-  local POLICYPATH=/opt/so/salstack/pillar/firewall
-
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
-    ls -la /opt/so/saltstack/pillar/firewall/
-    ls -la $POLICYPATH/
-    printf "  - $MAINIP\n" >> $POLICYPATH/minions.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
 
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo $POLICYPATH/addfirewall.sh minions $MAINIP
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo $POLICYPATH/addfirewall.sh forward_nodes $MAINIP
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
 
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
