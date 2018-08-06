@@ -397,7 +397,7 @@ saltify() {
     apt-get -y upgrade
 
     # Add the pre-requisites for installing docker-ce
-    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl
+    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >/dev/null 2>&1
 
     # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
@@ -432,8 +432,8 @@ saltify() {
     fi
 
     # Initialize the new repos
-    apt-get update
-    apt-get -y install salt-minion docker-ce python-m2crypto
+    apt-get update >/dev/null 2>&1
+    apt-get -y install salt-minion docker-ce python-m2crypto >/dev/null 2>&1
     docker_registry
     echo "Restarting Docker"
     systemctl restart docker
@@ -445,17 +445,17 @@ saltify() {
 salt_firstcheckin() {
 
   #First Checkin
-  salt-call state.highstate
+  salt-call state.highstate >/dev/null 2>&1
 
 }
 
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
-  salt-call state.apply common
-  salt-call state.apply ca
-  salt-call state.apply ssl
-  echo "Restarting Salt to fix any SSL errors."
+  salt-call state.apply common >/dev/null 2>&1
+  salt-call state.apply ca >/dev/null 2>&1
+  salt-call state.apply ssl >/dev/null 2>&1
+  echo " *** Restarting Salt to fix any SSL errors. ***"
   service salt-master restart
   sleep 5
   service salt-minion restart
