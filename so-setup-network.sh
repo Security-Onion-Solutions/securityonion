@@ -528,6 +528,7 @@ set_initial_firewall_policy() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
+    touch $POLICYPATH/minions.sls
     printf "  - $MAINIP\n" >> $POLICYPATH/minions.sls
 
   fi
