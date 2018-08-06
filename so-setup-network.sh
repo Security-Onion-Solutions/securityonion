@@ -207,6 +207,7 @@ create_bond() {
 detect_os() {
 
   # Detect Base OS
+  echo "Detecting Base OS"
   if [ -f /etc/redhat-release ]; then
     OS=centos
   elif [ -f /etc/os-release ]; then
@@ -220,11 +221,13 @@ detect_os() {
 
 docker_registry() {
 
+  echo "Setting up Docker Registry"
   mkdir -p /etc/docker
   # Make the host use the master docker registry
   echo "{" > /etc/docker/daemon.json
   echo "  \"registry-mirrors\": [\"https://$MSRV:5000\"]" >> /etc/docker/daemon.json
   echo "}" >> /etc/docker/daemon.json
+  echo "Docker Registry Setup - Complete"
 
 }
 
@@ -432,7 +435,7 @@ saltify() {
     apt-get update
     apt-get -y install salt-minion docker-ce python-m2crypto
     docker_registry
-    systemctl status docker
+    echo "Restarting Docker"
     systemctl restart docker
 
   fi
