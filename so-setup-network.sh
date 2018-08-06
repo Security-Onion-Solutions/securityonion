@@ -397,7 +397,7 @@ saltify() {
     apt-get -y upgrade
 
     # Add the pre-requisites for installing docker-ce
-    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >/dev/null 2>&1
+    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >>~/sosetup.log 2>&1
 
     # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
@@ -432,8 +432,8 @@ saltify() {
     fi
 
     # Initialize the new repos
-    apt-get update >/dev/null 2>&1
-    apt-get -y install salt-minion docker-ce python-m2crypto >/dev/null 2>&1
+    apt-get update >>~/sosetup.log 2>&1
+    apt-get -y install salt-minion docker-ce python-m2crypto >>~/sosetup.log 2>&1
     docker_registry
     echo "Restarting Docker"
     systemctl restart docker
@@ -445,16 +445,16 @@ saltify() {
 salt_firstcheckin() {
 
   #First Checkin
-  salt-call state.highstate >/dev/null 2>&1
+  salt-call state.highstate >>~/sosetup.log 2>&1
 
 }
 
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
-  salt-call state.apply common >/dev/null 2>&1
-  salt-call state.apply ca >/dev/null 2>&1
-  salt-call state.apply ssl >/dev/null 2>&1
+  salt-call state.apply common >>~/sosetup.log 2>&1
+  salt-call state.apply ca >>~/sosetup.log 2>&1
+  salt-call state.apply ssl >>~/sosetup.log 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
   service salt-master restart
   sleep 5
@@ -965,14 +965,14 @@ if (whiptail_you_sure); then
 
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
-    saltify >/dev/null 2>&1
+    saltify >>~/sosetup.log 2>&1
     # Configure the Minion
     echo " ** Configuring Minion **"
-    configure_minion master
+    configure_minion master >>~/sosetup.log 2>&1
     echo " ** Installing Salt Master **"
-    install_master
+    install_master >>~/sosetup.log 2>&1
     # Copy the data over
-    salt_master_directories
+    salt_master_directories >>~/sosetup.log 2>&1
 
     update_sudoers
     chown_salt_master
@@ -980,12 +980,15 @@ if (whiptail_you_sure); then
     ls_heapsize
     # Set the static values
     master_static
-    echo "generating the master pillar"
+    echo "** Generating the master pillar **"
     master_pillar
+    echo "** Setting the initial firewall policy **"
     set_initial_firewall_policy
     # Do a checkin to push the key up
-    salt_firstcheckin >/dev/null 2>&1
+    echo "** Pushing the key up to Master **"
+    salt_firstcheckin >>~/sosetup.log 2>&1
     # Accept the Master Key
+    echo "** Accepting the key on the master **"
     accept_salt_key_local
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
