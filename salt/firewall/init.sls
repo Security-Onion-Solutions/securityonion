@@ -39,6 +39,12 @@ iptables_allow_pings:
     - save: True
 
 # Create the chain for logging
+iptables_LOGGING_chain:
+  iptables.chain_present:
+    - name: LOGGING
+    - table: filter
+    - family: ipv4
+
 iptables_LOGGING_limit:
   iptables.append:
     - table: filter
