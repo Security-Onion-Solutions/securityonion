@@ -258,7 +258,7 @@ get_main_ip() {
 
 }
 
-}got_root() {
+got_root() {
 
   # Make sure you are root
   if [ "$(id -u)" -ne 0 ]; then
