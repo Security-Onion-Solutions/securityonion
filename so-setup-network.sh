@@ -548,7 +548,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
     echo "blah"
   fi
-    echo "blah"
+
   if [ $INSTALLTYPE == 'HOTNODE' ]; then
     echo "blah"
   fi
