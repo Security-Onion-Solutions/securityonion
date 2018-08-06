@@ -95,7 +95,7 @@ configure_minion() {
 
   # You have to pass the TYPE to this function so it knows if its a master or not
   local TYPE=$1
-
+  echo "Configuring minion type as $TYPE"
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
   if [ $TYPE == 'master' ]; then
