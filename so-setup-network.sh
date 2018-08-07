@@ -423,23 +423,27 @@ saltify() {
       # Copy down the gpg keys and install them from the master
       mkdir $TMP/gpg
       scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
-      apt-key add $TMP/gpg/docker.pub
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
-      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
 
     fi
 
     # Initialize the new repos
     apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install salt-minion docker-ce python-m2crypto >>~/sosetup.log 2>&1
-    docker_registry
-    echo "Restarting Docker"
-    systemctl restart docker
+    apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
 
   fi
 
+}
+
+docker_install() {
+  apt-key add $TMP/gpg/docker.pub
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  apt-get update >>~/sosetup.log 2>&1
+  apt-get -y install docker-ce >>~/sosetup.log 2>&1
+  docker_registry
+  echo "Restarting Docker"
+  systemctl restart docker
 }
 
 salt_firstcheckin() {
@@ -542,7 +546,8 @@ set_initial_firewall_policy() {
 
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    echo "blah"
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -961,6 +966,7 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
+    docker_install
     # Configure the Minion
     echo " ** Configuring Minion **"
     configure_minion master >>~/sosetup.log 2>&1
@@ -1017,6 +1023,7 @@ if (whiptail_you_sure); then
     sensor_pillar
     create_bond
     saltify
+    docker_install
     configure_minion SENSOR
     copy_minion_pillar sensors
     salt_firstcheckin
@@ -1041,6 +1048,7 @@ if (whiptail_you_sure); then
     copy_ssh_key
     create_bond
     saltify
+    docker_install
     configure_minion sensor
     copy_minion_pillar sensors
     salt_firstcheckin
@@ -1071,7 +1079,9 @@ if (whiptail_you_sure); then
       LSINPUTBATCHCOUNT=125
     fi
     copy_ssh_key
+    set_initial_firewall_policy
     saltify
+    docker_install
     configure_minion node
     set_node_type
     node_pillar
