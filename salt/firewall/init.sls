@@ -166,6 +166,21 @@ enable_forwardnode_beats_5044_{{ip}}:
 
 {% endfor %}
 
+{% for ip in pillar.get('storage_nodes')  %}
+
+enable_storagenode_redis_6379_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 6379
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 # Allow Beats Endpoints to send their beats traffic
 {% for ip in pillar.get('beats_endpoint')  %}
 
