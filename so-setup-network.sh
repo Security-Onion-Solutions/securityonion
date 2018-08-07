@@ -452,6 +452,7 @@ docker_install() {
     docker_registry
     echo "Restarting Docker"
     systemctl restart docker
+  fi
 
 }
 
