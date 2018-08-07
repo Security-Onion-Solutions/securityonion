@@ -437,13 +437,22 @@ saltify() {
 }
 
 docker_install() {
-  apt-key add $TMP/gpg/docker.pub
-  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-  apt-get update >>~/sosetup.log 2>&1
-  apt-get -y install docker-ce >>~/sosetup.log 2>&1
-  docker_registry
-  echo "Restarting Docker"
-  systemctl restart docker
+
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    apt-get update >>~/sosetup.log 2>&1
+    apt-get -y install docker-ce >>~/sosetup.log 2>&1
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
+  else
+    apt-key add $TMP/gpg/docker.pub
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    apt-get update >>~/sosetup.log 2>&1
+    apt-get -y install docker-ce >>~/sosetup.log 2>&1
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
+
 }
 
 salt_firstcheckin() {
