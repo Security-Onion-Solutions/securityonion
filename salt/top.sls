@@ -25,7 +25,7 @@ base:
     - logstash
 
   # Storage node logic
-
+  'G@role:so-node':
   'node_type:parser':
     - match: pillar
     - common
@@ -42,12 +42,12 @@ base:
     - common
     - elasticsearch
 
-  'node_type:storage':
-    - match: pillar
+  'G@role:so-node and I@node:node_type:storage':
+    - match: compound
     - common
     - logstash
     - elasticsearch
-
+  
   'G@role:mastersensor':
     - common
     - sensor
