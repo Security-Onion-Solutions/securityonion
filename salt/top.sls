@@ -25,19 +25,19 @@ base:
     - logstash
 
   # Storage node logic
-  'G@role:so-node':
-  'node_type:parser':
+
+  'G@role:so-node and I@node:node_type:parser':
     - match: pillar
     - common
     - logstash
 
-  'node_type:hot':
+  'G@role:so-node and I@node:node_type:hot':
     - match: pillar
     - common
     - logstash
     - elasticsearch
 
-  'node_type:warm':
+  'G@role:so-node and I@node:node_type:warm':
     - match: pillar
     - common
     - elasticsearch
@@ -47,7 +47,7 @@ base:
     - common
     - logstash
     - elasticsearch
-  
+
   'G@role:mastersensor':
     - common
     - sensor
