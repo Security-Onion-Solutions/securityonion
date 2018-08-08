@@ -9,3 +9,8 @@ base:
     - masters.{{ grains.host }}
     - static
     - firewall.*
+
+  'G@role:so-node':
+    - nodes.schedule
+    - nodes.{{ grains.host }}
+    - static
