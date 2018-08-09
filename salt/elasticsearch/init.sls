@@ -12,12 +12,23 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% if grains['role'] == 'so-master' %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
 {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
+
+{% elif grains['role'] == 'so-node' %}
+
+{% set esclustername = salt['pillar.get']('node:esclustername', '') %}
+{% set esheap = salt['pillar.get']('node:esheap', '') %}
+{% set freq = salt['pillar.get']('node:freq', '0') %}
+{% set dstats = salt['pillar.get']('node:dstats', '0') %}
+{% set esalert = salt['pillar.get']('node:elastalert', '1') %}
+
+{% endif %}
 
 vm.max_map_count:
   sysctl.present:
@@ -99,6 +110,8 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
 
+# Tell the main cluster I am here
+#curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
 
 # See if Freqserver is enabled
 {% if freq == 1 %}
