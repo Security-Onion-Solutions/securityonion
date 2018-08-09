@@ -370,9 +370,9 @@ node_pillar() {
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
-  echo "  esheap: $NODEESHEAP" >> $TMP/$HOSTNAME.sls
+  echo "  esheap: $ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
-  echo "  lsheap: $NODELSHEAP" >> $TMP/$HOSTNAME.sls
+  echo "  lsheap: $LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  lsaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
@@ -875,6 +875,13 @@ whiptail_setup_complete() {
 
 }
 
+whiptail_shard_count() {
+
+  SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
+  "\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
+
+}
+
 whiptail_suricata_pins() {
 
   FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
@@ -1054,7 +1061,7 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
-    https://github.com/TOoSmOotH/securityonion-saltstack/commit/c84d49c890d57d7a85b7e61d67041fe48e2bf2b5
+    whiptail_make_changes
     configure_minion
     copy_ssh_key
     create_bond
@@ -1070,7 +1077,6 @@ if (whiptail_you_sure); then
 
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_nic
-    echo "Why isn't this working"
     whiptail_management_server
     set_updates
     whiptail_node_advanced
