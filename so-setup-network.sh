@@ -1088,6 +1088,7 @@ if (whiptail_you_sure); then
       LSINPUTTHREADS=1
       LSINPUTBATCHCOUNT=125
     fi
+    whiptail_make_changes
     copy_ssh_key
     set_initial_firewall_policy
     saltify
