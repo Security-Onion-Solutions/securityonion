@@ -1054,6 +1054,7 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_nids
     whiptail_sensor_config
+    https://github.com/TOoSmOotH/securityonion-saltstack/commit/c84d49c890d57d7a85b7e61d67041fe48e2bf2b5
     configure_minion
     copy_ssh_key
     create_bond
