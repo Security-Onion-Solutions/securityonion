@@ -370,9 +370,9 @@ node_pillar() {
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
-  echo "  esheap: $ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
+  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
-  echo "  lsheap: $LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
+  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  lsaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
@@ -799,7 +799,7 @@ whiptail_node_advanced() {
 whiptail_node_es_heap() {
 
   es_heapsize
-  NODEESHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
+  NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
 
 }
@@ -807,7 +807,7 @@ whiptail_node_es_heap() {
 whiptail_node_ls_heap() {
 
   ls_heapsize
-  NODELSHEAP=$(whiptail --title "Security Onion Setup" --inputbox \
+  NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
 
 }
@@ -1079,6 +1079,8 @@ if (whiptail_you_sure); then
     whiptail_management_nic
     whiptail_management_server
     set_updates
+    es_heapsize
+    ls_heapsize
     whiptail_node_advanced
     if [ $NODESETUP == 'NODEADVANCED' ]; then
       whiptail_node_es_heap
@@ -1088,8 +1090,8 @@ if (whiptail_you_sure); then
       whiptail_node_ls_input_threads
       whiptail_node_ls_input_batch_count
     else
-      NODEESHEAP=$ES_HEAP_SIZE
-      NODELSHEAP=$LS_HEAP_SIZE
+      NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+      NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
       LSPIPELINEWORKERS=1
       LSPIPELINEBATCH=125
       LSINPUTTHREADS=1
