@@ -22,23 +22,15 @@
 {% elif grains['role'] == 'so-node' %}
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
+{% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 
-{% else %}
+{% elif grains['role'] == 'so-master' %} %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
-
-  {% if grains['role'] == 'so-master' %}
-
-    {% set nodetype = salt['grains.get']('role', '')  %}
-
-  {% else %}
-
-  {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
-
-  {% endif %}
+{% set nodetype = salt['grains.get']('role', '')  %}
 
 {% endif %}
 
