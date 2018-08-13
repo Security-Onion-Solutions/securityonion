@@ -24,7 +24,7 @@
 {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 
-{% elif grains['role'] == 'so-master' %} %}
+{% elif grains['role'] == 'so-master' %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
