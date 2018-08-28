@@ -72,7 +72,7 @@ so-suricata:
     - environment:
       - INTERFACE={{ interface }}
     - binds:
-      - /opt/so/conf/suricata/suricata.yaml:/usr/local/etc/suricata/suricata.yaml:ro
-      - /opt/so/conf/suricata/rules:/usr/local/etc/suricata/rules:ro
-      - /opt/so/log/suricata/:/usr/local/var/log/suricata/:rw
+      - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
+      - /opt/so/log/suricata/:/var/log/suricata/:rw
     - network_mode: host
