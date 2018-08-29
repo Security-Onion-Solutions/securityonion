@@ -41,8 +41,9 @@ pki_private_key:
 
 mine.send:
   module.run:
-    - func: x509.get_pem_entries
-    - kwargs:
-        glob_path: /etc/pki/ca.crt
-    - onchanges:
-      - x509: /etc/pki/ca.crt
+    - pemzilla:
+      - func: x509.get_pem_entries
+      - kwargs:
+          glob_path: /etc/pki/ca.crt
+      - onchanges:
+        - x509: /etc/pki/ca.crt
