@@ -392,6 +392,16 @@ saltify() {
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    yum -y update
+
+    # Nasty hack but required for now
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+      yum -y install salt-master python-m2crypto salt-minion
+    else
+      yum -y install salt-minion python-m2m2crypto
+    fi
+
+
   else
     ADDUSER=useradd
     apt-get -y upgrade
@@ -417,6 +427,9 @@ saltify() {
       mkdir -p /opt/so/gpg
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
       wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+      # Initialize the new repos
+      apt-get update >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
 
     else
 
@@ -425,12 +438,11 @@ saltify() {
       scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      # Initialize the new repos
+      apt-get update >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
 
     fi
-
-    # Initialize the new repos
-    apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
 
   fi
 

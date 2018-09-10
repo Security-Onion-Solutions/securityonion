@@ -1,8 +1,6 @@
 {% set master = salt['grains.get']('master') %}
 
 # Trust the CA
-#/usr/local/share/ca-certificates:
-#  file.directory: []
 
 trusttheca:
   x509.pem_managed:
