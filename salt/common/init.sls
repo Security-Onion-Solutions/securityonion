@@ -36,8 +36,8 @@ sensorpkgs:
     - skip_suggestions: False
     - pkgs:
       - docker-ce
-      {% if grains['os'] != 'CentOS' %}
       - python-docker
+      {% if grains['os'] != 'CentOS' %}
       - python-m2crypto
       {% endif %}
 
