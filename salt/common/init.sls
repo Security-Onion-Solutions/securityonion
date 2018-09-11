@@ -36,8 +36,10 @@ sensorpkgs:
     - skip_suggestions: False
     - pkgs:
       - docker-ce
+      {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
+      {% endif %}
 
 # Always keep these packages up to date
 
@@ -70,7 +72,7 @@ docker:
 #dockernet:
 #  cmd.script:
 #    - source: salt://common/scripts/dockernet.sh
-    
+
 
 # Snag the so-core docker
 toosmooth/so-core:test2:
