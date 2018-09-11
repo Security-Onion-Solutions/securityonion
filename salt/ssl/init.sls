@@ -8,12 +8,13 @@ trusttheca:
     - text:  {{ salt['mine.get'](master, 'x509.get_pem_entries')[master]['/etc/pki/ca.crt']|replace('\n', '') }}
 
 # Install packages needed for the sensor
-
+{% if grains['os'] != 'CentOS' %}
 m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
       - python-m2crypto
+{% endif %}
 
 {% if grains['role'] == 'so-master' %}
 # Request a cert and drop it where it needs to go to be distributed
