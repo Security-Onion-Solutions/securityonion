@@ -396,9 +396,9 @@ saltify() {
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install salt-master python-m2crypto salt-minion
+      yum -y install salt-master python-m2crypto salt-minion m2crypto
     else
-      yum -y install salt-minion python-m2m2crypto
+      yum -y install salt-minion python-m2m2crypto m2crypto
     fi
 
 
