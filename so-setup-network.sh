@@ -26,20 +26,6 @@ LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\"
 
 # Functions
 
-calculate_useable_cores() {
-
-  # Calculate reasonable core usage
-  local CORES4BRO=$(( $CPUCORES/2 - 1 ))
-  LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
-  # We don't want it to be 0
-  if [ "$LBPROCSROUND" -lt 1 ]; then
-    LBPROCS=1
-  else
-    LBPROCS=$LBPROCSROUND
-  fi
-
-}
-
 accept_salt_key_local() {
 
   # Accept the key locally on the master
@@ -81,6 +67,20 @@ add_socore_user_notmaster() {
   # Add socore user to the non master system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
+
+}
+
+calculate_useable_cores() {
+
+  # Calculate reasonable core usage
+  local CORES4BRO=$(( $CPUCORES/2 - 1 ))
+  LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
+  # We don't want it to be 0
+  if [ "$LBPROCSROUND" -lt 1 ]; then
+    LBPROCS=1
+  else
+    LBPROCS=$LBPROCSROUND
+  fi
 
 }
 
@@ -215,6 +215,26 @@ detect_os() {
   else
     echo "We were unable to determine if you are using a supported OS."
     exit
+  fi
+
+}
+
+docker_install() {
+
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    apt-get update >>~/sosetup.log 2>&1
+    apt-get -y install docker-ce >>~/sosetup.log 2>&1
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
+  else
+    apt-key add $TMP/gpg/docker.pub
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    apt-get update >>~/sosetup.log 2>&1
+    apt-get -y install docker-ce >>~/sosetup.log 2>&1
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
   fi
 
 }
@@ -449,33 +469,6 @@ saltify() {
 
 }
 
-docker_install() {
-
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install docker-ce >>~/sosetup.log 2>&1
-    docker_registry
-    echo "Restarting Docker"
-    systemctl restart docker
-  else
-    apt-key add $TMP/gpg/docker.pub
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install docker-ce >>~/sosetup.log 2>&1
-    docker_registry
-    echo "Restarting Docker"
-    systemctl restart docker
-  fi
-
-}
-
-salt_firstcheckin() {
-
-  #First Checkin
-  salt-call state.highstate >>~/sosetup.log 2>&1
-
-}
-
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
@@ -507,6 +500,13 @@ salt_checkin_message() {
   echo "##             (This will take a while)           ##"
   echo "##                                                ##"
   echo "####################################################"
+
+}
+
+salt_firstcheckin() {
+
+  #First Checkin
+  salt-call state.highstate >>~/sosetup.log 2>&1
 
 }
 
@@ -587,22 +587,6 @@ set_initial_firewall_policy() {
 
 }
 
-set_updates() {
-  
-  if [ $MASTERUPDATES == 'MASTER' ]; then
-    if [ $OS == 'centos' ]; then
-      echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
-
-    else
-
-    # Set it up so the updates roll through the master
-    echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
-    echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
-
-  fi
-    fi
-}
-
 set_node_type() {
 
   # Determine the node type based on whiplash choice
@@ -619,6 +603,22 @@ set_node_type() {
     NODETYPE='warm'
   fi
 
+}
+
+set_updates() {
+
+  if [ $MASTERUPDATES == 'MASTER' ]; then
+    if [ $OS == 'centos' ]; then
+      echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+
+    else
+
+    # Set it up so the updates roll through the master
+    echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
+    echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
+
+  fi
+    fi
 }
 
 update_sudoers() {
