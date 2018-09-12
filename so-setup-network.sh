@@ -586,18 +586,21 @@ set_initial_firewall_policy() {
   fi
 
 }
+
 set_updates() {
+  
+  if [ $MASTERUPDATES == 'MASTER' ]; then
+    if [ $OS == 'centos' ]; then
+      echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
 
-  if [ $OS == 'centos' ]; then
-    echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+    else
 
-  else
-
-  # Set it up so the updates roll through the master
-  echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
-  echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
+    # Set it up so the updates roll through the master
+    echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
+    echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
 
   fi
+    fi
 }
 
 set_node_type() {
