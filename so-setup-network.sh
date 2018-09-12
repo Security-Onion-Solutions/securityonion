@@ -606,7 +606,7 @@ set_node_type() {
 }
 
 set_updates() {
-
+  echo "MASTERUPDATES is $MASTERUPDATES"
   if [ $MASTERUPDATES == 'MASTER' ]; then
     if [ $OS == 'centos' ]; then
       echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
@@ -1043,6 +1043,7 @@ if (whiptail_you_sure); then
     filter_nics
     whiptail_bond_nics
     whiptail_management_server
+    whiptail_master_updates
     set_updates
     whiptail_nids
     whiptail_sensor_config
@@ -1100,6 +1101,7 @@ if (whiptail_you_sure); then
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_nic
     whiptail_management_server
+    whiptail_master_updates
     set_updates
     es_heapsize
     ls_heapsize
