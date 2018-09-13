@@ -408,7 +408,15 @@ saltify() {
   # Install updates and Salt
   if [ $OS == 'centos' ]; then
     ADDUSER=adduser
-    yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+
+    if [ $MASTERUPDATES == 'MASTER' ]; then
+      yum -y install wget
+      export http_proxy=http://$MSRV:3142; wget -O $TMP/salt-repo-latest-2.el7.noarch.rpm http://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      yum -y install $TMP/salt-repo-latest-2.el7.noarch.rpm
+    else
+      yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+    fi
+
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
