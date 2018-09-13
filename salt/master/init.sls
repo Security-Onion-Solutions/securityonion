@@ -56,6 +56,7 @@ so-aptcacherng:
     - binds:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apr-cacher-ng/acng.conf:ro
+      - /opt/so/log/aptchacher-ng:/var/log/apt-cacher-ng:rw
 
 
 # Create the config directory for the docker registry
