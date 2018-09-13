@@ -372,7 +372,7 @@ master_static() {
   if [ $MASTERUPDATES == 'MASTER' ]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
-    echo " masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
+    echo "  masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
   fi
 }
 
@@ -422,7 +422,7 @@ saltify() {
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
       fi
     fi
-  
+
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
