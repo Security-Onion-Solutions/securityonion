@@ -148,13 +148,24 @@ create_bond() {
 
   # Do something different based on the OS
   if [ $OS == 'centos' ]; then
-    alias bond0 bonding
-    mode=0
-    # Create Bond files for the selected monitor interface - TODO
-    for BNIC in ${BNICS[@]}; do
-      echo "blah"
-    done
+    modprobe --first-time bonding
+    touch /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "DEVICE=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "NAME=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "Type=Bond" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
 
+    # Create Bond configs for the selected monitor interface
+    for BNIC in ${BNICS[@]}; do
+      sed -i 's/ONBOOT=\"no\"/ONBOOT=\"yes\"/g' /etc/sysconfig/network-scripts/ifcfg-$BNIC
+      echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BNIC
+      echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BNIC
+    done
+    nmcli con reload
+    systemctl restart networking
+    
   else
 
     # Need to add 17.04 support still
