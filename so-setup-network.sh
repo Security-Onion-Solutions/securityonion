@@ -389,6 +389,7 @@ node_pillar() {
   # Create the node pillar
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
+  echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
   echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
@@ -543,6 +544,7 @@ sensor_pillar() {
   touch $TMP/$HOSTNAME.sls
   echo "sensor:" > $TMP/$HOSTNAME.sls
   echo "  interface: bond0" >> $TMP/$HOSTNAME.sls
+  echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
     echo "  bro_pins:" >> $TMP/$HOSTNAME.sls
     for PIN in $BROPINS; do
