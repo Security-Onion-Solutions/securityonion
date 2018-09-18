@@ -165,7 +165,7 @@ create_bond() {
     done
     nmcli con reload
     systemctl restart networking
-    
+
   else
 
     # Need to add 17.04 support still
@@ -380,6 +380,8 @@ master_static() {
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
+  echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
+  echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   if [ $MASTERUPDATES == 'MASTER' ]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
@@ -692,6 +694,15 @@ whiptail_bro_pins() {
 
 }
 
+whiptail_bro_version() {
+
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "BRO" "Install Standard Bro" OFF)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
@@ -783,7 +794,8 @@ whiptail_nids() {
 
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
-  "Suricata" "Suricata 4.X" ON 3>&1 1>&2 2>&3 )
+  "Suricata" "Suricata 4.X" ON  \
+  "Snort 3.0 Beta" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
