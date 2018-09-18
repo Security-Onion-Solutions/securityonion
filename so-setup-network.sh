@@ -1016,6 +1016,8 @@ if (whiptail_you_sure); then
 
     # Pick the Management NIC
     whiptail_management_nic
+    # Choose your bro
+    whiptail_bro_version
     # Select Snort or Suricata
     whiptail_nids
     # Snag the HOME_NET
@@ -1084,7 +1086,6 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_master_updates
     set_updates
-    whiptail_nids
     whiptail_sensor_config
     # Calculate lbprocs so we can call it in the prompts
     calculate_useable_cores
