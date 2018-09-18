@@ -696,7 +696,7 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "BRO" "Install Standard Bro" OFF)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "BRO" "Install Standard Bro" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
