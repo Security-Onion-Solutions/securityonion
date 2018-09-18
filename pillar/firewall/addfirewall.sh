@@ -5,5 +5,9 @@
 POLICY=$1
 IPADDRESS=$2
 
-echo "  - $2" >> /opt/so/saltstack/pillar/firewall/$1.sls
-salt-call state.apply firewall
+if grep -q $2 "/opt/so/saltstack/pillar/firewall/$1.sls"; then
+  echo "Firewall Rule Already There"
+else
+  echo "  - $2" >> /opt/so/saltstack/pillar/firewall/$1.sls
+  salt-call state.apply firewall
+fi
