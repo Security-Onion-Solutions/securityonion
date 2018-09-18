@@ -795,7 +795,7 @@ whiptail_nids() {
   NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose which IDS to run:" 20 78 4 \
   "Suricata" "Suricata 4.X" ON  \
-  "Snort 3.0 Beta" OFF 3>&1 1>&2 2>&3 )
+  "Snort" "Snort 3.0 Beta" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
