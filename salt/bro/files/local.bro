@@ -107,19 +107,22 @@
 ######################################
 
 # Add the interface to the log event
-@load securityonion/add-interface-to-logs.bro
+#@load securityonion/add-interface-to-logs.bro
 
 # Add Sensor Name to the conn.log
-@load securityonion/conn-add-sensorname.bro
+#@load securityonion/conn-add-sensorname.bro
 
 # File Extraction
-@load securityonion/file-extraction
+#@load securityonion/file-extraction
 
 # Intel from Mandiant APT1 Report
 #@load securityonion/apt1
 
 # ShellShock - detects successful exploitation of Bash vulnerability CVE-2014-6271
 #@load securityonion/shellshock
+
+# JA3 - SSL Detection Goodness
+@load policy/ja3
 
 #############################
 ##  End SO Scripts Section  ##
