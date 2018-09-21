@@ -175,7 +175,9 @@ create_bond() {
 
     # Backup and create a new interface file
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
-
+    echo "source /etc/network/interfaces.d/*" > /etc/network/interfaces
+    echo "" >> /etc/network/interfaces
+     
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
     local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
 
@@ -184,7 +186,7 @@ create_bond() {
     IFS=$'\n'
     for line in $LBACK
     do
-      echo $line > $TMP/interfaces
+      echo $line >> $TMP/interfaces
     done
 
     cp $TMP/interfaces /etc/network/interfaces
