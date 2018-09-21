@@ -29,12 +29,13 @@ filebeatpkidir:
     - group: 939
     - makedirs: True
 
+# This needs to be owned by root
 filebeatconfsync:
   file.recurse:
     - name: /opt/so/conf/filebeat/etc
     - source: salt://filebeat/etc
-    - user: 939
-    - group: 939
+    - user: 0
+    - group: 0
     - template: jinja
 
 #filebeatcrt:
