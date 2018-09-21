@@ -15,7 +15,7 @@
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 
 # Filebeat Setup
-filebeatpkidir:
+filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
     - user: 939
