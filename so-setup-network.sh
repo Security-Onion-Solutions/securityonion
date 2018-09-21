@@ -180,37 +180,47 @@ create_bond() {
     local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
 
     # Let's set up the new interface file
-    # Populate lo and the management interface
-    echo $LBACK > $TMP/interfaces
-    echo $MINT >> $TMP/interfaces
+    # Populate lo and create file for the management interface
+    IFS=$'\n'
+    for line in $LBACK
+    do
+      echo $line > $TMP/interfaces
+    done
+
     cp $TMP/interfaces /etc/network/interfaces
+
+    IFS=$'\n'
+    for line in $MINT
+    do
+      echo $line > /etc/network/interfaces.d/$MNIC
+    done
 
     # Create entries for each interface that is part of the bond.
     for BNIC in ${BNICS[@]}; do
 
       BNIC=$(echo $BNIC |  cut -d\" -f2)
       echo ""
-      echo "auto $BNIC" >> /etc/network/interfaces
-      echo "iface $BNIC inet manual" >> /etc/network/interfaces
-      echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
-      echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
-      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
-      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
-      echo "  bond-master bond0" >> /etc/network/interfaces
+      echo "auto $BNIC" >> /etc/network/interfaces.d/$BNIC
+      echo "iface $BNIC inet manual" >> /etc/network/interfaces.d/$BNIC
+      echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/$BNIC
+      echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/$BNIC
+      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
+      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
+      echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
       echo ""
 
     done
 
     BN=("${BNICS[@]//\"/}")
 
-    echo "auto bond0" >> /etc/network/interfaces
-    echo "iface bond0 inet manual" >> /etc/network/interfaces
-    echo "  bond-mode 0" >> /etc/network/interfaces
-    echo "  bond-slaves $BN" >> /etc/network/interfaces
-    echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces
-    echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces
-    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces
-    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces
+    echo "auto bond0" >> /etc/network/interfaces.d/bond0
+    echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
+    echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
+    echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
+    echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/bond0
+    echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/bond0
+    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
+    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/bond0
   fi
 
 }
