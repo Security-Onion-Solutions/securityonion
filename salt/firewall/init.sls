@@ -101,6 +101,21 @@ enable_docker_user_established:
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
 
+{% for ip in pillar.get('masterfw')  %}
+# Allow Redis
+enable_maternode_redis_6379_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 6379
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 # Make it so all the minions can talk to salt and update etc.
 {% for ip in pillar.get('minions')  %}
 

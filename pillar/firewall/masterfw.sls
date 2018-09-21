@@ -1,1 +1,2 @@
-#masterfw.sls
+masterfw:
+  - 127.0.0.1
