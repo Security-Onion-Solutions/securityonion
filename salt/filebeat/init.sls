@@ -14,8 +14,15 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 
-# Redis Setup
-filebeatconfdir:
+# Filebeat Setup
+filebeatpkidir:
+  file.directory:
+    - name: /opt/so/conf/filebeat/etc
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
     - user: 939
@@ -26,8 +33,8 @@ filebeatconfsync:
   file.recurse:
     - name: /opt/so/conf/filebeat/etc
     - source: salt://filebeat/etc
-    - user: 0
-    - group: 0
+    - user: 939
+    - group: 939
     - template: jinja
 
 #filebeatcrt:
@@ -53,4 +60,3 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
-
