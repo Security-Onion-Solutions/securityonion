@@ -173,6 +173,9 @@ create_bond() {
     echo "bonding" >> /etc/modules
     modprobe bonding
 
+    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
+    local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
+
     # Backup and create a new interface file
     cp /etc/network/interfaces /etc/network/interfaces.sosetup
     echo "source /etc/network/interfaces.d/*" > /etc/network/interfaces
@@ -188,7 +191,7 @@ create_bond() {
     do
       echo $line >> /etc/network/interfaces
     done
-    
+
     IFS=$'\n'
     for line in $MINT
     do
@@ -778,13 +781,13 @@ whiptail_install_type() {
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose Install Type:" 20 78 8 \
-  "EVALMODE" "Evaluate all the things" ON \
-  "SENSORONLY" "Create a forward only sensor" OFF \
+  "SENSORONLY" "Create a forward only sensor" ON \
   "MASTERONLY" "Start a new grid" OFF \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
-  "PARSINGNODE" "Add a dedicated Parsing Node" OFF \
-  "HOTNODE" "Add a Hot Node (Storage Node without Parsing)" OFF \
-  "WARMNODE" "Add a Warm Node to an existing Hot or Storage node" OFF 3>&1 1>&2 2>&3 )
+  "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
+  "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
+  "EVALMODE" "TODO Evaluate all the things" OFF \
+  "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
