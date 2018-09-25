@@ -66,7 +66,7 @@ pcapindexdir:
 
 so-steno:
   docker_container.running:
-    - image: toosmooth/so-steno:test2
+    - image: toosmooth/so-steno:techpreview
     - network_mode: host
     - privileged: True
     - port_bindings:

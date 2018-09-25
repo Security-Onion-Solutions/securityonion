@@ -188,9 +188,7 @@ create_bond() {
     do
       echo $line >> /etc/network/interfaces
     done
-
-    cp $TMP/interfaces /etc/network/interfaces
-
+    
     IFS=$'\n'
     for line in $MINT
     do
