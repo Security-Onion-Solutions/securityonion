@@ -64,7 +64,13 @@ fbcrtlink:
 {% endif %}
 {% if grains['role'] == 'so-SENSOR' %}
 
-fbcertdir:
+# Filebeat Setup
+fbeatetcdir:
+  file.directory:
+    - name: /opt/so/conf/filebeat/etc
+    - makedirs: True
+
+fbeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
