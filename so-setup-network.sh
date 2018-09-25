@@ -192,7 +192,7 @@ create_bond() {
     IFS=$'\n'
     for line in $MINT
     do
-      echo $line > /etc/network/interfaces.d/$MNIC
+      echo $line >> /etc/network/interfaces.d/$MNIC
     done
 
     # Create entries for each interface that is part of the bond.
