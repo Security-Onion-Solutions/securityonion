@@ -67,7 +67,7 @@ fbcrtlink:
 fbcertdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
-    - mkdirs: True
+    - makedirs: True
 
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
