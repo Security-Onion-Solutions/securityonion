@@ -181,9 +181,6 @@ create_bond() {
     echo "source /etc/network/interfaces.d/*" > /etc/network/interfaces
     echo "" >> /etc/network/interfaces
 
-    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
-    local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
-
     # Let's set up the new interface file
     # Populate lo and create file for the management interface
     IFS=$'\n'
