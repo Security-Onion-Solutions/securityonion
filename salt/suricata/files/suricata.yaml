@@ -1,6 +1,11 @@
 %YAML 1.1
 ---
-
+{%- set interface = salt['pillar.get']('sensor:interface', '') %}
+{%- if salt['pillar.get']('sensor:homenet') %}
+  {%- set homenet = salt['pillar.get']('sensor:homenet', '') %}
+{%- else %}
+  {%- set homenet = salt['pillar.get']('static:homenet', '') %}
+{%- endif %}
 # Suricata configuration file. In addition to the comments describing all
 # options in this file, full documentation can be found at:
 # https://redmine.openinfosecfoundation.org/projects/suricata/wiki/Suricatayaml
@@ -12,7 +17,7 @@
 vars:
   # more specifc is better for alert accuracy and performance
   address-groups:
-    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    HOME_NET: "[{{ homenet }}]"
     #HOME_NET: "[192.168.0.0/16]"
     #HOME_NET: "[10.0.0.0/8]"
     #HOME_NET: "[172.16.0.0/12]"
@@ -482,7 +487,7 @@ logging:
       enabled: no
 
 af-packet:
-  - interface: eth0
+  - interface: {{ interface }}
     # Number of receive threads. "auto" uses the number of cores
     #threads: auto
     # Default clusterid. AF_PACKET will load balance packets based on flow.
