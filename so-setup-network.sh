@@ -588,7 +588,9 @@ sensor_pillar() {
   echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
   echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
-  echo "  homenet: $HNSENSOR" >> $TMP/$HOSTNAME.sls
+  if [ $HNSENSOR != 'inherit']
+  echo "  hnsensor: $HNSENSOR" >> $TMP/$HOSTNAME.sls
+  fi
   echo "  access_key: $ACCESS_KEY" >> $TMP/$HOSTNAME.sls
   echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$HOSTNAME.sls
 
