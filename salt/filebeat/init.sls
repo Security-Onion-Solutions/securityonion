@@ -58,6 +58,7 @@ so-filebeat:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/bro/spool/manager:/nsm/bro/spool:ro
+      - /opt/so/log/suricata:/suricata:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
