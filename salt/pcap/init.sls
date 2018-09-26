@@ -47,21 +47,28 @@ stenoconf:
 stenoca:
   file.directory:
     - name: /opt/so/conf/steno/certs
-    - user: root
-    - group: root
+    - user: 941
+    - group: 941
 
 pcapdir:
   file.directory:
     - name: /nsm/pcap
     - user: 941
-    - group: 939
+    - group: 941
     - makedirs: True
 
 pcapindexdir:
   file.directory:
     - name: /nsm/pcapindex
     - user: 941
-    - group: 939
+    - group: 941
+    - makedirs: True
+
+stenolog:
+  file.directory:
+    - name: /opt/so/log/stenographer
+    - user: 941
+    - group: 941
     - makedirs: True
 
 so-steno:
@@ -76,3 +83,5 @@ so-steno:
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/pcapindex:/nsm/pcapindex:rw
+      - /tmp:/tmp:rw
+      - /opt/so/log/stenographer:/var/log/stenographer:rw
