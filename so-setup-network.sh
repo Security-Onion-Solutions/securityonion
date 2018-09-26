@@ -1096,6 +1096,7 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_master_updates
     set_updates
+    whiptail_homenet_sensor
     whiptail_sensor_config
     # Calculate lbprocs so we can call it in the prompts
     calculate_useable_cores
