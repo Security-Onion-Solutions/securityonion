@@ -67,7 +67,7 @@ suriconfigsync:
 
 so-suricata:
   docker_container.running:
-    - image: toosmooth/so-suricata:test2
+    - image: toosmooth/so-suricata:techpreview
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
