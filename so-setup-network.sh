@@ -1049,6 +1049,7 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
+    get_main_ip
 
     # Add the user so we can sit back and relax
     echo ""
