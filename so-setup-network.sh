@@ -356,6 +356,7 @@ master_pillar() {
   # Create the master pillar
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
