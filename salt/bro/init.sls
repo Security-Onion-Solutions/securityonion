@@ -45,6 +45,15 @@ bropolicysync:
     - template: jinja
 
 # Sync local.bro
+{% if salt['pillar.get']('static:hnmaster', '') == 'COMMUNITY' %}
+localbrosync:
+  file.managed:
+    - name: /opt/so/conf/bro/local.bro
+    - source: salt://bro/files/local.bro.community
+    - user: 937
+    - group: 939
+    - template: jinja
+{% else %}
 localbrosync:
   file.managed:
     - name: /opt/so/conf/bro/local.bro
@@ -52,6 +61,7 @@ localbrosync:
     - user: 937
     - group: 939
     - template: jinja
+{% endif %}
 
 # Sync node.cfg
 nodecfgsync:
