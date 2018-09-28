@@ -44,25 +44,6 @@ bropolicysync:
     - group: 939
     - template: jinja
 
-# Sync local.bro
-{% if salt['pillar.get']('static:hnmaster', '') == 'COMMUNITY' %}
-localbrosync:
-  file.managed:
-    - name: /opt/so/conf/bro/local.bro
-    - source: salt://bro/files/local.bro.community
-    - user: 937
-    - group: 939
-    - template: jinja
-{% else %}
-localbrosync:
-  file.managed:
-    - name: /opt/so/conf/bro/local.bro
-    - source: salt://bro/files/local.bro
-    - user: 937
-    - group: 939
-    - template: jinja
-{% endif %}
-
 # Sync node.cfg
 nodecfgsync:
   file.managed:
@@ -72,7 +53,15 @@ nodecfgsync:
     - group: 939
     - template: jinja
 
-# Add the container
+# Sync local.bro
+{% if salt['pillar.get']('static:hnmaster', '') == 'COMMUNITY' %}
+localbrosync:
+  file.managed:
+    - name: /opt/so/conf/bro/local.bro
+    - source: salt://bro/files/local.bro.community
+    - user: 937
+    - group: 939
+    - template: jinja
 
 so-bro:
   docker_container.running:
@@ -87,3 +76,28 @@ so-bro:
       - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
       - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
     - network_mode: host
+
+{% else %}
+localbrosync:
+  file.managed:
+    - name: /opt/so/conf/bro/local.bro
+    - source: salt://bro/files/local.bro
+    - user: 937
+    - group: 939
+    - template: jinja
+
+so-bro:
+  docker_container.running:
+    - image: toosmooth/so-bro:techpreview
+    - privileged: True
+    - binds:
+      - /nsm/bro/logs:/nsm/bro/logs:rw
+      - /nsm/bro/spool:/nsm/bro/spool:rw
+      - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
+      - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
+      - /opt/so/conf/bro/policy/securityonion:/opt/bro/share/bro/policy/securityonion:ro
+      - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
+      - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
+    - network_mode: host
+
+{% endif %}
