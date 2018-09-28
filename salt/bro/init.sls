@@ -54,7 +54,7 @@ nodecfgsync:
     - template: jinja
 
 # Sync local.bro
-{% if salt['pillar.get']('static:mainip', '') == 'COMMUNITY' %}
+{% if salt['pillar.get']('static:broversion', '') == 'COMMUNITY' %}
 localbrosync:
   file.managed:
     - name: /opt/so/conf/bro/local.bro
