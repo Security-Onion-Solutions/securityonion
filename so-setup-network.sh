@@ -84,6 +84,10 @@ calculate_useable_cores() {
 
 }
 
+checkin_at_boot() {
+  echo "startup_states: highstate" >> /etc/salt/minion
+}
+
 chown_salt_master() {
 
   # Chown the salt dirs on the master for socore
@@ -101,11 +105,9 @@ configure_minion() {
   if [ $TYPE == 'master' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
-    echo "startup_states: highstate" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
-    echo "startup_states: highstate" >> /etc/salt/minion
 
   fi
 
@@ -1091,6 +1093,7 @@ if (whiptail_you_sure); then
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
+    checkin_at_boot
 
     whiptail_setup_complete
 
@@ -1130,6 +1133,7 @@ if (whiptail_you_sure); then
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
+    checkin_at_boot
 
     whiptail_setup_complete
 
@@ -1154,6 +1158,7 @@ if (whiptail_you_sure); then
     accept_salt_key_local
     salt_checkin_message
     salt_checkin
+    checkin_at_boot
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
@@ -1194,6 +1199,7 @@ if (whiptail_you_sure); then
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
+    checkin_at_boot
 
     whiptail_setup_complete
   fi
