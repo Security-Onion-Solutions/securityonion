@@ -31,7 +31,7 @@ brologdir:
 # Bro Spool Directory
 brospooldir:
   file.directory:
-    - name: /nsm/bro/spool
+    - name: /nsm/bro/spool/manager
     - user: 937
     - makedirs: true
 
