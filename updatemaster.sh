@@ -9,3 +9,4 @@ rsync -a pillar /opt/so/saltstack/
 rsync -a --exclude-from 'exclude-list.txt' salt /opt/so/saltstack/
 chown -R socore:socore /opt/so
 chmod 755 /opt/so/saltstack/pillar/firewall/addfirewall.sh
+rm -rf /tmp/sogh
