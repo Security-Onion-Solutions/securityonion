@@ -580,12 +580,16 @@ sensor_pillar() {
       PIN=$(echo $PIN |  cut -d\" -f2)
     echo "    - $PIN" >> $TMP/$HOSTNAME.sls
     done
-    SP=("${SURIPINS[@]//\"/}")
-    SPINS=${SP// /,}
-    SCOUNT=${#SURIPINS[@]}
+    for SPIN in $SURIPINS; do
+      SPIN=$(echo $SPIN |  cut -d\" -f2)
+    echo "    - $SPIN" >> $TMP/$HOSTNAME.sls
+    done
+    #SP=("${SURIPINS[@]//\"/}")
+    #SPINS=${SP// /,}
+    #SCOUNT=${#SURIPINS[@]}
 
-    echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
-    echo "  surithreads: $SCOUNT"
+    #echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
+    #echo "  surithreads: $SCOUNT"
   else
     echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
     echo "  suriprocs: $BASICSURI" >> $TMP/$HOSTNAME.sls
