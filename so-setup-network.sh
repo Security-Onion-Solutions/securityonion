@@ -580,7 +580,7 @@ sensor_pillar() {
       PIN=$(echo $PIN |  cut -d\" -f2)
     echo "    - $PIN" >> $TMP/$HOSTNAME.sls
     done
-    echo " suripins:" >> $TMP/$HOSTNAME.sls
+    echo "  suripins:" >> $TMP/$HOSTNAME.sls
     for SPIN in $SURIPINS; do
       SPIN=$(echo $SPIN |  cut -d\" -f2)
     echo "    - $SPIN" >> $TMP/$HOSTNAME.sls
