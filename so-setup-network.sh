@@ -589,7 +589,7 @@ sensor_pillar() {
     #SPINS=${SP// /,}
     #SCOUNT=${#SURIPINS[@]}
 
-    echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
+    #echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
     #echo "  surithreads: $SCOUNT"
   else
     echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
