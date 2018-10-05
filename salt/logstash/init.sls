@@ -101,7 +101,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: toosmooth/so-logstash:test2
+    - image: toosmooth/so-logstash:techpreview
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
