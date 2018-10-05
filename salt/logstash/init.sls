@@ -119,6 +119,7 @@ so-logstash:
       - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
+      - /opt/so/conf/logstash/logstash-ossec-template.json:/logstash-ossec-template.json:ro
       - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/custom:/usr/share/logstash/pipeline.custom:ro
       - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
