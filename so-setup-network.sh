@@ -249,7 +249,7 @@ detect_os() {
 
 docker_install() {
 
-  if [ $OS == 'centos']; then
+  if [ $OS == 'centos' ]; then
     yum clean expire-cache
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
