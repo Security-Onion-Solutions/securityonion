@@ -247,20 +247,29 @@ detect_os() {
 
 docker_install() {
 
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install docker-ce >>~/sosetup.log 2>&1
-    docker_registry
-    echo "Restarting Docker"
-    systemctl restart docker
+  if [ $OS == 'centos']; then
+    yum clean expire-cache
+    yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    yum -y update
+    yum -y install docker-ce python-docker
+
   else
-    apt-key add $TMP/gpg/docker.pub
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    apt-get update >>~/sosetup.log 2>&1
-    apt-get -y install docker-ce >>~/sosetup.log 2>&1
-    docker_registry
-    echo "Restarting Docker"
-    systemctl restart docker
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+      apt-get update >>~/sosetup.log 2>&1
+      apt-get -y install docker-ce >>~/sosetup.log 2>&1
+      docker_registry
+      echo "Restarting Docker"
+      systemctl restart docker
+    else
+      apt-key add $TMP/gpg/docker.pub
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      apt-get update >>~/sosetup.log 2>&1
+      apt-get -y install docker-ce >>~/sosetup.log 2>&1
+      docker_registry
+      echo "Restarting Docker"
+      systemctl restart docker
+    fi
   fi
 
 }
@@ -455,10 +464,8 @@ saltify() {
 
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
-    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce python-docker
-
+    
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install salt-master python-m2crypto salt-minion m2crypto
