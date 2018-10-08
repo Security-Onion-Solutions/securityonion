@@ -164,9 +164,11 @@ create_bond() {
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
-      sed -i 's/ONBOOT=\"no\"/ONBOOT=\"yes\"/g' /etc/sysconfig/network-scripts/ifcfg-$BNIC
-      echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BNIC
-      echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BNIC
+      BONDNIC="${BNIC%\"}"
+      BONDNIC="${BONDNIC#\"}"
+      sed -i 's/ONBOOT=\"no\"/ONBOOT=\"yes\"/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
     nmcli con reload
     systemctl restart networking
@@ -465,7 +467,7 @@ saltify() {
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update
-    
+
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install salt-master python-m2crypto salt-minion m2crypto
