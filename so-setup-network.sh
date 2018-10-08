@@ -171,7 +171,7 @@ create_bond() {
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
     nmcli con reload
-    systemctl restart networking
+    systemctl restart network
 
   else
 
