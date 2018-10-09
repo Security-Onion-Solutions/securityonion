@@ -212,6 +212,33 @@ enable_standard_beats_5044_{{ip}}:
 
 {% endfor %}
 
+# Allow Analysts
+{% for ip in pillar.get('analyst')  %}
+
+enable_standard_analyst_80_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 80
+    - position: 1
+    - save: True
+
+enable_standard_analyst_443_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 443
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 # Rules for storage nodes connecting to master
 
 

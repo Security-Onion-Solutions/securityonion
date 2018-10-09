@@ -31,6 +31,13 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
+# Convert the key to pkcs#8 so logstash will work correctly.
+filebeatpkcs:
+  cmd.run:
+    - name: /usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8
+    - onchanges:
+      - file: /etc/pki/filebeat.key
+
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -39,8 +46,8 @@ filebeatdir:
 
 fbkeylink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.key
-    - target: /etc/pki/filebeat.key
+    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.p8
+    - target: /etc/pki/filebeat.p8
 
 fbcrtlink:
   file.symlink:
@@ -82,5 +89,13 @@ fbcertdir:
         name: /opt/so/conf/filebeat/etc/pki/filebeat.key
         bits: 4096
         backup: True
+
+# Convert the key to pkcs#8 so logstash will work correctly.
+filebeatpkcs:
+  cmd.run:
+    - name: /usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8
+    - onchanges:
+      - file: /opt/so/conf/filebeat/etc/pki/filebeat.p8
+
 
 {% endif %}
