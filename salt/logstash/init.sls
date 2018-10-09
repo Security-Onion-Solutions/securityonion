@@ -131,5 +131,5 @@ so-logstash:
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
-      - /etc/pki/filebeat.key:/usr/share/logstash/filebeat.key:ro
+      - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro

@@ -30,6 +30,8 @@ m2cryptopkgs:
         name: /etc/pki/filebeat.key
         bits: 4096
         backup: True
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
 
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
