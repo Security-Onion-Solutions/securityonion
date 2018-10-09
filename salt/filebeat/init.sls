@@ -51,7 +51,7 @@ filebeatconfsync:
 
 so-filebeat:
   docker_container.running:
-    - image: toosmooth/so-filebeat:beta
+    - image: toosmooth/so-filebeat:techpreview
     - hostname: so-filebeat
     - user: root
     - binds:
