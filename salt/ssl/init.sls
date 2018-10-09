@@ -31,11 +31,6 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
-# Convert the key to pkcs#8 so logstash will work correctly.
-filebeatpkcs:
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -passout pass:"
-    
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
