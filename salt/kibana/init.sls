@@ -1,4 +1,4 @@
-
+{% set master = salt['grains.get']('master') %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -47,12 +47,13 @@ so-kibana:
     - user: kibana
     - environment:
       - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
-      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_HOST=172.17.0.9
       - ELASTICSEARCH_PORT=9200
+      - MASTER={{ master }}
     - binds:
-      - /opt/so/conf/kibana/:/usr/share/kibana/config/:ro
+      - /opt/so/conf/kibana/etc:/usr/share/kibana/config/:ro
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/custdashboards/:/usr/share/kibana/custdashboards/:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
-      - 127.0.0.1:5601:5601
+      - 0.0.0.0:5601:5601
