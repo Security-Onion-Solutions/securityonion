@@ -18,10 +18,18 @@ kibana:
 
 kibanaconfdir:
   file.directory:
-    - name: /opt/so/conf/kibana
+    - name: /opt/so/conf/kibana/etc
     - user: 932
     - group: 939
     - makedirs: True
+
+synckibanaconfig:
+  file.recurse:
+    - name: /opt/so/conf/kibana/etc
+    - source: salt://kibana/etc
+    - user: 932
+    - group: 939
+    - template: jinja
 
 kibanalogdir:
   file.directory:
@@ -37,6 +45,15 @@ kibanacustdashdir:
     - group: 939
     - makedirs: True
 
+synckibanacustom:
+  file.recurse:
+    - name: /opt/so/conf/kibana/customdashboards
+    - source: salt://kibana/custom
+    - user: 932
+    - group: 939
+    - template: jinja
+
+
 # File.Recurse for custom saved dashboards
 
 # Start the kibana docker
@@ -51,9 +68,9 @@ so-kibana:
       - ELASTICSEARCH_PORT=9200
       - MASTER={{ master }}
     - binds:
-      - /opt/so/conf/kibana/etc:/usr/share/kibana/config/:ro
+      - /opt/so/conf/kibana/etc:/usr/share/kibana/config:ro
       - /opt/so/log/kibana:/var/log/kibana:rw
-      - /opt/so/conf/kibana/custdashboards/:/usr/share/kibana/custdashboards/:ro
+      - /opt/so/conf/kibana/custdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
