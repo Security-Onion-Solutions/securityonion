@@ -114,6 +114,40 @@ enable_maternode_redis_6379_{{ip}}:
     - position: 1
     - save: True
 
+enable_masternode_kibana_5601_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5601
+    - position: 1
+    - save: True
+
+enable_masternode_ES_9200_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9200
+    - position: 1
+    - save: True
+
+enable_masternode_ES_9300_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9300
+    - position: 1
+    - save: True
+
+
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.
@@ -234,6 +268,18 @@ enable_standard_analyst_443_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 443
+    - position: 1
+    - save: True
+
+#THIS IS TEMPORARY
+enable_standard_analyst_5601_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5601
     - position: 1
     - save: True
 

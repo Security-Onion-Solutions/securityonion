@@ -621,6 +621,8 @@ set_initial_firewall_policy() {
   get_main_ip
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+
 
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
