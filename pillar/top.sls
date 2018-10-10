@@ -3,6 +3,7 @@ base:
     - sensors.schedule
     - sensors.{{ grains.host }}
     - static
+    - firewall.*
 
   'G@role:so-master':
     - masters.schedule
@@ -14,3 +15,4 @@ base:
     - nodes.schedule
     - nodes.{{ grains.host }}
     - static
+    - firewall.*

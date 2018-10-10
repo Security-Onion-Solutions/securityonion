@@ -63,18 +63,6 @@ iptables_log_input_drops:
     - jump: LOGGING
     - save: True
 
-# Set the policy to deny everything unless defined
-#enable_reject_policy:
-#  iptables.set_policy:
-#    - table: filter
-#    - chain: INPUT
-#    - policy: DROP
-#    - require:
-#      - iptables: iptables_allow_localhost
-#      - iptables: iptables_allow_established
-#      - iptables: iptables_allow_ssh
-#      - iptables: iptables_allow_pings
-
 # Enable global DOCKER-USER block rule
 enable_docker_user_fw_policy:
   iptables.insert:
@@ -291,6 +279,58 @@ enable_standard_analyst_5601_{{ip}}:
 {% endif %}
 
 # Rules if you are a Storage Node
+{% if grains['role'] == 'so-node' %}
+
+#This should be more granular
+iptables_allow_docker:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - source: 172.17.0.0/24
+    - position: 1
+    - save: True
+
+enable_docker_ES_9200:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 172.17.0.0/24
+    - dport: 9200
+    - position: 1
+    - save: True
+
+
+enable_docker_ES_9300:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 172.17.0.0/24
+    - dport: 9300
+    - position: 1
+    - save: True
+
+
+{% for ip in pillar.get('masterfw')  %}
+
+enable_cluster_ES_9300_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9300
+    - position: 1
+    - save: True
+
+
+{% endfor %}
+{% endif %}
 
 # Rules if you are a Sensor
 {% if grains['role'] == 'so-sensor' %}
