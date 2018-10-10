@@ -59,16 +59,16 @@ synckibanacustom:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: toosmooth/so-kibana:test2
+    - image: toosmooth/so-kibana:techpreview
     - hostname: kibana
     - user: kibana
     - environment:
       - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
-      - ELASTICSEARCH_HOST=172.17.0.9
+      - ELASTICSEARCH_HOST=172.17.0.7
       - ELASTICSEARCH_PORT=9200
       - MASTER={{ master }}
     - binds:
-      - /opt/so/conf/kibana/etc:/usr/share/kibana/config:ro
+      - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/custdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
