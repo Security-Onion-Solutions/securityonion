@@ -525,9 +525,9 @@ saltify() {
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
-  salt-call state.apply common >>~/sosetup.log 2>&1
   salt-call state.apply ca >>~/sosetup.log 2>&1
   salt-call state.apply ssl >>~/sosetup.log 2>&1
+  salt-call state.apply common >>~/sosetup.log 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
   service salt-master restart
   sleep 5
