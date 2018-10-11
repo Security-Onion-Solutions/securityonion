@@ -72,7 +72,5 @@ so-kibana:
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/custdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - /etc/pki/masterssl.crt:/etc/pki/server.crt:ro
-      - /etc/pki/masterssl.key:/etc/pki/server.key:ro
-    - port_bindings:
+      - port_bindings:
       - 0.0.0.0:5601:5601
