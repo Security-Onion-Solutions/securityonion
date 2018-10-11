@@ -24,6 +24,8 @@ base:
     - redis
     - elasticsearch
     - logstash
+    - kibana
+    - utility
 
   # Storage node logic
 

@@ -1,4 +1,5 @@
 {%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set MASTER = grains['master'] %}
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
 COUNT=0
@@ -23,5 +24,12 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
   exit
 fi
 
+echo "Applying cross cluster search config..."
+    curl -s -XPUT http://{{ ES }}:9200/_cluster/settings \
+         -H 'Content-Type: application/json' \
+         -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MASTER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
+
 # Add all the storage nodes to cross cluster searching.
+{%- for SN, SNIP in salt['pillar.get']('nodestab', {}).iteritems() %}}
 curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNIP }}:9200"]}}}}}'
+{%- endfor %}

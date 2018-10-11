@@ -577,6 +577,7 @@ salt_master_directories() {
   # Copy over the salt code and templates
   cp -R pillar/* /opt/so/saltstack/pillar/
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
+  chmod +x /opt/so/saltstack/pillar/data/addtotab.sh
   cp -R salt/* /opt/so/saltstack/salt/
 
 }
@@ -639,6 +640,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -694,7 +696,8 @@ update_sudoers() {
   # Update Sudoers so that socore can accept keys without a password
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
   echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
-
+  echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | sudo tee -a /etc/sudoers
+  
 }
 
 ###########################################
