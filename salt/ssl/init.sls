@@ -67,13 +67,13 @@ fbcrtlink:
 /etc/pki/master.crt:
   x509.certificate_managed:
     - ca_server: {{ master }}
-    - signing_policy: master
-    - public_key: /etc/pki/master.key
+    - signing_policy: masterssl
+    - public_key: /etc/pki/masterssl.key
     - CN: {{ master }}
     - days_remaining: 3000
     - backup: True
     - managed_private_key:
-        name: /etc/pki/master.key
+        name: /etc/pki/masterssl.key
         bits: 4096
         backup: True
 
