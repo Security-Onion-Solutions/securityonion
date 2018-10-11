@@ -64,7 +64,7 @@ so-kibana:
     - user: kibana
     - environment:
       - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
-      - ELASTICSEARCH_HOST=172.17.0.7
+      - ELASTICSEARCH_HOST={{ master }}
       - ELASTICSEARCH_PORT=9200
       - MASTER={{ master }}
     - binds:

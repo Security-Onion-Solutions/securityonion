@@ -88,6 +88,15 @@ enable_docker_user_established:
 
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' %}
+#This should be more granular
+iptables_allow_master_docker:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - source: 172.17.0.0/24
+    - position: 1
+    - save: True
 
 {% for ip in pillar.get('masterfw')  %}
 # Allow Redis
@@ -213,6 +222,17 @@ enable_storagenode_redis_6379_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 6379
+    - position: 1
+    - save: True
+
+enable_storagenode_ES_9300_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9300
     - position: 1
     - save: True
 

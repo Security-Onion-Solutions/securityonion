@@ -112,7 +112,7 @@ nginxtmp:
 # Start the core docker
 so-core:
   docker_container.running:
-    - image: toosmooth/so-core:test2
+    - image: toosmooth/so-core:techpreview
     - hostname: so-core
     - user: socore
     - binds:
@@ -121,6 +121,9 @@ so-core:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
+      - /etc/pki/master.crt:/etc/pki/nginx/server.crt:ro
+      - /etc/pki/master.key:/etc/pki/nginx/server.key:ro
+
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
