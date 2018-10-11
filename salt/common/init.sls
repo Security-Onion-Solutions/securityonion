@@ -123,7 +123,6 @@ so-core:
       - /opt/so/tmp/nginx/:/run:rw
       - /etc/pki/masterssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/masterssl.key:/etc/pki/nginx/server.key:ro
-
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
