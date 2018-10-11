@@ -15,9 +15,9 @@ base:
     - eval
 
   'G@role:so-master':
-    - common
     - ca
     - ssl
+    - common
     - firewall
     - master
     - idstools

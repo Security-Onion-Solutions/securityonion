@@ -64,7 +64,7 @@ fbcrtlink:
         backup: True
 
 # Create a cert for the reverse proxy
-/etc/pki/master.crt:
+/etc/pki/masterssl.crt:
   x509.certificate_managed:
     - ca_server: {{ master }}
     - signing_policy: masterssl
