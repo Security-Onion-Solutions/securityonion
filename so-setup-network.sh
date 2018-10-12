@@ -532,7 +532,7 @@ salt_checkin() {
   service salt-master restart
   sleep 5
   service salt-minion restart
-  sleep 5
+  sleep 15
   echo " Applyng a mine hack "
   sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt
   echo " Applying SSL state "
@@ -697,7 +697,7 @@ update_sudoers() {
   echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
   echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
   echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | sudo tee -a /etc/sudoers
-  
+
 }
 
 ###########################################
