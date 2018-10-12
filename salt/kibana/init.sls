@@ -78,7 +78,7 @@ so-kibana:
 # Keep the setting correct
 KibanaHappy:
   cmd.script:
-    shell: /bin/bash
-    runas: socore
-    source: salt://kibana/bin/keepkibanahappy.sh
-    template: jinja
+    - shell: /bin/bash
+    - runas: socore
+    - source: salt://kibana/bin/keepkibanahappy.sh
+    - template: jinja
