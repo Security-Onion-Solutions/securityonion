@@ -6,10 +6,10 @@ TYPE=$1
 NAME=$2
 IPADDRESS=$3
 
-if grep -q $3 "/opt/so/saltstack/pillar/data/$1.sls"; then
+if grep -q $IPADDRESS "/opt/so/saltstack/pillar/data/$TYPE.sls"; then
   echo "Storage Node Already in There"
 else
-  echo "  $2:" >> /opt/so/saltstack/pillar/data/$1.sls
-  echo "    - $3" >> /opt/so/saltstack/pillar/data/$1.sls
+  echo "  $NAME:" >> /opt/so/saltstack/pillar/data/$NAME.sls
+  echo "    ip: $IPADDRESS" >> /opt/so/saltstack/pillar/data/$NAME.sls
 
 fi
