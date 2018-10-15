@@ -4,6 +4,7 @@ base:
     - sensors.{{ grains.host }}
     - static
     - firewall.*
+    - brologs
 
   'G@role:so-master':
     - masters.schedule
