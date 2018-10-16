@@ -8,32 +8,28 @@ filebeat.modules:
 filebeat.prospectors:
 #------------------------------ Log prospector --------------------------------
 
-{%- for LOGNAME in salt['pillar.get']('brologs:enabled', '') %}}
-- type: log
-  enabled: true
-  paths:
-    - /nsm/bro/spool/{{ LOGNAME }}.log
-  tags: ["bro_{{ LOGNAME }}"]
-  exclude_files: ['.gz$']
+{%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
+  - type: log
+    paths:
+      - /nsm/bro/spool/{{ LOGNAME }}.log
+    fields:
+      type: bro_{{ LOGNAME }}
+    fields_under_root: true
+    tags: ["bro"]
+    clean_removed: false
+    close_removed: false
 
 {%- endfor %}
 
-- type: log
-
-  # Change to true to enable this prospector configuration.
-  enabled: true
-
-  # Paths that should be crawled and fetched. Glob based paths.
-  # To fetch all ".log" files from a specific level of subdirectories
-  # /var/log/*/*.log can be used.
-  # For each file found under this path, a harvester is started.
-  # Make sure not file is defined twice as this can lead to unexpected behaviour.
-  paths:
-    - /suricata/eve.json
-  tags: ids
-    #- c:\programdata\elasticsearch\logs\*
-
-  exclude_files: ['.gz$']
+  - type: log
+    paths:
+      - /suricata/eve.json
+    fields:
+      type: snort
+    fields_under_root: true
+    tags: ["ids"]
+    clean_removed: false
+    close_removed: false
 
 
 #----------------------------- Logstash output ---------------------------------
