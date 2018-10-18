@@ -45,7 +45,7 @@ add_master_hostfile() {
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
   # Add the master to the host file if it doesn't resolve
-  echo "$MSRV   $MSRVIP" >> /etc/hosts
+  echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
 add_socore_user_master() {
@@ -537,7 +537,7 @@ salt_checkin() {
   sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt
   echo " Applying SSL state "
   salt-call state.apply ssl
-  echo " Oh run the rest of the checkin "
+  echo "Still Working... Hang in there"
   salt-call state.highstate
 
   else
