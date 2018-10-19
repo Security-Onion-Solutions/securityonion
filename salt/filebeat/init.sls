@@ -55,7 +55,7 @@ so-filebeat:
     - image: toosmooth/so-filebeat:techpreview
     - hostname: so-filebeat
     - user: root
-    - extrahosts: {{ MASTER }}:{{ MASTERIP }}
+    - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
     - binds:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
