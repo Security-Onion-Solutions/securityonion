@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
+{%- set MASTER = grains['master'] %}
+{%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 
 # Filebeat Setup
 filebeatetcdir:
@@ -54,6 +55,7 @@ so-filebeat:
     - image: toosmooth/so-filebeat:techpreview
     - hostname: so-filebeat
     - user: root
+    - extrahosts: {{ MASTER }}:{{ MASTERIP }}
     - binds:
       - /opt/so/log/filebeat:/var/log/filebeat:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
