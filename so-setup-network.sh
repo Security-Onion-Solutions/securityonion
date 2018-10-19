@@ -409,6 +409,7 @@ master_static() {
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
+  echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
   if [ $MASTERUPDATES == 'MASTER' ]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
