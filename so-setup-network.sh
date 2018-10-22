@@ -35,7 +35,7 @@ accept_salt_key_local() {
 accept_salt_key_remote() {
 
   # Accept the key remotely so the device can check in
-  ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
 
 }
 
@@ -131,7 +131,7 @@ copy_minion_pillar() {
 
   # Copy over the pillar
   echo "Copying the pillar over"
-  scp -v -i /root/.ssh/so.key.pub $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
+  scp -v -i /root/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
 
   }
 
@@ -139,10 +139,10 @@ copy_ssh_key() {
 
   # Generate SSH key
   mkdir -p /root/.ssh
-  cat /dev/zero | ssh-keygen -f /root/.ssh/so.key.pub -t rsa -q -N ""
+  cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER /root/.ssh
   #Copy the key over to the master
-  ssh-copy-id -f -i /root/.ssh/so.key.pub socore@$MSRV
+  ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
 
 }
 
@@ -679,14 +679,14 @@ set_initial_firewall_policy() {
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
-    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
 
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
