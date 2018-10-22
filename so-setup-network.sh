@@ -679,8 +679,8 @@ set_initial_firewall_policy() {
   fi
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
-    ssh -v -i /root/.ssh/so.key.pub.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key.pub.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -v -i /root/.ssh/so.key.pub socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
 
   fi
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
