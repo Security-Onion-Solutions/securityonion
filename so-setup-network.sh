@@ -346,7 +346,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install salt-master
+    yum -y install salt-master wget
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
