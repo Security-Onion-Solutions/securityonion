@@ -142,7 +142,7 @@ copy_ssh_key() {
   cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER /root/.ssh
   #Copy the key over to the master
-  ssh-copy-id -v -f -i /root/.ssh/so.key socore@$MSRV
+  ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
 
 }
 
