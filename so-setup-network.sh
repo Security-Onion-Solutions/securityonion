@@ -347,6 +347,12 @@ install_master() {
   # Install the salt master package
   if [ $OS == 'centos' ]; then
     yum -y install salt-master
+
+    # Create a place for the keys for Ubuntu minions
+    mkdir -p /opt/so/gpg
+    wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
+    wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+
   else
     apt-get install -y salt-master
   fi
@@ -457,9 +463,48 @@ saltify() {
     else
 
       if [ $MASTERUPDATES == 'MASTER' ]; then
-        yum -y install wget
-        export http_proxy=http://$MSRV:3142; wget -O $TMP/salt-repo-latest-2.el7.noarch.rpm http://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
-        yum -y install $TMP/salt-repo-latest-2.el7.noarch.rpm
+
+        # Create the GPG Public Key for the Salt Repo
+        echo "-----BEGIN PGP PUBLIC KEY BLOCK-----" > /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "Version: GnuPG v2.0.22 (GNU/Linux)" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "mQENBFOpvpgBCADkP656H41i8fpplEEB8IeLhugyC2rTEwwSclb8tQNYtUiGdna9" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "m38kb0OS2DDrEdtdQb2hWCnswxaAkUunb2qq18vd3dBvlnI+C4/xu5ksZZkRj+fW" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "tArNR18V+2jkwcG26m8AxIrT+m4M6/bgnSfHTBtT5adNfVcTHqiT1JtCbQcXmwVw" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WbqS6v/LhcsBE//SHne4uBCK/GHxZHhQ5jz5h+3vWeV4gvxS3Xu6v1IlIpLDwUts" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "kT1DumfynYnnZmWTGc6SYyIFXTPJLtnoWDb9OBdWgZxXfHEcBsKGha+bXO+m2tHA" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "gNneN9i5f8oNxo5njrL8jkCckOpNpng18BKXABEBAAG0MlNhbHRTdGFjayBQYWNr" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "YWdpbmcgVGVhbSA8cGFja2FnaW5nQHNhbHRzdGFjay5jb20+iQE4BBMBAgAiBQJT" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "qb6YAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRAOCKFJ3le/vhkqB/0Q" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WzELZf4d87WApzolLG+zpsJKtt/ueXL1W1KA7JILhXB1uyvVORt8uA9FjmE083o1" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "yE66wCya7V8hjNn2lkLXboOUd1UTErlRg1GYbIt++VPscTxHxwpjDGxDB1/fiX2o" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "nK5SEpuj4IeIPJVE/uLNAwZyfX8DArLVJ5h8lknwiHlQLGlnOu9ulEAejwAKt9CU" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "4oYTszYM4xrbtjB/fR+mPnYh2fBoQO4d/NQiejIEyd9IEEMd/03AJQBuMux62tjA" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "/NwvQ9eqNgLw9NisFNHRWtP4jhAOsshv1WW+zPzu3ozoO+lLHixUIz7fqRk38q8Q" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "9oNR31KvrkSNrFbA3D89uQENBFOpvpgBCADJ79iH10AfAfpTBEQwa6vzUI3Eltqb" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "9aZ0xbZV8V/8pnuU7rqM7Z+nJgldibFk4gFG2bHCG1C5aEH/FmcOMvTKDhJSFQUx" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "uhgxttMArXm2c22OSy1hpsnVG68G32Nag/QFEJ++3hNnbyGZpHnPiYgej3FrerQJ" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "zv456wIsxRDMvJ1NZQB3twoCqwapC6FJE2hukSdWB5yCYpWlZJXBKzlYz/gwD/Fr" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "GL578WrLhKw3UvnJmlpqQaDKwmV2s7MsoZogC6wkHE92kGPG2GmoRD3ALjmCvN1E" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "PsIsQGnwpcXsRpYVCoW7e2nW4wUf7IkFZ94yOCmUq6WreWI4NggRcFC5ABEBAAGJ" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "AR8EGAECAAkFAlOpvpgCGwwACgkQDgihSd5Xv74/NggA08kEdBkiWWwJZUZEy7cK" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WWcgjnRuOHd4rPeT+vQbOWGu6x4bxuVf9aTiYkf7ZjVF2lPn97EXOEGFWPZeZbH4" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "vdRFH9jMtP+rrLt6+3c9j0M8SIJYwBL1+CNpEC/BuHj/Ra/cmnG5ZNhYebm76h5f" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "T9iPW9fFww36FzFka4VPlvA4oB7ebBtquFg3sdQNU/MmTVV4jPFWXxh4oRDDR+8N" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "1bcPnbB11b5ary99F/mqr7RgQ+YFF0uKRE3SKa7a+6cIuHEZ7Za+zhPaQlzAOZlx" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "fuBmScum8uQTrEF5+Um5zkwC7EXTdH1co/+/V/fpOtxIg4XO4kcugZefVm5ERfVS" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "MA==" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "=dtMN" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "-----END PGP PUBLIC KEY BLOCK-----" >> /etc/pki/rpm-gpg/saltstack-signing-key
+
+        # Proxy is hating on me.. Lets just set it manually
+        echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos $releasever" >> /etc/yum.repos.d/salt-latest.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
+        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-latest.repo
+        echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
+        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
+        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
       fi
