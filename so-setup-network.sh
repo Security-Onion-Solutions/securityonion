@@ -499,8 +499,8 @@ saltify() {
 
         # Proxy is hating on me.. Lets just set it manually
         echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
-        echo "name=SaltStack Latest Release Channel for RHEL/Centos $releasever" >> /etc/yum.repos.d/salt-latest.repo
-        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-latest.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
         echo "failovermethod=priority" >> /etc/yum.repos.d/salt-latest.repo
         echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
