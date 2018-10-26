@@ -139,3 +139,6 @@
 # Load a custom Bro policy
 # /opt/so/saltstack/bro/policy/custom/ on the master
 #@load custom/somebropolicy.bro
+
+# Write logs in JSON
+redef LogAscii::use_json = T;
