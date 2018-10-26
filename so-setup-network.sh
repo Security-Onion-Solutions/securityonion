@@ -161,12 +161,13 @@ create_bond() {
     echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "ONBOOT=yes"
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
       BONDNIC="${BNIC%\"}"
       BONDNIC="${BONDNIC#\"}"
-      sed -i 's/ONBOOT=\"no\"/ONBOOT=\"yes\"/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
@@ -912,7 +913,7 @@ whiptail_make_changes() {
 whiptail_management_server() {
 
   MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Master Server HOSTNAME" 10 60 XXXX 3>&1 1>&2 2>&3)
+  "Enter your Master Server HOSTNAME. It is CASE SENSATIVE!" 10 60 XXXX 3>&1 1>&2 2>&3)
 
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
