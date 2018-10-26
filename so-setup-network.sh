@@ -913,7 +913,7 @@ whiptail_make_changes() {
 whiptail_management_server() {
 
   MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Master Server HOSTNAME. It is CASE SENSATIVE!" 10 60 XXXX 3>&1 1>&2 2>&3)
+  "Enter your Master Server HOSTNAME. It is CASE SENSITIVE!" 10 60 XXXX 3>&1 1>&2 2>&3)
 
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
