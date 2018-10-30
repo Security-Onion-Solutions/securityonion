@@ -838,6 +838,9 @@ whiptail_homenet_master() {
   HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_homenet_sensor() {
@@ -867,6 +870,7 @@ whiptail_install_type() {
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
   "EVALMODE" "Evaluate all the things" OFF 3>&1 1>&2 2>&3 )
+
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
@@ -946,6 +950,9 @@ whiptail_node_advanced() {
   "NODEBASIC" "Install Storage Node with recommended settings" ON \
   "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_es_heap() {
@@ -953,6 +960,9 @@ whiptail_node_es_heap() {
   es_heapsize
   NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -962,12 +972,18 @@ whiptail_node_ls_heap() {
   NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_pipeline_worker() {
 
   LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 60 $CPUCORES 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -976,6 +992,9 @@ whiptail_node_ls_pipline_batchsize() {
   LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_input_threads() {
@@ -983,12 +1002,18 @@ whiptail_node_ls_input_threads() {
   LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
     "\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 60 1 3>&1 1>&2 2>&3)
 
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_input_batch_count() {
 
   LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -1032,6 +1057,9 @@ whiptail_shard_count() {
   SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_suricata_pins() {
@@ -1051,6 +1079,9 @@ whiptail_master_updates() {
   "MASTER" "Have the master node act as a proxy for OS/Docker updates." ON \
   "OPEN" "Have each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_updates() {
@@ -1059,6 +1090,9 @@ whiptail_node_updates() {
   "How would you like to download updates for this node?:" 20 78 4 \
   "MASTER" "Download OS/Docker updates from the Master." ON \
   "OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
