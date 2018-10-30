@@ -30,6 +30,7 @@ accept_salt_key_local() {
 
   # Accept the key locally on the master
   salt-key -ya $HOSTNAME
+
 }
 
 accept_salt_key_remote() {
@@ -335,6 +336,7 @@ install_cleanup() {
   rm -rf ./installtmp
 
 }
+
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
@@ -380,7 +382,6 @@ master_pillar() {
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -400,8 +401,8 @@ master_pillar() {
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -432,17 +433,16 @@ minio_generate_keys() {
   ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 40)
 
 }
+
 node_pillar() {
 
   # Create the node pillar
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
   echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
-  echo "  lsaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
   echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$HOSTNAME.sls
@@ -675,15 +675,18 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-
-
   fi
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
 
+  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+  fi
+
+  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-
   fi
+
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
@@ -785,7 +788,7 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "BRO" "Install Standard Bro" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "ZEEK" "Install Zeek" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -850,8 +853,8 @@ whiptail_homenet_sensor() {
     "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
   fi
 
-
 }
+
 whiptail_install_type() {
 
   # What kind of install are we doing?
@@ -862,9 +865,8 @@ whiptail_install_type() {
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
-  "EVALMODE" "TODO Evaluate all the things" OFF \
-  "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF 3>&1 1>&2 2>&3 )
-
+  "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
+  "EVALMODE" "Evaluate all the things" OFF 3>&1 1>&2 2>&3 )
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
@@ -1065,6 +1067,7 @@ whiptail_you_sure() {
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
 
 }
+
 ########################
 ##                    ##
 ##   End Functions    ##
@@ -1087,30 +1090,38 @@ if [ $OS == ubuntu ]; then
 fi
 
 # Question Time
-
 if (whiptail_you_sure); then
 
-  # Create a dir to get started
+  # Create a temp dir to get started
   install_prep
 
   # Let folks know they need their management interface already set up.
   whiptail_network_notice
 
-  # Go ahead and gen the keys so we can use them for any sensor type
+  # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
   #minio_generate_keys
+
   # What kind of install are we doing?
   whiptail_install_type
+
+  ####################
+  ##     Master     ##
+  ####################
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     # Pick the Management NIC
     whiptail_management_nic
-    # Choose your bro
+
+    # Choose Zeek or Community Bro
     whiptail_bro_version
+
     # Select Snort or Suricata
     whiptail_nids
+
     # Snag the HOME_NET
     whiptail_homenet_master
+
     # Pick your Ruleset
     whiptail_rule_setup
 
@@ -1125,6 +1136,8 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
+
+    # Figure out the main IP address
     get_main_ip
 
     # Add the user so we can sit back and relax
@@ -1137,38 +1150,63 @@ if (whiptail_you_sure); then
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
     docker_install
+
     # Configure the Minion
     echo " ** Configuring Minion **"
     configure_minion master >>~/sosetup.log 2>&1
+
+    # Install the salt master
     echo " ** Installing Salt Master **"
     install_master >>~/sosetup.log 2>&1
+
     # Copy the data over
     salt_master_directories >>~/sosetup.log 2>&1
 
+    # Update sudoers file to allow keys and firewalls to be changed
     update_sudoers
+
+    # Change perms on the master dir
     chown_salt_master
+
+    # Determine the ES Heap Size
     es_heapsize
+
+    # Determine the Logstash Heap Size
     ls_heapsize
+
     # Set the static values
     master_static
+
     echo "** Generating the master pillar **"
     master_pillar
+
     # Do a checkin to push the key up
     echo "** Pushing the key up to Master **"
     salt_firstcheckin >>~/sosetup.log 2>&1
+
     # Accept the Master Key
     echo "** Accepting the key on the master **"
     accept_salt_key_local
+
+    # Open the firewall
     echo "** Setting the initial firewall policy **"
     set_initial_firewall_policy
+
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
+
+    # Enable salt to run a checking when the service starts
     checkin_at_boot
 
+    # We are done!
     whiptail_setup_complete
 
   fi
+
+  ####################
+  ##     Sensor     ##
+  ####################
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     whiptail_management_nic
@@ -1210,13 +1248,24 @@ if (whiptail_you_sure); then
 
   fi
 
+  #######################
+  ##     Eval Mode     ##
+  #######################
+
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
     whiptail_management_nic
     filter_nics
     whiptail_bond_nics
     whiptail_management_server
     whiptail_nids
+    whiptail_bro_version
     whiptail_sensor_config
+    NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+    NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
+    LSPIPELINEWORKERS=1
+    LSPIPELINEBATCH=125
+    LSINPUTTHREADS=1
+    LSINPUTBATCHCOUNT=125
     whiptail_make_changes
     configure_minion
     copy_ssh_key
@@ -1231,6 +1280,10 @@ if (whiptail_you_sure); then
     salt_checkin
     checkin_at_boot
   fi
+
+  ###################
+  ##     Nodes     ##
+  ###################
 
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_nic
