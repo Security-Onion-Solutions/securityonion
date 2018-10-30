@@ -8,11 +8,22 @@ base:
     - bro
     - filebeat
 
-  'G@role:eval':
+  'G@role:so-eval':
+    - ca
+    - ssl
     - common
-    - sensor
+    - firewall
     - master
-    - eval
+    - idstools
+    - redis
+    - elasticsearch
+    - logstash
+    - kibana
+    - utility
+    - pcap
+    - suricata
+    - bro
+
 
   'G@role:so-master':
     - ca

@@ -1253,13 +1253,26 @@ if (whiptail_you_sure); then
   #######################
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    # Select the management NIC
     whiptail_management_nic
+
+    # Filter out the management NIC
     filter_nics
+
+    # Select which NICs are in the bond
     whiptail_bond_nics
+
+    # Set Management Server - Fix This
     whiptail_management_server
+
+    # Set the NIDS to suricata
     whiptail_nids
+
     whiptail_bro_version
     whiptail_sensor_config
+    # Set a bunch of stuff since this is eval
+    es_heapsize
+    ls_heapsize
     NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
     NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
     LSPIPELINEWORKERS=1
