@@ -103,7 +103,7 @@ configure_minion() {
   echo "Configuring minion type as $TYPE"
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
-  if [ $TYPE == 'master' ]; then
+  if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
   else
@@ -1296,9 +1296,6 @@ if (whiptail_you_sure); then
     # Select which NICs are in the bond
     whiptail_bond_nics
 
-    # Set Management Server - Fix This
-    whiptail_management_server
-
     # Set the NIDS to suricata
     whiptail_nids
 
@@ -1314,13 +1311,19 @@ if (whiptail_you_sure); then
     LSINPUTTHREADS=1
     LSINPUTBATCHCOUNT=125
     whiptail_make_changes
-    configure_minion
-    copy_ssh_key
+    # Add the user so we can sit back and relax
+    echo ""
+    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    echo ""
+    add_socore_user_master
     create_bond
     saltify
     docker_install
-    configure_minion sensor
+    install_master
+    configure_minion eval
     copy_minion_pillar sensors
+    set_node_type
+    node_pillar
     salt_firstcheckin
     accept_salt_key_local
     salt_checkin_message
