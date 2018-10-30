@@ -1320,6 +1320,16 @@ if (whiptail_you_sure); then
     saltify
     docker_install
     install_master
+    # Copy the data over
+    salt_master_directories
+    update_sudoers
+    # Change perms on the master dir
+    chown_salt_master
+    # Set the static values
+    master_static
+    echo "** Generating the master pillar **"
+    master_pillar
+
     configure_minion eval
     copy_minion_pillar sensors
     set_node_type
