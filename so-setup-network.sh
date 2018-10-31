@@ -1338,9 +1338,9 @@ if (whiptail_you_sure); then
     configure_minion eval
     set_node_type
     node_pillar
+    set_initial_firewall_policy
     salt_firstcheckin
     accept_salt_key_local
-    set_initial_firewall_policy
     salt_checkin_message
     salt_checkin
     checkin_at_boot
