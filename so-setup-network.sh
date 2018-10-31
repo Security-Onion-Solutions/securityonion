@@ -1312,6 +1312,7 @@ if (whiptail_you_sure); then
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
     LSINPUTBATCHCOUNT=125
+    RULESETUP=ETOPEN
     whiptail_make_changes
     get_main_ip
     # Add the user so we can sit back and relax
