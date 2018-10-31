@@ -1302,6 +1302,9 @@ if (whiptail_you_sure); then
     whiptail_nids
 
     whiptail_bro_version
+    # Snag the HOME_NET
+    whiptail_homenet_master
+
     whiptail_sensor_config
     # Set a bunch of stuff since this is eval
     es_heapsize
