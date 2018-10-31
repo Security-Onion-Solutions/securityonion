@@ -19,6 +19,7 @@ base:
     - static
     - firewall.*
     - data.*
+    - brologs
 
   'G@role:so-node':
     - nodes.schedule
