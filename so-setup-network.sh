@@ -1340,6 +1340,7 @@ if (whiptail_you_sure); then
     node_pillar
     salt_firstcheckin
     accept_salt_key_local
+    set_initial_firewall_policy
     salt_checkin_message
     salt_checkin
     checkin_at_boot
