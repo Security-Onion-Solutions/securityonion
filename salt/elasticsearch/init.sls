@@ -20,6 +20,14 @@
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
 {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
+{% elif grains['role'] == 'so-eval' %}
+
+{% set esclustername = salt['pillar.get']('master:esclustername', '') %}
+{% set esheap = salt['pillar.get']('master:esheap', '') %}
+{% set freq = salt['pillar.get']('master:freq', '0') %}
+{% set dstats = salt['pillar.get']('master:dstats', '0') %}
+{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
+
 {% elif grains['role'] == 'so-node' %}
 
 {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
