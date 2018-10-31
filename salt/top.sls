@@ -23,6 +23,7 @@ base:
     - pcap
     - suricata
     - bro
+    - filebeat
 
 
   'G@role:so-master':
