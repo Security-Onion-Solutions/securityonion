@@ -571,7 +571,7 @@ saltify() {
 
 salt_checkin() {
   # Master State to Fix Mine Usage
-  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
   salt-call state.apply ca >>~/sosetup.log 2>&1
   # salt-call state.apply ssl >>~/sosetup.log 2>&1
   # salt-call state.apply common >>~/sosetup.log 2>&1
@@ -680,6 +680,8 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
@@ -710,7 +712,7 @@ set_initial_firewall_policy() {
 set_node_type() {
 
   # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+  if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
     NODETYPE='storage'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -864,8 +866,8 @@ whiptail_install_type() {
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose Install Type:" 20 78 8 \
   "SENSORONLY" "Create a forward only sensor" ON \
-  "MASTERONLY" "Start a new grid" OFF \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
+  "MASTERONLY" "Start a new grid" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
@@ -1311,6 +1313,7 @@ if (whiptail_you_sure); then
     LSINPUTTHREADS=1
     LSINPUTBATCHCOUNT=125
     whiptail_make_changes
+    get_main_ip
     # Add the user so we can sit back and relax
     echo ""
     echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
@@ -1329,9 +1332,7 @@ if (whiptail_you_sure); then
     master_static
     echo "** Generating the master pillar **"
     master_pillar
-
     configure_minion eval
-    copy_minion_pillar sensors
     set_node_type
     node_pillar
     salt_firstcheckin
