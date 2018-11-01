@@ -142,6 +142,6 @@ so-logstash:
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
-      - /nsm/bro/logs:/nsm/bro/logs:ro
+      - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
       {%- endif %}
