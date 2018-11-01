@@ -16,7 +16,8 @@ m2cryptopkgs:
       - python-m2crypto
 {% endif %}
 
-{% if grains['role'] == 'so-master' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
   x509.certificate_managed:
