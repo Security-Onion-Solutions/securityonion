@@ -141,4 +141,4 @@
 #@load custom/somebropolicy.bro
 
 # Write logs in JSON
-redef LogAscii::use_json = T;
+#redef LogAscii::use_json = T;
