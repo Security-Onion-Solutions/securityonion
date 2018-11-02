@@ -513,10 +513,12 @@ saltify() {
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update
+    systemctl enable salt-minion
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install salt-master python-m2crypto salt-minion m2crypto
+      systemctl enable salt-master
     else
       yum -y install salt-minion python-m2m2crypto m2crypto
     fi
