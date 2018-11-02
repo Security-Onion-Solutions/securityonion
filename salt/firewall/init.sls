@@ -87,7 +87,7 @@ enable_docker_user_established:
     - ctstate: 'RELATED,ESTABLISHED'
 
 # Rules if you are a Master
-{% if grains['role'] == 'so-SENSOR' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 #This should be more granular
 iptables_allow_master_docker:
   iptables.insert:
