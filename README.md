@@ -1,4 +1,4 @@
-# Security Onion Hybrid Hunter Tech Preview
+# Security Onion Hybrid Hunter Tech Preview 1.0.1
 
 Installation:
 
