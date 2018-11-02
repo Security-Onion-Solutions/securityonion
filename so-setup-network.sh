@@ -30,12 +30,13 @@ accept_salt_key_local() {
 
   # Accept the key locally on the master
   salt-key -ya $HOSTNAME
+
 }
 
 accept_salt_key_remote() {
 
   # Accept the key remotely so the device can check in
-  ssh -i ~/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
 
 }
 
@@ -102,7 +103,7 @@ configure_minion() {
   echo "Configuring minion type as $TYPE"
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
-  if [ $TYPE == 'master' ]; then
+  if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
   else
@@ -131,18 +132,18 @@ copy_minion_pillar() {
 
   # Copy over the pillar
   echo "Copying the pillar over"
-  scp -i ~/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
+  scp -v -i /root/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
 
   }
 
 copy_ssh_key() {
 
   # Generate SSH key
-  mkdir -p ~/.ssh
-  cat /dev/zero | ssh-keygen -f ~/.ssh/so.key -t rsa -q -N ""
-  chown -R $SUDO_USER:$SUDO_USER ~/.ssh
+  mkdir -p /root/.ssh
+  cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
+  chown -R $SUDO_USER:$SUDO_USER /root/.ssh
   #Copy the key over to the master
-  ssh-copy-id -f -i ~/.ssh/so.key socore@$MSRV
+  ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
 
 }
 
@@ -161,12 +162,13 @@ create_bond() {
     echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "ONBOOT=yes"
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
       BONDNIC="${BNIC%\"}"
       BONDNIC="${BONDNIC#\"}"
-      sed -i 's/ONBOOT=\"no\"/ONBOOT=\"yes\"/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
@@ -334,6 +336,7 @@ install_cleanup() {
   rm -rf ./installtmp
 
 }
+
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
@@ -346,7 +349,13 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install salt-master
+    yum -y install salt-master wget
+
+    # Create a place for the keys for Ubuntu minions
+    mkdir -p /opt/so/gpg
+    wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
+    wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+
   else
     apt-get install -y salt-master
   fi
@@ -373,13 +382,11 @@ master_pillar() {
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
     echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -393,8 +400,8 @@ master_pillar() {
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -425,17 +432,16 @@ minio_generate_keys() {
   ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 40)
 
 }
+
 node_pillar() {
 
   # Create the node pillar
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
-  echo "  esaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
   echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
-  echo "  lsaccessip: 127.0.0.1" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
   echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
   echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$HOSTNAME.sls
@@ -457,9 +463,48 @@ saltify() {
     else
 
       if [ $MASTERUPDATES == 'MASTER' ]; then
-        yum -y install wget
-        export http_proxy=http://$MSRV:3142; wget -O $TMP/salt-repo-latest-2.el7.noarch.rpm http://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
-        yum -y install $TMP/salt-repo-latest-2.el7.noarch.rpm
+
+        # Create the GPG Public Key for the Salt Repo
+        echo "-----BEGIN PGP PUBLIC KEY BLOCK-----" > /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "Version: GnuPG v2.0.22 (GNU/Linux)" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "mQENBFOpvpgBCADkP656H41i8fpplEEB8IeLhugyC2rTEwwSclb8tQNYtUiGdna9" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "m38kb0OS2DDrEdtdQb2hWCnswxaAkUunb2qq18vd3dBvlnI+C4/xu5ksZZkRj+fW" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "tArNR18V+2jkwcG26m8AxIrT+m4M6/bgnSfHTBtT5adNfVcTHqiT1JtCbQcXmwVw" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WbqS6v/LhcsBE//SHne4uBCK/GHxZHhQ5jz5h+3vWeV4gvxS3Xu6v1IlIpLDwUts" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "kT1DumfynYnnZmWTGc6SYyIFXTPJLtnoWDb9OBdWgZxXfHEcBsKGha+bXO+m2tHA" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "gNneN9i5f8oNxo5njrL8jkCckOpNpng18BKXABEBAAG0MlNhbHRTdGFjayBQYWNr" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "YWdpbmcgVGVhbSA8cGFja2FnaW5nQHNhbHRzdGFjay5jb20+iQE4BBMBAgAiBQJT" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "qb6YAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRAOCKFJ3le/vhkqB/0Q" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WzELZf4d87WApzolLG+zpsJKtt/ueXL1W1KA7JILhXB1uyvVORt8uA9FjmE083o1" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "yE66wCya7V8hjNn2lkLXboOUd1UTErlRg1GYbIt++VPscTxHxwpjDGxDB1/fiX2o" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "nK5SEpuj4IeIPJVE/uLNAwZyfX8DArLVJ5h8lknwiHlQLGlnOu9ulEAejwAKt9CU" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "4oYTszYM4xrbtjB/fR+mPnYh2fBoQO4d/NQiejIEyd9IEEMd/03AJQBuMux62tjA" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "/NwvQ9eqNgLw9NisFNHRWtP4jhAOsshv1WW+zPzu3ozoO+lLHixUIz7fqRk38q8Q" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "9oNR31KvrkSNrFbA3D89uQENBFOpvpgBCADJ79iH10AfAfpTBEQwa6vzUI3Eltqb" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "9aZ0xbZV8V/8pnuU7rqM7Z+nJgldibFk4gFG2bHCG1C5aEH/FmcOMvTKDhJSFQUx" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "uhgxttMArXm2c22OSy1hpsnVG68G32Nag/QFEJ++3hNnbyGZpHnPiYgej3FrerQJ" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "zv456wIsxRDMvJ1NZQB3twoCqwapC6FJE2hukSdWB5yCYpWlZJXBKzlYz/gwD/Fr" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "GL578WrLhKw3UvnJmlpqQaDKwmV2s7MsoZogC6wkHE92kGPG2GmoRD3ALjmCvN1E" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "PsIsQGnwpcXsRpYVCoW7e2nW4wUf7IkFZ94yOCmUq6WreWI4NggRcFC5ABEBAAGJ" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "AR8EGAECAAkFAlOpvpgCGwwACgkQDgihSd5Xv74/NggA08kEdBkiWWwJZUZEy7cK" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "WWcgjnRuOHd4rPeT+vQbOWGu6x4bxuVf9aTiYkf7ZjVF2lPn97EXOEGFWPZeZbH4" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "vdRFH9jMtP+rrLt6+3c9j0M8SIJYwBL1+CNpEC/BuHj/Ra/cmnG5ZNhYebm76h5f" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "T9iPW9fFww36FzFka4VPlvA4oB7ebBtquFg3sdQNU/MmTVV4jPFWXxh4oRDDR+8N" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "1bcPnbB11b5ary99F/mqr7RgQ+YFF0uKRE3SKa7a+6cIuHEZ7Za+zhPaQlzAOZlx" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "fuBmScum8uQTrEF5+Um5zkwC7EXTdH1co/+/V/fpOtxIg4XO4kcugZefVm5ERfVS" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "MA==" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "=dtMN" >> /etc/pki/rpm-gpg/saltstack-signing-key
+        echo "-----END PGP PUBLIC KEY BLOCK-----" >> /etc/pki/rpm-gpg/saltstack-signing-key
+
+        # Proxy is hating on me.. Lets just set it manually
+        echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-latest.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
+        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-latest.repo
+        echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
+        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
+        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
       fi
@@ -468,10 +513,12 @@ saltify() {
     yum clean expire-cache
     yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update
+    systemctl enable salt-minion
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install salt-master python-m2crypto salt-minion m2crypto
+      systemctl enable salt-master
     else
       yum -y install salt-minion python-m2m2crypto m2crypto
     fi
@@ -525,7 +572,7 @@ saltify() {
 
 salt_checkin() {
   # Master State to Fix Mine Usage
-  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
   salt-call state.apply ca >>~/sosetup.log 2>&1
   # salt-call state.apply ssl >>~/sosetup.log 2>&1
   # salt-call state.apply common >>~/sosetup.log 2>&1
@@ -615,7 +662,7 @@ sensor_pillar() {
   echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
   echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
-  if [ $HNSENSOR != 'inherit']; then
+  if [ $HNSENSOR != 'inherit' ]; then
   echo "  hnsensor: $HNSENSOR" >> $TMP/$HOSTNAME.sls
   fi
   echo "  access_key: $ACCESS_KEY" >> $TMP/$HOSTNAME.sls
@@ -629,19 +676,24 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-
-
   fi
+
+  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
+  fi
+
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
   fi
+
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i ~/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -661,7 +713,7 @@ set_initial_firewall_policy() {
 set_node_type() {
 
   # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+  if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
     NODETYPE='storage'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -739,7 +791,7 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "BRO" "Install Standard Bro" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "ZEEK" "Install Zeek" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -789,6 +841,9 @@ whiptail_homenet_master() {
   HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_homenet_sensor() {
@@ -804,20 +859,20 @@ whiptail_homenet_sensor() {
     "Enter your HOME_NET separated by ," 10 60 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
   fi
 
-
 }
+
 whiptail_install_type() {
 
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose Install Type:" 20 78 8 \
   "SENSORONLY" "Create a forward only sensor" ON \
-  "MASTERONLY" "Start a new grid" OFF \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
+  "MASTERONLY" "Start a new grid" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
-  "EVALMODE" "TODO Evaluate all the things" OFF \
-  "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF 3>&1 1>&2 2>&3 )
+  "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
+  "EVALMODE" "Evaluate all the things" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -867,7 +922,7 @@ whiptail_make_changes() {
 whiptail_management_server() {
 
   MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Master Server HOSTNAME" 10 60 XXXX 3>&1 1>&2 2>&3)
+  "Enter your Master Server HOSTNAME. It is CASE SENSITIVE!" 10 60 XXXX 3>&1 1>&2 2>&3)
 
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
@@ -898,6 +953,9 @@ whiptail_node_advanced() {
   "NODEBASIC" "Install Storage Node with recommended settings" ON \
   "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_es_heap() {
@@ -905,6 +963,9 @@ whiptail_node_es_heap() {
   es_heapsize
   NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -914,12 +975,18 @@ whiptail_node_ls_heap() {
   NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 60 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_pipeline_worker() {
 
   LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 60 $CPUCORES 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -928,6 +995,9 @@ whiptail_node_ls_pipline_batchsize() {
   LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_input_threads() {
@@ -935,12 +1005,18 @@ whiptail_node_ls_input_threads() {
   LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
     "\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 60 1 3>&1 1>&2 2>&3)
 
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_ls_input_batch_count() {
 
   LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -984,6 +1060,9 @@ whiptail_shard_count() {
   SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
   "\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 60 125 3>&1 1>&2 2>&3)
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_suricata_pins() {
@@ -1003,6 +1082,9 @@ whiptail_master_updates() {
   "MASTER" "Have the master node act as a proxy for OS/Docker updates." ON \
   "OPEN" "Have each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_node_updates() {
@@ -1012,6 +1094,9 @@ whiptail_node_updates() {
   "MASTER" "Download OS/Docker updates from the Master." ON \
   "OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
 
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_you_sure() {
@@ -1019,6 +1104,7 @@ whiptail_you_sure() {
   whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 78
 
 }
+
 ########################
 ##                    ##
 ##   End Functions    ##
@@ -1041,30 +1127,38 @@ if [ $OS == ubuntu ]; then
 fi
 
 # Question Time
-
 if (whiptail_you_sure); then
 
-  # Create a dir to get started
+  # Create a temp dir to get started
   install_prep
 
   # Let folks know they need their management interface already set up.
   whiptail_network_notice
 
-  # Go ahead and gen the keys so we can use them for any sensor type
+  # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
   #minio_generate_keys
+
   # What kind of install are we doing?
   whiptail_install_type
+
+  ####################
+  ##     Master     ##
+  ####################
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     # Pick the Management NIC
     whiptail_management_nic
-    # Choose your bro
+
+    # Choose Zeek or Community Bro
     whiptail_bro_version
+
     # Select Snort or Suricata
     whiptail_nids
+
     # Snag the HOME_NET
     whiptail_homenet_master
+
     # Pick your Ruleset
     whiptail_rule_setup
 
@@ -1079,6 +1173,8 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
+
+    # Figure out the main IP address
     get_main_ip
 
     # Add the user so we can sit back and relax
@@ -1091,38 +1187,63 @@ if (whiptail_you_sure); then
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
     docker_install
+
     # Configure the Minion
     echo " ** Configuring Minion **"
     configure_minion master >>~/sosetup.log 2>&1
+
+    # Install the salt master
     echo " ** Installing Salt Master **"
     install_master >>~/sosetup.log 2>&1
+
     # Copy the data over
     salt_master_directories >>~/sosetup.log 2>&1
 
+    # Update sudoers file to allow keys and firewalls to be changed
     update_sudoers
+
+    # Change perms on the master dir
     chown_salt_master
+
+    # Determine the ES Heap Size
     es_heapsize
+
+    # Determine the Logstash Heap Size
     ls_heapsize
+
     # Set the static values
     master_static
+
     echo "** Generating the master pillar **"
     master_pillar
+
     # Do a checkin to push the key up
     echo "** Pushing the key up to Master **"
     salt_firstcheckin >>~/sosetup.log 2>&1
+
     # Accept the Master Key
     echo "** Accepting the key on the master **"
     accept_salt_key_local
+
+    # Open the firewall
     echo "** Setting the initial firewall policy **"
     set_initial_firewall_policy
+
     # Do the big checkin but first let them know it will take a bit.
     salt_checkin_message
     salt_checkin
+
+    # Enable salt to run a checking when the service starts
     checkin_at_boot
 
+    # We are done!
     whiptail_setup_complete
 
   fi
+
+  ####################
+  ##     Sensor     ##
+  ####################
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     whiptail_management_nic
@@ -1164,27 +1285,71 @@ if (whiptail_you_sure); then
 
   fi
 
+  #######################
+  ##     Eval Mode     ##
+  #######################
+
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    # Select the management NIC
     whiptail_management_nic
+
+    # Filter out the management NIC
     filter_nics
+
+    # Select which NICs are in the bond
     whiptail_bond_nics
-    whiptail_management_server
-    whiptail_nids
-    whiptail_sensor_config
+
+    # Snag the HOME_NET
+    whiptail_homenet_master
+
+    # Set a bunch of stuff since this is eval
+    es_heapsize
+    ls_heapsize
+    NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+    NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
+    LSPIPELINEWORKERS=1
+    LSPIPELINEBATCH=125
+    LSINPUTTHREADS=1
+    LSINPUTBATCHCOUNT=125
+    RULESETUP=ETOPEN
+    NSMSETUP=BASIC
+    NIDS=Suricata
+    BROVERSION=COMMUNITY
     whiptail_make_changes
-    configure_minion
-    copy_ssh_key
+    get_main_ip
+    # Add the user so we can sit back and relax
+    echo ""
+    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    echo ""
+    add_socore_user_master
     create_bond
     saltify
     docker_install
-    configure_minion sensor
-    copy_minion_pillar sensors
+    install_master
+    # Copy the data over
+    salt_master_directories
+    update_sudoers
+    # Change perms on the master dir
+    chown_salt_master
+    # Set the static values
+    master_static
+    echo "** Generating the master pillar **"
+    master_pillar
+    configure_minion eval
+    set_node_type
+    node_pillar
+    set_initial_firewall_policy
     salt_firstcheckin
     accept_salt_key_local
     salt_checkin_message
     salt_checkin
     checkin_at_boot
+    whiptail_setup_complete
   fi
+
+  ###################
+  ##     Nodes     ##
+  ###################
 
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_nic

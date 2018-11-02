@@ -32,6 +32,14 @@
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 {% set nodetype = salt['grains.get']('role', '')  %}
 
+{% elif grains['role'] == 'so-eval' %}
+
+{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
+{% set freq = salt['pillar.get']('master:freq', '0') %}
+{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+{% set nodetype = salt['grains.get']('role', '')  %}
+
 {% endif %}
 
 # Create the logstash group
@@ -133,3 +141,7 @@ so-logstash:
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
+      {%- if grains['role'] == 'so-eval' %}
+      - /nsm/bro:/nsm/bro:ro
+      - /opt/so/log/suricata:/suricata:ro
+      {%- endif %}

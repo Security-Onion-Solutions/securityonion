@@ -46,17 +46,17 @@ acngcopyconf:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
     - source: salt://master/files/acng/acng.conf
 
-# Install the apt-cacher-ng container - TODO Create a so-docker for it
+# Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
-    - image: deployable/acng:latest-us
-    - hostname: so-aptcacherng
+    - image: toosmooth/so-acng:techpreview
+    - hostname: so-acng
     - port_bindings:
       - 0.0.0.0:3142:3142
     - binds:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
-      - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apr-cacher-ng/acng.conf:ro
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
+      - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
 
 
 # Create the config directory for the docker registry

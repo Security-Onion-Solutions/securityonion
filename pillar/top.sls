@@ -13,6 +13,14 @@ base:
     - firewall.*
     - data.*
 
+  'G@role:so-eval':
+    - masters.schedule
+    - masters.{{ grains.host }}
+    - static
+    - firewall.*
+    - data.*
+    - brologs
+
   'G@role:so-node':
     - nodes.schedule
     - nodes.{{ grains.host }}
