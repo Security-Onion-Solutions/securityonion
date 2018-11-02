@@ -58,3 +58,5 @@ sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.0/24
 Then connect to your master via https://YOURMASTER
 
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
+
+For issues not covered in the FAQ please use the mailing list with the subject prefix of [Hybrid Hunter]. 
