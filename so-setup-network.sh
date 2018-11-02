@@ -1342,6 +1342,7 @@ if (whiptail_you_sure); then
     salt_checkin_message
     salt_checkin
     checkin_at_boot
+    whiptail_setup_complete
   fi
 
   ###################
