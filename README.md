@@ -12,7 +12,24 @@
 - This script is only designed for standalone boxes and does NOT support distributed deployments.  
 - Use of this script may result in nausea, vomiting, or a burning sensation.  
 
-**Installation:**
+**Requirements**
+
+Evaluation Mode:
+
+- Single Ubuntu 16.04 or CentOS 7 VM
+- Minimum 8GB of RAM
+- Minimum 4 CPU cores
+- Minimum 2 NICs
+
+Distributed:
+
+- 3 VMs running Ubuntu 16.04 or CentOS 7 (You can mix and match)
+- Minimum 8GB of RAM per VM
+- Minimum 4 CPU cores per VM
+- Minimum 2 NICs for forward nodes
+
+
+**Installation**
 
 If you are using CentOS 7 there are a couple pre-requisites:
 
@@ -28,7 +45,7 @@ git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
 cd securityonion-saltstack
 sudo bash so-setup-network.sh
 ```
-**Allow Access to Kibana:**
+**Allow Access to Kibana**
 
 For a single host:
 ```
