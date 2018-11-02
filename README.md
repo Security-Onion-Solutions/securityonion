@@ -9,7 +9,7 @@ sudo yum -y install bind-utils
 sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
-Once you resolve those requirements or are using Ubuntu do the following:
+Once you resolve those requirements or are using Ubuntu 16.04 do the following:
 
 ```
 git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
