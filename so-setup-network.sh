@@ -1297,14 +1297,9 @@ if (whiptail_you_sure); then
     # Select which NICs are in the bond
     whiptail_bond_nics
 
-    # Set the NIDS to suricata
-    whiptail_nids
-
-    whiptail_bro_version
     # Snag the HOME_NET
     whiptail_homenet_master
 
-    whiptail_sensor_config
     # Set a bunch of stuff since this is eval
     es_heapsize
     ls_heapsize
@@ -1315,6 +1310,9 @@ if (whiptail_you_sure); then
     LSINPUTTHREADS=1
     LSINPUTBATCHCOUNT=125
     RULESETUP=ETOPEN
+    NSMSETUP=BASIC
+    NIDS=Suricata
+    BROVERSION=COMMUNITY
     whiptail_make_changes
     get_main_ip
     # Add the user so we can sit back and relax
