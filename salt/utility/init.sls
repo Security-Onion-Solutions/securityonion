@@ -11,3 +11,11 @@ crossclusterson:
 
 {% endif %}
 {% endif %}
+{% if grains['role'] == 'so-eval' %}
+fixsearch:
+  cmd.script:
+    - shell: /bin/bash
+    - runas: socore
+    - source: salt://utility/bin/eval.sh
+    - template: jinja
+{% endif %}

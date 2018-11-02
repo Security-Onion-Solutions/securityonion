@@ -19,10 +19,10 @@ base:
     - elasticsearch
     - logstash
     - kibana
-    - utility
     - pcap
     - suricata
     - bro
+    - utility
 
 
   'G@role:so-master':
