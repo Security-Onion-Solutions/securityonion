@@ -54,8 +54,10 @@ git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
 cd securityonion-saltstack
 sudo bash so-setup-network.sh
 ```
+Follow the prompts and reboot if asked to do so.
 
 ### Allow Access to Kibana
+Once Setup is complete and services have initialized, you can then allow access to Kibana as follows.
 
 For a single host:
 ```
