@@ -16,7 +16,7 @@
 
 Evaluation Mode:
 
-- Single Ubuntu 16.04 or CentOS 7 VM
+- Single VM running Ubuntu 16.04 or CentOS 7
 - Minimum 8GB of RAM
 - Minimum 4 CPU cores
 - Minimum 2 NICs
@@ -30,7 +30,7 @@ Distributed:
 
 ### Prerequisites
 
-If you are using CentOS 7 there are a couple of prerequisites:
+If you are running CentOS 7 there are a couple of prerequisites:
 
 ```
 sudo yum -y install bind-utils
