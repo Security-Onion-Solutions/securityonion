@@ -1,5 +1,12 @@
 # Security Onion Hybrid Hunter Tech Preview 1.0.1
 
+### About
+Hybrid Hunter is a brand new Security Onion platform with the following characteristics:
+- Move from Ubuntu DEB packages to Docker images
+- Support both Ubuntu 16.04 and RedHat/CentOS 7
+- Higher performance
+- More centralized configuration
+
 ### Warnings and Disclaimers
 
 - This technology PREVIEW is PRE-ALPHA, BLEEDING EDGE, and TOTALLY UNSUPPORTED!  
