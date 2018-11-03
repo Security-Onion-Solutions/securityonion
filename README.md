@@ -59,4 +59,4 @@ Then connect to your master via https://YOURMASTER
 
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
 
-For issues not covered in the FAQ please use the mailing list with the subject prefix of [Hybrid Hunter]. 
+For issues not covered in the FAQ please use our subreddit [/r/securityonion](https://www.reddit.com/r/securityonion). 
