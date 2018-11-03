@@ -1,6 +1,6 @@
 # Security Onion Hybrid Hunter Tech Preview 1.0.1
 
-**Warnings and Disclaimers**
+### Warnings and Disclaimers
 
 - This technology PREVIEW is PRE-ALPHA, BLEEDING EDGE, and TOTALLY UNSUPPORTED!  
 - If this breaks your system, you get to keep both pieces!  
@@ -12,7 +12,7 @@
 - This script is only designed for standalone boxes and does NOT support distributed deployments.  
 - Use of this script may result in nausea, vomiting, or a burning sensation.  
 
-**Requirements**
+### Requirements
 
 Evaluation Mode:
 
@@ -28,16 +28,18 @@ Distributed:
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
 
+### Prerequisites
 
-**Installation**
-
-If you are using CentOS 7 there are a couple pre-requisites:
+If you are using CentOS 7 there are a couple of prerequisites:
 
 ```
 sudo yum -y install bind-utils
 sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
+
+### Installation
+
 Once you resolve those requirements or are using Ubuntu 16.04 do the following:
 
 ```
@@ -45,7 +47,8 @@ git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
 cd securityonion-saltstack
 sudo bash so-setup-network.sh
 ```
-**Allow Access to Kibana**
+
+### Allow Access to Kibana
 
 For a single host:
 ```
@@ -57,6 +60,10 @@ sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.0/24
 ```
 Then connect to your master via https://YOURMASTER
 
+### FAQ
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
 
-For issues not covered in the FAQ please use our subreddit [/r/securityonion](https://www.reddit.com/r/securityonion). 
+### Feedback
+If you have questions, problems, or other feedback regarding Hybrid Hunter, please post to our subreddit and prefix the title with [Hybrid Hunter]:
+
+https://www.reddit.com/r/securityonion/
