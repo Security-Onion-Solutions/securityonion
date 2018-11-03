@@ -65,5 +65,4 @@ See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstac
 
 ### Feedback
 If you have questions, problems, or other feedback regarding Hybrid Hunter, please post to our subreddit and prefix the title with **[Hybrid Hunter]**:
-
 https://www.reddit.com/r/securityonion/
