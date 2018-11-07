@@ -35,8 +35,27 @@ accept_salt_key_local() {
 
 accept_salt_key_remote() {
 
-  # Accept the key remotely so the device can check in
-  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  # See if the key is already there. If so nuke it.
+  GETKEYSACCEPTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l accepted)
+  GETKEYSREJECTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l rejected)
+
+  if grep -q $HOSTNAME $GETKEYSACCEPTED; then
+    SKACPT=1
+  else
+    SKACPT=0
+  fi
+  if grep -q $HOSTNAME $GETKEYSREJECTED; then
+    SKRJCT=1
+  else
+    SKRJCT=0
+  fi
+
+  if [ $SKACPT=1 ] || [ $SKRJCT=1 ]; then
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
+  else
+    # Accept the key remotely so the device can check in
+    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  fi
 
 }
 
@@ -333,15 +352,15 @@ got_root() {
 install_cleanup() {
 
   # Clean up after ourselves
-  rm -rf ./installtmp
+  rm -rf /root/installtmp
 
 }
 
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
-  mkdir ./installtmp
-  TMP=./installtmp
+  mkdir /root/installtmp
+  TMP=/root/installtmp
 
 }
 
