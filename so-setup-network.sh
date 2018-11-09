@@ -38,7 +38,9 @@ accept_salt_key_remote() {
   # See if the key is already there. If so nuke it.
   GETKEYSACCEPTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l accepted)
   GETKEYSREJECTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l rejected)
-
+  echo "Seeing if the key exists"
+  echo $GETKEYSACCEPTED
+  echo $GETKEYSREJECTED 
   if grep -q $HOSTNAME $GETKEYSACCEPTED; then
     SKACPT=1
   else
