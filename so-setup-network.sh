@@ -311,7 +311,7 @@ es_heapsize() {
 filter_nics() {
 
   # Filter the NICs that we don't want to see in setup
-  FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+  FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|bond|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 }
 
