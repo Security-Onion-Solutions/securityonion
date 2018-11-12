@@ -35,30 +35,11 @@ accept_salt_key_local() {
 
 accept_salt_key_remote() {
 
-  # See if the key is already there. If so nuke it.
-  GETKEYSACCEPTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l accepted)
-  GETKEYSREJECTED=$(ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -l rejected)
-  echo "Seeing if the key exists"
-  echo $GETKEYSACCEPTED
-  echo $GETKEYSREJECTED 
-  if grep -q $HOSTNAME $GETKEYSACCEPTED; then
-    SKACPT=1
-  else
-    SKACPT=0
-  fi
-  if grep -q $HOSTNAME $GETKEYSREJECTED; then
-    SKRJCT=1
-  else
-    SKRJCT=0
-  fi
-
-  if [ $SKACPT=1 ] || [ $SKRJCT=1 ]; then
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
-  else
-    # Accept the key remotely so the device can check in
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
-  fi
-
+  # Delete the key just in case.
+  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
+  salt-call state.apply ca
+  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  
 }
 
 add_master_hostfile() {
