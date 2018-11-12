@@ -40,7 +40,7 @@ Distributed:
 If you are running CentOS 7 there are a couple of prerequisites:
 
 ```
-sudo yum -y install bind-utils
+sudo yum -y install git bind-utils
 sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
