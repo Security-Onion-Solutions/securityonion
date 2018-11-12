@@ -158,13 +158,13 @@ create_bond() {
   if [ $OS == 'centos' ]; then
     modprobe --first-time bonding
     touch /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "DEVICE=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "DEVICE=bond0" > /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "NAME=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "Type=Bond" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "ONBOOT=yes"
+    echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
@@ -210,7 +210,6 @@ create_bond() {
     for BNIC in ${BNICS[@]}; do
 
       BNIC=$(echo $BNIC |  cut -d\" -f2)
-      echo ""
       echo "auto $BNIC" >> /etc/network/interfaces.d/$BNIC
       echo "iface $BNIC inet manual" >> /etc/network/interfaces.d/$BNIC
       echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/$BNIC
@@ -218,13 +217,12 @@ create_bond() {
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
       echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
-      echo ""
 
     done
 
     BN=("${BNICS[@]//\"/}")
 
-    echo "auto bond0" >> /etc/network/interfaces.d/bond0
+    echo "auto bond0" > /etc/network/interfaces.d/bond0
     echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
     echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
     echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
@@ -650,12 +648,6 @@ sensor_pillar() {
       SPIN=$(echo $SPIN |  cut -d\" -f2)
     echo "    - $SPIN" >> $TMP/$HOSTNAME.sls
     done
-    #SP=("${SURIPINS[@]//\"/}")
-    #SPINS=${SP// /,}
-    #SCOUNT=${#SURIPINS[@]}
-
-    #echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
-    #echo "  surithreads: $SCOUNT"
   else
     echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
     echo "  suriprocs: $BASICSURI" >> $TMP/$HOSTNAME.sls
