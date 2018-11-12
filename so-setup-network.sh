@@ -240,6 +240,7 @@ detect_os() {
   echo "Detecting Base OS"
   if [ -f /etc/redhat-release ]; then
     OS=centos
+    yum -y install bind-utils
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
   else
