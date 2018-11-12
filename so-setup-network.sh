@@ -36,10 +36,10 @@ accept_salt_key_local() {
 accept_salt_key_remote() {
 
   # Delete the key just in case.
-  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
   salt-call state.apply ca
-  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
-  
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+
 }
 
 add_master_hostfile() {
@@ -688,14 +688,14 @@ set_initial_firewall_policy() {
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
