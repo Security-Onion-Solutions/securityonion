@@ -63,6 +63,20 @@ lscustdir:
     - group: 939
     - makedirs: True
 
+lscustparserdir:
+  file.directory:
+    - name: /opt/so/conf/logstash/custom/parsers
+    - user: 931
+    - group: 939
+    - makedirs: True
+
+lscusttemplatedir:
+  file.directory:
+    - name: /opt/so/conf/logstash/custom/templates
+    - user: 931
+    - group: 939
+    - makedirs: True
+
 # Copy down all the configs including custom - TODO add watch restart
 lssync:
   file.recurse:
@@ -145,3 +159,5 @@ so-logstash:
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
       {%- endif %}
+      - watch:
+        - file: /opt/so/conf/logstash
