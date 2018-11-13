@@ -79,7 +79,7 @@ so-bro:
     - watch:
       - file: /opt/so/conf/bro/local.bro
       - file: /opt/so/conf/bro/node.cfg
-      - file: /opt/so/conf/bro/policy/*
+      - file: /opt/so/conf/bro/policy
 
 {% else %}
 localbrosync:
@@ -106,7 +106,7 @@ so-bro:
     - watch:
       - file: /opt/so/conf/bro/local.bro
       - file: /opt/so/conf/bro/node.cfg
-      - file: /opt/so/conf/bro/policy/*
+      - file: /opt/so/conf/bro/policy
 
 
 {% endif %}
