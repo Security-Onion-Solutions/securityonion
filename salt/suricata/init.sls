@@ -61,7 +61,7 @@ surirulesync:
 suriconfigsync:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
-    {%- if BROVER != SURICATA %}
+    {%- if BROVER != 'SURICATA' %}
     - source: salt://suricata/files/suricata.yaml
     {%- else %}
     - source: salt://suricata/files/suricataMETA.yaml
