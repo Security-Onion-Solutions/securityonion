@@ -52,7 +52,7 @@ filebeatconfsync:
 
 so-filebeat:
   docker_container.running:
-    - image: toosmooth/so-filebeat:techpreview
+    - image: soshybridhunter/so-filebeat:HH1.0.3
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}

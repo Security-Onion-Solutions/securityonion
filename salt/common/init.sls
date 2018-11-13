@@ -112,7 +112,7 @@ nginxtmp:
 # Start the core docker
 so-core:
   docker_container.running:
-    - image: toosmooth/so-core:techpreview
+    - image: soshybridhunter/so-core:HH1.0.3
     - hostname: so-core
     - user: socore
     - binds:

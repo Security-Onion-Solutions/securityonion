@@ -95,9 +95,9 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: securityonionsolutions/so-elasticsearch:latest
+    - image: soshybridhunter/so-elasticsearch:HH1.0.3
     - hostname: elasticsearch
-    - name: elasticsearch
+    - name: so-elasticsearch
     - user: elasticsearch
     - environment:
       - bootstrap.memory_lock=true

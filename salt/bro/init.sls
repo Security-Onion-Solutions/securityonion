@@ -65,7 +65,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: toosmooth/so-communitybro:techpreview
+    - image: soshybridhunter/so-communitybro:HH1.0.3
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
@@ -88,7 +88,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: toosmooth/so-bro:techpreview
+    - image: soshybridhunter/so-bro:HH1.0.3
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
