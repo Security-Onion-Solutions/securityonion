@@ -83,4 +83,4 @@ so-suricata:
     - network_mode: host
     - watch:
       - file: /opt/so/conf/suricata/suricata.yaml
-      - file: /opt/so/conf/suricata/rules/all.rules
+      - file: /opt/so/conf/suricata/rules/
