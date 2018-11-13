@@ -14,6 +14,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 
 # Suricata
 
@@ -60,7 +61,11 @@ surirulesync:
 suriconfigsync:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
+    {%- if BROVER != SURICATA %}
     - source: salt://suricata/files/suricata.yaml
+    {%- else %}
+    - source: salt://suricata/files/suricataMETA.yaml
+    {%- endif %}
     - user: 940
     - group: 940
     - template: jinja
@@ -76,3 +81,6 @@ so-suricata:
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
     - network_mode: host
+    - watch:
+      - file: /opt/so/conf/suricata/suricata.yaml
+      - file: /opt/so/conf/rules/all.rules

@@ -127,3 +127,5 @@ so-core:
     - port_bindings:
       - 80:80
       - 443:443
+    - watch:
+      - file: /opt/so/conf/nginx/nginx.conf

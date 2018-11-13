@@ -1,3 +1,4 @@
+{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 base:
   'G@role:so-sensor':
     - ssl
@@ -5,7 +6,9 @@ base:
     - firewall
     - pcap
     - suricata
+    {%- if BROVER != SURICATA %}
     - bro
+    {%- endif %}
     - filebeat
 
   'G@role:so-eval':
