@@ -159,5 +159,5 @@ so-logstash:
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
       {%- endif %}
-      - watch:
-        - file: /opt/so/conf/logstash
+    - watch:
+      - file: /opt/so/conf/logstash
