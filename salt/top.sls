@@ -6,7 +6,7 @@ base:
     - firewall
     - pcap
     - suricata
-    {%- if BROVER != SURICATA %}
+    {%- if BROVER != 'SURICATA' %}
     - bro
     {%- endif %}
     - filebeat
