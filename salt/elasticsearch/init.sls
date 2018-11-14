@@ -148,7 +148,7 @@ freqlogdir:
 
 so-freq:
   docker_container.running:
-    - image: securityonionsolutions/so-freqserver
+    - image: soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
     - user: freqserver
     - binds:
@@ -183,7 +183,7 @@ dstatslogdir:
 
 so-domainstats:
   docker_container.running:
-    - image: securityonionsolutions/so-domainstats
+    - image: soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
     - name: domainstats
     - user: domainstats
@@ -248,7 +248,7 @@ curconf:
 
 so-curator:
   docker_container.running:
-    - image: securityonionsolutions/so-curator
+    - image: soshybridhunter/so-curator:HH1.0.3
     - hostname: curator
     - name: curator
     - user: curator
@@ -309,7 +309,7 @@ elastaconf:
 
 so-elastalert:
   docker_container.running:
-    - image: securityonionsolutions/so-elastalert
+    - image: soshybridhunter/so-elastalert:HH1.0.3
     - hostname: elastalert
     - name: elastalert
     - user: elastalert
