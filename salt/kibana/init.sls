@@ -59,7 +59,7 @@ synckibanacustom:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: toosmooth/so-kibana:techpreview
+    - image: soshybridhunter/so-kibana:HH1.0.3
     - hostname: kibana
     - user: kibana
     - environment:

@@ -49,7 +49,7 @@ toosmooth/so-redis:test2:
 
 so-redis:
   docker_container.running:
-    - image: toosmooth/so-redis:test2
+    - image: soshybridhunter/so-redis:HH1.0.3
     - hostname: so-redis
     - user: socore
     - port_bindings:
@@ -59,4 +59,3 @@ so-redis:
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
-

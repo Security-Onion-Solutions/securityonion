@@ -112,7 +112,7 @@ nginxtmp:
 # Start the core docker
 so-core:
   docker_container.running:
-    - image: toosmooth/so-core:techpreview
+    - image: soshybridhunter/so-core:HH1.0.3
     - hostname: so-core
     - user: socore
     - binds:
@@ -127,3 +127,5 @@ so-core:
     - port_bindings:
       - 80:80
       - 443:443
+    - watch:
+      - file: /opt/so/conf/nginx/nginx.conf

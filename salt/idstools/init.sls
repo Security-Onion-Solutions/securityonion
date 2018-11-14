@@ -53,10 +53,9 @@ toosmooth/so-idstools:test2:
 
 so-idstools:
   docker_container.running:
-    - image: toosmooth/so-idstools:test2
+    - image: soshybridhunter/so-idstools:HH1.0.3
     - hostname: so-idstools
     - user: socore
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
-

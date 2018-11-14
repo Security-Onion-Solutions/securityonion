@@ -52,7 +52,7 @@ filebeatconfsync:
 
 so-filebeat:
   docker_container.running:
-    - image: toosmooth/so-filebeat:techpreview
+    - image: soshybridhunter/so-filebeat:HH1.0.3
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
@@ -64,3 +64,5 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
+    - watch:
+      - file: /opt/so/conf/filebeat/etc

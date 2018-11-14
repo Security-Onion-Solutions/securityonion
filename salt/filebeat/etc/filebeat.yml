@@ -1,5 +1,6 @@
 {%- set MASTER = grains['master'] %}
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
+{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 
 name: {{ HOSTNAME }}
 
@@ -10,7 +11,7 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.prospectors:
 #------------------------------ Log prospector --------------------------------
-
+{%- if BROVER != 'SURICATA' %}
 {%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
   - type: log
     paths:
@@ -23,6 +24,7 @@ filebeat.prospectors:
     close_removed: false
 
 {%- endfor %}
+{%- endif %}
 
   - type: log
     paths:

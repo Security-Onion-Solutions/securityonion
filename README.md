@@ -1,4 +1,4 @@
-# Security Onion Hybrid Hunter Tech Preview 1.0.2
+# Security Onion Hybrid Hunter Tech Preview 1.0.3
 
 ### About
 Hybrid Hunter is a brand new Security Onion platform with the following characteristics:

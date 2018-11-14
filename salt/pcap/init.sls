@@ -73,7 +73,7 @@ stenolog:
 
 so-steno:
   docker_container.running:
-    - image: toosmooth/so-steno:techpreview
+    - image: soshybridhunter/so-steno:HH1.0.3
     - network_mode: host
     - privileged: True
     - port_bindings:

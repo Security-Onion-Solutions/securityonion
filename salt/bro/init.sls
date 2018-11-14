@@ -65,7 +65,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: toosmooth/so-communitybro:techpreview
+    - image: soshybridhunter/so-communitybro:HH1.0.3
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
@@ -76,6 +76,10 @@ so-bro:
       - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
       - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
     - network_mode: host
+    - watch:
+      - file: /opt/so/conf/bro/local.bro
+      - file: /opt/so/conf/bro/node.cfg
+      - file: /opt/so/conf/bro/policy
 
 {% else %}
 localbrosync:
@@ -88,7 +92,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: toosmooth/so-bro:techpreview
+    - image: soshybridhunter/so-bro:HH1.0.3
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
@@ -99,5 +103,10 @@ so-bro:
       - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
       - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
     - network_mode: host
+    - watch:
+      - file: /opt/so/conf/bro/local.bro
+      - file: /opt/so/conf/bro/node.cfg
+      - file: /opt/so/conf/bro/policy
+
 
 {% endif %}

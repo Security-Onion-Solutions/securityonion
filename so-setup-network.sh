@@ -35,8 +35,10 @@ accept_salt_key_local() {
 
 accept_salt_key_remote() {
 
-  # Accept the key remotely so the device can check in
-  ssh -v -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  # Delete the key just in case.
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
+  salt-call state.apply ca
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
 
 }
 
@@ -156,13 +158,13 @@ create_bond() {
   if [ $OS == 'centos' ]; then
     modprobe --first-time bonding
     touch /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "DEVICE=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "DEVICE=bond0" > /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "NAME=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "Type=Bond" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "ONBOOT=yes"
+    echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
@@ -208,7 +210,6 @@ create_bond() {
     for BNIC in ${BNICS[@]}; do
 
       BNIC=$(echo $BNIC |  cut -d\" -f2)
-      echo ""
       echo "auto $BNIC" >> /etc/network/interfaces.d/$BNIC
       echo "iface $BNIC inet manual" >> /etc/network/interfaces.d/$BNIC
       echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/$BNIC
@@ -216,13 +217,12 @@ create_bond() {
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
       echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
-      echo ""
 
     done
 
     BN=("${BNICS[@]//\"/}")
 
-    echo "auto bond0" >> /etc/network/interfaces.d/bond0
+    echo "auto bond0" > /etc/network/interfaces.d/bond0
     echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
     echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
     echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
@@ -240,6 +240,7 @@ detect_os() {
   echo "Detecting Base OS"
   if [ -f /etc/redhat-release ]; then
     OS=centos
+    yum -y install bind-utils
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
   else
@@ -333,15 +334,15 @@ got_root() {
 install_cleanup() {
 
   # Clean up after ourselves
-  rm -rf ./installtmp
+  rm -rf /root/installtmp
 
 }
 
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
-  mkdir ./installtmp
-  TMP=./installtmp
+  mkdir /root/installtmp
+  TMP=/root/installtmp
 
 }
 
@@ -648,12 +649,6 @@ sensor_pillar() {
       SPIN=$(echo $SPIN |  cut -d\" -f2)
     echo "    - $SPIN" >> $TMP/$HOSTNAME.sls
     done
-    #SP=("${SURIPINS[@]//\"/}")
-    #SPINS=${SP// /,}
-    #SCOUNT=${#SURIPINS[@]}
-
-    #echo "  suripins: $SPINS" >> $TMP/$HOSTNAME.sls
-    #echo "  surithreads: $SCOUNT"
   else
     echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
     echo "  suriprocs: $BASICSURI" >> $TMP/$HOSTNAME.sls
@@ -686,14 +681,14 @@ set_initial_firewall_policy() {
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -v -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -746,10 +741,14 @@ set_updates() {
 
 update_sudoers() {
 
-  # Update Sudoers so that socore can accept keys without a password
-  echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
-  echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
-  echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | sudo tee -a /etc/sudoers
+  if ! grep -qE '^socore\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
+    # Update Sudoers so that socore can accept keys without a password
+    echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | sudo tee -a /etc/sudoers
+  else
+    echo "User socore already granted sudo privileges"
+  fi
 
 }
 
@@ -791,7 +790,8 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "Which version of Bro would you like to use?" 20 78 4 "COMMUNITY" "Install Community Bro" ON "ZEEK" "Install Zeek" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "COMMUNITY" "Install Community Bro" ON \
+   "ZEEK" "Install Zeek" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus

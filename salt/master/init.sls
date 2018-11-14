@@ -49,7 +49,7 @@ acngcopyconf:
 # Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
-    - image: toosmooth/so-acng:techpreview
+    - image: soshybridhunter/so-acng:HH1.0.3
     - hostname: so-acng
     - port_bindings:
       - 0.0.0.0:3142:3142
