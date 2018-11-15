@@ -73,6 +73,58 @@ add_socore_user_notmaster() {
 
 }
 
+# Enable Bro Logs
+bro_logs_enabled() {
+
+  echo "brologs:" > pillar/brologs.sls
+  echo "  enabled:" >> pillar/brologs.sls
+
+  if [ $MASTERADV == 'ADVANCED' ]; then
+    for BLOG in ${BLOGS[@]}; do
+      echo "    - $BLOG" >> pillar/brologs.sls
+    done
+  else
+    echo "    - conn" >> pillar/brologs.sls
+    echo "    - dce_rpc" >> pillar/brologs.sls
+    echo "    - dhcp" >> pillar/brologs.sls
+    echo "    - dhcpv6" >> pillar/brologs.sls
+    echo "    - dnp3" >> pillar/brologs.sls
+    echo "    - dns" >> pillar/brologs.sls
+    echo "    - dpd" >> pillar/brologs.sls
+    echo "    - files" >> pillar/brologs.sls
+    echo "    - ftp" >> pillar/brologs.sls
+    echo "    - http" >> pillar/brologs.sls
+    echo "    - intel" >> pillar/brologs.sls
+    echo "    - irc" >> pillar/brologs.sls
+    echo "    - kerberos" >> pillar/brologs.sls
+    echo "    - modbus" >> pillar/brologs.sls
+    echo "    - mqtt" >> pillar/brologs.sls
+    echo "    - notice" >> pillar/brologs.sls
+    echo "    - ntlm" >> pillar/brologs.sls
+    echo "    - openvpn" >> pillar/brologs.sls
+    echo "    - pe" >> pillar/brologs.sls
+    echo "    - radius" >> pillar/brologs.sls
+    echo "    - rfb" >> pillar/brologs.sls
+    echo "    - rdp" >> pillar/brologs.sls
+    echo "    - signatures" >> pillar/brologs.sls
+    echo "    - sip" >> pillar/brologs.sls
+    echo "    - smb_files" >> pillar/brologs.sls
+    echo "    - smb_mapping" >> pillar/brologs.sls
+    echo "    - smtp" >> pillar/brologs.sls
+    echo "    - snmp" >> pillar/brologs.sls
+    echo "    - software" >> pillar/brologs.sls
+    echo "    - ssh" >> pillar/brologs.sls
+    echo "    - ssl" >> pillar/brologs.sls
+    echo "    - syslog" >> pillar/brologs.sls
+    echo "    - telnet" >> pillar/brologs.sls
+    echo "    - tunnel" >> pillar/brologs.sls
+    echo "    - weird" >> pillar/brologs.sls
+    echo "    - mysql" >> pillar/brologs.sls
+    echo "    - socks" >> pillar/brologs.sls
+    echo "    - x509" >> pillar/brologs.sls
+  fi
+}
+
 calculate_useable_cores() {
 
   # Calculate reasonable core usage
@@ -865,14 +917,17 @@ whiptail_install_type() {
 
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 78 8 \
+  "Choose Install Type:" 20 78 14 \
   "SENSORONLY" "Create a forward only sensor" ON \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
-  "EVALMODE" "Evaluate all the things" OFF 3>&1 1>&2 2>&3 )
+  "EVALMODE" "Evaluate all the things" OFF \
+  "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
+  "STRELKA" "TODO Stand Alone Strelka Node" OFF \
+  "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -936,6 +991,75 @@ whiptail_management_server() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+# Ask if you want to do advanced setup of the Master
+whiptail_master_adv() {
+  MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose what type of master install:" 20 78 4 \
+  "BASIC" "Install master with recommended settings" ON  \
+  "ADVANCED" "Do additional configuration to the master" OFF 3>&1 1>&2 2>&3 )
+}
+
+# Ask which additional components to install
+whiptail_master_adv_service_brologs() {
+
+  BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please Select Logs to Send:" 24 78 12 \
+  "conn" "Connection Logging" ON \
+  "dce_rpc" "RPC Logs" ON \
+  "dhcp" "DHCP Logs" ON \
+  "dhcpv6" "DHCP IPv6 Logs" ON \
+  "dnp3" "DNP3 Logs" ON \
+  "dns" "DNS Logs" ON \
+  "dpd" "DPD Logs" ON \
+  "files" "Files Logs" ON \
+  "ftp" "FTP Logs" ON \
+  "http" "HTTP Logs" ON \
+  "intel" "Intel Hits Logs" ON \
+  "irc" "IRC Chat Logs" ON \
+  "kerberos" "Kerberos Logs" ON \
+  "modbus" "MODBUS Logs" ON \
+  "mqtt" "MQTT Logs" ON \
+  "notice" "Zeek Notice Logs" ON \
+  "ntlm" "NTLM Logs" ON \
+  "openvpn" "OPENVPN Logs" ON \
+  "pe" "PE Logs" ON \
+  "radius" "Radius Logs" ON \
+  "rfb" "RFB Logs" ON \
+  "rdp" "RDP Logs" ON \
+  "signatures" "Signatures Logs" ON \
+  "sip" "SIP Logs" ON \
+  "smb_files" "SMB Files Logs" ON \
+  "smb_mapping" "SMB Mapping Logs" ON \
+  "smtp" "SMTP Logs" ON \
+  "snmp" "SNMP Logs" ON \
+  "software" "Software Logs" ON \
+  "ssh" "SSH Logs" ON \
+  "ssl" "SSL Logs" ON \
+  "syslog" "Syslog Logs" ON \
+  "telnet" "Telnet Logs" ON \
+  "tunnel" "Tunnel Logs" ON \
+  "weird" "Zeek Weird Logs" ON \
+  "mysql" "MySQL Logs" ON \
+  "socks" "SOCKS Logs" ON \
+  "x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 )
+}
+
+whiptail_master_adv_service_grafana() {
+  echo "blah"
+}
+
+whiptail_master_adv_service_osquery() {
+  #MOSQ=$()
+  echo "blah"
+
+}
+
+whiptail_master_adv_service_wazuh() {
+  echo "blah"
+}
+
+
+
 
 whiptail_network_notice() {
 
@@ -1147,6 +1271,9 @@ if (whiptail_you_sure); then
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
+    # Would you like to do an advanced install?
+    whiptail_master_adv
+
     # Pick the Management NIC
     whiptail_management_nic
 
@@ -1171,8 +1298,22 @@ if (whiptail_you_sure); then
     # Find out how to handle updates
     whiptail_master_updates
 
+    # Do Advacned Setup if they chose it
+    if [ $MASTERADV == 'ADVANCED' ]; then
+      # Ask which bro logs to enable - Need to add Suricata check
+      if [ $BROVERSION != 'SURICATA' ]; then
+        whiptail_master_adv_service_brologs
+      fi
+      whiptail_master_adv_service_osquery
+      whiptail_master_adv_service_grafana
+      whiptail_master_adv_service_wazuh
+    fi
+
     # Last Chance to back out
     whiptail_make_changes
+
+    # Enable Bro Logs
+    bro_logs_enabled
 
     # Figure out the main IP address
     get_main_ip
