@@ -81,7 +81,7 @@ bro_logs_enabled() {
 
   if [ $MASTERADV == 'ADVANCED' ]; then
     for BLOG in ${BLOGS[@]}; do
-      echo "    - $BLOG" >> pillar/brologs.sls
+      echo "    - $BLOG" | tr -d '"' >> pillar/brologs.sls
     done
   else
     echo "    - conn" >> pillar/brologs.sls
