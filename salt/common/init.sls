@@ -129,3 +129,29 @@ so-core:
       - 443:443
     - watch:
       - file: /opt/so/conf/nginx/nginx.conf
+
+# Add Telegraf to monitor all the things.
+tgraflogdir:
+  file.directory:
+    - name: /opt/so/log/telegraf
+    - makedirs: True
+
+tgrafetcdir:
+  file.directory:
+    - name: /opt/so/conf/telegraf/etc
+    - makedirs: True
+
+so-telegraf:
+  docker_container.running:
+    - image: soshybridhunter/so-telegraf:HH1.0.4
+    - hostname: telegraf
+    - binds:
+      - /opt/so/log/telegraf:/var/log/telegraf:rw
+      - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/relegraf.conf:ro
+      - /var/run/utmp:/var/run/utmp:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:ro
+      - /sys:/host/sys:ro
+      - /proc:/host/proc:ro
+      - /nsm:/host/nsm:ro
+      - /etc:/host/etc:ro
