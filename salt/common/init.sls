@@ -141,6 +141,14 @@ tgrafetcdir:
     - name: /opt/so/conf/telegraf/etc
     - makedirs: True
 
+tgrafconf:
+  file.managed:
+    - name: /opt/so/conf/telegraf/telegraf.conf
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/telegraf/etc/telegraf.conf
+
 so-telegraf:
   docker_container.running:
     - image: soshybridhunter/so-telegraf:HH1.0.4
