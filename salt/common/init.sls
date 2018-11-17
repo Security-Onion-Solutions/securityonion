@@ -163,3 +163,21 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
+
+# If its a master or eval lets install the back end for now
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+  influxdbdir:
+    file.directory:
+      - name: /nsm/influxdb
+      - makedirs: True
+
+  so-influxdb:
+    docker_container.running:
+      - image: soshybridhunter/so-influxdb:HH1.0.4
+      - hostname: influxdb
+      - binds:
+        - /nsm/influxdb:/var/lib/influxdb:rw
+      - environment:
+        - bootstrap.memory_lock=true
+      - port_bindings:
+        - 0.0.0.0:8086:8086

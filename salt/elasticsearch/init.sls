@@ -257,7 +257,7 @@ so-curator:
     - binds:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
-      - /opt/so/log/curator:/var/log/curator
+      - /opt/so/log/curator:/var/log/curator:rw
 
 
 # Begin Curator Cron Jobs
@@ -315,7 +315,7 @@ so-elastalert:
     - user: elastalert
     - detach: True
     - binds:
-      - /etc/elastalert/rules/:/etc/elastalert/rules/
-      - /opt/so/log/elastalert:/var/log/elastalert
+      - /etc/elastalert/rules/:/etc/elastalert/rules/:ro
+      - /opt/so/log/elastalert:/var/log/elastalert:rw
 
 {% endif %}

@@ -78,6 +78,20 @@ fbcrtlink:
         bits: 4096
         backup: True
 
+# Create a cert for the reverse proxy
+/etc/pki/influxdb.crt:
+  x509.certificate_managed:
+    - ca_server: {{ master }}
+    - signing_policy: influxdb
+    - public_key: /etc/pki/influxdb.key
+    - CN: {{ master }}
+    - days_remaining: 3000
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/influxdb.key
+        bits: 4096
+        backup: True
+
 {% endif %}
 {% if grains['role'] == 'so-SENSOR' or grains['role'] == 'so-eval' %}
 
