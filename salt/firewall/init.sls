@@ -324,6 +324,17 @@ enable_standard_analyst_443_{{ip}}:
     - position: 1
     - save: True
 
+enable_standard_analyst_3000_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3000
+    - position: 1
+    - save: True
+
 #THIS IS TEMPORARY
 enable_standard_analyst_5601_{{ip}}:
   iptables.insert:
