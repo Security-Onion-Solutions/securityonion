@@ -194,6 +194,21 @@ grafanadir:
     - group: 939
     - makedirs: True
 
+grafanaconfdir:
+  file.directory:
+    - name: /opt/so/conf/grafana/etc
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+grafanaconf:
+  file.recurse:
+    - name: /opt/so/conf/grafana/etc
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/grafana/etc
+
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
   docker_container.running:
