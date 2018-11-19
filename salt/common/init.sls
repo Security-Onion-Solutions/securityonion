@@ -138,7 +138,7 @@ so-telegraf:
     - hostname: telegraf
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
-      - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/relegraf.conf:ro
+      - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /var/run/utmp:/var/run/utmp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host:ro
