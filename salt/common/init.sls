@@ -126,7 +126,7 @@ tgrafetcdir:
 
 tgrafconf:
   file.managed:
-    - name: /opt/so/conf/telegraf/telegraf.conf
+    - name: /opt/so/conf/telegraf/etc/telegraf.conf
     - user: 939
     - group: 939
     - template: jinja
