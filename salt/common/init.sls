@@ -177,6 +177,7 @@ grafanadir:
     - name: /nsm/grafana
     - makedirs: True
 
+# Install the docker. This needs to be behind nginx at some point
 so-grafana:
   docker_container.running:
     - image: soshybridhunter/so-grafana:HH1.0.4
