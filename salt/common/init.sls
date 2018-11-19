@@ -176,6 +176,8 @@ so-influxdb:
     - binds:
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
+      - /etc/pki/influxdb.crt:/etc/ssl/influxdb.crt:ro
+      - /etc/pki/influxdb.key:/etc/ssl/influxdb.key:ro
     - port_bindings:
       - 0.0.0.0:8086:8086
 
