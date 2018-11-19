@@ -163,7 +163,7 @@ influxdbdir:
 
 influxdbconf:
   file.managed:
-    - name: /opt/so/conf/influxdb//etc/influxdb.conf
+    - name: /opt/so/conf/influxdb/etc/influxdb.conf
     - user: 939
     - group: 939
     - template: jinja
