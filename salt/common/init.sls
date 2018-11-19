@@ -149,8 +149,7 @@ so-telegraf:
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
-      - /opt/so/log/telegraf/:/var/log/telegraf/:rw
-
+      
 # If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 
