@@ -174,7 +174,7 @@ so-influxdb:
     - image: soshybridhunter/so-influxdb:HH1.0.4
     - hostname: influxdb
     - binds:
-      - /opt/so/conf/influxdb/etc:/etc/influxdb/influxdb.conf:ro
+      - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
     - port_bindings:
       - 0.0.0.0:8086:8086
