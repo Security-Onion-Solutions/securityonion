@@ -173,7 +173,6 @@ so-influxdb:
   docker_container.running:
     - image: soshybridhunter/so-influxdb:HH1.0.4
     - hostname: influxdb
-    - user: socore
     - binds:
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
