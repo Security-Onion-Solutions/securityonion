@@ -146,6 +146,9 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
+      - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
+      - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
+      - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
 
 # If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
