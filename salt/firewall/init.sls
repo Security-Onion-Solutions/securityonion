@@ -1,4 +1,4 @@
-# Firewall Magic
+# Firewall Magic for the grid
 
 # Keep localhost in the game
 iptables_allow_localhost:
