@@ -149,7 +149,7 @@ so-telegraf:
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
-      
+
 # If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 
@@ -202,6 +202,10 @@ so-grafana:
     - user: socore
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
+      - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
+      - /etc/pki/influxdb.crt:/etc/telegraf/grafana.crt:ro
+      - /etc/pki/influxdb.key:/etc/telegraf/grafana.key:ro
+      - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD=augusta
     - port_bindings:
