@@ -161,6 +161,14 @@ influxdbdir:
     - name: /nsm/influxdb
     - makedirs: True
 
+influxdbconf:
+  file.managed:
+    - name: /opt/so/conf/influxdb/influxdb.conf
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/influxdb/etc/influxdb.conf
+
 so-influxdb:
   docker_container.running:
     - image: soshybridhunter/so-influxdb:HH1.0.4
