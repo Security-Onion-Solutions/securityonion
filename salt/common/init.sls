@@ -189,6 +189,11 @@ so-telegraf:
         - 0.0.0.0:8086:8086
 
   # Grafana all the things
+    grafanadir:
+      file.directory:
+        - name: /nsm/grafana
+        - makedirs: True
+
     so-grafana:
       docker_container.running:
         - image: soshybridhunter/so-grafana:HH1.0.4
@@ -199,4 +204,5 @@ so-telegraf:
           - GF_SECURITY_ADMIN_PASSWORD=augusta
         - port_bindings:
           - 0.0.0.0:3000:3000
+
 {% endif %}
