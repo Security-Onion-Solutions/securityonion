@@ -173,6 +173,7 @@ so-influxdb:
   docker_container.running:
     - image: soshybridhunter/so-influxdb:HH1.0.4
     - hostname: influxdb
+    - user: socore
     - binds:
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
@@ -185,6 +186,8 @@ so-influxdb:
 grafanadir:
   file.directory:
     - name: /nsm/grafana
+    - user: 939
+    - group: 939
     - makedirs: True
 
 # Install the docker. This needs to be behind nginx at some point
@@ -192,6 +195,7 @@ so-grafana:
   docker_container.running:
     - image: soshybridhunter/so-grafana:HH1.0.4
     - hostname: grafana
+    - user: socore
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
     - environment:
