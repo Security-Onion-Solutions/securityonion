@@ -251,5 +251,7 @@ so-grafana:
       - GF_SECURITY_ADMIN_PASSWORD=augusta
     - port_bindings:
       - 0.0.0.0:3000:3000
+    - watch:
+      - /opt/so/conf/grafana/etc
 
 {% endif %}
