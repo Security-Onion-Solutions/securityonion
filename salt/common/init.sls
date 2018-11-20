@@ -145,6 +145,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /var/run/utmp:/var/run/utmp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host/root:ro
       - /sys:/host/sys:ro
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
