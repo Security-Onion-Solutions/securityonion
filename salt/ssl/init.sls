@@ -16,6 +16,20 @@ m2cryptopkgs:
       - python-m2crypto
 {% endif %}
 
+# Create a cert for the talking to influxdb
+/etc/pki/influxdb.crt:
+  x509.certificate_managed:
+    - ca_server: {{ master }}
+    - signing_policy: influxdb
+    - public_key: /etc/pki/influxdb.key
+    - CN: {{ master }}
+    - days_remaining: 3000
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/influxdb.key
+        bits: 4096
+        backup: True
+
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 
 # Request a cert and drop it where it needs to go to be distributed
@@ -75,20 +89,6 @@ fbcrtlink:
     - backup: True
     - managed_private_key:
         name: /etc/pki/masterssl.key
-        bits: 4096
-        backup: True
-
-# Create a cert for the reverse proxy
-/etc/pki/influxdb.crt:
-  x509.certificate_managed:
-    - ca_server: {{ master }}
-    - signing_policy: influxdb
-    - public_key: /etc/pki/influxdb.key
-    - CN: {{ master }}
-    - days_remaining: 3000
-    - backup: True
-    - managed_private_key:
-        name: /etc/pki/influxdb.key
         bits: 4096
         backup: True
 
