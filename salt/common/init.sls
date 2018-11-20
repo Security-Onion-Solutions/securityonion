@@ -168,7 +168,7 @@ so-telegraf:
       {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt
+      - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt:ro
       {% endif %}
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
