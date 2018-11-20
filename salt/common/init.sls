@@ -242,6 +242,7 @@ so-grafana:
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
       - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
+      - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD=augusta
     - port_bindings:
