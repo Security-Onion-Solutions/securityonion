@@ -136,6 +136,10 @@ so-telegraf:
   docker_container.running:
     - image: soshybridhunter/so-telegraf:HH1.0.4
     - hostname: telegraf
+    - environment:
+      - HOST_PROC=/host/proc
+      - HOST_ETC=/host/etc
+      - HOST_SYS=/host/sys
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
@@ -217,9 +221,6 @@ so-grafana:
     - user: socore
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
-      - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
-      - /etc/pki/influxdb.crt:/etc/telegraf/grafana.crt:ro
-      - /etc/pki/influxdb.key:/etc/telegraf/grafana.key:ro
       - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD=augusta
