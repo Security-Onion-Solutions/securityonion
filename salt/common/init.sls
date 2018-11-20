@@ -124,6 +124,20 @@ tgrafetcdir:
     - name: /opt/so/conf/telegraf/etc
     - makedirs: True
 
+tgrafetsdir:
+  file.directory:
+    - name: /opt/so/conf/telegraf/scripts
+    - makedirs: True
+
+tgrafsyncscripts:
+  file.recurse:
+    - name: /opt/so/conf/telegraf/scripts
+    - user: 939
+    - group: 939
+    - mode: 755
+    - template: jinja
+    - source: salt://common/telegraf/scripts
+
 tgrafconf:
   file.managed:
     - name: /opt/so/conf/telegraf/etc/telegraf.conf
@@ -154,6 +168,10 @@ so-telegraf:
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
+      - /opt/so/conf/telegraf/scripts:/scripts:ro
+    - watch:
+      - /opt/so/conf/telegraf/etc/telegraf.conf
+      - /opt/so/conf/telegraf/scripts
 
 # If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
