@@ -140,6 +140,7 @@ so-telegraf:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
+      - HOST_MOUNT_PREFIX=/host
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
