@@ -370,6 +370,7 @@ get_main_ip() {
 
   # Get the main IP address the box is using
   MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+  MAININT=$(ip route get 1 | awk '{print $5;exit}')
 
 }
 
@@ -435,6 +436,7 @@ master_pillar() {
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -492,6 +494,7 @@ node_pillar() {
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
   echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
@@ -690,6 +693,7 @@ sensor_pillar() {
   echo "sensor:" > $TMP/$HOSTNAME.sls
   echo "  interface: bond0" >> $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
     echo "  bro_pins:" >> $TMP/$HOSTNAME.sls
     for PIN in $BROPINS; do
