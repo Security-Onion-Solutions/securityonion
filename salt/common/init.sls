@@ -134,7 +134,7 @@ tgrafsyncscripts:
     - name: /opt/so/conf/telegraf/scripts
     - user: 939
     - group: 939
-    - mode: 755
+    - file_mode: 755
     - template: jinja
     - source: salt://common/telegraf/scripts
 
