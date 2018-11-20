@@ -229,6 +229,13 @@ grafanaconfdir:
     - group: 939
     - makedirs: True
 
+grafanadashdir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 grafanaconf:
   file.recurse:
     - name: /opt/so/conf/grafana/etc
@@ -236,6 +243,22 @@ grafanaconf:
     - group: 939
     - template: jinja
     - source: salt://common/grafana/etc
+
+{%- for SN, SIP in salt['pillar.get']('sensorstab', {}).iteritems() %}}
+{% include: 'sensors.{{ SN }}.sls' %}
+
+dashboard-{{ SN }}:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{ SN }}-Sensor.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/grafana/grafana_dashboards/sensor.json
+    - defaults:
+      - SERVERNAME: {{ SN }}
+      - INT: salt['pillar.get']('sensor:mainint')
+
+{% endfor %}
 
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
@@ -247,6 +270,7 @@ so-grafana:
       - /nsm/grafana:/var/lib/grafana:rw
       - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
       - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
+      - /opt/so/conf/grafana/grafana_dashboards:/etc/grafana/grafana_dashboards:rw
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD=augusta
     - port_bindings:
