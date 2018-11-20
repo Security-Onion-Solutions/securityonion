@@ -165,7 +165,11 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
+      {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
+      {% else %}
+      - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt
+      {% endif %}
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
       - /opt/so/conf/telegraf/scripts:/scripts:ro
