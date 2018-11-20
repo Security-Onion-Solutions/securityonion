@@ -135,7 +135,6 @@ tgrafconf:
 so-telegraf:
   docker_container.running:
     - image: soshybridhunter/so-telegraf:HH1.0.4
-    - hostname: telegraf
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
