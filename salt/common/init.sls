@@ -278,7 +278,6 @@ so-grafana:
     - port_bindings:
       - 0.0.0.0:3000:3000
     - watch:
-      - /opt/so/conf/grafana/etc
-      - /opt/so/conf/grafana/grafnana_dashboards
-
+      - file: /opt/so/conf/grafana/etc/*
+      
 {% endif %}
