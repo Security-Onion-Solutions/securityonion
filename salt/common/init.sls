@@ -244,6 +244,7 @@ grafanaconf:
     - template: jinja
     - source: salt://common/grafana/etc
 
+{% if salt['pillar.get']('sensorstab', False) %}
 {%- for SN, SIP, MAININT, MONINT in salt['pillar.get']('sensorstab', {}).iteritems() %}}
 dashboard-{{ SN }}:
   file.managed:
@@ -258,6 +259,7 @@ dashboard-{{ SN }}:
       - MON: {{ MONINT }}
 
 {% endfor %}
+{% endif %}
 
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
