@@ -244,9 +244,7 @@ grafanaconf:
     - template: jinja
     - source: salt://common/grafana/etc
 
-{%- for SN, SIP in salt['pillar.get']('sensorstab', {}).iteritems() %}}
-{% include: 'sensors.{{ SN }}.sls' %}
-
+{%- for SN, SIP, MAININT, MONINT in salt['pillar.get']('sensorstab', {}).iteritems() %}}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/{{ SN }}-Sensor.json
@@ -256,7 +254,8 @@ dashboard-{{ SN }}:
     - source: salt://common/grafana/grafana_dashboards/sensor.json
     - defaults:
       - SERVERNAME: {{ SN }}
-      - INT: salt['pillar.get']('sensor:mainint')
+      - INT: {{ MAININT }}
+      - MON: {{ MONINT }}
 
 {% endfor %}
 
