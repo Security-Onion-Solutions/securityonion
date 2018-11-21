@@ -255,7 +255,8 @@ dashboard-{{ SN }}:
     - source: salt://common/grafana/grafana_dashboards/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
-      INT: {{ SNDATA.monint }}
+      MONINT: {{ SNDATA.monint }}
+      MANINT: {{ SNDATA.manint }}
 
 {% endfor %}
 {% endif %}
@@ -278,5 +279,6 @@ so-grafana:
       - 0.0.0.0:3000:3000
     - watch:
       - /opt/so/conf/grafana/etc
+      - /opt/so/conf/grafana/grafnana_dashboards
 
 {% endif %}
