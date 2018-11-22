@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Get the data
-OLDPCAP=$(find /nsm/pcap -type f -printf '%Cs %p\n' | sort | head -n 1 | awk {'print $1'})
+OLDPCAP=$(find /host/nsm/pcap -type f -exec stat -c'%n %Z' {} + | sort | grep -v "\." | head -n 1 | awk {'print $2'})
 DATE=$(date +%s)
 AGE=$(($DATE - $OLDPCAP))
 
