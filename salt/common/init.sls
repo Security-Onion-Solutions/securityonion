@@ -276,6 +276,20 @@ grafanaconf:
     - template: jinja
     - source: salt://common/grafana/etc
 
+{%- if grains['role'] == 'so-master' %}
+dashboard-master:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ grains.host }}-Master.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/grafana/grafana_dashboards/master/sensor.json
+    - defaults:
+      SERVERNAME: {{ grains.host }}
+      MANINT: ens33
+      MONINT: ens33
+
+{% endif %}
 {% if salt['pillar.get']('sensorstab', False) %}
 {%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
 dashboard-{{ SN }}:
