@@ -240,6 +240,34 @@ grafanadashdir:
     - group: 939
     - makedirs: True
 
+grafanadashmdir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/master
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+grafanadashevaldir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/eval
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+grafanadashfndir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+grafanadashsndir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 grafanaconf:
   file.recurse:
     - name: /opt/so/conf/grafana/etc
@@ -252,11 +280,11 @@ grafanaconf:
 {%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/{{ SN }}-Sensor.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/sensor.json
+    - source: salt://common/grafana/grafana_dashboards/forward_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
       MONINT: {{ SNDATA.monint }}
@@ -269,7 +297,7 @@ dashboard-{{ SN }}:
 {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).iteritems() %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/{{ SN }}-Sensor.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
     - user: 939
     - group: 939
     - template: jinja
