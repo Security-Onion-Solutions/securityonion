@@ -276,20 +276,24 @@ grafanaconf:
     - template: jinja
     - source: salt://common/grafana/etc
 
-{%- if grains['role'] == 'so-master' %}
+{% if salt['pillar.get']('mastertab', False) %}
+{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).iteritems() %}
 dashboard-master:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ grains.host }}-Master.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/master/sensor.json
+    - source: salt://common/grafana/grafana_dashboards/master/master.json
     - defaults:
-      SERVERNAME: {{ grains.host }}
-      MANINT: ens33
-      MONINT: ens33
+      SERVERNAME: {{ SN }}
+      MANINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
 
 {% endif %}
+{%- endfor %}
+
 {% if salt['pillar.get']('sensorstab', False) %}
 {%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
 dashboard-{{ SN }}:
@@ -303,6 +307,8 @@ dashboard-{{ SN }}:
       SERVERNAME: {{ SN }}
       MONINT: {{ SNDATA.monint }}
       MANINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
 
 {% endfor %}
 {% endif %}
@@ -319,6 +325,8 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
 
 {% endfor %}
 {% endif %}
