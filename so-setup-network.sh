@@ -21,6 +21,7 @@ TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
+RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 
 # End Global Variable Section
 
@@ -727,7 +728,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $MAININT
+    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT
   fi
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -735,19 +736,19 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $MAININT bond0
+    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT bond0
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $MAININT bond0
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT bond0
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $MAININT
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
