@@ -727,6 +727,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $MAININT
   fi
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -734,18 +735,19 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
+    /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $MAININT bond0
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $MAININT bond0
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $MAININT bond0
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $MAININT
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $MAININT
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
