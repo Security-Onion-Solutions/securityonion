@@ -261,6 +261,22 @@ dashboard-{{ SN }}:
 {% endfor %}
 {% endif %}
 
+{% if salt['pillar.get']('nodestab', False) %}
+{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).iteritems() %}
+dashboard-{{ SN }}:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{ SN }}-Sensor.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/grafana/grafana_dashboards/sensor.json
+    - defaults:
+      SERVERNAME: {{ SN }}
+      MANINT: {{ SNDATA.manint }}
+
+{% endfor %}
+{% endif %}
+
 
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:

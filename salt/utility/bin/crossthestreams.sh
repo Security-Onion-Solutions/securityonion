@@ -30,6 +30,7 @@ echo "Applying cross cluster search config..."
          -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MASTER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
 
 # Add all the storage nodes to cross cluster searching.
-{%- for SN, SNIP in salt['pillar.get']('nodestab', {}).iteritems() %}}
-curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNIP['ip'] }}:9300"]}}}}}'
+#{%- for SN, SNIP in salt['pillar.get']('nodestab', {}).iteritems() %}}
+{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).iteritems() %}
+curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNDATA.ip }}:9300"]}}}}}'
 {%- endfor %}

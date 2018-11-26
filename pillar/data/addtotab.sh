@@ -16,8 +16,12 @@ else
   if [ $TYPE == 'sensorstab' ]; then
     echo "    manint: $MANINT" >> /opt/so/saltstack/pillar/data/$1.sls
     echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$1.sls
-    salt-call state.apply common
   fi
+  if [ $TYPE == 'nodestab' ]; then
+    echo "    manint: $MANINT" >> /opt/so/saltstack/pillar/data/$1.sls
+  fi
+
+  salt-call state.apply common
   salt-call state.apply utility
 
 fi
