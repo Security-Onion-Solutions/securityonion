@@ -288,6 +288,7 @@ dashboard-master:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
 
@@ -325,6 +326,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
 
