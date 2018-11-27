@@ -321,7 +321,7 @@ dashboard-{{ SN }}:
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/sensor.json
+    - source: salt://common/grafana/grafana_dashboards/storage_nodes/storage.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
