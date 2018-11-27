@@ -291,8 +291,8 @@ dashboard-master:
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
 
-{% endif %}
 {%- endfor %}
+{% endif %}
 
 {% if salt['pillar.get']('sensorstab', False) %}
 {%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
