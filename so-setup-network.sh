@@ -630,7 +630,7 @@ saltify() {
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-  salt-call state.apply ca >>~/sosetup.log 2>&1
+  salt-call state.apply ca 
   # salt-call state.apply ssl >>~/sosetup.log 2>&1
   # salt-call state.apply common >>~/sosetup.log 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
