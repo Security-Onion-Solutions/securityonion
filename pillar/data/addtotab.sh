@@ -21,12 +21,14 @@ else
   echo "    guid: $GUID" >> /opt/so/saltstack/pillar/data/$1.sls
   if [ $TYPE == 'sensorstab' ]; then
     echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$1.sls
+    salt-call state.apply common
+    salt-call state.apply utility
   fi
   if [ $TYPE == 'evaltab' ]; then
     echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$1.sls
   fi
-
-  salt-call state.apply common
-  salt-call state.apply utility
-
+  if [ $TYPE == 'nodestab' ]; then
+    salt-call state.apply common
+    salt-call state.apply utility
+  fi
 fi
