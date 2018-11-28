@@ -1,6 +1,7 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 base:
   'G@role:so-sensor':
+    - ca
     - ssl
     - common
     - firewall
