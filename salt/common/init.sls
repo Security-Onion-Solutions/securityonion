@@ -40,7 +40,7 @@ sensorpkgs:
       - python-docker
       - python-m2crypto
       {% else %}
-      - net-utils
+      - net-tools
       - tcpdump
       {% endif %}
 
