@@ -70,6 +70,8 @@ base:
 
   'G@role:so-node and I@node:node_type:storage':
     - match: compound
+    - ca
+    - ssl
     - common
     - firewall
     - logstash
