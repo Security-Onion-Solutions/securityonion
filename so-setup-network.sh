@@ -647,6 +647,8 @@ salt_checkin() {
   else
 
   # Run Checkin
+  salt-call state.apply ca
+  salt-call state.apply ssl
   salt-call state.highstate
 
   fi
