@@ -178,6 +178,7 @@ so-telegraf:
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
       - /opt/so/conf/telegraf/scripts:/scripts:ro
       - /opt/so/log/stenographer:/var/log/stenographer:ro
+      - /opt/so/log/suricata:/var/log/suricata:ro
     - watch:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
