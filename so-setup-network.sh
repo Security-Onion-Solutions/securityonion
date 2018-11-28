@@ -366,6 +366,13 @@ filter_nics() {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 }
+get_filesystem_nsm(){
+  FSNSM=$(df /nsm | grep -v Filesystem | awk {'print $1'} | awk -F "/" {'print $NF'})
+}
+
+get_filesystem_root(){
+  FSROOT=$(df / | grep -v Filesystem | awk {'print $1'} | awk -F "/" {'print $NF'})
+}
 
 get_main_ip() {
 
@@ -729,7 +736,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT
+    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -737,19 +744,19 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT bond0
+    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT bond0
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -1320,7 +1327,9 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
-
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     # Enable Bro Logs
     bro_logs_enabled
 
@@ -1415,6 +1424,9 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     copy_ssh_key
     set_initial_firewall_policy
     sensor_pillar
@@ -1466,6 +1478,9 @@ if (whiptail_you_sure); then
     NIDS=Suricata
     BROVERSION=COMMUNITY
     whiptail_make_changes
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     get_main_ip
     # Add the user so we can sit back and relax
     echo ""
@@ -1525,6 +1540,9 @@ if (whiptail_you_sure); then
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     copy_ssh_key
     set_initial_firewall_policy
     saltify
