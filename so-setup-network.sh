@@ -849,7 +849,7 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "COMMUNITY" "Install Community Bro" ON \
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "COMMUNITY" "Install Community NSM" ON \
    "ZEEK" "Install Zeek" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
@@ -1284,7 +1284,7 @@ if (whiptail_you_sure); then
     # Pick the Management NIC
     whiptail_management_nic
 
-    # Choose Zeek or Community Bro
+    # Choose Zeek or Community NSM
     whiptail_bro_version
 
     # Select Snort or Suricata
