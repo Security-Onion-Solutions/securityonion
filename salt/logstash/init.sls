@@ -69,6 +69,7 @@ lscustparserdir:
     - user: 931
     - group: 939
     - makedirs: True
+    - template: jinja
 
 lscusttemplatedir:
   file.directory:
