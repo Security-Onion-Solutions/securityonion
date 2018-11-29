@@ -295,6 +295,8 @@ dashboard-master:
       MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
 
 {%- endfor %}
 {% endif %}
@@ -314,6 +316,8 @@ dashboard-{{ SN }}:
       MANINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
 
 {% endfor %}
 {% endif %}
@@ -333,6 +337,8 @@ dashboard-{{ SN }}:
       MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
 
 {% endfor %}
 {% endif %}

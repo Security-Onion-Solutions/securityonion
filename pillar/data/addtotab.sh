@@ -39,7 +39,7 @@ echo "    manint: $MANINT" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 echo "    totalcpus: $CPUS" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 echo "    guid: $GUID" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 echo "    rootfs: $ROOTFS" >> /opt/so/saltstack/pillar/data/$TYPE.sls
-echo "    nsm: $NSM" >> /opt/so/saltstack/pillar/data/$TYPE.sls
+echo "    nsmfs: $NSM" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 if [ $TYPE == 'sensorstab' ]; then
   echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$TYPE.sls
   salt-call state.apply common
