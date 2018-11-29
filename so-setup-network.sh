@@ -385,11 +385,11 @@ filter_nics() {
 
 }
 get_filesystem_nsm(){
-  FSNSM=$(df /nsm | grep -v Filesystem | awk {'print $1'} | awk -F "/" {'print $NF'})
+  FSNSM=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 }
 
 get_filesystem_root(){
-  FSROOT=$(df / | grep -v Filesystem | awk {'print $1'} | awk -F "/" {'print $NF'})
+  FSROOT=$(df / | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 }
 
 get_main_ip() {
