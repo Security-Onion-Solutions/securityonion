@@ -186,4 +186,4 @@ so-logstash:
       - /opt/so/log/suricata:/suricata:ro
       {%- endif %}
     - watch:
-      - file: /opt/so/conf/logstash
+      - file: /opt/so/conf/logstash/etc
