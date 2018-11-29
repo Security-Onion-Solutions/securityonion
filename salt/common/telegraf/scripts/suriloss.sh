@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SURILOG=$(tac /var/log/suricata/stats.log | grep kernel | head -4)
-CHECKIT=$(echo $SURILOG | grep drop | wc -l)
+CHECKIT=$(echo $SURILOG | grep -o 'drop' | wc -l)
 
 if [ $CHECKIT == 2 ]; then
   declare RESULT=($SURILOG)
