@@ -1,6 +1,7 @@
 %YAML 1.1
 ---
 {%- set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{%- set MTU = salt['pillar.get']('sensor:mtu', '1500') %}
 {%- if salt['pillar.get']('sensor:homenet') %}
   {%- set homenet = salt['pillar.get']('sensor:hnsensor', '') %}
 {%- else %}
@@ -931,7 +932,7 @@ host-mode: auto
 # Preallocated size for packet. Default is 1514 which is the classical
 # size for pcap on ethernet. You should adjust this value to the highest
 # packet size (MTU + hardware header) on your system.
-#default-packet-size: 1514
+default-packet-size: {{ MTU + 15 }}
 
 # Unix command socket can be used to pass commands to suricata.
 # An external tool can then connect to get information from suricata
