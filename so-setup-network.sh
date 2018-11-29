@@ -207,6 +207,11 @@ create_bond() {
   # Create the bond interface
   echo "Setting up Bond"
 
+  # Set the MTU
+  if [ $NSMSETUP != 'ADVANCED' ]; then
+    MTU=1500
+  fi
+
   # Do something different based on the OS
   if [ $OS == 'centos' ]; then
     modprobe --first-time bonding
@@ -218,6 +223,7 @@ create_bond() {
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-bond0
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
@@ -226,6 +232,7 @@ create_bond() {
       sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
     nmcli con reload
     systemctl restart network
@@ -270,6 +277,7 @@ create_bond() {
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
       echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
+      echo "  mtu $MTU" >> /etc/network/interfaces.d/$BNIC
 
     done
 
@@ -279,6 +287,7 @@ create_bond() {
     echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
     echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
     echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
+    echo "  mtu $MTU" >> /etc/network/interfaces.d/bond0
     echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/bond0
     echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/bond0
     echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
