@@ -1497,7 +1497,7 @@ if (whiptail_you_sure); then
     RULESETUP=ETOPEN
     NSMSETUP=BASIC
     NIDS=Suricata
-    BROVERSION=COMMUNITY
+    BROVERSION=ZEEK
     whiptail_make_changes
     clear_master
     mkdir -p /nsm
