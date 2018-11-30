@@ -70,11 +70,11 @@ plcronscript:
     - name: /usr/local/bin/packetloss.sh
     - source: salt://bro/cron/packetloss.sh
     - mode: 755
-    
+
 /usr/local/bin/packetloss.sh:
   cron.present:
     - user: root
-    - minute: '*/10'
+    - minute: '*/2'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
