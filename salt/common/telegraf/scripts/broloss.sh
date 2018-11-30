@@ -1,6 +1,13 @@
 #!/bin/bash
 
-# Get the data
-DROP=$(tac /var/log/stenographer/stenographer.log | grep -m1 drop | awk '{print $14}' | awk -F "=" '{print $2}')
-
-echo "stenodrop drop=$DROP"
+BROLOG=$(tac /nsm/bro/logs/packetloss.log | head -2)
+declare RESULT=($BROLOG)
+CURRENTDROP=${RESULT[3]}
+PASTDROP=${RESULT[9]}
+DROPPED=$(($CURRENTDROP - $PASTDROP))
+CURRENTPACKETS=${RESULT[5]}
+PASTPACKETS=${RESULT[11]}
+TOTAL=$(($CURRENTPACKETS - $PASTPACKETS))
+echo "cd $CURRENTDROP pd $PASTDROP dr $DROPPED cp $CURRENTPACKETS pp $PASTPACKETS ttl $TOTAL"
+LOSS=$(echo $DROPPED $TOTAL / p | dc)
+echo "brodrop drop=$LOSS"
