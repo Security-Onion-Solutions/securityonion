@@ -57,6 +57,20 @@ pcapdir:
     - group: 941
     - makedirs: True
 
+pcaptmpdir:
+  file.directory:
+    - name: /nsm/pcaptmp
+    - user: 941
+    - group: 941
+    - makedirs: True
+
+pcapoutdir:
+  file.directory:
+    - name: /nsm/pcapout
+    - user: 941
+    - group: 941
+    - makedirs: True
+
 pcapindexdir:
   file.directory:
     - name: /nsm/pcapindex
@@ -83,5 +97,6 @@ so-steno:
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/pcapindex:/nsm/pcapindex:rw
-      - /tmp:/tmp:rw
+      - /nsm/pcaptmp:/tmp:rw
+      - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw

@@ -1,6 +1,11 @@
 %YAML 1.1
 ---
 {%- set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{%- if grains['role'] == 'so-eval' %}
+{%- set MTU = 1500 %}
+{%- else %}
+{%- set MTU = salt['pillar.get']('sensor:mtu', '1500') %}
+{%- endif %}
 {%- if salt['pillar.get']('sensor:homenet') %}
   {%- set homenet = salt['pillar.get']('sensor:hnsensor', '') %}
 {%- else %}
@@ -77,7 +82,7 @@ stats:
   enabled: yes
   # The interval field (in seconds) controls at what interval
   # the loggers are invoked.
-  interval: 8
+  interval: 30
 
 # Configure the type of alert (and other) logging you would like.
 outputs:
@@ -931,7 +936,7 @@ host-mode: auto
 # Preallocated size for packet. Default is 1514 which is the classical
 # size for pcap on ethernet. You should adjust this value to the highest
 # packet size (MTU + hardware header) on your system.
-#default-packet-size: 1514
+default-packet-size: {{ MTU + 15 }}
 
 # Unix command socket can be used to pass commands to suricata.
 # An external tool can then connect to get information from suricata
@@ -1339,7 +1344,7 @@ threading:
         # detect-thread-ratio variable:
         threads: {{ salt['pillar.get']('sensor:suriprocs') }}
         prio:
-          default: "medium"
+          default: "high"
   {% endif %}
 
   {%- if salt['pillar.get']('sensor:suripins') %}

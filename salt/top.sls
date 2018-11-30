@@ -1,6 +1,7 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 base:
   'G@role:so-sensor':
+    - ca
     - ssl
     - common
     - firewall
@@ -10,6 +11,7 @@ base:
     - bro
     {%- endif %}
     - filebeat
+    - schedule
 
   'G@role:so-eval':
     - ca
@@ -26,6 +28,7 @@ base:
     - suricata
     - bro
     - utility
+    - schedule
 
 
   'G@role:so-master':
@@ -40,6 +43,7 @@ base:
     - logstash
     - kibana
     - utility
+    - schedule
 
   # Storage node logic
 
@@ -48,6 +52,7 @@ base:
     - common
     - firewall
     - logstash
+    - schedule
 
   'G@role:so-node and I@node:node_type:hot':
     - match: pillar
@@ -55,22 +60,28 @@ base:
     - firewall
     - logstash
     - elasticsearch
+    - schedule
 
   'G@role:so-node and I@node:node_type:warm':
     - match: pillar
     - common
     - firewall
     - elasticsearch
+    - schedule
 
   'G@role:so-node and I@node:node_type:storage':
     - match: compound
+    - ca
+    - ssl
     - common
     - firewall
     - logstash
     - elasticsearch
+    - schedule
 
   'G@role:mastersensor':
     - common
     - firewall
     - sensor
     - master
+    - schedule

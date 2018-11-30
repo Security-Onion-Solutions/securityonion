@@ -21,6 +21,7 @@ TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
+RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 
 # End Global Variable Section
 
@@ -73,6 +74,58 @@ add_socore_user_notmaster() {
 
 }
 
+# Enable Bro Logs
+bro_logs_enabled() {
+
+  echo "brologs:" > pillar/brologs.sls
+  echo "  enabled:" >> pillar/brologs.sls
+
+  if [ $MASTERADV == 'ADVANCED' ]; then
+    for BLOG in ${BLOGS[@]}; do
+      echo "    - $BLOG" | tr -d '"' >> pillar/brologs.sls
+    done
+  else
+    echo "    - conn" >> pillar/brologs.sls
+    echo "    - dce_rpc" >> pillar/brologs.sls
+    echo "    - dhcp" >> pillar/brologs.sls
+    echo "    - dhcpv6" >> pillar/brologs.sls
+    echo "    - dnp3" >> pillar/brologs.sls
+    echo "    - dns" >> pillar/brologs.sls
+    echo "    - dpd" >> pillar/brologs.sls
+    echo "    - files" >> pillar/brologs.sls
+    echo "    - ftp" >> pillar/brologs.sls
+    echo "    - http" >> pillar/brologs.sls
+    echo "    - intel" >> pillar/brologs.sls
+    echo "    - irc" >> pillar/brologs.sls
+    echo "    - kerberos" >> pillar/brologs.sls
+    echo "    - modbus" >> pillar/brologs.sls
+    echo "    - mqtt" >> pillar/brologs.sls
+    echo "    - notice" >> pillar/brologs.sls
+    echo "    - ntlm" >> pillar/brologs.sls
+    echo "    - openvpn" >> pillar/brologs.sls
+    echo "    - pe" >> pillar/brologs.sls
+    echo "    - radius" >> pillar/brologs.sls
+    echo "    - rfb" >> pillar/brologs.sls
+    echo "    - rdp" >> pillar/brologs.sls
+    echo "    - signatures" >> pillar/brologs.sls
+    echo "    - sip" >> pillar/brologs.sls
+    echo "    - smb_files" >> pillar/brologs.sls
+    echo "    - smb_mapping" >> pillar/brologs.sls
+    echo "    - smtp" >> pillar/brologs.sls
+    echo "    - snmp" >> pillar/brologs.sls
+    echo "    - software" >> pillar/brologs.sls
+    echo "    - ssh" >> pillar/brologs.sls
+    echo "    - ssl" >> pillar/brologs.sls
+    echo "    - syslog" >> pillar/brologs.sls
+    echo "    - telnet" >> pillar/brologs.sls
+    echo "    - tunnel" >> pillar/brologs.sls
+    echo "    - weird" >> pillar/brologs.sls
+    echo "    - mysql" >> pillar/brologs.sls
+    echo "    - socks" >> pillar/brologs.sls
+    echo "    - x509" >> pillar/brologs.sls
+  fi
+}
+
 calculate_useable_cores() {
 
   # Calculate reasonable core usage
@@ -95,6 +148,15 @@ chown_salt_master() {
 
   # Chown the salt dirs on the master for socore
   chown -R socore:socore /opt/so
+
+}
+
+clear_master() {
+  # Clear out the old master public key in case this is a re-install.
+  # This only happens if you re-install the master.
+  if [ -f /etc/salt/pki/minion/minion_master.pub]; then
+    rm /etc/salt/pki/minion/minion_master.pub
+  fi
 
 }
 
@@ -154,6 +216,11 @@ create_bond() {
   # Create the bond interface
   echo "Setting up Bond"
 
+  # Set the MTU
+  if [ $NSMSETUP != 'ADVANCED' ]; then
+    MTU=1500
+  fi
+
   # Do something different based on the OS
   if [ $OS == 'centos' ]; then
     modprobe --first-time bonding
@@ -165,6 +232,7 @@ create_bond() {
     echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
     echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
+    echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-bond0
 
     # Create Bond configs for the selected monitor interface
     for BNIC in ${BNICS[@]}; do
@@ -173,6 +241,7 @@ create_bond() {
       sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
+      echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
     nmcli con reload
     systemctl restart network
@@ -217,6 +286,7 @@ create_bond() {
       echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
       echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
+      echo "  mtu $MTU" >> /etc/network/interfaces.d/$BNIC
 
     done
 
@@ -226,6 +296,7 @@ create_bond() {
     echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
     echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
     echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
+    echo "  mtu $MTU" >> /etc/network/interfaces.d/bond0
     echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/bond0
     echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/bond0
     echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
@@ -313,11 +384,19 @@ filter_nics() {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 }
+get_filesystem_nsm(){
+  FSNSM=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
+}
+
+get_filesystem_root(){
+  FSROOT=$(df / | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
+}
 
 get_main_ip() {
 
   # Get the main IP address the box is using
   MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+  MAININT=$(ip route get 1 | awk '{print $5;exit}')
 
 }
 
@@ -383,6 +462,7 @@ master_pillar() {
   touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -391,6 +471,7 @@ master_pillar() {
     echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -440,6 +521,7 @@ node_pillar() {
   touch $TMP/$HOSTNAME.sls
   echo "node:" > $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
   echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
@@ -574,9 +656,8 @@ saltify() {
 salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-  salt-call state.apply ca >>~/sosetup.log 2>&1
-  # salt-call state.apply ssl >>~/sosetup.log 2>&1
-  # salt-call state.apply common >>~/sosetup.log 2>&1
+  echo "Building Certificate Authority"
+  salt-call state.apply ca
   echo " *** Restarting Salt to fix any SSL errors. ***"
   service salt-master restart
   sleep 5
@@ -592,6 +673,8 @@ salt_checkin() {
   else
 
   # Run Checkin
+  salt-call state.apply ca
+  salt-call state.apply ssl
   salt-call state.highstate
 
   fi
@@ -638,6 +721,7 @@ sensor_pillar() {
   echo "sensor:" > $TMP/$HOSTNAME.sls
   echo "  interface: bond0" >> $TMP/$HOSTNAME.sls
   echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
+  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
     echo "  bro_pins:" >> $TMP/$HOSTNAME.sls
     for PIN in $BROPINS; do
@@ -657,6 +741,7 @@ sensor_pillar() {
   echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
   echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
   echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
+  echo "  mtu: $MTU" >> $TMP/$HOSTNAME.sls
   if [ $HNSENSOR != 'inherit' ]; then
   echo "  hnsensor: $HNSENSOR" >> $TMP/$HOSTNAME.sls
   fi
@@ -671,6 +756,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -678,17 +764,19 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
+    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -790,8 +878,8 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "COMMUNITY" "Install Community Bro" ON \
-   "ZEEK" "Install Zeek" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
+  "COMMUNITY" "Install Community NSM" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -865,14 +953,17 @@ whiptail_install_type() {
 
   # What kind of install are we doing?
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 78 8 \
+  "Choose Install Type:" 20 78 14 \
   "SENSORONLY" "Create a forward only sensor" ON \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
-  "EVALMODE" "Evaluate all the things" OFF 3>&1 1>&2 2>&3 )
+  "EVALMODE" "Evaluate all the things" OFF \
+  "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
+  "STRELKA" "TODO Stand Alone Strelka Node" OFF \
+  "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -936,6 +1027,75 @@ whiptail_management_server() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+# Ask if you want to do advanced setup of the Master
+whiptail_master_adv() {
+  MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose what type of master install:" 20 78 4 \
+  "BASIC" "Install master with recommended settings" ON  \
+  "ADVANCED" "Do additional configuration to the master" OFF 3>&1 1>&2 2>&3 )
+}
+
+# Ask which additional components to install
+whiptail_master_adv_service_brologs() {
+
+  BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please Select Logs to Send:" 24 78 12 \
+  "conn" "Connection Logging" ON \
+  "dce_rpc" "RPC Logs" ON \
+  "dhcp" "DHCP Logs" ON \
+  "dhcpv6" "DHCP IPv6 Logs" ON \
+  "dnp3" "DNP3 Logs" ON \
+  "dns" "DNS Logs" ON \
+  "dpd" "DPD Logs" ON \
+  "files" "Files Logs" ON \
+  "ftp" "FTP Logs" ON \
+  "http" "HTTP Logs" ON \
+  "intel" "Intel Hits Logs" ON \
+  "irc" "IRC Chat Logs" ON \
+  "kerberos" "Kerberos Logs" ON \
+  "modbus" "MODBUS Logs" ON \
+  "mqtt" "MQTT Logs" ON \
+  "notice" "Zeek Notice Logs" ON \
+  "ntlm" "NTLM Logs" ON \
+  "openvpn" "OPENVPN Logs" ON \
+  "pe" "PE Logs" ON \
+  "radius" "Radius Logs" ON \
+  "rfb" "RFB Logs" ON \
+  "rdp" "RDP Logs" ON \
+  "signatures" "Signatures Logs" ON \
+  "sip" "SIP Logs" ON \
+  "smb_files" "SMB Files Logs" ON \
+  "smb_mapping" "SMB Mapping Logs" ON \
+  "smtp" "SMTP Logs" ON \
+  "snmp" "SNMP Logs" ON \
+  "software" "Software Logs" ON \
+  "ssh" "SSH Logs" ON \
+  "ssl" "SSL Logs" ON \
+  "syslog" "Syslog Logs" ON \
+  "telnet" "Telnet Logs" ON \
+  "tunnel" "Tunnel Logs" ON \
+  "weird" "Zeek Weird Logs" ON \
+  "mysql" "MySQL Logs" ON \
+  "socks" "SOCKS Logs" ON \
+  "x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 )
+}
+
+whiptail_master_adv_service_grafana() {
+  echo "blah"
+}
+
+whiptail_master_adv_service_osquery() {
+  #MOSQ=$()
+  echo "blah"
+
+}
+
+whiptail_master_adv_service_wazuh() {
+  echo "blah"
+}
+
+
+
 
 whiptail_network_notice() {
 
@@ -1147,10 +1307,13 @@ if (whiptail_you_sure); then
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
+    # Would you like to do an advanced install?
+    whiptail_master_adv
+
     # Pick the Management NIC
     whiptail_management_nic
 
-    # Choose Zeek or Community Bro
+    # Choose Zeek or Community NSM
     whiptail_bro_version
 
     # Select Snort or Suricata
@@ -1171,8 +1334,25 @@ if (whiptail_you_sure); then
     # Find out how to handle updates
     whiptail_master_updates
 
+    # Do Advacned Setup if they chose it
+    if [ $MASTERADV == 'ADVANCED' ]; then
+      # Ask which bro logs to enable - Need to add Suricata check
+      if [ $BROVERSION != 'SURICATA' ]; then
+        whiptail_master_adv_service_brologs
+      fi
+      whiptail_master_adv_service_osquery
+      whiptail_master_adv_service_grafana
+      whiptail_master_adv_service_wazuh
+    fi
+
     # Last Chance to back out
     whiptail_make_changes
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
+    # Enable Bro Logs
+    bro_logs_enabled
 
     # Figure out the main IP address
     get_main_ip
@@ -1265,6 +1445,10 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     copy_ssh_key
     set_initial_firewall_policy
     sensor_pillar
@@ -1314,8 +1498,12 @@ if (whiptail_you_sure); then
     RULESETUP=ETOPEN
     NSMSETUP=BASIC
     NIDS=Suricata
-    BROVERSION=COMMUNITY
+    BROVERSION=ZEEK
     whiptail_make_changes
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     get_main_ip
     # Add the user so we can sit back and relax
     echo ""
@@ -1369,12 +1557,16 @@ if (whiptail_you_sure); then
     else
       NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
       NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-      LSPIPELINEWORKERS=1
+      LSPIPELINEWORKERS=$CPUCORES
       LSPIPELINEBATCH=125
       LSINPUTTHREADS=1
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
     copy_ssh_key
     set_initial_firewall_policy
     saltify

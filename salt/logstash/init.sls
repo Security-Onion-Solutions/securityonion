@@ -21,13 +21,11 @@
 
 {% elif grains['role'] == 'so-node' %}
 {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
-{% set lsaccessip = salt['pillar.get']('node:lsaccessip', '') %}
 {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 
 {% elif grains['role'] == 'so-master' %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
-{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 {% set nodetype = salt['grains.get']('role', '')  %}
@@ -35,7 +33,6 @@
 {% elif grains['role'] == 'so-eval' %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
-{% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 {% set nodetype = salt['grains.get']('role', '')  %}
@@ -63,6 +60,20 @@ lscustdir:
     - group: 939
     - makedirs: True
 
+lsdyndir:
+  file.directory:
+    - name: /opt/so/conf/logstash/dynamic
+    - user: 931
+    - group: 939
+    - makedirs: True
+
+lsetcdir:
+  file.directory:
+    - name: /opt/so/conf/logstash/etc
+    - user: 931
+    - group: 939
+    - makedirs: True
+
 lscustparserdir:
   file.directory:
     - name: /opt/so/conf/logstash/custom/parsers
@@ -78,13 +89,28 @@ lscusttemplatedir:
     - makedirs: True
 
 # Copy down all the configs including custom - TODO add watch restart
-lssync:
+lsetcsync:
   file.recurse:
-    - name: /opt/so/conf/logstash
-    - source: salt://logstash/files
+    - name: /opt/so/conf/logstash/etc
+    - source: salt://logstash/etc
     - user: 931
     - group: 939
     - template: jinja
+
+lssync:
+  file.recurse:
+    - name: /opt/so/conf/logstash/dynamic
+    - source: salt://logstash/files/dynamic
+    - user: 931
+    - group: 939
+    - template: jinja
+
+lscustsync:
+  file.recurse:
+    - name: /opt/so/conf/logstash/custom
+    - source: salt://logstash/files/custom
+    - user: 931
+    - group: 939
 
 # Copy the config file for enabled logstash plugins/parsers
 lsconfsync:
@@ -123,7 +149,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: soshybridhunter/so-logstash:HH1.0.3
+    - image: soshybridhunter/so-logstash:HH1.0.4
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -138,11 +164,11 @@ so-logstash:
       - 0.0.0.0:6053:6053
       - 0.0.0.0:9600:9600
     - binds:
-      - /opt/so/conf/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
-      - /opt/so/conf/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - /opt/so/conf/logstash/logstash-template.json:/logstash-template.json:ro
-      - /opt/so/conf/logstash/logstash-ossec-template.json:/logstash-ossec-template.json:ro
-      - /opt/so/conf/logstash/beats-template.json:/beats-template.json:ro
+      - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
+      - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - /opt/so/conf/logstash/etc/logstash-template.json:/logstash-template.json:ro
+      - /opt/so/conf/logstash/etc/logstash-ossec-template.json:/logstash-ossec-template.json:ro
+      - /opt/so/conf/logstash/etc/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/custom:/usr/share/logstash/pipeline.custom:ro
       - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
       - /opt/so/conf/logstash/dynamic:/usr/share/logstash/pipeline.dynamic
@@ -160,4 +186,4 @@ so-logstash:
       - /opt/so/log/suricata:/suricata:ro
       {%- endif %}
     - watch:
-      - file: /opt/so/conf/logstash
+      - file: /opt/so/conf/logstash/etc

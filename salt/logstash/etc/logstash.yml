@@ -219,9 +219,13 @@ path.logs: /var/log/logstash
 #
 # Where to find custom plugins
 # path.plugins: []
-
+{% if grains['role'] == 'so-master' %}
 {% set pipeline_workers = salt['pillar.get']('master:ls_pipeline_workers', '1') %}
 {% set pipeline_batch = salt['pillar.get']('master:ls_pipeline_batch_size', '125') %}
+{% else %}
+{% set pipeline_workers = salt['pillar.get']('node:ls_pipeline_workers', '1') %}
+{% set pipeline_batch = salt['pillar.get']('node:ls_pipeline_batch_size', '125') %}
+{% endif %}
 
 pipeline.workers: {{ pipeline_workers }}
 pipeline.batch.size: {{ pipeline_batch }}

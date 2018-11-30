@@ -35,6 +35,18 @@ brospooldir:
     - user: 937
     - makedirs: true
 
+brosfafincompletedir:
+  file.directory:
+    - name: /nsm/faf/files/incomplete
+    - user: 937
+    - makedirs: true
+
+brosfafcompletedir:
+  file.directory:
+    - name: /nsm/faf/files/complete
+    - user: 937
+    - makedirs: true
+
 # Sync the policies
 bropolicysync:
   file.recurse:
@@ -52,6 +64,21 @@ nodecfgsync:
     - user: 937
     - group: 939
     - template: jinja
+
+plcronscript:
+  file.managed:
+    - name: /usr/local/bin/packetloss.sh
+    - source: salt://bro/cron/packetloss.sh
+    - mode: 755
+
+/usr/local/bin/packetloss.sh:
+  cron.present:
+    - user: root
+    - minute: '*/10'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 
 # Sync local.bro
 {% if salt['pillar.get']('static:broversion', '') == 'COMMUNITY' %}
