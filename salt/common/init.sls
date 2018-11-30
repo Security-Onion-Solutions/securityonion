@@ -347,7 +347,7 @@ dashboard-{{ SN }}:
 {%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).iteritems() %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json
     - user: 939
     - group: 939
     - template: jinja
