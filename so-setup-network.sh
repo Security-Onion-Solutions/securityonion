@@ -877,8 +877,8 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "COMMUNITY" "Install Community NSM" ON \
-   "ZEEK" "Install Zeek" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
+  "COMMUNITY" "Install Community NSM" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
