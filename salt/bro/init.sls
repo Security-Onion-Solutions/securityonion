@@ -74,7 +74,7 @@ plcronscript:
 /usr/local/bin/packetloss.sh:
   cron.present:
     - user: root
-    - minute: '*/2'
+    - minute: '*/10'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
