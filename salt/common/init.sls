@@ -343,6 +343,26 @@ dashboard-{{ SN }}:
 {% endfor %}
 {% endif %}
 
+{% if salt['pillar.get']('evaltab', False) %}
+{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).iteritems() %}
+dashboard-{{ SN }}:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://common/grafana/grafana_dashboards/eval/eval.json
+    - defaults:
+      SERVERNAME: {{ SN }}
+      MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
+
+{% endfor %}
+{% endif %}
 
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
