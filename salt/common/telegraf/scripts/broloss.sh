@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BROLOG=$(tac /nsm/bro/logs/packetloss.log | head -2)
+BROLOG=$(tac /host/nsm/bro/logs/packetloss.log | head -2)
 declare RESULT=($BROLOG)
 CURRENTDROP=${RESULT[3]}
 PASTDROP=${RESULT[9]}
