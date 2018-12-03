@@ -1451,8 +1451,8 @@ if (whiptail_you_sure); then
     get_filesystem_nsm
     copy_ssh_key
     set_initial_firewall_policy
-    sensor_pillar
     create_bond
+    sensor_pillar
     saltify
     docker_install
     configure_minion SENSOR
