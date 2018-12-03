@@ -27,7 +27,7 @@ lsetcsync:
     - group: 939
     - template: jinja
 
-mysqletcdir:
+mysqllogdir:
   file.directory:
     - name: /opt/so/log/mysql
     - user: 939
