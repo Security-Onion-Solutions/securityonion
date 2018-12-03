@@ -43,7 +43,7 @@ mysqldatadir:
 
 so-mysql:
   docker_container.running:
-    - image: soshybridhunter/so-redis:HH1.0.3
+    - image: mysql/mysql-server:5.7
     - hostname: so-mysql
     - user: socore
     - port_bindings:
