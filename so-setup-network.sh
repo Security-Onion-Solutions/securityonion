@@ -328,7 +328,7 @@ docker_install() {
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce python-docker
+    yum -y install docker-ce docker-python
 
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
