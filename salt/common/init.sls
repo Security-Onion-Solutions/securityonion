@@ -372,6 +372,7 @@ so-grafana:
     - user: socore
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
+      - /opt/so/conf/grafana/etc/grafana.ini:/etc/grafana/grafana.ini:ro
       - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
       - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
       - /opt/so/conf/grafana/grafana_dashboards:/etc/grafana/grafana_dashboards:rw
