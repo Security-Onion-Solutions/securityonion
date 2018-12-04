@@ -52,8 +52,8 @@ so-mysql:
       - MYSQL_ROOT_HOST={{ MASTERIP }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
-      - /opt/so/conf/etc/my.cnf:/etc/my.cnf:ro
-      - /opt/so/conf/etc/mypass:/etc/mypass
+      - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
+      - /opt/so/conf/mysql/etc/mypass:/etc/mypass
       - /nsm/mysql:/var/lib/mysql:rw
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
