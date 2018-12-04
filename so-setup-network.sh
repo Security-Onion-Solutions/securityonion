@@ -170,6 +170,10 @@ configure_minion() {
   if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
+    echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
+    echo "mysql.port: 3306" >> /etc/salt/minion
+    echo "mysql.user: 'root'" >> /etc/salt/minion
+    echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
