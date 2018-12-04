@@ -87,7 +87,20 @@ http {
     #      try_files $uri $uri.html /index.html;
     #    }
 
-        location / {
+        location /grafana/ {
+	  rewrite /grafana/(.*) /$1 break;
+          proxy_pass http://{{ masterip }}:3000/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
+        location /kibana/ {
+	  rewrite /kibana/(.*) /$1 break;
           proxy_pass http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
