@@ -166,6 +166,17 @@ enable_masternode_influxdb_8086_{{ip}}:
     - position: 1
     - save: True
 
+enable_masternode_mysql_3036_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3306
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.
