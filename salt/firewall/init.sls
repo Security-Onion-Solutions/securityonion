@@ -166,7 +166,7 @@ enable_masternode_influxdb_8086_{{ip}}:
     - position: 1
     - save: True
 
-enable_masternode_mysql_3036_{{ip}}:
+enable_masternode_mysql_3306_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER

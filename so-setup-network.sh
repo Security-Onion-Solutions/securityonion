@@ -156,6 +156,7 @@ clear_master() {
   # This only happens if you re-install the master.
   if [ -f /etc/salt/pki/minion/minion_master.pub]; then
     rm /etc/salt/pki/minion/minion_master.pub
+    service salt-minion restart
   fi
 
 }
