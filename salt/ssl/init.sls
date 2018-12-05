@@ -92,6 +92,20 @@ fbcrtlink:
         bits: 4096
         backup: True
 
+# Create a cert for OSQuery
+/etc/pki/fleet.crt:
+  x509.certificate_managed:
+    - ca_server: {{ master }}
+    - signing_policy: fleet
+    - public_key: /etc/pki/fleet.key
+    - CN: {{ master }}
+    - days_remaining: 3000
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/fleet.key
+        bits: 4096
+        backup: True
+
 {% endif %}
 {% if grains['role'] == 'so-SENSOR' or grains['role'] == 'so-eval' %}
 
