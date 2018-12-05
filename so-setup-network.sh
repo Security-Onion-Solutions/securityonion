@@ -22,6 +22,7 @@ NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+NODE_ES_PORT="9200"
 
 # End Global Variable Section
 
@@ -397,6 +398,16 @@ get_filesystem_nsm(){
   FSNSM=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 }
 
+get_log_size_limit() {
+
+  DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
+  PERCENTAGE=85
+  DISK_SIZE=DISK_SIZE_K*1000
+  PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
+  LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
+
+}
+
 get_filesystem_root(){
   FSROOT=$(df / | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 }
@@ -493,6 +504,9 @@ master_pillar() {
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -540,6 +554,9 @@ node_pillar() {
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$HOSTNAME.sls
   echo "  node_type: $NODETYPE" >> $TMP/$HOSTNAME.sls
+  echo "  es_port: $NODE_ES_PORT" >> $TMP/$HOSTNAME.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$HOSTNAME.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$HOSTNAME.sls
 
 }
 
@@ -932,6 +949,16 @@ whiptail_check_exitstatus() {
 
 }
 
+whiptail_cur_close_days() {
+
+  CURCLOSEDAYS=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Please specify the threshold (in days) at which Elasticsearch indices will be closed" 10 60 $CURCLOSEDAYS 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_homenet_master() {
 
   # Ask for the HOME_NET on the master
@@ -978,6 +1005,18 @@ whiptail_install_type() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_log_size_limit() {
+
+   LOG_SIZE_LIMIT=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
+  By default, this is set to 85% of the disk space allotted for /nsm." 10 60 $LOG_SIZE_LIMIT 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 
 whiptail_management_nic() {
 
@@ -1508,11 +1547,13 @@ if (whiptail_you_sure); then
     NSMSETUP=BASIC
     NIDS=Suricata
     BROVERSION=ZEEK
+    CURCLOSEDAYS=30
     whiptail_make_changes
     clear_master
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    get_log_size_limit
     get_main_ip
     # Add the user so we can sit back and relax
     echo ""
@@ -1553,6 +1594,10 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_master_updates
     set_updates
+    get_log_size_limit
+    whiptail_log_size_limit
+    CURCLOSEDAYS=30
+    whiptail_cur_close_days 
     es_heapsize
     ls_heapsize
     whiptail_node_advanced
