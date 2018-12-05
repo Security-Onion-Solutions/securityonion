@@ -27,8 +27,9 @@ base:
     - pcap
     - suricata
     - bro
+    - curator
     - utility
-    - schedule
+    - schedule 
 
 
   'G@role:so-master':
@@ -60,6 +61,7 @@ base:
     - firewall
     - logstash
     - elasticsearch
+    - curator
     - schedule
 
   'G@role:so-node and I@node:node_type:warm':
@@ -77,6 +79,7 @@ base:
     - firewall
     - logstash
     - elasticsearch
+    - curator
     - schedule
 
   'G@role:mastersensor':
