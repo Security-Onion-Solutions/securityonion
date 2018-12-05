@@ -54,7 +54,7 @@ curconf:
 
 curcloseddel:
   file.managed:
-    - name: /usr/local/bin/so-curator-closed-delete
+    - name: /usr/sbin/so-curator-closed-delete
     - source: salt://curator/files/bin/so-curator-closed-delete
     - user: 934
     - group: 939
@@ -62,7 +62,7 @@ curcloseddel:
 
 curcloseddeldel:
   file.managed:
-    - name: /usr/local/bin/so-curator-closed-delete-delete
+    - name: /usr/sbin/so-curator-closed-delete-delete
     - source: salt://curator/files/bin/so-curator-closed-delete-delete
     - user: 934
     - group: 939
@@ -71,7 +71,7 @@ curcloseddeldel:
 
 curclose:
   file.managed:
-    - name: /usr/local/bin/so-curator-close
+    - name: /usr/sbin/so-curator-close
     - source: salt://curator/files/bin/so-curator-close
     - user: 934
     - group: 939
@@ -79,13 +79,13 @@ curclose:
 
 curdel:
   file.managed:
-    - name: /usr/local/bin/so-curator-delete
+    - name: /usr/sbin/so-curator-delete
     - source: salt://curator/files/bin/so-curator-delete
     - user: 934
     - group: 939
     - mode: 755
 
-/usr/local/bin/so-curator-closed-delete:
+/usr/sbin/so-curator-closed-delete:
  cron.present:
    - user: root
    - minute: '*'
@@ -94,7 +94,7 @@ curdel:
    - month: '*'
    - dayweek: '*'
 
-/usr/local/bin/so-curator-close:
+/usr/sbin/so-curator-close:
  cron.present:
    - user: root
    - minute: '*'
@@ -103,7 +103,7 @@ curdel:
    - month: '*'
    - dayweek: '*'
 
-/usr/local/bin/so-curator-delete:
+/usr/sbin/so-curator-delete:
  cron.present:
    - user: root
    - minute: '*'
