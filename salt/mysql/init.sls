@@ -57,7 +57,7 @@ so-mysql:
       - 0.0.0.0:3306:3306
     - environment:
       - MYSQL_ROOT_HOST={{ MASTERIP }}
-      - MYSQL_ROOT_PASSWORD={{ MYSQLPASS }}
+      - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
       - /opt/so/conf/mysql/etc/mypass:/etc/mypass
@@ -81,4 +81,5 @@ fleetdbpriv:
   mysql_grants.present:
     - grant: all privileges
     - database: fleet.*
-    - user: fleet
+    - user: fleetdbuser
+    - host: 172.17.0.0/255.255.0.0
