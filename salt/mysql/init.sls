@@ -72,7 +72,7 @@ fleetdb:
 
 fleetdbuser:
   mysql_user.present:
-    - host: {{ MASTERIP }}
+    - host: 172.17.0.0/255.255.0.0
     - password: {{ FLEETPASS }}
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}

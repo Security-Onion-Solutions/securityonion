@@ -13,7 +13,6 @@ so-fleet:
   docker_container.running:
     - image: kolide/fleet
     - hostname: so-fleet
-    - user: socore
     - port_bindings:
       - 0.0.0.0:8080:8080
     - environment:
