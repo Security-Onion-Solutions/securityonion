@@ -149,7 +149,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: soshybridhunter/so-logstash:HH1.0.4
+    - image: soshybridhunter/so-logstash:HH1.0.5
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

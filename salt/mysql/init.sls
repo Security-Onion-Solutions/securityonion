@@ -57,7 +57,7 @@ so-mysql:
       - 0.0.0.0:3306:3306
     - environment:
       - MYSQL_ROOT_HOST={{ MASTERIP }}
-      - MYSQL_ROOT_PASSWORD=/etc/mypass
+      - MYSQL_ROOT_PASSWORD={{ MYSQLPASS }}
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
       - /opt/so/conf/mysql/etc/mypass:/etc/mypass
