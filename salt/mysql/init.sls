@@ -19,6 +19,13 @@ mysqletcdir:
     - group: 939
     - makedirs: True
 
+mysqlpiddir:
+  file.directory:
+    - name: /opt/so/conf/mysql/pid
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/mysql/etc
