@@ -22,10 +22,11 @@ so-fleet:
       - KOLIDE_MYSQL_USERNAME=fleetdbuser
       - KOLIDE_MYSQL_PASSWORD={{ FLEETPASS }}
       - KOLIDE_REDIS_ADDRESS={{ MASTERIP }}:6379
-      - KOLIDE_SERVER_CERT=/tmp/server.cert
-      - KOLIDE_SERVER_KEY=/tmp/server.key
+      - KOLIDE_SERVER_CERT=/ssl/server.cert
+      - KOLIDE_SERVER_KEY=/ssl/server.key
       - KOLIDE_LOGGING_JSON=true
     - binds:
-      - /opt/so/conf/fleet/etc:/ssl:ro
+      - /etc/pki/fleet.key:/ssl/server.key:ro
+      - /etc/pki/fleet.crt:/ssl/server.cert
     - watch:
       - /opt/so/conf/fleet/etc
