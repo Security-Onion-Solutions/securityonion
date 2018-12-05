@@ -150,6 +150,7 @@ so-freq:
   docker_container.running:
     - image: soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
+    - name: so-freqserver
     - user: freqserver
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
@@ -185,89 +186,13 @@ so-domainstats:
   docker_container.running:
     - image: soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
-    - name: domainstats
+    - name: so-domainstats
     - user: domainstats
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
 
 
 {% endif %}
-
-# Curator
-# Create the group
-curatorgroup:
-  group.present:
-    - name: curator
-    - gid: 934
-
-# Add user
-curator:
-  user.present:
-    - uid: 934
-    - gid: 934
-    - home: /opt/so/conf/curator
-    - createhome: False
-
-# Create the log directory
-curactiondir:
-  file.directory:
-    - name: /opt/so/conf/curator/action
-    - user: 934
-    - group: 939
-    - makedirs: True
-
-curlogdir:
-  file.directory:
-    - name: /opt/so/log/curator
-    - user: 934
-    - group: 939
-
-curclose:
-  file.managed:
-    - name: /opt/so/conf/curator/action/close.yml
-    - source: salt://elasticsearch/files/curator/action/close.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curdel:
-  file.managed:
-    - name: /opt/so/conf/curator/action/delete.yml
-    - source: salt://elasticsearch/files/curator/action/delete.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curconf:
-  file.managed:
-    - name: /opt/so/conf/curator/curator.yml
-    - source: salt://elasticsearch/files/curator/curator.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-so-curator:
-  docker_container.running:
-    - image: soshybridhunter/so-curator:HH1.0.3
-    - hostname: curator
-    - name: curator
-    - user: curator
-    - interactive: True
-    - tty: True
-    - binds:
-      - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
-      - /opt/so/conf/curator/action/:/etc/curator/action:ro
-      - /opt/so/log/curator:/var/log/curator:rw
-
-
-# Begin Curator Cron Jobs
-
-# Close
-# Delete
-# Hot Warm
-# Segment Merge
-
-# End Curator Cron Jobs
 
 # Elastalert
 {% if esalert == 1 %}
@@ -311,7 +236,7 @@ so-elastalert:
   docker_container.running:
     - image: soshybridhunter/so-elastalert:HH1.0.3
     - hostname: elastalert
-    - name: elastalert
+    - name: so-elastalert
     - user: elastalert
     - detach: True
     - binds:
