@@ -334,6 +334,10 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce docker-python python-docker
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
+    systemctl enable docker
 
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
