@@ -10,6 +10,24 @@ fleetcdir:
     - group: 939
     - makedirs: True
 
+fleetdb:
+  mysql_database.present:
+    - name: fleet
+
+fleetdbuser:
+  mysql_user.present:
+    - host: 172.17.0.0/255.255.0.0
+    - password: {{ FLEETPASS }}
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
+
+fleetdbpriv:
+  mysql_grants.present:
+    - grant: all privileges
+    - database: fleet.*
+    - user: fleetdbuser
+    - host: 172.17.0.0/255.255.0.0
+
 so-fleet:
   docker_container.running:
     - image: kolide/fleet
@@ -31,21 +49,3 @@ so-fleet:
       - /etc/pki/fleet.crt:/ssl/server.cert
     - watch:
       - /opt/so/conf/fleet/etc
-
-fleetdb:
-  mysql_database.present:
-    - name: fleet
-
-fleetdbuser:
-  mysql_user.present:
-    - host: 172.17.0.0/255.255.0.0
-    - password: {{ FLEETPASS }}
-    - connection_user: root
-    - connection_pass: {{ MYSQLPASS }}
-
-fleetdbpriv:
-  mysql_grants.present:
-    - grant: all privileges
-    - database: fleet.*
-    - user: fleetdbuser
-    - host: 172.17.0.0/255.255.0.0
