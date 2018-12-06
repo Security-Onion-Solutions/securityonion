@@ -394,6 +394,13 @@ filter_nics() {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 }
+
+generate_passwords(){
+  # Generate Random Passwords for Things
+  MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+}
+
 get_filesystem_nsm(){
   FSNSM=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 }
@@ -507,6 +514,8 @@ master_pillar() {
   echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -1395,6 +1404,7 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
+    generate_passwords
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1549,6 +1559,7 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     whiptail_make_changes
+    generate_passwords
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1597,7 +1608,7 @@ if (whiptail_you_sure); then
     get_log_size_limit
     whiptail_log_size_limit
     CURCLOSEDAYS=30
-    whiptail_cur_close_days 
+    whiptail_cur_close_days
     es_heapsize
     ls_heapsize
     whiptail_node_advanced
