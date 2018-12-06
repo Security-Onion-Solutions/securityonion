@@ -27,6 +27,7 @@ base:
     - suricata
     - bro
     - curator
+    - elastalert
     - filebeat
     - utility
     - schedule 
@@ -43,6 +44,7 @@ base:
     - elasticsearch
     - logstash
     - kibana
+    - elastalert
     - utility
     - schedule
 
