@@ -21,6 +21,7 @@ base:
     - master
     - idstools
     - redis
+    - mysql
     - elasticsearch
     - logstash
     - kibana
@@ -29,7 +30,8 @@ base:
     - bro
     - curator
     - utility
-    - schedule 
+    - schedule
+    - fleet 
 
 
   'G@role:so-master':
@@ -40,11 +42,13 @@ base:
     - master
     - idstools
     - redis
+    - mysql
     - elasticsearch
     - logstash
     - kibana
     - utility
     - schedule
+    - fleet
 
   # Storage node logic
 
