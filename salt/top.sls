@@ -20,8 +20,11 @@ base:
     - firewall
     - master
     - idstools
+<<<<<<< HEAD
     - redis
     - mysql
+=======
+>>>>>>> 7816c6e18e21870b0249cc05a161ef1644a94066
     - elasticsearch
     - logstash
     - kibana
@@ -29,6 +32,8 @@ base:
     - suricata
     - bro
     - curator
+    - elastalert
+    - filebeat
     - utility
     - schedule
     - fleet 
@@ -46,6 +51,7 @@ base:
     - elasticsearch
     - logstash
     - kibana
+    - elastalert
     - utility
     - schedule
     - fleet

@@ -18,7 +18,6 @@
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
 {% elif grains['role'] == 'so-eval' %}
 
@@ -26,7 +25,6 @@
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
 {% elif grains['role'] == 'so-node' %}
 
@@ -34,7 +32,6 @@
 {% set esheap = salt['pillar.get']('node:esheap', '') %}
 {% set freq = salt['pillar.get']('node:freq', '0') %}
 {% set dstats = salt['pillar.get']('node:dstats', '0') %}
-{% set esalert = salt['pillar.get']('node:elastalert', '1') %}
 
 {% endif %}
 
@@ -191,56 +188,5 @@ so-domainstats:
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
 
-
-{% endif %}
-
-# Elastalert
-{% if esalert == 1 %}
-
-# Create the group
-elastagroup:
-  group.present:
-    - name: elastalert
-    - gid: 933
-
-# Add user
-elastalert:
-  user.present:
-    - uid: 933
-    - gid: 933
-    - home: /opt/so/conf/elastalert
-    - createhome: False
-
-elastalogdir:
-  file.directory:
-    - name: /opt/so/log/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-elastarules:
-  file.directory:
-    - name: /opt/so/rules/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-elastaconf:
-  file.directory:
-    - name: /opt/so/conf/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-so-elastalert:
-  docker_container.running:
-    - image: soshybridhunter/so-elastalert:HH1.0.3
-    - hostname: elastalert
-    - name: so-elastalert
-    - user: elastalert
-    - detach: True
-    - binds:
-      - /etc/elastalert/rules/:/etc/elastalert/rules/:ro
-      - /opt/so/log/elastalert:/var/log/elastalert:rw
 
 {% endif %}
