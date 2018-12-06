@@ -26,7 +26,7 @@ mysqlpiddir:
     - group: 939
     - makedirs: True
 
-lsetcsync:
+mysqletcsync:
   file.recurse:
     - name: /opt/so/conf/mysql/etc
     - source: salt://mysql/etc
