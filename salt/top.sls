@@ -28,6 +28,7 @@ base:
     - suricata
     - bro
     - curator
+    - filebeat
     - utility
     - schedule 
 
