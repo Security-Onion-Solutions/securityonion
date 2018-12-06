@@ -20,7 +20,6 @@ base:
     - firewall
     - master
     - idstools
-    - redis
     - elasticsearch
     - logstash
     - kibana
