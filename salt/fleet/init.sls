@@ -30,7 +30,7 @@ fleetdbpriv:
 
 so-fleet:
   docker_container.running:
-    - image: kolide/fleet
+    - image: soshybridhunter/so-fleet:HH1.0.5
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080
