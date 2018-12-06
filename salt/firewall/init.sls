@@ -357,6 +357,17 @@ enable_standard_analyst_5601_{{ip}}:
     - dport: 5601
     - position: 1
     - save: True
+#THIS IS TEMPORARY
+enable_standard_analyst_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
+    - position: 1
+    - save: True
 
 {% endfor %}
 

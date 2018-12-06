@@ -24,6 +24,7 @@ so-fleet:
       - KOLIDE_SERVER_CERT=/ssl/server.cert
       - KOLIDE_SERVER_KEY=/ssl/server.key
       - KOLIDE_LOGGING_JSON=true
+      - KOLIDE_AUTH_JWT_KEY=thisisatest
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert
