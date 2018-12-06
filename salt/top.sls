@@ -20,7 +20,6 @@ base:
     - firewall
     - master
     - idstools
-    - redis
     - elasticsearch
     - logstash
     - kibana
@@ -28,6 +27,8 @@ base:
     - suricata
     - bro
     - curator
+    - elastalert
+    - filebeat
     - utility
     - schedule 
 
@@ -43,6 +44,7 @@ base:
     - elasticsearch
     - logstash
     - kibana
+    - elastalert
     - utility
     - schedule
 
