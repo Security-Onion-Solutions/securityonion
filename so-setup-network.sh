@@ -75,6 +75,22 @@ add_socore_user_notmaster() {
 
 }
 
+add_wazuh_users() {
+  
+  if [ $OS == 'centos' ]; then
+    local ADDUSER=adduser
+  else
+    local ADDUSER=useradd
+  fi
+
+  groupadd --gid 945 ossec
+  $ADDUSER --uid 943 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecm
+  $ADDUSER --uid 944 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecr
+  $ADDUSER --uid 945 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossec
+
+}
+
+
 # Enable Bro Logs
 bro_logs_enabled() {
 
@@ -875,6 +891,22 @@ update_sudoers() {
 
 }
 
+wazuh_agent_install() {
+ 
+ # Get key
+ curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
+ # Add repo
+ echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+ apt-get update -y
+ # Install
+ apt-get install -y wazuh-agent
+ # Prevent automatic updates
+ sed -i "s/^deb/#deb/" /etc/apt/sources.list.d/wazuh.list
+ # Set package state to "hold"
+ echo "wazuh-agent hold" | sudo dpkg --set-selections
+
+}
+
 ###########################################
 ##                                       ##
 ##         Whiptail Menu Section         ##
@@ -1421,6 +1453,12 @@ if (whiptail_you_sure); then
     echo ""
     add_socore_user_master
 
+    echo "** Adding Wazuh users **"
+    add_wazuh_users
+
+    echo "** Installing Wazuh agent **"
+    wazuh_agent_install
+
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
@@ -1507,6 +1545,8 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    add_wazuh_users
+    wazuh_agent_install
     copy_ssh_key
     set_initial_firewall_policy
     create_bond
@@ -1571,6 +1611,8 @@ if (whiptail_you_sure); then
     echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
     echo ""
     add_socore_user_master
+    add_wazuh_users
+    wazuh_agent_instal
     create_bond
     saltify
     docker_install
@@ -1632,6 +1674,8 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    add_wazuh_users
+    wazuh_agent_install
     copy_ssh_key
     set_initial_firewall_policy
     saltify
