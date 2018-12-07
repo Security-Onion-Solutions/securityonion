@@ -75,6 +75,22 @@ add_socore_user_notmaster() {
 
 }
 
+add_wazuh_users() {
+  
+  if [ $OS == 'centos' ]; then
+    local ADDUSER=adduser
+  else
+    local ADDUSER=useradd
+  fi
+
+  groupadd --gid 945 ossec
+  $ADDUSER --uid 943 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecm
+  $ADDUSER --uid 944 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecr
+  $ADDUSER --uid 945 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossec
+
+}
+
+
 # Enable Bro Logs
 bro_logs_enabled() {
 
@@ -155,7 +171,7 @@ chown_salt_master() {
 clear_master() {
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
-  if [ -f /etc/salt/pki/minion/minion_master.pub]; then
+  if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
     rm /etc/salt/pki/minion/minion_master.pub
     service salt-minion restart
   fi
@@ -531,7 +547,7 @@ master_static() {
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
-  if [ $MASTERUPDATES == 'MASTER' ]; then
+  if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
     echo "  masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
@@ -872,6 +888,39 @@ update_sudoers() {
   else
     echo "User socore already granted sudo privileges"
   fi
+
+}
+
+wazuh_agent_install() {
+ 
+ if [ $OS == 'centos' ]; then
+   # Add repo
+   cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
+   # Install agent
+   yum install -y wazuh-agent
+   # Prevent automatic upates
+   sed -i "s/^enabled=1/enabled=0/" /etc/yum.repos.d/wazuh.repo
+ else
+   # Get key
+   curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
+   # Add repo
+   echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+   apt-get update -y
+   # Install
+   apt-get install -y wazuh-agent
+   # Prevent automatic updates
+   sed -i "s/^deb/#deb/" /etc/apt/sources.list.d/wazuh.list
+   # Set package state to "hold"
+   echo "wazuh-agent hold" | sudo dpkg --set-selections
+ fi
 
 }
 
@@ -1421,6 +1470,12 @@ if (whiptail_you_sure); then
     echo ""
     add_socore_user_master
 
+    echo "** Adding Wazuh users **"
+    add_wazuh_users
+
+    echo "** Installing Wazuh agent **"
+    wazuh_agent_install
+
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
@@ -1507,6 +1562,8 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    add_wazuh_users
+    wazuh_agent_install
     copy_ssh_key
     set_initial_firewall_policy
     create_bond
@@ -1571,6 +1628,8 @@ if (whiptail_you_sure); then
     echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
     echo ""
     add_socore_user_master
+    add_wazuh_users
+    wazuh_agent_install
     create_bond
     saltify
     docker_install
@@ -1632,6 +1691,8 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    add_wazuh_users
+    wazuh_agent_install
     copy_ssh_key
     set_initial_firewall_policy
     saltify
