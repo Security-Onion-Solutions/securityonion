@@ -547,7 +547,7 @@ master_static() {
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
-  if [ $MASTERUPDATES == 'MASTER' ]; then
+  if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
     echo "  masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
