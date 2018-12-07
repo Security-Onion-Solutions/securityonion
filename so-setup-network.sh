@@ -171,7 +171,7 @@ chown_salt_master() {
 clear_master() {
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
-  if [ -f /etc/salt/pki/minion/minion_master.pub]; then
+  if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
     rm /etc/salt/pki/minion/minion_master.pub
     service salt-minion restart
   fi
