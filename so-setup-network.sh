@@ -1612,7 +1612,7 @@ if (whiptail_you_sure); then
     echo ""
     add_socore_user_master
     add_wazuh_users
-    wazuh_agent_instal
+    wazuh_agent_install
     create_bond
     saltify
     docker_install
