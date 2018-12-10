@@ -1,91 +1,55 @@
-# Create a state directory
+{%- set HOSTNAME = salt['grains.get']('host', '') %}
 
-statedir:
-  file.directory:
-    - name: /opt/so/state
+#vm.max_map_count:
+#  sysctl.present:
+#    - value: 262144
 
-salttmp:
-  file.directory:
-    - name: /opt/so/tmp
+# Add ossec Group
+ossecgroup:
+  group.present:
+    - name: ossec
+    - gid: 945
 
-# Install packages needed for the sensor
+# Add ossecm user
+ossecm:
+  user.present:
+    - uid: 943
+    - gid: 945
+    - home: /opt/so/wazuh
+    - createhome: False
 
-sensorpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - docker-ce
-      - python-docker
+# Add ossecr user
+ossecr:
+  user.present:
+    - uid: 944
+    - gid: 945
+    - home: /opt/so/wazuh
+    - createhome: False
 
-# Always keep these packages up to date
+# Add ossec user
+ossec:
+  user.present:
+    - uid: 945
+    - gid: 945
+    - home: /opt/so/wazuh
+    - createhome: False
 
-alwaysupdated:
-  pkg.latest:
-    - pkgs:
-      - openssl
-      - openssh-server
-      - bash
-    - skip_suggestions: True
+# Add wazuh agent
+wazuhpkgs:
+ pkg.installed:
+   - skip_suggestions: False
+   - pkgs:
+     - wazuh-agent
 
-# Set time to UTC
-
-Etc/UTC:
-  timezone.system
-
-# Set up docker network
-dockernet:
-  docker_network.present:
-    - name: so-elastic-net
-    - driver: bridge
-
-# Snag the so-core docker
-toosmooth/so-core:test2:
-  docker_image.present
-
-# Drop the correct nginx config based on role
-
-nginxconfdir:
-  file.directory:
-    - name: /opt/so/conf/nginx
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-nginxconf:
-  file.managed:
-    - name: /opt/so/conf/nginx/nginx.conf
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://common/nginx/nginx.conf.{{ grains.role }}
-
-nginxlogdir:
-  file.directory:
-    - name: /opt/so/log/nginx/
-    - user: 939
-    - group: 939
-
-nginxtmp:
-  file.directory:
-    - name: /opt/so/tmp/nginx/tmp
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-# Start the core docker
-so-core:
+so-wazuh:
   docker_container.running:
-    - image: toosmooth/so-core:test2
-    - hostname: so-core
-    - user: socore
-    - binds:
-      - /opt/so:/opt/so:rw
-      - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /opt/so/log/nginx/:/var/log/nginx:rw
-      - /opt/so/tmp/nginx/:/var/lib/nginx:rw
-      - /opt/so/tmp/nginx/:/run:rw
-    - network_mode: so-elastic-net
-    - cap_add: NET_BIND_SERVICE
+    - image: soshybridhunter/so-wazuh:HH1.0.5
+    - hostname: {{HOSTNAME}}-wazuh-manager
+    - name: so-wazuh
+    - detach: True
     - port_bindings:
-      - 80:80
-      - 443:443
+      - 0.0.0.0:1514:1514
+      - 0.0.0.0:55000:55000
+    - binds:
+      - /opt/so/wazuh/:/var/ossec/data/:rw
+

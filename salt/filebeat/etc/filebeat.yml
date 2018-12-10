@@ -1,6 +1,7 @@
 {%- set MASTER = grains['master'] %}
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
 
 name: {{ HOSTNAME }}
 
@@ -36,16 +37,17 @@ filebeat.prospectors:
     clean_removed: false
     close_removed: false
 
+{%- if WAZUHENABLED == '1' %}
+
   - type: log
     paths:
-      - /alerts/alerts.json
+      - /wazuh/alerts/alerts.json
     fields:
       type: ossec
     fields_under_root: true
     clean_removed: false
     close_removed: false
-
-
+{%- endif %}
 
 #----------------------------- Logstash output ---------------------------------
 output.logstash:

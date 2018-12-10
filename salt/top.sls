@@ -33,6 +33,7 @@ base:
     - utility
     - schedule
     - fleet
+    - wazuh
 
 
   'G@role:so-master':
