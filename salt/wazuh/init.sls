@@ -1,6 +1,8 @@
-vm.max_map_count:
-  sysctl.present:
-    - value: 262144
+{%- set HOSTNAME = salt['grains.get']('host', '') %}
+
+#vm.max_map_count:
+#  sysctl.present:
+#    - value: 262144
 
 # Add ossec Group
 ossecgroup:
@@ -42,12 +44,12 @@ wazuhpkgs:
 so-wazuh:
   docker_container.running:
     - image: soshybridhunter/so-wazuh:HH1.0.5
-    - hostname: {{ hostname}}-docker
+    - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
-    - user: ossec
+    - detach: True
     - port_bindings:
       - 0.0.0.0:1514:1514
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/wazuh/:/var/ossec/data:rw
+      - /opt/so/wazuh/:/var/ossec/data/:rw
 
