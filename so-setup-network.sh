@@ -75,7 +75,7 @@ add_socore_user_notmaster() {
 
 }
 
-add_wazuh_users() {
+#add_wazuh_users() {
   
   # REMARKING FOR NOW -- ADDING VIA init.sls
   #if [ $OS == 'centos' ]; then
@@ -89,7 +89,7 @@ add_wazuh_users() {
   #$ADDUSER --uid 944 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecr
   #$ADDUSER --uid 945 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossec
 
-}
+#}
 
 
 # Enable Bro Logs
