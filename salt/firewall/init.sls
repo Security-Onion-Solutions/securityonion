@@ -1,5 +1,19 @@
 # Firewall Magic for the grid
 
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+
+{%- set ip = salt['pillar.get']('static:masterip', '') %}
+
+{% elif grains['role'] == 'so-node'%}
+
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
+
+{% elif grains['role'] == 'so-sensor'%}
+
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
+
+{% endif %}
+
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
@@ -85,6 +99,29 @@ enable_docker_user_established:
     - save: True
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
+
+# Add rule(s) for Wazuh manager
+enable_wazuh_manager_1514_tcp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+enable_wazuh_manager_1514_udp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: udp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
 
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
