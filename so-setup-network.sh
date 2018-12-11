@@ -558,7 +558,7 @@ master_static() {
   # Create a static file for global values
   touch /opt/so/saltstack/pillar/static.sls
 
-  echo "static:" >> /opt/so/saltstack/pillar/static.sls
+  echo "static:" > /opt/so/saltstack/pillar/static.sls
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
