@@ -1,5 +1,5 @@
-{%- set MYSQLPASS = salt['pillar.get']('master:mysqlpass', 'iwonttellyou') %}
-{%- set FLEETPASS = salt['pillar.get']('master:fleetpass', 'bazinga') %}
+{%- set MYSQLPASS = salt['pillar.get']('auth:mysql', 'iwonttellyou') %}
+{%- set FLEETPASS = salt['pillar.get']('auth:fleet', 'bazinga') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 # MySQL Setup
 mysqlpkgs:

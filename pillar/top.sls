@@ -10,6 +10,7 @@ base:
     - static
     - firewall.*
     - data.*
+    - auth
 
   'G@role:so-eval':
     - masters.{{ grains.host }}
@@ -17,6 +18,7 @@ base:
     - firewall.*
     - data.*
     - brologs
+    - auth
 
   'G@role:so-node':
     - nodes.{{ grains.host }}

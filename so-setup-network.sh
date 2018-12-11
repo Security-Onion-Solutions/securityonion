@@ -76,7 +76,7 @@ add_socore_user_notmaster() {
 }
 
 #add_wazuh_users() {
-  
+
   # REMARKING FOR NOW -- ADDING VIA init.sls
   #if [ $OS == 'centos' ]; then
   #  local ADDUSER=adduser
@@ -91,6 +91,18 @@ add_socore_user_notmaster() {
 
 #}
 
+# Create an auth pillar so that passwords survive re-install
+auth_pillar(){
+
+  if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+    echo "Creating Auth Pillar"
+    mkdir -p /opt/so/saltstack/pillar
+    echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/auth.sls
+  fi
+
+}
 
 # Enable Bro Logs
 bro_logs_enabled() {
@@ -192,7 +204,12 @@ configure_minion() {
     echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
     echo "mysql.port: 3306" >> /etc/salt/minion
     echo "mysql.user: 'root'" >> /etc/salt/minion
-    echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
+    if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+      echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
+    else
+      OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
+      echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
+    fi
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
@@ -531,8 +548,8 @@ master_pillar() {
   echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -893,7 +910,7 @@ update_sudoers() {
 }
 
 wazuh_repo_install() {
- 
+
  if [ $OS == 'centos' ]; then
    # Add repo
    cat > /etc/yum.repos.d/wazuh.repo <<\EOF
@@ -1444,6 +1461,7 @@ if (whiptail_you_sure); then
     # Last Chance to back out
     whiptail_make_changes
     generate_passwords
+    auth_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
