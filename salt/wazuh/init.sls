@@ -53,7 +53,7 @@ wazuhagentconf:
 # Add Wazuh agent conf
 wazuhagentregister:
   file.managed:
-    - name: /usr/sbin/wazuh-agent-register
+    - name: /usr/sbin/wazuh-register-agent
     - source: salt://wazuh/files/agent/wazuh-register-agent
     - user: 0
     - group: 0
