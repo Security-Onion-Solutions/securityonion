@@ -57,6 +57,7 @@ wazuhagentregister:
     - source: salt://wazuh/files/agent/wazuh-register-agent
     - user: 0
     - group: 0
+    - mode: 755
 
 so-wazuh:
   docker_container.running:
