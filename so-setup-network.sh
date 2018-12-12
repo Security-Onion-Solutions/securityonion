@@ -220,6 +220,14 @@ configure_minion() {
 
 }
 
+configure_wazuh_agent(){
+
+  # Configure Wazuh agent to talk to manager
+  echo "Configuring Wazuh agent to talk to manager..."
+  /usr/sbin/wazuh-register-agent -i $MAINIP
+
+}
+
 copy_master_config() {
 
   # Copy the master config template to the proper directory
@@ -1625,6 +1633,7 @@ if (whiptail_you_sure); then
     CURCLOSEDAYS=30
     whiptail_make_changes
     generate_passwords
+    auth_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1660,6 +1669,7 @@ if (whiptail_you_sure); then
     salt_checkin_message
     salt_checkin
     checkin_at_boot
+    #configure_wazuh_agent
     whiptail_setup_complete
   fi
 
