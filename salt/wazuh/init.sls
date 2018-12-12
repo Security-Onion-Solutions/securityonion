@@ -41,6 +41,15 @@ wazuhpkgs:
    - pkgs:
      - wazuh-agent
 
+# Add Wazuh agent conf
+eslog4jfile:
+  file.managed:
+    - name: /var/ossec/etc/ossec.conf
+    - source: salt://wazuh/files/agent/ossec.conf
+    - user: 0
+    - group: 945
+    - template: jinja
+
 so-wazuh:
   docker_container.running:
     - image: soshybridhunter/so-wazuh:HH1.0.5
@@ -48,7 +57,7 @@ so-wazuh:
     - name: so-wazuh
     - detach: True
     - port_bindings:
-      - 0.0.0.0:1515:1514/udp
+      - 0.0.0.0:1514:1514/udp
       - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
