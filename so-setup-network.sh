@@ -1669,7 +1669,7 @@ if (whiptail_you_sure); then
     salt_checkin_message
     salt_checkin
     checkin_at_boot
-    configure_wazuh_agent
+    #configure_wazuh_agent
     whiptail_setup_complete
   fi
 
