@@ -1,3 +1,4 @@
+{%- set ip = salt['pillar.get']('static:masterip', '') %}
 #!/bin/bash
 
 ###
@@ -23,7 +24,7 @@ PROTOCOL="https"
 USER="foo"
 PASSWORD="bar"
 AGENT_NAME=$(hostname)
-AGENT_IP=""
+AGENT_IP="{{ip}}"
 
 display_help() {
 cat <<HELP_USAGE
@@ -49,7 +50,7 @@ register_agent() {
 
   if [ "$?" != "0" ]; then
     echo -e $API_RESULT | sed -rn 's/.*"message":"(.+)".*/\1/p'
-    exit 1
+    exit 0
   fi
   # Get agent id and agent key 
   AGENT_ID=$(echo $API_RESULT | cut -d':' -f 4 | cut -d ',' -f 1)

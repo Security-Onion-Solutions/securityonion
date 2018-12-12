@@ -1,10 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 
-#vm.max_map_count:
-#  sysctl.present:
-#    - value: 262144
-
-# Add ossec Group
+# Add ossec group
 ossecgroup:
   group.present:
     - name: ossec
@@ -58,6 +54,7 @@ wazuhagentregister:
     - user: 0
     - group: 0
     - mode: 755
+    - template: jinja
 
 so-wazuh:
   docker_container.running:
@@ -72,3 +69,9 @@ so-wazuh:
     - binds:
       - /opt/so/wazuh/:/var/ossec/data/:rw
 
+# Register the agent
+registertheagent:
+  cmd.run:
+    - name: /usr/sbin/wazuh-register-agent
+    - cwd: /
+    #- stateful: True
