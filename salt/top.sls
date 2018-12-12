@@ -29,11 +29,11 @@ base:
     - bro
     - curator
     - elastalert
+    - fleet
+    - wazuh
     - filebeat
     - utility
     - schedule
-    - fleet
-    - wazuh
 
 
   'G@role:so-master':
