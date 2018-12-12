@@ -1633,6 +1633,7 @@ if (whiptail_you_sure); then
     CURCLOSEDAYS=30
     whiptail_make_changes
     generate_passwords
+    auth_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
