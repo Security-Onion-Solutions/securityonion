@@ -10,6 +10,13 @@ fleetcdir:
     - group: 939
     - makedirs: True
 
+fleetlogdir:
+  file.directory:
+    - name: /opt/so/log/fleet
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 fleetdb:
   mysql_database.present:
     - name: fleet
@@ -44,8 +51,11 @@ so-fleet:
       - KOLIDE_SERVER_KEY=/ssl/server.key
       - KOLIDE_LOGGING_JSON=true
       - KOLIDE_AUTH_JWT_KEY=thisisatest
+      - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/osquery/status.log
+      - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
-      - /etc/pki/fleet.crt:/ssl/server.cert
+      - /etc/pki/fleet.crt:/ssl/server.cert:ro
+      - /opt/so/log/fleet:/var/log/osquery
     - watch:
       - /opt/so/conf/fleet/etc
