@@ -42,13 +42,21 @@ wazuhpkgs:
      - wazuh-agent
 
 # Add Wazuh agent conf
-eslog4jfile:
+wazuhagentconf:
   file.managed:
     - name: /var/ossec/etc/ossec.conf
     - source: salt://wazuh/files/agent/ossec.conf
     - user: 0
     - group: 945
     - template: jinja
+
+# Add Wazuh agent conf
+wazuhagentregister:
+  file.managed:
+    - name: /usr/sbin/wazuh-agent-register
+    - source: salt://wazuh/files/agent/wazuh-register-agent
+    - user: 0
+    - group: 0
 
 so-wazuh:
   docker_container.running:
