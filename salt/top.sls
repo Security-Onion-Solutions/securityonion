@@ -10,6 +10,7 @@ base:
     {%- if BROVER != 'SURICATA' %}
     - bro
     {%- endif %}
+    - wazuh
     - filebeat
     - schedule
 
@@ -49,6 +50,8 @@ base:
     - logstash
     - kibana
     - elastalert
+    - wazuh
+    - filebeat
     - utility
     - schedule
     - fleet
@@ -87,6 +90,8 @@ base:
     - logstash
     - elasticsearch
     - curator
+    - wazuh
+    - filebeat
     - schedule
 
   'G@role:mastersensor':
