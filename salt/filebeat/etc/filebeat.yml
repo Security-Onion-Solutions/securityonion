@@ -12,6 +12,7 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.prospectors:
 #------------------------------ Log prospector --------------------------------
+{%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" %}
 {%- if BROVER != 'SURICATA' %}
 {%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
   - type: log
@@ -36,6 +37,7 @@ filebeat.prospectors:
     fields_under_root: true
     clean_removed: false
     close_removed: false
+{%- endif %}
 
 {%- if WAZUHENABLED == '1' %}
 
@@ -73,7 +75,6 @@ output.logstash:
   # Set gzip compression level.
   compression_level: 3
 
-
   # Enable SSL support. SSL is automatically enabled, if any SSL setting is set.
   ssl.enabled: true
 
@@ -96,7 +97,6 @@ output.logstash:
 
   # Client Certificate Key
   ssl.key: "/usr/share/filebeat/filebeat.key"
-
 
 # Elasticsearch template settings
 #setup.template.settings:
