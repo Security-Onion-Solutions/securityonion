@@ -620,6 +620,15 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
 
     else
 
@@ -722,12 +731,22 @@ EOF
         echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
+
+        cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
-gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
 enabled=1
 name=Wazuh repository
 baseurl=https://packages.wazuh.com/3.x/yum/
