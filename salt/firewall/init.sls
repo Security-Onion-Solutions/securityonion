@@ -10,7 +10,7 @@
 
 {% elif grains['role'] == 'so-sensor'%}
 
-{%- set ip = salt['pillar.get']('sensor:mainip', '') %}
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
 
 {% endif %}
 
@@ -342,6 +342,22 @@ enable_standard_beats_5044_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 5044
+    - position: 1
+    - save: True
+
+{% endfor %}
+
+# Allow OSQuery Endpoints to send their traffic
+{% for ip in pillar.get('osquery_endpoint')  %}
+
+enable_standard_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
     - position: 1
     - save: True
 
