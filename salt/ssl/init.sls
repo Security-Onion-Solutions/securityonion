@@ -96,12 +96,18 @@ fbcrtlink:
         bits: 4096
         backup: True
 
-# Create a cert for OSQuery
+# Create a private key and cert for OSQuery
+/etc/pki/fleet.key:
+  x509.private_key_managed:
+    - CN: {{ master }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 3650
+    - backup: True
+
 /etc/pki/fleet.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
-    - signing_policy: fleet
-    - public_key: /etc/pki/fleet.key
+    - signing_private_key: /etc/pki/fleet.key
     - CN: {{ master }}
     - days_remaining: 0
     - days_valid: 3650
