@@ -1,10 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 
-#vm.max_map_count:
-#  sysctl.present:
-#    - value: 262144
-
-# Add ossec Group
+# Add ossec group
 ossecgroup:
   group.present:
     - name: ossec
@@ -41,6 +37,25 @@ wazuhpkgs:
    - pkgs:
      - wazuh-agent
 
+# Add Wazuh agent conf
+wazuhagentconf:
+  file.managed:
+    - name: /var/ossec/etc/ossec.conf
+    - source: salt://wazuh/files/agent/ossec.conf
+    - user: 0
+    - group: 945
+    - template: jinja
+
+# Add Wazuh agent conf
+wazuhagentregister:
+  file.managed:
+    - name: /usr/sbin/wazuh-register-agent
+    - source: salt://wazuh/files/agent/wazuh-register-agent
+    - user: 0
+    - group: 0
+    - mode: 755
+    - template: jinja
+
 so-wazuh:
   docker_container.running:
     - image: soshybridhunter/so-wazuh:HH1.0.5
@@ -48,8 +63,15 @@ so-wazuh:
     - name: so-wazuh
     - detach: True
     - port_bindings:
-      - 0.0.0.0:1514:1514
+      - 0.0.0.0:1514:1514/udp
+      - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
       - /opt/so/wazuh/:/var/ossec/data/:rw
 
+# Register the agent
+registertheagent:
+  cmd.run:
+    - name: /usr/sbin/wazuh-register-agent
+    - cwd: /
+    #- stateful: True
