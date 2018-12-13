@@ -1559,7 +1559,7 @@ if (whiptail_you_sure); then
     #add_wazuh_users
 
     echo "** Installing Wazuh repo **"
-    wazuh_repo_install
+    #wazuh_repo_install
 
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
@@ -1648,7 +1648,7 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     #add_wazuh_users
-    wazuh_repo_install
+    #wazuh_repo_install
     copy_ssh_key
     set_initial_firewall_policy
     create_bond
@@ -1715,7 +1715,7 @@ if (whiptail_you_sure); then
     echo ""
     add_socore_user_master
     #add_wazuh_users
-    wazuh_repo_install
+    #wazuh_repo_install
     create_bond
     saltify
     docker_install
@@ -1779,7 +1779,7 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     #add_wazuh_users
-    wazuh_repo_install
+    #wazuh_repo_install
     copy_ssh_key
     set_initial_firewall_policy
     saltify
