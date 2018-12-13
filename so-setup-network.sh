@@ -496,6 +496,7 @@ install_master() {
     mkdir -p /opt/so/gpg
     wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
     wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+    wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
     apt-get install -y salt-master
@@ -701,6 +702,7 @@ saltify() {
       mkdir -p /opt/so/gpg
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
       wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+      wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
@@ -711,7 +713,9 @@ saltify() {
       mkdir $TMP/gpg
       scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
+      apt-key add $TMP/gpg/GPG-KEY-WAZUH
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
