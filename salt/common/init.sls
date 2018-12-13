@@ -102,7 +102,7 @@ nginxtmp:
 # Start the core docker
 so-core:
   docker_container.running:
-    - image: soshybridhunter/so-core:HH1.0.3
+    - image: soshybridhunter/so-core:HH1.0.5
     - hostname: so-core
     - user: socore
     - binds:
