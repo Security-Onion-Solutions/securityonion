@@ -10,7 +10,7 @@
 
 {% elif grains['role'] == 'so-sensor'%}
 
-{%- set ip = salt['pillar.get']('node:mainip', '') %}
+{%- set ip = salt['pillar.get']('sensor:mainip', '') %}
 
 {% endif %}
 
