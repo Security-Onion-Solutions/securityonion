@@ -795,6 +795,12 @@ EOF
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
       wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
       wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
+
+      # Get key and install wazuh
+      curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
+      # Add repo
+      echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
