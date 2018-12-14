@@ -50,7 +50,9 @@ add_master_hostfile() {
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
   # Add the master to the host file if it doesn't resolve
-  echo "$MSRVIP   $MSRV" >> /etc/hosts
+  if ! grep -q $MSRVIP /etc/hosts; then
+    echo "$MSRVIP   $MSRV" >> /etc/hosts
+  fi
 }
 
 add_socore_user_master() {
@@ -298,7 +300,9 @@ create_bond() {
 
     # Need to add 17.04 support still
     apt-get -y install ifenslave
-    echo "bonding" >> /etc/modules
+    if ! grep -q bonding /etc/modules; then
+      echo "bonding" >> /etc/modules
+    fi
     modprobe bonding
 
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
@@ -986,7 +990,9 @@ set_updates() {
   echo "MASTERUPDATES is $MASTERUPDATES"
   if [ $MASTERUPDATES == 'MASTER' ]; then
     if [ $OS == 'centos' ]; then
+      if ! grep -q $MSRV /etc/yum.conf; then
       echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+    fi
 
     else
 
@@ -1680,7 +1686,7 @@ if (whiptail_you_sure); then
     sensor_pillar
     saltify
     docker_install
-    configure_minion SENSOR
+    configure_minion sensor
     copy_minion_pillar sensors
     salt_firstcheckin
     # Accept the Salt Key
