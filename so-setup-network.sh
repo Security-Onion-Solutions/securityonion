@@ -453,7 +453,11 @@ get_filesystem_nsm(){
 
 get_log_size_limit() {
 
-  DISK_SIZE_K=`df /nsm |grep -v "^Filesystem" | awk '{print $2}'`
+  DISK_DIR="/"
+  if [ -d /nsm ]; then
+    DISK_DIR="/nsm"
+  fi
+  DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
   PERCENTAGE=85
   DISK_SIZE=DISK_SIZE_K*1000
   PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`

@@ -1,19 +1,11 @@
 # Firewall Magic for the grid
-
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
-
+{%- if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 {%- set ip = salt['pillar.get']('static:masterip', '') %}
-
-{% elif grains['role'] == 'so-node'%}
-
+{%- elif grains['role'] == 'so-node' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
-
-{% elif grains['role'] == 'so-sensor'%}
-
-{%- set ip = salt['pillar.get']('node:mainip', '') %}
-
-{% endif %}
-
+{%- elif grains['role'] == 'so-sensor' %}
+{%- set ip = salt['pillar.get']('sensor:mainip', '') %}
+{%- endif %}
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
