@@ -77,22 +77,6 @@ add_socore_user_notmaster() {
 
 }
 
-#add_wazuh_users() {
-
-  # REMARKING FOR NOW -- ADDING VIA init.sls
-  #if [ $OS == 'centos' ]; then
-  #  local ADDUSER=adduser
-  #else
-  #  local ADDUSER=useradd
-  #fi
-
-  #groupadd --gid 945 ossec
-  #$ADDUSER --uid 943 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecm
-  #$ADDUSER --uid 944 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossecr
-  #$ADDUSER --uid 945 --gid 945 --home-dir /opt/so/wazuh --no-create-home ossec
-
-#}
-
 # Create an auth pillar so that passwords survive re-install
 auth_pillar(){
 
@@ -219,14 +203,6 @@ configure_minion() {
   fi
 
   service salt-minion restart
-
-}
-
-configure_wazuh_agent(){
-
-  # Configure Wazuh agent to talk to manager
-  echo "Configuring Wazuh agent to talk to manager..."
-  /usr/sbin/wazuh-register-agent -i $MAINIP
 
 }
 
@@ -1021,28 +997,6 @@ update_sudoers() {
 
 }
 
-#wazuh_repo_install() {
-
-# if [ $OS == 'centos' ]; then
-   # Add repo
-#   cat > /etc/yum.repos.d/wazuh.repo <<\EOF
-#[wazuh_repo]
-#gpgcheck=1
-#gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
-#enabled=1
-#name=Wazuh repository
-#baseurl=https://packages.wazuh.com/3.x/yum/
-#protect=1
-#EOF
-# else
-   # Get key
-#   curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
-   # Add repo
-#   echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
- #fi
-
-#}
-
 ###########################################
 ##                                       ##
 ##         Whiptail Menu Section         ##
@@ -1590,12 +1544,6 @@ if (whiptail_you_sure); then
     echo ""
     add_socore_user_master
 
-    #echo "** Adding Wazuh users **"
-    #add_wazuh_users
-
-    echo "** Installing Wazuh repo **"
-    #wazuh_repo_install
-
     # Install salt and dependencies
     echo " ** Installing Salt and Dependencies **"
     saltify >>~/sosetup.log 2>&1
@@ -1682,8 +1630,6 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    #add_wazuh_users
-    #wazuh_repo_install
     copy_ssh_key
     set_initial_firewall_policy
     create_bond
@@ -1749,8 +1695,6 @@ if (whiptail_you_sure); then
     echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
     echo ""
     add_socore_user_master
-    #add_wazuh_users
-    #wazuh_repo_install
     create_bond
     saltify
     docker_install
@@ -1773,7 +1717,6 @@ if (whiptail_you_sure); then
     salt_checkin_message
     salt_checkin
     checkin_at_boot
-    #configure_wazuh_agent
     whiptail_setup_complete
   fi
 
@@ -1787,9 +1730,7 @@ if (whiptail_you_sure); then
     whiptail_master_updates
     set_updates
     get_log_size_limit
-    whiptail_log_size_limit
     CURCLOSEDAYS=30
-    whiptail_cur_close_days
     es_heapsize
     ls_heapsize
     whiptail_node_advanced
@@ -1800,6 +1741,8 @@ if (whiptail_you_sure); then
       whiptail_node_ls_pipline_batchsize
       whiptail_node_ls_input_threads
       whiptail_node_ls_input_batch_count
+      whiptail_cur_close_days
+      whiptail_log_size_limit
     else
       NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
       NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
@@ -1813,8 +1756,6 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    #add_wazuh_users
-    #wazuh_repo_install
     copy_ssh_key
     set_initial_firewall_policy
     saltify
