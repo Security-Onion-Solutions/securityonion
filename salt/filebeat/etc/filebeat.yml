@@ -1,6 +1,7 @@
 {%- set MASTER = grains['master'] %}
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
 
 name: {{ HOSTNAME }}
 
@@ -11,6 +12,7 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.prospectors:
 #------------------------------ Log prospector --------------------------------
+{%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" %}
 {%- if BROVER != 'SURICATA' %}
 {%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
   - type: log
@@ -35,7 +37,29 @@ filebeat.prospectors:
     fields_under_root: true
     clean_removed: false
     close_removed: false
+{%- endif %}
 
+{%- if WAZUHENABLED == '1' %}
+
+  - type: log
+    paths:
+      - /wazuh/alerts/alerts.json
+    fields:
+      type: ossec
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+  - type: log
+    paths:
+      - /wazuh/archives/archives.json
+    fields:
+      type: ossec_archive
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+{%- endif %}
 
 #----------------------------- Logstash output ---------------------------------
 output.logstash:
@@ -50,7 +74,6 @@ output.logstash:
 
   # Set gzip compression level.
   compression_level: 3
-
 
   # Enable SSL support. SSL is automatically enabled, if any SSL setting is set.
   ssl.enabled: true
@@ -74,7 +97,6 @@ output.logstash:
 
   # Client Certificate Key
   ssl.key: "/usr/share/filebeat/filebeat.key"
-
 
 # Elasticsearch template settings
 #setup.template.settings:
@@ -152,7 +174,7 @@ output.logstash:
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-#logging.level: info
+logging.level: debug
 
 # Enable debug output for selected components. To enable all selectors use ["*"]
 # Other available selectors are "beat", "publish", "service"

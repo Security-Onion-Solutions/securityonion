@@ -10,6 +10,7 @@ base:
     {%- if BROVER != 'SURICATA' %}
     - bro
     {%- endif %}
+    - wazuh
     - filebeat
     - schedule
 
@@ -20,13 +21,18 @@ base:
     - firewall
     - master
     - idstools
-    - redis
+    - mysql
     - elasticsearch
     - logstash
     - kibana
     - pcap
     - suricata
     - bro
+    - curator
+    - elastalert
+    - fleet
+    - wazuh
+    - filebeat
     - utility
     - schedule
 
@@ -39,11 +45,16 @@ base:
     - master
     - idstools
     - redis
+    - mysql
     - elasticsearch
     - logstash
     - kibana
+    - elastalert
+    - wazuh
+    - filebeat
     - utility
     - schedule
+    - fleet
 
   # Storage node logic
 
@@ -60,6 +71,7 @@ base:
     - firewall
     - logstash
     - elasticsearch
+    - curator
     - schedule
 
   'G@role:so-node and I@node:node_type:warm':
@@ -77,6 +89,9 @@ base:
     - firewall
     - logstash
     - elasticsearch
+    - curator
+    - wazuh
+    - filebeat
     - schedule
 
   'G@role:mastersensor':

@@ -18,7 +18,6 @@
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
 {% elif grains['role'] == 'so-eval' %}
 
@@ -26,7 +25,6 @@
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
 {% set dstats = salt['pillar.get']('master:dstats', '0') %}
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 
 {% elif grains['role'] == 'so-node' %}
 
@@ -34,7 +32,6 @@
 {% set esheap = salt['pillar.get']('node:esheap', '') %}
 {% set freq = salt['pillar.get']('node:freq', '0') %}
 {% set dstats = salt['pillar.get']('node:dstats', '0') %}
-{% set esalert = salt['pillar.get']('node:elastalert', '1') %}
 
 {% endif %}
 
@@ -150,6 +147,7 @@ so-freq:
   docker_container.running:
     - image: soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
+    - name: so-freqserver
     - user: freqserver
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
@@ -185,137 +183,10 @@ so-domainstats:
   docker_container.running:
     - image: soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
-    - name: domainstats
+    - name: so-domainstats
     - user: domainstats
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
 
-
-{% endif %}
-
-# Curator
-# Create the group
-curatorgroup:
-  group.present:
-    - name: curator
-    - gid: 934
-
-# Add user
-curator:
-  user.present:
-    - uid: 934
-    - gid: 934
-    - home: /opt/so/conf/curator
-    - createhome: False
-
-# Create the log directory
-curactiondir:
-  file.directory:
-    - name: /opt/so/conf/curator/action
-    - user: 934
-    - group: 939
-    - makedirs: True
-
-curlogdir:
-  file.directory:
-    - name: /opt/so/log/curator
-    - user: 934
-    - group: 939
-
-curclose:
-  file.managed:
-    - name: /opt/so/conf/curator/action/close.yml
-    - source: salt://elasticsearch/files/curator/action/close.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curdel:
-  file.managed:
-    - name: /opt/so/conf/curator/action/delete.yml
-    - source: salt://elasticsearch/files/curator/action/delete.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curconf:
-  file.managed:
-    - name: /opt/so/conf/curator/curator.yml
-    - source: salt://elasticsearch/files/curator/curator.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-so-curator:
-  docker_container.running:
-    - image: soshybridhunter/so-curator:HH1.0.3
-    - hostname: curator
-    - name: curator
-    - user: curator
-    - interactive: True
-    - tty: True
-    - binds:
-      - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
-      - /opt/so/conf/curator/action/:/etc/curator/action:ro
-      - /opt/so/log/curator:/var/log/curator:rw
-
-
-# Begin Curator Cron Jobs
-
-# Close
-# Delete
-# Hot Warm
-# Segment Merge
-
-# End Curator Cron Jobs
-
-# Elastalert
-{% if esalert == 1 %}
-
-# Create the group
-elastagroup:
-  group.present:
-    - name: elastalert
-    - gid: 933
-
-# Add user
-elastalert:
-  user.present:
-    - uid: 933
-    - gid: 933
-    - home: /opt/so/conf/elastalert
-    - createhome: False
-
-elastalogdir:
-  file.directory:
-    - name: /opt/so/log/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-elastarules:
-  file.directory:
-    - name: /opt/so/rules/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-elastaconf:
-  file.directory:
-    - name: /opt/so/conf/elastalert
-    - user: 933
-    - group: 939
-    - makedirs: True
-
-so-elastalert:
-  docker_container.running:
-    - image: soshybridhunter/so-elastalert:HH1.0.3
-    - hostname: elastalert
-    - name: elastalert
-    - user: elastalert
-    - detach: True
-    - binds:
-      - /etc/elastalert/rules/:/etc/elastalert/rules/:ro
-      - /opt/so/log/elastalert:/var/log/elastalert:rw
 
 {% endif %}

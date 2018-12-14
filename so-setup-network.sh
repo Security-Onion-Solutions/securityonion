@@ -22,6 +22,7 @@ NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+NODE_ES_PORT="9200"
 
 # End Global Variable Section
 
@@ -49,7 +50,9 @@ add_master_hostfile() {
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
   # Add the master to the host file if it doesn't resolve
-  echo "$MSRVIP   $MSRV" >> /etc/hosts
+  if ! grep -q $MSRVIP /etc/hosts; then
+    echo "$MSRVIP   $MSRV" >> /etc/hosts
+  fi
 }
 
 add_socore_user_master() {
@@ -71,6 +74,19 @@ add_socore_user_notmaster() {
   # Add socore user to the non master system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
+
+}
+
+# Create an auth pillar so that passwords survive re-install
+auth_pillar(){
+
+  if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+    echo "Creating Auth Pillar"
+    mkdir -p /opt/so/saltstack/pillar
+    echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/auth.sls
+  fi
 
 }
 
@@ -154,8 +170,9 @@ chown_salt_master() {
 clear_master() {
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
-  if [ -f /etc/salt/pki/minion/minion_master.pub]; then
+  if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
     rm /etc/salt/pki/minion/minion_master.pub
+    service salt-minion restart
   fi
 
 }
@@ -170,6 +187,15 @@ configure_minion() {
   if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
+    echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
+    echo "mysql.port: 3306" >> /etc/salt/minion
+    echo "mysql.user: 'root'" >> /etc/salt/minion
+    if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+      echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
+    else
+      OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
+      echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
+    fi
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $HOSTNAME" >> /etc/salt/minion
@@ -250,7 +276,9 @@ create_bond() {
 
     # Need to add 17.04 support still
     apt-get -y install ifenslave
-    echo "bonding" >> /etc/modules
+    if ! grep -q bonding /etc/modules; then
+      echo "bonding" >> /etc/modules
+    fi
     modprobe bonding
 
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
@@ -329,6 +357,10 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce docker-python python-docker
+    docker_registry
+    echo "Restarting Docker"
+    systemctl restart docker
+    systemctl enable docker
 
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -384,8 +416,29 @@ filter_nics() {
   FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 
 }
+
+generate_passwords(){
+  # Generate Random Passwords for Things
+  MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+}
+
 get_filesystem_nsm(){
   FSNSM=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
+}
+
+get_log_size_limit() {
+
+  DISK_DIR="/"
+  if [ -d /nsm ]; then
+    DISK_DIR="/nsm"
+  fi
+  DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
+  PERCENTAGE=85
+  DISK_SIZE=DISK_SIZE_K*1000
+  PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
+  LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
+
 }
 
 get_filesystem_root(){
@@ -435,6 +488,7 @@ install_master() {
     mkdir -p /opt/so/gpg
     wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
     wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+    wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
     apt-get install -y salt-master
@@ -484,6 +538,11 @@ master_pillar() {
   echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
 
   }
 
@@ -492,14 +551,14 @@ master_static() {
   # Create a static file for global values
   touch /opt/so/saltstack/pillar/static.sls
 
-  echo "static:" >> /opt/so/saltstack/pillar/static.sls
+  echo "static:" > /opt/so/saltstack/pillar/static.sls
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
-  if [ $MASTERUPDATES == 'MASTER' ]; then
+  if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
     echo "  masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
@@ -531,6 +590,9 @@ node_pillar() {
   echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$HOSTNAME.sls
   echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$HOSTNAME.sls
   echo "  node_type: $NODETYPE" >> $TMP/$HOSTNAME.sls
+  echo "  es_port: $NODE_ES_PORT" >> $TMP/$HOSTNAME.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$HOSTNAME.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$HOSTNAME.sls
 
 }
 
@@ -542,6 +604,15 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
 
     else
 
@@ -580,6 +651,62 @@ saltify() {
         echo "=dtMN" >> /etc/pki/rpm-gpg/saltstack-signing-key
         echo "-----END PGP PUBLIC KEY BLOCK-----" >> /etc/pki/rpm-gpg/saltstack-signing-key
 
+        # Add the Wazuh Key
+        cat > /etc/pki/rpm-gpg/GPG-KEY-WAZUH <<\EOF
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1
+
+mQINBFeeyYwBEACyf4VwV8c2++J5BmCl6ofLCtSIW3UoVrF4F+P19k/0ngnSfjWb
+8pSWB11HjZ3Mr4YQeiD7yY06UZkrCXk+KXDlUjMK3VOY7oNPkqzNaP6+8bDwj4UA
+hADMkaXBvWooGizhCoBtDb1bSbHKcAnQ3PTdiuaqF5bcyKk8hv939CHulL2xH+BP
+mmTBi+PM83pwvR+VRTOT7QSzf29lW1jD79v4rtXHJs4KCz/amT/nUm/tBpv3q0sT
+9M9rH7MTQPdqvzMl122JcZST75GzFJFl0XdSHd5PAh2mV8qYak5NYNnwA41UQVIa
++xqhSu44liSeZWUfRdhrQ/Nb01KV8lLAs11Sz787xkdF4ad25V/Rtg/s4UXt35K3
+klGOBwDnzPgHK/OK2PescI5Ve1z4x1C2bkGze+gk/3IcfGJwKZDfKzTtqkZ0MgpN
+7RGghjkH4wpFmuswFFZRyV+s7jXYpxAesElDSmPJ0O07O4lQXQMROE+a2OCcm0eF
+3+Cr6qxGtOp1oYMOVH0vOLYTpwOkAM12/qm7/fYuVPBQtVpTojjV5GDl2uGq7p0o
+h9hyWnLeNRbAha0px6rXcF9wLwU5n7mH75mq5clps3sP1q1/VtP/Fr84Lm7OGke4
+9eD+tPNCdRx78RNWzhkdQxHk/b22LCn1v6p1Q0qBco9vw6eawEkz1qwAjQARAQAB
+tDFXYXp1aC5jb20gKFdhenVoIFNpZ25pbmcgS2V5KSA8c3VwcG9ydEB3YXp1aC5j
+b20+iQI9BBMBCAAnBQJXnsmMAhsDBQkFo5qABQsJCAcDBRUKCQgLBRYCAwEAAh4B
+AheAAAoJEJaz7l8pERFFHEsQAIaslejcW2NgjgOZuvn1Bht4JFMbCIPOekg4Z5yF
+binRz0wmA7JNaawDHTBYa6L+A2Xneu/LmuRjFRMesqopUukVeGQgHBXbGMzY46eI
+rqq/xgvgWzHSbWweiOX0nn+exbEAM5IyW+efkWNz0e8xM1LcxdYZxkVOqFqkp3Wv
+J9QUKw6z9ifUOx++G8UO307O3hT2f+x4MUoGZeOF4q1fNy/VyBS2lMg2HF7GWy2y
+kjbSe0p2VOFGEZLuu2f5tpPNth9UJiTliZKmgSk/zbKYmSjiVY2eDqNJ4qjuqes0
+vhpUaBjA+DgkEWUrUVXG5yfQDzTiYIF84LknjSJBYSLZ4ABsMjNO+GApiFPcih+B
+Xc9Kx7E9RNsNTDqvx40y+xmxDOzVIssXeKqwO8r5IdG3K7dkt2Vkc/7oHOpcKwE5
+8uASMPiqqMo+t1RVa6Spckp3Zz8REILbotnnVwDIwo2HmgASirMGUcttEJzubaIa
+Mv43GKs8RUH9s5NenC02lfZG7D8WQCz5ZH7yEWrt5bCaQRNDXjhsYE17SZ/ToHi3
+OpWu050ECWOHdxlXNG3dOWIdFDdBJM7UfUNSSOe2Y5RLsWfwvMFGbfpdlgJcMSDV
+X+ienkrtXhBteTu0dwPu6HZTFOjSftvtAo0VIqGQrKMvKelkkdNGdDFLQw2mUDcw
+EQj6uQINBFeeyYwBEADD1Y3zW5OrnYZ6ghTd5PXDAMB8Z1ienmnb2IUzLM+i0yE2
+TpKSP/XYCTBhFa390rYgFO2lbLDVsiz7Txd94nHrdWXGEQfwrbxsvdlLLWk7iN8l
+Fb4B60OfRi3yoR96a/kIPNa0x26+n79LtDuWZ/DTq5JSHztdd9F1sr3h8i5zYmtv
+luj99ZorpwYejbBVUm0+gP0ioaXM37uO56UFVQk3po9GaS+GtLnlgoE5volgNYyO
+rkeIua4uZVsifREkHCKoLJip6P7S3kTyfrpiSLhouEZ7kV1lbMbFgvHXyjm+/AIx
+HIBy+H+e+HNt5gZzTKUJsuBjx44+4jYsOR67EjOdtPOpgiuJXhedzShEO6rbu/O4
+wM1rX45ZXDYa2FGblHCQ/VaS0ttFtztk91xwlWvjTR8vGvp5tIfCi+1GixPRQpbN
+Y/oq8Kv4A7vB3JlJscJCljvRgaX0gTBzlaF6Gq0FdcWEl5F1zvsWCSc/Fv5WrUPY
+5mG0m69YUTeVO6cZS1aiu9Qh3QAT/7NbUuGXIaAxKnu+kkjLSz+nTTlOyvbG7BVF
+a6sDmv48Wqicebkc/rCtO4g8lO7KoA2xC/K/6PAxDrLkVyw8WPsAendmezNfHU+V
+32pvWoQoQqu8ysoaEYc/j9fN4H3mEBCN3QUJYCugmHP0pu7VtpWwwMUqcGeUVwAR
+AQABiQIlBBgBCAAPBQJXnsmMAhsMBQkFo5qAAAoJEJaz7l8pERFFz8IP/jfBxJSB
+iOw+uML+C4aeYxuHSdxmSsrJclYjkw7Asha/fm4Kkve00YAW8TGxwH2kgS72ooNJ
+1Q7hUxNbVyrJjQDSMkRKwghmrPnUM3UyHmE0dq+G2NhaPdFo8rKifLOPgwaWAfSV
+wgMTK86o0kqRbGpXgVIG5eRwv2FcxM3xGfy7sub07J2VEz7Ba6rYQ3NTbPK42AtV
++wRJDXcgS7y6ios4XQtSbIB5f6GI56zVlwfRd3hovV9ZAIJQ6DKM31wD6Kt/pRun
+DjwMZu0/82JMoqmxX/00sNdDT1S13guCfl1WhBu7y1ja9MUX5OpUzyEKg5sxme+L
+iY2Rhs6CjmbTm8ER4Uj8ydKyVTy8zbumbB6T8IwCAbEMtPxm6pKh/tgLpoJ+Bj0y
+AsGjmhV7R6PKZSDXg7/qQI98iC6DtWc9ibC/QuHLcvm3hz40mBgXAemPJygpxGst
+mVtU7O3oHw9cIUpkbMuVqSxgPFmSSq5vEYkka1CYeg8bOz6aCTuO5J0GDlLrpjtx
+6lyImbZAF/8zKnW19aq5lshT2qJlTQlZRwwDZX5rONhA6T8IEUnUyD4rAIQFwfJ+
+gsXa4ojD/tA9NLdiNeyEcNfyX3FZwXWCtVLXflzdRN293FKamcdnMjVRjkCnp7iu
+7eO7nMgcRoWddeU+2aJFqCoQtKCp/5EKhFey
+=UIVm
+-----END PGP PUBLIC KEY BLOCK-----
+EOF
+
         # Proxy is hating on me.. Lets just set it manually
         echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
         echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-latest.repo
@@ -588,8 +715,27 @@ saltify() {
         echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
+
+        cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+cat > /etc/yum.repos.d/wazuh.repo <<\EOF
+[wazuh_repo]
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
+enabled=1
+name=Wazuh repository
+baseurl=https://packages.wazuh.com/3.x/yum/
+protect=1
+EOF
       fi
     fi
 
@@ -632,6 +778,13 @@ saltify() {
       mkdir -p /opt/so/gpg
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
       wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+      wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
+
+      # Get key and install wazuh
+      curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
+      # Add repo
+      echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
@@ -642,7 +795,9 @@ saltify() {
       mkdir $TMP/gpg
       scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
+      apt-key add $TMP/gpg/GPG-KEY-WAZUH
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
@@ -815,7 +970,9 @@ set_updates() {
   echo "MASTERUPDATES is $MASTERUPDATES"
   if [ $MASTERUPDATES == 'MASTER' ]; then
     if [ $OS == 'centos' ]; then
+      if ! grep -q $MSRV /etc/yum.conf; then
       echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+    fi
 
     else
 
@@ -923,6 +1080,16 @@ whiptail_check_exitstatus() {
 
 }
 
+whiptail_cur_close_days() {
+
+  CURCLOSEDAYS=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Please specify the threshold (in days) at which Elasticsearch indices will be closed" 10 60 $CURCLOSEDAYS 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_homenet_master() {
 
   # Ask for the HOME_NET on the master
@@ -969,6 +1136,18 @@ whiptail_install_type() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_log_size_limit() {
+
+   LOG_SIZE_LIMIT=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
+  By default, this is set to 85% of the disk space allotted for /nsm." 10 60 $LOG_SIZE_LIMIT 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 
 whiptail_management_nic() {
 
@@ -1347,6 +1526,8 @@ if (whiptail_you_sure); then
 
     # Last Chance to back out
     whiptail_make_changes
+    generate_passwords
+    auth_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1455,7 +1636,7 @@ if (whiptail_you_sure); then
     sensor_pillar
     saltify
     docker_install
-    configure_minion SENSOR
+    configure_minion sensor
     copy_minion_pillar sensors
     salt_firstcheckin
     # Accept the Salt Key
@@ -1499,11 +1680,15 @@ if (whiptail_you_sure); then
     NSMSETUP=BASIC
     NIDS=Suricata
     BROVERSION=ZEEK
+    CURCLOSEDAYS=30
     whiptail_make_changes
+    generate_passwords
+    auth_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    get_log_size_limit
     get_main_ip
     # Add the user so we can sit back and relax
     echo ""
@@ -1544,6 +1729,8 @@ if (whiptail_you_sure); then
     whiptail_management_server
     whiptail_master_updates
     set_updates
+    get_log_size_limit
+    CURCLOSEDAYS=30
     es_heapsize
     ls_heapsize
     whiptail_node_advanced
@@ -1554,6 +1741,8 @@ if (whiptail_you_sure); then
       whiptail_node_ls_pipline_batchsize
       whiptail_node_ls_input_threads
       whiptail_node_ls_input_batch_count
+      whiptail_cur_close_days
+      whiptail_log_size_limit
     else
       NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
       NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE

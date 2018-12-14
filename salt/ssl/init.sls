@@ -23,7 +23,8 @@ m2cryptopkgs:
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
     - CN: {{ master }}
-    - days_remaining: 3000
+    - days_remaining: 0
+    - days_valid: 3650
     - backup: True
     - managed_private_key:
         name: /etc/pki/influxdb.key
@@ -39,7 +40,8 @@ m2cryptopkgs:
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
     - CN: {{ master }}
-    - days_remaining: 3000
+    - days_remaining: 0
+    - days_valid: 3650
     - backup: True
     - managed_private_key:
         name: /etc/pki/filebeat.key
@@ -71,7 +73,8 @@ fbcrtlink:
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
     - CN: {{ master }}
-    - days_remaining: 3000
+    - days_remaining: 0
+    - days_valid: 3650
     - backup: True
     - managed_private_key:
         name: /etc/pki/registry.key
@@ -85,15 +88,37 @@ fbcrtlink:
     - signing_policy: masterssl
     - public_key: /etc/pki/masterssl.key
     - CN: {{ master }}
-    - days_remaining: 3000
+    - days_remaining: 0
+    - days_valid: 3650
     - backup: True
     - managed_private_key:
         name: /etc/pki/masterssl.key
         bits: 4096
         backup: True
 
+# Create a private key and cert for OSQuery
+/etc/pki/fleet.key:
+  x509.private_key_managed:
+    - CN: {{ master }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 3650
+    - backup: True
+
+/etc/pki/fleet.crt:
+  x509.certificate_managed:
+    - signing_private_key: /etc/pki/fleet.key
+    - CN: {{ master }}
+    - days_remaining: 0
+    - days_valid: 3650
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/fleet.key
+        bits: 4096
+        backup: True
+
 {% endif %}
-{% if grains['role'] == 'so-SENSOR' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' %}
 
 fbcertdir:
   file.directory:
@@ -107,7 +132,8 @@ fbcertdir:
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ master }}
-    - days_remaining: 3000
+    - days_remaining: 0
+    - days_valid: 3650
     - backup: True
     - managed_private_key:
         name: /opt/so/conf/filebeat/etc/pki/filebeat.key

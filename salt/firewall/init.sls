@@ -1,5 +1,11 @@
 # Firewall Magic for the grid
-
+{%- if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{%- set ip = salt['pillar.get']('static:masterip', '') %}
+{%- elif grains['role'] == 'so-node' %}
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
+{%- elif grains['role'] == 'so-sensor' %}
+{%- set ip = salt['pillar.get']('sensor:mainip', '') %}
+{%- endif %}
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
@@ -86,6 +92,29 @@ enable_docker_user_established:
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
 
+# Add rule(s) for Wazuh manager
+enable_wazuh_manager_1514_tcp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+enable_wazuh_manager_1514_udp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: udp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 #This should be more granular
@@ -163,6 +192,17 @@ enable_masternode_influxdb_8086_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 8086
+    - position: 1
+    - save: True
+
+enable_masternode_mysql_3306_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3306
     - position: 1
     - save: True
 
@@ -299,6 +339,22 @@ enable_standard_beats_5044_{{ip}}:
 
 {% endfor %}
 
+# Allow OSQuery Endpoints to send their traffic
+{% for ip in pillar.get('osquery_endpoint')  %}
+
+enable_standard_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 # Allow Analysts
 {% for ip in pillar.get('analyst')  %}
 
@@ -344,6 +400,17 @@ enable_standard_analyst_5601_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 5601
+    - position: 1
+    - save: True
+#THIS IS TEMPORARY
+enable_standard_analyst_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
     - position: 1
     - save: True
 

@@ -1,3 +1,12 @@
+{% if grains['role'] == 'so-node' %}
+
+{%- set log_size_limit = salt['pillar.get']('node:log_size_limit', '') -%}
+
+{% elif grains['role'] == 'so-eval' %}
+
+{%- set log_size_limit = salt['pillar.get']('master:log_size_limit', '') -%}
+
+{%- endif %}
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
 # not a Python "NoneType"
@@ -9,7 +18,7 @@ actions:
   1:
     action: delete_indices
     description: >-
-      Delete indices when $disk_space value (in GB) is exceeded.
+      Delete indices when {{log_size_limit}}(GB) is exceeded.
     options:
       ignore_empty_list: True
       disable_action: False
@@ -20,4 +29,4 @@ actions:
     - filtertype: space
       source: creation_date
       use_age: True
-      disk_space: 43
+      disk_space: {{log_size_limit}}

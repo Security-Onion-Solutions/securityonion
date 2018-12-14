@@ -1,5 +1,5 @@
-{%- set MYSQLPASS = salt['pillar.get']('master:mysqlpass', 'iwonttellyou') %}
-{%- set FLEETPASS = salt['pillar.get']('master:fleetpass', 'bazinga') %}
+{%- set MYSQLPASS = salt['pillar.get']('auth:mysql', 'iwonttellyou') %}
+{%- set FLEETPASS = salt['pillar.get']('auth:fleet', 'bazinga') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 # MySQL Setup
 mysqlpkgs:
@@ -19,7 +19,14 @@ mysqletcdir:
     - group: 939
     - makedirs: True
 
-lsetcsync:
+mysqlpiddir:
+  file.directory:
+    - name: /opt/so/conf/mysql/pid
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+mysqletcsync:
   file.recurse:
     - name: /opt/so/conf/mysql/etc
     - source: salt://mysql/etc
@@ -43,7 +50,7 @@ mysqldatadir:
 
 so-mysql:
   docker_container.running:
-    - image: mysql/mysql-server:5.7
+    - image: soshybridhunter/so-mysql:HH1.0.5
     - hostname: so-mysql
     - user: socore
     - port_bindings:
@@ -52,26 +59,9 @@ so-mysql:
       - MYSQL_ROOT_HOST={{ MASTERIP }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
-      - /opt/so/conf/etc/my.cnf:/etc/my.cnf:ro
-      - /opt/so/conf/etc/mypass:/etc/mypass
+      - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
+      - /opt/so/conf/mysql/etc/mypass:/etc/mypass
       - /nsm/mysql:/var/lib/mysql:rw
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
       - /opt/so/conf/mysql/etc
-
-fleetdb:
-  mysql_database.present:
-    - name: fleet
-
-fleetdbuser:
-  mysql_user.present:
-    - host: {{ MASTERIP }}
-    - password: {{ FLEETPASS }}
-    - connection_user: root
-    - connection_pass: {{ MYSQLPASS }}
-
-fleetdbpriv:
-  mysql_grants.present:
-    - grant: all privileges
-    - database: fleet.*
-    - user: fleet
