@@ -1684,7 +1684,7 @@ if (whiptail_you_sure); then
     sensor_pillar
     saltify
     docker_install
-    configure_minion SENSOR
+    configure_minion sensor
     copy_minion_pillar sensors
     salt_firstcheckin
     # Accept the Salt Key
