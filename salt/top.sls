@@ -30,6 +30,7 @@ base:
     - bro
     - curator
     - elastalert
+    - redis
     - fleet
     - wazuh
     - filebeat
