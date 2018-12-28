@@ -63,6 +63,7 @@ so-filebeat:
       - /opt/so/log/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
+      - /opt/so/log/fleet/:/osquery/logs:ro
 {%- if grains['role'] == 'so-master' %}
       - /etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
