@@ -51,15 +51,13 @@ synckibanacustom:
     - source: salt://kibana/custom
     - user: 932
     - group: 939
-    - template: jinja
-
 
 # File.Recurse for custom saved dashboards
 
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: soshybridhunter/so-kibana:HH1.0.5
+    - image: soshybridhunter/so-kibana:HH1.0.6
     - hostname: kibana
     - user: kibana
     - environment:
