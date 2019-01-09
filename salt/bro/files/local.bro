@@ -124,6 +124,9 @@
 # JA3 - SSL Detection Goodness
 @load policy/ja3
 
+# HASSH
+@load policy/hassh
+
 #############################
 ##  End SO Scripts Section  ##
 #############################
