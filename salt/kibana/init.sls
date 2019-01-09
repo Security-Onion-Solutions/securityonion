@@ -68,7 +68,7 @@ so-kibana:
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
-      - /opt/so/conf/kibana/custdashboards:/usr/share/kibana/custdashboards:ro
+      - /opt/so/conf/kibana/customdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
