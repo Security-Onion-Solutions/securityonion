@@ -102,10 +102,6 @@
 # is currently considered a preview and therefore not loaded by default.
 @load policy/protocols/smb
 
-######################################
-##  Security Onion Scripts Section  ##
-######################################
-
 # Add the interface to the log event
 #@load securityonion/add-interface-to-logs.bro
 
@@ -126,14 +122,6 @@
 
 # HASSH
 @load policy/hassh
-
-#############################
-##  End SO Scripts Section  ##
-#############################
-
-#############################
-##  Custom Script Section  ##
-#############################
 
 # You can load your own intel into:
 # /opt/so/saltstack/bro/policy/intel/ on the master
