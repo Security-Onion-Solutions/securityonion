@@ -92,7 +92,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: soshybridhunter/so-communitybro:HH1.0.6
+    - image: soshybridhunter/so-communitybro:HH1.0.3
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
@@ -119,7 +119,7 @@ localbrosync:
 
 so-bro:
   docker_container.running:
-    - image: soshybridhunter/so-bro:HH1.0.3
+    - image: soshybridhunter/so-bro:HH1.0.6
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
