@@ -391,29 +391,6 @@ enable_standard_analyst_3000_{{ip}}:
     - position: 1
     - save: True
 
-#THIS IS TEMPORARY
-enable_standard_analyst_5601_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 5601
-    - position: 1
-    - save: True
-#THIS IS TEMPORARY
-enable_standard_analyst_8080_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 8080
-    - position: 1
-    - save: True
-
 {% endfor %}
 
 # Rules for storage nodes connecting to master
