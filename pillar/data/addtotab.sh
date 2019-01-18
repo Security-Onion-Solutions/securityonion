@@ -42,10 +42,10 @@ echo "    rootfs: $ROOTFS" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 echo "    nsmfs: $NSM" >> /opt/so/saltstack/pillar/data/$TYPE.sls
 if [ $TYPE == 'sensorstab' ]; then
   echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$TYPE.sls
-  salt-call state.apply common
+  salt-call state.apply common queue=True
 fi
 if [ $TYPE == 'evaltab' ]; then
   echo "    monint: $MONINT" >> /opt/so/saltstack/pillar/data/$TYPE.sls
-  salt-call state.apply common
-  salt-call state.apply utility
+  salt-call state.apply common queue=True
+  salt-call state.apply utility queue=True
 fi
