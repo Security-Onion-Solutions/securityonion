@@ -10,6 +10,20 @@ fleetcdir:
     - group: 939
     - makedirs: True
 
+fleetpackcdir:
+  file.directory:
+    - name: /opt/so/conf/fleet/packs
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+fleetpacksync:
+  file.recurse:
+    - name: /opt/so/conf/fleet/packs
+    - source: salt://fleet/packs
+    - user: 939
+    - group: 939
+
 fleetconf:
   file.managed:
     - name: /opt/so/conf/fleet/etc/osquery.conf
@@ -65,5 +79,6 @@ so-fleet:
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
       - /opt/so/log/fleet:/var/log/osquery
       - /opt/so/conf/fleet/etc/osquery.conf:/tmp/osquery.conf
+      - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
