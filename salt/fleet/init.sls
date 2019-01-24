@@ -24,13 +24,6 @@ fleetpacksync:
     - user: 939
     - group: 939
 
-fleetconf:
-  file.managed:
-    - name: /opt/so/conf/fleet/etc/osquery.conf
-    - source: salt://fleet/etc/osquery.conf
-    - user: 939
-    - group: 939
-
 fleetlogdir:
   file.directory:
     - name: /opt/so/log/fleet
@@ -78,7 +71,6 @@ so-fleet:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
       - /opt/so/log/fleet:/var/log/osquery
-      - /opt/so/conf/fleet/etc/osquery.conf:/tmp/osquery.conf
       - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
