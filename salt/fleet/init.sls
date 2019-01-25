@@ -10,6 +10,20 @@ fleetcdir:
     - group: 939
     - makedirs: True
 
+fleetpackcdir:
+  file.directory:
+    - name: /opt/so/conf/fleet/packs
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+fleetpacksync:
+  file.recurse:
+    - name: /opt/so/conf/fleet/packs
+    - source: salt://fleet/packs
+    - user: 939
+    - group: 939
+
 fleetlogdir:
   file.directory:
     - name: /opt/so/log/fleet
@@ -37,7 +51,7 @@ fleetdbpriv:
 
 so-fleet:
   docker_container.running:
-    - image: soshybridhunter/so-fleet:HH1.0.5
+    - image: soshybridhunter/so-fleet:HH1.0.6
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080
@@ -57,5 +71,6 @@ so-fleet:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
       - /opt/so/log/fleet:/var/log/osquery
+      - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc

@@ -2,6 +2,7 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
+{%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
 
 name: {{ HOSTNAME }}
 
@@ -61,6 +62,18 @@ filebeat.prospectors:
 
 {%- endif %}
 
+{%- if FLEETENABLED == '1' %}
+
+  - type: log
+    paths:
+      - /osquery/logs/result.log
+    fields:
+      type: osquery
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+{%- endif %}
 #----------------------------- Logstash output ---------------------------------
 output.logstash:
   # Boolean flag to enable or disable the output module.
@@ -205,7 +218,7 @@ logging.files:
   path: /var/log/filebeat
 
   # The name of the files where the logs are written to.
-  name: filebeat
+  name: filebeat.log
 
   # Configure log file size limit. If limit is reached, log file will be
   # automatically rotated

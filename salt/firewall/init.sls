@@ -173,17 +173,6 @@ enable_masternode_ES_9300_{{ip}}:
     - position: 1
     - save: True
 
-#enable_masternode_influxdb_8083_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 8083
-#    - position: 1
-#    - save: True
-
 enable_masternode_influxdb_8086_{{ip}}:
   iptables.insert:
     - table: filter
@@ -254,19 +243,6 @@ enable_salt_minions_3142_{{ip}}:
     - dport: 3142
     - position: 1
     - save: True
-
-# Allow Influx DB access to minions so they can send in stats
-
-#enable_minion_influxdb_8083_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 8083
-#    - position: 1
-#    - save: True
 
 enable_minions_influxdb_8086_{{ip}}:
   iptables.insert:
@@ -388,29 +364,6 @@ enable_standard_analyst_3000_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 3000
-    - position: 1
-    - save: True
-
-#THIS IS TEMPORARY
-enable_standard_analyst_5601_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 5601
-    - position: 1
-    - save: True
-#THIS IS TEMPORARY
-enable_standard_analyst_8080_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 8080
     - position: 1
     - save: True
 
