@@ -42,7 +42,7 @@ hiveconfdir:
     - makedirs: True
 
 hiveconf:
-  file.manage:
+  file.managed:
     - name: /opt/so/conf/hive/etc/application.conf
     - source: salt://hive/thehive/etc/application.conf
     - template: jinja

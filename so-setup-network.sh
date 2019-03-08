@@ -482,7 +482,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install salt-master wget
+    yum -y install wget salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -491,7 +491,7 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-master
+    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1
   fi
 
   copy_master_config
@@ -768,7 +768,9 @@ EOF
 
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3/SALTSTACK-GPG-KEY.pub | apt-key add -
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3 xenial main" > /etc/apt/sources.list.d/saltstack2018.list
 
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
