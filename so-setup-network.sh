@@ -606,6 +606,8 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
+      sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -718,6 +720,15 @@ EOF
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
 
+        # Proxy is hating on me.. Lets just set it manually
+        echo "[salt-2018.3]" > /etc/yum.repos.d/salt-2018-3.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/2018.3" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "enabled=1" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-2018-3.repo
+
         cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -729,6 +740,8 @@ protect=1
 EOF
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+        cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
+        sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -742,18 +755,18 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
-    yum -y update
+    yum -y install salt-minion-2018.3.4 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y update exclude=salt*
     systemctl enable salt-minion
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install salt-master python-m2crypto salt-minion m2crypto
+      yum -y install salt-master-2018.3.4 python-m2crypto salt-minion-2018.3.4 m2crypto
       systemctl enable salt-master
     else
-      yum -y install salt-minion python-m2m2crypto m2crypto
+      yum -y install salt-minion-2018.3.4 python-m2m2crypto m2crypto
     fi
-
+    echo "exclude=salt*" >> /etc/yum.conf
 
   else
     ADDUSER=useradd
