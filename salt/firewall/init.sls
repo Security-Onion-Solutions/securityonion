@@ -173,6 +173,28 @@ enable_masternode_ES_9300_{{ip}}:
     - position: 1
     - save: True
 
+enable_masternode_ES_9400_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9400
+    - position: 1
+    - save: True
+
+enable_masternode_ES_9500_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9500
+    - position: 1
+    - save: True
+
 enable_masternode_influxdb_8086_{{ip}}:
   iptables.insert:
     - table: filter
@@ -364,6 +386,28 @@ enable_standard_analyst_3000_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 3000
+    - position: 1
+    - save: True
+
+enable_standard_analyst_9000_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9000
+    - position: 1
+    - save: True
+
+enable_standard_analyst_9001_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9001
     - position: 1
     - save: True
 

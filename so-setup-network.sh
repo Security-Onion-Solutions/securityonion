@@ -482,7 +482,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install salt-master wget
+    yum -y install wget salt-common salt-master
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -491,7 +491,9 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-master
+    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1 salt-minion=2018.3.4+ds-1 python-m2crypto
+    apt-mark hold salt-common salt-master salt-minion
+    apt-get install -y python-m2crypto
   fi
 
   copy_master_config
@@ -604,6 +606,8 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
+      sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -716,6 +720,15 @@ EOF
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
 
+        # Proxy is hating on me.. Lets just set it manually
+        echo "[salt-2018.3]" > /etc/yum.repos.d/salt-2018-3.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/2018.3" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "enabled=1" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-2018-3.repo
+
         cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -727,6 +740,8 @@ protect=1
 EOF
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+        cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
+        sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -740,18 +755,18 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install salt-minion yum-utils device-mapper-persistent-data lvm2 openssl
-    yum -y update
+    yum -y install salt-minion-2018.3.4 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y update exclude=salt*
     systemctl enable salt-minion
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install salt-master python-m2crypto salt-minion m2crypto
+      yum -y install salt-master-2018.3.4 python-m2crypto salt-minion-2018.3.4 m2crypto
       systemctl enable salt-master
     else
-      yum -y install salt-minion python-m2m2crypto m2crypto
+      yum -y install salt-minion-2018.3.4 python-m2m2crypto m2crypto
     fi
-
+    echo "exclude=salt*" >> /etc/yum.conf
 
   else
     ADDUSER=useradd
@@ -768,7 +783,9 @@ EOF
 
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3/SALTSTACK-GPG-KEY.pub | apt-key add -
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3 xenial main" > /etc/apt/sources.list.d/saltstack2018.list
 
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -787,7 +804,8 @@ EOF
 
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-mark hold salt-minion salt-common
 
     else
 
@@ -800,7 +818,8 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-mark hold salt-minion salt-common
 
     fi
 
