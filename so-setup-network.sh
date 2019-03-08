@@ -482,7 +482,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1
+    yum -y install wget salt-common salt-master
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -491,7 +491,7 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1
+    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1 salt-minion=2018.3.4+ds-1
   fi
 
   copy_master_config
