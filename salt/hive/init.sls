@@ -30,7 +30,7 @@ so-thehive-es:
 # Install Cortex
 
 so-cortex:
-  docker_container_running:
+  docker_container.running:
     - image: thehiveproject/cortex:latest
     - hostname: so-cortex
     - name: so-cortex
@@ -48,7 +48,7 @@ hiveconf:
     - template: jinja
 
 so-thehive:
-  docker_container_running:
+  docker_container.running:
     - image: thehiveproject/thehive:latest
     - hostname: so-thehive
     - name: so-thehive
