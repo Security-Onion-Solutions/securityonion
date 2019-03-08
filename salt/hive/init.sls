@@ -17,6 +17,8 @@ so-thehive-es:
       - /nsm/hive/esdata:/usr/share/elasticsearch/data:rw
     - environment:
       - http.host=0.0.0.0
+      - http.port=9400
+      - transport.tcp.port=9500
       - transport.host=0.0.0.0
       - xpack.security.enabled=false
       - cluster.name=hive
@@ -38,6 +40,12 @@ hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
     - makedirs: True
+
+hiveconf:
+  file.manage:
+    - name: /opt/so/conf/hive/etc/application.conf
+    - source: salt://hive/thehive/etc/application.conf
+    - template: jinja
 
 so-thehive:
   docker_container_running:
