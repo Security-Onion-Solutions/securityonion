@@ -789,7 +789,7 @@ EOF
 
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
 
     else
 
@@ -802,7 +802,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
 
     fi
 
