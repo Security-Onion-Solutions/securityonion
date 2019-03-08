@@ -491,7 +491,9 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1 salt-minion=2018.3.4+ds-1
+    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1 salt-minion=2018.3.4+ds-1 python-m2crypto
+    apt-mark hold salt-common salt-master salt-minion
+    apt-get install -y python-m2crypto
   fi
 
   copy_master_config
@@ -789,7 +791,8 @@ EOF
 
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-mark hold salt-minion salt-common
 
     else
 
@@ -802,7 +805,8 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-mark hold salt-minion salt-common
 
     fi
 
