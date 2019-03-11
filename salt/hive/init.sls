@@ -1,3 +1,19 @@
+hiveconfdir:
+  file.directory:
+    - name: /opt/so/conf/hive/etc
+    - makedirs: True
+
+hivelogdir:
+  file.directory:
+    - name: /opt/so/log/hive
+    - makedirs: True
+
+hiveconf:
+  file.recurse:
+    - name: /opt/so/conf/hive/etc
+    - source: salt://hive/thehive/etc
+    - template: jinja
+
 # Install Elasticsearch
 
 # Made directory for ES data to live in
@@ -15,6 +31,8 @@ so-thehive-es:
     - tty: True
     - binds:
       - /nsm/hive/esdata:/usr/share/elasticsearch/data:rw
+      - /opt/so/conf/hive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /opt/so/log/hive:/var/log/elasticsearch:rw
     - environment:
       - http.host=0.0.0.0
       - http.port=9400
@@ -35,18 +53,6 @@ so-cortex:
     - image: thehiveproject/cortex:latest
     - hostname: so-cortex
     - name: so-cortex
-
-# Install Hive
-hiveconfdir:
-  file.directory:
-    - name: /opt/so/conf/hive/etc
-    - makedirs: True
-
-hiveconf:
-  file.managed:
-    - name: /opt/so/conf/hive/etc/application.conf
-    - source: salt://hive/thehive/etc/application.conf
-    - template: jinja
 
 so-thehive:
   docker_container.running:
