@@ -65,5 +65,7 @@ so-thehive:
     - image: thehiveproject/thehive:latest
     - hostname: so-thehive
     - name: so-thehive
+    - binds:
+      - /opt/so/conf/hive/application.conf:/etc/hive/application.conf
     - port_bindings:
       - 0.0.0.0:9000:9000
