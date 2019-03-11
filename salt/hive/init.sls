@@ -32,6 +32,7 @@ so-thehive-es:
     - binds:
       - /nsm/hive/esdata:/usr/share/elasticsearch/data:rw
       - /opt/so/conf/hive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /opt/so/conf/hive/etc/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /opt/so/log/hive:/var/log/elasticsearch:rw
     - environment:
       - http.host=0.0.0.0
