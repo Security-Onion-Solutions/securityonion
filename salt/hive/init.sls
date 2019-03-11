@@ -46,6 +46,9 @@ so-thehive-es:
       - thread_pool.search.queue_size=100000
       - thread_pool.bulk.queue_size=100000
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    - port_bindings:
+      - 0.0.0.0:9400:9400
+      - 0.0.0.0:9500:9500
 
 # Install Cortex
 
