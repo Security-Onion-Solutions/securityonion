@@ -57,9 +57,13 @@ so-cortex:
     - image: thehiveproject/cortex:latest
     - hostname: so-cortex
     - name: so-cortex
+    - port_bindings:
+      - 0.0.0.0:9001:9001
 
 so-thehive:
   docker_container.running:
     - image: thehiveproject/thehive:latest
     - hostname: so-thehive
     - name: so-thehive
+    - port_bindings:
+      - 0.0.0.0:9000:9000
