@@ -2,11 +2,15 @@ hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
     - makedirs: True
+    - user: 939
+    - group: 939
 
 hivelogdir:
   file.directory:
     - name: /opt/so/log/hive
     - makedirs: True
+    - user: 939
+    - group: 939
 
 hiveconf:
   file.recurse:
@@ -21,12 +25,15 @@ hiveesdata:
   file.directory:
     - name: /nsm/hive/esdata
     - makedirs: True
+    - user: 939
+    - group: 939
 
 so-thehive-es:
   docker_container.running:
-    - image: docker.elastic.co/elasticsearch/elasticsearch:5.6.0
+    - image: soshybridhunter/so-thehive-es:HH1.0.7
     - hostname: so-thehive-es
     - name: so-thehive-es
+    - user: 939
     - interactive: True
     - tty: True
     - binds:
@@ -62,9 +69,10 @@ so-cortex:
 
 so-thehive:
   docker_container.running:
-    - image: thehiveproject/thehive:latest
+    - image: soshybridhunter/so-thehive:HH1.0.7
     - hostname: so-thehive
     - name: so-thehive
+    - user: 939
     - binds:
       - /opt/so/conf/hive/etc/application.conf:/etc/thehive/application.conf:ro
     - port_bindings:
