@@ -16,6 +16,8 @@ hiveconf:
   file.recurse:
     - name: /opt/so/conf/hive/etc
     - source: salt://hive/thehive/etc
+    - user: 939
+    - group: 939
     - template: jinja
 
 # Install Elasticsearch
