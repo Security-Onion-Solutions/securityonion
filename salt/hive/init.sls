@@ -75,6 +75,6 @@ so-thehive:
     - name: so-thehive
     - user: 939
     - binds:
-      - /opt/so/conf/hive/etc/application.conf:/etc/thehive/application.conf:ro
+      - /opt/so/conf/hive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
