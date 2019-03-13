@@ -1717,7 +1717,7 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     whiptail_make_changes
-    eval_mode_hostsfile
+    #eval_mode_hostsfile
     generate_passwords
     auth_pillar
     clear_master
