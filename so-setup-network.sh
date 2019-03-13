@@ -1172,12 +1172,13 @@ whiptail_management_nic() {
 
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
 
-  if [ -z "$MNIC" ]; then
+  while [ -z "$MNIC" ]
+  do
     MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-  else
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  fi
+  done
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
