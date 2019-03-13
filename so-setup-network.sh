@@ -410,6 +410,12 @@ es_heapsize() {
 
 }
 
+eval_mode_hostsfile() {
+
+  echo "127.0.0.1    $HOSTNAME" >> /etc/hosts
+
+}
+
 filter_nics() {
 
   # Filter the NICs that we don't want to see in setup
@@ -1711,6 +1717,7 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     whiptail_make_changes
+    eval_mode_hostsfile
     generate_passwords
     auth_pillar
     clear_master
