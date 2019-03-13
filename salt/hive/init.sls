@@ -48,7 +48,6 @@ so-thehive-es:
       - http.port=9400
       - transport.tcp.port=9500
       - transport.host=0.0.0.0
-      - xpack.security.enabled=false
       - cluster.name=hive
       - script.inline=true
       - thread_pool.index.queue_size=100000
