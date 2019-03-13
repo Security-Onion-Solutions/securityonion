@@ -1066,6 +1066,11 @@ whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
 
+  while [ -z "$BNICS" ]
+  do
+    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+  done
+
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
