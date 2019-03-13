@@ -1171,11 +1171,13 @@ whiptail_log_size_limit() {
 whiptail_management_nic() {
 
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-  if [[ ! $MNIC ]]; then
+
+  if [ -z "$MNIC" ]; then
     MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
   else
     local exitstatus=$?
     whiptail_check_exitstatus $exitstatus
+  fi
 
 }
 
