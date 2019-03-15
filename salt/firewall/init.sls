@@ -389,6 +389,17 @@ enable_standard_analyst_3000_{{ip}}:
     - position: 1
     - save: True
 
+enable_standard_analyst_7000_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 7000
+    - position: 1
+    - save: True
+
 enable_standard_analyst_9000_{{ip}}:
   iptables.insert:
     - table: filter
