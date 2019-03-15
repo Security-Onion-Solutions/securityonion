@@ -1121,7 +1121,7 @@ whiptail_cur_close_days() {
 }
 
 whiptail_eval_adv() {
-  EVALADV=$(whiptail --title "Security Onion Setup" --radiolist \
+  EVALADVANCED=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose your eval install:" 20 78 4 \
   "BASIC" "Install basic components for evaluation" ON  \
   "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
