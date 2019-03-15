@@ -1104,7 +1104,7 @@ whiptail_cancel() {
 whiptail_check_exitstatus() {
 
   if [ $1 == '1' ]; then
-    echo " They hit cancel"
+    echo "They hit cancel"
     whiptail_cancel
   fi
 
@@ -1118,6 +1118,30 @@ whiptail_cur_close_days() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_eval_adv() {
+  MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose your eval install:" 20 78 4 \
+  "BASIC" "Install basic components for evaluation" ON  \
+  "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
+}
+
+whiptail_eval_adv_service_grafana() {
+  echo "blah"
+}
+
+whiptail_eval_adv_service_osquery() {
+  echo "blah"
+
+}
+
+whiptail_eval_adv_service_wazuh() {
+  echo "blah"
+}
+
+whiptail_eval_adv_warning() {
+  whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 78
 }
 
 whiptail_homenet_master() {
@@ -1702,11 +1726,20 @@ if (whiptail_you_sure); then
     # Snag the HOME_NET
     whiptail_homenet_master
 
+    # Ask about advanced mode
+    whiptail_eval_adv
+    if [ MASTERADV == 'ADVANCED' ]; then
+      whiptail_eval_adv_warning
+      whiptail_eval_adv_service_grafana
+      whiptail_eval_adv_service_osquery
+      whiptail_eval_adv_service_wazuh
+    fi
+
     # Set a bunch of stuff since this is eval
     es_heapsize
     ls_heapsize
-    NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
-    NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
+    NODE_ES_HEAP_SIZE="600m"
+    NODE_LS_HEAP_SIZE="2000m"
     LSPIPELINEWORKERS=1
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
