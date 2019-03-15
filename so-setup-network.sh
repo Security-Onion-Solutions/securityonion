@@ -1121,7 +1121,7 @@ whiptail_cur_close_days() {
 }
 
 whiptail_eval_adv() {
-  MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+  EVALADV=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose your eval install:" 20 78 4 \
   "BASIC" "Install basic components for evaluation" ON  \
   "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
@@ -1728,7 +1728,7 @@ if (whiptail_you_sure); then
 
     # Ask about advanced mode
     whiptail_eval_adv
-    if [ MASTERADV == 'ADVANCED' ]; then
+    if [ $EVALADVANCED == 'ADVANCED' ]; then
       whiptail_eval_adv_warning
       whiptail_eval_adv_service_grafana
       whiptail_eval_adv_service_osquery
