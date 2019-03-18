@@ -1156,12 +1156,15 @@ whiptail_eval_adv_service_grafana() {
 }
 
 whiptail_eval_adv_service_osquery() {
-  EVALOSQUERY=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable OSquery for client monitoring?" 8 78)
-
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable OSquery for client monitoring?" 8 78
+  local exitstatus=$?
+  EVALOSQUERY=$exitstatus
 }
 
 whiptail_eval_adv_service_wazuh() {
-  EVALWAZUH=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Wazuh for client monitoring?" 8 78)
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Wazuh for client monitoring?" 8 78
+  local exitstatus=$?
+  EVALWAZUH=$exitstatus
 }
 
 whiptail_eval_adv_warning() {
