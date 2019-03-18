@@ -1,4 +1,6 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') %}
+{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
 base:
   'G@role:so-sensor':
     - ca
@@ -31,8 +33,12 @@ base:
     - curator
     - elastalert
     - redis
+    {%- if OSQUERY != '0' %}
     - fleet
+    {%- endif %}
+    {%- if WAZUH != '0' %}
     - wazuh
+    {%- endif %}
     - filebeat
     - utility
     - schedule
