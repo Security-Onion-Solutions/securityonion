@@ -33,10 +33,10 @@ base:
     - curator
     - elastalert
     - redis
-    {%- if OSQUERY != '0' %}
+    {%- if OSQUERY != 0 %}
     - fleet
     {%- endif %}
-    {%- if WAZUH != '0' %}
+    {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
     - filebeat
