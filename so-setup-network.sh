@@ -555,7 +555,7 @@ master_pillar() {
       echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
       echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     fi
-    
+
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -1150,7 +1150,9 @@ whiptail_eval_adv() {
 }
 
 whiptail_eval_adv_service_grafana() {
-  EVALGRAFANA=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Grafana for detailed monitoring?" 8 78)
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Grafana for detailed monitoring?" 8 78
+  local exitstatus=$?
+  EVALGRAFANA=$exitstatus
 }
 
 whiptail_eval_adv_service_osquery() {
