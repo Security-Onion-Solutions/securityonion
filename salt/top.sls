@@ -23,7 +23,9 @@ base:
     - firewall
     - master
     - idstools
+    {%- if OSQUERY != 0 %}
     - mysql
+    {%- endif %}
     - elasticsearch
     - logstash
     - kibana
@@ -32,7 +34,6 @@ base:
     - bro
     - curator
     - elastalert
-    - redis
     {%- if OSQUERY != 0 %}
     - fleet
     {%- endif %}
