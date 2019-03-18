@@ -36,6 +36,7 @@ base:
     - elastalert
     {%- if OSQUERY != 0 %}
     - fleet
+    - redis
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
