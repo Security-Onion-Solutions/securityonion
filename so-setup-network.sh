@@ -534,6 +534,28 @@ master_pillar() {
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    if [ $EVALADVANCED == 'ADVANCED' ]; then
+      if [ $EVALGRAFANA == '0' ]; then
+        echo "  grafana: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+      if [ $EVALOSQUERY == '0' ]; then
+        echo "  osquery: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+      if [ $EVALWAZUH == '0' ]; then
+        echo "  wazuh: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+    else
+      echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    fi
+    
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -1128,16 +1150,16 @@ whiptail_eval_adv() {
 }
 
 whiptail_eval_adv_service_grafana() {
-  echo "blah"
+  EVALGRAFANA=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Grafana for detailed monitoring?" 8 78)
 }
 
 whiptail_eval_adv_service_osquery() {
-  echo "blah"
+  EVALOSQUERY=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable OSquery for client monitoring?" 8 78)
 
 }
 
 whiptail_eval_adv_service_wazuh() {
-  echo "blah"
+  EVALWAZUH=$(whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Wazuh for client monitoring?" 8 78)
 }
 
 whiptail_eval_adv_warning() {
