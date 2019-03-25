@@ -15,10 +15,10 @@ soctopussync:
 
 so-soctopus:
   docker_container.running:
-    - image: wlambert/soctopus
+    - image: soshybridhunter/so-soctopus:HH1.0.7
     - hostname: soctopus
+    - name: so-soctopus
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
     - port_bindings:
       - 0.0.0.0:7000:7000
-
