@@ -30,6 +30,11 @@ fleetlogdir:
     - user: 939
     - group: 939
     - makedirs: True
+    
+fleetsetupscript:
+  file.managed:
+    - name: /opt/so/conf/fleet/so-fleet-setup.sh
+    - source: salt://fleet/so-fleet-setup.sh
 
 fleetdb:
   mysql_database.present:
