@@ -44,6 +44,7 @@ base:
     - filebeat
     - utility
     - schedule
+    - soctopus
 
 
   'G@role:so-master':
@@ -64,6 +65,7 @@ base:
     - utility
     - schedule
     - fleet
+    - soctopus
 
   # Storage node logic
 
