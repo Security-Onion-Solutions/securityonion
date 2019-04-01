@@ -58,7 +58,7 @@ wazuhagentregister:
 
 so-wazuh:
   docker_container.running:
-    - image: soshybridhunter/so-wazuh:HH1.0.5
+    - image: soshybridhunter/so-wazuh:HH1.0.7
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True

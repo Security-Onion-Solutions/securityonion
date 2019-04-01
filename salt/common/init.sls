@@ -103,7 +103,7 @@ nginxtmp:
 # Start the core docker
 so-core:
   docker_container.running:
-    - image: soshybridhunter/so-core:HH1.0.5
+    - image: soshybridhunter/so-core:HH1.0.7
     - hostname: so-core
     - user: socore
     - binds:
@@ -156,7 +156,7 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: soshybridhunter/so-telegraf:HH1.0.4
+    - image: soshybridhunter/so-telegraf:HH1.0.7
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -211,7 +211,7 @@ influxdbconf:
 
 so-influxdb:
   docker_container.running:
-    - image: soshybridhunter/so-influxdb:HH1.0.4
+    - image: soshybridhunter/so-influxdb:HH1.0.7
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -368,7 +368,7 @@ dashboard-{{ SN }}:
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.0.4
+    - image: soshybridhunter/so-grafana:HH1.0.7
     - hostname: grafana
     - user: socore
     - binds:
