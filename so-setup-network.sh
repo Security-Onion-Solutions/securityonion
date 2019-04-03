@@ -410,6 +410,12 @@ es_heapsize() {
 
 }
 
+eval_mode_hostsfile() {
+
+  echo "127.0.0.1   $HOSTNAME" >> /etc/hosts
+
+}
+
 filter_nics() {
 
   # Filter the NICs that we don't want to see in setup
@@ -421,6 +427,7 @@ generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 }
 
 get_filesystem_nsm(){
@@ -528,6 +535,28 @@ master_pillar() {
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    if [ $EVALADVANCED == 'ADVANCED' ]; then
+      if [ $EVALGRAFANA == '0' ]; then
+        echo "  grafana: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+      if [ $EVALOSQUERY == '0' ]; then
+        echo "  osquery: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+      if [ $EVALWAZUH == '0' ]; then
+        echo "  wazuh: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      else
+        echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      fi
+    else
+      echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+      echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    fi
+
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -560,6 +589,9 @@ master_static() {
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hiveuser: hiveadmin" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hivepassword: hivechangeme" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hivekey: $HIVEKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
@@ -1066,6 +1098,11 @@ whiptail_bond_nics() {
 
   BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
 
+  while [ -z "$BNICS" ]
+  do
+    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+  done
+
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
@@ -1093,7 +1130,7 @@ whiptail_cancel() {
 whiptail_check_exitstatus() {
 
   if [ $1 == '1' ]; then
-    echo " They hit cancel"
+    echo "They hit cancel"
     whiptail_cancel
   fi
 
@@ -1107,6 +1144,35 @@ whiptail_cur_close_days() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_eval_adv() {
+  EVALADVANCED=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose your eval install:" 20 78 4 \
+  "BASIC" "Install basic components for evaluation" ON  \
+  "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
+}
+
+whiptail_eval_adv_service_grafana() {
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Grafana for detailed monitoring?" 8 78
+  local exitstatus=$?
+  EVALGRAFANA=$exitstatus
+}
+
+whiptail_eval_adv_service_osquery() {
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable OSquery for client monitoring?" 8 78
+  local exitstatus=$?
+  EVALOSQUERY=$exitstatus
+}
+
+whiptail_eval_adv_service_wazuh() {
+  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Wazuh for client monitoring?" 8 78
+  local exitstatus=$?
+  EVALWAZUH=$exitstatus
+}
+
+whiptail_eval_adv_warning() {
+  whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 78
 }
 
 whiptail_homenet_master() {
@@ -1171,6 +1237,11 @@ whiptail_log_size_limit() {
 whiptail_management_nic() {
 
   MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
+
+  while [ -z "$MNIC" ]
+  do
+    MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 78 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
+  done
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -1686,11 +1757,20 @@ if (whiptail_you_sure); then
     # Snag the HOME_NET
     whiptail_homenet_master
 
+    # Ask about advanced mode
+    whiptail_eval_adv
+    if [ $EVALADVANCED == 'ADVANCED' ]; then
+      whiptail_eval_adv_warning
+      whiptail_eval_adv_service_grafana
+      whiptail_eval_adv_service_osquery
+      whiptail_eval_adv_service_wazuh
+    fi
+
     # Set a bunch of stuff since this is eval
     es_heapsize
     ls_heapsize
-    NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
-    NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
+    NODE_ES_HEAP_SIZE="600m"
+    NODE_LS_HEAP_SIZE="2000m"
     LSPIPELINEWORKERS=1
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
@@ -1701,6 +1781,7 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     whiptail_make_changes
+    #eval_mode_hostsfile
     generate_passwords
     auth_pillar
     clear_master
