@@ -49,7 +49,7 @@ toosmooth/so-redis:test2:
 
 so-redis:
   docker_container.running:
-    - image: soshybridhunter/so-redis:HH1.0.5
+    - image: soshybridhunter/so-redis:HH1.0.7
     - hostname: so-redis
     - user: socore
     - port_bindings:
