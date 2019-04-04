@@ -1,5 +1,10 @@
 #so-fleet-setup.sh $MasterIP $FleetEmail
 
+if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
+        echo "so-fleet container not running... Exiting..."
+        exit 1 
+fi
+
 initpw=$(date +%s | sha256sum | base64 | head -c 16 ; echo)
 
 docker exec so-fleet fleetctl config set --address https://$1:443 --tls-skip-verify        
