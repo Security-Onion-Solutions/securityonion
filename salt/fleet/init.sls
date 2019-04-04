@@ -35,6 +35,11 @@ fleetsetupscript:
   file.managed:
     - name: /opt/so/conf/fleet/so-fleet-setup.sh
     - source: salt://fleet/so-fleet-setup.sh
+    
+osquerypackageswebpage:
+  file.managed:
+    - name: /opt/so/conf/fleet/packages/index.html
+    - source: salt://fleet/osquery-packages.html
 
 fleetdb:
   mysql_database.present:
