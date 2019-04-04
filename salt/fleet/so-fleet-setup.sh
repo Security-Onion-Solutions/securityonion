@@ -23,5 +23,8 @@ docker run \
   --mount type=bind,source=/etc/pki/fleet-launcher.crt,target=/var/launcher/launcher.crt \
   defensivedepth/hh-launcher "$esecret" "$1":8080
 
+#Update timestamp on packages webpage
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
+
 echo "Fleet Setup Complete - Login here: https://$1"
 echo "Your username is $2 and your password is $initpw"
