@@ -114,7 +114,7 @@ so-core:
       - /opt/so/tmp/nginx/:/run:rw
       - /etc/pki/masterssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/masterssl.key:/etc/pki/nginx/server.key:ro
-      - /opt/so/conf/fleet/packages:/opt/so/html/packages
+      - /opt/so/conf/fleet/packages:/opt/socore/html/packages
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
