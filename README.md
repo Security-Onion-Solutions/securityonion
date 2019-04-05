@@ -5,7 +5,7 @@
 - Updated Influxdb to 1.7.5
 - Updated Telegraf to 1.10.1
 - Grafana is now 6.0.2
-- Added support for TheHive!!! See the docs ->
+- Added support for TheHive! To enable, please see https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/The-Hive
 - You are now forced to select interfaces during setup. If you skipped this test the install was not happy [#26](https://github.com/Security-Onion-Solutions/securityonion-saltstack/issues/26)
 - Reduced the RAM usage for ES in Eval mode [#25](https://github.com/Security-Onion-Solutions/securityonion-saltstack/issues/26)
 - Eval Mode setup is now choose your own adventure style
