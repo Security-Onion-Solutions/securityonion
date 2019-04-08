@@ -1858,15 +1858,21 @@ if (whiptail_you_sure); then
       if [ $EVALOSQUERY == '0' ]; then
         salt-call state.apply mysql >>~/sosetup.log 2>&1
       fi
-      echo -e "XXX\n35\nInstalling Elastic components... \nXXX"
+      echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
       salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
+      echo -e "XXX\n40\nInstalling Logstash... \nXXX"
       salt-call state.apply logstash >>~/sosetup.log 2>&1
+      echo -e "XXX\n45\nInstalling ElasticSearch... \nXXX"
       salt-call state.apply kibana >>~/sosetup.log 2>&1
       echo -e "XXX\n50\nInstalling pcap... \nXXX"
       salt-call state.apply pcap >>~/sosetup.log 2>&1
+      echo -e "XXX\n52\nInstalling Suricata... \nXXX"
       salt-call state.apply suricata >>~/sosetup.log 2>&1
+      echo -e "XXX\n54\nInstalling Zeek... \nXXX"
       salt-call state.apply bro >>~/sosetup.log 2>&1
+      echo -e "XXX\n56\nInstalling curator... \nXXX"
       salt-call state.apply curator >>~/sosetup.log 2>&1
+      echo -e "XXX\n58\nInstalling elastalert... \nXXX"
       salt-call state.apply elastalert >>~/sosetup.log 2>&1
       if [ $EVALOSQUERY == '0' ]; then
         echo -e "XXX\n60\nInstalling fleet... \nXXX"
