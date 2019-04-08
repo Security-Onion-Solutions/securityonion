@@ -1798,32 +1798,64 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_bond
+      create_bond >>~/sosetup.log 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
-      saltify
+      saltify >>~/sosetup.log 2>&1
+      echo -e "XXX\n3\nInstalling docker... \nXXX"
+      docker_install >>~/sosetup.log 2>&1
+      echo -e "XXX\n5\nInstalling master code... \nXXX"
+      install_master >>~/sosetup.log 2>&1
+      echo -e "XXX\n6\nCopying salt code... \nXXX"
+      salt_master_directories >>~/sosetup.log 2>&1
+      echo -e "XXX\n6\nupdating suduers... \nXXX"
+      update_sudoers >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nFixing some permissions... \nXXX"
+      chown_salt_master >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nCreating the static pillar... \nXXX"
+      # Set the static values
+      master_static >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nCreating the master pillar... \nXXX"
+      master_pillar >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nConfiguring minion... \nXXX"
+      configure_minion eval >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
+      set_node_type >>~/sosetup.log 2>&1
+      echo -e "XXX\n7\nStorage node pillar... \nXXX"
+      node_pillar >>~/sosetup.log 2>&1
+      echo -e "XXX\n8\nCreating firewall policies... \nXXX"
+      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      echo -e "XXX\n10\nRegistering agent... \nXXX"
+      salt_firstcheckin >>~/sosetup.log 2>&1
+      echo -e "XXX\n11\nAccepting Agent... \nXXX"
+      accept_salt_key_local >>~/sosetup.log 2>&1
+      echo -e "XXX\n12\nRunning the SSL states... \nXXX"
+      salt_checkin >>~/sosetup.log 2>&1
+      echo -e "XXX\n100\nSetting checkin to run on boot... \nXXX"
+      checkin_at_boot >>~/sosetup.log 2>&1
+
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     #create_bond
     #saltify
-    docker_install
-    install_master
+    #docker_install
+    #install_master
     # Copy the data over
-    salt_master_directories
-    update_sudoers
+    #salt_master_directories
+    #update_sudoers
     # Change perms on the master dir
-    chown_salt_master
+    #chown_salt_master
     # Set the static values
-    master_static
-    echo "** Generating the master pillar **"
-    master_pillar
-    configure_minion eval
-    set_node_type
-    node_pillar
-    set_initial_firewall_policy
-    salt_firstcheckin
-    accept_salt_key_local
-    salt_checkin_message
-    salt_checkin
-    checkin_at_boot
+    #master_static
+    #echo "** Generating the master pillar **"
+    #master_pillar
+    #configure_minion eval
+    #set_node_type
+    #node_pillar
+    #set_initial_firewall_policy
+    #salt_firstcheckin
+    #accept_salt_key_local
+    #salt_checkin_message
+    #salt_checkin
+    #checkin_at_boot
     whiptail_setup_complete
   fi
 
