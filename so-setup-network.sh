@@ -1492,6 +1492,14 @@ whiptail_setup_complete() {
 
 }
 
+whiptail_setup_failed() {
+
+  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see /root/sosetup.log for details" 8 78
+  install_cleanup
+  exit
+
+}
+
 whiptail_shard_count() {
 
   SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
@@ -1879,9 +1887,21 @@ if (whiptail_you_sure); then
       checkin_at_boot >>~/sosetup.log 2>&1
       echo -e "XXX\n99\nVerifying Setup... \nXXX"
       salt-call state.highstate >>~/sosetup.log 2>&1
-      
+
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    whiptail_setup_complete
+    GOODSETUP=$(tail -10 sosetup.log | grep Failed | awk '{ print $2}')
+    if [ $OS == 'centos' ]; then
+      if [ $GOODSETUP == 1 ]; then
+        whiptail_setup_complete
+      else
+        whiptail_setup_failed
+      fi
+    else
+      if [ $GOODSETUP == 0 ]; then
+        whiptail_setup_complete
+      else
+        whiptail_setup_failed
+    fi
   fi
 
   ###################
