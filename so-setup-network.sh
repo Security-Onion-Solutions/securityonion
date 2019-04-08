@@ -24,19 +24,22 @@ LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\"
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 NODE_ES_PORT="9200"
 
+# Reset the Install Log
+date -u >>~/sosetup.log 2>&1
+
 # End Global Variable Section
 
 # Functions
 
 accept_salt_key_local() {
-
+  echo "Accept the key locally on the master" >>~/sosetup.log 2>&1
   # Accept the key locally on the master
   salt-key -ya $HOSTNAME
 
 }
 
 accept_salt_key_remote() {
-
+  echo "Accept the key remotely on the master" >>~/sosetup.log 2>&1
   # Delete the key just in case.
   ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
   salt-call state.apply ca
@@ -45,6 +48,7 @@ accept_salt_key_remote() {
 }
 
 add_master_hostfile() {
+  echo "Checking if I can resolve master. If not add to hosts file" >>~/sosetup.log 2>&1
   # Pop up an input to get the IP address
   local MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
@@ -56,6 +60,7 @@ add_master_hostfile() {
 }
 
 add_socore_user_master() {
+  echo "Add socore on the master" >>~/sosetup.log 2>&1
   if [ $OS == 'centos' ]; then
     local ADDUSER=adduser
   else
@@ -70,7 +75,7 @@ add_socore_user_master() {
 }
 
 add_socore_user_notmaster() {
-
+  echo "Add socore user on non master" >>~/sosetup.log 2>&1
   # Add socore user to the non master system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
@@ -81,7 +86,7 @@ add_socore_user_notmaster() {
 auth_pillar(){
 
   if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
-    echo "Creating Auth Pillar"
+    echo "Creating Auth Pillar" >>~/sosetup.log 2>&1
     mkdir -p /opt/so/saltstack/pillar
     echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
     echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
@@ -92,6 +97,7 @@ auth_pillar(){
 
 # Enable Bro Logs
 bro_logs_enabled() {
+  echo "Enabling Bro Logs" >>~/sosetup.log 2>&1
 
   echo "brologs:" > pillar/brologs.sls
   echo "  enabled:" >> pillar/brologs.sls
@@ -157,12 +163,13 @@ calculate_useable_cores() {
 }
 
 checkin_at_boot() {
+  echo "Enabling checkin at boot" >>~/sosetup.log 2>&1
   echo "startup_states: highstate" >> /etc/salt/minion
 }
 
 chown_salt_master() {
 
-  # Chown the salt dirs on the master for socore
+  echo "Chown the salt dirs on the master for socore" >>~/sosetup.log 2>&1
   chown -R socore:socore /opt/so
 
 }
@@ -171,6 +178,7 @@ clear_master() {
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
   if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
+    echo "Clearing old master key" >>~/sosetup.log 2>&1
     rm /etc/salt/pki/minion/minion_master.pub
     service salt-minion restart
   fi
@@ -181,7 +189,7 @@ configure_minion() {
 
   # You have to pass the TYPE to this function so it knows if its a master or not
   local TYPE=$1
-  echo "Configuring minion type as $TYPE"
+  echo "Configuring minion type as $TYPE" >>~/sosetup.log 2>&1
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
   if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
@@ -221,7 +229,7 @@ copy_minion_pillar() {
   local TYPE=$1
 
   # Copy over the pillar
-  echo "Copying the pillar over"
+  echo "Copying the pillar over" >>~/sosetup.log 2>&1
   scp -v -i /root/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
 
   }
@@ -240,7 +248,7 @@ copy_ssh_key() {
 create_bond() {
 
   # Create the bond interface
-  echo "Setting up Bond"
+  echo "Setting up Bond" >>~/sosetup.log 2>&1
 
   # Set the MTU
   if [ $NSMSETUP != 'ADVANCED' ]; then
@@ -269,17 +277,17 @@ create_bond() {
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
-    nmcli con reload
-    systemctl restart network
+    nmcli con reload >>~/sosetup.log 2>&1
+    systemctl restart network >>~/sosetup.log 2>&1
 
   else
 
     # Need to add 17.04 support still
-    apt-get -y install ifenslave
+    apt-get -y install ifenslave >>~/sosetup.log 2>&1
     if ! grep -q bonding /etc/modules; then
       echo "bonding" >> /etc/modules
     fi
-    modprobe bonding
+    modprobe bonding >>~/sosetup.log 2>&1
 
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
     local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
@@ -336,14 +344,14 @@ create_bond() {
 detect_os() {
 
   # Detect Base OS
-  echo "Detecting Base OS"
+  echo "Detecting Base OS" >>~/sosetup.log 2>&1
   if [ -f /etc/redhat-release ]; then
     OS=centos
     yum -y install bind-utils
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
   else
-    echo "We were unable to determine if you are using a supported OS."
+    echo "We were unable to determine if you are using a supported OS." >>~/sosetup.log 2>&1
     exit
   fi
 
@@ -358,7 +366,7 @@ docker_install() {
     yum -y update
     yum -y install docker-ce docker-python python-docker
     docker_registry
-    echo "Restarting Docker"
+    echo "Restarting Docker" >>~/sosetup.log 2>&1
     systemctl restart docker
     systemctl enable docker
 
@@ -366,17 +374,17 @@ docker_install() {
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install docker-ce >>~/sosetup.log 2>&1
-      docker_registry
-      echo "Restarting Docker"
-      systemctl restart docker
+      docker_registry >>~/sosetup.log 2>&1
+      echo "Restarting Docker" >>~/sosetup.log 2>&1
+      systemctl restart docker >>~/sosetup.log 2>&1
     else
-      apt-key add $TMP/gpg/docker.pub
-      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      apt-key add $TMP/gpg/docker.pub >>~/sosetup.log 2>&1
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >>~/sosetup.log 2>&1
       apt-get update >>~/sosetup.log 2>&1
       apt-get -y install docker-ce >>~/sosetup.log 2>&1
-      docker_registry
-      echo "Restarting Docker"
-      systemctl restart docker
+      docker_registry >>~/sosetup.log 2>&1
+      echo "Restarting Docker" >>~/sosetup.log 2>&1
+      systemctl restart docker >>~/sosetup.log 2>&1
     fi
   fi
 
@@ -384,13 +392,13 @@ docker_install() {
 
 docker_registry() {
 
-  echo "Setting up Docker Registry"
-  mkdir -p /etc/docker
+  echo "Setting up Docker Registry" >>~/sosetup.log 2>&1
+  mkdir -p /etc/docker >>~/sosetup.log 2>&1
   # Make the host use the master docker registry
   echo "{" > /etc/docker/daemon.json
   echo "  \"registry-mirrors\": [\"https://$MSRV:5000\"]" >> /etc/docker/daemon.json
   echo "}" >> /etc/docker/daemon.json
-  echo "Docker Registry Setup - Complete"
+  echo "Docker Registry Setup - Complete" >>~/sosetup.log 2>&1
 
 }
 
@@ -489,7 +497,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common salt-master
+    yum -y install wget salt-common salt-master >>~/sosetup.log 2>&1
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -1830,32 +1838,48 @@ if (whiptail_you_sure); then
       accept_salt_key_local >>~/sosetup.log 2>&1
       echo -e "XXX\n12\nRunning the SSL states... \nXXX"
       salt_checkin >>~/sosetup.log 2>&1
+      salt-call state.apply ca >>~/sosetup.log 2>&1
+      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      echo -e "XXX\n15\nInstalling core components... \nXXX"
+      salt-call state.apply common >>~/sosetup.log 2>&1
+      echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
+      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      echo -e "XXX\n25\nInstalling master components... \nXXX"
+      salt-call state.apply master >>~/sosetup.log 2>&1
+      salt-call state.apply idstools >>~/sosetup.log 2>&1
+      if [ $EVALOSQUERY == 0 ]; then
+        salt-call state.apply mysql >>~/sosetup.log 2>&1
+      fi
+      echo -e "XXX\n35\nInstalling Elastic components... \nXXX"
+      salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
+      salt-call state.apply logstash >>~/sosetup.log 2>&1
+      salt-call state.apply kibana >>~/sosetup.log 2>&1
+      echo -e "XXX\n50\nInstalling NSM components... \nXXX"
+      salt-call state.apply pcap >>~/sosetup.log 2>&1
+      salt-call state.apply suricata >>~/sosetup.log 2>&1
+      salt-call state.apply bro >>~/sosetup.log 2>&1
+      salt-call state.apply curator >>~/sosetup.log 2>&1
+      salt-call state.apply elastalert >>~/sosetup.log 2>&1
+      if [ $EVALOSQUERY == 0 ]; then
+        echo -e "XXX\n60\nInstalling fleet... \nXXX"
+        salt-call state.apply fleet >>~/sosetup.log 2>&1
+        salt-call state.apply redis >>~/sosetup.log 2>&1
+      fi
+      if [ $EVALWAZUH == 0 ]; then
+        echo -e "XXX\n65\nInstalling Elastic components... \nXXX"
+        salt-call state.apply wazuh >>~/sosetup.log 2>&1
+      fi
+      echo -e "XXX\n85\nInstalling filebeat... \nXXX"
+      salt-call state.apply filebeat >>~/sosetup.log 2>&1
+      salt-call state.apply utility >>~/sosetup.log 2>&1
+      echo -e "XXX\n95\nInstalling misc components... \nXXX"
+      salt-call state.apply schedule >>~/sosetup.log 2>&1
+      salt-call state.apply soctopus >>~/sosetup.log 2>&1
       echo -e "XXX\n100\nSetting checkin to run on boot... \nXXX"
+      sleep 5
       checkin_at_boot >>~/sosetup.log 2>&1
 
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    #create_bond
-    #saltify
-    #docker_install
-    #install_master
-    # Copy the data over
-    #salt_master_directories
-    #update_sudoers
-    # Change perms on the master dir
-    #chown_salt_master
-    # Set the static values
-    #master_static
-    #echo "** Generating the master pillar **"
-    #master_pillar
-    #configure_minion eval
-    #set_node_type
-    #node_pillar
-    #set_initial_firewall_policy
-    #salt_firstcheckin
-    #accept_salt_key_local
-    #salt_checkin_message
-    #salt_checkin
-    #checkin_at_boot
     whiptail_setup_complete
   fi
 
