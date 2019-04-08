@@ -1901,6 +1901,7 @@ if (whiptail_you_sure); then
         whiptail_setup_complete
       else
         whiptail_setup_failed
+      fi
     fi
   fi
 
