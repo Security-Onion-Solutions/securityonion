@@ -1855,26 +1855,26 @@ if (whiptail_you_sure); then
       echo -e "XXX\n25\nInstalling master components... \nXXX"
       salt-call state.apply master >>~/sosetup.log 2>&1
       salt-call state.apply idstools >>~/sosetup.log 2>&1
-      if [ $EVALOSQUERY == 0 ]; then
+      if [ $EVALOSQUERY == '0' ]; then
         salt-call state.apply mysql >>~/sosetup.log 2>&1
       fi
       echo -e "XXX\n35\nInstalling Elastic components... \nXXX"
       salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
       salt-call state.apply logstash >>~/sosetup.log 2>&1
       salt-call state.apply kibana >>~/sosetup.log 2>&1
-      echo -e "XXX\n50\nInstalling NSM components... \nXXX"
+      echo -e "XXX\n50\nInstalling pcap... \nXXX"
       salt-call state.apply pcap >>~/sosetup.log 2>&1
       salt-call state.apply suricata >>~/sosetup.log 2>&1
       salt-call state.apply bro >>~/sosetup.log 2>&1
       salt-call state.apply curator >>~/sosetup.log 2>&1
       salt-call state.apply elastalert >>~/sosetup.log 2>&1
-      if [ $EVALOSQUERY == 0 ]; then
+      if [ $EVALOSQUERY == '0' ]; then
         echo -e "XXX\n60\nInstalling fleet... \nXXX"
         salt-call state.apply fleet >>~/sosetup.log 2>&1
         salt-call state.apply redis >>~/sosetup.log 2>&1
       fi
-      if [ $EVALWAZUH == 0 ]; then
-        echo -e "XXX\n65\nInstalling Elastic components... \nXXX"
+      if [ $EVALWAZUH == '0' ]; then
+        echo -e "XXX\n65\nInstalling Wazuh components... \nXXX"
         salt-call state.apply wazuh >>~/sosetup.log 2>&1
       fi
       echo -e "XXX\n85\nInstalling filebeat... \nXXX"
@@ -1891,13 +1891,13 @@ if (whiptail_you_sure); then
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 sosetup.log | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
-      if [ $GOODSETUP == 1 ]; then
+      if [ $GOODSETUP == '1' ]; then
         whiptail_setup_complete
       else
         whiptail_setup_failed
       fi
     else
-      if [ $GOODSETUP == 0 ]; then
+      if [ $GOODSETUP == '0' ]; then
         whiptail_setup_complete
       else
         whiptail_setup_failed
