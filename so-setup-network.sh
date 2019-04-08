@@ -427,6 +427,7 @@ generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 }
 
 get_filesystem_nsm(){
@@ -588,6 +589,9 @@ master_static() {
   echo "  broversion: $BROVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  ids: $NIDS" >> /opt/so/saltstack/pillar/static.sls
   echo "  masterip: $MAINIP" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hiveuser: hiveadmin" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hivepassword: hivechangeme" >> /opt/so/saltstack/pillar/static.sls
+  echo "  hivekey: $HIVEKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
