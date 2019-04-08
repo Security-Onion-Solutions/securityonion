@@ -863,25 +863,25 @@ salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
   echo "Building Certificate Authority"
-  salt-call state.apply ca
+  salt-call state.apply ca >>~/sosetup.log 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
-  service salt-master restart
+  service salt-master restart >>~/sosetup.log 2>&1
   sleep 5
-  service salt-minion restart
+  service salt-minion restart >>~/sosetup.log 2>&1
   sleep 15
   echo " Applyng a mine hack "
-  sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt
+  sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >>~/sosetup.log 2>&1
   echo " Applying SSL state "
-  salt-call state.apply ssl
+  salt-call state.apply ssl >>~/sosetup.log 2>&1
   echo "Still Working... Hang in there"
-  salt-call state.highstate
+  #salt-call state.highstate
 
   else
 
   # Run Checkin
-  salt-call state.apply ca
-  salt-call state.apply ssl
-  salt-call state.highstate
+  salt-call state.apply ca >>~/sosetup.log 2>&1
+  salt-call state.apply ssl >>~/sosetup.log 2>&1
+  #salt-call state.highstate >>~/sosetup.log 2>&1
 
   fi
 
@@ -1795,8 +1795,15 @@ if (whiptail_you_sure); then
     echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
     echo ""
     add_socore_user_master
-    create_bond
-    saltify
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
+      create_bond
+      echo -e "XXX\n1\nInstalling saltstack... \nXXX"
+      saltify
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    #create_bond
+    #saltify
     docker_install
     install_master
     # Copy the data over
