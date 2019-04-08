@@ -1875,10 +1875,11 @@ if (whiptail_you_sure); then
       echo -e "XXX\n95\nInstalling misc components... \nXXX"
       salt-call state.apply schedule >>~/sosetup.log 2>&1
       salt-call state.apply soctopus >>~/sosetup.log 2>&1
-      echo -e "XXX\n100\nSetting checkin to run on boot... \nXXX"
-      sleep 5
+      echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >>~/sosetup.log 2>&1
-
+      echo -e "XXX\n99\nVerifying Setup... \nXXX"
+      salt-call state.highstate >>~/sosetup.log 2>&1
+      
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     whiptail_setup_complete
   fi
