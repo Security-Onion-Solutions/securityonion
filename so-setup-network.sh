@@ -25,7 +25,7 @@ RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 NODE_ES_PORT="9200"
 
 # Reset the Install Log
-date -u >>~/sosetup.log 2>&1
+date -u >~/sosetup.log 2>&1
 
 # End Global Variable Section
 
