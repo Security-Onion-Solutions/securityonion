@@ -357,7 +357,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -369,7 +369,7 @@ dashboard-{{ SN }}:
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.0.7
+    - image: soshybridhunter/so-grafana:HH1.0.8
     - hostname: grafana
     - user: socore
     - binds:
