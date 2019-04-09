@@ -1897,13 +1897,13 @@ if (whiptail_you_sure); then
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 sosetup.log | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
-      if [ $GOODSETUP == '1' ]; then
+      if [[ $GOODSETUP == '1' ]]; then
         whiptail_setup_complete
       else
         whiptail_setup_failed
       fi
     else
-      if [ $GOODSETUP == '0' ]; then
+      if [[ $GOODSETUP == '0' ]]; then
         whiptail_setup_complete
       else
         whiptail_setup_failed
