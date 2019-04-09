@@ -1855,7 +1855,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n25\nInstalling master components... \nXXX"
       salt-call state.apply master >>~/sosetup.log 2>&1
       salt-call state.apply idstools >>~/sosetup.log 2>&1
-      if [ $EVALOSQUERY == '0' ]; then
+      if [[ $EVALOSQUERY == '0' ]]; then
         salt-call state.apply mysql >>~/sosetup.log 2>&1
       fi
       echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
@@ -1874,12 +1874,12 @@ if (whiptail_you_sure); then
       salt-call state.apply curator >>~/sosetup.log 2>&1
       echo -e "XXX\n58\nInstalling elastalert... \nXXX"
       salt-call state.apply elastalert >>~/sosetup.log 2>&1
-      if [ $EVALOSQUERY == '0' ]; then
+      if [[ $EVALOSQUERY == '0' ]]; then
         echo -e "XXX\n60\nInstalling fleet... \nXXX"
         salt-call state.apply fleet >>~/sosetup.log 2>&1
         salt-call state.apply redis >>~/sosetup.log 2>&1
       fi
-      if [ $EVALWAZUH == '0' ]; then
+      if [[ $EVALWAZUH == '0' ]]; then
         echo -e "XXX\n65\nInstalling Wazuh components... \nXXX"
         salt-call state.apply wazuh >>~/sosetup.log 2>&1
       fi
