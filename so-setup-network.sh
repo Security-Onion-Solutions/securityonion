@@ -1165,24 +1165,6 @@ whiptail_eval_adv() {
   "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
 }
 
-whiptail_eval_adv_service_grafana() {
-  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Grafana for detailed monitoring?" 8 78
-  local exitstatus=$?
-  EVALGRAFANA=$exitstatus
-}
-
-whiptail_eval_adv_service_osquery() {
-  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable OSquery for client monitoring?" 8 78
-  local exitstatus=$?
-  EVALOSQUERY=$exitstatus
-}
-
-whiptail_eval_adv_service_wazuh() {
-  whiptail --title "Eval Advanced Setup" --yesno "Would you like to enable Wazuh for client monitoring?" 8 78
-  local exitstatus=$?
-  EVALWAZUH=$exitstatus
-}
-
 whiptail_eval_adv_warning() {
   whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 78
 }
@@ -1758,6 +1740,7 @@ if (whiptail_you_sure); then
 
     # Snag the HOME_NET
     whiptail_homenet_master
+    whiptail_eval_adv_warning
     whiptail_enable_components
 
     # Set a bunch of stuff since this is eval
