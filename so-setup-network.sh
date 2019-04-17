@@ -621,7 +621,6 @@ node_pillar() {
 }
 
 process_components() {
-  echo $COMPONENTS >> /root/components
   CLEAN=${COMPONENTS//\"}
   GRAFANA=0
   OSQUERY=0
@@ -630,7 +629,7 @@ process_components() {
 
   IFS=$' '
   for item in $(echo "$CLEAN"); do
-	  set $item=1
+	  let $item=1
   done
   unset IFS
 }
