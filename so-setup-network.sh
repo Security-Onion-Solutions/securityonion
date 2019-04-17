@@ -564,7 +564,7 @@ master_pillar() {
   echo "  grafana: $GRAFANA" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  hive: $HIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   }
 
 master_static() {
@@ -621,6 +621,7 @@ node_pillar() {
 }
 
 process_components() {
+  echo $COMPONENTS >> /root/components
   CLEAN=${COMPONENTS//\"}
   GRAFANA=0
   OSQUERY=0
