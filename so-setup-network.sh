@@ -543,27 +543,6 @@ master_pillar() {
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    if [ $EVALADVANCED == 'ADVANCED' ]; then
-      if [ $EVALGRAFANA == '0' ]; then
-        echo "  grafana: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      else
-        echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      fi
-      if [ $EVALOSQUERY == '0' ]; then
-        echo "  osquery: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      else
-        echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      fi
-      if [ $EVALWAZUH == '0' ]; then
-        echo "  wazuh: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      else
-        echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      fi
-    else
-      echo "  grafana: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      echo "  osquery: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-      echo "  wazuh: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    fi
 
   else
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -582,7 +561,10 @@ master_pillar() {
   echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-
+  echo "  grafana: $GRAFANA" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  hive: $HIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   }
 
 master_static() {
@@ -636,6 +618,20 @@ node_pillar() {
   echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$HOSTNAME.sls
   echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$HOSTNAME.sls
 
+}
+
+process_components() {
+  CLEAN=${COMPONENTS//\"}
+  GRAFANA=0
+  OSQUERY=0
+  WAZUH=0
+  THEHIVE=0
+
+  IFS=$' '
+  for item in $(echo "$CLEAN"); do
+	  set $item=1
+  done
+  unset IFS
 }
 
 saltify() {
@@ -1152,6 +1148,14 @@ whiptail_cur_close_days() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
+}
+whiptail_enable_components() {
+  COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
+  "Select Components to install" 20 78 8 \
+  "GRAFANA" "Enable Grafana for system monitoring" OFF \
+  "OSQUERY" "Enable Fleet with osquery" OFF \
+  "WAZUH" "Enable Wazuh" OFF \
+  "THEHIVE" "Enable TheHive" OFF 3>&1 1>&2 2>&3 )
 }
 
 whiptail_eval_adv() {
@@ -1772,15 +1776,7 @@ if (whiptail_you_sure); then
 
     # Snag the HOME_NET
     whiptail_homenet_master
-
-    # Ask about advanced mode
-    whiptail_eval_adv
-    if [ $EVALADVANCED == 'ADVANCED' ]; then
-      whiptail_eval_adv_warning
-      whiptail_eval_adv_service_grafana
-      whiptail_eval_adv_service_osquery
-      whiptail_eval_adv_service_wazuh
-    fi
+    whiptail_enable_components
 
     # Set a bunch of stuff since this is eval
     es_heapsize
@@ -1796,6 +1792,7 @@ if (whiptail_you_sure); then
     NIDS=Suricata
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
+    process_components
     whiptail_make_changes
     #eval_mode_hostsfile
     generate_passwords

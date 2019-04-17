@@ -1,6 +1,8 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') %}
-{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
+{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
+{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') -%}
+{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
+{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') -%}
+{%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 base:
   'G@role:so-sensor':
     - ca
