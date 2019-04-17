@@ -1152,10 +1152,10 @@ whiptail_cur_close_days() {
 whiptail_enable_components() {
   COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
   "Select Components to install" 20 78 8 \
-  "GRAFANA" "Enable Grafana for system monitoring" OFF \
-  "OSQUERY" "Enable Fleet with osquery" OFF \
-  "WAZUH" "Enable Wazuh" OFF \
-  "THEHIVE" "Enable TheHive" OFF 3>&1 1>&2 2>&3 )
+  "GRAFANA" "Enable Grafana for system monitoring" ON \
+  "OSQUERY" "Enable Fleet with osquery" ON \
+  "WAZUH" "Enable Wazuh" ON \
+  "THEHIVE" "Enable TheHive" ON 3>&1 1>&2 2>&3 )
 }
 
 whiptail_eval_adv() {
@@ -1360,23 +1360,6 @@ whiptail_master_adv_service_brologs() {
   "socks" "SOCKS Logs" ON \
   "x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 )
 }
-
-whiptail_master_adv_service_grafana() {
-  echo "blah"
-}
-
-whiptail_master_adv_service_osquery() {
-  #MOSQ=$()
-  echo "blah"
-
-}
-
-whiptail_master_adv_service_wazuh() {
-  echo "blah"
-}
-
-
-
 
 whiptail_network_notice() {
 
@@ -1622,6 +1605,8 @@ if (whiptail_you_sure); then
 
     # Find out how to handle updates
     whiptail_master_updates
+    whiptail_enable_components
+    process_components
 
     # Do Advacned Setup if they chose it
     if [ $MASTERADV == 'ADVANCED' ]; then
@@ -1629,9 +1614,6 @@ if (whiptail_you_sure); then
       if [ $BROVERSION != 'SURICATA' ]; then
         whiptail_master_adv_service_brologs
       fi
-      whiptail_master_adv_service_osquery
-      whiptail_master_adv_service_grafana
-      whiptail_master_adv_service_wazuh
     fi
 
     # Last Chance to back out
@@ -1852,7 +1834,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n25\nInstalling master components... \nXXX"
       salt-call state.apply master >>~/sosetup.log 2>&1
       salt-call state.apply idstools >>~/sosetup.log 2>&1
-      if [[ $EVALOSQUERY == '0' ]]; then
+      if [[ $OSQUERY == '1' ]]; then
         salt-call state.apply mysql >>~/sosetup.log 2>&1
       fi
       echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
@@ -1871,12 +1853,12 @@ if (whiptail_you_sure); then
       salt-call state.apply curator >>~/sosetup.log 2>&1
       echo -e "XXX\n58\nInstalling elastalert... \nXXX"
       salt-call state.apply elastalert >>~/sosetup.log 2>&1
-      if [[ $EVALOSQUERY == '0' ]]; then
+      if [[ $OSQUERY == '1' ]]; then
         echo -e "XXX\n60\nInstalling fleet... \nXXX"
         salt-call state.apply fleet >>~/sosetup.log 2>&1
         salt-call state.apply redis >>~/sosetup.log 2>&1
       fi
-      if [[ $EVALWAZUH == '0' ]]; then
+      if [[ $WAZUH == '1' ]]; then
         echo -e "XXX\n65\nInstalling Wazuh components... \nXXX"
         salt-call state.apply wazuh >>~/sosetup.log 2>&1
       fi
@@ -1886,6 +1868,9 @@ if (whiptail_you_sure); then
       echo -e "XXX\n95\nInstalling misc components... \nXXX"
       salt-call state.apply schedule >>~/sosetup.log 2>&1
       salt-call state.apply soctopus >>~/sosetup.log 2>&1
+      if [[ $WAZUH == '1' ]]; then
+        salt-call state.apply hive >>~/sosetup.log 2>&1
+      fi
       echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >>~/sosetup.log 2>&1
       echo -e "XXX\n99\nVerifying Setup... \nXXX"

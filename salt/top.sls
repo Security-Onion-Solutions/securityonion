@@ -47,6 +47,9 @@ base:
     - utility
     - schedule
     - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
 
 
   'G@role:so-master':
@@ -57,17 +60,27 @@ base:
     - master
     - idstools
     - redis
+    {%- if OSQUERY != 0 %}
     - mysql
+    {%- endif %}
     - elasticsearch
     - logstash
     - kibana
     - elastalert
+    {%- if WAZUH != 0 %}
     - wazuh
+    {%- endif %}
     - filebeat
     - utility
     - schedule
+    {%- if OSQUERY != 0 %}
     - fleet
+    {%- endif %}
     - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
+
 
   # Storage node logic
 
