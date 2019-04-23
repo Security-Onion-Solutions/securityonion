@@ -18,7 +18,7 @@ docker exec so-fleet fleetctl apply -f /packs/hh/hhdefault.yml
 esecret=$(sudo docker exec so-fleet fleetctl get enroll-secret)
 
 #Concat fleet.crt & ca.crt  - this is required for launcher connectivity
-cat /etc/pki/fleet.crt /etc/pki/ca.crt > /etc/pki/fleet-launcher.crt
+cat /etc/pki/fleet.crt /etc/pki/ca.crt > /etc/pki/launcher.crt
 
 #Create the output directory
 mkdir /opt/so/conf/fleet/packages
