@@ -25,7 +25,7 @@ mkdir /opt/so/conf/fleet/packages
 
 docker run \
   --mount type=bind,source=/opt/so/conf/fleet/packages,target=/output \
-  --mount type=bind,source=/etc/pki/fleet-launcher.crt,target=/var/launcher/launcher.crt \
+  --mount type=bind,source=/etc/pki/launcher.crt,target=/var/launcher/launcher.crt \
   soshybridhunter/so-fleet-launcher:HH1.0.8 "$esecret" "$1":8080
 
 #Update timestamp on packages webpage
