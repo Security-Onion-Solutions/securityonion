@@ -14,6 +14,7 @@ docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/options.y
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/hh/hhdefault.yml
+docker exec so-fleet /bin/sh -c 'for pack in /packs/palantir/Fleet/Endpoints/packs/*.yaml; do fleetctl apply -f "$pack"; done'
 
 esecret=$(sudo docker exec so-fleet fleetctl get enroll-secret)
 
