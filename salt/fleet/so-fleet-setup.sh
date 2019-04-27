@@ -30,6 +30,7 @@ docker run \
 
 #Update timestamp on packages webpage
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/osquery-packages.html
 
 echo "Fleet Setup Complete - Login here: https://$1"
 echo "Your username is $2 and your password is $initpw"
