@@ -14,6 +14,7 @@ docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/options.y
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/hh/hhdefault.yml
+docker exec so-fleet /bin/sh -c 'for pack in /packs/palantir/Fleet/Endpoints/packs/*.yaml; do fleetctl apply -f "$pack"; done'
 
 esecret=$(sudo docker exec so-fleet fleetctl get enroll-secret)
 
@@ -30,6 +31,14 @@ docker run \
 
 #Update timestamp on packages webpage
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/osquery-packages.html
+
+#Install osquery locally
+if cat /etc/os-release | grep -q 'debian'; then
+   dpkg -i /opt/so/conf/fleet/packages/launcher.deb
+else
+   rpm -i /opt/so/conf/fleet/packages/launcher.rpm
+fi
 
 echo "Fleet Setup Complete - Login here: https://$1"
 echo "Your username is $2 and your password is $initpw"
