@@ -72,7 +72,7 @@ suriconfigsync:
 
 so-suricata:
   docker_container.running:
-    - image: soshybridhunter/so-suricata:HH1.0.7
+    - image: soshybridhunter/so-suricata:HH1.0.8
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
