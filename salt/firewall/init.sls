@@ -217,6 +217,17 @@ enable_masternode_mysql_3306_{{ip}}:
     - position: 1
     - save: True
 
+enable_master_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.
@@ -274,6 +285,17 @@ enable_minions_influxdb_8086_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 8086
+    - position: 1
+    - save: True
+
+enable_minion_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
     - position: 1
     - save: True
 
