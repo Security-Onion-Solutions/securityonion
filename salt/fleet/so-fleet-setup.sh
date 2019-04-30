@@ -35,7 +35,7 @@ sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packa
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/osquery-packages.html
 
 # Enable Fleet on all the other parts of the infrastructure
-sed -i 's/fleetsetup: 0/fleetsetup: 1/g' /opt/so/salt/saltstack/pillar/static.sls
+sed -i 's/fleetsetup: 0/fleetsetup: 1/g' /opt/so/saltstack/pillar/static.sls
 
 # Install osquery locally
 #if cat /etc/os-release | grep -q 'debian'; then

@@ -582,7 +582,7 @@ master_static() {
   echo "  hiveuser: hiveadmin" >> /opt/so/saltstack/pillar/static.sls
   echo "  hivepassword: hivechangeme" >> /opt/so/saltstack/pillar/static.sls
   echo "  hivekey: $HIVEKEY" >> /opt/so/saltstack/pillar/static.sls
-  echo "  fleetsetup: 0" >> /opt/so/salt/saltstack/pillar/static.sls
+  echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
