@@ -319,7 +319,7 @@ create_bond() {
       echo "iface $BNIC inet manual" >> /etc/network/interfaces.d/$BNIC
       echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/$BNIC
       echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/$BNIC
-      echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
+      echo "  post-up for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
       echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
       echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
       echo "  mtu $MTU" >> /etc/network/interfaces.d/$BNIC
@@ -335,7 +335,7 @@ create_bond() {
     echo "  mtu $MTU" >> /etc/network/interfaces.d/bond0
     echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/bond0
     echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/bond0
-    echo "  post-up ethtool -G \$IFACE rx 4096; for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
+    echo "  post-up for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
     echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/bond0
   fi
 
