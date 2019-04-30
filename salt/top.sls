@@ -16,6 +16,9 @@ base:
     {%- endif %}
     - wazuh
     - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-eval':
@@ -39,6 +42,7 @@ base:
     {%- if OSQUERY != 0 %}
     - fleet
     - redis
+    - launcher
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
@@ -75,6 +79,7 @@ base:
     - schedule
     {%- if OSQUERY != 0 %}
     - fleet
+    - launcher
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -89,6 +94,9 @@ base:
     - common
     - firewall
     - logstash
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:hot':
@@ -98,6 +106,9 @@ base:
     - logstash
     - elasticsearch
     - curator
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:warm':
@@ -105,6 +116,9 @@ base:
     - common
     - firewall
     - elasticsearch
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:storage':
@@ -118,6 +132,9 @@ base:
     - curator
     - wazuh
     - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:mastersensor':
@@ -125,4 +142,7 @@ base:
     - firewall
     - sensor
     - master
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule

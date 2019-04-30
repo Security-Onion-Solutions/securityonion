@@ -29,16 +29,21 @@ docker run \
   --mount type=bind,source=/etc/pki/launcher.crt,target=/var/launcher/launcher.crt \
   soshybridhunter/so-fleet-launcher:HH1.0.8 "$esecret" "$1":8080
 
+cp /opt/so/conf/fleet/packages/launcher.* /opt/so/saltstack/salt/launcher/packages/
 #Update timestamp on packages webpage
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/osquery-packages.html
 
-#Install osquery locally
-if cat /etc/os-release | grep -q 'debian'; then
-   dpkg -i /opt/so/conf/fleet/packages/launcher.deb
-else
-   rpm -i /opt/so/conf/fleet/packages/launcher.rpm
-fi
+# Enable Fleet on all the other parts of the infrastructure
+sed -i 's/fleetsetup: 0/fleetsetup: 1/g' /opt/so/salt/saltstack/pillar/static.sls
 
+# Install osquery locally
+#if cat /etc/os-release | grep -q 'debian'; then
+#   dpkg -i /opt/so/conf/fleet/packages/launcher.deb
+#else
+#   rpm -i /opt/so/conf/fleet/packages/launcher.rpm
+#fi
+echo "Installing launcher via salt"
+salt-call state.apply launcher queue=True > /root/launcher.log
 echo "Fleet Setup Complete - Login here: https://$1"
 echo "Your username is $2 and your password is $initpw"

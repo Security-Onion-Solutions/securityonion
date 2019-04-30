@@ -11,6 +11,8 @@ MANINT=$6
 ROOTFS=$7
 NSM=$8
 MONINT=$9
+#NODETYPE=$10
+#HOTNAME=$11
 
 echo "Seeing if this host is already in here. If so delete it"
 if grep -q $NAME "/opt/so/saltstack/pillar/data/$TYPE.sls"; then
@@ -49,3 +51,7 @@ if [ $TYPE == 'evaltab' ]; then
   salt-call state.apply common queue=True
   salt-call state.apply utility queue=True
 fi
+#if [ $TYPE == 'nodestab' ]; then
+#  echo "    nodetype: $NODETYPE" >> /opt/so/saltstack/pillar/data/$TYPE.sls
+#  echo "    hotname: $HOTNAME" >> /opt/so/saltstack/pillar/data/$TYPE.sls
+#fi
