@@ -1,6 +1,6 @@
 {%- set FLEETSETUP = salt['pillar.get']('static:fleetsetup', '0') -%}
 
-{%- if FLEETSETUP != 0 %}
+{%- if FLEETSETUP != '0' %}
 launcherpkg:
   pkg.installed:
     - sources:
