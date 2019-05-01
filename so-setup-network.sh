@@ -1737,23 +1737,46 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     copy_ssh_key
-    set_initial_firewall_policy
-    create_bond
-    sensor_pillar
-    saltify
-    docker_install
-    configure_minion sensor
-    copy_minion_pillar sensors
-    salt_firstcheckin
-    # Accept the Salt Key
-    accept_salt_key_remote
-    # Do the big checkin but first let them know it will take a bit.
-    salt_checkin_message
-    salt_checkin
-    checkin_at_boot
-
-    whiptail_setup_complete
-
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
+      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
+      create_bond >>~/sosetup.log 2>&1
+      echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
+      sensor_pillar >>~/sosetup.log 2>&1
+      echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
+      saltify >>~/sosetup.log 2>&1
+      echo -e "XXX\n20\nInstalling Docker... \nXXX"
+      docker_install >>~/sosetup.log 2>&1
+      echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
+      configure_minion sensor >>~/sosetup.log 2>&1
+      echo -e "XXX\n24\nCopying Sensor Pillar to Master... \nXXX"
+      copy_minion_pillar sensors >>~/sosetup.log 2>&1
+      echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
+      salt_firstcheckin >>~/sosetup.log 2>&1
+      echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
+      # Accept the Salt Key
+      accept_salt_key_remote >>~/sosetup.log 2>&1
+      echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
+      salt-call state.apply ca >>~/sosetup.log 2>&1
+      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      echo -e "XXX\n35\nInstalling Core Components... \nXXX"
+      salt-call state.apply common >>~/sosetup.log 2>&1
+      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      echo -e "XXX\n50\nInstalling PCAP... \nXXX"
+      salt-call state.apply pcap >>~/sosetup.log 2>&1
+      echo -e "XXX\n60\nInstalling IDS components... \nXXX"
+      salt-call state.apply suricata >>~/sosetup.log 2>&1
+      echo -e "XXX\n80\nVerifying Install... \nXXX"
+      salt-call state.highstate >>~/sosetup.log 2>&1
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+    else
+      whiptail_setup_failed
+    fi
   fi
 
   #######################
