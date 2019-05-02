@@ -107,7 +107,8 @@ so-coreimage:
 
 so-core:
   docker_container.running:
-    - require: so-coreimage
+    - require:
+      - so-coreimage
     - image: soshybridhunter/so-core:HH1.0.7
     - hostname: so-core
     - user: socore
