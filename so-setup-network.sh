@@ -1972,20 +1972,20 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-      set_initial_firewall_policy
+      set_initial_firewall_policy >>~/sosetup.log 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
-      saltify
+      saltify >>~/sosetup.log 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
-      docker_install
+      docker_install >>~/sosetup.log 2>&1
       echo -e "XXX\n30\nInitializing Minion... \nXXX"
-      configure_minion node
-      set_node_type
-      node_pillar
-      copy_minion_pillar nodes
+      configure_minion node >>~/sosetup.log 2>&1
+      set_node_type >>~/sosetup.log 2>&1
+      node_pillar >>~/sosetup.log 2>&1
+      copy_minion_pillar nodes >>~/sosetup.log 2>&1
       echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
-      salt_firstcheckin
+      salt_firstcheckin >>~/sosetup.log 2>&1
       # Accept the Salt Key
-      accept_salt_key_remote
+      accept_salt_key_remote >>~/sosetup.log 2>&1
       echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
       salt-call state.apply ca >>~/sosetup.log 2>&1
       salt-call state.apply ssl >>~/sosetup.log 2>&1
@@ -2000,7 +2000,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n90\nVerifying Install... \nXXX"
       salt-call state.highstate >>~/sosetup.log 2>&1
       checkin_at_boot >>~/sosetup.log 2>&1
-        
+
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
