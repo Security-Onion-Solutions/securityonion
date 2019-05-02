@@ -19,7 +19,7 @@ soctopussync:
 
 so-soctopus:
   docker_container.run:
-    - onlyif: docker pull --disable-content-trust=false so-soctopus:HH1.0.8
+    - onlyif: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.0.8
     - image: soshybridhunter/so-soctopus:HH1.0.8
     - hostname: soctopus
     - name: so-soctopus
