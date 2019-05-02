@@ -79,8 +79,14 @@ elastarules:
 #    - group: 939
 #    - template: jinja
 
+so-elastalertimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.0.3
+
 so-elastalert:
   docker_container.running:
+    - require:
+      - so-elastalertimage
     - image: soshybridhunter/so-elastalert:HH1.0.3
     - hostname: elastalert
     - name: so-elastalert

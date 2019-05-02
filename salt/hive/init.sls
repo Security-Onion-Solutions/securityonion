@@ -30,8 +30,14 @@ hiveesdata:
     - user: 939
     - group: 939
 
+so-thehive-esimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.0.7
+
 so-thehive-es:
   docker_container.running:
+    - require:
+      - so-thehive-esimage
     - image: soshybridhunter/so-thehive-es:HH1.0.7
     - hostname: so-thehive-es
     - name: so-thehive-es
@@ -60,16 +66,26 @@ so-thehive-es:
 
 # Install Cortex
 
-so-cortex:
-  docker_container.running:
-    - image: thehiveproject/cortex:latest
-    - hostname: so-cortex
-    - name: so-cortex
-    - port_bindings:
-      - 0.0.0.0:9001:9001
+#so-corteximage:
+# cmd.run:
+#   - name: docker pull --disable-content-trust=false soshybridhunter/so-cortex:HH1.0.3
+
+#so-cortex:
+#  docker_container.running:
+#    - image: thehiveproject/cortex:latest
+#    - hostname: so-cortex
+#    - name: so-cortex
+#    - port_bindings:
+#      - 0.0.0.0:9001:9001
+
+so-thehiveimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.0.7
 
 so-thehive:
   docker_container.running:
+    - require:
+      - so-thehiveimage
     - image: soshybridhunter/so-thehive:HH1.0.7
     - hostname: so-thehive
     - name: so-thehive

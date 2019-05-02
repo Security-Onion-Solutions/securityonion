@@ -146,9 +146,14 @@ lslogdir:
     - makedirs: True
 
 # Add the container
+so-logstashimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-logstash:HH1.0.6
 
 so-logstash:
   docker_container.running:
+    - require:
+      - so-logstashimage
     - image: soshybridhunter/so-logstash:HH1.0.6
     - hostname: so-logstash
     - name: so-logstash

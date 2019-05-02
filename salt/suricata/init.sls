@@ -70,8 +70,14 @@ suriconfigsync:
     - group: 940
     - template: jinja
 
+so-suricataimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-suricata:HH1.0.8
+
 so-suricata:
   docker_container.running:
+    - require:
+      - so-suricataimage
     - image: soshybridhunter/so-suricata:HH1.0.8
     - privileged: True
     - environment:

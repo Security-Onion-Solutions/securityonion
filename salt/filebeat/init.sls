@@ -49,9 +49,14 @@ filebeatconfsync:
 #    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
 #    - source: salt://filebeat/files/filebeat.key
 
+so-filebeatimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.0.6
 
 so-filebeat:
   docker_container.running:
+    - require:
+      - so-filebeatimage
     - image: soshybridhunter/so-filebeat:HH1.0.6
     - hostname: so-filebeat
     - user: root

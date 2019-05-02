@@ -48,8 +48,14 @@ mysqldatadir:
     - group: 939
     - makedirs: True
 
+so-mysqlimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-mysql:HH1.0.7
+
 so-mysql:
   docker_container.running:
+    - require:
+      - so-mysqlimage
     - image: soshybridhunter/so-mysql:HH1.0.7
     - hostname: so-mysql
     - user: socore

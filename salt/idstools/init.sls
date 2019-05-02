@@ -48,11 +48,14 @@ ruleslink:
     - name: /opt/so/saltstack/salt/suricata/rules
     - target: /opt/so/rules/nids
 
-toosmooth/so-idstools:test2:
-  docker_image.present
+so-idstoolsimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-idstools:HH1.0.3
 
 so-idstools:
   docker_container.running:
+    - require:
+      - so-idstoolsimage
     - image: soshybridhunter/so-idstools:HH1.0.3
     - hostname: so-idstools
     - user: socore

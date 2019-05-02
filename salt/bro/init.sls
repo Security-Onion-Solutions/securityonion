@@ -90,8 +90,14 @@ localbrosync:
     - group: 939
     - template: jinja
 
+so-communitybroimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-communitybro:HH1.0.3
+
 so-bro:
   docker_container.running:
+    - require:
+      - so-communitybroimage
     - image: soshybridhunter/so-communitybro:HH1.0.3
     - privileged: True
     - binds:
@@ -117,8 +123,14 @@ localbrosync:
     - group: 939
     - template: jinja
 
+so-broimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-bro:HH1.0.6
+
 so-bro:
   docker_container.running:
+    - require:
+      - so-broimage
     - image: soshybridhunter/so-bro:HH1.0.6
     - privileged: True
     - binds:

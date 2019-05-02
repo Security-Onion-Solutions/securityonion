@@ -101,8 +101,13 @@ nginxtmp:
     - makedirs: True
 
 # Start the core docker
+so-coreimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-core:HH1.0.7
+
 so-core:
   docker_container.running:
+    - require: so-coreimage
     - image: soshybridhunter/so-core:HH1.0.7
     - hostname: so-core
     - user: socore
@@ -155,8 +160,14 @@ tgrafconf:
     - template: jinja
     - source: salt://common/telegraf/etc/telegraf.conf
 
+so-telegrafimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.0.7
+
 so-telegraf:
   docker_container.running:
+    - require:
+      - so-telegrafimage
     - image: soshybridhunter/so-telegraf:HH1.0.7
     - environment:
       - HOST_PROC=/host/proc
@@ -210,8 +221,14 @@ influxdbconf:
     - template: jinja
     - source: salt://common/influxdb/etc/influxdb.conf
 
+so-influximage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.0.7
+
 so-influxdb:
   docker_container.running:
+    - require:
+      - so-influximage
     - image: soshybridhunter/so-influxdb:HH1.0.7
     - hostname: influxdb
     - environment:
