@@ -130,7 +130,9 @@ base:
     - logstash
     - elasticsearch
     - curator
+    {%- if WAZUH != 0 %}
     - wazuh
+    {%- endif %}
     - filebeat
     {%- if OSQUERY != 0 %}
     - launcher

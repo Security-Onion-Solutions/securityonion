@@ -1770,6 +1770,7 @@ if (whiptail_you_sure); then
       salt-call state.apply suricata >>~/sosetup.log 2>&1
       echo -e "XXX\n80\nVerifying Install... \nXXX"
       salt-call state.highstate >>~/sosetup.log 2>&1
+      checkin_at_boot >>~/sosetup.log 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -1968,6 +1969,46 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     copy_ssh_key
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
+      set_initial_firewall_policy
+      echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
+      saltify
+      echo -e "XXX\n20\nInstalling Docker... \nXXX"
+      docker_install
+      echo -e "XXX\n30\nInitializing Minion... \nXXX"
+      configure_minion node
+      set_node_type
+      node_pillar
+      copy_minion_pillar nodes
+      echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
+      salt_firstcheckin
+      # Accept the Salt Key
+      accept_salt_key_remote
+      echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
+      salt-call state.apply ca >>~/sosetup.log 2>&1
+      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      echo -e "XXX\n50\nConfiguring Firewall... \nXXX"
+      salt-call state.apply common >>~/sosetup.log 2>&1
+      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      echo -e "XXX\n70\nInstalling Elastic Components... \nXXX"
+      salt-call state.apply logstash >>~/sosetup.log 2>&1
+      salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
+      salt-call state.apply curator >>~/sosetup.log 2>&1
+      salt-call state.apply filebeat >>~/sosetup.log 2>&1
+      echo -e "XXX\n90\nVerifying Install... \nXXX"
+      salt-call state.highstate >>~/sosetup.log 2>&1
+      checkin_at_boot >>~/sosetup.log 2>&1
+        
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+    else
+      whiptail_setup_failed
+    fi
+
     set_initial_firewall_policy
     saltify
     docker_install
