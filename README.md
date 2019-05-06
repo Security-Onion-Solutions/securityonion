@@ -3,7 +3,7 @@
 ### Changes:
 - Suricata 4.1.4
 - Eval and Master installs now ask which components you would like to install
-- Fleet (osquery) now has it's own additional setup script
+- Fleet (osquery) now has it's own additional setup script. [See the docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Configuring-Osquery-with-Security-Onion)
 - Fleet setup script now generates auto install packages for Windows, CentOS, and Ubuntu
 - When Fleet setup is completed, all SO nodes will auto install the appropriate auto install package
 - We now have a progress bar during install!
