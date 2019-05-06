@@ -5,8 +5,8 @@ launcherpkg:
   pkg.installed:
     - sources:
       {% if grains['os'] == 'CentOS' %}
-      - launcher: salt://launcher/packages/launcher.rpm
+      - launcher-final: salt://launcher/packages/launcher.rpm
       {% elif grains['os'] == 'Ubuntu' %}
-      - launcher: salt://launcher/packages/launcher.deb
+      - launcher-final: salt://launcher/packages/launcher.deb
       {% endif %}
 {%- endif %}
