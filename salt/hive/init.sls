@@ -1,3 +1,4 @@
+{% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
 hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
