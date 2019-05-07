@@ -1,6 +1,8 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') %}
-{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
+{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
+{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') -%}
+{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
+{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') -%}
+{%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 base:
   'G@role:so-sensor':
     - ca
@@ -14,6 +16,9 @@ base:
     {%- endif %}
     - wazuh
     - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-eval':
@@ -37,6 +42,7 @@ base:
     {%- if OSQUERY != 0 %}
     - fleet
     - redis
+    - launcher
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
@@ -45,6 +51,9 @@ base:
     - utility
     - schedule
     - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
 
 
   'G@role:so-master':
@@ -55,17 +64,28 @@ base:
     - master
     - idstools
     - redis
+    {%- if OSQUERY != 0 %}
     - mysql
+    {%- endif %}
     - elasticsearch
     - logstash
     - kibana
     - elastalert
+    {%- if WAZUH != 0 %}
     - wazuh
+    {%- endif %}
     - filebeat
     - utility
     - schedule
+    {%- if OSQUERY != 0 %}
     - fleet
+    - launcher
+    {%- endif %}
     - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
+
 
   # Storage node logic
 
@@ -74,6 +94,9 @@ base:
     - common
     - firewall
     - logstash
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:hot':
@@ -83,6 +106,9 @@ base:
     - logstash
     - elasticsearch
     - curator
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:warm':
@@ -90,6 +116,9 @@ base:
     - common
     - firewall
     - elasticsearch
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:so-node and I@node:node_type:storage':
@@ -101,8 +130,13 @@ base:
     - logstash
     - elasticsearch
     - curator
+    {%- if WAZUH != 0 %}
     - wazuh
+    {%- endif %}
     - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule
 
   'G@role:mastersensor':
@@ -110,4 +144,7 @@ base:
     - firewall
     - sensor
     - master
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
     - schedule

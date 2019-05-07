@@ -56,8 +56,14 @@ wazuhagentregister:
     - mode: 755
     - template: jinja
 
+so-wazuhimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-wazuh:HH1.0.7
+
 so-wazuh:
   docker_container.running:
+    - require:
+      - so-wazuhimage
     - image: soshybridhunter/so-wazuh:HH1.0.7
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh

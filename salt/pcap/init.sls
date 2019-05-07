@@ -85,8 +85,14 @@ stenolog:
     - group: 941
     - makedirs: True
 
+so-stenoimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-steno:HH1.0.3
+
 so-steno:
   docker_container.running:
+    - require:
+      - so-stenoimage
     - image: soshybridhunter/so-steno:HH1.0.3
     - network_mode: host
     - privileged: True

@@ -101,9 +101,15 @@ nginxtmp:
     - makedirs: True
 
 # Start the core docker
+so-coreimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-core:HH1.0.7
+
 so-core:
   docker_container.running:
-    - image: soshybridhunter/so-core:HH1.0.7
+    - require:
+      - so-coreimage
+    - image: soshybridhunter/so-core:HH1.0.8
     - hostname: so-core
     - user: socore
     - binds:
@@ -114,7 +120,7 @@ so-core:
       - /opt/so/tmp/nginx/:/run:rw
       - /etc/pki/masterssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/masterssl.key:/etc/pki/nginx/server.key:ro
-      - /opt/so/conf/fleet/packages:/opt/so/html/packages
+      - /opt/so/conf/fleet/packages:/opt/socore/html/packages
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
@@ -155,8 +161,14 @@ tgrafconf:
     - template: jinja
     - source: salt://common/telegraf/etc/telegraf.conf
 
+so-telegrafimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.0.7
+
 so-telegraf:
   docker_container.running:
+    - require:
+      - so-telegrafimage
     - image: soshybridhunter/so-telegraf:HH1.0.7
     - environment:
       - HOST_PROC=/host/proc
@@ -210,8 +222,14 @@ influxdbconf:
     - template: jinja
     - source: salt://common/influxdb/etc/influxdb.conf
 
+so-influximage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.0.7
+
 so-influxdb:
   docker_container.running:
+    - require:
+      - so-influximage
     - image: soshybridhunter/so-influxdb:HH1.0.7
     - hostname: influxdb
     - environment:
@@ -336,7 +354,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -357,7 +375,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -369,7 +387,7 @@ dashboard-{{ SN }}:
 # Install the docker. This needs to be behind nginx at some point
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.0.7
+    - image: soshybridhunter/so-grafana:HH1.0.8
     - hostname: grafana
     - user: socore
     - binds:

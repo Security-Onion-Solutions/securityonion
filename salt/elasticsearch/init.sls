@@ -90,8 +90,14 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+so-elasticsearchimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-elasticsearch:HH1.0.6
+
 so-elasticsearch:
   docker_container.running:
+    - require:
+      - so-elasticsearchimage
     - image: soshybridhunter/so-elasticsearch:HH1.0.6
     - hostname: elasticsearch
     - name: so-elasticsearch
@@ -143,8 +149,14 @@ freqlogdir:
     - group: 935
     - makedirs: True
 
+so-freqimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-freqserver:HH1.0.3
+
 so-freq:
   docker_container.running:
+    - require:
+      - so-freqimage
     - image: soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
     - name: so-freqserver
@@ -179,8 +191,14 @@ dstatslogdir:
     - group: 939
     - makedirs: True
 
+so-domainstatsimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-domainstats:HH1.0.3
+
 so-domainstats:
   docker_container.running:
+    - require:
+      - so-domainstatsimage
     - image: soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
     - name: so-domainstats

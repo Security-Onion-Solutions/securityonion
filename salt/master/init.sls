@@ -46,9 +46,15 @@ acngcopyconf:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
     - source: salt://master/files/acng/acng.conf
 
+so-acngimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-acng:HH1.0.7
+
 # Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
+    - require:
+      - so-acngimage
     - image: soshybridhunter/so-acng:HH1.0.7
     - hostname: so-acng
     - port_bindings:

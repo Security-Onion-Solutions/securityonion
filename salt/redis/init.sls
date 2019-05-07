@@ -47,8 +47,14 @@ redisconfsync:
 toosmooth/so-redis:test2:
   docker_image.present
 
+so-redisimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-redis:HH1.0.7
+
 so-redis:
   docker_container.running:
+    - require:
+      - so-redisimage
     - image: soshybridhunter/so-redis:HH1.0.7
     - hostname: so-redis
     - user: socore

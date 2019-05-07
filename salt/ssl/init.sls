@@ -1,4 +1,5 @@
 {% set master = salt['grains.get']('master') %}
+{%- set masterip = salt['pillar.get']('static:masterip', '') -%}
 
 # Trust the CA
 
@@ -109,6 +110,7 @@ fbcrtlink:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ master }}
+    - subjectAltName: DNS:{{ master }},IP:{{ masterip }}
     - days_remaining: 0
     - days_valid: 3650
     - backup: True

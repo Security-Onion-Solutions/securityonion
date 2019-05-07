@@ -54,9 +54,15 @@ synckibanacustom:
 
 # File.Recurse for custom saved dashboards
 
+so-kibanaimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-kibana:HH1.0.7
+
 # Start the kibana docker
 so-kibana:
   docker_container.running:
+    - require:
+      - so-kibanaimage
     - image: soshybridhunter/so-kibana:HH1.0.7
     - hostname: kibana
     - user: kibana

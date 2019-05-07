@@ -13,9 +13,15 @@ soctopussync:
     - group: 939
     - template: jinja
 
+so-soctopusimage:
+  cmd.run:
+    - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.0.8
+
 so-soctopus:
   docker_container.running:
-    - image: soshybridhunter/so-soctopus:HH1.0.7
+    - require:
+      - so-soctopusimage
+    - image: soshybridhunter/so-soctopus:HH1.0.8
     - hostname: soctopus
     - name: so-soctopus
     - binds:

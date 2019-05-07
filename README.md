@@ -1,6 +1,17 @@
-# Security Onion Hybrid Hunter Tech Preview 1.0.7
+## Hybrid Hunter 1.0.8
 
 ### Changes:
+
+- Suricata 4.1.4
+- Eval and Master installs now ask which components you would like to install
+- Fleet (osquery) now has it's own additional setup script. [See the docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Configuring-Osquery-with-Security-Onion)
+- Fleet setup script now generates auto install packages for Windows, CentOS, and Ubuntu
+- When Fleet setup is completed, all SO nodes will auto install the appropriate auto install package
+- We now have a progress bar during install!
+- The setup script will now tell you if it was successful
+- Added Grafana plugin Pie Chart
+- The Hive Docker moved to Centos 7 based container
+=======
 - Suricata 4.1.3
 - Updated Influxdb to 1.7.5
 - Updated Telegraf to 1.10.1
@@ -17,6 +28,7 @@
 ### Notes:
 - Attempting to send a Bro event to The Hive that does not contain a source and destination IP (ex. Bro files, or X509) will result in an exception - a fix for this will be implemented in the next release.
 - If attempting to pivot from Kibana, ensure that you can resolve the master via DNS -- otherwise, populate your local hosts file with an entry to point to the master.
+
 
 ### Warnings and Disclaimers
 

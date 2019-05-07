@@ -112,9 +112,14 @@ curdel:
    - month: '*'
    - dayweek: '*'
 
+so-curatorimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-curator:HH1.0.3
 
 so-curator:
   docker_container.running:
+    - require:
+      - so-curatorimage
     - image: soshybridhunter/so-curator:HH1.0.3
     - hostname: curator
     - name: so-curator

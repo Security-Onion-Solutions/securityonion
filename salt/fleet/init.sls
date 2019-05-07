@@ -31,6 +31,16 @@ fleetlogdir:
     - group: 939
     - makedirs: True
 
+fleetsetupscript:
+  file.managed:
+    - name: /opt/so/conf/fleet/so-fleet-setup.sh
+    - source: salt://fleet/so-fleet-setup.sh
+
+osquerypackageswebpage:
+  file.managed:
+    - name: /opt/so/conf/fleet/packages/index.html
+    - source: salt://fleet/osquery-packages.html
+
 fleetdb:
   mysql_database.present:
     - name: fleet
@@ -49,8 +59,14 @@ fleetdbpriv:
     - user: fleetdbuser
     - host: 172.17.0.0/255.255.0.0
 
+so-fleetimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-fleet:HH1.0.6
+
 so-fleet:
   docker_container.running:
+    - require:
+      - so-fleetimage
     - image: soshybridhunter/so-fleet:HH1.0.6
     - hostname: so-fleet
     - port_bindings:
