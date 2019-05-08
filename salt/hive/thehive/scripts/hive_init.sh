@@ -33,5 +33,14 @@ hive_init(){
 if [ -f /opt/so/state/thehive.txt ]; then
     exit 0
 else
+    rm -f garbage_file
+    while ! wget -O garbage_file {{MASTERIP}}:9500 2>/dev/null
+    do
+      echo "Waiting for Elasticsearch..."
+      rm -f garbage_file
+      sleep 1
+    done
+    rm -f garbage_file
+    sleep 5
     hive_init
 fi

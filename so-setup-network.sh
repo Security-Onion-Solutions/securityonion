@@ -807,7 +807,7 @@ EOF
 
   else
     ADDUSER=useradd
-    apt-get -y upgrade
+    DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
     # Add the pre-requisites for installing docker-ce
     apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >>~/sosetup.log 2>&1

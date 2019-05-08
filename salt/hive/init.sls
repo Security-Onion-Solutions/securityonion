@@ -1,3 +1,4 @@
+{% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
 hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
@@ -80,13 +81,15 @@ so-thehive-es:
 
 so-thehiveimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.0.8
 
 so-thehive:
   docker_container.running:
     - require:
       - so-thehiveimage
-    - image: soshybridhunter/so-thehive:HH1.0.7
+    - image: soshybridhunter/so-thehive:HH1.0.8
+    - environment:
+      - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive
     - name: so-thehive
     - user: 939

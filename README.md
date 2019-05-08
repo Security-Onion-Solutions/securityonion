@@ -1,4 +1,4 @@
-## Hybrid Hunter 1.0.8
+## Hybrid Hunter 1.0.8 
 
 ### Changes:
 
@@ -11,19 +11,6 @@
 - The setup script will now tell you if it was successful
 - Added Grafana plugin Pie Chart
 - The Hive Docker moved to Centos 7 based container
-=======
-- Suricata 4.1.3
-- Updated Influxdb to 1.7.5
-- Updated Telegraf to 1.10.1
-- Grafana is now 6.0.2
-- Added support for TheHive! To enable, please see https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/The-Hive
-- You are now forced to select interfaces during setup. If you skipped this test the install was not happy [#26](https://github.com/Security-Onion-Solutions/securityonion-saltstack/issues/26)
-- Reduced the RAM usage for ES in Eval mode [#25](https://github.com/Security-Onion-Solutions/securityonion-saltstack/issues/26)
-- Eval Mode setup is now choose your own adventure style
-- Fresh dockers for all the things to bring everything to 1.0.7
-- New utility docker called SOctopus
-- New html landing page now in dark mode
-
 
 ### Notes:
 - Attempting to send a Bro event to The Hive that does not contain a source and destination IP (ex. Bro files, or X509) will result in an exception - a fix for this will be implemented in the next release.
