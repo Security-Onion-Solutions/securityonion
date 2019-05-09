@@ -1880,7 +1880,7 @@ if (whiptail_you_sure); then
       salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
       echo -e "XXX\n40\nInstalling Logstash... \nXXX"
       salt-call state.apply logstash >>~/sosetup.log 2>&1
-      echo -e "XXX\n45\nInstalling ElasticSearch... \nXXX"
+      echo -e "XXX\n45\nInstalling Kibana... \nXXX"
       salt-call state.apply kibana >>~/sosetup.log 2>&1
       echo -e "XXX\n50\nInstalling pcap... \nXXX"
       salt-call state.apply pcap >>~/sosetup.log 2>&1
