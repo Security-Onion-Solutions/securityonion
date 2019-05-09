@@ -10,7 +10,7 @@
 - We now have a progress bar during install!
 - The setup script will now tell you if it was successful
 - Added Grafana plugin Pie Chart
-- The Hive Docker moved to Centos 7 based container
+- The Hive Docker moved to Centos 7 based container.  [See the docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/The-Hive)
 
 ### Notes:
 - Attempting to send a Bro event to The Hive that does not contain a source and destination IP (ex. Bro files, or X509) will result in an exception - a fix for this will be implemented in the next release.
