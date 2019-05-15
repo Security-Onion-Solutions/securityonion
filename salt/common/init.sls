@@ -37,6 +37,7 @@ sensorpkgs:
     - skip_suggestions: False
     - pkgs:
       - docker-ce
+      - wget
       {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
