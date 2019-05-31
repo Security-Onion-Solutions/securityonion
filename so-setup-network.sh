@@ -1776,7 +1776,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >>~/sosetup.log 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      create_bond >>~/sosetup.log 2>&1
+      create_bond_nmcli >>~/sosetup.log 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >>~/sosetup.log 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
@@ -1866,7 +1866,7 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_bond >>~/sosetup.log 2>&1
+      create_bond_nmcli >>~/sosetup.log 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
       saltify >>~/sosetup.log 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
