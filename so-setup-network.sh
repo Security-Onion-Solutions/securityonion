@@ -23,23 +23,24 @@ CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 NODE_ES_PORT="9200"
+SETUPLOG="/root/sosetup.log"
 
 # Reset the Install Log
-date -u >~/sosetup.log 2>&1
+date -u >$SETUPLOG 2>&1
 
 # End Global Variable Section
 
 # Functions
 
 accept_salt_key_local() {
-  echo "Accept the key locally on the master" >>~/sosetup.log 2>&1
+  echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
   # Accept the key locally on the master
   salt-key -ya $HOSTNAME
 
 }
 
 accept_salt_key_remote() {
-  echo "Accept the key remotely on the master" >>~/sosetup.log 2>&1
+  echo "Accept the key remotely on the master" >> $SETUPLOG 2>&1
   # Delete the key just in case.
   ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
   salt-call state.apply ca
@@ -48,7 +49,7 @@ accept_salt_key_remote() {
 }
 
 add_master_hostfile() {
-  echo "Checking if I can resolve master. If not add to hosts file" >>~/sosetup.log 2>&1
+  echo "Checking if I can resolve master. If not add to hosts file" >> $SETUPLOG 2>&1
   # Pop up an input to get the IP address
   local MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
@@ -60,7 +61,7 @@ add_master_hostfile() {
 }
 
 add_socore_user_master() {
-  echo "Add socore on the master" >>~/sosetup.log 2>&1
+  echo "Add socore on the master" >> $SETUPLOG 2>&1
   if [ $OS == 'centos' ]; then
     local ADDUSER=adduser
   else
@@ -75,7 +76,7 @@ add_socore_user_master() {
 }
 
 add_socore_user_notmaster() {
-  echo "Add socore user on non master" >>~/sosetup.log 2>&1
+  echo "Add socore user on non master" >> $SETUPLOG 2>&1
   # Add socore user to the non master system. Probably not a bad idea to make system user
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
@@ -86,7 +87,7 @@ add_socore_user_notmaster() {
 auth_pillar(){
 
   if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
-    echo "Creating Auth Pillar" >>~/sosetup.log 2>&1
+    echo "Creating Auth Pillar" >> $SETUPLOG 2>&1
     mkdir -p /opt/so/saltstack/pillar
     echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
     echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
@@ -97,7 +98,7 @@ auth_pillar(){
 
 # Enable Bro Logs
 bro_logs_enabled() {
-  echo "Enabling Bro Logs" >>~/sosetup.log 2>&1
+  echo "Enabling Bro Logs" >> $SETUPLOG 2>&1
 
   echo "brologs:" > pillar/brologs.sls
   echo "  enabled:" >> pillar/brologs.sls
@@ -163,13 +164,13 @@ calculate_useable_cores() {
 }
 
 checkin_at_boot() {
-  echo "Enabling checkin at boot" >>~/sosetup.log 2>&1
+  echo "Enabling checkin at boot" >> $SETUPLOG 2>&1
   echo "startup_states: highstate" >> /etc/salt/minion
 }
 
 chown_salt_master() {
 
-  echo "Chown the salt dirs on the master for socore" >>~/sosetup.log 2>&1
+  echo "Chown the salt dirs on the master for socore" >> $SETUPLOG 2>&1
   chown -R socore:socore /opt/so
 
 }
@@ -178,7 +179,7 @@ clear_master() {
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
   if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
-    echo "Clearing old master key" >>~/sosetup.log 2>&1
+    echo "Clearing old master key" >> $SETUPLOG 2>&1
     rm /etc/salt/pki/minion/minion_master.pub
     service salt-minion restart
   fi
@@ -189,7 +190,7 @@ configure_minion() {
 
   # You have to pass the TYPE to this function so it knows if its a master or not
   local TYPE=$1
-  echo "Configuring minion type as $TYPE" >>~/sosetup.log 2>&1
+  echo "Configuring minion type as $TYPE" >> $SETUPLOG 2>&1
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
   if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
@@ -229,7 +230,7 @@ copy_minion_pillar() {
   local TYPE=$1
 
   # Copy over the pillar
-  echo "Copying the pillar over" >>~/sosetup.log 2>&1
+  echo "Copying the pillar over" >> $SETUPLOG 2>&1
   scp -v -i /root/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
 
   }
@@ -246,7 +247,7 @@ copy_ssh_key() {
 }
 
 create_bond_nmcli() {
-  echo "Setting up Bond" >>~/sosetup.log 2>&1
+  echo "Setting up Bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
   if [ $NSMSETUP != 'ADVANCED' ]; then
@@ -260,7 +261,7 @@ create_bond_nmcli() {
     ipv4.method "disabled" \
     ipv6.method "ignore" \
     connection.autoconnect "yes" \
-    >> ~/sosetup.log 2>&1
+    >> $SETUPLOG 2>&1
 
   for BNIC in ${BNICS[@]}; do
     # Strip the quotes from the NIC names
@@ -270,16 +271,16 @@ create_bond_nmcli() {
       connection.autoconnect "yes" \
       802-3-ethernet.mtu $MTU \
       con-name "bond0-slave-$BONDNIC" \
-      >> ~/sosetup.log 2>&1
+      >> $SETUPLOG 2>&1
     # Bring the slave interface up
-    nmcli con up bond0-slave-$BONDNIC >> ~/sosetup.log 2>&1
+    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
   done
 }
 
 create_bond() {
 
   # Create the bond interface
-  echo "Setting up Bond" >>~/sosetup.log 2>&1
+  echo "Setting up Bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
   if [ $NSMSETUP != 'ADVANCED' ]; then
@@ -308,17 +309,17 @@ create_bond() {
       echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
       echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
     done
-    nmcli con reload >>~/sosetup.log 2>&1
-    systemctl restart network >>~/sosetup.log 2>&1
+    nmcli con reload >> $SETUPLOG 2>&1
+    systemctl restart network >> $SETUPLOG 2>&1
 
   else
 
     # Need to add 17.04 support still
-    apt-get -y install ifenslave >>~/sosetup.log 2>&1
+    apt-get -y install ifenslave >> $SETUPLOG 2>&1
     if ! grep -q bonding /etc/modules; then
       echo "bonding" >> /etc/modules
     fi
-    modprobe bonding >>~/sosetup.log 2>&1
+    modprobe bonding >> $SETUPLOG 2>&1
 
     local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
     local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
@@ -375,14 +376,14 @@ create_bond() {
 detect_os() {
 
   # Detect Base OS
-  echo "Detecting Base OS" >>~/sosetup.log 2>&1
+  echo "Detecting Base OS" >> $SETUPLOG 2>&1
   if [ -f /etc/redhat-release ]; then
     OS=centos
     yum -y install bind-utils
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
   else
-    echo "We were unable to determine if you are using a supported OS." >>~/sosetup.log 2>&1
+    echo "We were unable to determine if you are using a supported OS." >> $SETUPLOG 2>&1
     exit
   fi
 
@@ -399,27 +400,27 @@ docker_install() {
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
-    echo "Restarting Docker" >>~/sosetup.log 2>&1
+    echo "Restarting Docker" >> $SETUPLOG 2>&1
     systemctl restart docker
     systemctl enable docker
 
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install docker-ce >>~/sosetup.log 2>&1
+      apt-get update >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce >> $SETUPLOG 2>&1
       if [ $INSTALLTYPE != 'EVALMODE'  ]; then
-        docker_registry >>~/sosetup.log 2>&1
+        docker_registry >> $SETUPLOG 2>&1
       fi
-      echo "Restarting Docker" >>~/sosetup.log 2>&1
-      systemctl restart docker >>~/sosetup.log 2>&1
+      echo "Restarting Docker" >> $SETUPLOG 2>&1
+      systemctl restart docker >> $SETUPLOG 2>&1
     else
-      apt-key add $TMP/gpg/docker.pub >>~/sosetup.log 2>&1
-      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >>~/sosetup.log 2>&1
-      apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install docker-ce >>~/sosetup.log 2>&1
-      docker_registry >>~/sosetup.log 2>&1
-      echo "Restarting Docker" >>~/sosetup.log 2>&1
-      systemctl restart docker >>~/sosetup.log 2>&1
+      apt-key add $TMP/gpg/docker.pub >> $SETUPLOG 2>&1
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> $SETUPLOG 2>&1
+      apt-get update >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce >> $SETUPLOG 2>&1
+      docker_registry >> $SETUPLOG 2>&1
+      echo "Restarting Docker" >> $SETUPLOG 2>&1
+      systemctl restart docker >> $SETUPLOG 2>&1
     fi
   fi
 
@@ -427,13 +428,13 @@ docker_install() {
 
 docker_registry() {
 
-  echo "Setting up Docker Registry" >>~/sosetup.log 2>&1
-  mkdir -p /etc/docker >>~/sosetup.log 2>&1
+  echo "Setting up Docker Registry" >> $SETUPLOG 2>&1
+  mkdir -p /etc/docker >> $SETUPLOG 2>&1
   # Make the host use the master docker registry
   echo "{" > /etc/docker/daemon.json
   echo "  \"registry-mirrors\": [\"https://$MSRV:5000\"]" >> /etc/docker/daemon.json
   echo "}" >> /etc/docker/daemon.json
-  echo "Docker Registry Setup - Complete" >>~/sosetup.log 2>&1
+  echo "Docker Registry Setup - Complete" >> $SETUPLOG 2>&1
 
 }
 
@@ -532,7 +533,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common salt-master >>~/sosetup.log 2>&1
+    yum -y install wget salt-common salt-master >> $SETUPLOG 2>&1
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -845,7 +846,7 @@ EOF
     DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
     # Add the pre-requisites for installing docker-ce
-    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >>~/sosetup.log 2>&1
+    apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl >> $SETUPLOG 2>&1
 
     # Grab the version from the os-release file
     UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
@@ -875,8 +876,8 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 
       # Initialize the new repos
-      apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-get update >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -889,8 +890,8 @@ EOF
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
-      apt-get update >>~/sosetup.log 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >>~/sosetup.log 2>&1
+      apt-get update >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -903,25 +904,25 @@ salt_checkin() {
   # Master State to Fix Mine Usage
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
   echo "Building Certificate Authority"
-  salt-call state.apply ca >>~/sosetup.log 2>&1
+  salt-call state.apply ca >> $SETUPLOG 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
-  service salt-master restart >>~/sosetup.log 2>&1
+  service salt-master restart >> $SETUPLOG 2>&1
   sleep 5
-  service salt-minion restart >>~/sosetup.log 2>&1
+  service salt-minion restart >> $SETUPLOG 2>&1
   sleep 15
   echo " Applyng a mine hack "
-  sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >>~/sosetup.log 2>&1
+  sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >> $SETUPLOG 2>&1
   echo " Applying SSL state "
-  salt-call state.apply ssl >>~/sosetup.log 2>&1
+  salt-call state.apply ssl >> $SETUPLOG 2>&1
   echo "Still Working... Hang in there"
   #salt-call state.highstate
 
   else
 
   # Run Checkin
-  salt-call state.apply ca >>~/sosetup.log 2>&1
-  salt-call state.apply ssl >>~/sosetup.log 2>&1
-  #salt-call state.highstate >>~/sosetup.log 2>&1
+  salt-call state.apply ca >> $SETUPLOG 2>&1
+  salt-call state.apply ssl >> $SETUPLOG 2>&1
+  #salt-call state.highstate >> $SETUPLOG 2>&1
 
   fi
 
@@ -942,7 +943,7 @@ salt_checkin_message() {
 salt_firstcheckin() {
 
   #First Checkin
-  salt-call state.highstate >>~/sosetup.log 2>&1
+  salt-call state.highstate >> $SETUPLOG 2>&1
 
 }
 
@@ -1499,7 +1500,7 @@ whiptail_setup_complete() {
 
 whiptail_setup_failed() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see /root/sosetup.log for details" 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details" 8 78
   install_cleanup
   exit
 
@@ -1658,83 +1659,83 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nInstalling and configuring Salt... \nXXX"
-      echo " ** Installing Salt and Dependencies **" >>~/sosetup.log
-      saltify >>~/sosetup.log 2>&1
+      echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
+      saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
-      docker_install >>~/sosetup.log 2>&1
+      docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nConfiguring Salt Master... \nXXX"
-      echo " ** Configuring Minion **" >>~/sosetup.log
-      configure_minion master >>~/sosetup.log 2>&1
-      echo " ** Installing Salt Master **" >>~/sosetup.log
-      install_master >>~/sosetup.log 2>&1
-      salt_master_directories >>~/sosetup.log 2>&1
-      update_sudoers >>~/sosetup.log 2>&1
-      chown_salt_master >>~/sosetup.log 2>&1
-      es_heapsize >>~/sosetup.log 2>&1
-      ls_heapsize >>~/sosetup.log 2>&1
+      echo " ** Configuring Minion **" >> $SETUPLOG
+      configure_minion master >> $SETUPLOG 2>&1
+      echo " ** Installing Salt Master **" >> $SETUPLOG
+      install_master >> $SETUPLOG 2>&1
+      salt_master_directories >> $SETUPLOG 2>&1
+      update_sudoers >> $SETUPLOG 2>&1
+      chown_salt_master >> $SETUPLOG 2>&1
+      es_heapsize >> $SETUPLOG 2>&1
+      ls_heapsize >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
-      master_static >>~/sosetup.log 2>&1
-      echo "** Generating the master pillar **" >>~/sosetup.log
-      master_pillar >>~/sosetup.log 2>&1
+      master_static >> $SETUPLOG 2>&1
+      echo "** Generating the master pillar **" >> $SETUPLOG
+      master_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n30\nAccepting Salt Keys... \nXXX"
       # Do a checkin to push the key up
-      echo "** Pushing the key up to Master **" >>~/sosetup.log
-      salt_firstcheckin >>~/sosetup.log 2>&1
+      echo "** Pushing the key up to Master **" >> $SETUPLOG
+      salt_firstcheckin >> $SETUPLOG 2>&1
       # Accept the Master Key
-      echo "** Accepting the key on the master **" >>~/sosetup.log
-      accept_salt_key_local >>~/sosetup.log 2>&1
+      echo "** Accepting the key on the master **" >> $SETUPLOG
+      accept_salt_key_local >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nConfiguring Firewall... \nXXX"
       # Open the firewall
-      echo "** Setting the initial firewall policy **" >>~/sosetup.log
-      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      echo "** Setting the initial firewall policy **" >> $SETUPLOG
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
       # Do the big checkin but first let them know it will take a bit.
       echo -e "XXX\n40\nGenerating CA... \nXXX"
-      salt_checkin >>~/sosetup.log 2>&1
-      salt-call state.apply ca >>~/sosetup.log 2>&1
-      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      salt_checkin >> $SETUPLOG 2>&1
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
       echo -e "XXX\n43\nInstalling Common Components... \nXXX"
-      salt-call state.apply common >>~/sosetup.log 2>&1
+      salt-call state.apply common >> $SETUPLOG 2>&1
       echo -e "XXX\n45\nApplying firewall rules... \nXXX"
-      salt-call state.apply firewall >>~/sosetup.log 2>&1
-      salt-call state.apply master >>~/sosetup.log 2>&1
-      salt-call state.apply idstools >>~/sosetup.log 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      salt-call state.apply master >> $SETUPLOG 2>&1
+      salt-call state.apply idstools >> $SETUPLOG 2>&1
       echo -e "XXX\n40\nInstalling Redis... \nXXX"
-      salt-call state.apply redis >>~/sosetup.log 2>&1
+      salt-call state.apply redis >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
         echo -e "XXX\n41\nInstalling MySQL... \nXXX"
-        salt-call state.apply mysql >>~/sosetup.log 2>&1
+        salt-call state.apply mysql >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n45\nInstalling Elastic Components... \nXXX"
-      salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
-      salt-call state.apply logstash >>~/sosetup.log 2>&1
-      salt-call state.apply kibana >>~/sosetup.log 2>&1
-      salt-call state.apply elastalert >>~/sosetup.log 2>&1
+      salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
+      salt-call state.apply logstash >> $SETUPLOG 2>&1
+      salt-call state.apply kibana >> $SETUPLOG 2>&1
+      salt-call state.apply elastalert >> $SETUPLOG 2>&1
       if [[ $WAZUH == '1' ]]; then
         echo -e "XXX\n68\nInstalling Wazuh... \nXXX"
-        salt-call state.apply wazuh >>~/sosetup.log 2>&1
+        salt-call state.apply wazuh >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n75\nInstalling Filebeat... \nXXX"
-      salt-call state.apply filebeat >>~/sosetup.log 2>&1
-      salt-call state.apply utility >>~/sosetup.log 2>&1
-      salt-call state.apply schedule >>~/sosetup.log 2>&1
+      salt-call state.apply filebeat >> $SETUPLOG 2>&1
+      salt-call state.apply utility >> $SETUPLOG 2>&1
+      salt-call state.apply schedule >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
         echo -e "XXX\n79\nInstalling Fleet... \nXXX"
-        salt-call state.apply fleet >>~/sosetup.log 2>&1
-        salt-call state.apply launcher >>~/sosetup.log 2>&1
+        salt-call state.apply fleet >> $SETUPLOG 2>&1
+        salt-call state.apply launcher >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n85\nConfiguring SOctopus... \nXXX"
-      salt-call state.apply soctopus >>~/sosetup.log 2>&1
+      salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
         echo -e "XXX\n87\nInstalling TheHive... \nXXX"
-        salt-call state.apply hive >>~/sosetup.log 2>&1
+        salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n75\nEnabling Checking at Boot... \nXXX"
-      checkin_at_boot >>~/sosetup.log 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XXX\n95\nVerifying Install... \nXXX"
-      salt-call state.highstate >>~/sosetup.log 2>&1
+      salt-call state.highstate >> $SETUPLOG 2>&1
 
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
     else
@@ -1775,39 +1776,39 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >>~/sosetup.log 2>&1
+      create_bond_nmcli >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
-      sensor_pillar >>~/sosetup.log 2>&1
+      sensor_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
-      saltify >>~/sosetup.log 2>&1
+      saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
-      docker_install >>~/sosetup.log 2>&1
+      docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
-      configure_minion sensor >>~/sosetup.log 2>&1
+      configure_minion sensor >> $SETUPLOG 2>&1
       echo -e "XXX\n24\nCopying Sensor Pillar to Master... \nXXX"
-      copy_minion_pillar sensors >>~/sosetup.log 2>&1
+      copy_minion_pillar sensors >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
-      salt_firstcheckin >>~/sosetup.log 2>&1
+      salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
       # Accept the Salt Key
-      accept_salt_key_remote >>~/sosetup.log 2>&1
+      accept_salt_key_remote >> $SETUPLOG 2>&1
       echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
-      salt-call state.apply ca >>~/sosetup.log 2>&1
-      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nInstalling Core Components... \nXXX"
-      salt-call state.apply common >>~/sosetup.log 2>&1
-      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n50\nInstalling PCAP... \nXXX"
-      salt-call state.apply pcap >>~/sosetup.log 2>&1
+      salt-call state.apply pcap >> $SETUPLOG 2>&1
       echo -e "XXX\n60\nInstalling IDS components... \nXXX"
-      salt-call state.apply suricata >>~/sosetup.log 2>&1
+      salt-call state.apply suricata >> $SETUPLOG 2>&1
       echo -e "XXX\n80\nVerifying Install... \nXXX"
-      salt-call state.highstate >>~/sosetup.log 2>&1
-      checkin_at_boot >>~/sosetup.log 2>&1
+      salt-call state.highstate >> $SETUPLOG 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
     else
@@ -1867,91 +1868,91 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >>~/sosetup.log 2>&1
+      create_bond_nmcli >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
-      saltify >>~/sosetup.log 2>&1
+      saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
-      docker_install >>~/sosetup.log 2>&1
+      docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling master code... \nXXX"
-      install_master >>~/sosetup.log 2>&1
+      install_master >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nCopying salt code... \nXXX"
-      salt_master_directories >>~/sosetup.log 2>&1
+      salt_master_directories >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nupdating suduers... \nXXX"
-      update_sudoers >>~/sosetup.log 2>&1
+      update_sudoers >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nFixing some permissions... \nXXX"
-      chown_salt_master >>~/sosetup.log 2>&1
+      chown_salt_master >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nCreating the static pillar... \nXXX"
       # Set the static values
-      master_static >>~/sosetup.log 2>&1
+      master_static >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nCreating the master pillar... \nXXX"
-      master_pillar >>~/sosetup.log 2>&1
+      master_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nConfiguring minion... \nXXX"
-      configure_minion eval >>~/sosetup.log 2>&1
+      configure_minion eval >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
-      set_node_type >>~/sosetup.log 2>&1
+      set_node_type >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nStorage node pillar... \nXXX"
-      node_pillar >>~/sosetup.log 2>&1
+      node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
-      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nRegistering agent... \nXXX"
-      salt_firstcheckin >>~/sosetup.log 2>&1
+      salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n11\nAccepting Agent... \nXXX"
-      accept_salt_key_local >>~/sosetup.log 2>&1
+      accept_salt_key_local >> $SETUPLOG 2>&1
       echo -e "XXX\n12\nRunning the SSL states... \nXXX"
-      salt_checkin >>~/sosetup.log 2>&1
-      salt-call state.apply ca >>~/sosetup.log 2>&1
-      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      salt_checkin >> $SETUPLOG 2>&1
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
       echo -e "XXX\n15\nInstalling core components... \nXXX"
-      salt-call state.apply common >>~/sosetup.log 2>&1
+      salt-call state.apply common >> $SETUPLOG 2>&1
       echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
-      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nInstalling master components... \nXXX"
-      salt-call state.apply master >>~/sosetup.log 2>&1
-      salt-call state.apply idstools >>~/sosetup.log 2>&1
+      salt-call state.apply master >> $SETUPLOG 2>&1
+      salt-call state.apply idstools >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
-        salt-call state.apply mysql >>~/sosetup.log 2>&1
+        salt-call state.apply mysql >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
-      salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
+      salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
       echo -e "XXX\n40\nInstalling Logstash... \nXXX"
-      salt-call state.apply logstash >>~/sosetup.log 2>&1
+      salt-call state.apply logstash >> $SETUPLOG 2>&1
       echo -e "XXX\n45\nInstalling Kibana... \nXXX"
-      salt-call state.apply kibana >>~/sosetup.log 2>&1
+      salt-call state.apply kibana >> $SETUPLOG 2>&1
       echo -e "XXX\n50\nInstalling pcap... \nXXX"
-      salt-call state.apply pcap >>~/sosetup.log 2>&1
+      salt-call state.apply pcap >> $SETUPLOG 2>&1
       echo -e "XXX\n52\nInstalling Suricata... \nXXX"
-      salt-call state.apply suricata >>~/sosetup.log 2>&1
+      salt-call state.apply suricata >> $SETUPLOG 2>&1
       echo -e "XXX\n54\nInstalling Zeek... \nXXX"
-      salt-call state.apply bro >>~/sosetup.log 2>&1
+      salt-call state.apply bro >> $SETUPLOG 2>&1
       echo -e "XXX\n56\nInstalling curator... \nXXX"
-      salt-call state.apply curator >>~/sosetup.log 2>&1
+      salt-call state.apply curator >> $SETUPLOG 2>&1
       echo -e "XXX\n58\nInstalling elastalert... \nXXX"
-      salt-call state.apply elastalert >>~/sosetup.log 2>&1
+      salt-call state.apply elastalert >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
         echo -e "XXX\n60\nInstalling fleet... \nXXX"
-        salt-call state.apply fleet >>~/sosetup.log 2>&1
-        salt-call state.apply redis >>~/sosetup.log 2>&1
+        salt-call state.apply fleet >> $SETUPLOG 2>&1
+        salt-call state.apply redis >> $SETUPLOG 2>&1
       fi
       if [[ $WAZUH == '1' ]]; then
         echo -e "XXX\n65\nInstalling Wazuh components... \nXXX"
-        salt-call state.apply wazuh >>~/sosetup.log 2>&1
+        salt-call state.apply wazuh >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n85\nInstalling filebeat... \nXXX"
-      salt-call state.apply filebeat >>~/sosetup.log 2>&1
-      salt-call state.apply utility >>~/sosetup.log 2>&1
+      salt-call state.apply filebeat >> $SETUPLOG 2>&1
+      salt-call state.apply utility >> $SETUPLOG 2>&1
       echo -e "XXX\n95\nInstalling misc components... \nXXX"
-      salt-call state.apply schedule >>~/sosetup.log 2>&1
-      salt-call state.apply soctopus >>~/sosetup.log 2>&1
+      salt-call state.apply schedule >> $SETUPLOG 2>&1
+      salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
-        salt-call state.apply hive >>~/sosetup.log 2>&1
+        salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
-      checkin_at_boot >>~/sosetup.log 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XXX\n99\nVerifying Setup... \nXXX"
-      salt-call state.highstate >>~/sosetup.log 2>&1
+      salt-call state.highstate >> $SETUPLOG 2>&1
 
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
       if [[ $GOODSETUP == '1' ]]; then
         whiptail_setup_complete
@@ -2007,37 +2008,37 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-      set_initial_firewall_policy >>~/sosetup.log 2>&1
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
-      saltify >>~/sosetup.log 2>&1
+      saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
-      docker_install >>~/sosetup.log 2>&1
+      docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n30\nInitializing Minion... \nXXX"
-      configure_minion node >>~/sosetup.log 2>&1
-      set_node_type >>~/sosetup.log 2>&1
-      node_pillar >>~/sosetup.log 2>&1
-      copy_minion_pillar nodes >>~/sosetup.log 2>&1
+      configure_minion node >> $SETUPLOG 2>&1
+      set_node_type >> $SETUPLOG 2>&1
+      node_pillar >> $SETUPLOG 2>&1
+      copy_minion_pillar nodes >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
-      salt_firstcheckin >>~/sosetup.log 2>&1
+      salt_firstcheckin >> $SETUPLOG 2>&1
       # Accept the Salt Key
-      accept_salt_key_remote >>~/sosetup.log 2>&1
+      accept_salt_key_remote >> $SETUPLOG 2>&1
       echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
-      salt-call state.apply ca >>~/sosetup.log 2>&1
-      salt-call state.apply ssl >>~/sosetup.log 2>&1
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
       echo -e "XXX\n50\nConfiguring Firewall... \nXXX"
-      salt-call state.apply common >>~/sosetup.log 2>&1
-      salt-call state.apply firewall >>~/sosetup.log 2>&1
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n70\nInstalling Elastic Components... \nXXX"
-      salt-call state.apply logstash >>~/sosetup.log 2>&1
-      salt-call state.apply elasticsearch >>~/sosetup.log 2>&1
-      salt-call state.apply curator >>~/sosetup.log 2>&1
-      salt-call state.apply filebeat >>~/sosetup.log 2>&1
+      salt-call state.apply logstash >> $SETUPLOG 2>&1
+      salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
+      salt-call state.apply curator >> $SETUPLOG 2>&1
+      salt-call state.apply filebeat >> $SETUPLOG 2>&1
       echo -e "XXX\n90\nVerifying Install... \nXXX"
-      salt-call state.highstate >>~/sosetup.log 2>&1
-      checkin_at_boot >>~/sosetup.log 2>&1
+      salt-call state.highstate >> $SETUPLOG 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
 
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-    GOODSETUP=$(tail -10 /root/sosetup.log | grep Failed | awk '{ print $2}')
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
     else
