@@ -35,6 +35,7 @@ base:
     - logstash
     - kibana
     - pcap
+    - sensoroni
     - suricata
     - bro
     - curator
@@ -64,6 +65,7 @@ base:
     - master
     - idstools
     - redis
+    - sensoroni
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
