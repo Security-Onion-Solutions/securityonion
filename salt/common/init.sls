@@ -355,7 +355,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
+      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
