@@ -315,6 +315,17 @@ enable_forwardnode_beats_5044_{{ip}}:
     - position: 1
     - save: True
 
+enable_forwardnode_sensoroni_9822_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9822
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 {% for ip in pillar.get('storage_nodes')  %}
@@ -441,6 +452,18 @@ enable_standard_analyst_9001_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 9001
+    - position: 1
+    - save: True
+
+# This is temporary for sensoroni testing
+enable_standard_analyst_9822_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9822
     - position: 1
     - save: True
 
