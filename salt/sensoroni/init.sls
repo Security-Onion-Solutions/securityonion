@@ -21,7 +21,7 @@ so-sensoroni:
   docker_container.running:
     - require:
       - so-sensoroniimage
-    - image: soshybridhunter/so-sensoroni:HH1.0.8
+    - image: soshybridhunter/so-sensoroni:HH1.1.0
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:
