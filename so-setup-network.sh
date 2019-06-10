@@ -253,7 +253,7 @@ create_bond_nmcli() {
   if [ $NSMSETUP != 'ADVANCED' ]; then
     MTU=1500
   fi
-  
+
   # Create the bond interface
   nmcli con add type bond ifname bond0 con-name "bond0" \
     bond.options "mode=0" \
@@ -472,6 +472,7 @@ generate_passwords(){
   MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  SENSORONIKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 }
 
 get_filesystem_nsm(){
@@ -619,6 +620,7 @@ master_static() {
   echo "  hivepassword: hivechangeme" >> /opt/so/saltstack/pillar/static.sls
   echo "  hivekey: $HIVEKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
+  echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
