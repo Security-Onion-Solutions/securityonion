@@ -315,6 +315,17 @@ enable_forwardnode_beats_5044_{{ip}}:
     - position: 1
     - save: True
 
+enable_forwardnode_beats_5644_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5644
+    - position: 1
+    - save: True
+
 enable_forwardnode_sensoroni_9822_{{ip}}:
   iptables.insert:
     - table: filter
