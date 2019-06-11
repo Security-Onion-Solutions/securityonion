@@ -5,6 +5,13 @@ sensoronidir:
     - group: 939
     - makedirs: True
 
+sensoronidatadir:
+  file.directory:
+    - name: /nsm/sensoroni/jobs
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 sensoronisync:
   file.recurse:
     - name: /opt/so/conf/sensoroni
@@ -25,6 +32,7 @@ so-sensoroni:
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:
-      - /opt/so/conf/sensoroni:/sensoroni:rw
+      - /nsm/sensoroni/jobs:/opt/sensoroni/jobs:rw
+      - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
     - port_bindings:
       - 0.0.0.0:9822:9822
