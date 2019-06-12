@@ -242,6 +242,8 @@ so-influxdb:
       - /etc/pki/influxdb.key:/etc/ssl/influxdb.key:ro
     - port_bindings:
       - 0.0.0.0:8086:8086
+    - watch:
+      - file: /opt/so/conf/influxdb/etc/influxdb.conf
 
 # Grafana all the things
 grafanadir:
