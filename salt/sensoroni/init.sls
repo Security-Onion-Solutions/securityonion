@@ -38,10 +38,12 @@ so-sensoroni:
     - image: soshybridhunter/so-sensoroni:HH1.1.0
     - hostname: sensoroni
     - name: so-sensoroni
-    - user: socore
     - binds:
       - /nsm/sensoroni/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/sensoroni/sensoroni-server.log:/opt/sensoroni/sensoroni-server.log:rw
+      - /opt/so/log/sensoroni/:/opt/sensoroni/log/:rw
     - port_bindings:
       - 0.0.0.0:9822:9822
+    - force: True
+    - watch:
+      - file: /opt/so/conf/sensoroni/sensoroni.json
