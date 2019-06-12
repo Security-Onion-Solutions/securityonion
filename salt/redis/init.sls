@@ -62,3 +62,5 @@ so-redis:
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
+    - watch:
+      - file: /opt/so/conf/redis/etc
