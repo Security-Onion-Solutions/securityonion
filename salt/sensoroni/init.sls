@@ -44,6 +44,5 @@ so-sensoroni:
       - /opt/so/log/sensoroni/:/opt/sensoroni/log/:rw
     - port_bindings:
       - 0.0.0.0:9822:9822
-    - force: True
     - watch:
-      - file: /opt/so/conf/sensoroni/sensoroni.json
+      - file: /opt/so/conf/sensoroni
