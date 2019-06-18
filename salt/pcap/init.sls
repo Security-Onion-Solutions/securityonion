@@ -116,5 +116,6 @@ so-steno:
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
       - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/log/stenographer:/opt/sensoroni/log:rw
     - watch:
       - /opt/so/conf/steno/sensoroni.json
