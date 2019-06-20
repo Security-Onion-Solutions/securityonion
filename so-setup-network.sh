@@ -382,6 +382,7 @@ detect_os() {
     yum -y install bind-utils
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
+    apt install -y network-manager
   else
     echo "We were unable to determine if you are using a supported OS." >> $SETUPLOG 2>&1
     exit
