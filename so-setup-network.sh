@@ -383,6 +383,8 @@ detect_os() {
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
     apt install -y network-manager
+    /bin/systemctl enable network-manager
+    /bin/systemctl start network-manager
   else
     echo "We were unable to determine if you are using a supported OS." >> $SETUPLOG 2>&1
     exit
