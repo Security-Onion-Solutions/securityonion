@@ -254,27 +254,25 @@ create_bond_nmcli() {
     MTU=1500
   fi
 
-  # Create the bond interface
-  nmcli con add type bond ifname bond0 con-name "bond0" \
-    bond.options "mode=0" \
-    802-3-ethernet.mtu $MTU \
-    ipv4.method "disabled" \
-    ipv6.method "ignore" \
-    connection.autoconnect "yes" \
-    >> $SETUPLOG 2>&1
-
-  for BNIC in ${BNICS[@]}; do
-    # Strip the quotes from the NIC names
-    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
-    # Create the slave interface and assign it to the bond
-    nmcli con add type ethernet ifname $BONDNIC master bond0 \
+# Create the bond interface
+    nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+      ipv4.method disabled \
+      ipv6.method link-local \
+      ethernet.mtu $MTU \
       connection.autoconnect "yes" \
-      802-3-ethernet.mtu $MTU \
-      con-name "bond0-slave-$BONDNIC" \
       >> $SETUPLOG 2>&1
-    # Bring the slave interface up
-    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
-  done
+
+    for BNIC in ${BNICS[@]}; do
+      # Strip the quotes from the NIC names
+      BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
+      # Create the slave interface and assign it to the bond
+      nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
+      ethernet.mtu $MTU \
+      connection.autoconnect "yes" \
+      >> $SETUPLOG 2>&1
+      # Bring the slave interface up
+      nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+    done
 }
 
 create_bond() {
