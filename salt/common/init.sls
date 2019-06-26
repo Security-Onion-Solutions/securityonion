@@ -164,13 +164,13 @@ tgrafconf:
 
 so-telegrafimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.1.0
 
 so-telegraf:
   docker_container.running:
     - require:
       - so-telegrafimage
-    - image: soshybridhunter/so-telegraf:HH1.0.7
+    - image: soshybridhunter/so-telegraf:HH1.1.0
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -225,13 +225,13 @@ influxdbconf:
 
 so-influximage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.1.0
 
 so-influxdb:
   docker_container.running:
     - require:
       - so-influximage
-    - image: soshybridhunter/so-influxdb:HH1.0.7
+    - image: soshybridhunter/so-influxdb:HH1.1.0
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -388,9 +388,13 @@ dashboard-{{ SN }}:
 {% endif %}
 
 # Install the docker. This needs to be behind nginx at some point
+so-grafanaimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-grafana:HH1.1.0
+
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.0.8
+    - image: soshybridhunter/so-grafana:HH1.1.0
     - hostname: grafana
     - user: socore
     - binds:
