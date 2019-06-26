@@ -61,13 +61,13 @@ fleetdbpriv:
 
 so-fleetimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-fleet:HH1.0.6
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-fleet:HH1.1.0
 
 so-fleet:
   docker_container.running:
     - require:
       - so-fleetimage
-    - image: soshybridhunter/so-fleet:HH1.0.6
+    - image: soshybridhunter/so-fleet:HH1.1.0
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080
