@@ -41,9 +41,11 @@ sensorpkgs:
       {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
+      - apache2-utils
       {% else %}
       - net-tools
       - tcpdump
+      - httpd-tools
       {% endif %}
 
 # Always keep these packages up to date
