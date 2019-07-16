@@ -122,7 +122,7 @@ so-core:
   docker_container.running:
     - require:
       - so-coreimage
-    - image: soshybridhunter/so-core:HH1.0.8
+    - image: soshybridhunter/so-core:HH1.1.0
     - hostname: so-core
     - user: socore
     - binds:
