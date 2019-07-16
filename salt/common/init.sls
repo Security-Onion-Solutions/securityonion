@@ -63,6 +63,16 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+# Sync some Utilities
+utilsyncscripts:
+  file.recurse:
+    - name: /usr/sbin
+    - user: 0
+    - group: 0
+    - file_mode: 755
+    - template: jinja
+    - source: salt://common/tools/sbin
+
 # Make sure Docker is running!
 docker:
   service.running:
