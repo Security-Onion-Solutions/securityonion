@@ -408,6 +408,33 @@ enable_standard_osquery_8080_{{ip}}:
 
 {% endfor %}
 
+# Allow Wazuh Endpoints to send their traffic
+{% for ip in pillar.get('wazuh_endpoint')  %}
+
+enable_wazuh_endpoint_tcp_1514_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+enable_wazuh_endpoint_udp_1514_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: udp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 # Allow Analysts
 {% for ip in pillar.get('analyst')  %}
 
@@ -433,61 +460,61 @@ enable_standard_analyst_443_{{ip}}:
     - position: 1
     - save: True
 
-enable_standard_analyst_3000_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 3000
-    - position: 1
-    - save: True
+#enable_standard_analyst_3000_{{ip}}:
+#  iptables.insert:
+#    - table: filter
+#    - chain: DOCKER-USER
+#    - jump: ACCEPT
+#    - proto: tcp
+#    - source: {{ ip }}
+#    - dport: 3000
+#    - position: 1
+#    - save: True
 
-enable_standard_analyst_7000_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 7000
-    - position: 1
-    - save: True
+#enable_standard_analyst_7000_{{ip}}:
+#  iptables.insert:
+#    - table: filter
+#    - chain: DOCKER-USER
+#    - jump: ACCEPT
+#    - proto: tcp
+#    - source: {{ ip }}
+#    - dport: 7000
+#    - position: 1
+#    - save: True
 
-enable_standard_analyst_9000_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 9000
-    - position: 1
-    - save: True
+#enable_standard_analyst_9000_{{ip}}:
+#  iptables.insert:
+#    - table: filter
+#    - chain: DOCKER-USER
+#    - jump: ACCEPT
+#    - proto: tcp
+#    - source: {{ ip }}
+#    - dport: 9000
+#    - position: 1
+#    - save: True
 
-enable_standard_analyst_9001_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 9001
-    - position: 1
-    - save: True
+#enable_standard_analyst_9001_{{ip}}:
+#  iptables.insert:
+#    - table: filter
+#    - chain: DOCKER-USER
+#    - jump: ACCEPT
+#    - proto: tcp
+#    - source: {{ ip }}
+#    - dport: 9001
+#    - position: 1
+#    - save: True
 
 # This is temporary for sensoroni testing
-enable_standard_analyst_9822_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 9822
-    - position: 1
-    - save: True
+#enable_standard_analyst_9822_{{ip}}:
+#  iptables.insert:
+#    - table: filter
+#    - chain: DOCKER-USER
+#    - jump: ACCEPT
+#    - proto: tcp
+#    - source: {{ ip }}
+#    - dport: 9822
+#    - position: 1
+#    - save: True
 
 {% endfor %}
 
