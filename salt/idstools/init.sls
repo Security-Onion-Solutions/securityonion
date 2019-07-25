@@ -21,6 +21,13 @@ idstoolsdir:
     - group: 939
     - makedirs: True
 
+idstoolslogdir:
+  file.directory:
+    - name: /opt/so/log/idstools
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 idstoolsetcsync:
   file.recurse:
     - name: /opt/so/conf/idstools/etc
@@ -28,6 +35,12 @@ idstoolsetcsync:
     - user: 939
     - group: 939
     - template: jinja
+
+/usr/sbin/so-ruleupdate.sh > /opt/so/log/idstools/download.log:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '7'
 
 rulesdir:
   file.directory:
