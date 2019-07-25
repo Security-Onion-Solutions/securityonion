@@ -41,9 +41,11 @@ sensorpkgs:
       {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
+      - apache2-utils
       {% else %}
       - net-tools
       - tcpdump
+      - httpd-tools
       {% endif %}
 
 # Always keep these packages up to date
@@ -60,6 +62,16 @@ alwaysupdated:
 
 Etc/UTC:
   timezone.system
+
+# Sync some Utilities
+utilsyncscripts:
+  file.recurse:
+    - name: /usr/sbin
+    - user: 0
+    - group: 0
+    - file_mode: 755
+    - template: jinja
+    - source: salt://common/tools/sbin
 
 # Make sure Docker is running!
 docker:
@@ -104,13 +116,13 @@ nginxtmp:
 # Start the core docker
 so-coreimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-core:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-core:HH1.1.0
 
 so-core:
   docker_container.running:
     - require:
       - so-coreimage
-    - image: soshybridhunter/so-core:HH1.0.8
+    - image: soshybridhunter/so-core:HH1.1.0
     - hostname: so-core
     - user: socore
     - binds:
@@ -164,13 +176,13 @@ tgrafconf:
 
 so-telegrafimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.1.0
 
 so-telegraf:
   docker_container.running:
     - require:
       - so-telegrafimage
-    - image: soshybridhunter/so-telegraf:HH1.0.7
+    - image: soshybridhunter/so-telegraf:HH1.1.0
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -225,13 +237,13 @@ influxdbconf:
 
 so-influximage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.1.0
 
 so-influxdb:
   docker_container.running:
     - require:
       - so-influximage
-    - image: soshybridhunter/so-influxdb:HH1.0.7
+    - image: soshybridhunter/so-influxdb:HH1.1.0
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -242,6 +254,8 @@ so-influxdb:
       - /etc/pki/influxdb.key:/etc/ssl/influxdb.key:ro
     - port_bindings:
       - 0.0.0.0:8086:8086
+    - watch:
+      - file: /opt/so/conf/influxdb/etc/influxdb.conf
 
 # Grafana all the things
 grafanadir:
@@ -355,7 +369,7 @@ dashboard-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
+      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -386,9 +400,13 @@ dashboard-{{ SN }}:
 {% endif %}
 
 # Install the docker. This needs to be behind nginx at some point
+so-grafanaimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-grafana:HH1.1.0
+
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.0.8
+    - image: soshybridhunter/so-grafana:HH1.1.0
     - hostname: grafana
     - user: socore
     - binds:

@@ -100,6 +100,8 @@ http {
         }
 
         location /kibana/ {
+          auth_basic            "Security Onion";
+          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
 	  rewrite /kibana/(.*) /$1 break;
           proxy_pass http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
@@ -126,6 +128,8 @@ http {
 
         location /fleet/ {
 	  rewrite /fleet/(.*) /$1 break;
+          auth_basic            "Security Onion";
+          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
           proxy_pass https://{{ masterip }}:8080/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -150,6 +154,43 @@ http {
 
         location /soctopus/ {
           proxy_pass http://{{ masterip }}:7000/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
+        location /sensoroni/ {
+          auth_basic            "Security Onion";
+          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
+          proxy_pass http://{{ masterip }}:9822/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
+        location /kibana/app/sensoroni/ {
+          rewrite ^/kibana/app/sensoroni/(.*) /sensoroni/$1 permanent;
+        }
+
+        location /kibana/app/fleet/ {
+          rewrite ^/kibana/app/fleet/(.*) /fleet/$1 permanent;
+        }
+
+        location /kibana/app/soctopus/ {
+          rewrite ^/kibana/app/soctopus/(.*) /soctopus/$1 permanent;
+        }
+
+
+        location /sensoroniagents/ {
+          proxy_pass http://{{ masterip }}:9822/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;

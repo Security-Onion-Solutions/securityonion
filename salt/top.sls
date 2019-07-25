@@ -25,6 +25,7 @@ base:
     - ca
     - ssl
     - common
+    - sensoroni
     - firewall
     - master
     - idstools
@@ -60,6 +61,7 @@ base:
     - ca
     - ssl
     - common
+    - sensoroni
     - firewall
     - master
     - idstools

@@ -44,18 +44,15 @@ redisconfsync:
     - group: 939
     - template: jinja
 
-toosmooth/so-redis:test2:
-  docker_image.present
-
 so-redisimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-redis:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-redis:HH1.1.0
 
 so-redis:
   docker_container.running:
     - require:
       - so-redisimage
-    - image: soshybridhunter/so-redis:HH1.0.7
+    - image: soshybridhunter/so-redis:HH1.1.0
     - hostname: so-redis
     - user: socore
     - port_bindings:
@@ -65,3 +62,5 @@ so-redis:
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
+    - watch:
+      - file: /opt/so/conf/redis/etc

@@ -44,6 +44,15 @@ stenoconf:
     - mode: 644
     - template: jinja
 
+sensoroniagentconf:
+  file.managed:
+    - name: /opt/so/conf/steno/sensoroni.json
+    - source: salt://pcap/files/sensoroni.json
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+
 stenoca:
   file.directory:
     - name: /opt/so/conf/steno/certs
@@ -87,13 +96,13 @@ stenolog:
 
 so-stenoimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-steno:HH1.0.3
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-steno:HH1.1.0
 
 so-steno:
   docker_container.running:
     - require:
       - so-stenoimage
-    - image: soshybridhunter/so-steno:HH1.0.3
+    - image: soshybridhunter/so-steno:HH1.1.0
     - network_mode: host
     - privileged: True
     - port_bindings:
@@ -106,3 +115,7 @@ so-steno:
       - /nsm/pcaptmp:/tmp:rw
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
+      - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/log/stenographer:/opt/sensoroni/log:rw
+    - watch:
+      - /opt/so/conf/steno/sensoroni.json

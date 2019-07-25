@@ -27,7 +27,7 @@ mkdir /opt/so/conf/fleet/packages
 docker run \
   --mount type=bind,source=/opt/so/conf/fleet/packages,target=/output \
   --mount type=bind,source=/etc/pki/launcher.crt,target=/var/launcher/launcher.crt \
-  soshybridhunter/so-fleet-launcher:HH1.0.8 "$esecret" "$1":8080
+  soshybridhunter/so-fleet-launcher:HH1.1.0 "$esecret" "$1":8080
 
 cp /opt/so/conf/fleet/packages/launcher.* /opt/so/saltstack/salt/launcher/packages/
 #Update timestamp on packages webpage

@@ -1,0 +1,42 @@
+#!/bin/bash
+got_root() {
+
+  # Make sure you are root
+  if [ "$(id -u)" -ne 0 ]; then
+          echo "This script must be run using sudo!"
+          exit 1
+  fi
+
+}
+
+got_root
+
+echo "This program allows you to add a firewall rule to allow connections from a new IP address."
+echo ""
+echo "Choose the role for the IP or Range you would like to add"
+echo ""
+echo "[a] - Analyst - ports 80/tcp and 443/tcp"
+echo "[b] - Logstash Beat - port 5044/tcp"
+echo "[o] - Osquery endpoint - port 8080/tcp"
+echo "[w] - Wazuh endpoint - port 1514"
+echo ""
+echo "Please enter your selection (a - analyst, b - beats, o - osquery, w - wazuh):"
+read ROLE
+echo "Enter a single ip address or range to allow (example: 10.10.10.10 or 10.10.0.0/16):"
+read IP
+
+if [ "$ROLE" == "a" ]; then
+  FULLROLE=analyst
+elif [ "$ROLE" == "b" ]; then
+  FULLROLE=beats_endpoint
+elif [ "$ROLE" == "o" ]; then
+  FULLROLE=osquery_endpoint
+elif [ "$ROLE" == "w" ]; then
+  FULLROLE=wazuh_endpoint
+else
+  echo "I don't recognize that role"
+  exit 1
+fi
+
+echo "Adding $IP to the $FULLROLE role. This can take a few seconds"
+/opt/so/saltstack/pillar/firewall/addfirewall.sh $FULLROLE $IP

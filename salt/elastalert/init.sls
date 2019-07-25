@@ -81,13 +81,13 @@ elastarules:
 
 so-elastalertimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.0.3
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.1.0
 
 so-elastalert:
   docker_container.running:
     - require:
       - so-elastalertimage
-    - image: soshybridhunter/so-elastalert:HH1.0.3
+    - image: soshybridhunter/so-elastalert:HH1.1.0
     - hostname: elastalert
     - name: so-elastalert
     - user: elastalert

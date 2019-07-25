@@ -15,13 +15,13 @@ soctopussync:
 
 so-soctopusimage:
   cmd.run:
-    - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.0.8
+    - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.1.0
 
 so-soctopus:
   docker_container.running:
     - require:
       - so-soctopusimage
-    - image: soshybridhunter/so-soctopus:HH1.0.8
+    - image: soshybridhunter/so-soctopus:HH1.1.0
     - hostname: soctopus
     - name: so-soctopus
     - binds:

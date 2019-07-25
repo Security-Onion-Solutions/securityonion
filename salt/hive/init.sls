@@ -33,13 +33,13 @@ hiveesdata:
 
 so-thehive-esimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.0.7
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.1.0
 
 so-thehive-es:
   docker_container.running:
     - require:
       - so-thehive-esimage
-    - image: soshybridhunter/so-thehive-es:HH1.0.7
+    - image: soshybridhunter/so-thehive-es:HH1.1.0
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -81,13 +81,13 @@ so-thehive-es:
 
 so-thehiveimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.0.8
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.1.0
 
 so-thehive:
   docker_container.running:
     - require:
       - so-thehiveimage
-    - image: soshybridhunter/so-thehive:HH1.0.8
+    - image: soshybridhunter/so-thehive:HH1.1.0
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive
@@ -97,7 +97,7 @@ so-thehive:
       - /opt/so/conf/hive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
-
+    
 hivescript:
   cmd.script:
     - source: salt://hive/thehive/scripts/hive_init.sh

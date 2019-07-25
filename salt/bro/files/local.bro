@@ -100,7 +100,7 @@
 
 # Uncomment the following line to enable the SMB analyzer.  The analyzer
 # is currently considered a preview and therefore not loaded by default.
-@load policy/protocols/smb
+@load base/protocols/smb
 
 # Add the interface to the log event
 #@load securityonion/add-interface-to-logs.bro

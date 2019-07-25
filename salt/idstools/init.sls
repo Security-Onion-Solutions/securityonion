@@ -21,6 +21,13 @@ idstoolsdir:
     - group: 939
     - makedirs: True
 
+idstoolslogdir:
+  file.directory:
+    - name: /opt/so/log/idstools
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 idstoolsetcsync:
   file.recurse:
     - name: /opt/so/conf/idstools/etc
@@ -28,6 +35,12 @@ idstoolsetcsync:
     - user: 939
     - group: 939
     - template: jinja
+
+/usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '7'
 
 rulesdir:
   file.directory:
@@ -50,13 +63,13 @@ ruleslink:
 
 so-idstoolsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-idstools:HH1.0.3
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-idstools:HH1.1.0
 
 so-idstools:
   docker_container.running:
     - require:
       - so-idstoolsimage
-    - image: soshybridhunter/so-idstools:HH1.0.3
+    - image: soshybridhunter/so-idstools:HH1.1.0
     - hostname: so-idstools
     - user: socore
     - binds:
