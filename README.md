@@ -3,7 +3,7 @@
 ### Changes:
 
 - Alpha is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
-- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). [Pivoting is done via Kibana](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Pulling-PCAP).
+- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). You can [pivot directly from Kibana to Sensoroni via the _id field](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Pulling-PCAP).
 - Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
 - Filebeat traffic for HH components now use a separate port (5644). This will allow you to send Beats to the default port (5044) and choose how you want to secure it. It is still recommended to use full SSL via Filebeat and if you already have this set up you will need to change to port 5044. We will continue to refine this in future versions.
 - Authentication is now enabled by default for all the web based components. There will be some major changes before we get to beta with how authentication in general is handled due to Elastic "Features" and other components.
