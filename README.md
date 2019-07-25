@@ -1,21 +1,18 @@
-## Hybrid Hunter 1.0.8 
+## Hybrid Hunter Alpha 1.1.0
 
 ### Changes:
-
-- Suricata 4.1.4
-- Eval and Master installs now ask which components you would like to install
-- Fleet (osquery) now has it's own additional setup script. [See the docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Configuring-Osquery-with-Security-Onion)
-- Fleet setup script now generates auto install packages for Windows, CentOS, and Ubuntu
-- When Fleet setup is completed, all SO nodes will auto install the appropriate auto install package
-- We now have a progress bar during install!
-- The setup script will now tell you if it was successful
-- Added Grafana plugin Pie Chart
-- The Hive Docker moved to Centos 7 based container
-
-### Notes:
-- Attempting to send a Bro event to The Hive that does not contain a source and destination IP (ex. Bro files, or X509) will result in an exception - a fix for this will be implemented in the next release.
-- If attempting to pivot from Kibana, ensure that you can resolve the master via DNS -- otherwise, populate your local hosts file with an entry to point to the master.
-
+- Alpha is here!! Check out the [[Hybrid Hunter Quick Start Guide|Hybrid-Hunter-Quick-Start-Guide]].
+- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). Pivoting is done via Kibana. See details [[here|Pulling-PCAP]].
+- Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
+- Filebeat traffic for HH components now use a separate port (5644). This will allow you to send Beats to the default port (5044) and choose how you want to secure it. It is still recommended to use full SSL via Filebeat and if you already have this set up you will need to change to port 5044. We will continue to refine this in future versions.
+- Authentication is now enabled by default for all the web based components. There will be some major changes before we get to beta with how authentication in general is handled due to Elastic "Features" and other components.
+- Add users to the web interface via `so-user-add` and follow the prompts.
+- `so-allow` now exists to make your life easier.
+- Bro 2.6.2.
+- All Docker images were updated to reflect Alpha status.
+- Disabled DEBUG logging on a lot of components to reduce space usage.
+- Added a rule update cron job so the master pulls new rules down every day at 7AM UTC.
+- You can now manually run a rule update using the `so-rule-update` command.
 
 ### Warnings and Disclaimers
 
