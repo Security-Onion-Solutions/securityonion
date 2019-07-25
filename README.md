@@ -2,8 +2,8 @@
 
 ### Changes:
 
-- Alpha is here!! Check out the [[Hybrid Hunter Quick Start Guide|Hybrid-Hunter-Quick-Start-Guide]].
-- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). Pivoting is done via Kibana. See details [[here|Pulling-PCAP]].
+- Alpha is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
+- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). [Pivoting is done via Kibana](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Pulling-PCAP).
 - Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
 - Filebeat traffic for HH components now use a separate port (5644). This will allow you to send Beats to the default port (5044) and choose how you want to secure it. It is still recommended to use full SSL via Filebeat and if you already have this set up you will need to change to port 5044. We will continue to refine this in future versions.
 - Authentication is now enabled by default for all the web based components. There will be some major changes before we get to beta with how authentication in general is handled due to Elastic "Features" and other components.
@@ -17,7 +17,7 @@
 
 ### Warnings and Disclaimers
 
-- This technology PREVIEW is PRE-ALPHA, BLEEDING EDGE, and TOTALLY UNSUPPORTED!  
+- This ALPHA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
 - If this breaks your system, you get to keep both pieces!  
 - This script is a work in progress and is in constant flux.  
 - This script is intended to build a quick prototype proof of concept so you can see what our new platform might look like.  This configuration will change drastically over time leading up to the final - release.  
@@ -71,19 +71,6 @@ cd securityonion-saltstack
 sudo bash so-setup-network.sh
 ```
 This is an active development repo so many things can and will be broken.
-
-### Allow Access to Kibana
-Once Setup is complete and services have initialized, you can then allow access to Kibana as follows.
-
-For a single host:
-```
-sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.1
-```
-For a network range:
-```
-sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.0/24
-```
-Then connect to your master via https://YOURMASTER
 
 ### FAQ
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
