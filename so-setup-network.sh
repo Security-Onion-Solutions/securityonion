@@ -259,8 +259,7 @@ create_bond_nmcli() {
       ipv4.method disabled \
       ipv6.method link-local \
       ethernet.mtu $MTU \
-      connection.autoconnect "yes" \
-      >> $SETUPLOG 2>&1
+      connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
     for BNIC in ${BNICS[@]}; do
       # Strip the quotes from the NIC names
@@ -268,107 +267,10 @@ create_bond_nmcli() {
       # Create the slave interface and assign it to the bond
       nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
       ethernet.mtu $MTU \
-      connection.autoconnect "yes" \
-      >> $SETUPLOG 2>&1
+      connection.autoconnect "yes" >> $SETUPLOG 2>&1
       # Bring the slave interface up
       nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
     done
-}
-
-create_bond() {
-
-  # Create the bond interface
-  echo "Setting up Bond" >> $SETUPLOG 2>&1
-
-  # Set the MTU
-  if [ $NSMSETUP != 'ADVANCED' ]; then
-    MTU=1500
-  fi
-
-  # Do something different based on the OS
-  if [ $OS == 'centos' ]; then
-    modprobe --first-time bonding
-    touch /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "DEVICE=bond0" > /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "NAME=bond0" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "Type=Bond" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "BONDING_MASTER=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "BOOTPROTO=none" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "BONDING_OPTS=\"mode=0\"" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-    echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-bond0
-
-    # Create Bond configs for the selected monitor interface
-    for BNIC in ${BNICS[@]}; do
-      BONDNIC="${BNIC%\"}"
-      BONDNIC="${BONDNIC#\"}"
-      sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
-      echo "MASTER=bond0" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
-      echo "SLAVE=yes" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
-      echo "MTU=$MTU" >> /etc/sysconfig/network-scripts/ifcfg-$BONDNIC
-    done
-    nmcli con reload >> $SETUPLOG 2>&1
-    systemctl restart network >> $SETUPLOG 2>&1
-
-  else
-
-    # Need to add 17.04 support still
-    apt-get -y install ifenslave >> $SETUPLOG 2>&1
-    if ! grep -q bonding /etc/modules; then
-      echo "bonding" >> /etc/modules
-    fi
-    modprobe bonding >> $SETUPLOG 2>&1
-
-    local LBACK=$(awk '/auto lo/,/^$/' /etc/network/interfaces)
-    local MINT=$(awk "/auto $MNIC/,/^$/" /etc/network/interfaces)
-
-    # Backup and create a new interface file
-    cp /etc/network/interfaces /etc/network/interfaces.sosetup
-    echo "source /etc/network/interfaces.d/*" > /etc/network/interfaces
-    echo "" >> /etc/network/interfaces
-
-    # Let's set up the new interface file
-    # Populate lo and create file for the management interface
-    IFS=$'\n'
-    for line in $LBACK
-    do
-      echo $line >> /etc/network/interfaces
-    done
-
-    IFS=$'\n'
-    for line in $MINT
-    do
-      echo $line >> /etc/network/interfaces.d/$MNIC
-    done
-
-    # Create entries for each interface that is part of the bond.
-    for BNIC in ${BNICS[@]}; do
-
-      BNIC=$(echo $BNIC |  cut -d\" -f2)
-      echo "auto $BNIC" >> /etc/network/interfaces.d/$BNIC
-      echo "iface $BNIC inet manual" >> /etc/network/interfaces.d/$BNIC
-      echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/$BNIC
-      echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/$BNIC
-      echo "  post-up for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/$BNIC
-      echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/$BNIC
-      echo "  bond-master bond0" >> /etc/network/interfaces.d/$BNIC
-      echo "  mtu $MTU" >> /etc/network/interfaces.d/$BNIC
-
-    done
-
-    BN=("${BNICS[@]//\"/}")
-
-    echo "auto bond0" > /etc/network/interfaces.d/bond0
-    echo "iface bond0 inet manual" >> /etc/network/interfaces.d/bond0
-    echo "  bond-mode 0" >> /etc/network/interfaces.d/bond0
-    echo "  bond-slaves $BN" >> /etc/network/interfaces.d/bond0
-    echo "  mtu $MTU" >> /etc/network/interfaces.d/bond0
-    echo "  up ip link set \$IFACE promisc on arp off up" >> /etc/network/interfaces.d/bond0
-    echo "  down ip link set \$IFACE promisc off down" >> /etc/network/interfaces.d/bond0
-    echo "  post-up for i in rx tx sg tso ufo gso gro lro; do ethtool -K \$IFACE \$i off; done" >> /etc/network/interfaces.d/bond0
-    echo "  post-up echo 1 > /proc/sys/net/ipv6/conf/\$IFACE/disable_ipv6" >> /etc/network/interfaces.d/bond0
-  fi
-
 }
 
 detect_os() {
