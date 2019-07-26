@@ -55,10 +55,10 @@ sudo reboot
 If you are running CentOS 7 or Ubuntu 16.04 and don't have name resolution ensure you hosts file looks like this:
 
 ```
-127.0.0.1   hybridhunter hybridhunter.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain4
+127.0.0.1   YOURHOSTNAME YOURHOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 ```  
-It is imperative that hostname.localdomain is included in this hosts entry for the install to complete properly.
+It is imperative that YOURHOSTNAME.localdomain is included in this hosts entry for the install to complete properly.
 
 
 ### Installation
