@@ -52,7 +52,7 @@ sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
 
-If you are running CentOS 7 or Ubuntu 16.04 and don't have name resolution ensure you hosts file looks like this:
+If you are running CentOS 7 or Ubuntu 16.04 and don't have name resolution ensure your `/etc/hosts` file looks like this:
 
 ```
 127.0.0.1   YOURHOSTNAME YOURHOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain4
@@ -72,13 +72,7 @@ sudo bash so-setup-network.sh
 ```
 Follow the prompts and reboot if asked to do so.
 
-Want to try the bleeding edge? You can install the following:
-```
-git clone https://github.com/TOoSmOotH/securityonion-saltstack
-cd securityonion-saltstack
-sudo bash so-setup-network.sh
-```
-This is an active development repo so many things can and will be broken.
+Then proceed to the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
 
 ### FAQ
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
