@@ -52,7 +52,7 @@ sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
 
-If you are running CentOS 7 or Ubuntu 16.04 and don't have hame resolution ensure you hosts file looks like this:
+If you are running CentOS 7 or Ubuntu 16.04 and don't have name resolution ensure you hosts file looks like this:
 
 ```
 127.0.0.1   hybridhunter hybridhunter.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain4
