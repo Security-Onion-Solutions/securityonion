@@ -125,13 +125,13 @@ localbrosync:
 
 so-broimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-bro:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-bro:HH1.1.1
 
 so-bro:
   docker_container.running:
     - require:
       - so-broimage
-    - image: soshybridhunter/so-bro:HH1.1.0
+    - image: soshybridhunter/so-bro:HH1.1.1
     - privileged: True
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
