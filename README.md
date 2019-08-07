@@ -1,6 +1,7 @@
 ## Hybrid Hunter Alpha 1.1.0
 
 ### Changes:
+
 - Alpha is here!! Check out the [[Hybrid Hunter Quick Start Guide|Hybrid-Hunter-Quick-Start-Guide]].
 - There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). Pivoting is done via Kibana. See details [[here|Pulling-PCAP]].
 - Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
