@@ -23,6 +23,13 @@ filebeatetcdir:
     - group: 939
     - makedirs: True
 
+filebeatlogdir:
+  file.directory:
+    - name: /opt/so/log/filebeat
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
