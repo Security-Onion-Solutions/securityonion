@@ -246,15 +246,15 @@ copy_ssh_key() {
 
 }
 
-create_bond_nmcli() {
+network_setup() {
   echo "Setting up Bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
-  if [ $NSMSETUP != 'ADVANCED' ]; then
+  if [ "$NSMSETUP" != 'ADVANCED' ]; then
     MTU=1500
   fi
 
-# Create the bond interface
+  # Create the bond interface
     nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
       ipv4.method disabled \
       ipv6.method link-local \
@@ -271,6 +271,11 @@ create_bond_nmcli() {
       # Bring the slave interface up
       nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
     done
+  
+  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+
+  # Copy the checksum offload script to prevent issues with packet capture
+  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 }
 
 detect_os() {
