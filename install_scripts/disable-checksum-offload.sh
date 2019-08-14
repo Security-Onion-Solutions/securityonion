@@ -5,5 +5,5 @@ if [ "$NM_DISPATCHER_ACTION" == "pre-up" ]; then
         for i in rx tx sg tso ufo gso gro lro; do 
             ethtool -K $DEVICE_IFACE $i off; 
         done
-    fii
+    fi
 fi
