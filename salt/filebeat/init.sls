@@ -69,7 +69,7 @@ so-filebeat:
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
     - binds:
-      - /opt/so/log/filebeat:/var/log/filebeat:rw
+      - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
