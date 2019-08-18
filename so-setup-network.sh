@@ -246,31 +246,39 @@ copy_ssh_key() {
 
 }
 
-create_bond_nmcli() {
+network_setup() {
   echo "Setting up Bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
-  if [ $NSMSETUP != 'ADVANCED' ]; then
+  if [ "$NSMSETUP" != 'ADVANCED' ]; then
     MTU=1500
   fi
 
-# Create the bond interface
-    nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
-      ipv4.method disabled \
-      ipv6.method link-local \
-      ethernet.mtu $MTU \
-      connection.autoconnect "yes" >> $SETUPLOG 2>&1
+  # Create the bond interface
+  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+    ipv4.method disabled \
+    ipv6.method link-local \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
-    for BNIC in ${BNICS[@]}; do
-      # Strip the quotes from the NIC names
-      BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
-      # Create the slave interface and assign it to the bond
-      nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
-      ethernet.mtu $MTU \
-      connection.autoconnect "yes" >> $SETUPLOG 2>&1
-      # Bring the slave interface up
-      nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  for BNIC in ${BNICS[@]}; do
+    # Strip the quotes from the NIC names
+    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
+      # Turn off various offloading settings for the interface
+    for i in rx tx sg tso ufo gso gro lro; do 
+          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
     done
+    # Create the slave interface and assign it to the bond
+    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+    # Bring the slave interface up
+    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  done
+  # Replace the variable string in the network script
+  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+  # Copy the checksum offload script to prevent issues with packet capture
+  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 }
 
 detect_os() {
@@ -1683,7 +1691,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
@@ -1773,7 +1781,7 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
