@@ -64,20 +64,42 @@ elastarules:
     - group: 939
     - makedirs: True
 
-#elastaconfdir:
-#  file.directory:
-#    - name: /opt/so/conf/elastalert
-#    - user: 933
-#    - group: 939
-#    - makedirs: True
+elastaconfdir:
+  file.directory:
+    - name: /opt/so/conf/elastalert
+    - user: 933
+    - group: 939
+    - makedirs: True
 
-#elastaconf:
-#  file.managed:
-#    - name: /opt/so/conf/elastalert/config.yaml
-#    - source: salt://elastalert/files/config.yaml
-#    - user: 933
-#    - group: 939
-#    - template: jinja
+elastasomodulesdir:
+  file.directory:
+    - name: /opt/so/conf/elastalert/modules/so
+    - user: 933
+    - group: 939
+    - makedirs: True
+
+elastacustmodulesdir:
+  file.directory:
+    - name: /opt/so/conf/elastalert/modules/custom
+    - user: 933
+    - group: 939
+    - makedirs: True
+
+elastasomodulesync:
+  file.recurse:
+    - name: /opt/so/conf/elastalert/modules/so
+    - source: salt://elastalert/files/modules/so
+    - user: 933
+    - group: 939
+    - makedirs: True
+
+elastaconf:
+  file.managed:
+    - name: /opt/so/conf/elastalert/elastalert_config.yaml
+    - source: salt://elastalert/files/elastalert_config.yaml
+    - user: 933
+    - group: 939
+    - template: jinja
 
 so-elastalertimage:
  cmd.run:
@@ -93,15 +115,16 @@ so-elastalert:
     - user: elastalert
     - detach: True
     - binds:
-#      - /opt/so/conf/elastalert/config.yaml:/etc/elastalert/conf/elastalert_config.yaml:ro
       - /opt/so/rules/elastalert:/etc/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
+      - /opt/so/conf/elastalert/modules:/opt/elastalert/elastalert/modules:ro
+      - /opt/so/conf/elastalert/elastalert_config.yaml:/etc/elastalert/conf/elastalert_config.yaml:ro
     - environment:
-      - ELASTICSEARCH_HOST: {{ esip }}
-      - ELASTICSEARCH_PORT: {{ esport }}
+      #- ELASTICSEARCH_HOST: {{ esip }}
+      #- ELASTICSEARCH_PORT: {{ esport }}
       - ELASTALERT_CONFIG: /etc/elastalert/conf/elastalert_config.yaml
       - ELASTALERT_SUPERVISOR_CONF: /etc/elastalert/conf/elastalert_supervisord.conf
-      - RULES_DIRECTORY: /etc/elastalert/rules/
+      #- RULES_DIRECTORY: /etc/elastalert/rules/
       - LOG_DIR: /var/log/elastalert
 
 {% endif %}
