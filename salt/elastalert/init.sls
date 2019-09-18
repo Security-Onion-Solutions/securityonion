@@ -96,7 +96,7 @@ elastasomodulesync:
 elastarulesync:
   file.recurse:
     - name: /opt/so/rules/elastalert
-    - source: salt://elastalert/files/rules
+    - source: salt://elastalert/files/rules/so
     - user: 933
     - group: 939
     - template: jinja
