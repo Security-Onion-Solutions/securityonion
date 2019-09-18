@@ -93,6 +93,14 @@ elastasomodulesync:
     - group: 939
     - makedirs: True
 
+elastarulesync:
+  file.recurse:
+    - name: /opt/so/rules/elastalert
+    - source: salt://elastalert/files/rules
+    - user: 933
+    - group: 939
+    - template: jinja
+
 elastaconf:
   file.managed:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
