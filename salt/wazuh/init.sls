@@ -5,6 +5,7 @@ ossecgroup:
   group.present:
     - name: ossec
     - gid: 945
+    - allow_gid_change: True
 
 # Add ossecm user
 ossecm:
@@ -13,6 +14,8 @@ ossecm:
     - gid: 945
     - home: /opt/so/wazuh
     - createhome: False
+    - allow_uid_change: True
+    - allow_gid_change: True
 
 # Add ossecr user
 ossecr:
@@ -21,6 +24,8 @@ ossecr:
     - gid: 945
     - home: /opt/so/wazuh
     - createhome: False
+    - allow_uid_change: True
+    - allow_gid_change: True
 
 # Add ossec user
 ossec:
@@ -29,6 +34,8 @@ ossec:
     - gid: 945
     - home: /opt/so/wazuh
     - createhome: False
+    - allow_uid_change: True
+    - allow_gid_change: True
 
 # Add wazuh agent
 wazuhpkgs:
