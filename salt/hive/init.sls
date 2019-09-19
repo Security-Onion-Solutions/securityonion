@@ -101,5 +101,5 @@ so-thehive:
 hivescript:
   cmd.script:
     - source: salt://hive/thehive/scripts/hive_init.sh
-    - cwd: /root
+    - cwd: /opt/so
     - template: jinja
