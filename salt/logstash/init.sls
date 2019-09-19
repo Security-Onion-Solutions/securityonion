@@ -193,3 +193,7 @@ so-logstash:
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc
+      - file: /opt/so/conf/logstash/conf.enabled.txt
+      - file: /opt/so/conf/logstash/custom
+      - file: /opt/so/conf/logstash/rulesets
+      - file: /opt/so/conf/logstash/dynamic
