@@ -97,8 +97,9 @@ so-thehive:
       - /opt/so/conf/hive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
-    
+
 hivescript:
   cmd.script:
     - source: salt://hive/thehive/scripts/hive_init.sh
+    - cwd: /root
     - template: jinja

@@ -5,6 +5,7 @@
 crossclusterson:
   cmd.script:
     - shell: /bin/bash
+    - cwd: /root
     - runas: socore
     - source: salt://utility/bin/crossthestreams.sh
     - template: jinja
@@ -15,6 +16,7 @@ crossclusterson:
 fixsearch:
   cmd.script:
     - shell: /bin/bash
+    - cwd: /root
     - runas: socore
     - source: salt://utility/bin/eval.sh
     - template: jinja
