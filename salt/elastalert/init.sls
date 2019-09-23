@@ -111,13 +111,13 @@ elastaconf:
 
 so-elastalertimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.1.1
 
 so-elastalert:
   docker_container.running:
     - require:
       - so-elastalertimage
-    - image: soshybridhunter/so-elastalert:HH1.1.0
+    - image: soshybridhunter/so-elastalert:HH1.1.1
     - hostname: elastalert
     - name: so-elastalert
     - user: elastalert
@@ -125,14 +125,14 @@ so-elastalert:
     - binds:
       - /opt/so/rules/elastalert:/etc/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
-      - /opt/so/conf/elastalert/modules:/opt/elastalert/elastalert/modules:ro
+      - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/etc/elastalert/conf/elastalert_config.yaml:ro
     - environment:
-      #- ELASTICSEARCH_HOST: {{ esip }}
-      #- ELASTICSEARCH_PORT: {{ esport }}
+      - ELASTICSEARCH_HOST: {{ esip }}
+      - ELASTICSEARCH_PORT: {{ esport }}
       - ELASTALERT_CONFIG: /etc/elastalert/conf/elastalert_config.yaml
       - ELASTALERT_SUPERVISOR_CONF: /etc/elastalert/conf/elastalert_supervisord.conf
-      #- RULES_DIRECTORY: /etc/elastalert/rules/
+      - RULES_DIRECTORY: /etc/elastalert/rules/
       - LOG_DIR: /var/log/elastalert
 
 {% endif %}
