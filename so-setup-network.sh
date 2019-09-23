@@ -466,11 +466,11 @@ install_master() {
 ls_heapsize() {
 
   # Determine LS Heap Size
-  if [ $TOTAL_MEM -ge 16000 ] ; then
-      LS_HEAP_SIZE="4192m"
+  if [ $TOTAL_MEM -ge 32000 ] ; then
+      LS_HEAP_SIZE="1000m"
   else
-      # Set a max of 1GB heap if you have less than 16GB RAM
-      LS_HEAP_SIZE="2g"
+      # If minimal RAM, then set minimal heap
+      LS_HEAP_SIZE="500m"
   fi
 
 }
@@ -1752,7 +1752,7 @@ if (whiptail_you_sure); then
     es_heapsize
     ls_heapsize
     NODE_ES_HEAP_SIZE="600m"
-    NODE_LS_HEAP_SIZE="2000m"
+    NODE_LS_HEAP_SIZE="500m"
     LSPIPELINEWORKERS=1
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
