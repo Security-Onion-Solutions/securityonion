@@ -1,9 +1,10 @@
+{% set es = salt['pillar.get']('static:masterip', '') %}
 {% set hivehost = salt['pillar.get']('static:masterip', '') %}
 {% set hivekey = salt['pillar.get']('static:hivekey', '') %}
 # hive.yaml
 # Elastalert rule to forward IDS alerts from Security Onion to a specified TheHive instance.
 #
-es_host: elasticsearch
+es_host: {{es}}
 es_port: 9200
 name: TheHive - New IDS Alert!
 type: frequency
@@ -19,7 +20,7 @@ filter:
 - term:
     event_type: "ids"
 
-alert: elastalert.modules.so.hivealerter
+alert: modules.so.thehive.TheHiveAlerter
 
 hive_connection:
   hive_host: {{hivehost}}

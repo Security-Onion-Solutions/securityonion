@@ -7,7 +7,7 @@ from thehive4py.api import TheHiveApi
 from thehive4py.models import Alert, AlertArtifact, CustomFieldHelper
 
 
-class HiveAlerter(Alerter):
+class TheHiveAlerter(Alerter):
     """
     Use matched data to create alerts containing observables in an instance of TheHive
     """
