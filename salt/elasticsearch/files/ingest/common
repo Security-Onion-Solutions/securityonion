@@ -1,0 +1,52 @@
+{
+  "description" : "common",
+  "processors" : [
+    { 
+	"rename": {
+		"field": "type",
+		"target_field": "event_type",
+		"ignore_missing": true
+	}
+    },
+    { 	
+	"geoip":  { 
+		"field": "destination_ip",
+		"target_field": "destination_geo",
+		"database_file": "GeoLite2-City.mmdb",
+		"ignore_missing": true, 
+		"properties": ["ip", "country_iso_code", "country_name", "continent_name", "region_iso_code", "region_name", "city_name", "timezone", "location"]
+	}
+    },
+    { 
+	"geoip":  {
+		"field": "source_ip",
+		"target_field": "source_geo",
+		"database_file": "GeoLite2-City.mmdb",
+		"ignore_missing": true,
+		"properties": ["ip", "country_iso_code", "country_name", "continent_name", "region_iso_code", "region_name", "city_name", "timezone", "location"]
+	}
+    },
+    { 
+	"split":  {
+		"field": "_index",
+		"target_field": "index_name_prefix",
+		"separator": "-"
+	}
+    },
+    { 
+	"date_index_name": {
+        	"field": "@timestamp",
+	        "index_name_prefix": "{{index_name_prefix.0}}-{{index_name_prefix.1}}-",
+        	"date_rounding": "d",
+	        "ignore_failure": true,
+        	"index_name_format": "yyyy.MM.dd"
+        }
+    },
+    { 
+	"remove": {
+		"field": "index_name_prefix",
+		"ignore_failure": true
+	}
+    }
+  ]
+}
