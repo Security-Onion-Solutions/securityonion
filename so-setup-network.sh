@@ -1624,9 +1624,12 @@ if (whiptail_you_sure); then
     fi
 
     whiptail_create_socore_user
-    whiptail_create_socore_user_password1
-    whiptail_create_socore_user_password2
-    check_socore_pass
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
 
     # Last Chance to back out
     whiptail_make_changes
@@ -1846,9 +1849,12 @@ if (whiptail_you_sure); then
     CURCLOSEDAYS=30
     process_components
     whiptail_create_socore_user
-    whiptail_create_socore_user_password1
-    whiptail_create_socore_user_password2
-    check_socore_pass
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
     whiptail_make_changes
     set_hostname
     generate_passwords
