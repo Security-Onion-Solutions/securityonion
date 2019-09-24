@@ -1626,6 +1626,7 @@ if (whiptail_you_sure); then
     whiptail_create_socore_user
     whiptail_create_socore_user_password1
     whiptail_create_socore_user_password2
+    check_admin_pass
 
     # Last Chance to back out
     whiptail_make_changes
@@ -1847,6 +1848,7 @@ if (whiptail_you_sure); then
     whiptail_create_socore_user
     whiptail_create_socore_user_password1
     whiptail_create_socore_user_password2
+    check_admin_pass
     whiptail_make_changes
     set_hostname
     generate_passwords
