@@ -58,13 +58,13 @@ filebeatconfsync:
 
 so-filebeatimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.1.1
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.1.0
 
 so-filebeat:
   docker_container.running:
     - require:
       - so-filebeatimage
-    - image: soshybridhunter/so-filebeat:HH1.1.1
+    - image: soshybridhunter/so-filebeat:HH1.1.0
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
