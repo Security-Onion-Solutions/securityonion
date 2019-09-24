@@ -6,7 +6,7 @@
 #
 es_host: {{es}}
 es_port: 9200
-name: TheHive - New IDS Alert!
+name: NIDS-Alert
 type: frequency
 index: "*:logstash-ids*"
 num_events: 1
@@ -15,10 +15,14 @@ timeframe:
 buffer_time:
     minutes: 10
 allow_buffer_time_overlap: true
+query_key: alert
+realert:
+    days: 1
 
 filter:
-- term:
-    event_type: "ids"
+- query:
+   query_string:
+      query: "event_type: ids AND NOT tags: _jsonparsefailure"
 
 alert: modules.so.thehive.TheHiveAlerter
 
@@ -31,12 +35,12 @@ hive_proxies:
   https: ''
 
 hive_alert_config:
-  title: 'New Alert from Security Onion!'
+  title: '{match[alert]}'
   type: 'external'
   source: 'SecurityOnion'
-  description: '{match[message]}'
+  description: "`NIDS Dashboard:` \n\n <https://{{es}}/kibana/app/kibana#/dashboard/780bf030-ca55-11e9-a1d1-a5d6b8f017a7?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),index:'*:logstash-*',interval:auto,query:(query_string:(analyze_wildcard:!t,query:'sid:{match[sid]}')),sort:!('@timestamp',desc))> \n\n `IPs: `{match[source_ip]}:{match[source_port]} --> {match[destination_ip]}:{match[destination_port]} \n\n `Signature:` {match[rule_signature]}"
   severity: 2
-  tags: ['elastalert, SecurityOnion']
+  tags: ['elastalert', 'SecurityOnion', 'NIDS']
   tlp: 3
   status: 'New'
   follow: True
