@@ -938,10 +938,10 @@ sensor_pillar() {
 
 set_hostname() {
 
-  hostnamectl set-hostname $HOSTNAME
+  hostnamectl set-hostname --static $HOSTNAME
   echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
-  echo "$HOSTNAME" > /etc/hostname
+  echo $HOSTNAME > /etc/hostname
 
 }
 
