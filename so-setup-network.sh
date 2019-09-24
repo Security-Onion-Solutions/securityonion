@@ -61,17 +61,33 @@ add_master_hostfile() {
 }
 
 add_socore_user_master() {
-  echo "Add socore on the master" >> $SETUPLOG 2>&1
+
+  echo "Add socore on the master" >>~/sosetup.log 2>&1
+  # Add user "socore" to the master. This will be for things like accepting keys.
   if [ $OS == 'centos' ]; then
     local ADDUSER=adduser
   else
     local ADDUSER=useradd
   fi
-  # Add user "socore" to the master. This will be for things like accepting keys.
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
-  # Prompt the user to set a password for the user
-  passwd socore
+  # Set the password for socore that we got during setup
+  echo socore:$COREPASS1 | chpasswd --crypt-method=SHA512
+
+}
+
+#add_socore_user_master() {
+#  echo "Add socore on the master" >> $SETUPLOG 2>&1
+#  if [ $OS == 'centos' ]; then
+#    local ADDUSER=adduser
+#  else
+#    local ADDUSER=useradd
+#  fi
+#  # Add user "socore" to the master. This will be for things like accepting keys.
+#  groupadd --gid 939 socore
+#  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
+#  # Prompt the user to set a password for the user
+#  passwd socore
 
 }
 
@@ -166,6 +182,16 @@ calculate_useable_cores() {
 checkin_at_boot() {
   echo "Enabling checkin at boot" >> $SETUPLOG 2>&1
   echo "startup_states: highstate" >> /etc/salt/minion
+}
+
+check_socore_pass() {
+
+  if [ $COREPASS1 == $COREPASS2 ]; then
+    SCMATCH=yes
+  else
+    whiptail_passwords_dont_match
+  fi
+
 }
 
 chown_salt_master() {
@@ -265,7 +291,7 @@ network_setup() {
     # Strip the quotes from the NIC names
     BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
       # Turn off various offloading settings for the interface
-    for i in rx tx sg tso ufo gso gro lro; do 
+    for i in rx tx sg tso ufo gso gro lro; do
           ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
     done
     # Create the slave interface and assign it to the bond
@@ -910,6 +936,14 @@ sensor_pillar() {
 
 }
 
+set_hostname() {
+
+  hostnamectl set-hostname $HOSTNAME
+  echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
+  echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
+
+}
+
 set_initial_firewall_policy() {
 
   get_main_ip
@@ -1087,6 +1121,27 @@ whiptail_check_exitstatus() {
     echo "They hit cancel"
     whiptail_cancel
   fi
+
+}
+
+whiptail_create_socore_user() {
+
+  whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used \
+  for adding sensors remotely." 8 78
+
+}
+
+whiptail_create_socore_user_password1() {
+
+  COREPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Enter a password for user socore" 10 60 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_create_socore_user_password2() {
+
+  COREPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Re-enter a password for user socore" 10 60 3>&1 1>&2 2>&3)
 
 }
 
@@ -1376,6 +1431,12 @@ whiptail_node_ls_input_batch_count() {
 
 }
 
+whiptail_passwords_dont_match() {
+
+  whiptail --title "Security Onion Setup" --msgbox "Passwords don't match. Please re-enter." 8 78
+
+}
+
 whiptail_rule_setup() {
 
   # Get pulled pork info
@@ -1397,6 +1458,16 @@ whiptail_sensor_config() {
   "What type of configuration would you like to use?:" 20 78 4 \
   "BASIC" "Install NSM components with recommended settings" ON \
   "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_set_hostname() {
+
+  HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the Hostname you would like to set." 10 60 localhost 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -1499,6 +1570,9 @@ if (whiptail_you_sure); then
   # Let folks know they need their management interface already set up.
   whiptail_network_notice
 
+  # Set the hostname to reduce errors
+  whiptail_set_hostname
+
   # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
   #minio_generate_keys
 
@@ -1548,8 +1622,13 @@ if (whiptail_you_sure); then
       fi
     fi
 
+    whiptail_create_socore_user
+    whiptail_create_socore_user_password1
+    whiptail_create_socore_user_password2
+
     # Last Chance to back out
     whiptail_make_changes
+    set_hostname
     generate_passwords
     auth_pillar
     clear_master
@@ -1563,9 +1642,9 @@ if (whiptail_you_sure); then
     get_main_ip
 
     # Add the user so we can sit back and relax
-    echo ""
-    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    echo ""
+    #echo ""
+    #echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    #echo ""
     add_socore_user_master
 
     # Install salt and dependencies
@@ -1681,6 +1760,7 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    set_hostname
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1763,8 +1843,11 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     process_components
+    whiptail_create_socore_user
+    whiptail_create_socore_user_password1
+    whiptail_create_socore_user_password2
     whiptail_make_changes
-    #eval_mode_hostsfile
+    set_hostname
     generate_passwords
     auth_pillar
     clear_master
@@ -1913,6 +1996,7 @@ if (whiptail_you_sure); then
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    set_hostname
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1958,22 +2042,22 @@ if (whiptail_you_sure); then
       whiptail_setup_failed
     fi
 
-    set_initial_firewall_policy
-    saltify
-    docker_install
-    configure_minion node
-    set_node_type
-    node_pillar
-    copy_minion_pillar nodes
-    salt_checkin
+    #set_initial_firewall_policy
+    #saltify
+    #docker_install
+    #configure_minion node
+    #set_node_type
+    #node_pillar
+    #copy_minion_pillar nodes
+    #salt_checkin
     # Accept the Salt Key
-    accept_salt_key_remote
+    #accept_salt_key_remote
     # Do the big checkin but first let them know it will take a bit.
-    salt_checkin_message
-    salt_checkin
-    checkin_at_boot
+    #salt_checkin_message
+    #salt_checkin
+    #checkin_at_boot
 
-    whiptail_setup_complete
+    #whiptail_setup_complete
   fi
 
 else
