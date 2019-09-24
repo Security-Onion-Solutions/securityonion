@@ -5,8 +5,7 @@ ossecgroup:
   group.present:
     - name: ossec
     - gid: 945
-    - allow_gid_change: True
-
+    
 # Add ossecm user
 ossecm:
   user.present:
