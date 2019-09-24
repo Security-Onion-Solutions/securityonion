@@ -89,7 +89,7 @@ add_socore_user_master() {
 #  # Prompt the user to set a password for the user
 #  passwd socore
 
-}
+#}
 
 add_socore_user_notmaster() {
   echo "Add socore user on non master" >> $SETUPLOG 2>&1
