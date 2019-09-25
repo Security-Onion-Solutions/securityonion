@@ -1,15 +1,5 @@
-navigatordefaultlayer:
-  file.manage:
-    - name: /opt/so/conf/playbook/nav_layer_playbook.json
-    - source: salt://playbook/files/nav_layer_playbook.json
-    - user: 939
-    - group: 939
-    - makedirs: True
-    - replace: False
-    - template: jinja
-
 navigatorconfig:
-  file.manage:
+  file.managed:
     - name: /opt/so/conf/playbook/navigator_config.json
     - source: salt://playbook/files/navigator_config.json
     - user: 939
