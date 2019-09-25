@@ -56,7 +56,6 @@ so-thehive-es:
       - transport.tcp.port=9500
       - transport.host=0.0.0.0
       - cluster.name=hive
-      - script.inline=true
       - thread_pool.index.queue_size=100000
       - thread_pool.search.queue_size=100000
       - thread_pool.bulk.queue_size=100000
@@ -98,8 +97,8 @@ so-thehive:
     - port_bindings:
       - 0.0.0.0:9000:9000
 
-#hivescript:
-#  cmd.script:
-#    - source: salt://hive/thehive/scripts/hive_init.sh
-#    - cwd: /opt/so
-#    - template: jinja
+hivescript:
+  cmd.script:
+    - source: salt://hive/thehive/scripts/hive_init.sh
+    - cwd: /opt/so
+    - template: jinja
