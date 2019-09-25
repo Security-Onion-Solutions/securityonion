@@ -1946,7 +1946,7 @@ if (whiptail_you_sure); then
       salt-call state.apply schedule >> $SETUPLOG 2>&1
       salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
-        echo -e "XXX\n97\nInstalling misc components... \nXXX"
+        echo -e "XXX\n97\nInstalling The Hive... \nXXX"
         salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
