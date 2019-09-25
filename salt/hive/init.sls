@@ -98,8 +98,8 @@ so-thehive:
     - port_bindings:
       - 0.0.0.0:9000:9000
 
-hivescript:
-  cmd.script:
-    - source: salt://hive/thehive/scripts/hive_init.sh
-    - cwd: /opt/so
-    - template: jinja
+#hivescript:
+#  cmd.script:
+#    - source: salt://hive/thehive/scripts/hive_init.sh
+#    - cwd: /opt/so
+#    - template: jinja
