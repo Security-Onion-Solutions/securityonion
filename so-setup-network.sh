@@ -1866,9 +1866,6 @@ if (whiptail_you_sure); then
     get_log_size_limit
     get_main_ip
     # Add the user so we can sit back and relax
-    echo ""
-    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    echo ""
     add_socore_user_master
     {
       sleep 0.5
