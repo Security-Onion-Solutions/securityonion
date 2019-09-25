@@ -228,6 +228,28 @@ enable_master_osquery_8080_{{ip}}:
     - position: 1
     - save: True
 
+enable_master_playbook_3200_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3200
+    - position: 1
+    - save: True
+    
+enable_master_navigator_4200_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 4200
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.

@@ -13,6 +13,21 @@ soctopussync:
     - group: 939
     - template: jinja
 
+playbookrulesdir:
+  file.directory:
+    - name: /opt/so/rules/elastalert/playbook
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+playbookrulessync:
+  file.recurse:
+    - name: /opt/so/rules/elastalert/playbook
+    - source: salt://soctopus/files/templates
+    - user: 939
+    - group: 939
+    - template: jinja
+
 so-soctopusimage:
   cmd.run:
     - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.1.0
@@ -26,5 +41,6 @@ so-soctopus:
     - name: so-soctopus
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
+      - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
     - port_bindings:
       - 0.0.0.0:7000:7000
