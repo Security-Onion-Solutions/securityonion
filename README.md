@@ -5,15 +5,17 @@
 - Alpha 2 is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).  
 - Suricata 4.1.5  
 - Bro/Zeek 2.6.4  
-- Fixed an issue where the filbeat docker was logging to stdout instead of the actual log file causing the docker to get extremely large.  
-- Now using elastic ingest for zeek logs and suricata alerts. This reduces the memory footprint of logstash dramatically!  
-- Several changes to the setup script to improve installation success:  
-  - Setup now modifes your hosts file so that the install works better in environments without DNS.  
-  - You are now prompted for setting a password for the socore user.  
-  - The install now forces a reboot at the end of the install. This fixes an issue with some of the docker containers being in the wrong state from a manual reboot. Manual reboots are fine after the initial reboot.
-- Updated The Hive to 3.4.0 and the ES instance to 6.8.3.  
-- NIDS and HIDS dashboard updates.
-- Added new Playbook and Navigator features.
+- TheHive 3.4.0 (ES to 6.8.3)
+- NIDS and HIDS dashboard updates
+- Playbook and ATT&CK Navigator features are now included.
+- Filebeat now logs to a file, instead of stdout.
+- Elastalert has been updated to use Python 3 and allow for use of custom alerters.  
+- Elasticsearch Ingest is now used to consume Zeek logs and Suricata alerts (instead of the traditional Logstash pipeline).
+  This reduces the memory footprint of Logstash dramatically!  
+- Several changes to the setup script have been made to improve stability of the setup process:  
+  - Setup now modifies your hosts file so that the install works better in environments without DNS  
+  - You are now prompted for setting a password for the socore user  
+  - The install now forces a reboot at the end of the install. This fixes an issue with some of the Docker containers being in the wrong state from a manual reboot. Manual reboots are fine after the initial reboot.
 
 
 ### Warnings and Disclaimers
