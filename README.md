@@ -1,19 +1,20 @@
-## Hybrid Hunter Alpha 1.1.0
+## Hybrid Hunter Alpha 1.1.1
 
 ### Changes:
 
-- Alpha is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
-- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). You can [pivot directly from Kibana to Sensoroni via the _id field](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Pulling-PCAP).
-- Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
-- Filebeat traffic for HH components now use a separate port (5644). This will allow you to send Beats to the default port (5044) and choose how you want to secure it. It is still recommended to use full SSL via Filebeat and if you already have this set up you will need to change to port 5044. We will continue to refine this in future versions.
-- Authentication is now enabled by default for all the web based components. There will be some major changes before we get to beta with how authentication in general is handled due to Elastic "Features" and other components.
-- Add users to the web interface via `so-user-add` and follow the prompts.
-- `so-allow` now exists to make your life easier.
-- Bro 2.6.2.
-- All Docker images were updated to reflect Alpha status.
-- Disabled DEBUG logging on a lot of components to reduce space usage.
-- Added a rule update cron job so the master pulls new rules down every day at 7AM UTC.
-- You can now manually run a rule update using the `so-rule-update` command.
+- Alpha 2 is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).  
+- Suricata 4.1.5  
+- Bro/Zeek 2.6.4  
+- Fixed an issue where the filbeat docker was logging to stdout instead of the actual log file causing the docker to get extremely large.  
+- Now using elastic ingest for zeek logs and suricata alerts. This reduces the memory footprint of logstash dramatically!  
+- Several changes to the setup script to improve installation success:  
+  - Setup now modifes your hosts file so that the install works better in environments without DNS.  
+  - You are now prompted for setting a password for the socore user.  
+  - The install now forces a reboot at the end of the install. This fixes an issue with some of the docker containers being in the wrong state from a manual reboot. Manual reboots are fine after the initial reboot.
+- Updated The Hive to 3.4.0 and the ES instance to 6.8.3.  
+- NIDS and HIDS dashboard updates.
+- Added new Playbook and Navigator features.
+
 
 ### Warnings and Disclaimers
 
