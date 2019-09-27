@@ -3,6 +3,7 @@
 {%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
 {%- set GRAFANA = salt['pillar.get']('master:grafana', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
+{%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
   'G@role:so-sensor':
     - ca
@@ -55,6 +56,10 @@ base:
     {%- if THEHIVE != 0 %}
     - hive
     {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+
 
 
   'G@role:so-master':
@@ -87,7 +92,10 @@ base:
     {%- if THEHIVE != 0 %}
     - hive
     {%- endif %}
-
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+    
 
   # Storage node logic
 

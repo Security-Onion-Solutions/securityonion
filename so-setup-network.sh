@@ -539,6 +539,7 @@ master_pillar() {
   echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  playbook: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   }
 
 master_static() {
