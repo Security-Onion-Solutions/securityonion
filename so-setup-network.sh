@@ -184,6 +184,23 @@ checkin_at_boot() {
   echo "startup_states: highstate" >> /etc/salt/minion
 }
 
+check_hive_init_then_reboot() {
+  WAIT_STEP=0
+  MAX_WAIT=100
+    until [ -f /opt/so/state/thehive.txt ] ; do
+    WAIT_STEP=$(( ${WAIT_STEP} + 1 ))
+    echo "Waiting on the_hive to init...Attempt #$WAIT_STEP"
+  	  if [ ${WAIT_STEP} -gt ${MAX_WAIT} ]; then
+  			  echo "ERROR: We waited ${MAX_WAIT} seconds but the_hive is not working."
+  			  exit 5
+  	  fi
+  		  sleep 1s;
+    done
+    docker stop so-thehive
+    docker rm so-thehive
+    shutdown -r now
+}
+
 check_socore_pass() {
 
   if [ $COREPASS1 == $COREPASS2 ]; then
@@ -1478,7 +1495,7 @@ whiptail_set_hostname() {
 
 whiptail_setup_complete() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE." 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. Press Enter to reboot" 8 78
   install_cleanup
   exit
 
@@ -1486,7 +1503,7 @@ whiptail_setup_complete() {
 
 whiptail_setup_failed() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details" 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details. Press Enter to reboot" 8 78
   install_cleanup
   exit
 
@@ -1736,8 +1753,10 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      check_hive_init_then_reboot
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
 
   fi
