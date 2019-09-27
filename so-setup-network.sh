@@ -1753,7 +1753,11 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
-      check_hive_init_then_reboot
+      if [[ $THEHIVE == '1' ]]; then
+        check_hive_init_then_reboot
+      else
+        shutdown -r now
+      fi
     else
       whiptail_setup_failed
       shutdown -r now
@@ -1829,8 +1833,10 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      shutdown -r now
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
   fi
 
@@ -1979,14 +1985,26 @@ if (whiptail_you_sure); then
     if [ $OS == 'centos' ]; then
       if [[ $GOODSETUP == '1' ]]; then
         whiptail_setup_complete
+        if [[ $THEHIVE == '1' ]]; then
+          check_hive_init_then_reboot
+        else
+          shutdown -r now
+        fi
       else
         whiptail_setup_failed
+        shutdown -r now
       fi
     else
       if [[ $GOODSETUP == '0' ]]; then
         whiptail_setup_complete
+        if [[ $THEHIVE == '1' ]]; then
+          check_hive_init_then_reboot
+        else
+          shutdown -r now
+        fi
       else
         whiptail_setup_failed
+        shutdown -r now
       fi
     fi
   fi
@@ -2065,8 +2083,10 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      shutdown -r now
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
 
     #set_initial_firewall_policy
