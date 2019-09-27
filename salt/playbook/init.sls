@@ -1,3 +1,20 @@
+{% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
+
+playbookdb:
+  file.managed:
+    - name: /opt/so/conf/playbook/redmine.db
+    - source: salt://playbook/files/redmine.db
+    - user: 999
+    - group: 999
+    - makedirs: True
+    - replace: False
+
+playbookwebhook:
+  module.run:
+    - name: sqlite3.modify
+    - db: /opt/so/conf/playbook/redmine.db
+    - sql: "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
+
 navigatorconfig:
   file.managed:
     - name: /opt/so/conf/playbook/navigator_config.json
@@ -18,6 +35,8 @@ so-playbook:
     - image: soshybridhunter/so-playbook:HH1.1.1
     - hostname: playbook
     - name: so-playbook
+    - binds:
+      - /opt/so/conf/playbook/redmine.db:/usr/src/redmine/sqlite/redmine.db:rw
     - port_bindings:
       - 0.0.0.0:3200:3000
 
