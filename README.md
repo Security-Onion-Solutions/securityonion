@@ -49,7 +49,7 @@ Distributed:
 
 ### Prerequisites
 
-Install git if using a Centos 7 Minimal install
+Install git if using a Centos 7 Minimal install:
 
 ```sudo yum -y install git```
 
