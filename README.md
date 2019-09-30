@@ -1,30 +1,32 @@
-## Hybrid Hunter Alpha 1.1.0
+## Hybrid Hunter Alpha 1.1.1
 
 ### Changes:
 
-- Alpha is here!! Check out the [[Hybrid Hunter Quick Start Guide|Hybrid-Hunter-Quick-Start-Guide]].
-- There is a new PCAP interface called [Sensoroni](https://github.com/sensoroni/sensoroni). Pivoting is done via Kibana. See details [[here|Pulling-PCAP]].
-- Bond interface setup now uses `nmcli` for better compatibility in the network based setup script.
-- Filebeat traffic for HH components now use a separate port (5644). This will allow you to send Beats to the default port (5044) and choose how you want to secure it. It is still recommended to use full SSL via Filebeat and if you already have this set up you will need to change to port 5044. We will continue to refine this in future versions.
-- Authentication is now enabled by default for all the web based components. There will be some major changes before we get to beta with how authentication in general is handled due to Elastic "Features" and other components.
-- Add users to the web interface via `so-user-add` and follow the prompts.
-- `so-allow` now exists to make your life easier.
-- Bro 2.6.2.
-- All Docker images were updated to reflect Alpha status.
-- Disabled DEBUG logging on a lot of components to reduce space usage.
-- Added a rule update cron job so the master pulls new rules down every day at 7AM UTC.
-- You can now manually run a rule update using the `so-rule-update` command.
+- Alpha 2 is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).  
+- Suricata 4.1.5  
+- Bro/Zeek 2.6.4  
+- TheHive 3.4.0 (ES to 6.8.3)
+- NIDS and HIDS dashboard updates
+- Playbook and ATT&CK Navigator features are now included.
+- Filebeat now logs to a file, instead of stdout.
+- Elastalert has been updated to use Python 3 and allow for use of custom alerters.  
+- Elasticsearch Ingest is now used to consume Zeek logs and Suricata alerts (instead of the traditional Logstash pipeline).
+  This reduces the memory footprint of Logstash dramatically!  
+- Several changes to the setup script have been made to improve stability of the setup process:  
+  - Setup now modifies your hosts file so that the install works better in environments without DNS  
+  - You are now prompted for setting a password for the socore user  
+  - The install now forces a reboot at the end of the install. This fixes an issue with some of the Docker containers being in the wrong state from a manual reboot. Manual reboots are fine after the initial reboot.
+
 
 ### Warnings and Disclaimers
 
-- This technology PREVIEW is PRE-ALPHA, BLEEDING EDGE, and TOTALLY UNSUPPORTED!  
+- This ALPHA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
 - If this breaks your system, you get to keep both pieces!  
 - This script is a work in progress and is in constant flux.  
-- This script is intended to build a quick prototype proof of concept so you can see what our new platform might look like.  This configuration will change drastically over time leading up to the final - release.  
+- This script is intended to build a quick prototype proof of concept so you can see what our new platform might look like.  This configuration will change drastically over time leading up to the final release.  
 - Do NOT run this on a system that you care about!  
 - Do NOT run this on a system that has data that you care about!  
 - This script should only be run on a TEST box with TEST data!  
-- This script is only designed for standalone boxes and does NOT support distributed deployments.  
 - Use of this script may result in nausea, vomiting, or a burning sensation.  
 
 ### Requirements
@@ -53,6 +55,15 @@ sudo hostnamectl set-hostname YOURHOSTNAME
 sudo reboot
 ```
 
+If you are running CentOS 7 or Ubuntu 16.04 and don't have name resolution ensure your `/etc/hosts` file looks like this:
+
+```
+127.0.0.1   YOURHOSTNAME YOURHOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+```  
+It is imperative that YOURHOSTNAME.localdomain is included in this hosts entry for the install to complete properly.
+
+
 ### Installation
 
 Once you resolve those requirements or are using Ubuntu 16.04 do the following:
@@ -64,26 +75,7 @@ sudo bash so-setup-network.sh
 ```
 Follow the prompts and reboot if asked to do so.
 
-Want to try the bleeding edge? You can install the following:
-```
-git clone https://github.com/TOoSmOotH/securityonion-saltstack
-cd securityonion-saltstack
-sudo bash so-setup-network.sh
-```
-This is an active development repo so many things can and will be broken.
-
-### Allow Access to Kibana
-Once Setup is complete and services have initialized, you can then allow access to Kibana as follows.
-
-For a single host:
-```
-sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.1
-```
-For a network range:
-```
-sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh analyst 192.168.30.0/24
-```
-Then connect to your master via https://YOURMASTER
+Then proceed to the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
 
 ### FAQ
 See the [FAQ](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/FAQ) on the Hybrid Hunter wiki.
