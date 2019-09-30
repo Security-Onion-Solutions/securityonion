@@ -7,7 +7,7 @@
 - Bro/Zeek 2.6.4.  
 - TheHive 3.4.0 (Includes ES 6.8.3 for TheHive only).
 - Fixed Bro/Zeek packet loss calculation for Grafana.
-- Updated to latest Sensoroni for websockets to enable job status updates without refreshing.
+- Updated to latest Sensoroni which includes websockets support for job status updates without having to refresh the page.
 - NIDS and HIDS dashboard updates.
 - Playbook and ATT&CK Navigator features are now included.
 - Filebeat now logs to a file, instead of stdout.
