@@ -47,6 +47,12 @@ Distributed:
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
 
+### Prerequisites
+
+Install git if using a Centos 7 Minimal install
+
+```sudo yum -y install git```
+
 ### Installation
 
 Once you resolve those requirements or are using Ubuntu 16.04 do the following:
