@@ -1145,8 +1145,7 @@ whiptail_check_exitstatus() {
 
 whiptail_create_socore_user() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used \
-  for adding sensors remotely." 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used for adding sensors remotely." 8 78
 
 }
 
