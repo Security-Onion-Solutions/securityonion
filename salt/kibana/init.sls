@@ -56,14 +56,14 @@ synckibanacustom:
 
 so-kibanaimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-kibana:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-kibana:HH1.1.1
 
 # Start the kibana docker
 so-kibana:
   docker_container.running:
     - require:
       - so-kibanaimage
-    - image: soshybridhunter/so-kibana:HH1.1.0
+    - image: soshybridhunter/so-kibana:HH1.1.1
     - hostname: kibana
     - user: kibana
     - environment:
