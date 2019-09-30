@@ -2,7 +2,7 @@
 
 ### Changes:
 
-- Alpha 2 is here!! Check out the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).  
+- Alpha 2 is here!
 - Suricata 4.1.5.  
 - Bro/Zeek 2.6.4.  
 - TheHive 3.4.0 (Includes ES 6.8.3 for TheHive only).
