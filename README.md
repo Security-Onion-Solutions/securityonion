@@ -12,8 +12,7 @@
 - Playbook and ATT&CK Navigator features are now included.
 - Filebeat now logs to a file, instead of stdout.
 - Elastalert has been updated to use Python 3 and allow for use of custom alerters.  
-- Elasticsearch Ingest is now used to consume Zeek logs and Suricata alerts (instead of the traditional Logstash pipeline).
-  This reduces the memory footprint of Logstash dramatically!  
+- Moved Bro/Zeek log parsing from Logstash to Elasticsearch Ingest for higher performance and lower memory usage!
 - Several changes to the setup script have been made to improve stability of the setup process:  
   - Setup now modifies your hosts file so that the install works better in environments without DNS.  
   - You are now prompted for setting a password for the socore user.  
