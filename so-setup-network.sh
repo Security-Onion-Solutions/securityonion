@@ -61,19 +61,35 @@ add_master_hostfile() {
 }
 
 add_socore_user_master() {
-  echo "Add socore on the master" >> $SETUPLOG 2>&1
+
+  echo "Add socore on the master" >>~/sosetup.log 2>&1
+  # Add user "socore" to the master. This will be for things like accepting keys.
   if [ $OS == 'centos' ]; then
     local ADDUSER=adduser
   else
     local ADDUSER=useradd
   fi
-  # Add user "socore" to the master. This will be for things like accepting keys.
   groupadd --gid 939 socore
   $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
-  # Prompt the user to set a password for the user
-  passwd socore
+  # Set the password for socore that we got during setup
+  echo socore:$COREPASS1 | chpasswd --crypt-method=SHA512
 
 }
+
+#add_socore_user_master() {
+#  echo "Add socore on the master" >> $SETUPLOG 2>&1
+#  if [ $OS == 'centos' ]; then
+#    local ADDUSER=adduser
+#  else
+#    local ADDUSER=useradd
+#  fi
+#  # Add user "socore" to the master. This will be for things like accepting keys.
+#  groupadd --gid 939 socore
+#  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
+#  # Prompt the user to set a password for the user
+#  passwd socore
+
+#}
 
 add_socore_user_notmaster() {
   echo "Add socore user on non master" >> $SETUPLOG 2>&1
@@ -168,6 +184,33 @@ checkin_at_boot() {
   echo "startup_states: highstate" >> /etc/salt/minion
 }
 
+check_hive_init_then_reboot() {
+  WAIT_STEP=0
+  MAX_WAIT=100
+    until [ -f /opt/so/state/thehive.txt ] ; do
+    WAIT_STEP=$(( ${WAIT_STEP} + 1 ))
+    echo "Waiting on the_hive to init...Attempt #$WAIT_STEP"
+  	  if [ ${WAIT_STEP} -gt ${MAX_WAIT} ]; then
+  			  echo "ERROR: We waited ${MAX_WAIT} seconds but the_hive is not working."
+  			  exit 5
+  	  fi
+  		  sleep 1s;
+    done
+    docker stop so-thehive
+    docker rm so-thehive
+    shutdown -r now
+}
+
+check_socore_pass() {
+
+  if [ $COREPASS1 == $COREPASS2 ]; then
+    SCMATCH=yes
+  else
+    whiptail_passwords_dont_match
+  fi
+
+}
+
 chown_salt_master() {
 
   echo "Chown the salt dirs on the master for socore" >> $SETUPLOG 2>&1
@@ -246,31 +289,39 @@ copy_ssh_key() {
 
 }
 
-create_bond_nmcli() {
+network_setup() {
   echo "Setting up Bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
-  if [ $NSMSETUP != 'ADVANCED' ]; then
+  if [ "$NSMSETUP" != 'ADVANCED' ]; then
     MTU=1500
   fi
 
-# Create the bond interface
-    nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
-      ipv4.method disabled \
-      ipv6.method link-local \
-      ethernet.mtu $MTU \
-      connection.autoconnect "yes" >> $SETUPLOG 2>&1
+  # Create the bond interface
+  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+    ipv4.method disabled \
+    ipv6.method link-local \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
-    for BNIC in ${BNICS[@]}; do
-      # Strip the quotes from the NIC names
-      BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
-      # Create the slave interface and assign it to the bond
-      nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
-      ethernet.mtu $MTU \
-      connection.autoconnect "yes" >> $SETUPLOG 2>&1
-      # Bring the slave interface up
-      nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  for BNIC in ${BNICS[@]}; do
+    # Strip the quotes from the NIC names
+    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
+      # Turn off various offloading settings for the interface
+    for i in rx tx sg tso ufo gso gro lro; do
+          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
     done
+    # Create the slave interface and assign it to the bond
+    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+    # Bring the slave interface up
+    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  done
+  # Replace the variable string in the network script
+  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+  # Copy the checksum offload script to prevent issues with packet capture
+  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 }
 
 detect_os() {
@@ -458,11 +509,11 @@ install_master() {
 ls_heapsize() {
 
   # Determine LS Heap Size
-  if [ $TOTAL_MEM -ge 16000 ] ; then
-      LS_HEAP_SIZE="4192m"
+  if [ $TOTAL_MEM -ge 32000 ] ; then
+      LS_HEAP_SIZE="1000m"
   else
-      # Set a max of 1GB heap if you have less than 16GB RAM
-      LS_HEAP_SIZE="2g"
+      # If minimal RAM, then set minimal heap
+      LS_HEAP_SIZE="500m"
   fi
 
 }
@@ -477,8 +528,8 @@ master_pillar() {
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "  freq: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  domainstats: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
     echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
@@ -505,6 +556,7 @@ master_pillar() {
   echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  playbook: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
   }
 
 master_static() {
@@ -902,6 +954,15 @@ sensor_pillar() {
 
 }
 
+set_hostname() {
+
+  hostnamectl set-hostname --static $HOSTNAME
+  echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
+  echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
+  echo $HOSTNAME > /etc/hostname
+
+}
+
 set_initial_firewall_policy() {
 
   get_main_ip
@@ -1079,6 +1140,26 @@ whiptail_check_exitstatus() {
     echo "They hit cancel"
     whiptail_cancel
   fi
+
+}
+
+whiptail_create_socore_user() {
+
+  whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used for adding sensors remotely." 8 78
+
+}
+
+whiptail_create_socore_user_password1() {
+
+  COREPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Enter a password for user socore" 10 60 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_create_socore_user_password2() {
+
+  COREPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Re-enter a password for user socore" 10 60 3>&1 1>&2 2>&3)
 
 }
 
@@ -1368,6 +1449,12 @@ whiptail_node_ls_input_batch_count() {
 
 }
 
+whiptail_passwords_dont_match() {
+
+  whiptail --title "Security Onion Setup" --msgbox "Passwords don't match. Please re-enter." 8 78
+
+}
+
 whiptail_rule_setup() {
 
   # Get pulled pork info
@@ -1395,19 +1482,27 @@ whiptail_sensor_config() {
 
 }
 
+whiptail_set_hostname() {
+
+  HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the Hostname you would like to set." 10 60 localhost 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_setup_complete() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE." 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. Press Enter to reboot." 8 78
   install_cleanup
-  exit
 
 }
 
 whiptail_setup_failed() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details" 8 78
+  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details. Press Enter to reboot." 8 78
   install_cleanup
-  exit
 
 }
 
@@ -1491,6 +1586,9 @@ if (whiptail_you_sure); then
   # Let folks know they need their management interface already set up.
   whiptail_network_notice
 
+  # Set the hostname to reduce errors
+  whiptail_set_hostname
+
   # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
   #minio_generate_keys
 
@@ -1540,8 +1638,17 @@ if (whiptail_you_sure); then
       fi
     fi
 
+    whiptail_create_socore_user
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
+
     # Last Chance to back out
     whiptail_make_changes
+    set_hostname
     generate_passwords
     auth_pillar
     clear_master
@@ -1555,9 +1662,9 @@ if (whiptail_you_sure); then
     get_main_ip
 
     # Add the user so we can sit back and relax
-    echo ""
-    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    echo ""
+    #echo ""
+    #echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
+    #echo ""
     add_socore_user_master
 
     # Install salt and dependencies
@@ -1643,8 +1750,14 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      if [[ $THEHIVE == '1' ]]; then
+        check_hive_init_then_reboot
+      else
+        shutdown -r now
+      fi
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
 
   fi
@@ -1673,6 +1786,7 @@ if (whiptail_you_sure); then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    set_hostname
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1683,7 +1797,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
@@ -1716,8 +1830,10 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      shutdown -r now
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
   fi
 
@@ -1744,7 +1860,7 @@ if (whiptail_you_sure); then
     es_heapsize
     ls_heapsize
     NODE_ES_HEAP_SIZE="600m"
-    NODE_LS_HEAP_SIZE="2000m"
+    NODE_LS_HEAP_SIZE="500m"
     LSPIPELINEWORKERS=1
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
@@ -1755,8 +1871,15 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     process_components
+    whiptail_create_socore_user
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
     whiptail_make_changes
-    #eval_mode_hostsfile
+    set_hostname
     generate_passwords
     auth_pillar
     clear_master
@@ -1766,14 +1889,11 @@ if (whiptail_you_sure); then
     get_log_size_limit
     get_main_ip
     # Add the user so we can sit back and relax
-    echo ""
-    echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    echo ""
     add_socore_user_master
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_bond_nmcli >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
@@ -1849,6 +1969,7 @@ if (whiptail_you_sure); then
       salt-call state.apply schedule >> $SETUPLOG 2>&1
       salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
+        echo -e "XXX\n97\nInstalling The Hive... \nXXX"
         salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
@@ -1861,14 +1982,26 @@ if (whiptail_you_sure); then
     if [ $OS == 'centos' ]; then
       if [[ $GOODSETUP == '1' ]]; then
         whiptail_setup_complete
+        if [[ $THEHIVE == '1' ]]; then
+          check_hive_init_then_reboot
+        else
+          shutdown -r now
+        fi
       else
         whiptail_setup_failed
+        shutdown -r now
       fi
     else
       if [[ $GOODSETUP == '0' ]]; then
         whiptail_setup_complete
+        if [[ $THEHIVE == '1' ]]; then
+          check_hive_init_then_reboot
+        else
+          shutdown -r now
+        fi
       else
         whiptail_setup_failed
+        shutdown -r now
       fi
     fi
   fi
@@ -1905,6 +2038,7 @@ if (whiptail_you_sure); then
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    set_hostname
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -1946,26 +2080,28 @@ if (whiptail_you_sure); then
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
       whiptail_setup_complete
+      shutdown -r now
     else
       whiptail_setup_failed
+      shutdown -r now
     fi
 
-    set_initial_firewall_policy
-    saltify
-    docker_install
-    configure_minion node
-    set_node_type
-    node_pillar
-    copy_minion_pillar nodes
-    salt_checkin
+    #set_initial_firewall_policy
+    #saltify
+    #docker_install
+    #configure_minion node
+    #set_node_type
+    #node_pillar
+    #copy_minion_pillar nodes
+    #salt_checkin
     # Accept the Salt Key
-    accept_salt_key_remote
+    #accept_salt_key_remote
     # Do the big checkin but first let them know it will take a bit.
-    salt_checkin_message
-    salt_checkin
-    checkin_at_boot
+    #salt_checkin_message
+    #salt_checkin
+    #checkin_at_boot
 
-    whiptail_setup_complete
+    #whiptail_setup_complete
   fi
 
 else

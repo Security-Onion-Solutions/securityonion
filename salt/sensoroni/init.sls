@@ -29,13 +29,13 @@ sensoronisync:
 
 so-sensoroniimage:
   cmd.run:
-    - name: docker pull --disable-content-trust=false soshybridhunter/so-sensoroni:HH1.1.0
+    - name: docker pull --disable-content-trust=false soshybridhunter/so-sensoroni:HH1.1.1
 
 so-sensoroni:
   docker_container.running:
     - require:
       - so-sensoroniimage
-    - image: soshybridhunter/so-sensoroni:HH1.1.0
+    - image: soshybridhunter/so-sensoroni:HH1.1.1
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:

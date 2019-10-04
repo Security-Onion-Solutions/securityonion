@@ -148,13 +148,13 @@ lslogdir:
 # Add the container
 so-logstashimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-logstash:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-logstash:HH1.1.1
 
 so-logstash:
   docker_container.running:
     - require:
       - so-logstashimage
-    - image: soshybridhunter/so-logstash:HH1.1.0
+    - image: soshybridhunter/so-logstash:HH1.1.1
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -193,3 +193,7 @@ so-logstash:
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc
+      - file: /opt/so/conf/logstash/conf.enabled.txt
+      - file: /opt/so/conf/logstash/custom
+      #- file: /opt/so/conf/logstash/rulesets
+      - file: /opt/so/conf/logstash/dynamic

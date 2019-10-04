@@ -23,6 +23,13 @@ filebeatetcdir:
     - group: 939
     - makedirs: True
 
+filebeatlogdir:
+  file.directory:
+    - name: /opt/so/log/filebeat
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
@@ -51,18 +58,18 @@ filebeatconfsync:
 
 so-filebeatimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.1.1
 
 so-filebeat:
   docker_container.running:
     - require:
       - so-filebeatimage
-    - image: soshybridhunter/so-filebeat:HH1.1.0
+    - image: soshybridhunter/so-filebeat:HH1.1.1
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
     - binds:
-      - /opt/so/log/filebeat:/var/log/filebeat:rw
+      - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro

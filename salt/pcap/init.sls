@@ -96,13 +96,13 @@ stenolog:
 
 so-stenoimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-steno:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-steno:HH1.1.1
 
 so-steno:
   docker_container.running:
     - require:
       - so-stenoimage
-    - image: soshybridhunter/so-steno:HH1.1.0
+    - image: soshybridhunter/so-steno:HH1.1.1
     - network_mode: host
     - privileged: True
     - port_bindings:
@@ -116,6 +116,6 @@ so-steno:
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
       - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/stenographer:/opt/sensoroni/log:rw
+      - /opt/so/log/stenographer:/opt/sensoroni/logs:rw
     - watch:
       - /opt/so/conf/steno/sensoroni.json

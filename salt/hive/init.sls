@@ -33,13 +33,13 @@ hiveesdata:
 
 so-thehive-esimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.1.1
 
 so-thehive-es:
   docker_container.running:
     - require:
       - so-thehive-esimage
-    - image: soshybridhunter/so-thehive-es:HH1.1.0
+    - image: soshybridhunter/so-thehive-es:HH1.1.1
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -56,7 +56,6 @@ so-thehive-es:
       - transport.tcp.port=9500
       - transport.host=0.0.0.0
       - cluster.name=hive
-      - script.inline=true
       - thread_pool.index.queue_size=100000
       - thread_pool.search.queue_size=100000
       - thread_pool.bulk.queue_size=100000
@@ -81,13 +80,13 @@ so-thehive-es:
 
 so-thehiveimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.1.0
+   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.1.1
 
 so-thehive:
   docker_container.running:
     - require:
       - so-thehiveimage
-    - image: soshybridhunter/so-thehive:HH1.1.0
+    - image: soshybridhunter/so-thehive:HH1.1.1
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive
@@ -97,8 +96,9 @@ so-thehive:
       - /opt/so/conf/hive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
-    
+
 hivescript:
   cmd.script:
     - source: salt://hive/thehive/scripts/hive_init.sh
+    - cwd: /opt/so
     - template: jinja

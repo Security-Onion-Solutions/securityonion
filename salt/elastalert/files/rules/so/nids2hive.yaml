@@ -1,0 +1,50 @@
+{% set es = salt['pillar.get']('static:masterip', '') %}
+{% set hivehost = salt['pillar.get']('static:masterip', '') %}
+{% set hivekey = salt['pillar.get']('static:hivekey', '') %}
+# hive.yaml
+# Elastalert rule to forward IDS alerts from Security Onion to a specified TheHive instance.
+#
+es_host: {{es}}
+es_port: 9200
+name: NIDS-Alert
+type: frequency
+index: "*:logstash-ids*"
+num_events: 1
+timeframe:
+    minutes: 10
+buffer_time:
+    minutes: 10
+allow_buffer_time_overlap: true
+query_key: alert
+realert:
+    days: 1
+
+filter:
+- query:
+   query_string:
+      query: "event_type: ids AND NOT tags: _jsonparsefailure"
+
+alert: modules.so.thehive.TheHiveAlerter
+
+hive_connection:
+  hive_host: https://{{hivehost}}/thehive/
+  hive_apikey: {{hivekey}}
+
+hive_proxies:
+  http: ''
+  https: ''
+
+hive_alert_config:
+  title: '{match[alert]}'
+  type: 'external'
+  source: 'SecurityOnion'
+  description: "`NIDS Dashboard:` \n\n <https://{{es}}/kibana/app/kibana#/dashboard/ed6f7e20-e060-11e9-8f0c-2ddbf5ed9290?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),index:'*:logstash-*',interval:auto,query:(query_string:(analyze_wildcard:!t,query:'sid:{match[sid]}')),sort:!('@timestamp',desc))> \n\n `IPs: `{match[source_ip]}:{match[source_port]} --> {match[destination_ip]}:{match[destination_port]} \n\n `Signature:` {match[rule_signature]}"
+  severity: 2
+  tags: ['elastalert', 'SecurityOnion', 'NIDS']
+  tlp: 3
+  status: 'New'
+  follow: True
+
+hive_observable_data_mapping:
+  - ip: '{match[source_ip]}'
+  - ip: '{match[destination_ip]}'

@@ -113,6 +113,31 @@ http {
 
         }
 
+        location /playbook/ {
+          proxy_pass http://{{ masterip }}:3200/playbook/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
+
+        location /navigator/ {
+          auth_basic            "Security Onion";
+          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
+          proxy_pass http://{{ masterip }}:4200/navigator/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
         location /api/ {
           proxy_pass https://{{ masterip }}:8080/api/;
           proxy_read_timeout    90;
@@ -173,6 +198,8 @@ http {
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "Upgrade";
 
         }
 

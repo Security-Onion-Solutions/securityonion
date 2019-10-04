@@ -121,6 +121,10 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
 
+so-elasticsearch-pipelines:
+ cmd.run:
+   - name: /opt/so/saltstack/salt/elasticsearch/files/so-elasticsearch-pipelines {{ esclustername }}
+
 # Tell the main cluster I am here
 #curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
 
