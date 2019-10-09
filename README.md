@@ -35,7 +35,7 @@
 Evaluation Mode:
 
 - Single VM running Ubuntu 16.04 or CentOS 7
-- Minimum 8GB of RAM
+- Minimum 12GB of RAM
 - Minimum 4 CPU cores
 - Minimum 2 NICs
 
