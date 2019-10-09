@@ -6,6 +6,21 @@
 {%- elif grains['role'] == 'so-sensor' %}
 {%- set ip = salt['pillar.get']('sensor:mainip', '') %}
 {%- endif %}
+# Quick Fix for Docker being difficult
+iptables_fix_docker:
+  iptables.chain_present:
+    - name: DOCKER-USER
+    - table: filter
+
+# Add the Forward Rule since Docker ripped it out
+iptables_fix_fwd:
+  iptables.insert:
+    - table: filter
+    - chain: FORWARD
+    - jump: ACCEPT
+    - position: 1
+    - target: DOCKER-USER
+    
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
@@ -238,7 +253,7 @@ enable_master_playbook_3200_{{ip}}:
     - dport: 3200
     - position: 1
     - save: True
-    
+
 enable_master_navigator_4200_{{ip}}:
   iptables.insert:
     - table: filter
