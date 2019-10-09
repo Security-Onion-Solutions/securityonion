@@ -1,3 +1,9 @@
+## Hybrid Hunter Alpha 1.1.2
+
+- Quick firewall fix to address latest docker version.
+- Added the option to install playbook from the initial install.
+- Fixed an issue with multiple monitor interfaces not working properly.  
+
 ## Hybrid Hunter Alpha 1.1.1
 
 ### Changes:
