@@ -24,7 +24,9 @@ cat /etc/pki/fleet.crt /etc/pki/ca.crt > /etc/pki/launcher.crt
 #Create the output directory
 mkdir /opt/so/conf/fleet/packages
 
+#At some point we should version launcher `latest` to avoid hard pinning here
 docker run \
+  --rm \
   --mount type=bind,source=/opt/so/conf/fleet/packages,target=/output \
   --mount type=bind,source=/etc/pki/launcher.crt,target=/var/launcher/launcher.crt \
   soshybridhunter/so-fleet-launcher:HH1.1.0 "$esecret" "$1":8080
