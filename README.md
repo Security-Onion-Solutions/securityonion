@@ -56,7 +56,7 @@ Distributed:
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
 
-### Prerequisites for Netowrk Based Install
+### Prerequisites for Network Based Install
 
 Install git if using a Centos 7 Minimal install:
 
