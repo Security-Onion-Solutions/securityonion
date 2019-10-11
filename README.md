@@ -4,6 +4,10 @@
 - Added the option to install playbook from the initial install.
 - Fixed an issue with multiple monitor interfaces not working properly.  
 
+ISO Download: [HH 1.1.2-2](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.2/HH-1.1.2-2.iso)  
+MD5 (HH-1.1.2-2.iso) = abbbae7b40a50623546ed3d7f8cda0ec  
+
+
 ## Hybrid Hunter Alpha 1.1.1
 
 ### Changes:
@@ -40,19 +44,19 @@
 
 Evaluation Mode:
 
-- Single VM running Ubuntu 16.04 or CentOS 7
+- ISO or a Single VM running Ubuntu 16.04 or CentOS 7
 - Minimum 12GB of RAM
 - Minimum 4 CPU cores
 - Minimum 2 NICs
 
 Distributed:
 
-- 3 VMs running Ubuntu 16.04 or CentOS 7 (You can mix and match)
+- 3 VMs running the ISO or Ubuntu 16.04 or CentOS 7 (You can mix and match)
 - Minimum 8GB of RAM per VM
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
 
-### Prerequisites
+### Prerequisites for Netowrk Based Install
 
 Install git if using a Centos 7 Minimal install:
 
