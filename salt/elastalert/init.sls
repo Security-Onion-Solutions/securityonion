@@ -111,13 +111,13 @@ elastaconf:
 
 so-elastalertimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-elastalert:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elastalert:HH1.1.1
 
 so-elastalert:
   docker_container.running:
     - require:
       - so-elastalertimage
-    - image: soshybridhunter/so-elastalert:HH1.1.1
+    - image: docker.io/soshybridhunter/so-elastalert:HH1.1.1
     - hostname: elastalert
     - name: so-elastalert
     - user: elastalert

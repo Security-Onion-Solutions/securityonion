@@ -63,13 +63,13 @@ ruleslink:
 
 so-idstoolsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-idstools:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-idstools:HH1.1.0
 
 so-idstools:
   docker_container.running:
     - require:
       - so-idstoolsimage
-    - image: soshybridhunter/so-idstools:HH1.1.0
+    - image: docker.io/soshybridhunter/so-idstools:HH1.1.0
     - hostname: so-idstools
     - user: socore
     - binds:
