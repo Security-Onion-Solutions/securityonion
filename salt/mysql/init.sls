@@ -50,13 +50,13 @@ mysqldatadir:
 
 so-mysqlimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-mysql:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-mysql:HH1.1.0
 
 so-mysql:
   docker_container.running:
     - require:
       - so-mysqlimage
-    - image: soshybridhunter/so-mysql:HH1.1.0
+    - image: docker.io/soshybridhunter/so-mysql:HH1.1.0
     - hostname: so-mysql
     - user: socore
     - port_bindings:

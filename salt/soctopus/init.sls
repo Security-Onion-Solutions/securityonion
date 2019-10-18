@@ -40,13 +40,13 @@ navigatordefaultlayer:
 
 so-soctopusimage:
   cmd.run:
-    - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.1.1
+    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-soctopus:HH1.1.1
 
 so-soctopus:
   docker_container.running:
     - require:
       - so-soctopusimage
-    - image: soshybridhunter/so-soctopus:HH1.1.1
+    - image: docker.io/soshybridhunter/so-soctopus:HH1.1.1
     - hostname: soctopus
     - name: so-soctopus
     - binds:

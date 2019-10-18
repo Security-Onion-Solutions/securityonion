@@ -46,13 +46,13 @@ redisconfsync:
 
 so-redisimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-redis:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-redis:HH1.1.0
 
 so-redis:
   docker_container.running:
     - require:
       - so-redisimage
-    - image: soshybridhunter/so-redis:HH1.1.0
+    - image: docker.io/soshybridhunter/so-redis:HH1.1.0
     - hostname: so-redis
     - user: socore
     - port_bindings:

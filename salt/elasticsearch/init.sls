@@ -92,13 +92,13 @@ eslogdir:
 
 so-elasticsearchimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-elasticsearch:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
 
 so-elasticsearch:
   docker_container.running:
     - require:
       - so-elasticsearchimage
-    - image: soshybridhunter/so-elasticsearch:HH1.1.0
+    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -155,13 +155,13 @@ freqlogdir:
 
 so-freqimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-freqserver:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-freqserver:HH1.0.3
 
 so-freq:
   docker_container.running:
     - require:
       - so-freqimage
-    - image: soshybridhunter/so-freqserver:HH1.0.3
+    - image: docker.io/soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
     - name: so-freqserver
     - user: freqserver
@@ -197,13 +197,13 @@ dstatslogdir:
 
 so-domainstatsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-domainstats:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-domainstats:HH1.0.3
 
 so-domainstats:
   docker_container.running:
     - require:
       - so-domainstatsimage
-    - image: soshybridhunter/so-domainstats:HH1.0.3
+    - image: docker.io/soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
     - name: so-domainstats
     - user: domainstats
