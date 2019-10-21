@@ -25,7 +25,7 @@ m2cryptopkgs:
     - public_key: /etc/pki/influxdb.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/influxdb.key
@@ -42,7 +42,7 @@ m2cryptopkgs:
     - public_key: /etc/pki/filebeat.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/filebeat.key
@@ -75,7 +75,7 @@ fbcrtlink:
     - public_key: /etc/pki/registry.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/registry.key
@@ -90,7 +90,7 @@ fbcrtlink:
     - public_key: /etc/pki/masterssl.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/masterssl.key
@@ -103,7 +103,7 @@ fbcrtlink:
     - CN: {{ master }}
     - bits: 4096
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
 
 /etc/pki/fleet.crt:
@@ -112,7 +112,7 @@ fbcrtlink:
     - CN: {{ master }}
     - subjectAltName: DNS:{{ master }},IP:{{ masterip }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/fleet.key
@@ -135,7 +135,7 @@ fbcertdir:
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /opt/so/conf/filebeat/etc/pki/filebeat.key
