@@ -60,6 +60,20 @@ esconfdir:
     - group: 939
     - makedirs: True
 
+esconfdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - user: 930
+    - group: 939
+    - makedirs: True
+
+esingestconf:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - source: salt://elasticsearch/files/ingest
+    - user: 930
+    - group: 939
+
 eslog4jfile:
   file.managed:
     - name: /opt/so/conf/elasticsearch/log4j2.properties
@@ -121,9 +135,17 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
 
+so-elasticsearch-pipelines-file:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/files/so-elasticsearch-pipelines
+    - source: salt://elasticsearch/files/so-elasticsearch-pipelines
+    - user: 930
+    - group: 939
+    - mode: 754
+
 so-elasticsearch-pipelines:
  cmd.run:
-   - name: /opt/so/saltstack/salt/elasticsearch/files/so-elasticsearch-pipelines {{ esclustername }}
+   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
 
 # Tell the main cluster I am here
 #curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
