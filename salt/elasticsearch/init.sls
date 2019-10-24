@@ -60,7 +60,7 @@ esconfdir:
     - group: 939
     - makedirs: True
 
-esconfdir:
+esingestdir:
   file.directory:
     - name: /opt/so/conf/elasticsearch/ingest
     - user: 930
