@@ -137,7 +137,7 @@ so-elasticsearch:
 
 so-elasticsearch-pipelines-file:
   file.managed:
-    - name: /opt/so/conf/elasticsearch/files/so-elasticsearch-pipelines
+    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines
     - source: salt://elasticsearch/files/so-elasticsearch-pipelines
     - user: 930
     - group: 939
