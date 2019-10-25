@@ -1487,7 +1487,7 @@ whiptail_sensor_config() {
 whiptail_set_hostname() {
 
   HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the Hostname you would like to set." 10 60 localhost 3>&1 1>&2 2>&3)
+  "Enter the Hostname you would like to set." 10 60 $HOSTNAME 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
