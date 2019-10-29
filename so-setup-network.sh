@@ -17,6 +17,7 @@
 
 # Global Variable Section
 HOSTNAME=$(cat /etc/hostname)
+MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
@@ -35,16 +36,16 @@ date -u >$SETUPLOG 2>&1
 accept_salt_key_local() {
   echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
   # Accept the key locally on the master
-  salt-key -ya $HOSTNAME
+  salt-key -ya $MINION_ID
 
 }
 
 accept_salt_key_remote() {
   echo "Accept the key remotely on the master" >> $SETUPLOG 2>&1
   # Delete the key just in case.
-  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $HOSTNAME -y
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $MINION_ID -y
   salt-call state.apply ca
-  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $HOSTNAME -y
+  ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $MINION_ID -y
 
 }
 
@@ -238,7 +239,7 @@ configure_minion() {
   echo "role: so-$TYPE" > /etc/salt/grains
   if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
-    echo "id: $HOSTNAME" >> /etc/salt/minion
+    echo "id: $MINION_ID" >> /etc/salt/minion
     echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
     echo "mysql.port: 3306" >> /etc/salt/minion
     echo "mysql.user: 'root'" >> /etc/salt/minion
@@ -250,7 +251,7 @@ configure_minion() {
     fi
   else
     echo "master: $MSRV" > /etc/salt/minion
-    echo "id: $HOSTNAME" >> /etc/salt/minion
+    echo "id: $MINION_ID" >> /etc/salt/minion
 
   fi
 
@@ -274,7 +275,7 @@ copy_minion_pillar() {
 
   # Copy over the pillar
   echo "Copying the pillar over" >> $SETUPLOG 2>&1
-  scp -v -i /root/.ssh/so.key $TMP/$HOSTNAME.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$HOSTNAME.sls
+  scp -v -i /root/.ssh/so.key $TMP/$MINION_ID.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$MINION_ID.sls
 
   }
 
@@ -521,42 +522,42 @@ ls_heapsize() {
 master_pillar() {
 
   # Create the master pillar
-  touch /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "master:" > /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  touch /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "master:" > /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
 
   else
-    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   fi
-  echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  grafana: $GRAFANA" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
-  echo "  playbook: $PLAYBOOK" >> /opt/so/saltstack/pillar/masters/$HOSTNAME.sls
+  echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  grafana: $GRAFANA" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  playbook: $PLAYBOOK" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   }
 
 master_static() {
@@ -595,22 +596,22 @@ minio_generate_keys() {
 node_pillar() {
 
   # Create the node pillar
-  touch $TMP/$HOSTNAME.sls
-  echo "node:" > $TMP/$HOSTNAME.sls
-  echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
-  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
-  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
-  echo "  esclustername: {{ grains.host }}" >> $TMP/$HOSTNAME.sls
-  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$HOSTNAME.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$HOSTNAME.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$HOSTNAME.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$HOSTNAME.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$HOSTNAME.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$HOSTNAME.sls
-  echo "  node_type: $NODETYPE" >> $TMP/$HOSTNAME.sls
-  echo "  es_port: $NODE_ES_PORT" >> $TMP/$HOSTNAME.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$HOSTNAME.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$HOSTNAME.sls
+  touch $TMP/$MINION_ID.sls
+  echo "node:" > $TMP/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
+  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$MINION_ID.sls
+  echo "  esclustername: {{ grains.host }}" >> $TMP/$MINION_ID.sls
+  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$MINION_ID.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$MINION_ID.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$MINION_ID.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$MINION_ID.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$MINION_ID.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$MINION_ID.sls
+  echo "  node_type: $NODETYPE" >> $TMP/$MINION_ID.sls
+  echo "  es_port: $NODE_ES_PORT" >> $TMP/$MINION_ID.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$MINION_ID.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$MINION_ID.sls
 
 }
 
@@ -922,36 +923,36 @@ salt_master_directories() {
 sensor_pillar() {
 
   # Create the sensor pillar
-  touch $TMP/$HOSTNAME.sls
-  echo "sensor:" > $TMP/$HOSTNAME.sls
-  echo "  interface: bond0" >> $TMP/$HOSTNAME.sls
-  echo "  mainip: $MAINIP" >> $TMP/$HOSTNAME.sls
-  echo "  mainint: $MAININT" >> $TMP/$HOSTNAME.sls
+  touch $TMP/$MINION_ID.sls
+  echo "sensor:" > $TMP/$MINION_ID.sls
+  echo "  interface: bond0" >> $TMP/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> $TMP/$HOSTNAME.sls
+    echo "  bro_pins:" >> $TMP/$MINION_ID.sls
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> $TMP/$HOSTNAME.sls
+    echo "    - $PIN" >> $TMP/$MINION_ID.sls
     done
-    echo "  suripins:" >> $TMP/$HOSTNAME.sls
+    echo "  suripins:" >> $TMP/$MINION_ID.sls
     for SPIN in $SURIPINS; do
       SPIN=$(echo $SPIN |  cut -d\" -f2)
-    echo "    - $SPIN" >> $TMP/$HOSTNAME.sls
+    echo "    - $SPIN" >> $TMP/$MINION_ID.sls
     done
   else
-    echo "  bro_lbprocs: $BASICBRO" >> $TMP/$HOSTNAME.sls
-    echo "  suriprocs: $BASICSURI" >> $TMP/$HOSTNAME.sls
+    echo "  bro_lbprocs: $BASICBRO" >> $TMP/$MINION_ID.sls
+    echo "  suriprocs: $BASICSURI" >> $TMP/$MINION_ID.sls
   fi
-  echo "  brobpf:" >> $TMP/$HOSTNAME.sls
-  echo "  pcapbpf:" >> $TMP/$HOSTNAME.sls
-  echo "  nidsbpf:" >> $TMP/$HOSTNAME.sls
-  echo "  master: $MSRV" >> $TMP/$HOSTNAME.sls
-  echo "  mtu: $MTU" >> $TMP/$HOSTNAME.sls
+  echo "  brobpf:" >> $TMP/$MINION_ID.sls
+  echo "  pcapbpf:" >> $TMP/$MINION_ID.sls
+  echo "  nidsbpf:" >> $TMP/$MINION_ID.sls
+  echo "  master: $MSRV" >> $TMP/$MINION_ID.sls
+  echo "  mtu: $MTU" >> $TMP/$MINION_ID.sls
   if [ $HNSENSOR != 'inherit' ]; then
-  echo "  hnsensor: $HNSENSOR" >> $TMP/$HOSTNAME.sls
+  echo "  hnsensor: $HNSENSOR" >> $TMP/$MINION_ID.sls
   fi
-  echo "  access_key: $ACCESS_KEY" >> $TMP/$HOSTNAME.sls
-  echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$HOSTNAME.sls
+  echo "  access_key: $ACCESS_KEY" >> $TMP/$MINION_ID.sls
+  echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$MINION_ID.sls
 
 }
 
@@ -970,7 +971,7 @@ set_initial_firewall_policy() {
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+    /opt/so/saltstack/pillar/data/addtotab.sh mastertab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
@@ -978,19 +979,19 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'STORAGENODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $HOSTNAME $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
