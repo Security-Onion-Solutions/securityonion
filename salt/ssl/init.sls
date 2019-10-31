@@ -1,12 +1,13 @@
 {% set master = salt['grains.get']('master') %}
+{% set master_minion_id = master.split(".")[0] %}
 {%- set masterip = salt['pillar.get']('static:masterip', '') -%}
 
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
-    {% set trusttheca_text =  salt['mine.get'](master, 'x509.get_pem_entries')[master]['/etc/pki/ca.crt']|replace('\n', '') %}
-    {% set ca_server = master %}
+    {% set trusttheca_text =  salt['mine.get'](master_minion_id, 'x509.get_pem_entries')[master_minion_id]['/etc/pki/ca.crt']|replace('\n', '') %}
+    {% set ca_server = master_minion_id %}
 {% endif %}
 
 # Trust the CA
