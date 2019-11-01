@@ -1,15 +1,24 @@
 {% set master = salt['grains.get']('master') %}
+{% set master_minion_id = master.split(".")[0] %}
 {%- set masterip = salt['pillar.get']('static:masterip', '') -%}
+
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+    {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
+    {% set ca_server = grains.id %}
+{% else %}
+    {% set trusttheca_text =  salt['mine.get'](master_minion_id, 'x509.get_pem_entries')[master_minion_id]['/etc/pki/ca.crt']|replace('\n', '') %}
+    {% set ca_server = master_minion_id %}
+{% endif %}
 
 # Trust the CA
 
 trusttheca:
   x509.pem_managed:
     - name: /etc/ssl/certs/intca.crt
-    - text:  {{ salt['mine.get'](master, 'x509.get_pem_entries')[master]['/etc/pki/ca.crt']|replace('\n', '') }}
+    - text:  {{ trusttheca_text }}
 
-# Install packages needed for the sensor
 {% if grains['os'] != 'CentOS' %}
+# Install packages needed for the sensor
 m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
@@ -20,12 +29,12 @@ m2cryptopkgs:
 # Create a cert for the talking to influxdb
 /etc/pki/influxdb.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
+    - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/influxdb.key
@@ -37,12 +46,12 @@ m2cryptopkgs:
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
+    - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/filebeat.key
@@ -70,12 +79,12 @@ fbcrtlink:
 # Create a cert for the docker registry
 /etc/pki/registry.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
+    - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/registry.key
@@ -85,12 +94,12 @@ fbcrtlink:
 # Create a cert for the reverse proxy
 /etc/pki/masterssl.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
+    - ca_server: {{ ca_server }}
     - signing_policy: masterssl
     - public_key: /etc/pki/masterssl.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/masterssl.key
@@ -103,7 +112,7 @@ fbcrtlink:
     - CN: {{ master }}
     - bits: 4096
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
 
 /etc/pki/fleet.crt:
@@ -112,7 +121,7 @@ fbcrtlink:
     - CN: {{ master }}
     - subjectAltName: DNS:{{ master }},IP:{{ masterip }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /etc/pki/fleet.key
@@ -130,12 +139,12 @@ fbcertdir:
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
   x509.certificate_managed:
-    - ca_server: {{ master }}
+    - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ master }}
     - days_remaining: 0
-    - days_valid: 3650
+    - days_valid: 820
     - backup: True
     - managed_private_key:
         name: /opt/so/conf/filebeat/etc/pki/filebeat.key

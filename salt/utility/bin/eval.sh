@@ -1,5 +1,4 @@
 {%- set ES = salt['pillar.get']('master:mainip', '') -%}
-{%- set MASTER = grains['master'] %}
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
 COUNT=0
@@ -27,4 +26,4 @@ fi
 echo "Applying cross cluster search config..."
     curl -s -XPUT http://{{ ES }}:9200/_cluster/settings \
          -H 'Content-Type: application/json' \
-         -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MASTER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
+         -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ grains.id }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"

@@ -41,7 +41,7 @@ wazuhpkgs:
  pkg.installed:
    - skip_suggestions: False
    - pkgs:
-     - wazuh-agent
+     - wazuh-agent: 3.10.2-1
 
 # Add Wazuh agent conf
 wazuhagentconf:
