@@ -264,6 +264,17 @@ enable_master_navigator_4200_{{ip}}:
     - dport: 4200
     - position: 1
     - save: True
+ 
+enable_master_cortex_9001_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9001
+    - position: 1
+    - save: True 
 
 {% endfor %}
 
