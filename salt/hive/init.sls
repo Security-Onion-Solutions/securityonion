@@ -88,16 +88,15 @@ so-thehive-es:
 
 # Install Cortex
 
-#so-corteximage:
-# cmd.run:
-#   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cortex:HH1.1.1
+so-corteximage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cortex:HH1.1.1
 
 so-cortex:
   docker_container.running:
-#    - require:
-#      - so-corteximage
-#    - image: docker.io/soshybridhunter/so-cortex:HH1.1.1
-    - image: so-cortex:dev
+    - require:
+      - so-corteximage
+    - image: docker.io/soshybridhunter/so-cortex:HH1.1.1
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
