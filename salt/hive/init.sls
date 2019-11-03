@@ -90,13 +90,13 @@ so-thehive-es:
 
 so-corteximage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cortex:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cortex:HH1.1.3
 
 so-cortex:
   docker_container.running:
     - require:
       - so-corteximage
-    - image: docker.io/soshybridhunter/so-cortex:HH1.1.1
+    - image: docker.io/soshybridhunter/so-cortex:HH1.1.3
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
