@@ -967,7 +967,7 @@ set_hostname() {
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ]; then
-    if [[ $TESTHOST = *"not found"* ]]; then
+    if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
         echo "$MSRVIP   $MSRV" >> /etc/hosts
       fi
