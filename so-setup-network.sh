@@ -578,7 +578,7 @@ master_static() {
   echo "  hivekey: $HIVEKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexuser: cortexadmin" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexpassword: cortexchangeme" >> /opt/so/saltstack/pillar/static.sls
-  echo "  cortexkey: $CORTEXKEY" >> /opt/so/saltstack/pillar/static.sls  
+  echo "  cortexkey: $CORTEXKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
@@ -966,6 +966,11 @@ set_hostname() {
   echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ]; then
+    if [[ $TESTHOST = *"not found"* ]]; then
+      add_master_hostfile
+    fi
+  fi
 
 }
 
@@ -1311,9 +1316,9 @@ whiptail_management_server() {
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
 
-  if [[ $TESTHOST = *"not found"* ]]; then
-    add_master_hostfile
-  fi
+  #if [[ $TESTHOST = *"not found"* ]]; then
+  #  add_master_hostfile
+  #fi
 
 
   local exitstatus=$?
