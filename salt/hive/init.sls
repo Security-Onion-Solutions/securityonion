@@ -20,7 +20,7 @@ hiveconf:
     - user: 939
     - group: 939
     - template: jinja
-    
+
 cortexconfdir:
   file.directory:
     - name: /opt/so/conf/cortex
@@ -90,13 +90,13 @@ so-thehive-es:
 
 so-corteximage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cortex:HH1.1.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
 
 so-cortex:
   docker_container.running:
     - require:
       - so-corteximage
-    - image: docker.io/soshybridhunter/so-cortex:HH1.1.3
+    - image: docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
@@ -104,7 +104,7 @@ so-cortex:
       - /opt/so/conf/hive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
-    
+
 cortexscript:
   cmd.script:
     - source: salt://hive/thehive/scripts/cortex_init.sh
