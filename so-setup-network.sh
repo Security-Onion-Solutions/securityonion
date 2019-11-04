@@ -1318,7 +1318,7 @@ whiptail_management_server() {
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
 
-  if [[ $TESTHOST = *"not found"* ]]; then
+  if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
     add_master_hostfile
   fi
 
