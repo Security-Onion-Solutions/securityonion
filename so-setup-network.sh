@@ -56,9 +56,9 @@ add_master_hostfile() {
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
   # Add the master to the host file if it doesn't resolve
-  if ! grep -q $MSRVIP /etc/hosts; then
-    echo "$MSRVIP   $MSRV" >> /etc/hosts
-  fi
+  #if ! grep -q $MSRVIP /etc/hosts; then
+  #  echo "$MSRVIP   $MSRV" >> /etc/hosts
+  #fi
 }
 
 add_socore_user_master() {
@@ -968,7 +968,9 @@ set_hostname() {
   echo $HOSTNAME > /etc/hostname
   if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ]; then
     if [[ $TESTHOST = *"not found"* ]]; then
-      add_master_hostfile
+      if ! grep -q $MSRVIP /etc/hosts; then
+        echo "$MSRVIP   $MSRV" >> /etc/hosts
+      fi
     fi
   fi
 
@@ -1316,9 +1318,9 @@ whiptail_management_server() {
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
 
-  #if [[ $TESTHOST = *"not found"* ]]; then
-  #  add_master_hostfile
-  #fi
+  if [[ $TESTHOST = *"not found"* ]]; then
+    add_master_hostfile
+  fi
 
 
   local exitstatus=$?
