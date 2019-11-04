@@ -1,19 +1,19 @@
 base:
   'G@role:so-sensor':
-    - sensors.{{ grains.host }}
+    - sensors.{{ grains.id }}
     - static
     - firewall.*
     - brologs
 
   'G@role:so-master':
-    - masters.{{ grains.host }}
+    - masters.{{ grains.id }}
     - static
     - firewall.*
     - data.*
     - auth
 
   'G@role:so-eval':
-    - masters.{{ grains.host }}
+    - masters.{{ grains.id }}
     - static
     - firewall.*
     - data.*
@@ -21,6 +21,6 @@ base:
     - auth
 
   'G@role:so-node':
-    - nodes.{{ grains.host }}
+    - nodes.{{ grains.id }}
     - static
     - firewall.*
