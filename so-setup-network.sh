@@ -52,7 +52,7 @@ accept_salt_key_remote() {
 add_master_hostfile() {
   echo "Checking if I can resolve master. If not add to hosts file" >> $SETUPLOG 2>&1
   # Pop up an input to get the IP address
-  local MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
+  MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
   # Add the master to the host file if it doesn't resolve
