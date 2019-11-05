@@ -645,7 +645,7 @@ patch_pillar() {
         for psh in "${PATCHSCHEDULEHOURS[@]}"
         do
           psh=$(echo $psh | sed 's/"//g')
-          echo "        - $psh" >> $OSPATCHPILLAR
+          echo "        - '$psh'" >> $OSPATCHPILLAR
         done
       done
       ;;
