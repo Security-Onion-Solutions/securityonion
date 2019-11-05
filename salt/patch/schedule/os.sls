@@ -6,10 +6,10 @@ patch_os_schedule:
     - job_args:
       - patch.os
     - when:
-  {% for day in pillar['patch']['os']['schedule'] %}
-    {% for day, time in day.iteritems() %}
-      {% for each_time in time %}
-        - {{day}} {{each_time}}
+  {% for days in pillar['patch']['os']['schedule'] %}
+    {% for day, times in days.iteritems() %}
+      {% for time in times %}
+        - {{day}} {{time}}
       {% endfor %}
     {% endfor %}
   {% endfor %}
