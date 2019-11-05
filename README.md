@@ -5,8 +5,10 @@
 - Fixed an issue with multiple monitor interfaces not working properly.  
 
 ISO Download: [HH 1.1.2-2](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.2/HH-1.1.2-2.iso)  
-MD5 (HH-1.1.2-2.iso) = abbbae7b40a50623546ed3d7f8cda0ec  
-
+(Hashes for HH-1.1.2-2.iso)
+MD5 = ABBBAE7B40A50623546ED3D7F8CDA0EC  
+SHA1 = 3122C564E616BFF529B80BB06447759D775A5B1D
+SHA256 = E9AD121F62C72B70D53C7DFD07178FDA6E28D97086036C632A7DD68F7C2172D6
 
 ## Hybrid Hunter Alpha 1.1.1
 
