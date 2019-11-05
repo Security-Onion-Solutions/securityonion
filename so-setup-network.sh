@@ -619,6 +619,42 @@ node_pillar() {
 
 }
 
+patch_pillar() {
+  OSPATCHPILLARDIR="$TMP/patch/os"
+  OSPATCHPILLAR="$OSPATCHPILLARDIR/$MINION_ID.sls"
+
+  if [ ! -d $OSPATCHPILLARDIR ] ; then
+    mkdir -p $OSPATCHPILLARDIR
+  fi
+  touch $OSPATCHPILLAR
+  echo "patch:" > $OSPATCHPILLAR
+  case $PATCHSCHEDULE in
+    Scheduled)
+      echo "  os:" >> $OSPATCHPILLAR
+      echo "    schedule:" >> $OSPATCHPILLAR
+      for psd in "${PATCHSCHEDULEDAYS[@]}"
+      do
+        psd=$(echo $psd | sed 's/"//g')
+        echo "      - $psd:" >> $OSPATCHPILLAR
+        for psh in "${PATCHSCHEDULEHOURS[@]}"
+        do
+          psh=$(echo $psh | sed 's/"//g')
+          echo "        - $psh" >> $OSPATCHPILLAR
+        done
+      done
+      ;;
+    Automatic)
+      echo "  os:" >> $OSPATCHPILLAR
+      echo "    schedule: auto" >> $OSPATCHPILLAR
+      ;;
+    Manual)
+      echo "  os:" >> $OSPATCHPILLAR
+      echo "    schedule: manual" >> $OSPATCHPILLAR
+      ;;
+  esac
+
+}
+
 process_components() {
   CLEAN=${COMPONENTS//\"}
   GRAFANA=0
@@ -1469,6 +1505,69 @@ whiptail_passwords_dont_match() {
 
 }
 
+whiptail_patch_schedule() {
+
+  # What kind of patch schedule are we doing?
+  PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 25 75 5 \
+  "Automatic" "Package updates will be installed automatically" ON \
+  "Manual" "Package updates will need to be installed manually" OFF \
+  "Scheduled" "Select a schedule on the following screen" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_patch_schedule_select_days() {
+   # Select the days to patch
+  PATCHSCHEDULEDAYS=($(whiptail --title "Security Onion Setup" --checklist \
+  "Which days do you want to apply OS patches?" 20 55 9 \
+  "Monday" "" OFF \
+  "Tuesday" "" ON \
+  "Wednesday" "" OFF \
+  "Thursday" "" OFF \
+  "Friday" "" OFF \
+  "Saturday" "" OFF \
+  "Sunday" "" OFF 3>&1 1>&2 2>&3 ))
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_patch_schedule_select_hours() {
+   # Select the hours to patch
+  PATCHSCHEDULEHOURS=($(whiptail --title "Security Onion Setup" --checklist \
+  "At which time, UTC, do you want to apply OS patches on the selected days?" 35 55 26 \
+  "00:00" "" OFF \
+  "01:00" "" OFF \
+  "02:00" "" OFF \
+  "03:00" "" OFF \
+  "04:00" "" OFF \
+  "05:00" "" OFF \
+  "06:00" "" OFF \
+  "07:00" "" OFF \
+  "08:00" "" OFF \
+  "09:00" "" OFF \
+  "10:00" "" OFF \
+  "11:00" "" OFF \
+  "12:00" "" OFF \
+  "13:00" "" OFF \
+  "14:00" "" OFF \
+  "15:00" "" ON \
+  "16:00" "" OFF \
+  "17:00" "" OFF \
+  "18:00" "" OFF \
+  "19:00" "" OFF \
+  "20:00" "" OFF \
+  "21:00" "" OFF \
+  "22:00" "" OFF \
+  "23:00" "" OFF 3>&1 1>&2 2>&3 ))
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_rule_setup() {
 
   # Get pulled pork info
@@ -1608,6 +1707,14 @@ if (whiptail_you_sure); then
 
   # What kind of install are we doing?
   whiptail_install_type
+
+  # How do we want to handle OS patching? manual, auto or scheduled days and hours
+  whiptail_patch_schedule
+  if [[ $PATCHSCHEDULE == "Scheduled" ]] ; then
+    whiptail_patch_schedule_select_days
+    whiptail_patch_schedule_select_hours
+  fi
+  patch_pillar
 
   ####################
   ##     Master     ##
