@@ -268,14 +268,15 @@ copy_master_config() {
 
 }
 
-copy_minion_pillar() {
+copy_minion_pillars() {
 
-  # Pass the type so it knows where to copy the pillar
-  local TYPE=$1
-
-  # Copy over the pillar
-  echo "Copying the pillar over" >> $SETUPLOG 2>&1
-  scp -v -i /root/.ssh/so.key $TMP/$MINION_ID.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$MINION_ID.sls
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    echo "rsyncing TMP pillar files to pillar base" >> $SETUPLOG 2>&1
+    rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+  else
+    echo "scp TMP pillar files to pillar base on master" >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/pillar socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
+  fi
 
   }
 
@@ -599,28 +600,33 @@ minio_generate_keys() {
 
 node_pillar() {
 
+  NODEPILLARPATH=$TMP/pillar/nodes
+  if [ ! -d $NODEPILLARPATH ]; then
+    mkdir -p $NODEPILLARPATH
+  fi
+
   # Create the node pillar
-  touch $TMP/$MINION_ID.sls
-  echo "node:" > $TMP/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
-  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$MINION_ID.sls
-  echo "  esclustername: {{ grains.host }}" >> $TMP/$MINION_ID.sls
-  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$MINION_ID.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$MINION_ID.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$MINION_ID.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$MINION_ID.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$MINION_ID.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$MINION_ID.sls
-  echo "  node_type: $NODETYPE" >> $TMP/$MINION_ID.sls
-  echo "  es_port: $NODE_ES_PORT" >> $TMP/$MINION_ID.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$MINION_ID.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$MINION_ID.sls
+  touch $NODEPILLARPATH/$MINION_ID.sls
+  echo "node:" > $NODEPILLARPATH/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  esclustername: {{ grains.host }}" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  node_type: $NODETYPE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  es_port: $NODE_ES_PORT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $NODEPILLARPATH/$MINION_ID.sls
 
 }
 
 patch_pillar() {
-  OSPATCHPILLARDIR="$TMP/patch/os"
+  OSPATCHPILLARDIR="$TMP/pillar/patch/os"
   OSPATCHPILLAR="$OSPATCHPILLARDIR/$MINION_ID.sls"
 
   if [ ! -d $OSPATCHPILLARDIR ] ; then
@@ -962,37 +968,42 @@ salt_master_directories() {
 
 sensor_pillar() {
 
+  SENSORPILLARPATH=$TMP/pillar/sensors
+  if [ ! -d $SENSORPILLARPATH ]; then
+    mkdir -p $SENSORPILLARPATH
+  fi
+
   # Create the sensor pillar
-  touch $TMP/$MINION_ID.sls
-  echo "sensor:" > $TMP/$MINION_ID.sls
-  echo "  interface: bond0" >> $TMP/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
+  touch $SENSORPILLARPATH/$MINION_ID.sls
+  echo "sensor:" > $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  interface: bond0" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $SENSORPILLARPATH/$MINION_ID.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> $TMP/$MINION_ID.sls
+    echo "  bro_pins:" >> $SENSORPILLARPATH/$MINION_ID.sls
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> $TMP/$MINION_ID.sls
+    echo "    - $PIN" >> $SENSORPILLARPATH/$MINION_ID.sls
     done
-    echo "  suripins:" >> $TMP/$MINION_ID.sls
+    echo "  suripins:" >> $SENSORPILLARPATH/$MINION_ID.sls
     for SPIN in $SURIPINS; do
       SPIN=$(echo $SPIN |  cut -d\" -f2)
-    echo "    - $SPIN" >> $TMP/$MINION_ID.sls
+    echo "    - $SPIN" >> $SENSORPILLARPATH/$MINION_ID.sls
     done
   else
-    echo "  bro_lbprocs: $BASICBRO" >> $TMP/$MINION_ID.sls
-    echo "  suriprocs: $BASICSURI" >> $TMP/$MINION_ID.sls
+    echo "  bro_lbprocs: $BASICBRO" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  suriprocs: $BASICSURI" >> $SENSORPILLARPATH/$MINION_ID.sls
   fi
-  echo "  brobpf:" >> $TMP/$MINION_ID.sls
-  echo "  pcapbpf:" >> $TMP/$MINION_ID.sls
-  echo "  nidsbpf:" >> $TMP/$MINION_ID.sls
-  echo "  master: $MSRV" >> $TMP/$MINION_ID.sls
-  echo "  mtu: $MTU" >> $TMP/$MINION_ID.sls
+  echo "  brobpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  pcapbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  nidsbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  master: $MSRV" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mtu: $MTU" >> $SENSORPILLARPATH/$MINION_ID.sls
   if [ $HNSENSOR != 'inherit' ]; then
-  echo "  hnsensor: $HNSENSOR" >> $TMP/$MINION_ID.sls
+  echo "  hnsensor: $HNSENSOR" >> $SENSORPILLARPATH/$MINION_ID.sls
   fi
-  echo "  access_key: $ACCESS_KEY" >> $TMP/$MINION_ID.sls
-  echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$MINION_ID.sls
+  echo "  access_key: $ACCESS_KEY" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  access_secret: $ACCESS_SECRET" >>  $SENSORPILLARPATH/$MINION_ID.sls
 
 }
 
@@ -1811,6 +1822,8 @@ if (whiptail_you_sure); then
       echo "** Generating the master pillar **" >> $SETUPLOG
       master_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n30\nAccepting Salt Keys... \nXXX"
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_pillars >> $SETUPLOG 2>&1
       # Do a checkin to push the key up
       echo "** Pushing the key up to Master **" >> $SETUPLOG
       salt_firstcheckin >> $SETUPLOG 2>&1
@@ -1931,8 +1944,8 @@ if (whiptail_you_sure); then
       docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
       configure_minion sensor >> $SETUPLOG 2>&1
-      echo -e "XXX\n24\nCopying Sensor Pillar to Master... \nXXX"
-      copy_minion_pillar sensors >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_pillars >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
@@ -2044,6 +2057,8 @@ if (whiptail_you_sure); then
       node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_pillars >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nRegistering agent... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n11\nAccepting Agent... \nXXX"
@@ -2185,7 +2200,8 @@ if (whiptail_you_sure); then
       configure_minion node >> $SETUPLOG 2>&1
       set_node_type >> $SETUPLOG 2>&1
       node_pillar >> $SETUPLOG 2>&1
-      copy_minion_pillar nodes >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_pillars >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       # Accept the Salt Key
