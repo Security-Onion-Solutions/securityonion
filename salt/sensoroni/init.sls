@@ -41,7 +41,7 @@ so-sensoroni:
     - binds:
       - /nsm/sensoroni/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/sensoroni/:/opt/sensoroni/log/:rw
+      - /opt/so/log/sensoroni/:/opt/sensoroni/logs/:rw
     - port_bindings:
       - 0.0.0.0:9822:9822
     - watch:
