@@ -14,8 +14,8 @@ patch_os_schedule:
     {% endfor %}
   {% endfor %}
     - splay:
-        start: 5
-        end: 10
+        start: 30
+        end: 120
 
 {% elif salt['pillar.get']('patch:os:schedule') == 'auto' %}
 
