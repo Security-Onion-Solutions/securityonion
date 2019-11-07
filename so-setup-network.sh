@@ -1530,9 +1530,12 @@ whiptail_passwords_dont_match() {
 }
 
 whiptail_patch_name_new_schedule() {
+
+  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
   
-  unset PATCHSCHEDULENAME
   while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 65
     PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
     "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
   done
