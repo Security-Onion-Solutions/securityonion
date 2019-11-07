@@ -255,6 +255,9 @@ configure_minion() {
 
   fi
 
+  echo "use_superseded:" >> /etc/salt/minion
+  echo "  - module.run" >> /etc/salt/minion
+
   service salt-minion restart
 
 }
