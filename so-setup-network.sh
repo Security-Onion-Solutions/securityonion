@@ -1532,12 +1532,17 @@ whiptail_passwords_dont_match() {
 whiptail_patch_name_new_schedule() {
 
   PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+  "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 105 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
   
   while [[ -z "$PATCHSCHEDULENAME"  ]]; do
     whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 65
     PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-    "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+    "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 105 3>&1 1>&2 2>&3)
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
   done
 
 
@@ -1561,18 +1566,20 @@ whiptail_patch_schedule() {
 whiptail_patch_schedule_import() {
 
   unset PATCHSCHEDULENAME
-  # Ask to inherit from master
-  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the OS patch schedule from the master?" 8 78
+  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3) 
 
   local exitstatus=$?
-  if [ $exitstatus == 0 ]; then
-    PATCHSCHEDULENAME=default
-  else
-    while [[ -z "$PATCHSCHEDULENAME"  ]]; do
-      PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-      "Enter the name of the OS patch schedule you want to inherit. If you leave this as default, it will use the same schedule as the master. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 default 3>&1 1>&2 2>&3)
-    done
-  fi
+  whiptail_check_exitstatus $exitstatus
+  
+  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 65
+    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3)
+     
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+  done
 
 }
 
