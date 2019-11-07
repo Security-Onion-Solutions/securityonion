@@ -1,7 +1,4 @@
 base:
-  '*':
-    - patch.os.{{ grains.id }}
-
   'G@role:so-sensor':
     - sensors.{{ grains.id }}
     - static

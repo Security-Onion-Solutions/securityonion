@@ -6,7 +6,7 @@
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
   '*':
-    - patch.schedule.os
+    - patch.os.schedule
 
   'G@role:so-sensor':
     - ca

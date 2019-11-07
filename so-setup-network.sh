@@ -268,14 +268,14 @@ copy_master_config() {
 
 }
 
-copy_minion_pillars() {
+copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "rsyncing TMP pillar files to pillar base" >> $SETUPLOG 2>&1
-    rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+    echo "rsyncing all files in $TMP to /opt/so/saltstack" >> $SETUPLOG 2>&1
+    rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
   else
-    echo "scp TMP pillar files to pillar base on master" >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP/pillar socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
+    echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
   fi
 
   }
@@ -626,38 +626,51 @@ node_pillar() {
 }
 
 patch_pillar() {
-  OSPATCHPILLARDIR="$TMP/pillar/patch/os"
-  OSPATCHPILLAR="$OSPATCHPILLARDIR/$MINION_ID.sls"
 
-  if [ ! -d $OSPATCHPILLARDIR ] ; then
-    mkdir -p $OSPATCHPILLARDIR
+  case $INSTALLTYPE in
+    MASTERONLY | EVALMODE)
+      PATCHPILLARPATH=/opt/so/saltstack/pillar/masters
+      ;;
+    SENSORONLY)
+      PATCHPILLARPATH=$SENSORPILLARPATH
+      ;;
+    STORAGENODE | PARSINGNODE | HOTNODE | WARMNODE)
+      PATCHPILLARPATH=$NODEPILLARPATH
+      ;;
+  esac
+  
+
+  echo "" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "patch:" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "  os:" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    schedule_name: $PATCHSCHEDULENAME" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    enabled: True" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    splay: 300" >> $PATCHPILLARPATH/$MINION_ID.sls
+
+
+}
+
+patch_schedule_os_new() {
+  OSPATCHSCHEDULEDIR="$TMP/salt/patch/os/schedules"
+  OSPATCHSCHEDULE="$OSPATCHSCHEDULEDIR/$PATCHSCHEDULENAME.yml"
+
+  if [ ! -d $OSPATCHSCHEDULEDIR ] ; then
+    mkdir -p $OSPATCHSCHEDULEDIR
   fi
-  touch $OSPATCHPILLAR
-  echo "patch:" > $OSPATCHPILLAR
-  case $PATCHSCHEDULE in
-    Scheduled)
-      echo "  os:" >> $OSPATCHPILLAR
-      echo "    schedule:" >> $OSPATCHPILLAR
+
+  echo "patch:" > $OSPATCHSCHEDULE
+      echo "  os:" >> $OSPATCHSCHEDULE
+      echo "    schedule:" >> $OSPATCHSCHEDULE
       for psd in "${PATCHSCHEDULEDAYS[@]}"
       do
         psd=$(echo $psd | sed 's/"//g')
-        echo "      - $psd:" >> $OSPATCHPILLAR
+        echo "      - $psd:" >> $OSPATCHSCHEDULE
         for psh in "${PATCHSCHEDULEHOURS[@]}"
         do
           psh=$(echo $psh | sed 's/"//g')
-          echo "        - '$psh'" >> $OSPATCHPILLAR
+          echo "        - '$psh'" >> $OSPATCHSCHEDULE
         done
       done
-      ;;
-    Automatic)
-      echo "  os:" >> $OSPATCHPILLAR
-      echo "    schedule: auto" >> $OSPATCHPILLAR
-      ;;
-    Manual)
-      echo "  os:" >> $OSPATCHPILLAR
-      echo "    schedule: manual" >> $OSPATCHPILLAR
-      ;;
-  esac
 
 }
 
@@ -1516,17 +1529,47 @@ whiptail_passwords_dont_match() {
 
 }
 
+whiptail_patch_name_new_schedule() {
+  
+  unset PATCHSCHEDULENAME
+  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+  done
+
+
+}
+
 whiptail_patch_schedule() {
 
   # What kind of patch schedule are we doing?
   PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 25 75 5 \
+  "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 25 115 5 \
   "Automatic" "Package updates will be installed automatically" ON \
   "Manual" "Package updates will need to be installed manually" OFF \
-  "Scheduled" "Select a schedule on the following screen" OFF 3>&1 1>&2 2>&3 )
+  "Import Schedule" "Enter the name of an existing schedule on the following screen and inherit it" OFF \
+  "New Schedule" "Configure and name a new schedule on the following screen" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_patch_schedule_import() {
+
+  unset PATCHSCHEDULENAME
+  # Ask to inherit from master
+  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the OS patch schedule from the master?" 8 78
+
+  local exitstatus=$?
+  if [ $exitstatus == 0 ]; then
+    PATCHSCHEDULENAME=default
+  else
+    while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+      PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+      "Enter the name of the OS patch schedule you want to inherit. If you leave this as default, it will use the same schedule as the master. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 default 3>&1 1>&2 2>&3)
+    done
+  fi
 
 }
 
@@ -1721,11 +1764,23 @@ if (whiptail_you_sure); then
 
   # How do we want to handle OS patching? manual, auto or scheduled days and hours
   whiptail_patch_schedule
-  if [[ $PATCHSCHEDULE == "Scheduled" ]] ; then
-    whiptail_patch_schedule_select_days
-    whiptail_patch_schedule_select_hours
-  fi
-  patch_pillar
+  case $PATCHSCHEDULE in
+    'New Schedule')
+      whiptail_patch_schedule_select_days
+      whiptail_patch_schedule_select_hours
+      whiptail_patch_name_new_schedule
+      patch_schedule_os_new
+      ;;
+    'Import Schedule')
+      whiptail_patch_schedule_import
+      ;;
+    Automatic)
+      PATCHSCHEDULENAME=auto
+      ;;
+    Manual)
+      PATCHSCHEDULENAME=manual
+      ;;
+  esac
 
   ####################
   ##     Master     ##
@@ -1821,9 +1876,11 @@ if (whiptail_you_sure); then
       master_static >> $SETUPLOG 2>&1
       echo "** Generating the master pillar **" >> $SETUPLOG
       master_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n30\nAccepting Salt Keys... \nXXX"
       echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-      copy_minion_pillars >> $SETUPLOG 2>&1
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       # Do a checkin to push the key up
       echo "** Pushing the key up to Master **" >> $SETUPLOG
       salt_firstcheckin >> $SETUPLOG 2>&1
@@ -1938,6 +1995,8 @@ if (whiptail_you_sure); then
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
@@ -1945,7 +2004,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
       configure_minion sensor >> $SETUPLOG 2>&1
       echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-      copy_minion_pillars >> $SETUPLOG 2>&1
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
@@ -2049,6 +2108,8 @@ if (whiptail_you_sure); then
       master_static >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nCreating the master pillar... \nXXX"
       master_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nConfiguring minion... \nXXX"
       configure_minion eval >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
@@ -2058,7 +2119,7 @@ if (whiptail_you_sure); then
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-      copy_minion_pillars >> $SETUPLOG 2>&1
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nRegistering agent... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n11\nAccepting Agent... \nXXX"
@@ -2200,8 +2261,10 @@ if (whiptail_you_sure); then
       configure_minion node >> $SETUPLOG 2>&1
       set_node_type >> $SETUPLOG 2>&1
       node_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-      copy_minion_pillars >> $SETUPLOG 2>&1
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       # Accept the Salt Key
