@@ -64,13 +64,13 @@ remove_patch_os_schedule:
 
 {% else %}
 
-no_os_patch_schedule_name_set:
+no_patch_os_schedule_name_set:
   test.fail_without_changes:
     - name: "Set a pillar value for patch:os:schedule_name in this minion's .sls file. If an OS patch schedule is not listed as enabled in show_schedule output below, then OS patches will need to be applied manually until this is corrected."
 
-show_schedule:
+show_patch_os_schedule:
   module.run:
-    - name: schedule.is_enabled
-    - m_name: patch_os_schedule
+    - schedule.is_enabled:
+      - name: patch_os_schedule
 
 {% endif %}
