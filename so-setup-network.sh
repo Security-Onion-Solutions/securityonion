@@ -268,14 +268,15 @@ copy_master_config() {
 
 }
 
-copy_minion_pillar() {
+copy_minion_tmp_files() {
 
-  # Pass the type so it knows where to copy the pillar
-  local TYPE=$1
-
-  # Copy over the pillar
-  echo "Copying the pillar over" >> $SETUPLOG 2>&1
-  scp -v -i /root/.ssh/so.key $TMP/$MINION_ID.sls socore@$MSRV:/opt/so/saltstack/pillar/$TYPE/$MINION_ID.sls
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    echo "rsyncing all files in $TMP to /opt/so/saltstack" >> $SETUPLOG 2>&1
+    rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
+  else
+    echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
+  fi
 
   }
 
@@ -599,23 +600,77 @@ minio_generate_keys() {
 
 node_pillar() {
 
+  NODEPILLARPATH=$TMP/pillar/nodes
+  if [ ! -d $NODEPILLARPATH ]; then
+    mkdir -p $NODEPILLARPATH
+  fi
+
   # Create the node pillar
-  touch $TMP/$MINION_ID.sls
-  echo "node:" > $TMP/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
-  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $TMP/$MINION_ID.sls
-  echo "  esclustername: {{ grains.host }}" >> $TMP/$MINION_ID.sls
-  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $TMP/$MINION_ID.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $TMP/$MINION_ID.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $TMP/$MINION_ID.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> $TMP/$MINION_ID.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $TMP/$MINION_ID.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> $TMP/$MINION_ID.sls
-  echo "  node_type: $NODETYPE" >> $TMP/$MINION_ID.sls
-  echo "  es_port: $NODE_ES_PORT" >> $TMP/$MINION_ID.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $TMP/$MINION_ID.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> $TMP/$MINION_ID.sls
+  touch $NODEPILLARPATH/$MINION_ID.sls
+  echo "node:" > $NODEPILLARPATH/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  esclustername: {{ grains.host }}" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  es_shard_count: $SHARDCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  node_type: $NODETYPE" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  es_port: $NODE_ES_PORT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $NODEPILLARPATH/$MINION_ID.sls
+
+}
+
+patch_pillar() {
+
+  case $INSTALLTYPE in
+    MASTERONLY | EVALMODE)
+      PATCHPILLARPATH=/opt/so/saltstack/pillar/masters
+      ;;
+    SENSORONLY)
+      PATCHPILLARPATH=$SENSORPILLARPATH
+      ;;
+    STORAGENODE | PARSINGNODE | HOTNODE | WARMNODE)
+      PATCHPILLARPATH=$NODEPILLARPATH
+      ;;
+  esac
+  
+
+  echo "" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "patch:" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "  os:" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    schedule_name: $PATCHSCHEDULENAME" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    enabled: True" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "    splay: 300" >> $PATCHPILLARPATH/$MINION_ID.sls
+
+
+}
+
+patch_schedule_os_new() {
+  OSPATCHSCHEDULEDIR="$TMP/salt/patch/os/schedules"
+  OSPATCHSCHEDULE="$OSPATCHSCHEDULEDIR/$PATCHSCHEDULENAME.yml"
+
+  if [ ! -d $OSPATCHSCHEDULEDIR ] ; then
+    mkdir -p $OSPATCHSCHEDULEDIR
+  fi
+
+  echo "patch:" > $OSPATCHSCHEDULE
+      echo "  os:" >> $OSPATCHSCHEDULE
+      echo "    schedule:" >> $OSPATCHSCHEDULE
+      for psd in "${PATCHSCHEDULEDAYS[@]}"
+      do
+        psd=$(echo $psd | sed 's/"//g')
+        echo "      - $psd:" >> $OSPATCHSCHEDULE
+        for psh in "${PATCHSCHEDULEHOURS[@]}"
+        do
+          psh=$(echo $psh | sed 's/"//g')
+          echo "        - '$psh'" >> $OSPATCHSCHEDULE
+        done
+      done
 
 }
 
@@ -791,7 +846,7 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install salt-minion-2018.3.4 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y install salt-minion-2018.3.4 yum-utils device-mapper-persistent-data lvm2 openssl python-dateutil
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
@@ -840,7 +895,7 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2cryptoi python-dateutil >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -854,7 +909,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto python-dateutil >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -926,37 +981,42 @@ salt_master_directories() {
 
 sensor_pillar() {
 
+  SENSORPILLARPATH=$TMP/pillar/sensors
+  if [ ! -d $SENSORPILLARPATH ]; then
+    mkdir -p $SENSORPILLARPATH
+  fi
+
   # Create the sensor pillar
-  touch $TMP/$MINION_ID.sls
-  echo "sensor:" > $TMP/$MINION_ID.sls
-  echo "  interface: bond0" >> $TMP/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $TMP/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $TMP/$MINION_ID.sls
+  touch $SENSORPILLARPATH/$MINION_ID.sls
+  echo "sensor:" > $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  interface: bond0" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mainip: $MAINIP" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mainint: $MAININT" >> $SENSORPILLARPATH/$MINION_ID.sls
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> $TMP/$MINION_ID.sls
+    echo "  bro_pins:" >> $SENSORPILLARPATH/$MINION_ID.sls
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> $TMP/$MINION_ID.sls
+    echo "    - $PIN" >> $SENSORPILLARPATH/$MINION_ID.sls
     done
-    echo "  suripins:" >> $TMP/$MINION_ID.sls
+    echo "  suripins:" >> $SENSORPILLARPATH/$MINION_ID.sls
     for SPIN in $SURIPINS; do
       SPIN=$(echo $SPIN |  cut -d\" -f2)
-    echo "    - $SPIN" >> $TMP/$MINION_ID.sls
+    echo "    - $SPIN" >> $SENSORPILLARPATH/$MINION_ID.sls
     done
   else
-    echo "  bro_lbprocs: $BASICBRO" >> $TMP/$MINION_ID.sls
-    echo "  suriprocs: $BASICSURI" >> $TMP/$MINION_ID.sls
+    echo "  bro_lbprocs: $BASICBRO" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  suriprocs: $BASICSURI" >> $SENSORPILLARPATH/$MINION_ID.sls
   fi
-  echo "  brobpf:" >> $TMP/$MINION_ID.sls
-  echo "  pcapbpf:" >> $TMP/$MINION_ID.sls
-  echo "  nidsbpf:" >> $TMP/$MINION_ID.sls
-  echo "  master: $MSRV" >> $TMP/$MINION_ID.sls
-  echo "  mtu: $MTU" >> $TMP/$MINION_ID.sls
+  echo "  brobpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  pcapbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  nidsbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  master: $MSRV" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  mtu: $MTU" >> $SENSORPILLARPATH/$MINION_ID.sls
   if [ $HNSENSOR != 'inherit' ]; then
-  echo "  hnsensor: $HNSENSOR" >> $TMP/$MINION_ID.sls
+  echo "  hnsensor: $HNSENSOR" >> $SENSORPILLARPATH/$MINION_ID.sls
   fi
-  echo "  access_key: $ACCESS_KEY" >> $TMP/$MINION_ID.sls
-  echo "  access_secret: $ACCESS_SECRET" >>  $TMP/$MINION_ID.sls
+  echo "  access_key: $ACCESS_KEY" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  access_secret: $ACCESS_SECRET" >>  $SENSORPILLARPATH/$MINION_ID.sls
 
 }
 
@@ -1469,6 +1529,109 @@ whiptail_passwords_dont_match() {
 
 }
 
+whiptail_patch_name_new_schedule() {
+
+  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 105 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+  
+  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 65
+    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 105 3>&1 1>&2 2>&3)
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+  done
+
+
+}
+
+whiptail_patch_schedule() {
+
+  # What kind of patch schedule are we doing?
+  PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 25 115 5 \
+  "Automatic" "Package updates will be installed automatically every 8 hours if available" ON \
+  "Manual" "Package updates will need to be installed manually" OFF \
+  "Import Schedule" "Enter the name of an existing schedule on the following screen and inherit it" OFF \
+  "New Schedule" "Configure and name a new schedule on the following screen" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_patch_schedule_import() {
+
+  unset PATCHSCHEDULENAME
+  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3) 
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+  
+  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 65
+    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3)
+     
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+  done
+
+}
+
+whiptail_patch_schedule_select_days() {
+   # Select the days to patch
+  PATCHSCHEDULEDAYS=($(whiptail --title "Security Onion Setup" --checklist \
+  "Which days do you want to apply OS patches?" 20 55 9 \
+  "Monday" "" OFF \
+  "Tuesday" "" ON \
+  "Wednesday" "" OFF \
+  "Thursday" "" OFF \
+  "Friday" "" OFF \
+  "Saturday" "" OFF \
+  "Sunday" "" OFF 3>&1 1>&2 2>&3 ))
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_patch_schedule_select_hours() {
+   # Select the hours to patch
+  PATCHSCHEDULEHOURS=($(whiptail --title "Security Onion Setup" --checklist \
+  "At which time, UTC, do you want to apply OS patches on the selected days?" 35 55 26 \
+  "00:00" "" OFF \
+  "01:00" "" OFF \
+  "02:00" "" OFF \
+  "03:00" "" OFF \
+  "04:00" "" OFF \
+  "05:00" "" OFF \
+  "06:00" "" OFF \
+  "07:00" "" OFF \
+  "08:00" "" OFF \
+  "09:00" "" OFF \
+  "10:00" "" OFF \
+  "11:00" "" OFF \
+  "12:00" "" OFF \
+  "13:00" "" OFF \
+  "14:00" "" OFF \
+  "15:00" "" ON \
+  "16:00" "" OFF \
+  "17:00" "" OFF \
+  "18:00" "" OFF \
+  "19:00" "" OFF \
+  "20:00" "" OFF \
+  "21:00" "" OFF \
+  "22:00" "" OFF \
+  "23:00" "" OFF 3>&1 1>&2 2>&3 ))
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_rule_setup() {
 
   # Get pulled pork info
@@ -1500,6 +1663,13 @@ whiptail_set_hostname() {
 
   HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter the Hostname you would like to set." 10 60 $HOSTNAME 3>&1 1>&2 2>&3)
+
+  while [[ "$HOSTNAME" == 'localhost' ]] ; do
+    whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that isn't localhost." 8 65
+    HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter the Hostname you would like to set." 10 60 $HOSTNAME 3>&1 1>&2 2>&3)
+  done
+
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -1609,6 +1779,26 @@ if (whiptail_you_sure); then
   # What kind of install are we doing?
   whiptail_install_type
 
+  # How do we want to handle OS patching? manual, auto or scheduled days and hours
+  whiptail_patch_schedule
+  case $PATCHSCHEDULE in
+    'New Schedule')
+      whiptail_patch_schedule_select_days
+      whiptail_patch_schedule_select_hours
+      whiptail_patch_name_new_schedule
+      patch_schedule_os_new
+      ;;
+    'Import Schedule')
+      whiptail_patch_schedule_import
+      ;;
+    Automatic)
+      PATCHSCHEDULENAME=auto
+      ;;
+    Manual)
+      PATCHSCHEDULENAME=manual
+      ;;
+  esac
+
   ####################
   ##     Master     ##
   ####################
@@ -1703,7 +1893,11 @@ if (whiptail_you_sure); then
       master_static >> $SETUPLOG 2>&1
       echo "** Generating the master pillar **" >> $SETUPLOG
       master_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n30\nAccepting Salt Keys... \nXXX"
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       # Do a checkin to push the key up
       echo "** Pushing the key up to Master **" >> $SETUPLOG
       salt_firstcheckin >> $SETUPLOG 2>&1
@@ -1818,14 +2012,16 @@ if (whiptail_you_sure); then
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
       configure_minion sensor >> $SETUPLOG 2>&1
-      echo -e "XXX\n24\nCopying Sensor Pillar to Master... \nXXX"
-      copy_minion_pillar sensors >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
@@ -1929,6 +2125,8 @@ if (whiptail_you_sure); then
       master_static >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nCreating the master pillar... \nXXX"
       master_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nConfiguring minion... \nXXX"
       configure_minion eval >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
@@ -1937,6 +2135,8 @@ if (whiptail_you_sure); then
       node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nRegistering agent... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       echo -e "XXX\n11\nAccepting Agent... \nXXX"
@@ -2078,7 +2278,10 @@ if (whiptail_you_sure); then
       configure_minion node >> $SETUPLOG 2>&1
       set_node_type >> $SETUPLOG 2>&1
       node_pillar >> $SETUPLOG 2>&1
-      copy_minion_pillar nodes >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
       echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
       salt_firstcheckin >> $SETUPLOG 2>&1
       # Accept the Salt Key

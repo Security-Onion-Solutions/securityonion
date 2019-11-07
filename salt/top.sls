@@ -5,6 +5,9 @@
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
+  '*':
+    - patch.os.schedule
+
   'G@role:so-sensor':
     - ca
     - ssl
