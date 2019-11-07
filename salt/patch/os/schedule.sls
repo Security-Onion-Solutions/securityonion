@@ -42,7 +42,7 @@ patch_os_schedule:
     - function: state.sls
     - job_args:
       - patch.os
-    - minutes: 1
+    - hours: 8 
     - splay: {{splay}}
     - return_job: True
 

@@ -1545,7 +1545,7 @@ whiptail_patch_schedule() {
   # What kind of patch schedule are we doing?
   PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 25 115 5 \
-  "Automatic" "Package updates will be installed automatically" ON \
+  "Automatic" "Package updates will be installed automatically every 8 hours if available" ON \
   "Manual" "Package updates will need to be installed manually" OFF \
   "Import Schedule" "Enter the name of an existing schedule on the following screen and inherit it" OFF \
   "New Schedule" "Configure and name a new schedule on the following screen" OFF 3>&1 1>&2 2>&3 )
