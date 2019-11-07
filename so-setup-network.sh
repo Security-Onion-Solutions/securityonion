@@ -1654,6 +1654,13 @@ whiptail_set_hostname() {
   HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter the Hostname you would like to set." 10 60 $HOSTNAME 3>&1 1>&2 2>&3)
 
+  while [[ "$HOSTNAME" == 'localhost' ]] ; do
+    whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that isn't localhost." 8 65
+    HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter the Hostname you would like to set." 10 60 $HOSTNAME 3>&1 1>&2 2>&3)
+  done
+
+
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
