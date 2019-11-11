@@ -699,7 +699,7 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
@@ -878,8 +878,8 @@ EOF
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
 
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
