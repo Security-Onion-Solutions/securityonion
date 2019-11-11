@@ -15,7 +15,7 @@ patch_os_schedule:
       - patch.os
     - when:
       {% for days in os_schedule.patch.os.schedule %}
-        {% for day, times in days.iteritems() %}
+        {% for day, times in days.items() %}
           {% for time in times %}
         - {{day}} {{time}}
           {% endfor %}
