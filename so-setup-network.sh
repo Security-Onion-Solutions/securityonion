@@ -355,7 +355,9 @@ docker_install() {
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce docker-python python-docker
+    yum -y install docker-ce
+    pip3 install docker
+    set_environment_var "PYTHONPATH=/usr/local/lib/python3.6/site-packages/"
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -1020,6 +1022,15 @@ sensor_pillar() {
   fi
   echo "  access_key: $ACCESS_KEY" >> $SENSORPILLARPATH/$MINION_ID.sls
   echo "  access_secret: $ACCESS_SECRET" >>  $SENSORPILLARPATH/$MINION_ID.sls
+
+}
+
+set_environment_var() {
+
+  echo "Setting environment variable: $1"
+
+  export "$1"
+  echo "$1" >> /etc/environment
 
 }
 
