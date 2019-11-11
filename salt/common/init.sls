@@ -316,7 +316,7 @@ grafanaconf:
     - source: salt://common/grafana/etc
 
 {% if salt['pillar.get']('mastertab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
 dashboard-master:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
@@ -337,7 +337,7 @@ dashboard-master:
 {% endif %}
 
 {% if salt['pillar.get']('sensorstab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
@@ -358,7 +358,7 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('nodestab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
@@ -379,7 +379,7 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('evaltab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json

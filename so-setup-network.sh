@@ -255,6 +255,9 @@ configure_minion() {
 
   fi
 
+  echo "use_superseded:" >> /etc/salt/minion
+  echo "  - module.run" >> /etc/salt/minion
+
   service salt-minion restart
 
 }
@@ -352,7 +355,9 @@ docker_install() {
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce docker-python python-docker
+    yum -y install docker-ce
+    pip3 install docker
+    set_environment_var "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.6/site-packages/"
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -500,7 +505,7 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2018.3.4+ds-1 salt-master=2018.3.4+ds-1 salt-minion=2018.3.4+ds-1 python-m2crypto
+    apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1 python-m2crypto
     apt-mark hold salt-common salt-master salt-minion
     apt-get install -y python-m2crypto
   fi
@@ -696,9 +701,9 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
-      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
-      sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
+      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
+      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
+      sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -812,13 +817,13 @@ EOF
         echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
 
         # Proxy is hating on me.. Lets just set it manually
-        echo "[salt-2018.3]" > /etc/yum.repos.d/salt-2018-3.repo
-        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2018-3.repo
-        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/2018.3" >> /etc/yum.repos.d/salt-2018-3.repo
-        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2018-3.repo
-        echo "enabled=1" >> /etc/yum.repos.d/salt-2018-3.repo
-        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2018-3.repo
-        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-2018-3.repo
+        echo "[salt-2019.2]" > /etc/yum.repos.d/salt-2019-2.repo
+        echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/2019.2" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "enabled=1" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-2019-2.repo
 
         cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
@@ -831,8 +836,8 @@ protect=1
 EOF
       else
         yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
-        cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2018-3.repo
-        sed -i 's/latest/2018.3/g' /etc/yum.repos.d/salt-2018-3.repo
+        cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
+        sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -846,16 +851,16 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install salt-minion-2018.3.4 yum-utils device-mapper-persistent-data lvm2 openssl python-dateutil
+    yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl python-dateutil
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install salt-master-2018.3.4 python-m2crypto salt-minion-2018.3.4 m2crypto
+      yum -y install salt-master-2019.2.2 python-m2crypto salt-minion-2019.2.2 m2crypto
       systemctl enable salt-master
     else
-      yum -y install salt-minion-2018.3.4 python-m2m2crypto m2crypto
+      yum -y install salt-minion-2019.2.2 python-m2m2crypto m2crypto
     fi
     echo "exclude=salt*" >> /etc/yum.conf
 
@@ -874,9 +879,9 @@ EOF
 
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
-      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3/SALTSTACK-GPG-KEY.pub | apt-key add -
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2018.3 xenial main" > /etc/apt/sources.list.d/saltstack2018.list
+      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
 
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -895,7 +900,7 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2cryptoi python-dateutil >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-m2cryptoi python-dateutil >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -909,7 +914,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2018.3.4+ds-1 salt-common=2018.3.4+ds-1 python-m2crypto python-dateutil >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-m2crypto python-dateutil >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -1017,6 +1022,15 @@ sensor_pillar() {
   fi
   echo "  access_key: $ACCESS_KEY" >> $SENSORPILLARPATH/$MINION_ID.sls
   echo "  access_secret: $ACCESS_SECRET" >>  $SENSORPILLARPATH/$MINION_ID.sls
+
+}
+
+set_environment_var() {
+
+  echo "Setting environment variable: $1"
+
+  export "$1"
+  echo "export $1" >> /etc/profile.d/set_env_vars.sh
 
 }
 

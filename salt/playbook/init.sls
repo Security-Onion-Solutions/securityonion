@@ -11,9 +11,9 @@ playbookdb:
 
 playbookwebhook:
   module.run:
-    - name: sqlite3.modify
-    - db: /opt/so/conf/playbook/redmine.db
-    - sql: "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
+    - sqlite3.modify:
+      - db: /opt/so/conf/playbook/redmine.db
+      - sql: "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
 
 navigatorconfig:
   file.managed:
