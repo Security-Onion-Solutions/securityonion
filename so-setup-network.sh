@@ -357,7 +357,7 @@ docker_install() {
     yum -y update
     yum -y install docker-ce
     pip3 install docker
-    set_environment_var "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.6/site-packages/"
+    set_environment_var "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.6/site-packages/:/usr/local/lib64/python3.6/site-packages/"
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -981,6 +981,13 @@ salt_master_directories() {
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
   chmod +x /opt/so/saltstack/pillar/data/addtotab.sh
   cp -R salt/* /opt/so/saltstack/salt/
+
+}
+
+salt_install_mysql_deps() {
+
+  yum -y install gcc mariadb-devel python3-devel
+  pip3 install mysqlclient
 
 }
 
@@ -1888,6 +1895,8 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
+      echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n0\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
       saltify >> $SETUPLOG 2>&1
@@ -2122,6 +2131,8 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
