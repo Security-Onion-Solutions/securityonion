@@ -850,8 +850,9 @@ EOF
       fi
     fi
 
+    pip3 install python-dateutil
     yum clean expire-cache
-    yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl python-dateutil
+    yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
