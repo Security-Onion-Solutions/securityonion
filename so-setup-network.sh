@@ -356,7 +356,7 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce
-    pip3 install --user -t /usr/lib/python3.6/site-packages docker
+    pip3 install -t /usr/lib/python3.6/site-packages/ docker
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -849,7 +849,7 @@ EOF
       fi
     fi
 
-    pip3 install --user -t /usr/lib/python3.6/site-packages python-dateutil
+    pip3 install -t /usr/lib/python3.6/site-packages/ python-dateutil
     yum clean expire-cache
     yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
@@ -987,7 +987,7 @@ salt_master_directories() {
 salt_install_mysql_deps() {
 
   yum -y install gcc mariadb-devel python3-devel
-  pip3 install --user -t /usr/lib64/python3.6/site-packages mysqlclient
+  pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
 
 }
 
