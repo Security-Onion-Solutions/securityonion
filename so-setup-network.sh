@@ -357,7 +357,7 @@ docker_install() {
     yum -y update
     yum -y install docker-ce
     pip3 install docker
-    set_environment_var "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.6/site-packages/:/usr/local/lib64/python3.6/site-packages/"
+    set_environment_var "PYTHONPATH=/usr/local/lib/python3.6/site-packages:/usr/local/lib64/python3.6/site-packages"
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -1038,7 +1038,7 @@ set_environment_var() {
   echo "Setting environment variable: $1"
 
   export "$1"
-  echo "export $1" >> /etc/profile.d/set_env_vars.sh
+  echo "$1" >> /etc/environment
 
 }
 
