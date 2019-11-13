@@ -1,9 +1,6 @@
 {% set es = salt['pillar.get']('static:masterip', '') %}
 {% set hivehost = salt['pillar.get']('static:masterip', '') %}
 {% set hivekey = salt['pillar.get']('static:hivekey', '') %}
-es_host: {{es}}
-es_port: 9200
-
 alert: modules.so.thehive.TheHiveAlerter
 
 hive_connection:
@@ -16,11 +13,11 @@ hive_proxies:
 
 hive_alert_config:
   title: '{rule[name]}'
-  type: 'external'
+  type: 'playbook'
   source: 'SecurityOnion'
-  description: "`Play:` https://{{es}}/playbook/issues/6000 \n\n `Data:` {match[message]}"
+  description: "`Play:` https://{{es}}/playbook/issues/6000 \n\n `View Event:` <https://{{es}}/kibana/app/kibana#/discover?_g=()&_a=(columns:!(_source),interval:auto,query:(language:lucene,query:'_id:{match[_id]}'),sort:!('@timestamp',desc))>  \n\n `Raw Data:` {match[message]}"
   severity: 2
-  tags: ['elastalert', 'SecurityOnion']
+  tags: ['playbook']
   tlp: 3
   status: 'New'
   follow: True
