@@ -47,7 +47,7 @@ so-cyberchefimage:
 so-cyberchef:
   docker_container.running:
     - require:
-      - so-cyberchef
+      - so-cyberchefimage
     - image: docker.io/soshybridhunter/so-cyberchef:HH1.1.3
     - port_bindings:
       - 0.0.0.0:9080:8080
