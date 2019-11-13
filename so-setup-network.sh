@@ -356,10 +356,11 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce
-    pip3 install -t /usr/lib/python3.6/site-packages/ docker
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
+    echo "Using pip3 to install docker-py for salt"
+    pip3 install -t /usr/lib/python3.6/site-packages/ docker
     echo "Restarting Docker" >> $SETUPLOG 2>&1
     systemctl restart docker
     systemctl enable docker
@@ -382,6 +383,8 @@ docker_install() {
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     fi
+    echo "Using pip3 to install docker-py for salt"
+    pip3 install docker
   fi
 
 }
@@ -483,6 +486,15 @@ install_cleanup() {
 
 }
 
+install_pip3() {
+
+  if [ $OS == 'ubuntu' ]; then
+    echo -e "XXX\n0\nInstalling pip3... \nXXX"
+    apt-get -y install python3-pip gcc python3-dev
+  fi
+
+}
+
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
@@ -504,9 +516,13 @@ install_master() {
     wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1 python-m2crypto
+    apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1
     apt-mark hold salt-common salt-master salt-minion
-    apt-get install -y python-m2crypto
+    echo -e "XXX\n11\nInstalling libssl-dev for M2Crypto... \nXXX"
+    apt-get -y install libssl-dev
+    echo -e "XXX\n12\nUsing pip3 to install M2Crypto for Salt... \nXXX"
+    pip3 install M2Crypto
+ 
   fi
 
   copy_master_config
@@ -849,6 +865,7 @@ EOF
       fi
     fi
 
+    echo "Using pip3 to install python-dateutil for salt"
     pip3 install -t /usr/lib/python3.6/site-packages/ python-dateutil
     yum clean expire-cache
     yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
@@ -877,6 +894,8 @@ EOF
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
 
+      echo "Using pip3 to install python-dateutil for salt"
+      pip3 install python-dateutil
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
@@ -900,7 +919,7 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-m2cryptoi python-dateutil >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -914,7 +933,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-m2crypto python-dateutil >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -986,9 +1005,16 @@ salt_master_directories() {
 
 salt_install_mysql_deps() {
 
-  yum -y install gcc mariadb-devel python3-devel
-  pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
-
+  if [ $OS == 'centos' ]; then
+    yum -y install gcc mariadb-devel python3-devel
+    echo "Using pip3 to install mysqlclient for salt"
+    pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
+  elif [ $OS == 'ubuntu' ]; then
+    apt-get -y install libmysqlclient-dev
+    echo "Using pip3 to install mysqlclient for salt"
+    pip3 install mysqlclient
+  fi
+   
 }
 
 sensor_pillar() {
@@ -1895,9 +1921,10 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
       salt_install_mysql_deps >> $SETUPLOG 2>&1
-      echo -e "XXX\n0\nInstalling and configuring Salt... \nXXX"
+      echo -e "XXX\n2\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
@@ -2131,6 +2158,7 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       network_setup >> $SETUPLOG 2>&1
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
       salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
