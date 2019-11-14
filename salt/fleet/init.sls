@@ -83,6 +83,7 @@ so-fleet:
       - KOLIDE_AUTH_JWT_KEY=thisisatest
       - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/osquery/status.log
       - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
+      - KOLIDE_SERVER_URL_PREFIX=/fleet
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
