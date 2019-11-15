@@ -278,7 +278,7 @@ copy_minion_tmp_files() {
     rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
   else
     echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key "${TMP}/*" socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
   fi
 
   }
