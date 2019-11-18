@@ -355,7 +355,7 @@ docker_install() {
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce
+    yum -y install docker-ce python36-docker
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
@@ -494,7 +494,7 @@ install_pip3() {
     apt-get -y install python3-pip gcc python3-dev
   elif [ $OS == 'centos' ]; then
     #yum -y install python3-pip gcc python3-devel
-    yum -y install epel-release python3 python36-dateutil python36-m2crypto python36-mysql python36-docker
+    yum -y install epel-release python3 python36-dateutil python36-m2crypto python36-mysql 
   fi
 
 }
