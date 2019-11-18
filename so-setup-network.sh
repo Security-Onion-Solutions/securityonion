@@ -494,7 +494,7 @@ install_pip3() {
     apt-get -y install python3-pip gcc python3-dev
   elif [ $OS == 'centos' ]; then
     #yum -y install python3-pip gcc python3-devel
-    yum -y install epel-release python3 python36-dateutil python36-m2crypto python36-mysql 
+    yum -y install epel-release python3
   fi
 
 }
@@ -511,7 +511,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common salt-master >> $SETUPLOG 2>&1
+    yum -y install wget salt-common salt-master python36-mysql python36-dateutil python36-m2crypto >> $SETUPLOG 2>&1
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
