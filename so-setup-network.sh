@@ -2059,9 +2059,10 @@ if (whiptail_you_sure); then
     copy_ssh_key
     {
       sleep 0.5
-      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
@@ -2325,9 +2326,10 @@ if (whiptail_you_sure); then
     copy_ssh_key
     {
       sleep 0.5
-      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
