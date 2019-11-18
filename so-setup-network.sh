@@ -278,7 +278,7 @@ copy_minion_tmp_files() {
     rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
   else
     echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/* socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
   fi
 
   }
@@ -488,9 +488,12 @@ install_cleanup() {
 
 install_pip3() {
 
+  echo "Installing pip3"
+
   if [ $OS == 'ubuntu' ]; then
-    echo -e "XXX\n0\nInstalling pip3... \nXXX"
     apt-get -y install python3-pip gcc python3-dev
+  elif [ $OS == 'centos' ]; then
+    yum -y install python3-pip gcc python3-devel
   fi
 
 }
@@ -716,7 +719,7 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
+      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-2019.2-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
@@ -1006,7 +1009,7 @@ salt_master_directories() {
 salt_install_mysql_deps() {
 
   if [ $OS == 'centos' ]; then
-    yum -y install gcc mariadb-devel python3-devel
+    yum -y install mariadb-devel
     echo "Using pip3 to install mysqlclient for salt"
     pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
   elif [ $OS == 'ubuntu' ]; then
@@ -2056,6 +2059,7 @@ if (whiptail_you_sure); then
     copy_ssh_key
     {
       sleep 0.5
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
@@ -2321,6 +2325,7 @@ if (whiptail_you_sure); then
     copy_ssh_key
     {
       sleep 0.5
+      install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"

@@ -17,6 +17,15 @@
 
 {% if masterproxy == 1 %}
 
+socore_own_saltstack:
+  file.directory:
+    - name: /opt/so/saltstack
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group	
+
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
   file.directory:

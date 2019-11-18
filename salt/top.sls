@@ -7,6 +7,7 @@
 base:
   '*':
     - patch.os.schedule
+    - motd
 
   'G@role:so-sensor':
     - ca
