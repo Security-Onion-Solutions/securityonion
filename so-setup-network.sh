@@ -525,7 +525,7 @@ install_master() {
     apt-get -y install libssl-dev
     echo -e "XXX\n12\nUsing pip3 to install M2Crypto for Salt... \nXXX"
     pip3 install M2Crypto
- 
+
   fi
 
   copy_master_config
@@ -661,7 +661,7 @@ patch_pillar() {
       PATCHPILLARPATH=$NODEPILLARPATH
       ;;
   esac
-  
+
 
   echo "" >> $PATCHPILLARPATH/$MINION_ID.sls
   echo "patch:" >> $PATCHPILLARPATH/$MINION_ID.sls
@@ -719,7 +719,7 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-2019.2-2.el7.noarch.rpm
+      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
@@ -828,7 +828,7 @@ EOF
         # Proxy is hating on me.. Lets just set it manually
         echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
         echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-latest.repo
-        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
+        echo "baseurl=https://repo.saltstack.com/py3/redhat/7/\$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
         echo "failovermethod=priority" >> /etc/yum.repos.d/salt-latest.repo
         echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
@@ -837,7 +837,7 @@ EOF
         # Proxy is hating on me.. Lets just set it manually
         echo "[salt-2019.2]" > /etc/yum.repos.d/salt-2019-2.repo
         echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2019-2.repo
-        echo "baseurl=https://repo.saltstack.com/yum/redhat/7/\$basearch/2019.2" >> /etc/yum.repos.d/salt-2019-2.repo
+        echo "baseurl=https://repo.saltstack.com/py3/redhat/7/\$basearch/2019.2" >> /etc/yum.repos.d/salt-2019-2.repo
         echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2019-2.repo
         echo "enabled=1" >> /etc/yum.repos.d/salt-2019-2.repo
         echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2019-2.repo
@@ -853,7 +853,7 @@ baseurl=https://packages.wazuh.com/3.x/yum/
 protect=1
 EOF
       else
-        yum -y install https://repo.saltstack.com/yum/redhat/salt-repo-latest-2.el7.noarch.rpm
+        yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
         cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
         sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF
@@ -1017,7 +1017,7 @@ salt_install_mysql_deps() {
     echo "Using pip3 to install mysqlclient for salt"
     pip3 install mysqlclient
   fi
-   
+
 }
 
 sensor_pillar() {
@@ -1586,7 +1586,7 @@ whiptail_patch_name_new_schedule() {
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
-  
+
   while [[ -z "$PATCHSCHEDULENAME"  ]]; do
     whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 65
     PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
@@ -1617,16 +1617,16 @@ whiptail_patch_schedule_import() {
 
   unset PATCHSCHEDULENAME
   PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3) 
+  "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
-  
+
   while [[ -z "$PATCHSCHEDULENAME"  ]]; do
     whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 65
     PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
     "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 60 3>&1 1>&2 2>&3)
-     
+
     local exitstatus=$?
     whiptail_check_exitstatus $exitstatus
   done
