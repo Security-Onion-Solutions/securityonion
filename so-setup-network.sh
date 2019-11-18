@@ -355,12 +355,12 @@ docker_install() {
     yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
-    yum -y install docker-ce
+    yum -y install docker-ce python36-docker
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
-    echo "Using pip3 to install docker-py for salt"
-    pip3 install -t /usr/lib/python3.6/site-packages/ docker
+    #echo "Using pip3 to install docker-py for salt"
+    #pip3 install -t /usr/lib/python3.6/site-packages/ docker
     echo "Restarting Docker" >> $SETUPLOG 2>&1
     systemctl restart docker
     systemctl enable docker
@@ -493,7 +493,8 @@ install_pip3() {
   if [ $OS == 'ubuntu' ]; then
     apt-get -y install python3-pip gcc python3-dev
   elif [ $OS == 'centos' ]; then
-    yum -y install python3-pip gcc python3-devel
+    #yum -y install python3-pip gcc python3-devel
+    yum -y install epel-release python3
   fi
 
 }
@@ -510,7 +511,7 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common salt-master >> $SETUPLOG 2>&1
+    yum -y install wget salt-common salt-master python36-mysql python36-dateutil python36-m2crypto >> $SETUPLOG 2>&1
 
     # Create a place for the keys for Ubuntu minions
     mkdir -p /opt/so/gpg
@@ -868,8 +869,8 @@ EOF
       fi
     fi
 
-    echo "Using pip3 to install python-dateutil for salt"
-    pip3 install -t /usr/lib/python3.6/site-packages/ python-dateutil
+    #echo "Using pip3 to install python-dateutil for salt"
+    #pip3 install -t /usr/lib/python3.6/site-packages/ python-dateutil
     yum clean expire-cache
     yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
@@ -1010,8 +1011,8 @@ salt_install_mysql_deps() {
 
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
-    echo "Using pip3 to install mysqlclient for salt"
-    pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
+    #echo "Using pip3 to install mysqlclient for salt"
+    #pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
   elif [ $OS == 'ubuntu' ]; then
     apt-get -y install libmysqlclient-dev
     echo "Using pip3 to install mysqlclient for salt"

@@ -26,13 +26,13 @@ navigatorconfig:
 
 so-playbookimage:
   cmd.run:
-    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-playbook:HH1.1.1
+    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-playbook:HH1.1.3
 
 so-playbook:
   docker_container.running:
     - require:
       - so-playbookimage
-    - image: docker.io/soshybridhunter/so-playbook:HH1.1.1
+    - image: docker.io/soshybridhunter/so-playbook:HH1.1.3
     - hostname: playbook
     - name: so-playbook
     - binds:
