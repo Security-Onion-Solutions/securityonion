@@ -6,8 +6,8 @@
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
   '*':
-    - patch.needs_restarting
     - patch.os.schedule
+    - patch.needs_restarting
     - motd
 
   'G@role:so-sensor':
