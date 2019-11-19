@@ -1,8 +1,8 @@
 include:
-  - patch.needs_restarting
 {% if grains.os == "CentOS" %}
   - yum.packages
 {% endif %}
+  - patch.needs_restarting
 
 patch_os:
   pkg.uptodate:
