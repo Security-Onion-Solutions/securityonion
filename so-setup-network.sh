@@ -55,10 +55,6 @@ add_master_hostfile() {
   MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
-  # Add the master to the host file if it doesn't resolve
-  #if ! grep -q $MSRVIP /etc/hosts; then
-  #  echo "$MSRVIP   $MSRV" >> /etc/hosts
-  #fi
 }
 
 add_socore_user_master() {
@@ -76,21 +72,6 @@ add_socore_user_master() {
   echo socore:$COREPASS1 | chpasswd --crypt-method=SHA512
 
 }
-
-#add_socore_user_master() {
-#  echo "Add socore on the master" >> $SETUPLOG 2>&1
-#  if [ $OS == 'centos' ]; then
-#    local ADDUSER=adduser
-#  else
-#    local ADDUSER=useradd
-#  fi
-#  # Add user "socore" to the master. This will be for things like accepting keys.
-#  groupadd --gid 939 socore
-#  $ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
-#  # Prompt the user to set a password for the user
-#  passwd socore
-
-#}
 
 add_socore_user_notmaster() {
   echo "Add socore user on non master" >> $SETUPLOG 2>&1
@@ -359,8 +340,6 @@ docker_install() {
     if [ $INSTALLTYPE != 'EVALMODE'  ]; then
       docker_registry
     fi
-    #echo "Using pip3 to install docker-py for salt"
-    #pip3 install -t /usr/lib/python3.6/site-packages/ docker
     echo "Restarting Docker" >> $SETUPLOG 2>&1
     systemctl restart docker
     systemctl enable docker
@@ -436,6 +415,7 @@ generate_passwords(){
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   CORTEXKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  CORTEXORGUSERKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   SENSORONIKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 }
 
@@ -486,14 +466,13 @@ install_cleanup() {
 
 }
 
-install_pip3() {
+install_python3() {
 
-  echo "Installing pip3"
+  echo "Installing Python3"
 
   if [ $OS == 'ubuntu' ]; then
     apt-get -y install python3-pip gcc python3-dev
   elif [ $OS == 'centos' ]; then
-    #yum -y install python3-pip gcc python3-devel
     yum -y install epel-release python3
   fi
 
@@ -511,13 +490,13 @@ install_master() {
 
   # Install the salt master package
   if [ $OS == 'centos' ]; then
-    yum -y install wget salt-common salt-master python36-mysql python36-dateutil python36-m2crypto >> $SETUPLOG 2>&1
-
+    #yum -y install wget salt-common salt-master python36-mysql python36-dateutil python36-m2crypto >> $SETUPLOG 2>&1
+    echo ""
     # Create a place for the keys for Ubuntu minions
-    mkdir -p /opt/so/gpg
-    wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
-    wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
-    wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    #mkdir -p /opt/so/gpg
+    #wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
+    #wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+    #wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
     apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1
@@ -604,6 +583,9 @@ master_static() {
   echo "  cortexuser: cortexadmin" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexpassword: cortexchangeme" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexkey: $CORTEXKEY" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorgname: SecurityOnion" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorguser: soadmin" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorguserkey: $CORTEXORGUSERKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
@@ -720,9 +702,14 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
+      yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
+      # Download Ubuntu Keys in case master updates = 1
+      mkdir -p /opt/so/gpg
+      wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
+      wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+      wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
       cat > /etc/yum.repos.d/wazuh.repo <<\EOF
 [wazuh_repo]
 gpgcheck=1
@@ -869,19 +856,16 @@ EOF
       fi
     fi
 
-    #echo "Using pip3 to install python-dateutil for salt"
-    #pip3 install -t /usr/lib/python3.6/site-packages/ python-dateutil
     yum clean expire-cache
-    yum -y install salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y install epel-release salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
-    # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-      yum -y install salt-master-2019.2.2 python-m2crypto salt-minion-2019.2.2 m2crypto
+      yum -y install salt-master-2019.2.2 python3 python36-m2crypto salt-minion-2019.2.2 python36-dateutil python36-mysql python36-docker
       systemctl enable salt-master
     else
-      yum -y install salt-minion-2019.2.2 python-m2m2crypto m2crypto
+      yum -y install salt-minion-2019.2.2 python3 python36-m2crypto python36-dateutil python36-docker
     fi
     echo "exclude=salt*" >> /etc/yum.conf
 
@@ -898,8 +882,8 @@ EOF
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
 
-      echo "Using pip3 to install python-dateutil for salt"
-      pip3 install python-dateutil
+      #echo "Using pip3 to install python-dateutil for salt"
+      #pip3 install python-dateutil
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
@@ -923,7 +907,8 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
+      # Need to add python packages here
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python3-dateutil >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -937,6 +922,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
+      # Need to add python dateutil here
       apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
@@ -1011,12 +997,8 @@ salt_install_mysql_deps() {
 
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
-    #echo "Using pip3 to install mysqlclient for salt"
-    #pip3 install -t /usr/lib64/python3.6/site-packages/ mysqlclient
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install libmysqlclient-dev
-    echo "Using pip3 to install mysqlclient for salt"
-    pip3 install mysqlclient
+    apt-get -y install libmysqlclient-dev python3-mysqldb
   fi
 
 }
@@ -1925,11 +1907,10 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
-      install_pip3 >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
-      salt_install_mysql_deps >> $SETUPLOG 2>&1
-      echo -e "XXX\n2\nInstalling and configuring Salt... \nXXX"
+      #install_pip3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
@@ -2062,8 +2043,8 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      install_pip3 >> $SETUPLOG 2>&1
+      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      #install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
@@ -2164,7 +2145,7 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       network_setup >> $SETUPLOG 2>&1
-      install_pip3 >> $SETUPLOG 2>&1
+      #install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
       salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling saltstack... \nXXX"
@@ -2329,8 +2310,8 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      install_pip3 >> $SETUPLOG 2>&1
+      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      #install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
