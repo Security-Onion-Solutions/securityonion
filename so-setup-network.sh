@@ -275,11 +275,11 @@ copy_ssh_key() {
 
 }
 
-network_setup() {
-  echo "Setting up Bond" >> $SETUPLOG 2>&1
+create_sensor_bond() {
+  echo "Setting up sensor bond" >> $SETUPLOG 2>&1
 
   # Set the MTU
-  if [ "$NSMSETUP" != 'ADVANCED' ]; then
+  if [[ $NSMSETUP != 'ADVANCED' ]]; then
     MTU=1500
   fi
 
@@ -304,10 +304,6 @@ network_setup() {
     # Bring the slave interface up
     nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
   done
-  # Replace the variable string in the network script
-  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
-  # Copy the checksum offload script to prevent issues with packet capture
-  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 }
 
 detect_os() {
@@ -327,6 +323,19 @@ detect_os() {
     exit
   fi
 
+}
+
+disable_unused_nics() {
+  for UNUSED_NIC in ${FNICS[@]}; do
+    # Disable DHCPv4/v6 and autoconnect
+    nmcli con mod $UNUSED_NIC \
+      ipv4.method disabled \
+      ipv6.method link-local \
+      connection.autoconnect "no" >> $SETUPLOG 2>&1
+    
+    # Flush any existing IPs
+    ip addr flush $UNUSED_NIC >> $SETUPLOG 2>&1
+  done
 }
 
 docker_install() {
@@ -402,11 +411,19 @@ eval_mode_hostsfile() {
 
 }
 
-filter_nics() {
+filter_unused_nics() {
+  # Set the main NIC as the default grep search string
+  grep_string=$MNIC
 
-  # Filter the NICs that we don't want to see in setup
-  FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+  # If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+  if [[ $BNICS ]]; then
+    for BONDNIC in ${BNICS[@]}; do
+      grep_string="$grep_string\|$BONDNIC"
+    done
+  fi
 
+  # Finally, set FNICS to any NICs we aren't using (and ignore interfaces that aren't of use)
+  FNICS=$(ip link | grep -vwe $grep_string | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
 }
 
 generate_passwords(){
@@ -604,6 +621,22 @@ minio_generate_keys() {
 
 }
 
+network_setup() {
+  echo "Finishing up network setup" >> $SETUPLOG 2>&1
+
+  echo "... Disabling unused NICs" >> $SETUPLOG 2>&1
+  disable_unused_nics >> $SETUPLOG 2>&1
+
+  echo "... Setting ONBOOT for management interface" >> $SETUPLOG 2>&1
+  nmcli con mod $MAININT connection.autoconnect "yes" >> $SETUPLOG 2>&1
+
+  echo "... Copying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
+  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
+
+  echo "... Modifying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
+  sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+}
+
 node_pillar() {
 
   NODEPILLARPATH=$TMP/pillar/nodes
@@ -664,7 +697,7 @@ patch_schedule_os_new() {
     mkdir -p $OSPATCHSCHEDULEDIR
   fi
 
-  echo "patch:" > $OSPATCHSCHEDULE
+      echo "patch:" > $OSPATCHSCHEDULE
       echo "  os:" >> $OSPATCHSCHEDULE
       echo "    schedule:" >> $OSPATCHSCHEDULE
       for psd in "${PATCHSCHEDULEDAYS[@]}"
@@ -1209,11 +1242,16 @@ whiptail_bro_version() {
 
 whiptail_bond_nics() {
 
-  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+  local nic_list=()
+  for FNIC in ${FNICS[@]}; do
+    nic_list+=($FNIC "Interface" "OFF")
+  done
+
+  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
 
   while [ -z "$BNICS" ]
   do
-    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
   done
 
   local exitstatus=$?
@@ -1992,7 +2030,9 @@ if (whiptail_you_sure); then
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XXX\n95\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -2015,7 +2055,7 @@ if (whiptail_you_sure); then
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     whiptail_management_nic
-    filter_nics
+    filter_unused_nics
     whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
@@ -2046,7 +2086,7 @@ if (whiptail_you_sure); then
       #echo -e "XXX\n1\nInstalling pip3... \nXXX"
       #install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      network_setup >> $SETUPLOG 2>&1
+      create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
       echo "** Generating the patch pillar **" >> $SETUPLOG
@@ -2077,6 +2117,9 @@ if (whiptail_you_sure); then
       echo -e "XXX\n80\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -2097,7 +2140,7 @@ if (whiptail_you_sure); then
     whiptail_management_nic
 
     # Filter out the management NIC
-    filter_nics
+    filter_unused_nics
 
     # Select which NICs are in the bond
     whiptail_bond_nics
@@ -2144,7 +2187,7 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      network_setup >> $SETUPLOG 2>&1
+      create_sensor_bond >> $SETUPLOG 2>&1
       #install_pip3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
       salt_install_mysql_deps >> $SETUPLOG 2>&1
@@ -2223,22 +2266,24 @@ if (whiptail_you_sure); then
       echo -e "XXX\n85\nInstalling filebeat... \nXXX"
       salt-call state.apply filebeat >> $SETUPLOG 2>&1
       salt-call state.apply utility >> $SETUPLOG 2>&1
-      echo -e "XXX\n95\nInstalling misc components... \nXXX"
+      echo -e "XXX\n90\nInstalling misc components... \nXXX"
       salt-call state.apply schedule >> $SETUPLOG 2>&1
       salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
-        echo -e "XXX\n96\nInstalling The Hive... \nXXX"
+        echo -e "XXX\n91\nInstalling The Hive... \nXXX"
         salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       if [[ $PLAYBOOK == '1' ]]; then
-        echo -e "XXX\n97\nInstalling Playbook... \nXXX"
+        echo -e "XXX\n93\nInstalling Playbook... \nXXX"
         salt-call state.apply playbook >> $SETUPLOG 2>&1
       fi
-      echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
+      echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XXX\n99\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
@@ -2342,7 +2387,9 @@ if (whiptail_you_sure); then
       echo -e "XXX\n90\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
