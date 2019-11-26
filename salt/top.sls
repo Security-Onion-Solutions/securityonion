@@ -7,7 +7,6 @@
 base:
   '*':
     - patch.os.schedule
-    - patch.needs_restarting
     - motd
 
   'G@role:so-sensor':
