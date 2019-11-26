@@ -5,6 +5,11 @@
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
+  '*':
+    - patch.os.schedule
+    - patch.needs_restarting
+    - motd
+
   'G@role:so-sensor':
     - ca
     - ssl
@@ -40,6 +45,7 @@ base:
     - suricata
     - bro
     - curator
+    - cyberchef
     - elastalert
     {%- if OSQUERY != 0 %}
     - fleet
@@ -66,6 +72,7 @@ base:
     - ca
     - ssl
     - common
+    - cyberchef
     - sensoroni
     - firewall
     - master

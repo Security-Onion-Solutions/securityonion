@@ -1,0 +1,23 @@
+{% set needs_restarting_check = salt['mine.get']('*', 'needs_restarting.check', tgt_type='glob') -%}
+
+{%- if needs_restarting_check %}
+  {%- set minions_need_restarted = [] %}
+
+  {%- for minion, need_restarted in needs_restarting_check | dictsort() %}
+    {%- if need_restarted == 'True' %}
+      {% do minions_need_restarted.append(minion) %}
+    {%- endif %}
+  {%- endfor -%}
+
+  {%- if minions_need_restarted | length > 0 %}
+*****************************************************************************************
+* The following nodes in your Security Onion grid need restarted due to package updates *
+*****************************************************************************************
+
+    {% for minion in minions_need_restarted -%}
+  {{ minion }}
+    {% endfor -%}
+
+  {%- endif -%}
+
+{%- endif -%}

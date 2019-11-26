@@ -276,6 +276,18 @@ enable_master_cortex_9001_{{ip}}:
     - position: 1
     - save: True 
 
+enable_master_cyberchef_9080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9080
+    - position: 1
+    - save: True
+
+
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.

@@ -61,13 +61,13 @@ fleetdbpriv:
 
 so-fleetimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-fleet:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-fleet:HH1.1.3
 
 so-fleet:
   docker_container.running:
     - require:
       - so-fleetimage
-    - image: docker.io/soshybridhunter/so-fleet:HH1.1.0
+    - image: docker.io/soshybridhunter/so-fleet:HH1.1.3
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080
@@ -83,6 +83,7 @@ so-fleet:
       - KOLIDE_AUTH_JWT_KEY=thisisatest
       - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/osquery/status.log
       - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
+      - KOLIDE_SERVER_URL_PREFIX=/fleet
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
