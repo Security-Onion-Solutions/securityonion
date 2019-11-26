@@ -7,7 +7,7 @@ fi
 
 initpw=$(date +%s | sha256sum | base64 | head -c 16 ; echo)
 
-docker exec so-fleet fleetctl config set --address https://$1:443 --tls-skip-verify
+docker exec so-fleet fleetctl config set --address https://$1:443 --tls-skip-verify --url-prefix /fleet
 docker exec so-fleet fleetctl setup --email $2 --password $initpw
 
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/options.yaml
