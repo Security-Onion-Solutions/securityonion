@@ -1,4 +1,7 @@
 base:
+  '*':
+    - patch.needs_restarting
+
   'G@role:so-sensor':
     - sensors.{{ grains.id }}
     - static

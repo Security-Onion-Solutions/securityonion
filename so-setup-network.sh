@@ -255,10 +255,10 @@ copy_master_config() {
 copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "rsyncing all files in $TMP to /opt/so/saltstack" >> $SETUPLOG 2>&1
+    echo "rsyncing all files in $TMP to /opt/so/saltstack"
     rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
   else
-    echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
+    echo "scp all files in $TMP to master /opt/so/saltstack"
     scp -prv -i /root/.ssh/so.key $TMP/* socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
   fi
 
@@ -266,10 +266,12 @@ copy_minion_tmp_files() {
 
 copy_ssh_key() {
 
+  echo "Generating SSH key"
   # Generate SSH key
   mkdir -p /root/.ssh
   cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER /root/.ssh
+  echo "Copying the SSH key to the master"
   #Copy the key over to the master
   ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
 
@@ -322,6 +324,16 @@ detect_os() {
     echo "We were unable to determine if you are using a supported OS." >> $SETUPLOG 2>&1
     exit
   fi
+  echo "Detected OS as: $OS" >> $SETUPLOG 2>&1
+
+}
+
+disable_dnsmasq() {
+
+  if [ -f /etc/NetworkManager/NetworkManager.conf ]; then
+    echo "Disabling dnsmasq in /etc/NetworkManager/NetworkManager.conf"
+    sed -e 's/^dns=dnsmasq/#dns=dnsmasq/g' -i /etc/NetworkManager/NetworkManager.conf
+  fi
 
 }
 
@@ -356,7 +368,7 @@ docker_install() {
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       if [ $INSTALLTYPE != 'EVALMODE'  ]; then
         docker_registry >> $SETUPLOG 2>&1
       fi
@@ -366,13 +378,11 @@ docker_install() {
       apt-key add $TMP/gpg/docker.pub >> $SETUPLOG 2>&1
       add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> $SETUPLOG 2>&1
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     fi
-    echo "Using pip3 to install docker-py for salt"
-    pip3 install docker
   fi
 
 }
@@ -488,9 +498,9 @@ install_python3() {
   echo "Installing Python3"
 
   if [ $OS == 'ubuntu' ]; then
-    apt-get -y install python3-pip gcc python3-dev
-  elif [ $OS == 'centos' ]; then
-    yum -y install epel-release python3
+    apt-get -y install python3-pip python3-dev
+#  elif [ $OS == 'centos' ]; then
+#    yum -y install epel-release python3
   fi
 
 }
@@ -948,7 +958,10 @@ EOF
 
       # Copy down the gpg keys and install them from the master
       mkdir $TMP/gpg
+      echo "scp the gpg keys and install them from the master"
+      ls -l $TMP
       scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
       echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
@@ -1031,7 +1044,9 @@ salt_install_mysql_deps() {
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install libmysqlclient-dev python3-mysqldb
+    apt-get -y install libmysqlclient-dev gcc
+    echo "Using pip3 to install mysqlclient for salt"
+    pip3 install mysqlclient
   fi
 
 }
@@ -1931,7 +1946,8 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     # Enable Bro Logs
-    bro_logs_enabled
+    # comment this out since we already copy this file to the destination that this function writes to
+    #bro_logs_enabled
 
     # Figure out the main IP address
     get_main_ip
@@ -1945,10 +1961,9 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
-      #install_pip3 >> $SETUPLOG 2>&1
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
-      salt_install_mysql_deps >> $SETUPLOG 2>&1
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
@@ -1957,6 +1972,7 @@ if (whiptail_you_sure); then
       configure_minion master >> $SETUPLOG 2>&1
       echo " ** Installing Salt Master **" >> $SETUPLOG
       install_master >> $SETUPLOG 2>&1
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       salt_master_directories >> $SETUPLOG 2>&1
       update_sudoers >> $SETUPLOG 2>&1
       chown_salt_master >> $SETUPLOG 2>&1
@@ -2078,7 +2094,7 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    copy_ssh_key
+    copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
@@ -2188,15 +2204,16 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
-      #install_pip3 >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
-      salt_install_mysql_deps >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling saltstack... \nXXX"
+      echo -e "XXX\n1\nInstalling Python 3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n2\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling master code... \nXXX"
       install_master >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling mysql dependencies for saltstack... \nXXX"
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nCopying salt code... \nXXX"
       salt_master_directories >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nupdating suduers... \nXXX"
@@ -2350,7 +2367,7 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    copy_ssh_key
+    copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
