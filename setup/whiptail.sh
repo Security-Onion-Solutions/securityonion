@@ -36,8 +36,10 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
-  "COMMUNITY" "Install Community NSM" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" \
+  --radiolist "What tool would you like to use to generate meta data?" 20 78 4 \
+  "ZEEK" "Install Zeek (aka Bro)"  ON \
+  "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -170,10 +172,10 @@ whiptail_install_type() {
   "SENSORONLY" "Create a forward only sensor" ON \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
+  "EVALMODE" "Evaluate all the things" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
-  "EVALMODE" "Evaluate all the things" OFF \
   "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
   "STRELKA" "TODO Stand Alone Strelka Node" OFF \
   "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )

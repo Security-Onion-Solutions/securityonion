@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Functions
 
 accept_salt_key_local() {
@@ -13,6 +15,14 @@ accept_salt_key_remote() {
   ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $MINION_ID -y
   salt-call state.apply ca
   ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $MINION_ID -y
+
+}
+
+add_admin_user() {
+
+  # Add an admin user with full sudo rights if this is an ISO install.
+  useradd $ADMINUSER && echo $ADMINUSER:$ADMINPASS1 | chpasswd --crypt-method=SHA512
+  usermod -aG wheel $ADMINUSER
 
 }
 
@@ -49,7 +59,7 @@ add_socore_user_notmaster() {
 }
 
 # Create an auth pillar so that passwords survive re-install
-auth_pillar(){
+auth_pillar() {
 
   if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
     echo "Creating Auth Pillar" >> $SETUPLOG 2>&1
@@ -128,9 +138,14 @@ calculate_useable_cores() {
 
 }
 
-checkin_at_boot() {
-  echo "Enabling checkin at boot" >> $SETUPLOG 2>&1
-  echo "startup_states: highstate" >> /etc/salt/minion
+check_admin_pass() {
+
+  if [ $ADMINPASS1 == $ADMINPASS2 ]; then
+    APMATCH=yes
+  else
+    whiptail_passwords_dont_match
+  fi
+
 }
 
 check_hive_init_then_reboot() {
@@ -160,6 +175,13 @@ check_socore_pass() {
 
 }
 
+checkin_at_boot() {
+
+  echo "Enabling checkin at boot" >> $SETUPLOG 2>&1
+  echo "startup_states: highstate" >> /etc/salt/minion
+
+}
+
 chown_salt_master() {
 
   echo "Chown the salt dirs on the master for socore" >> $SETUPLOG 2>&1
@@ -168,6 +190,7 @@ chown_salt_master() {
 }
 
 clear_master() {
+
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
   if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
@@ -213,7 +236,12 @@ configure_minion() {
 copy_master_config() {
 
   # Copy the master config template to the proper directory
-  cp files/master /etc/salt/master
+  if [ $ISOINSTALL == '1' ]; then
+    cp /root/SecurityOnion/files/master /etc/salt/master
+  else
+    cp ../files/master /etc/salt/master
+  fi
+
   # Restart the service so it picks up the changes -TODO Enable service on CentOS
   service salt-master restart
 
@@ -229,7 +257,7 @@ copy_minion_tmp_files() {
     scp -prv -i /root/.ssh/so.key $TMP/* socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
   fi
 
-  }
+}
 
 copy_ssh_key() {
 
@@ -242,50 +270,40 @@ copy_ssh_key() {
 
 }
 
-network_setup() {
-  echo "Setting up Bond" >> $SETUPLOG 2>&1
-
-  # Set the MTU
-  if [ "$NSMSETUP" != 'ADVANCED' ]; then
-    MTU=1500
-  fi
-
-  # Create the bond interface
-  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
-    ipv4.method disabled \
-    ipv6.method link-local \
-    ethernet.mtu $MTU \
-    connection.autoconnect "yes" >> $SETUPLOG 2>&1
-
-  for BNIC in ${BNICS[@]}; do
-    # Strip the quotes from the NIC names
-    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
-      # Turn off various offloading settings for the interface
-    for i in rx tx sg tso ufo gso gro lro; do
-          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
-    done
-    # Create the slave interface and assign it to the bond
-    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
-    ethernet.mtu $MTU \
-    connection.autoconnect "yes" >> $SETUPLOG 2>&1
-    # Bring the slave interface up
-    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
-  done
-  # Replace the variable string in the network script
-  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
-  # Copy the checksum offload script to prevent issues with packet capture
-  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
-}
-
 detect_os() {
 
   # Detect Base OS
   echo "Detecting Base OS" >> $SETUPLOG 2>&1
   if [ -f /etc/redhat-release ]; then
     OS=centos
+    if grep -q "CentOS Linux release 7" /etc/redhat-release; then
+      OSVER=7
+    elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
+      OSVER=8
+      echo "We currently do not support CentOS $OSVER but we are working on it!"
+      exit
+    else
+      echo "We do not support the version of CentOS you are trying to use"
+      exit
+    fi
+
+    # Install bind-utils so the host command exists
     yum -y install bind-utils
+
+
   elif [ -f /etc/os-release ]; then
     OS=ubuntu
+    if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+      OSVER=bionic
+      echo "We currently don't support Ubuntu $OSVER but we are working on it!"
+      exit
+    elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
+      OSVER=xenial
+    else
+      echo "We do not support your current version of Ubuntu"
+      exit
+    fi
+    # Install netowrk manager so we can do interface stuff
     apt install -y network-manager
     /bin/systemctl enable network-manager
     /bin/systemctl start network-manager
@@ -295,6 +313,15 @@ detect_os() {
   fi
 
 }
+
+
+disable_onion_user() {
+
+  # Disable the default account cause security.
+  usermod -L onion
+
+}
+
 
 docker_install() {
 
@@ -360,12 +387,6 @@ es_heapsize() {
       # Set heap size to 25% of available memory
       ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
   fi
-
-}
-
-eval_mode_hostsfile() {
-
-  echo "127.0.0.1   $HOSTNAME" >> /etc/hosts
 
 }
 
@@ -565,6 +586,41 @@ minio_generate_keys() {
   ACCESS_KEY=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 20)
   ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 40)
 
+}
+
+network_setup() {
+  echo "Setting up Bond" >> $SETUPLOG 2>&1
+
+  # Set the MTU
+  if [ "$NSMSETUP" != 'ADVANCED' ]; then
+    MTU=1500
+  fi
+
+  # Create the bond interface
+  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+    ipv4.method disabled \
+    ipv6.method link-local \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+
+  for BNIC in ${BNICS[@]}; do
+    # Strip the quotes from the NIC names
+    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
+      # Turn off various offloading settings for the interface
+    for i in rx tx sg tso ufo gso gro lro; do
+          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
+    done
+    # Create the slave interface and assign it to the bond
+    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+    # Bring the slave interface up
+    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  done
+  # Replace the variable string in the network script
+  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+  # Copy the checksum offload script to prevent issues with packet capture
+  cp ../install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 }
 
 node_pillar() {
@@ -923,18 +979,6 @@ salt_checkin() {
 
 }
 
-salt_checkin_message() {
-
-  # Warn the user that this might take a while
-  echo "####################################################"
-  echo "##                                                ##"
-  echo "##        Applying and Installing everything      ##"
-  echo "##             (This will take a while)           ##"
-  echo "##                                                ##"
-  echo "####################################################"
-
-}
-
 salt_firstcheckin() {
 
   #First Checkin
@@ -949,10 +993,17 @@ salt_master_directories() {
   mkdir -p /opt/so/saltstack/pillar
 
   # Copy over the salt code and templates
-  cp -R pillar/* /opt/so/saltstack/pillar/
+  if [ $ISOINSTALL == '1' ]; then
+    cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
+    cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
+  else
+  # if ISO /root/SecurityOnion/blah
+    cp -R ../pillar/* /opt/so/saltstack/pillar/
+    cp -R ../salt/* /opt/so/saltstack/salt/
+  fi
+
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
   chmod +x /opt/so/saltstack/pillar/data/addtotab.sh
-  cp -R salt/* /opt/so/saltstack/salt/
 
 }
 
@@ -1071,6 +1122,22 @@ set_initial_firewall_policy() {
 
   if [ $INSTALLTYPE == 'WARMNODE' ]; then
     echo "blah"
+  fi
+
+}
+
+# Set up the management interface on the ISO
+set_management_interface() {
+
+  if [ $ADDRESSTYPE == 'DHCP' ]; then
+    /usr/bin/nmcli con up $MNIC
+    /usr/bin/nmcli con mod $MNIC connection.autoconnect yes
+  else
+    # Set Static IP
+    /usr/bin/nmcli con mod $MNIC ipv4.addresses $MIP/$MMASK ipv4.gateway $MGATEWAY \
+    ipv4.dns $MDNS ipv4.dns-search $MSEARCH ipv4.method manual
+    /usr/bin/nmcli con up $MNIC
+    /usr/bin/nmcli con mod $MNIC connection.autoconnect yes
   fi
 
 }

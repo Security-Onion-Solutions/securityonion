@@ -17,7 +17,16 @@
 
 # Source the other pieces of the setup
 source functions.sh
-source whiplash.sh
+source whiptail.sh
+
+# See if this is an ISO install
+OPTIONS=$1
+
+if [[ $OPTIONS = 'iso' ]]; then
+  ISOINSTALL=1
+else
+  ISOINSTALL=0
+fi
 
 # Global Variables
 HOSTNAME=$(cat /etc/hostname)
@@ -48,8 +57,6 @@ if (whiptail_you_sure); then
 
   # Create a temp dir to get started
   install_prep
-
-  # Determine if this is a network install or ISO install
 
   # Let folks know they need their management interface already set up.
   whiptail_network_notice
