@@ -249,11 +249,11 @@ if (whiptail_you_sure); then
       fi
       echo -e "XXX\n75\nEnabling Checking at Boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XXX\n95\nVerifying Install... \nXXX"
-      salt-call state.highstate >> $SETUPLOG 2>&1
-      echo -e "XX\n99\nFinishing touches... \nXXX"
+      echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -335,12 +335,12 @@ if (whiptail_you_sure); then
       salt-call state.apply pcap >> $SETUPLOG 2>&1
       echo -e "XXX\n60\nInstalling IDS components... \nXXX"
       salt-call state.apply suricata >> $SETUPLOG 2>&1
-      echo -e "XXX\n80\nVerifying Install... \nXXX"
-      salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XX\n99\nFinishing touches... \nXXX"
+      echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -501,11 +501,11 @@ if (whiptail_you_sure); then
       fi
       echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XXX\n98\nVerifying Setup... \nXXX"
-      salt-call state.highstate >> $SETUPLOG 2>&1
-      echo -e "XX\n99\nFinishing touches... \nXXX"
+      echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
@@ -606,12 +606,11 @@ if (whiptail_you_sure); then
       salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
       salt-call state.apply curator >> $SETUPLOG 2>&1
       salt-call state.apply filebeat >> $SETUPLOG 2>&1
-      echo -e "XXX\n90\nVerifying Install... \nXXX"
-      salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XX\n99\nFinishing touches... \nXXX"
+      echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
