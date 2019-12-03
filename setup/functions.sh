@@ -673,7 +673,7 @@ network_setup() {
   nmcli con mod $MAININT connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
   echo "... Copying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
-  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
+  cp ../install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
 
   echo "... Modifying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
   sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh >> $SETUPLOG 2>&1
