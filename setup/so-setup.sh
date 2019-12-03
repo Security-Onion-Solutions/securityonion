@@ -48,7 +48,7 @@ got_root
 detect_os
 
 if [ $OS == ubuntu ]; then
-  # Override the Ubuntu whiptail color pallete
+  # Override the horrible Ubuntu whiptail color pallete
   update-alternatives --set newt-palette /etc/newt/palette.original
 fi
 
@@ -151,7 +151,8 @@ if (whiptail_you_sure); then
     get_filesystem_root
     get_filesystem_nsm
     # Enable Bro Logs
-    bro_logs_enabled
+    # comment this out since we already copy this file to the destination that this function writes to
+    #bro_logs_enabled
 
     # Figure out the main IP address
     get_main_ip
@@ -165,10 +166,9 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
-      #install_pip3 >> $SETUPLOG 2>&1
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
-      salt_install_mysql_deps >> $SETUPLOG 2>&1
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
@@ -177,6 +177,7 @@ if (whiptail_you_sure); then
       configure_minion master >> $SETUPLOG 2>&1
       echo " ** Installing Salt Master **" >> $SETUPLOG
       install_master >> $SETUPLOG 2>&1
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       salt_master_directories >> $SETUPLOG 2>&1
       update_sudoers >> $SETUPLOG 2>&1
       chown_salt_master >> $SETUPLOG 2>&1
@@ -250,7 +251,9 @@ if (whiptail_you_sure); then
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XXX\n95\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -273,7 +276,7 @@ if (whiptail_you_sure); then
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
     whiptail_management_nic
-    filter_nics
+    filter_unused_nics
     whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
@@ -296,15 +299,15 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    copy_ssh_key
+    copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      #install_pip3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-      network_setup >> $SETUPLOG 2>&1
+      create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
       sensor_pillar >> $SETUPLOG 2>&1
       echo "** Generating the patch pillar **" >> $SETUPLOG
@@ -335,6 +338,9 @@ if (whiptail_you_sure); then
       echo -e "XXX\n80\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -355,7 +361,7 @@ if (whiptail_you_sure); then
     whiptail_management_nic
 
     # Filter out the management NIC
-    filter_nics
+    filter_unused_nics
 
     # Select which NICs are in the bond
     whiptail_bond_nics
@@ -402,16 +408,17 @@ if (whiptail_you_sure); then
     {
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      network_setup >> $SETUPLOG 2>&1
-      #install_pip3 >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling mysql dependencies for saltstack... \nXXX"
-      salt_install_mysql_deps >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling saltstack... \nXXX"
+      create_sensor_bond >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling Python 3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n2\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
       docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling master code... \nXXX"
       install_master >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling mysql dependencies for saltstack... \nXXX"
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nCopying salt code... \nXXX"
       salt_master_directories >> $SETUPLOG 2>&1
       echo -e "XXX\n6\nupdating suduers... \nXXX"
@@ -481,22 +488,24 @@ if (whiptail_you_sure); then
       echo -e "XXX\n85\nInstalling filebeat... \nXXX"
       salt-call state.apply filebeat >> $SETUPLOG 2>&1
       salt-call state.apply utility >> $SETUPLOG 2>&1
-      echo -e "XXX\n95\nInstalling misc components... \nXXX"
+      echo -e "XXX\n90\nInstalling misc components... \nXXX"
       salt-call state.apply schedule >> $SETUPLOG 2>&1
       salt-call state.apply soctopus >> $SETUPLOG 2>&1
       if [[ $THEHIVE == '1' ]]; then
-        echo -e "XXX\n96\nInstalling The Hive... \nXXX"
+        echo -e "XXX\n91\nInstalling The Hive... \nXXX"
         salt-call state.apply hive >> $SETUPLOG 2>&1
       fi
       if [[ $PLAYBOOK == '1' ]]; then
-        echo -e "XXX\n97\nInstalling Playbook... \nXXX"
+        echo -e "XXX\n93\nInstalling Playbook... \nXXX"
         salt-call state.apply playbook >> $SETUPLOG 2>&1
       fi
-      echo -e "XXX\n98\nSetting checkin to run on boot... \nXXX"
+      echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
-      echo -e "XXX\n99\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [ $OS == 'centos' ]; then
@@ -563,13 +572,13 @@ if (whiptail_you_sure); then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
-    copy_ssh_key
+    copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      #install_pip3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
@@ -600,7 +609,9 @@ if (whiptail_you_sure); then
       echo -e "XXX\n90\nVerifying Install... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
-
+      echo -e "XX\n99\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then

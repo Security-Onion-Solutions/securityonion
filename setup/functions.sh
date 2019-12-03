@@ -1,6 +1,19 @@
 #!/bin/bash
 
-# Functions
+# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 accept_salt_key_local() {
   echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
@@ -59,7 +72,7 @@ add_socore_user_notmaster() {
 }
 
 # Create an auth pillar so that passwords survive re-install
-auth_pillar() {
+auth_pillar(){
 
   if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
     echo "Creating Auth Pillar" >> $SETUPLOG 2>&1
@@ -176,10 +189,8 @@ check_socore_pass() {
 }
 
 checkin_at_boot() {
-
   echo "Enabling checkin at boot" >> $SETUPLOG 2>&1
   echo "startup_states: highstate" >> /etc/salt/minion
-
 }
 
 chown_salt_master() {
@@ -190,7 +201,6 @@ chown_salt_master() {
 }
 
 clear_master() {
-
   # Clear out the old master public key in case this is a re-install.
   # This only happens if you re-install the master.
   if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
@@ -250,24 +260,59 @@ copy_master_config() {
 copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "rsyncing all files in $TMP to /opt/so/saltstack" >> $SETUPLOG 2>&1
-    rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
+    echo "rsyncing pillar and salt files in $TMP to /opt/so/saltstack"
+    rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+    rsync -a -v $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
   else
-    echo "scp all files in $TMP to master /opt/so/saltstack" >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP/* socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
+    echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
+    scp -prv -i /root/.ssh/so.key $TMP/pillar/* socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/salt/* socore@$MSRV:/opt/so/saltstack/salt >> $SETUPLOG 2>&1
   fi
 
-}
+  }
 
 copy_ssh_key() {
 
+  echo "Generating SSH key"
   # Generate SSH key
   mkdir -p /root/.ssh
   cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
   chown -R $SUDO_USER:$SUDO_USER /root/.ssh
+  echo "Copying the SSH key to the master"
   #Copy the key over to the master
   ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
 
+}
+
+create_sensor_bond() {
+  echo "Setting up sensor bond" >> $SETUPLOG 2>&1
+
+  # Set the MTU
+  if [[ $NSMSETUP != 'ADVANCED' ]]; then
+    MTU=1500
+  fi
+
+  # Create the bond interface
+  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+    ipv4.method disabled \
+    ipv6.method link-local \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+
+  for BNIC in ${BNICS[@]}; do
+    # Strip the quotes from the NIC names
+    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
+      # Turn off various offloading settings for the interface
+    for i in rx tx sg tso ufo gso gro lro; do
+          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
+    done
+    # Create the slave interface and assign it to the bond
+    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
+    ethernet.mtu $MTU \
+    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+    # Bring the slave interface up
+    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
+  done
 }
 
 detect_os() {
@@ -303,7 +348,7 @@ detect_os() {
       echo "We do not support your current version of Ubuntu"
       exit
     fi
-    # Install netowrk manager so we can do interface stuff
+    # Install network manager so we can do interface stuff
     apt install -y network-manager
     /bin/systemctl enable network-manager
     /bin/systemctl start network-manager
@@ -314,6 +359,14 @@ detect_os() {
 
 }
 
+#disable_dnsmasq() {
+
+#  if [ -f /etc/NetworkManager/NetworkManager.conf ]; then
+#    echo "Disabling dnsmasq in /etc/NetworkManager/NetworkManager.conf"
+#    sed -e 's/^dns=dnsmasq/#dns=dnsmasq/g' -i /etc/NetworkManager/NetworkManager.conf
+#  fi
+
+#}
 
 disable_onion_user() {
 
@@ -322,6 +375,18 @@ disable_onion_user() {
 
 }
 
+disable_unused_nics() {
+  for UNUSED_NIC in ${FNICS[@]}; do
+    # Disable DHCPv4/v6 and autoconnect
+    nmcli con mod $UNUSED_NIC \
+      ipv4.method disabled \
+      ipv6.method link-local \
+      connection.autoconnect "no" >> $SETUPLOG 2>&1
+
+    # Flush any existing IPs
+    ip addr flush $UNUSED_NIC >> $SETUPLOG 2>&1
+  done
+}
 
 docker_install() {
 
@@ -341,7 +406,7 @@ docker_install() {
   else
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       if [ $INSTALLTYPE != 'EVALMODE'  ]; then
         docker_registry >> $SETUPLOG 2>&1
       fi
@@ -351,13 +416,11 @@ docker_install() {
       apt-key add $TMP/gpg/docker.pub >> $SETUPLOG 2>&1
       add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> $SETUPLOG 2>&1
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce >> $SETUPLOG 2>&1
+      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     fi
-    echo "Using pip3 to install docker-py for salt"
-    pip3 install docker
   fi
 
 }
@@ -390,11 +453,19 @@ es_heapsize() {
 
 }
 
-filter_nics() {
+filter_unused_nics() {
+  # Set the main NIC as the default grep search string
+  grep_string=$MNIC
 
-  # Filter the NICs that we don't want to see in setup
-  FNICS=$(ip link | grep -vw $MNIC | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
+  # If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+  if [[ $BNICS ]]; then
+    for BONDNIC in ${BNICS[@]}; do
+      grep_string="$grep_string\|$BONDNIC"
+    done
+  fi
 
+  # Finally, set FNICS to any NICs we aren't using (and ignore interfaces that aren't of use)
+  FNICS=$(ip link | grep -vwe $grep_string | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
 }
 
 generate_passwords(){
@@ -403,6 +474,7 @@ generate_passwords(){
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   CORTEXKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  CORTEXORGUSERKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   SENSORONIKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 }
 
@@ -458,9 +530,9 @@ install_python3() {
   echo "Installing Python3"
 
   if [ $OS == 'ubuntu' ]; then
-    apt-get -y install python3-pip gcc python3-dev
-  elif [ $OS == 'centos' ]; then
-    yum -y install epel-release python3
+    apt-get -y install python3-pip python3-dev
+#  elif [ $OS == 'centos' ]; then
+#    yum -y install epel-release python3
   fi
 
 }
@@ -570,6 +642,9 @@ master_static() {
   echo "  cortexuser: cortexadmin" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexpassword: cortexchangeme" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexkey: $CORTEXKEY" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorgname: SecurityOnion" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorguser: soadmin" >> /opt/so/saltstack/pillar/static.sls
+  echo "  cortexorguserkey: $CORTEXORGUSERKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
@@ -589,38 +664,19 @@ minio_generate_keys() {
 }
 
 network_setup() {
-  echo "Setting up Bond" >> $SETUPLOG 2>&1
+  echo "Finishing up network setup" >> $SETUPLOG 2>&1
 
-  # Set the MTU
-  if [ "$NSMSETUP" != 'ADVANCED' ]; then
-    MTU=1500
-  fi
+  echo "... Disabling unused NICs" >> $SETUPLOG 2>&1
+  disable_unused_nics >> $SETUPLOG 2>&1
 
-  # Create the bond interface
-  nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
-    ipv4.method disabled \
-    ipv6.method link-local \
-    ethernet.mtu $MTU \
-    connection.autoconnect "yes" >> $SETUPLOG 2>&1
+  echo "... Setting ONBOOT for management interface" >> $SETUPLOG 2>&1
+  nmcli con mod $MAININT connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
-  for BNIC in ${BNICS[@]}; do
-    # Strip the quotes from the NIC names
-    BONDNIC="$(echo -e "${BNIC}" | tr -d '"')"
-      # Turn off various offloading settings for the interface
-    for i in rx tx sg tso ufo gso gro lro; do
-          ethtool -K $BONDNIC $i off >> $SETUPLOG 2>&1
-    done
-    # Create the slave interface and assign it to the bond
-    nmcli con add type ethernet ifname $BONDNIC con-name "bond0-slave-$BONDNIC" master bond0 -- \
-    ethernet.mtu $MTU \
-    connection.autoconnect "yes" >> $SETUPLOG 2>&1
-    # Bring the slave interface up
-    nmcli con up bond0-slave-$BONDNIC >> $SETUPLOG 2>&1
-  done
-  # Replace the variable string in the network script
-  sed -i "s/\$MAININT/${MAININT}/g" ./install_scripts/disable-checksum-offload.sh >> $SETUPLOG 2>&1
-  # Copy the checksum offload script to prevent issues with packet capture
-  cp ../install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
+  echo "... Copying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
+  cp ./install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
+
+  echo "... Modifying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
+  sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh >> $SETUPLOG 2>&1
 }
 
 node_pillar() {
@@ -683,7 +739,7 @@ patch_schedule_os_new() {
     mkdir -p $OSPATCHSCHEDULEDIR
   fi
 
-  echo "patch:" > $OSPATCHSCHEDULE
+      echo "patch:" > $OSPATCHSCHEDULE
       echo "  os:" >> $OSPATCHSCHEDULE
       echo "    schedule:" >> $OSPATCHSCHEDULE
       for psd in "${PATCHSCHEDULEDAYS[@]}"
@@ -722,8 +778,8 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
-      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
-      sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
+      cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
+      sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
       # Download Ubuntu Keys in case master updates = 1
       mkdir -p /opt/so/gpg
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
@@ -934,13 +990,19 @@ EOF
 
       # Copy down the gpg keys and install them from the master
       mkdir $TMP/gpg
-      scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      echo "scp the gpg keys and install them from the master"
+      scp -v -i /root/.ssh/so.key socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
+      echo "Installing libssl-dev for M2Crypto"
+      apt-get -y install libssl-dev
+      echo "Using pip3 to install M2Crypto for Salt"
+      pip3 install M2Crypto
       # Need to add python dateutil here
       apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
@@ -1012,7 +1074,9 @@ salt_install_mysql_deps() {
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install libmysqlclient-dev python3-mysqldb
+    apt-get -y install libmysqlclient-dev gcc
+    echo "Using pip3 to install mysqlclient for salt"
+    pip3 install mysqlclient
   fi
 
 }

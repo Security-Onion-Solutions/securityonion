@@ -1,8 +1,19 @@
-###########################################
-##                                       ##
-##         Whiptail Menu Section         ##
-##                                       ##
-###########################################
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 whiptail_basic_bro() {
 
@@ -36,10 +47,8 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" \
-  --radiolist "What tool would you like to use to generate meta data?" 20 78 4 \
-  "ZEEK" "Install Zeek (aka Bro)"  ON \
-  "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 78 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
+  "COMMUNITY" "Install Community NSM" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -48,11 +57,16 @@ whiptail_bro_version() {
 
 whiptail_bond_nics() {
 
-  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+  local nic_list=()
+  for FNIC in ${FNICS[@]}; do
+    nic_list+=($FNIC "Interface" "OFF")
+  done
+
+  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
 
   while [ -z "$BNICS" ]
   do
-    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${FNICS[@]} 3>&1 1>&2 2>&3 )
+    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 78 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
   done
 
   local exitstatus=$?
@@ -172,10 +186,10 @@ whiptail_install_type() {
   "SENSORONLY" "Create a forward only sensor" ON \
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
-  "EVALMODE" "Evaluate all the things" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add a Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add a Warm Node to an existing Hot or Storage node" OFF \
+  "EVALMODE" "Evaluate all the things" OFF \
   "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
   "STRELKA" "TODO Stand Alone Strelka Node" OFF \
   "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )
