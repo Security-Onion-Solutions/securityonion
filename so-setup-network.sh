@@ -255,11 +255,13 @@ copy_master_config() {
 copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    echo "rsyncing all files in $TMP to /opt/so/saltstack"
-    rsync -a -v $TMP/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
+    echo "rsyncing pillar and salt files in $TMP to /opt/so/saltstack"
+    rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+    rsync -a -v $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
   else
-    echo "scp all files in $TMP to master /opt/so/saltstack"
-    scp -prv -i /root/.ssh/so.key $TMP/* socore@$MSRV:/opt/so/saltstack >> $SETUPLOG 2>&1
+    echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
+    scp -prv -i /root/.ssh/so.key $TMP/pillar/* socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/salt/* socore@$MSRV:/opt/so/saltstack/salt >> $SETUPLOG 2>&1
   fi
 
   }
@@ -746,8 +748,8 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
-      cp /etc/yum.repos.d/salt-latest.repo /etc/yum.repos.d/salt-2019-2.repo
-      sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
+      cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
+      sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
       # Download Ubuntu Keys in case master updates = 1
       mkdir -p /opt/so/gpg
       wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
@@ -959,15 +961,18 @@ EOF
       # Copy down the gpg keys and install them from the master
       mkdir $TMP/gpg
       echo "scp the gpg keys and install them from the master"
-      ls -l $TMP
-      scp socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      scp -v -i /root/.ssh/so.key socore@$MSRV:/opt/so/gpg/* $TMP/gpg
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
+      echo "Installing libssl-dev for M2Crypto"
+      apt-get -y install libssl-dev
+      echo "Using pip3 to install M2Crypto for Salt"
+      pip3 install M2Crypto
       # Need to add python dateutil here
       apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
@@ -2099,8 +2104,8 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      #install_pip3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
@@ -2372,8 +2377,8 @@ if (whiptail_you_sure); then
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      #echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      #install_pip3 >> $SETUPLOG 2>&1
+      echo -e "XXX\n1\nInstalling pip3... \nXXX"
+      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"
