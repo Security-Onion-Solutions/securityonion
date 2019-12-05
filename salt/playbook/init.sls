@@ -56,3 +56,8 @@ so-navigator:
       - /opt/so/conf/playbook/nav_layer_playbook.json:/nav-app/src/assets/playbook.json:ro
     - port_bindings:
       - 0.0.0.0:4200:4200
+        
+/usr/sbin/so-playbook-sync:
+  cron.present:
+    - user: root
+    - minute: '*/5'
