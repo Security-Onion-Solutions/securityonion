@@ -166,7 +166,6 @@ if (whiptail_you_sure); then
     # Install salt and dependencies
     {
       sleep 0.5
-      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
       saltify >> $SETUPLOG 2>&1
@@ -305,7 +304,6 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
@@ -410,7 +408,6 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling Python 3... \nXXX"
-      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n2\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n3\nInstalling docker... \nXXX"
@@ -578,7 +575,6 @@ if (whiptail_you_sure); then
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
       echo -e "XXX\n1\nInstalling pip3... \nXXX"
-      install_python3 >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n20\nInstalling Docker... \nXXX"

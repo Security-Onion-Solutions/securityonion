@@ -525,18 +525,6 @@ install_cleanup() {
 
 }
 
-install_python3() {
-
-  echo "Installing Python3"
-
-  if [ $OS == 'ubuntu' ]; then
-    apt-get -y install python3-pip python3-dev
-#  elif [ $OS == 'centos' ]; then
-#    yum -y install epel-release python3
-  fi
-
-}
-
 install_prep() {
 
   # Create a tmp space that isn't in /tmp
@@ -944,6 +932,7 @@ EOF
     fi
     echo "exclude=salt*" >> /etc/yum.conf
 
+  # Our OS is not CentOS
   else
     ADDUSER=useradd
     DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
@@ -957,13 +946,11 @@ EOF
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
 
-      #echo "Using pip3 to install python-dateutil for salt"
-      #pip3 install python-dateutil
       # Install the repo for salt
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
       wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
-      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
-      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
 
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -983,7 +970,7 @@ EOF
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
       # Need to add python packages here
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python3-dateutil >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -995,16 +982,11 @@ EOF
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      echo "Installing libssl-dev for M2Crypto"
-      apt-get -y install libssl-dev
-      echo "Using pip3 to install M2Crypto for Salt"
-      pip3 install M2Crypto
-      # Need to add python dateutil here
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -1074,9 +1056,7 @@ salt_install_mysql_deps() {
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install libmysqlclient-dev gcc
-    echo "Using pip3 to install mysqlclient for salt"
-    pip3 install mysqlclient
+    apt-get -y install python-mysqldb
   fi
 
 }
