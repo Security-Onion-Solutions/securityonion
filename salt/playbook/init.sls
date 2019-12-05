@@ -59,5 +59,6 @@ so-navigator:
         
 /usr/sbin/so-playbook-sync:
   cron.present:
+    - identifier: so-playbook-sync
     - user: root
     - minute: '*/5'
