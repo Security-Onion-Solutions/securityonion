@@ -23,9 +23,9 @@ source whiptail.sh
 OPTIONS=$1
 
 if [[ $OPTIONS = 'iso' ]]; then
-  ISOINSTALL=1
+  INSTALLMETHOD="iso"
 else
-  ISOINSTALL=0
+  INSTALLMETHOD="network"
 fi
 
 # Global Variables
@@ -58,11 +58,67 @@ if (whiptail_you_sure); then
   # Create a temp dir to get started
   install_prep
 
-  # Let folks know they need their management interface already set up.
-  whiptail_network_notice
+  if [ $INSTALLMETHOD == network ]; then
+    # Let folks know they need their management interface already set up.
+    whiptail_network_notice
 
-  # Set the hostname to reduce errors
-  whiptail_set_hostname
+    # Set the hostname to reduce errors
+    whiptail_set_hostname
+
+    # Set management nic
+    whiptail_management_nic
+
+    whiptail_create_socore_user
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
+
+  else
+
+    # Set the hostname
+    whiptail_set_hostname
+    whiptail_management_nic
+
+    # Ask if you want dhcp or static
+    whiptail_dhcp_or_static
+
+    # Do this if it static is selected
+    if [ $ADDRESSTYPE != 'DHCP' ]; then
+      whiptail_management_interface_ip
+      whiptail_management_interface_mask
+      whiptail_management_interface_gateway
+      whiptail_management_interface_dns
+      whiptail_management_interface_dns_search
+    fi
+
+    # Go ahead and bring up networking so other parts of the install work
+    set_hostname
+    set_management_interface
+
+    # Add an admin user
+    whiptail_create_admin_user
+
+    # Get a password for the admin user
+    APMATCH=no
+    while [ $APMATCH != yes ]; do
+      whiptail_create_admin_user_password1
+      whiptail_create_admin_user_password2
+      check_admin_pass
+    done
+
+    # Get a password for the socore user
+    whiptail_create_socore_user
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
+
+  fi
 
   # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
   #minio_generate_keys
@@ -99,9 +155,6 @@ if (whiptail_you_sure); then
     # Would you like to do an advanced install?
     whiptail_master_adv
 
-    # Pick the Management NIC
-    whiptail_management_nic
-
     # Choose Zeek or Community NSM
     whiptail_bro_version
 
@@ -132,14 +185,6 @@ if (whiptail_you_sure); then
         whiptail_master_adv_service_brologs
       fi
     fi
-
-    whiptail_create_socore_user
-    SCMATCH=no
-    while [ $SCMATCH != yes ]; do
-      whiptail_create_socore_user_password1
-      whiptail_create_socore_user_password2
-      check_socore_pass
-    done
 
     # Last Chance to back out
     whiptail_make_changes
@@ -274,7 +319,6 @@ if (whiptail_you_sure); then
   ####################
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
-    whiptail_management_nic
     filter_unused_nics
     whiptail_bond_nics
     whiptail_management_server
@@ -355,8 +399,6 @@ if (whiptail_you_sure); then
   #######################
 
   if [ $INSTALLTYPE == 'EVALMODE' ]; then
-    # Select the management NIC
-    whiptail_management_nic
 
     # Filter out the management NIC
     filter_unused_nics
@@ -384,13 +426,6 @@ if (whiptail_you_sure); then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     process_components
-    whiptail_create_socore_user
-    SCMATCH=no
-    while [ $SCMATCH != yes ]; do
-      whiptail_create_socore_user_password1
-      whiptail_create_socore_user_password2
-      check_socore_pass
-    done
     whiptail_make_changes
     set_hostname
     generate_passwords
@@ -537,7 +572,6 @@ if (whiptail_you_sure); then
   ###################
 
   if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
-    whiptail_management_nic
     whiptail_management_server
     whiptail_master_updates
     set_updates
@@ -617,22 +651,6 @@ if (whiptail_you_sure); then
       shutdown -r now
     fi
 
-    #set_initial_firewall_policy
-    #saltify
-    #docker_install
-    #configure_minion node
-    #set_node_type
-    #node_pillar
-    #copy_minion_pillar nodes
-    #salt_checkin
-    # Accept the Salt Key
-    #accept_salt_key_remote
-    # Do the big checkin but first let them know it will take a bit.
-    #salt_checkin_message
-    #salt_checkin
-    #checkin_at_boot
-
-    #whiptail_setup_complete
   fi
 
 else
