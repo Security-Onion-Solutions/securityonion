@@ -19,7 +19,13 @@ hive_init(){
 
     # Create intial TheHive user
     curl -v -k "https://$HIVE_IP/thehive/api/user" -H "Content-Type: application/json" -d "{\"login\" : \"$HIVE_USER\",\"name\" : \"$HIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$HIVE_PASSWORD\", \"key\": \"$HIVE_KEY\"}"
+   
+    # Pre-load custom fields
+    #
+    # reputation
+    curl -v -k "https://$HIVE_IP/thehive/api/list/custom_fields" -H "Authorization: Bearer $HIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
 
+   
     # Update SOCtopus config with apikey value
     #sed -i "s/hive_key = .*/hive_key = $HIVE_KEY/" $SOCTOPUS_CONFIG
 
