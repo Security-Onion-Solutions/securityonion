@@ -39,9 +39,9 @@ filebeatpkidir:
 
 # This needs to be owned by root
 filebeatconfsync:
-  file.recurse:
-    - name: /opt/so/conf/filebeat/etc
-    - source: salt://filebeat/etc
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/filebeat.yml
+    - source: salt://filebeat/etc/filebeat.yml
     - user: 0
     - group: 0
     - template: jinja
