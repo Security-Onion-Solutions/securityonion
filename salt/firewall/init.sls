@@ -1,5 +1,5 @@
 # Firewall Magic for the grid
-{%- if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{%- if grains['role'] in ['so-eval','so-master','so-helix'] %}
 {%- set ip = salt['pillar.get']('static:masterip', '') %}
 {%- elif grains['role'] == 'so-node' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}

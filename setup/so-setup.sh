@@ -35,7 +35,7 @@ MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
-LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
+LSTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 NODE_ES_PORT="9200"
 SETUPLOG="/root/sosetup.log"
@@ -150,10 +150,12 @@ if (whiptail_you_sure) ; then
   esac
 
   ####################
-  ##     Master     ##
+  ##      Helix     ##
   ####################
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     MASTERUPDATES=OPEN
+    filter_unused_nics
+    whiptail_bond_nics
     whiptail_helix_apikey
     whiptail_homenet_master
     whiptail_rule_setup
@@ -245,6 +247,9 @@ if (whiptail_you_sure) ; then
 
   fi
 
+  ####################
+  ##     Master     ##
+  ####################
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     # Would you like to do an advanced install?
