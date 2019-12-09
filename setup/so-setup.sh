@@ -196,9 +196,9 @@ if (whiptail_you_sure) ; then
       patch_pillar >> $SETUPLOG 2>&1
       echo "** Generating the FireEye pillar **" >> $SETUPLOG
       fireeye_pillar >> $SETUPLOG 2>&1
-      exit
       echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
       copy_minion_tmp_files >> $SETUPLOG 2>&1
+      exit
       # Do a checkin to push the key up
       echo "** Pushing the key up to Master **" >> $SETUPLOG
       salt_firstcheckin >> $SETUPLOG 2>&1
