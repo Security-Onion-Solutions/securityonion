@@ -188,6 +188,7 @@ if (whiptail_you_sure) ; then
       chown_salt_master >> $SETUPLOG 2>&1
       es_heapsize >> $SETUPLOG 2>&1
       ls_heapsize >> $SETUPLOG 2>&1
+      exit
       echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
       master_static >> $SETUPLOG 2>&1
       echo "** Generating the master pillar **" >> $SETUPLOG

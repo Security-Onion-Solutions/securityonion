@@ -1065,7 +1065,6 @@ salt_master_directories() {
     cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
     cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
   else
-
     cp -R ../pillar/* /opt/so/saltstack/pillar/
     cp -R ../salt/* /opt/so/saltstack/salt/
   fi
