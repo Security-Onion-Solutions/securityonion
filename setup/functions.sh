@@ -252,7 +252,7 @@ configure_minion() {
 copy_master_config() {
 
   # Copy the master config template to the proper directory
-  if [ $INSTALLMETHOD =='iso' ]; then
+  if [ $INSTALLMETHOD == 'iso' ]; then
     cp /root/SecurityOnion/files/master /etc/salt/master
   else
     cp ../files/master /etc/salt/master
@@ -481,7 +481,7 @@ filter_unused_nics() {
 fireeye_pillar() {
 
   FIREEYEPILLARPATH=$TMP/pillar/fireeye
-  mkdir $FIREEYEPILLARPATH
+  mkdir -p $FIREEYEPILLARPATH
 
   echo "" >> $FIREEYEPILLARPATH/init.sls
   echo "fireeye:" >> $FIREEYEPILLARPATH/init.sls
