@@ -479,6 +479,7 @@ filter_unused_nics() {
 fireeye_pillar() {
 
   FIREEYEPILLARPATH=$TMP/pillar/fireeye
+  mkdir $FIREEYEPILLARPATH
 
   echo "" >> $FIREEYEPILLARPATH/init.sls
   echo "fireeye:" >> $FIREEYEPILLARPATH/init.sls
