@@ -27,3 +27,7 @@ base:
     - nodes.{{ grains.id }}
     - static
     - firewall.*
+
+  'G@role:so-helix':
+    - fireeye
+    - static
