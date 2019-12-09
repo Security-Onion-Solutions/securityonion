@@ -265,10 +265,12 @@ copy_master_config() {
 
 copy_minion_tmp_files() {
 
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     echo "rsyncing pillar and salt files in $TMP to /opt/so/saltstack"
     rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
-    rsync -a -v $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
+    if [ -d $TMP/salt ] ; then
+      rsync -a -v $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
+    fi
   else
     echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
     scp -prv -i /root/.ssh/so.key $TMP/pillar/* socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
@@ -404,7 +406,7 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce python36-docker
-    if [ $INSTALLTYPE != 'EVALMODE'  ]; then
+    if [ $INSTALLTYPE != 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
       docker_registry
     fi
     echo "Restarting Docker" >> $SETUPLOG 2>&1
@@ -602,7 +604,7 @@ master_pillar() {
   echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
     echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
@@ -719,7 +721,7 @@ node_pillar() {
 patch_pillar() {
 
   case $INSTALLTYPE in
-    MASTERONLY | EVALMODE)
+    MASTERONLY | EVALMODE | HELIXSENSOR)
       PATCHPILLARPATH=/opt/so/saltstack/pillar/masters
       ;;
     SENSORONLY)
@@ -946,7 +948,7 @@ EOF
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
-    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
       yum -y install salt-master-2019.2.2 python3 python36-m2crypto salt-minion-2019.2.2 python36-dateutil python36-mysql python36-docker
       systemctl enable salt-master
     else
@@ -1019,7 +1021,7 @@ EOF
 
 salt_checkin() {
   # Master State to Fix Mine Usage
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
   echo "Building Certificate Authority"
   salt-call state.apply ca >> $SETUPLOG 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
@@ -1059,7 +1061,7 @@ salt_master_directories() {
   mkdir -p /opt/so/saltstack/pillar
 
   # Copy over the salt code and templates
-  if [ $INSTALLMETHOD =='iso' ]; then
+  if [ $INSTALLMETHOD == 'iso' ]; then
     cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
     cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
   else
@@ -1139,7 +1141,7 @@ set_hostname() {
   echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
         echo "$MSRVIP   $MSRV" >> /etc/hosts
@@ -1164,6 +1166,12 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
     /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+  fi
+
+  if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
   fi
 
   if [ $INSTALLTYPE == 'SENSORONLY' ]; then
