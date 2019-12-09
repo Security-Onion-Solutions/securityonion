@@ -476,6 +476,17 @@ filter_unused_nics() {
   FNICS=$(ip link | grep -vwe $grep_string | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
 }
 
+fireeye_pillar() {
+
+  FIREEYEPILLARPATH=$TMP/pillar/fireeye
+
+  echo "" >> $FIREEYEPILLARPATH/init.sls
+  echo "fireeye:" >> $FIREEYEPILLARPATH/init.sls
+  echo "  helix:" >> $FIREEYEPILLARPATH/init.sls
+  echo "    api_key: $HELIXAPIKEY" >> $FIREEYEPILLARPATH/init.sls
+
+}
+
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
