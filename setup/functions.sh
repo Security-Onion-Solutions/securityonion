@@ -252,7 +252,7 @@ configure_minion() {
 copy_master_config() {
 
   # Copy the master config template to the proper directory
-  if [ $ISOINSTALL == '1' ]; then
+  if [ $INSTALLMETHOD =='iso' ]; then
     cp /root/SecurityOnion/files/master /etc/salt/master
   else
     cp ../files/master /etc/salt/master
@@ -1059,11 +1059,11 @@ salt_master_directories() {
   mkdir -p /opt/so/saltstack/pillar
 
   # Copy over the salt code and templates
-  if [ $ISOINSTALL == '1' ]; then
+  if [ $INSTALLMETHOD =='iso' ]; then
     cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
     cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
   else
-  # if ISO /root/SecurityOnion/blah
+
     cp -R ../pillar/* /opt/so/saltstack/pillar/
     cp -R ../salt/* /opt/so/saltstack/salt/
   fi
