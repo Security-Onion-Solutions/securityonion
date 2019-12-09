@@ -278,8 +278,7 @@ if (whiptail_you_sure) ; then
       if [ $BROVERSION != 'SURICATA' ]; then
         whiptail_master_adv_service_brologs
       fi
-    fi
-
+  
     # Last Chance to back out
     whiptail_make_changes
     set_hostname
