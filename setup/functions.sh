@@ -786,7 +786,7 @@ saltify() {
   if [ $OS == 'centos' ]; then
     ADDUSER=adduser
 
-    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
       yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
