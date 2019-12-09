@@ -9,6 +9,19 @@ base:
     - patch.os.schedule
     - motd
 
+  'G@role:so-helix':
+    - ca
+    - ssl
+    - common
+    - firewall
+    - pcap
+    - suricata
+    - bro
+    - redis
+    - logstash
+    - filebeat
+    - schedule
+
   'G@role:so-sensor':
     - ca
     - ssl
@@ -101,7 +114,7 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
-    
+
 
   # Storage node logic
 
