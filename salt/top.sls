@@ -14,6 +14,7 @@ base:
     - ssl
     - common
     - firewall
+    - idstools
     - pcap
     - suricata
     - bro
