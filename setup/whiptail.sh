@@ -169,6 +169,15 @@ whiptail_eval_adv_warning() {
   whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
 }
 
+whiptail_helix_apikey() {
+  HELIXAPIKEY=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your Helix API Key" 10 75 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus
+
+}
+
 whiptail_homenet_master() {
 
   # Ask for the HOME_NET on the master

@@ -153,6 +153,7 @@ if (whiptail_you_sure) ; then
   ##     Master     ##
   ####################
   if [ $INSTALLTYPE == 'HELIXSESOR']; then
+    whiptail_helix_apikey
     whiptail_homenet_master
     whiptail_rule_setup
     # Get the code if it isn't ET Open
