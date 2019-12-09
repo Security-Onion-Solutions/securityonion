@@ -180,7 +180,7 @@ if (whiptail_you_sure) ; then
       docker_install >> $SETUPLOG 2>&1
       echo -e "XXX\n10\nConfiguring Salt Master... \nXXX"
       echo " ** Configuring Minion **" >> $SETUPLOG
-      configure_minion master >> $SETUPLOG 2>&1
+      configure_minion helix >> $SETUPLOG 2>&1
       echo " ** Installing Salt Master **" >> $SETUPLOG
       install_master >> $SETUPLOG 2>&1
       salt_master_directories >> $SETUPLOG 2>&1

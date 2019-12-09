@@ -406,7 +406,7 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce python36-docker
-    if [ $INSTALLTYPE != 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+    if [ $INSTALLTYPE != 'EVALMODE' ]; then
       docker_registry
     fi
     echo "Restarting Docker" >> $SETUPLOG 2>&1

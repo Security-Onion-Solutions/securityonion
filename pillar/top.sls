@@ -29,5 +29,8 @@ base:
     - firewall.*
 
   'G@role:so-helix':
+    - masters.{{ grains.id }}
+    - static
+    - firewall.*
     - fireeye
     - static
