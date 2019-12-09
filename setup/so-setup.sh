@@ -16,8 +16,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Source the other pieces of the setup
-source functions.sh
-source whiptail.sh
+SCRIPTDIR=$(dirname "$0")
+source $SCRIPTDIR/functions.sh
+source $SCRIPTDIR/whiptail.sh
 
 # See if this is an ISO install
 OPTIONS=$1
@@ -42,6 +43,7 @@ SETUPLOG="/root/sosetup.log"
 
 # Reset the Install Log
 date -u >$SETUPLOG 2>&1
+echo "stty size is: $(stty size)" >> $SETUPLOG 2>&1
 
 # Check for prerequisites
 got_root
@@ -53,7 +55,8 @@ if [ $OS == ubuntu ]; then
 fi
 
 # Question Time
-if (whiptail_you_sure); then
+echo "Asking user if they are sure they want to proceed" >> $SETUPLOG 2>&1
+if (whiptail_you_sure) ; then
 
   # Create a temp dir to get started
   install_prep
@@ -654,5 +657,6 @@ if (whiptail_you_sure); then
   fi
 
 else
-    exit
+    echo "User not sure. Cancelling setup.">> $SETUPLOG 2>&1
+    whiptail_cancel
 fi

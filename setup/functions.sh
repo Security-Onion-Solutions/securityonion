@@ -15,6 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+SCRIPTDIR=$(dirname "$0")
+source $SCRIPTDIR/whiptail.sh
+
 accept_salt_key_local() {
   echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
   # Accept the key locally on the master
@@ -44,6 +47,9 @@ add_master_hostfile() {
   # Pop up an input to get the IP address
   MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
   "Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
 
 }
 
@@ -357,6 +363,8 @@ detect_os() {
     exit
   fi
 
+  echo "Found OS: $OS $OSVER" >> $SETUPLOG 2>&1
+
 }
 
 #disable_dnsmasq() {
@@ -519,6 +527,8 @@ got_root() {
 }
 
 install_cleanup() {
+
+  echo "install_cleanup called" >> $SETUPLOG 2>&1
 
   # Clean up after ourselves
   rm -rf /root/installtmp
