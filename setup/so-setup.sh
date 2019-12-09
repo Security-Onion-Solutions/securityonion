@@ -150,10 +150,12 @@ if (whiptail_you_sure) ; then
   esac
 
   ####################
-  ##     Master     ##
+  ##      Helix     ##
   ####################
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     MASTERUPDATES=OPEN
+    filter_unused_nics
+    whiptail_bond_nics
     whiptail_helix_apikey
     whiptail_homenet_master
     whiptail_rule_setup
@@ -245,6 +247,9 @@ if (whiptail_you_sure) ; then
 
   fi
 
+  ####################
+  ##     Master     ##
+  ####################
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
     # Would you like to do an advanced install?

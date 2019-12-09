@@ -236,6 +236,9 @@ configure_minion() {
       OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
       echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
     fi
+  elif [ $TYPE == 'helix' ]; then
+    echo "master: $HOSTNAME" > /etc/salt/minion
+    echo "id: $MINION_ID" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $MINION_ID" >> /etc/salt/minion
@@ -255,7 +258,7 @@ copy_master_config() {
   if [ $INSTALLMETHOD == 'iso' ]; then
     cp /root/SecurityOnion/files/master /etc/salt/master
   else
-    cp ../files/master /etc/salt/master
+    cp $SCRIPTDIR/../files/master /etc/salt/master
   fi
 
   # Restart the service so it picks up the changes -TODO Enable service on CentOS
@@ -1065,8 +1068,8 @@ salt_master_directories() {
     cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
     cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
   else
-    cp -R ../pillar/* /opt/so/saltstack/pillar/
-    cp -R ../salt/* /opt/so/saltstack/salt/
+    cp -R $SCRIPTDIR/../pillar/* /opt/so/saltstack/pillar/
+    cp -R $SCRIPTDIR/../salt/* /opt/so/saltstack/salt/
   fi
 
   chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
