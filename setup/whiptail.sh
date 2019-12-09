@@ -206,6 +206,7 @@ whiptail_install_type() {
   "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
   "EVALMODE" "Evaluate all the things" OFF \
+  "HELIXSENSOR" "Connect this sensor to FireEye Helix"
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add Hot Node (Storage Node without Parsing)" OFF \
   "WARMNODE" "TODO Add Warm Node to existing Hot or Storage node" OFF \
@@ -529,7 +530,7 @@ whiptail_patch_schedule_select_hours() {
   "09:00" "" OFF \
   "10:00" "" OFF \
   "11:00" "" OFF 3>&1 1>&2 2>&3 ))
-  
+
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 

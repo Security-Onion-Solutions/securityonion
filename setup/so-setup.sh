@@ -152,6 +152,94 @@ if (whiptail_you_sure) ; then
   ####################
   ##     Master     ##
   ####################
+  if [ $INSTALLTYPE == 'HELIXSESOR']; then
+    whiptail_homenet_master
+    whiptail_rule_setup
+    # Get the code if it isn't ET Open
+    if [ $RULESETUP != 'ETOPEN' ]; then
+      # Get the code
+      whiptail_oinkcode
+    fi
+    whiptail_make_changes
+    set_hostname
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
+    get_main_ip
+    add_socore_user_master
+    # Install salt and dependencies
+    {
+      sleep 0.5
+      echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
+      echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
+      saltify >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling Docker... \nXXX"
+      docker_install >> $SETUPLOG 2>&1
+      echo -e "XXX\n10\nConfiguring Salt Master... \nXXX"
+      echo " ** Configuring Minion **" >> $SETUPLOG
+      configure_minion master >> $SETUPLOG 2>&1
+      echo " ** Installing Salt Master **" >> $SETUPLOG
+      install_master >> $SETUPLOG 2>&1
+      salt_master_directories >> $SETUPLOG 2>&1
+      update_sudoers >> $SETUPLOG 2>&1
+      chown_salt_master >> $SETUPLOG 2>&1
+      es_heapsize >> $SETUPLOG 2>&1
+      ls_heapsize >> $SETUPLOG 2>&1
+      echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
+      master_static >> $SETUPLOG 2>&1
+      echo "** Generating the master pillar **" >> $SETUPLOG
+      master_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
+      # Do a checkin to push the key up
+      echo "** Pushing the key up to Master **" >> $SETUPLOG
+      salt_firstcheckin >> $SETUPLOG 2>&1
+      # Accept the Master Key
+      echo "** Accepting the key on the master **" >> $SETUPLOG
+      accept_salt_key_local >> $SETUPLOG 2>&1
+      echo -e "XXX\n35\nConfiguring Firewall... \nXXX"
+      # Open the firewall
+      echo "** Setting the initial firewall policy **" >> $SETUPLOG
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n40\nGenerating CA... \nXXX"
+      salt_checkin >> $SETUPLOG 2>&1
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
+      echo -e "XXX\n43\nInstalling Common Components... \nXXX"
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      echo -e "XXX\n45\nApplying firewall rules... \nXXX"
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      salt-call state.apply master >> $SETUPLOG 2>&1
+      salt-call state.apply idstools >> $SETUPLOG 2>&1
+      echo -e "XXX\n40\nInstalling Redis... \nXXX"
+      salt-call state.apply redis >> $SETUPLOG 2>&1
+      echo -e "XXX\n60\nInstalling Redis... \nXXX"
+      salt-call state.apply logstash >> $SETUPLOG 2>&1
+      echo -e "XXX\n75\nInstalling Filebeat... \nXXX"
+      salt-call state.apply filebeat >> $SETUPLOG 2>&1
+      salt-call state.apply utility >> $SETUPLOG 2>&1
+      salt-call state.apply schedule >> $SETUPLOG 2>&1
+      echo -e "XXX\n85\nEnabling Checking at Boot... \nXXX"
+      checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n97\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+      shutdown -r now
+    else
+      whiptail_setup_failed
+      shutdown -r now
+    fi
+
+  fi
 
   if [ $INSTALLTYPE == 'MASTERONLY' ]; then
 
