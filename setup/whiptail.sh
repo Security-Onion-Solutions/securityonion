@@ -567,11 +567,11 @@ whiptail_rule_setup() {
 
   # Get pulled pork info
   RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "What IDS rules to use?:" 20 75 4 \
-  "ETOPEN" "Emerging Threats Open - no oinkcode required" ON \
-  "ETPRO" "Emerging Threats PRO - requires ETPRO oinkcode" OFF \
-  "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset - requires Snort Subscriber oinkcode" OFF \
-  "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy - requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
+  "Which IDS ruleset would you like to use?\n\nThis master server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the master server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
+  "ETOPEN" "Emerging Threats Open"  "no oinkcode required" ON \
+  "ETPRO" "Emerging Threats PRO" "requires ETPRO oinkcode" OFF \
+  "TALOSET" "Snort Subscriber (Talos) ruleset and Emerging Threats NoGPL ruleset" "requires Snort Subscriber oinkcode" OFF \
+  "TALOS" "Snort Subscriber (Talos) ruleset only and set a Snort Subscriber policy" "requires Snort Subscriber oinkcode" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
