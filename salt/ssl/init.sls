@@ -129,7 +129,7 @@ fbcrtlink:
         backup: True
 
 {% endif %}
-{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' %}
 
 fbcertdir:
   file.directory:
