@@ -30,6 +30,13 @@
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 {% set nodetype = salt['grains.get']('role', '')  %}
 
+{% elif grains['role'] == 'so-helix' %}
+
+{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+{% set freq = salt['pillar.get']('master:freq', '0') %}
+{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+{% set nodetype = salt['grains.get']('role', '')  %}
+
 {% elif grains['role'] == 'so-eval' %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
