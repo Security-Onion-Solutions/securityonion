@@ -158,12 +158,7 @@ if (whiptail_you_sure) ; then
     whiptail_bond_nics
     whiptail_helix_apikey
     whiptail_homenet_master
-    whiptail_rule_setup
-    # Get the code if it isn't ET Open
-    if [ $RULESETUP != 'ETOPEN' ]; then
-      # Get the code
-      whiptail_oinkcode
-    fi
+    RULESETUP=ETOPEN
     whiptail_make_changes
     set_hostname
     clear_master
