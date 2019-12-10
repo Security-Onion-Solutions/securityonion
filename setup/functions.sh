@@ -785,6 +785,23 @@ process_components() {
   unset IFS
 }
 
+reserve_group_ids() {
+
+  # This is a hack to fix CentOS from taking group IDs that we need
+  groupadd -g 930 elasticsearch
+  groupadd -g 931 logstash
+  groupadd -g 932 kibana
+  groupadd -g 933 elastalert
+  groupadd -g 934 curator
+  groupadd -g 937 bro
+  groupadd -g 939 socore
+  groupadd -g 940 suricata
+  groupadd -g 941 stenographer
+  groupadd -g 945 ossec
+  groupadd -g 946 cyberchef
+
+}
+
 saltify() {
 
   # Install updates and Salt
@@ -792,6 +809,7 @@ saltify() {
     ADDUSER=adduser
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+      reserve_group_ids
       yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
