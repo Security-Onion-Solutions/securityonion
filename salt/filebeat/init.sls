@@ -85,4 +85,4 @@ so-filebeat:
 {%- endif %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - watch:
-      - file: /opt/so/conf/filebeat/etc
+      - file: /opt/so/conf/filebeat/etc/filebeat.yml
