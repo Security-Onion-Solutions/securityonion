@@ -34,3 +34,4 @@ base:
     - firewall.*
     - fireeye
     - static
+    - brologs
