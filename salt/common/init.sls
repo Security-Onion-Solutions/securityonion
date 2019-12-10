@@ -38,6 +38,7 @@ sensorpkgs:
     - pkgs:
       - docker-ce
       - wget
+      - jq
       {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
