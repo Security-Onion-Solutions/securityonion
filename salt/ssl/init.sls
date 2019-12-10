@@ -41,7 +41,7 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
