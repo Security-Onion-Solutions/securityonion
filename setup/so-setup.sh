@@ -177,7 +177,9 @@ if (whiptail_you_sure) ; then
       sleep 0.5
       echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
+      echo -e "XXX\n1\nGenerating Sensor Pillar... \nXXX"
+      sensor_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n2\nInstalling and configuring Salt... \nXXX"
       echo " ** Installing Salt and Dependencies **" >> $SETUPLOG
       saltify >> $SETUPLOG 2>&1
       echo -e "XXX\n5\nInstalling Docker... \nXXX"
