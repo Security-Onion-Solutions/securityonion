@@ -141,6 +141,18 @@ whiptail_cur_close_days() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_dhcp_or_static() {
+
+  ADDRESSTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose how to set up your management interface:" 20 78 4 \
+  "STATIC" "Set a static IPv4 address" ON  \
+  "DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_enable_components() {
   COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
   "Select Components to install" 20 75 8 \
