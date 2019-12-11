@@ -572,6 +572,7 @@ whiptail_rule_setup() {
   "ETPRO" "Emerging Threats PRO" OFF \
   "TALOSET" "Snort Subscriber (Talos) and ET NoGPL rulesets" OFF \
   "TALOS" "Snort Subscriber (Talos) ruleset and set a policy" OFF \
+  3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
