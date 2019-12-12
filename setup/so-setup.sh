@@ -60,6 +60,7 @@ if (whiptail_you_sure) ; then
 
   # Create a temp dir to get started
   install_prep
+  setterm -blank 0
 
   if [ $INSTALLMETHOD == network ]; then
     # Let folks know they need their management interface already set up.
