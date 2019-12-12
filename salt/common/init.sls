@@ -1,4 +1,3 @@
-{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -143,7 +142,7 @@ so-core:
       - file: /opt/so/conf/nginx/nginx.conf
 
 # If master or eval, install Grafana/Telegraf/Influx
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
 # Add Telegraf to monitor all the things.
 tgraflogdir:
   file.directory:
