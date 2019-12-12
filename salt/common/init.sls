@@ -1,3 +1,4 @@
+{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -214,6 +215,9 @@ so-telegraf:
     - watch:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
+
+# If its a master or eval lets install the back end for now		
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 
 # Influx DB
 influxconfdir:
