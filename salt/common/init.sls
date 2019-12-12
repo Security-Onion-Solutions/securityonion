@@ -142,8 +142,6 @@ so-core:
     - watch:
       - file: /opt/so/conf/nginx/nginx.conf
 
-# If master or eval, install Grafana/Telegraf/Influx
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 # Add Telegraf to monitor all the things.
 tgraflogdir:
   file.directory:
@@ -215,6 +213,9 @@ so-telegraf:
     - watch:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
+
+# If its a master or eval lets install the back end for now		
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 
 # Influx DB
 influxconfdir:
