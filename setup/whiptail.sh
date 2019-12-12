@@ -106,6 +106,32 @@ whiptail_check_exitstatus() {
 
 }
 
+whiptail_create_admin_user() {
+
+  ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
+  "Please enter a username for your new admin user" 10 60 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_create_admin_user_password1() {
+
+  ADMINPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_create_admin_user_password2() {
+
+  ADMINPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Re-enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 whiptail_create_socore_user() {
 
   whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used for adding sensors remotely." 8 75
@@ -141,6 +167,18 @@ whiptail_cur_close_days() {
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_dhcp_or_static() {
+
+  ADDRESSTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose how to set up your management interface:" 20 78 4 \
+  "STATIC" "Set a static IPv4 address" ON  \
+  "DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_enable_components() {
   COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
   "Select Components to install" 20 75 8 \
@@ -239,6 +277,40 @@ whiptail_log_size_limit() {
 
 }
 
+whiptail_management_interface_dns() {
+
+  MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your DNS server using space between multiple" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_management_interface_dns_search() {
+
+  MSEARCH=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your DNS search domain" 10 60 searchdomain.local 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_management_interface_gateway() {
+
+  MGATEWAY=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your gateway" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_management_interface_ip() {
+
+  MIP=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter your IP address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+
+}
+
+whiptail_management_interface_mask() {
+
+  MMASK=$(whiptail --title "Security Onion Setup" --inputbox \
+  "Enter the bit mask for your subnet" 10 60 24 3>&1 1>&2 2>&3)
+
+}
 
 whiptail_management_nic() {
 

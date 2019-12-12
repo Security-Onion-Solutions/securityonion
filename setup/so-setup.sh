@@ -71,13 +71,13 @@ if (whiptail_you_sure) ; then
     # Set management nic
     whiptail_management_nic
 
-    whiptail_create_socore_user
-    SCMATCH=no
-    while [ $SCMATCH != yes ]; do
-      whiptail_create_socore_user_password1
-      whiptail_create_socore_user_password2
-      check_socore_pass
-    done
+#    whiptail_create_socore_user
+#    SCMATCH=no
+#    while [ $SCMATCH != yes ]; do
+#      whiptail_create_socore_user_password1
+#      whiptail_create_socore_user_password2
+#      check_socore_pass
+#    done
 
   else
 
@@ -98,7 +98,7 @@ if (whiptail_you_sure) ; then
     fi
 
     # Go ahead and bring up networking so other parts of the install work
-    set_hostname
+    set_hostname_iso
     set_management_interface
 
     # Add an admin user
@@ -166,7 +166,10 @@ if (whiptail_you_sure) ; then
     get_filesystem_root
     get_filesystem_nsm
     get_main_ip
-    add_socore_user_master
+    if [ $INSTALLMETHOD == iso ]; then
+      disable_onion_user
+    fi
+    #add_socore_user_master
     # Install salt and dependencies
     {
       sleep 0.5
@@ -285,6 +288,15 @@ if (whiptail_you_sure) ; then
       fi
     fi
 
+    # Get a password for the socore user
+    whiptail_create_socore_user
+    SCMATCH=no
+    while [ $SCMATCH != yes ]; do
+      whiptail_create_socore_user_password1
+      whiptail_create_socore_user_password2
+      check_socore_pass
+    done
+
     # Last Chance to back out
     whiptail_make_changes
     set_hostname
@@ -300,6 +312,9 @@ if (whiptail_you_sure) ; then
 
     # Figure out the main IP address
     get_main_ip
+    if [ $INSTALLMETHOD == iso ]; then
+      disable_onion_user
+    fi
 
     # Add the user so we can sit back and relax
     #echo ""
@@ -441,6 +456,9 @@ if (whiptail_you_sure) ; then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    if [ $INSTALLMETHOD == iso ]; then
+      disable_onion_user
+    fi
     copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5
@@ -535,6 +553,9 @@ if (whiptail_you_sure) ; then
     get_filesystem_nsm
     get_log_size_limit
     get_main_ip
+    if [ $INSTALLMETHOD == iso ]; then
+      disable_onion_user
+    fi
     # Add the user so we can sit back and relax
     add_socore_user_master
     {
@@ -688,6 +709,9 @@ if (whiptail_you_sure) ; then
     mkdir -p /nsm
     get_filesystem_root
     get_filesystem_nsm
+    if [ $INSTALLMETHOD == iso ]; then
+      disable_onion_user
+    fi
     copy_ssh_key >> $SETUPLOG 2>&1
     {
       sleep 0.5

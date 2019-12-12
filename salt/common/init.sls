@@ -117,13 +117,13 @@ nginxtmp:
 # Start the core docker
 so-coreimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-core:HH1.1.2
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-core:HH1.1.3
 
 so-core:
   docker_container.running:
     - require:
       - so-coreimage
-    - image: docker.io/soshybridhunter/so-core:HH1.1.2
+    - image: docker.io/soshybridhunter/so-core:HH1.1.3
     - hostname: so-core
     - user: socore
     - binds:
