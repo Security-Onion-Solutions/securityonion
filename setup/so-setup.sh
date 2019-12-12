@@ -167,6 +167,7 @@ if (whiptail_you_sure) ; then
     get_filesystem_nsm
     get_main_ip
     if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
       disable_onion_user
     fi
     #add_socore_user_master
@@ -313,6 +314,7 @@ if (whiptail_you_sure) ; then
     # Figure out the main IP address
     get_main_ip
     if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
       disable_onion_user
     fi
 
@@ -457,6 +459,7 @@ if (whiptail_you_sure) ; then
     get_filesystem_root
     get_filesystem_nsm
     if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
       disable_onion_user
     fi
     copy_ssh_key >> $SETUPLOG 2>&1
@@ -554,6 +557,7 @@ if (whiptail_you_sure) ; then
     get_log_size_limit
     get_main_ip
     if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
       disable_onion_user
     fi
     # Add the user so we can sit back and relax
@@ -710,6 +714,7 @@ if (whiptail_you_sure) ; then
     get_filesystem_root
     get_filesystem_nsm
     if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
       disable_onion_user
     fi
     copy_ssh_key >> $SETUPLOG 2>&1
