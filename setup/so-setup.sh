@@ -112,15 +112,6 @@ if (whiptail_you_sure) ; then
       check_admin_pass
     done
 
-    # Get a password for the socore user
-    whiptail_create_socore_user
-    SCMATCH=no
-    while [ $SCMATCH != yes ]; do
-      whiptail_create_socore_user_password1
-      whiptail_create_socore_user_password2
-      check_socore_pass
-    done
-
   fi
 
   # Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
