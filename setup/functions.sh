@@ -1078,8 +1078,8 @@ salt_master_directories() {
 
   # Copy over the salt code and templates
   if [ $INSTALLMETHOD == 'iso' ]; then
-    cp /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
-    cp /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
+    cp -R /root/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
+    cp -R /root/SecurityOnion/salt/* /opt/so/saltstack/salt/
   else
     cp -R $SCRIPTDIR/../pillar/* /opt/so/saltstack/pillar/
     cp -R $SCRIPTDIR/../salt/* /opt/so/saltstack/salt/
