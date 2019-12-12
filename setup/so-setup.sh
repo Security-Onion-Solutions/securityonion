@@ -98,7 +98,7 @@ if (whiptail_you_sure) ; then
     fi
 
     # Go ahead and bring up networking so other parts of the install work
-    set_hostname
+    set_hostname_iso
     set_management_interface
 
     # Add an admin user
