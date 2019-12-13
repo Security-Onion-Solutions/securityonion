@@ -153,6 +153,7 @@ if (whiptail_you_sure) ; then
     RULESETUP=ETOPEN
     NSMSETUP=BASIC
     HNSENSOR=inherit
+    LS_HEAP_SIZE="1000m"
     calculate_useable_cores
     whiptail_make_changes
     set_hostname
