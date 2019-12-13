@@ -151,6 +151,8 @@ if (whiptail_you_sure) ; then
     whiptail_helix_apikey
     whiptail_homenet_master
     RULESETUP=ETOPEN
+    NSMSETUP=BASIC
+    HNSENSOR=inherit
     calculate_useable_cores
     whiptail_make_changes
     set_hostname
