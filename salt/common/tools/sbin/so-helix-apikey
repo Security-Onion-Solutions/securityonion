@@ -16,8 +16,9 @@ if [ ! -f /opt/so/saltstack/pillar/fireeye/init.sls ]; then
 else
   echo "Enter your Helix API Key: "
   read APIKEY
-  sed -i 's/^    apikey.*/    apikey: $APIKEY/' /opt/so/saltstack/pillar/fireeye/init.sls
+  sed -i "s/^    api_key.*/    api_key: $APIKEY/g" /opt/so/saltstack/pillar/fireeye/init.sls
   docker stop so-logstash
   docker rm so-logstash
+  echo "Restarting Logstash for updated key"
   salt-call state.apply logstash queue=True
 fi
