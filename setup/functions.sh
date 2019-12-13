@@ -614,7 +614,11 @@ master_pillar() {
     echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
     echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   fi
-  echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+    echo "  lsheap: 1000m" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  else
+    echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  fi
   echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
   echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
