@@ -30,6 +30,7 @@ base:
 
   'G@role:so-helix':
     - masters.{{ grains.id }}
+    - sensors.{{ grains.id }}
     - static
     - firewall.*
     - fireeye

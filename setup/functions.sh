@@ -1124,6 +1124,9 @@ sensor_pillar() {
       SPIN=$(echo $SPIN |  cut -d\" -f2)
     echo "    - $SPIN" >> $SENSORPILLARPATH/$MINION_ID.sls
     done
+  elif [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+    echo "  bro_lbprocs: $LBPROCS" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  suriprocs: $LBPROCS" >> $SENSORPILLARPATH/$MINION_ID.sls
   else
     echo "  bro_lbprocs: $BASICBRO" >> $SENSORPILLARPATH/$MINION_ID.sls
     echo "  suriprocs: $BASICSURI" >> $SENSORPILLARPATH/$MINION_ID.sls
