@@ -47,7 +47,7 @@ whiptail_bro_pins() {
 whiptail_bro_version() {
 
   BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
-  "COMMUNITY" "Install Community NSM" OFF "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+  "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -209,7 +209,7 @@ whiptail_eval_adv_warning() {
 
 whiptail_helix_apikey() {
   HELIXAPIKEY=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Helix API Key" 10 75 3>&1 1>&2 2>&3)
+  "Enter your Helix API Key: \n \nThis can be set later using so-helix-apikey" 10 75 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus

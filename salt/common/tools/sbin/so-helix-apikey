@@ -1,0 +1,23 @@
+#!/bin/bash
+got_root() {
+
+  # Make sure you are root
+  if [ "$(id -u)" -ne 0 ]; then
+          echo "This script must be run using sudo!"
+          exit 1
+  fi
+
+}
+
+got_root
+if [ ! -f /opt/so/saltstack/pillar/fireeye/init.sls ]; then
+  echo "This is nto configured for Helix Mode. Please re-install."
+  exit
+else
+  echo "Enter your Helix API Key: "
+  read APIKEY
+  sed -i 's/^    apikey.*/    apikey: $APIKEY/' /opt/so/saltstack/pillar/fireeye/init.sls
+  docker stop so-logstash
+  docker rm so-logstash
+  salt-call state.apply logstash queue=True
+fi
