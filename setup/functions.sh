@@ -269,10 +269,10 @@ copy_master_config() {
 copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    echo "rsyncing pillar and salt files in $TMP to /opt/so/saltstack"
-    rsync -a -v $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+    echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
+    cp -Rv $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
     if [ -d $TMP/salt ] ; then
-      rsync -a -v $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
+      cp -Rv $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
     fi
   else
     echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
