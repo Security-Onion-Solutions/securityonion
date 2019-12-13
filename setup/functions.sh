@@ -1102,7 +1102,8 @@ salt_install_mysql_deps() {
 
 sensor_pillar() {
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    SENSORPILLARPATH=/opt/so/saltstack
+    SENSORPILLARPATH=/opt/so/saltstack/pillar/sensor
+    mkdir -p $TMP
   else
     SENSORPILLARPATH=$TMP/pillar/sensors
   fi
