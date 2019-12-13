@@ -153,6 +153,8 @@ if (whiptail_you_sure) ; then
     RULESETUP=ETOPEN
     whiptail_make_changes
     set_hostname
+    HOSTNAME=$(cat /etc/hostname)
+    MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
     clear_master
     mkdir -p /nsm
     get_filesystem_root
