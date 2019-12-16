@@ -17,6 +17,15 @@
 
 {% if masterproxy == 1 %}
 
+socore_own_saltstack:
+  file.directory:
+    - name: /opt/so/saltstack
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group	
+
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
   file.directory:
@@ -48,14 +57,14 @@ acngcopyconf:
 
 so-acngimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-acng:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-acng:HH1.1.0
 
 # Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
     - require:
       - so-acngimage
-    - image: soshybridhunter/so-acng:HH1.1.0
+    - image: docker.io/soshybridhunter/so-acng:HH1.1.0
     - hostname: so-acng
     - port_bindings:
       - 0.0.0.0:3142:3142

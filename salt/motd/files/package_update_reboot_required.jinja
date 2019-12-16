@@ -1,0 +1,26 @@
+{% set needs_restarting_check = salt['mine.get']('*', 'needs_restarting.check', tgt_type='glob') -%}
+
+{%- if needs_restarting_check %}
+  {%- set minions_need_restarted = [] %}
+
+  {%- for minion, need_restarted in needs_restarting_check | dictsort() %}
+    {%- if need_restarted == 'True' %}
+      {% do minions_need_restarted.append(minion) %}
+    {%- endif %}
+  {%- endfor -%}
+
+  {%- if minions_need_restarted | length > 0 %}
+****************************************************************************************************
+* The following nodes in your Security Onion grid may need to be restarted due to package updates. * 
+* If the node has already been patched, restarted and been up for less than 15 minutes, then it    *
+* may not have updated it's restart_needed status yet. This will cause it to be listed below, even *
+* if it has already been restarted. This feature will be improved in the future.                   *
+****************************************************************************************************
+
+    {% for minion in minions_need_restarted -%}
+  {{ minion }}
+    {% endfor -%}
+
+  {%- endif -%}
+
+{%- endif -%}

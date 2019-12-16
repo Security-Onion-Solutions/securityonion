@@ -60,6 +60,20 @@ esconfdir:
     - group: 939
     - makedirs: True
 
+esingestdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - user: 930
+    - group: 939
+    - makedirs: True
+
+esingestconf:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - source: salt://elasticsearch/files/ingest
+    - user: 930
+    - group: 939
+
 eslog4jfile:
   file.managed:
     - name: /opt/so/conf/elasticsearch/log4j2.properties
@@ -92,13 +106,13 @@ eslogdir:
 
 so-elasticsearchimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-elasticsearch:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
 
 so-elasticsearch:
   docker_container.running:
     - require:
       - so-elasticsearchimage
-    - image: soshybridhunter/so-elasticsearch:HH1.1.0
+    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -121,9 +135,17 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
 
+so-elasticsearch-pipelines-file:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines
+    - source: salt://elasticsearch/files/so-elasticsearch-pipelines
+    - user: 930
+    - group: 939
+    - mode: 754
+
 so-elasticsearch-pipelines:
  cmd.run:
-   - name: /opt/so/saltstack/salt/elasticsearch/files/so-elasticsearch-pipelines {{ esclustername }}
+   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
 
 # Tell the main cluster I am here
 #curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
@@ -155,13 +177,13 @@ freqlogdir:
 
 so-freqimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-freqserver:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-freqserver:HH1.0.3
 
 so-freq:
   docker_container.running:
     - require:
       - so-freqimage
-    - image: soshybridhunter/so-freqserver:HH1.0.3
+    - image: docker.io/soshybridhunter/so-freqserver:HH1.0.3
     - hostname: freqserver
     - name: so-freqserver
     - user: freqserver
@@ -197,13 +219,13 @@ dstatslogdir:
 
 so-domainstatsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-domainstats:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-domainstats:HH1.0.3
 
 so-domainstats:
   docker_container.running:
     - require:
       - so-domainstatsimage
-    - image: soshybridhunter/so-domainstats:HH1.0.3
+    - image: docker.io/soshybridhunter/so-domainstats:HH1.0.3
     - hostname: domainstats
     - name: so-domainstats
     - user: domainstats

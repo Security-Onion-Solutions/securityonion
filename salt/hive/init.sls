@@ -21,6 +21,28 @@ hiveconf:
     - group: 939
     - template: jinja
 
+cortexconfdir:
+  file.directory:
+    - name: /opt/so/conf/cortex
+    - makedirs: True
+    - user: 939
+    - group: 939
+
+cortexlogdir:
+  file.directory:
+    - name: /opt/so/log/cortex
+    - makedirs: True
+    - user: 939
+    - group: 939
+
+cortexconf:
+  file.recurse:
+    - name: /opt/so/conf/cortex
+    - source: salt://hive/thehive/etc
+    - user: 939
+    - group: 939
+    - template: jinja
+
 # Install Elasticsearch
 
 # Made directory for ES data to live in
@@ -33,13 +55,13 @@ hiveesdata:
 
 so-thehive-esimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive-es:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-es:HH1.1.1
 
 so-thehive-es:
   docker_container.running:
     - require:
       - so-thehive-esimage
-    - image: soshybridhunter/so-thehive-es:HH1.1.1
+    - image: docker.io/soshybridhunter/so-thehive-es:HH1.1.1
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -66,27 +88,38 @@ so-thehive-es:
 
 # Install Cortex
 
-#so-corteximage:
-# cmd.run:
-#   - name: docker pull --disable-content-trust=false soshybridhunter/so-cortex:HH1.0.3
+so-corteximage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
 
-#so-cortex:
-#  docker_container.running:
-#    - image: thehiveproject/cortex:latest
-#    - hostname: so-cortex
-#    - name: so-cortex
-#    - port_bindings:
-#      - 0.0.0.0:9001:9001
+so-cortex:
+  docker_container.running:
+    - require:
+      - so-corteximage
+    - image: docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
+    - hostname: so-cortex
+    - name: so-cortex
+    - user: 939
+    - binds:
+      - /opt/so/conf/hive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
+    - port_bindings:
+      - 0.0.0.0:9001:9001
+
+cortexscript:
+  cmd.script:
+    - source: salt://hive/thehive/scripts/cortex_init.sh
+    - cwd: /opt/so
+    - template: jinja
 
 so-thehiveimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-thehive:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive:HH1.1.1
 
 so-thehive:
   docker_container.running:
     - require:
       - so-thehiveimage
-    - image: soshybridhunter/so-thehive:HH1.1.1
+    - image: docker.io/soshybridhunter/so-thehive:HH1.1.1
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive

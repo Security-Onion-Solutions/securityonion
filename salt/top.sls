@@ -5,6 +5,24 @@
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 base:
+  '*':
+    - patch.os.schedule
+    - motd
+
+  'G@role:so-helix':
+    - ca
+    - ssl
+    - common
+    - firewall
+    - idstools
+    - pcap
+    - suricata
+    - bro
+    - redis
+    - logstash
+    - filebeat
+    - schedule
+
   'G@role:so-sensor':
     - ca
     - ssl
@@ -40,6 +58,7 @@ base:
     - suricata
     - bro
     - curator
+    - cyberchef
     - elastalert
     {%- if OSQUERY != 0 %}
     - fleet
@@ -66,6 +85,7 @@ base:
     - ca
     - ssl
     - common
+    - cyberchef
     - sensoroni
     - firewall
     - master
@@ -95,7 +115,7 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
-    
+
 
   # Storage node logic
 

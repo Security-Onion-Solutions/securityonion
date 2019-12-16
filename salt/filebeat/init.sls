@@ -39,9 +39,9 @@ filebeatpkidir:
 
 # This needs to be owned by root
 filebeatconfsync:
-  file.recurse:
-    - name: /opt/so/conf/filebeat/etc
-    - source: salt://filebeat/etc
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/filebeat.yml
+    - source: salt://filebeat/etc/filebeat.yml
     - user: 0
     - group: 0
     - template: jinja
@@ -58,13 +58,13 @@ filebeatconfsync:
 
 so-filebeatimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-filebeat:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-filebeat:HH1.1.1
 
 so-filebeat:
   docker_container.running:
     - require:
       - so-filebeatimage
-    - image: soshybridhunter/so-filebeat:HH1.1.1
+    - image: docker.io/soshybridhunter/so-filebeat:HH1.1.1
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
@@ -85,4 +85,4 @@ so-filebeat:
 {%- endif %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - watch:
-      - file: /opt/so/conf/filebeat/etc
+      - file: /opt/so/conf/filebeat/etc/filebeat.yml

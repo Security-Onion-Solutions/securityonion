@@ -13,6 +13,12 @@ soctopussync:
     - group: 939
     - template: jinja
 
+soctopuslogdir:
+  file.directory:
+    - name: /opt/so/log/soctopus
+    - user: 939
+    - group: 939
+
 playbookrulesdir:
   file.directory:
     - name: /opt/so/rules/elastalert/playbook
@@ -40,17 +46,18 @@ navigatordefaultlayer:
 
 so-soctopusimage:
   cmd.run:
-    - name: docker pull --disable-content-trust=false soshybridhunter/so-soctopus:HH1.1.1
+    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-soctopus:HH1.1.3
 
 so-soctopus:
   docker_container.running:
     - require:
       - so-soctopusimage
-    - image: soshybridhunter/so-soctopus:HH1.1.1
+    - image: docker.io/soshybridhunter/so-soctopus:HH1.1.3
     - hostname: soctopus
     - name: so-soctopus
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
+      - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
       - /opt/so/conf/playbook/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
     - port_bindings:

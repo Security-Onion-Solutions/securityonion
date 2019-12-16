@@ -5,7 +5,7 @@ ossecgroup:
   group.present:
     - name: ossec
     - gid: 945
-    
+
 # Add ossecm user
 ossecm:
   user.present:
@@ -41,7 +41,7 @@ wazuhpkgs:
  pkg.installed:
    - skip_suggestions: False
    - pkgs:
-     - wazuh-agent
+     - wazuh-agent: 3.10.2-1
 
 # Add Wazuh agent conf
 wazuhagentconf:
@@ -64,13 +64,13 @@ wazuhagentregister:
 
 so-wazuhimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-wazuh:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-wazuh:HH1.1.3
 
 so-wazuh:
   docker_container.running:
     - require:
       - so-wazuhimage
-    - image: soshybridhunter/so-wazuh:HH1.1.0
+    - image: docker.io/soshybridhunter/so-wazuh:HH1.1.3
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True

@@ -38,6 +38,7 @@ sensorpkgs:
     - pkgs:
       - docker-ce
       - wget
+      - jq
       {% if grains['os'] != 'CentOS' %}
       - python-docker
       - python-m2crypto
@@ -116,13 +117,13 @@ nginxtmp:
 # Start the core docker
 so-coreimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-core:HH1.1.2
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-core:HH1.1.3
 
 so-core:
   docker_container.running:
     - require:
       - so-coreimage
-    - image: soshybridhunter/so-core:HH1.1.2
+    - image: docker.io/soshybridhunter/so-core:HH1.1.3
     - hostname: so-core
     - user: socore
     - binds:
@@ -176,13 +177,13 @@ tgrafconf:
 
 so-telegrafimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-telegraf:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-telegraf:HH1.1.0
 
 so-telegraf:
   docker_container.running:
     - require:
       - so-telegrafimage
-    - image: soshybridhunter/so-telegraf:HH1.1.0
+    - image: docker.io/soshybridhunter/so-telegraf:HH1.1.0
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -213,7 +214,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
 
-# If its a master or eval lets install the back end for now
+# If its a master or eval lets install the back end for now		
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 
 # Influx DB
@@ -237,13 +238,13 @@ influxdbconf:
 
 so-influximage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-influxdb:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-influxdb:HH1.1.0
 
 so-influxdb:
   docker_container.running:
     - require:
       - so-influximage
-    - image: soshybridhunter/so-influxdb:HH1.1.0
+    - image: docker.io/soshybridhunter/so-influxdb:HH1.1.0
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -316,7 +317,7 @@ grafanaconf:
     - source: salt://common/grafana/etc
 
 {% if salt['pillar.get']('mastertab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
 dashboard-master:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
@@ -337,7 +338,7 @@ dashboard-master:
 {% endif %}
 
 {% if salt['pillar.get']('sensorstab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
@@ -358,7 +359,7 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('nodestab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
@@ -379,7 +380,7 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('evaltab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).iteritems() %}
+{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json
@@ -402,11 +403,11 @@ dashboard-{{ SN }}:
 # Install the docker. This needs to be behind nginx at some point
 so-grafanaimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-grafana:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-grafana:HH1.1.0
 
 so-grafana:
   docker_container.running:
-    - image: soshybridhunter/so-grafana:HH1.1.0
+    - image: docker.io/soshybridhunter/so-grafana:HH1.1.0
     - hostname: grafana
     - user: socore
     - binds:

@@ -114,13 +114,13 @@ curdel:
 
 so-curatorimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-curator:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-curator:HH1.1.0
 
 so-curator:
   docker_container.running:
     - require:
       - so-curatorimage
-    - image: soshybridhunter/so-curator:HH1.1.0
+    - image: docker.io/soshybridhunter/so-curator:HH1.1.0
     - hostname: curator
     - name: so-curator
     - user: curator

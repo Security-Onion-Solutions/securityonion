@@ -1,5 +1,5 @@
 # Firewall Magic for the grid
-{%- if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{%- if grains['role'] in ['so-eval','so-master','so-helix'] %}
 {%- set ip = salt['pillar.get']('static:masterip', '') %}
 {%- elif grains['role'] == 'so-node' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
@@ -20,7 +20,7 @@ iptables_fix_fwd:
     - jump: ACCEPT
     - position: 1
     - target: DOCKER-USER
-    
+
 # Keep localhost in the game
 iptables_allow_localhost:
   iptables.append:
@@ -131,7 +131,7 @@ enable_wazuh_manager_1514_udp_{{ip}}:
     - save: True
 
 # Rules if you are a Master
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix'%}
 #This should be more granular
 iptables_allow_master_docker:
   iptables.insert:
@@ -264,6 +264,29 @@ enable_master_navigator_4200_{{ip}}:
     - dport: 4200
     - position: 1
     - save: True
+
+enable_master_cortex_9001_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9001
+    - position: 1
+    - save: True
+
+enable_master_cyberchef_9080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 9080
+    - position: 1
+    - save: True
+
 
 {% endfor %}
 

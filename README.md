@@ -1,32 +1,35 @@
-## Hybrid Hunter Alpha 1.1.2
+## Hybrid Hunter Alpha 1.1.3
 
-- Quick firewall fix to address latest docker version.
-- Added the option to install playbook from the initial install.
-- Fixed an issue with multiple monitor interfaces not working properly.  
+### ISO Download:
 
-ISO Download: [HH 1.1.2-2](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.2/HH-1.1.2-2.iso)  
-MD5 (HH-1.1.2-2.iso) = abbbae7b40a50623546ed3d7f8cda0ec  
+[HH1.1.3-20.iso](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.3/HH-1.1.3-20.iso)  
+MD5: 5A97980365A2A63EBFABB8C1DEB32BB6  
+SHA1: 2A780B41903D907CED91D944569FD24FC131281F  
+SHA256: 56FA65EB5957903B967C16E792B17386848101CD058E0289878373110446C4B2
 
-
-## Hybrid Hunter Alpha 1.1.1
+```
+Default Username: onion
+Default Password: V@daL1aZ
+```
 
 ### Changes:
 
-- Alpha 2 is here!
-- Suricata 4.1.5.  
-- Bro/Zeek 2.6.4.  
-- TheHive 3.4.0 (Includes ES 6.8.3 for TheHive only).
-- Fixed Bro/Zeek packet loss calculation for Grafana.
-- Updated to latest Sensoroni which includes websockets support for job status updates without having to refresh the page.
-- NIDS and HIDS dashboard updates.
-- Playbook and ATT&CK Navigator features are now included.
-- Filebeat now logs to a file, instead of stdout.
-- Elastalert has been updated to use Python 3 and allow for use of custom alerters.  
-- Moved Bro/Zeek log parsing from Logstash to Elasticsearch Ingest for higher performance and lower memory usage!
-- Several changes to the setup script have been made to improve stability of the setup process:  
-  - Setup now modifies your hosts file so that the install works better in environments without DNS.  
-  - You are now prompted for setting a password for the socore user.  
-  - The install now forces a reboot at the end of the install. This fixes an issue with some of the Docker containers being in the wrong state from a manual reboot. Manual reboots are fine after the initial reboot.
+- Overhaul of the setup script to support both ISO and network based setups.
+- ISO will now boot properly from a USB stick.
+- Python 3 is now default.
+- Fix Filebeat from restarting every check in due to x509 refresh issue. 
+- Cortex installed and integrated with TheHive. 
+- Switched to using vanilla Kolide Fleet and upgraded to latest version (2.4) .  
+- Playbook changes:
+  - Now preloaded with Plays generated from Sysmon Sigma signatures in the [Sigma community repo](https://github.com/Neo23x0/sigma/tree/master/rules/windows/sysmon).  
+  - New update script that updates / pulls in new Sigma signatures from the community repo .
+  - Bulk enable / disable plays from the webui . 
+  - Updated sigmac mapping template & configuration (backend is now `elastalert`) . 
+  - Updated TheHive alerts formatting . 
+- OS patch scheduling:
+  - During setup, choose between auto, manual, or scheduled OS patch interval
+  - For scheduled, create a new or import an existing named schedule
+
 
 
 ### Warnings and Disclaimers

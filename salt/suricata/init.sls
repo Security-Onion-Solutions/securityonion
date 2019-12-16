@@ -72,13 +72,13 @@ suriconfigsync:
 
 so-suricataimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false soshybridhunter/so-suricata:HH1.1.1
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-suricata:HH1.1.1
 
 so-suricata:
   docker_container.running:
     - require:
       - so-suricataimage
-    - image: soshybridhunter/so-suricata:HH1.1.1
+    - image: docker.io/soshybridhunter/so-suricata:HH1.1.1
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
