@@ -42,12 +42,15 @@ cybercheflog:
 
 so-cyberchefimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cyberchef:HH1.1.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cyberchef:HH1.1.4
 
 so-cyberchef:
   docker_container.running:
     - require:
       - so-cyberchefimage
-    - image: docker.io/soshybridhunter/so-cyberchef:HH1.1.3
+    - image: docker.io/soshybridhunter/so-cyberchef:HH1.1.4
+    - interactive: True
+    - binds:
+      - /opt/so/saltstack/salt/cyberchef/build:/prod:rw
     - port_bindings:
       - 0.0.0.0:9080:8080
