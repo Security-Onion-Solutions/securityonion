@@ -35,6 +35,14 @@ brospooldir:
     - user: 937
     - makedirs: true
 
+# Bro extracted directory
+broextractdir:
+  file.directory:
+    - name: /nsm/bro/extracted
+    - user: 937
+    - group: 939
+    - makedirs: True
+
 brosfafincompletedir:
   file.directory:
     - name: /nsm/faf/files/incomplete
@@ -103,6 +111,7 @@ so-bro:
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
       - /nsm/bro/spool:/nsm/bro/spool:rw
+      - /nsm/bro/extracted:/nsm/bro/extracted:rw
       - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
       - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
       - /opt/so/conf/bro/policy/securityonion:/opt/bro/share/bro/policy/securityonion:ro
@@ -136,6 +145,7 @@ so-bro:
     - binds:
       - /nsm/bro/logs:/nsm/bro/logs:rw
       - /nsm/bro/spool:/nsm/bro/spool:rw
+      - /nsm/bro/extracted:/nsm/bro/extracted:rw
       - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
       - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
       - /opt/so/conf/bro/policy/securityonion:/opt/bro/share/bro/policy/securityonion:ro
