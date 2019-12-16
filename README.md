@@ -1,5 +1,17 @@
 ## Hybrid Hunter Alpha 1.1.3
 
+### ISO Download:
+
+[HH1.1.3-20.iso](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.3/HH-1.1.3-20.iso)  
+MD5: 5A97980365A2A63EBFABB8C1DEB32BB6  
+SHA1: 2A780B41903D907CED91D944569FD24FC131281F  
+SHA256: 56FA65EB5957903B967C16E792B17386848101CD058E0289878373110446C4B2
+
+```
+Default Username: onion
+Default Password: V@daL1aZ
+```
+
 ### Changes:
 
 - Overhaul of the setup script to support both ISO and network based setups.
