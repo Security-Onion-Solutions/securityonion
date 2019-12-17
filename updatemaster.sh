@@ -4,7 +4,7 @@
 mkdir /tmp/sogh
 cd /tmp/sogh
 #git clone https://github.com/TOoSmOotH/securityonion-saltstack.git
-git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+git clone -b master https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
 cd securityonion-saltstack
 rsync -a --exclude-from 'exclude-list.txt' salt /opt/so/saltstack/
 chown -R socore:socore /opt/so/saltstack/salt
