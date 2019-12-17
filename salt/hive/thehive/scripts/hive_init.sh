@@ -9,31 +9,43 @@ hive_init(){
     HIVE_IP="{{MASTERIP}}"
     HIVE_USER="{{HIVEUSER}}"
     HIVE_PASSWORD="{{HIVEPASSWORD}}"
+    HIVE_KEY="{{HIVEKEY}}"
     SOCTOPUS_CONFIG="/opt/so/saltstack/salt/soctopus/files/SOCtopus.conf"
 
-    # Migrate DB
-    curl -v -k -XPOST "https://$HIVE_IP:/thehive/api/maintenance/migrate"
+    echo -n "Waiting for TheHive..."
+    COUNT=0
+    HIVE_CONNECTED="no"
+    while [[ "$COUNT" -le 240 ]]; do
+        curl --output /dev/null --silent --head --fail "https://$HIVE_IP:/thehive"
+            if [ $? -eq 0 ]; then
+                HIVE_CONNECTED="yes"
+                echo "connected!"
+                break
+            else
+                ((COUNT+=1))
+                sleep 1
+                echo -n "."
+            fi
+    done
+    
+    if [ "$HIVE_CONNECTED" == "yes" ]; then
+    
+        # Migrate DB
+        curl -v -k -XPOST "https://$HIVE_IP:/thehive/api/maintenance/migrate"
 
-    # Generate unique ID for apikey
-    HIVE_KEY="{{HIVEKEY}}"
-
-    # Create intial TheHive user
-    curl -v -k "https://$HIVE_IP/thehive/api/user" -H "Content-Type: application/json" -d "{\"login\" : \"$HIVE_USER\",\"name\" : \"$HIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$HIVE_PASSWORD\", \"key\": \"$HIVE_KEY\"}"
+        # Create intial TheHive user
+        curl -v -k "https://$HIVE_IP/thehive/api/user" -H "Content-Type: application/json" -d "{\"login\" : \"$HIVE_USER\",\"name\" : \"$HIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$HIVE_PASSWORD\", \"key\": \"$HIVE_KEY\"}"
    
-    # Pre-load custom fields
-    #
-    # reputation
-    curl -v -k "https://$HIVE_IP/thehive/api/list/custom_fields" -H "Authorization: Bearer $HIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
+        # Pre-load custom fields
+        #
+        # reputation
+        curl -v -k "https://$HIVE_IP/thehive/api/list/custom_fields" -H "Authorization: Bearer $HIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
 
    
-    # Update SOCtopus config with apikey value
-    #sed -i "s/hive_key = .*/hive_key = $HIVE_KEY/" $SOCTOPUS_CONFIG
-
-    # Check for correct authentication
-    #curl -v -k -H "Authorization: Bearer $HIVE_KEY" "https://$HIVE_IP/thehive/api/user/$USER"
-
-    touch /opt/so/state/thehive.txt
-
+        touch /opt/so/state/thehive.txt
+    else
+        echo "We experienced an issue connecting to TheHive!"
+    fi
 }
 
 if [ -f /opt/so/state/thehive.txt ]; then
