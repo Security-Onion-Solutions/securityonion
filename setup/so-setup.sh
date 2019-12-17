@@ -15,7 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 # Source the other pieces of the setup
 SCRIPTDIR=$(dirname "$0")
 source $SCRIPTDIR/functions.sh
