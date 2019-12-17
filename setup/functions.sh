@@ -729,7 +729,7 @@ patch_pillar() {
     SENSORONLY)
       PATCHPILLARPATH=$SENSORPILLARPATH
       ;;
-    STORAGENODE | PARSINGNODE | HOTNODE | WARMNODE)
+    SEARCHNODE | PARSINGNODE | HOTNODE | WARMNODE)
       PATCHPILLARPATH=$NODEPILLARPATH
       ;;
   esac
@@ -1202,7 +1202,7 @@ set_initial_firewall_policy() {
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
-    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/storage_nodes.sls
+    printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/search_nodes.sls
     /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
@@ -1218,9 +1218,9 @@ set_initial_firewall_policy() {
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
-  if [ $INSTALLTYPE == 'STORAGENODE' ]; then
+  if [ $INSTALLTYPE == 'SEARCHNODE' ]; then
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh storage_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
@@ -1257,8 +1257,8 @@ set_management_interface() {
 set_node_type() {
 
   # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
-    NODETYPE='storage'
+  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+    NODETYPE='search'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
     NODETYPE='parser'
