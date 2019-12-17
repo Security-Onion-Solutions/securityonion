@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -250,13 +250,14 @@ whiptail_install_type() {
   INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
   "Choose Install Type:" 20 75 13 \
   "SENSORONLY" "Create a forward only sensor" ON \
-  "STORAGENODE" "Add a Storage Hot Node with parsing" OFF \
+  "SEARCHNODE" "Add a Search Node with parsing" OFF \
   "MASTERONLY" "Start a new grid" OFF \
   "EVALMODE" "Evaluate all the things" OFF \
+  "MASTERSEARCH" "Master + Search Node" OFF \
   "HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
-  "HOTNODE" "TODO Add Hot Node (Storage Node without Parsing)" OFF \
-  "WARMNODE" "TODO Add Warm Node to existing Hot or Storage node" OFF \
+  "HOTNODE" "TODO Add Hot Node (Search Node without Parsing)" OFF \
+  "WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
   "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
   "STRELKA" "TODO Stand Alone Strelka Node" OFF \
   "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )
@@ -449,7 +450,7 @@ whiptail_node_advanced() {
 
   NODESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
   "What type of config would you like to use?:" 20 75 4 \
-  "NODEBASIC" "Install Storage Node with recommended settings" ON \
+  "NODEBASIC" "Install Search Node with recommended settings" ON \
   "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?

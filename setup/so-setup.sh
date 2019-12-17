@@ -589,7 +589,7 @@ if (whiptail_you_sure) ; then
       configure_minion eval >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
       set_node_type >> $SETUPLOG 2>&1
-      echo -e "XXX\n7\nStorage node pillar... \nXXX"
+      echo -e "XXX\n7\nSearch node pillar... \nXXX"
       node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
@@ -678,7 +678,7 @@ if (whiptail_you_sure) ; then
   ##     Nodes     ##
   ###################
 
-  if [ $INSTALLTYPE == 'STORAGENODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
+  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_server
     whiptail_master_updates
     set_updates

@@ -410,9 +410,9 @@ enable_forwardnode_sensoroni_9822_{{ip}}:
 
 {% endfor %}
 
-{% for ip in pillar.get('storage_nodes')  %}
+{% for ip in pillar.get('search_nodes')  %}
 
-enable_storagenode_redis_6379_{{ip}}:
+enable_searchnode_redis_6379_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -423,7 +423,7 @@ enable_storagenode_redis_6379_{{ip}}:
     - position: 1
     - save: True
 
-enable_storagenode_ES_9300_{{ip}}:
+enable_searchnode_ES_9300_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -578,12 +578,12 @@ enable_standard_analyst_443_{{ip}}:
 
 {% endfor %}
 
-# Rules for storage nodes connecting to master
+# Rules for search nodes connecting to master
 
 
 {% endif %}
 
-# Rules if you are a Storage Node
+# Rules if you are a Node
 {% if grains['role'] == 'so-node' %}
 
 #This should be more granular

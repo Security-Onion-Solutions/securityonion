@@ -117,7 +117,7 @@ base:
     {%- endif %}
 
 
-  # Storage node logic
+  # Search node logic
 
   'G@role:so-node and I@node:node_type:parser':
     - match: pillar
@@ -151,7 +151,7 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:storage':
+  'G@role:so-node and I@node:node_type:search':
     - match: compound
     - ca
     - ssl
