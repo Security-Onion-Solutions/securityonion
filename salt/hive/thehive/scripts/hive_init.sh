@@ -16,7 +16,7 @@ hive_init(){
     COUNT=0
     HIVE_CONNECTED="no"
     while [[ "$COUNT" -le 240 ]]; do
-        curl --output /dev/null --silent --head --fail "https://$HIVE_IP:/thehive"
+        curl --output /dev/null --silent --head --fail -k "https://$HIVE_IP:/thehive"
             if [ $? -eq 0 ]; then
                 HIVE_CONNECTED="yes"
                 echo "connected!"
