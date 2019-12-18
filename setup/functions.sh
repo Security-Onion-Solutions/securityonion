@@ -270,7 +270,7 @@ copy_minion_tmp_files() {
 
   if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
-    cp -Rv $TMP/pillar/ /opt/so/saltstack/pillar/ >> $SETUPLOG 2>&1
+    cp -Rv $TMP/pillar/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
     if [ -d $TMP/salt ] ; then
       cp -Rv $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
     fi
@@ -545,7 +545,8 @@ got_root() {
 
 install_cleanup() {
 
-  echo "install_cleanup called" >> $SETUPLOG 2>&1
+  echo "install_cleanup removing the following files:"
+  ls -lR $TMP 
 
   # Clean up after ourselves
   rm -rf /root/installtmp
@@ -556,6 +557,8 @@ install_prep() {
 
   # Create a tmp space that isn't in /tmp
   mkdir /root/installtmp
+  mkdir /root/installtmp/pillar
+  mkdir /root/installtmp/pillar/minions
   TMP=/root/installtmp
 
 }
@@ -595,47 +598,48 @@ ls_heapsize() {
 
 master_pillar() {
 
+  PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+
   # Create the master pillar
-  touch /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "master:" > /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  esheap: $ES_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  esclustername: {{ grains.host }}" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "master:" >> $PILLARFILE
+  echo "  mainip: $MAINIP" >> $PILLARFILE
+  echo "  mainint: $MAININT" >> $PILLARFILE
+  echo "  esheap: $ES_HEAP_SIZE" >> $PILLARFILE
+  echo "  esclustername: {{ grains.host }}" >> $PILLARFILE
   if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  ls_pipeline_batch_size: 125" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  ls_input_threads: 1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  ls_batch_count: 125" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  mtu: 1500" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  freq: 0" >> $PILLARFILE
+    echo "  domainstats: 0" >> $PILLARFILE
+    echo "  ls_pipeline_batch_size: 125" >> $PILLARFILE
+    echo "  ls_input_threads: 1" >> $PILLARFILE
+    echo "  ls_batch_count: 125" >> $PILLARFILE
+    echo "  mtu: 1500" >> $PILLARFILE
 
   else
-    echo "  freq: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-    echo "  domainstats: 0" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  freq: 0" >> $PILLARFILE
+    echo "  domainstats: 0" >> $PILLARFILE
   fi
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    echo "  lsheap: 1000m" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  lsheap: 1000m" >> $PILLARFILE
   else
-    echo "  lsheap: $LS_HEAP_SIZE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+    echo "  lsheap: $LS_HEAP_SIZE" >> $PILLARFILE
   fi
-  echo "  lsaccessip: 127.0.0.1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  elastalert: 1" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  ls_pipeline_workers: $CPUCORES" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  nids_rules: $RULESETUP" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  oinkcode: $OINKCODE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  #echo "  access_key: $ACCESS_KEY" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  #echo "  access_secret: $ACCESS_SECRET" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  es_port: $NODE_ES_PORT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  #echo "  mysqlpass: $MYSQLPASS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  #echo "  fleetpass: $FLEETPASS" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  grafana: $GRAFANA" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  osquery: $OSQUERY" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  wazuh: $WAZUH" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  thehive: $THEHIVE" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
-  echo "  playbook: $PLAYBOOK" >> /opt/so/saltstack/pillar/masters/$MINION_ID.sls
+  echo "  lsaccessip: 127.0.0.1" >> $PILLARFILE
+  echo "  elastalert: 1" >> $PILLARFILE
+  echo "  ls_pipeline_workers: $CPUCORES" >> $PILLARFILE
+  echo "  nids_rules: $RULESETUP" >> $PILLARFILE
+  echo "  oinkcode: $OINKCODE" >> $PILLARFILE
+  #echo "  access_key: $ACCESS_KEY" >> $PILLARFILE
+  #echo "  access_secret: $ACCESS_SECRET" >> $PILLARFILE
+  echo "  es_port: $NODE_ES_PORT" >> $PILLARFILE
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $PILLARFILE
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $PILLARFILE
+  #echo "  mysqlpass: $MYSQLPASS" >> $PILLARFILE
+  #echo "  fleetpass: $FLEETPASS" >> $PILLARFILE
+  echo "  grafana: $GRAFANA" >> $PILLARFILE
+  echo "  osquery: $OSQUERY" >> $PILLARFILE
+  echo "  wazuh: $WAZUH" >> $PILLARFILE
+  echo "  thehive: $THEHIVE" >> $PILLARFILE
+  echo "  playbook: $PLAYBOOK" >> $PILLARFILE
   }
 
 master_static() {
@@ -695,28 +699,24 @@ network_setup() {
 
 node_pillar() {
 
-  NODEPILLARPATH=$TMP/pillar/nodes
-  if [ ! -d $NODEPILLARPATH ]; then
-    mkdir -p $NODEPILLARPATH
-  fi
+  PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
 
   # Create the node pillar
-  touch $NODEPILLARPATH/$MINION_ID.sls
-  echo "node:" > $NODEPILLARPATH/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  esclustername: {{ grains.host }}" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  ls_input_threads: $LSINPUTTHREADS" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  es_shard_count: $SHARDCOUNT" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  node_type: $NODETYPE" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  es_port: $NODE_ES_PORT" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $NODEPILLARPATH/$MINION_ID.sls
-  echo "  cur_close_days: $CURCLOSEDAYS" >> $NODEPILLARPATH/$MINION_ID.sls
+  echo "node:" >> $PILLARFILE
+  echo "  mainip: $MAINIP" >> $PILLARFILE
+  echo "  mainint: $MAININT" >> $PILLARFILE
+  echo "  esheap: $NODE_ES_HEAP_SIZE" >> $PILLARFILE
+  echo "  esclustername: {{ grains.host }}" >> $PILLARFILE
+  echo "  lsheap: $NODE_LS_HEAP_SIZE" >> $PILLARFILE
+  echo "  ls_pipeline_workers: $LSPIPELINEWORKERS" >> $PILLARFILE
+  echo "  ls_pipeline_batch_size: $LSPIPELINEBATCH" >> $PILLARFILE
+  echo "  ls_input_threads: $LSINPUTTHREADS" >> $PILLARFILE
+  echo "  ls_batch_count: $LSINPUTBATCHCOUNT" >> $PILLARFILE
+  echo "  es_shard_count: $SHARDCOUNT" >> $PILLARFILE
+  echo "  node_type: $NODETYPE" >> $PILLARFILE
+  echo "  es_port: $NODE_ES_PORT" >> $PILLARFILE
+  echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $PILLARFILE
+  echo "  cur_close_days: $CURCLOSEDAYS" >> $PILLARFILE
 
 }
 
@@ -1105,51 +1105,46 @@ salt_install_mysql_deps() {
 }
 
 sensor_pillar() {
+  
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    SENSORPILLARPATH=/opt/so/saltstack/pillar/sensors
-    mkdir -p $TMP
-    mkdir -p $SENSORPILLARPATH
+    PILLARFILE=/opt/so/saltstack/pillar/minions/$MINION_ID.sls
   else
-    SENSORPILLARPATH=$TMP/pillar/sensors
-  fi
-  if [ ! -d $SENSORPILLARPATH ]; then
-    mkdir -p $SENSORPILLARPATH
+    PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
   fi
 
   # Create the sensor pillar
-  touch $SENSORPILLARPATH/$MINION_ID.sls
-  echo "sensor:" > $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  interface: bond0" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  mainip: $MAINIP" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  mainint: $MAININT" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "sensor:" >> $PILLARFILE
+  echo "  interface: bond0" >> $PILLARFILE
+  echo "  mainip: $MAINIP" >> $PILLARFILE
+  echo "  mainint: $MAININT" >> $PILLARFILE
   if [ $NSMSETUP == 'ADVANCED' ]; then
-    echo "  bro_pins:" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  bro_pins:" >> $PILLARFILE
     for PIN in $BROPINS; do
       PIN=$(echo $PIN |  cut -d\" -f2)
-    echo "    - $PIN" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "    - $PIN" >> $PILLARFILE
     done
-    echo "  suripins:" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  suripins:" >> $PILLARFILE
     for SPIN in $SURIPINS; do
       SPIN=$(echo $SPIN |  cut -d\" -f2)
-    echo "    - $SPIN" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "    - $SPIN" >> $PILLARFILE
     done
   elif [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    echo "  bro_lbprocs: $LBPROCS" >> $SENSORPILLARPATH/$MINION_ID.sls
-    echo "  suriprocs: $LBPROCS" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  bro_lbprocs: $LBPROCS" >> $PILLARFILE
+    echo "  suriprocs: $LBPROCS" >> $PILLARFILE
   else
-    echo "  bro_lbprocs: $BASICBRO" >> $SENSORPILLARPATH/$MINION_ID.sls
-    echo "  suriprocs: $BASICSURI" >> $SENSORPILLARPATH/$MINION_ID.sls
+    echo "  bro_lbprocs: $BASICBRO" >> $PILLARFILE
+    echo "  suriprocs: $BASICSURI" >> $PILLARFILE
   fi
-  echo "  brobpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  pcapbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  nidsbpf:" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  master: $MSRV" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  mtu: $MTU" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  brobpf:" >> $PILLARFILE
+  echo "  pcapbpf:" >> $PILLARFILE
+  echo "  nidsbpf:" >> $PILLARFILE
+  echo "  master: $MSRV" >> $PILLARFILE
+  echo "  mtu: $MTU" >> $PILLARFILE
   if [ $HNSENSOR != 'inherit' ]; then
-  echo "  hnsensor: $HNSENSOR" >> $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  hnsensor: $HNSENSOR" >> $PILLARFILE
   fi
-  echo "  access_key: $ACCESS_KEY" >> $SENSORPILLARPATH/$MINION_ID.sls
-  echo "  access_secret: $ACCESS_SECRET" >>  $SENSORPILLARPATH/$MINION_ID.sls
+  echo "  access_key: $ACCESS_KEY" >> $PILLARFILE
+  echo "  access_secret: $ACCESS_SECRET" >>  $PILLARFILE
 
 }
 
