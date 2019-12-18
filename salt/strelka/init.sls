@@ -55,9 +55,9 @@ strelkastagedir:
     - makedirs: True
 
 
-#so-strelka-frontendimage:
-# cmd.run:
-#   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-frontend:HH1.1.5
+so-strelka-frontendimage:
+ cmd.run:
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-frontend:HH1.1.5
 
 so-strelka-coordinatorimage:
  cmd.run:
