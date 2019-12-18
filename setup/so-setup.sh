@@ -603,12 +603,12 @@ if (whiptail_you_sure) ; then
       salt_checkin >> $SETUPLOG 2>&1
       salt-call state.apply ca >> $SETUPLOG 2>&1
       salt-call state.apply ssl >> $SETUPLOG 2>&1
+      salt-call state.apply master >> $SETUPLOG 2>&1
       echo -e "XXX\n15\nInstalling core components... \nXXX"
       salt-call state.apply common >> $SETUPLOG 2>&1
       echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nInstalling master components... \nXXX"
-      salt-call state.apply master >> $SETUPLOG 2>&1
       salt-call state.apply idstools >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
         salt-call state.apply mysql >> $SETUPLOG 2>&1
