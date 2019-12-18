@@ -1,0 +1,40 @@
+#!/bin/bash
+MASTER={{ MASTER }}
+VERSION="HH1.1.4"
+TRUSTED_CONTAINERS=( \
+"so-auth-api:$VERSION" \
+"so-auth-ui:$VERSION" \
+"so-bro:$VERSION" \
+"so-core:$VERSION" \
+"so-cortex:$VERSION" \
+"so-curator:VERSION" \
+"so-cyberchef:VERSION" \
+"so-elastalert:$VERSION" \
+"so-elasticsearch:$VERSION" \
+"so-filebeat:$VERSION" \
+"so-fleet:$VERSION" \
+"so-grafana:$VERSION" \
+"so-idstools:$VERSION" \
+"so-influxdb:$VERSION" \
+"so-kibana:$VERSION" \
+"so-mysql:$VERSION" \
+"so-navigator:$VERSION" \
+"so-playbook:$VERSION" \
+"so-redis:$VERSION" \
+"so-sensoroni:$VERSION" \
+"so-soctopus:$VERSION" \
+"so-steno:$VERSION" \
+"so-suricata:$VERSION" \
+"so-telegraf:$VERSION" \
+"so-thehive:$VERSION" \
+"so-thehive-es:$VERSION" \
+"so-wazuh:$VERSION" )
+
+for i in "${TRUSTED_CONTAINERS[@]}"
+do
+  # Pull down the trusted docker image
+  docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+  # Tag it with the new registry destination
+  docker tag soshybridhunter/$i $MASTER:5000/soshybridhunter/$i
+  docker push $MASTER:5000/soshybridhunter/$i
+done

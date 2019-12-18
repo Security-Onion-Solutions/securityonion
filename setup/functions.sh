@@ -409,9 +409,10 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce python36-docker
-    if [ $INSTALLTYPE != 'EVALMODE' ]; then
-      docker_registry
-    fi
+#    if [ $INSTALLTYPE != 'EVALMODE' ]; then
+#      docker_registry
+#    fi
+    docker_registry
     echo "Restarting Docker" >> $SETUPLOG 2>&1
     systemctl restart docker
     systemctl enable docker
@@ -420,9 +421,10 @@ docker_install() {
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
       apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
-      if [ $INSTALLTYPE != 'EVALMODE'  ]; then
-        docker_registry >> $SETUPLOG 2>&1
-      fi
+#      if [ $INSTALLTYPE != 'EVALMODE'  ]; then
+#        docker_registry >> $SETUPLOG 2>&1
+#      fi
+      docker_registry
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     else

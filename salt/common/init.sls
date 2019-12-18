@@ -214,7 +214,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
 
-# If its a master or eval lets install the back end for now		
+# If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 
 # Influx DB
@@ -303,7 +303,7 @@ grafanadashfndir:
 
 grafanadashsndir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes
+    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes
     - user: 939
     - group: 939
     - makedirs: True
@@ -362,11 +362,11 @@ dashboard-{{ SN }}:
 {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/storage_nodes/storage.json
+    - source: salt://common/grafana/grafana_dashboards/search_nodes/searchnode.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
