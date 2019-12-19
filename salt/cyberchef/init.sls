@@ -42,7 +42,7 @@ cybercheflog:
 
 so-cyberchefimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cyberchef:HH1.1.4
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-cyberchef:HH1.1.3
 
 so-cyberchef:
   docker_container.running:
