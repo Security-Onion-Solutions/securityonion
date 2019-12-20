@@ -601,7 +601,7 @@ master_pillar() {
   PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
 
   # Create the master pillar
-  echo "master:" > $PILLARFILE
+  echo "master:" >> $PILLARFILE
   echo "  mainip: $MAINIP" >> $PILLARFILE
   echo "  mainint: $MAININT" >> $PILLARFILE
   echo "  esheap: $ES_HEAP_SIZE" >> $PILLARFILE
@@ -704,7 +704,7 @@ node_pillar() {
   PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
 
   # Create the node pillar
-  echo "node:" > $PILLARFILE
+  echo "node:" >> $PILLARFILE
   echo "  mainip: $MAINIP" >> $PILLARFILE
   echo "  mainint: $MAININT" >> $PILLARFILE
   echo "  esheap: $NODE_ES_HEAP_SIZE" >> $PILLARFILE
@@ -1102,7 +1102,7 @@ sensor_pillar() {
 
   # Create the sensor pillar
   touch $PILLARFILE
-  echo "sensor:" > $PILLARFILE
+  echo "sensor:" >> $PILLARFILE
   echo "  interface: bond0" >> $PILLARFILE
   echo "  mainip: $MAINIP" >> $PILLARFILE
   echo "  mainint: $MAININT" >> $PILLARFILE
