@@ -1,18 +1,3 @@
-authdir:
-    file.directory:
-        - name: /opt/so/conf/auth
-        - user: 939
-        - group: 939
-        - makedirs: True
-
-authfilesync:
-    file.recurse:
-        - name: /opt/so/conf/auth
-        - source: salt://auth/files
-        - user: 939
-        - group: 939
-        - template: jinja
-
 so-auth-api-image:
     cmd.run:
         - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-api:HH1.1.3
