@@ -272,7 +272,7 @@ copy_minion_tmp_files() {
     echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
     cp -Rv $TMP/pillar/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
     if [ -d $TMP/salt ] ; then
-      cp -Rv $TMP/salt/ /opt/so/saltstack/salt/ >> $SETUPLOG 2>&1
+      cp -Rv $TMP/salt/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
     fi
   else
     echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
@@ -640,6 +640,7 @@ master_pillar() {
   echo "  wazuh: $WAZUH" >> $PILLARFILE
   echo "  thehive: $THEHIVE" >> $PILLARFILE
   echo "  playbook: $PLAYBOOK" >> $PILLARFILE
+  echo "" >> $PILLARFILE
   }
 
 master_static() {
@@ -717,30 +718,20 @@ node_pillar() {
   echo "  es_port: $NODE_ES_PORT" >> $PILLARFILE
   echo "  log_size_limit: $LOG_SIZE_LIMIT" >> $PILLARFILE
   echo "  cur_close_days: $CURCLOSEDAYS" >> $PILLARFILE
+  echo "" >> $PILLARFILE
 
 }
 
 patch_pillar() {
 
-  case $INSTALLTYPE in
-    MASTERONLY | EVALMODE | HELIXSENSOR)
-      PATCHPILLARPATH=/opt/so/saltstack/pillar/masters
-      ;;
-    SENSORONLY)
-      PATCHPILLARPATH=$SENSORPILLARPATH
-      ;;
-    SEARCHNODE | PARSINGNODE | HOTNODE | WARMNODE)
-      PATCHPILLARPATH=$NODEPILLARPATH
-      ;;
-  esac
+  PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
 
-
-  echo "" >> $PATCHPILLARPATH/$MINION_ID.sls
-  echo "patch:" >> $PATCHPILLARPATH/$MINION_ID.sls
-  echo "  os:" >> $PATCHPILLARPATH/$MINION_ID.sls
-  echo "    schedule_name: $PATCHSCHEDULENAME" >> $PATCHPILLARPATH/$MINION_ID.sls
-  echo "    enabled: True" >> $PATCHPILLARPATH/$MINION_ID.sls
-  echo "    splay: 300" >> $PATCHPILLARPATH/$MINION_ID.sls
+  echo "patch:" >> $PILLARFILE
+  echo "  os:" >> $PILLARFILE
+  echo "    schedule_name: $PATCHSCHEDULENAME" >> $PILLARFILE
+  echo "    enabled: True" >> $PILLARFILE
+  echo "    splay: 300" >> $PILLARFILE
+  echo "" >> $PILLARFILE
 
 
 }
@@ -1145,6 +1136,7 @@ sensor_pillar() {
   fi
   echo "  access_key: $ACCESS_KEY" >> $PILLARFILE
   echo "  access_secret: $ACCESS_SECRET" >>  $PILLARFILE
+  echo "" >> $PILLARFILE
 
 }
 
