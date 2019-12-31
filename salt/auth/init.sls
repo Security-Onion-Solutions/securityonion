@@ -1,3 +1,10 @@
+so-auth-api-dir:
+  file.directory:
+    - name: /opt/so/conf/auth/api
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-auth-api-image:
     cmd.run:
         - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-api:HH1.1.3
@@ -15,6 +22,8 @@ so-auth-api:
         - name: so-auth-api
         - environment:
             - BASE_PATH: "/so-auth/api"
+        - binds:
+            - /opt/so/conf/auth/api:/data
         - port_bindings:
             - 0.0.0.0:5656:5656
 
