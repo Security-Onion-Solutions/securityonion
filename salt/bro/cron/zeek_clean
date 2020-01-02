@@ -14,7 +14,7 @@ if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
                 TODAY=$(date -u "+%Y-%m-%d")
 
                 # find the oldest Zeek logs directory and exclude today
-                OLDEST_DIR=$(ls /nsm/bro/logs/ | grep -v "current" | grep -v "stats" | grep -v "packetloss" | sort | grep -v $TODAY | head -n 1)
+                OLDEST_DIR=$(ls /nsm/bro/logs/ | grep -v "current" | grep -v "stats" | grep -v "packetloss" | grep -v "zeek_clean" | sort | grep -v $TODAY | head -n 1)
                 if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
                 then
                         echo "$(date) - No old Zeek logs available to clean up in /nsm/bro/logs/" >> $LOG
@@ -24,10 +24,24 @@ if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
                         rm -rf /nsm/bro/logs/"$OLDEST_DIR"
                 fi
 
-
+                # find oldest files in extracted directory and exclude today
+                OLDEST_EXTRACT=$(find /nsm/bro/extracted -type f -printf '%T+ %p\n' 2>/dev/null | sort | grep -v $TODAY | head -n 1)
+                if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
+                then
+                        echo "$(date) - No old extracted files available to clean up in /nsm/bro/extracted/" >> $LOG
+                else
+                        OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}' | cut -d+ -f1`
+                        OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
+                        echo "$(date) - Removing extracted files for $OLDEST_EXTRACT_DATE" >> $LOG
+                        find /nsm/bro/extracted -type f -printf '%T+ %p\n' | grep $OLDEST_EXTRACT_DATE | awk '{print $2}' |while read FILE
+                        do
+                                echo "$(date) - Removing extracted file: $FILE" >> $LOG
+                                rm -f "$FILE"
+                        done
+                fi
     done
 else
-  echo "$(date) - Current usage of $CUR_USAGE% not greater than the CRIT_DISK_VALUE of $CRIT_DISK_USAGE%..." >> $LOG
+  echo "$(date) - CRIT_DISK_USAGE value of $CRIT_DISK_USAGE not greater than current usage of $CUR_USAGE..." >> $LOG
 fi
 }
 
