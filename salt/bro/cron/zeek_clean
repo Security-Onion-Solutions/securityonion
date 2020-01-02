@@ -1,0 +1,34 @@
+#!/bin/bash
+# Delete Zeek Logs based on defined CRIT_DISK_USAGE value
+
+clean () {
+
+SENSOR_DIR='/nsm'
+CRIT_DISK_USAGE=90
+CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
+LOG="/nsm/bro/logs/zeek_clean.log"
+
+if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
+    while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ];
+        do
+                TODAY=$(date -u "+%Y-%m-%d")
+
+                # find the oldest Zeek logs directory and exclude today
+                OLDEST_DIR=$(ls /nsm/bro/logs/ | grep -v "current" | grep -v "stats" | grep -v "packetloss" | sort | grep -v $TODAY | head -n 1)
+                if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
+                then
+                        echo "$(date) - No old Zeek logs available to clean up in /nsm/bro/logs/" >> $LOG
+                        exit 0
+                else
+                        echo "$(date) - Removing directory: /nsm/bro/logs/$OLDEST_DIR" >> $LOG
+                        rm -rf /nsm/bro/logs/"$OLDEST_DIR"
+                fi
+
+
+    done
+else
+  echo "$(date) - CRIT_DISK_USAGE value of $CRIT_DISK_USAGE not greater than current usage of $CUR_USAGE..." >> $LOG
+fi
+}
+
+clean
