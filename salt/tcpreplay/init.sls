@@ -7,7 +7,7 @@ so-tcpreplayimage:
 so-tcpreplay:
   docker_container.running:
     - require:
-      - so-tcpreplay
+      - so-tcpreplayimage
     - network_mode: "host"
     - image: docker.io/soshybridhunter/so-tcpreplay:HH1.1.4
     - name: so-tcpreplay
