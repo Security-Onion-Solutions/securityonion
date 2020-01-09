@@ -7,17 +7,17 @@ so-auth-api-dir:
 
 so-auth-api-image:
     cmd.run:
-        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-api:HH1.1.3
+        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-api:HH1.1.4
 
 so-auth-ui-image:
     cmd.run:
-        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-ui:HH1.1.3
+        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-ui:HH1.1.4
 
 so-auth-api:
     docker_container.running:
         - require:
             - so-auth-api-image
-        - image: docker.io/soshybridhunter/so-auth-api:HH1.1.3
+        - image: docker.io/soshybridhunter/so-auth-api:HH1.1.4
         - hostname: so-auth-api
         - name: so-auth-api
         - environment:
@@ -31,7 +31,7 @@ so-auth-ui:
     docker_container.running:
         - require:
             - so-auth-ui-image
-        - image: docker.io/soshybridhunter/so-auth-ui:HH1.1.3
+        - image: docker.io/soshybridhunter/so-auth-ui:HH1.1.4
         - hostname: so-auth-ui
         - name: so-auth-ui
         - port_bindings:
