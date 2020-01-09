@@ -15,22 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Usage: so-start  all | filebeat | kibana | playbook | thehive
-
+# Source common settings
 . /usr/sbin/so-common
 
-echo $banner
-printf "Starting $1...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n"
-echo $banner
+# Check for log files
+for FILE in /opt/so/log/elasticsearch/*.log /opt/so/log/logstash/*.log /opt/so/log/kibana/*.log /opt/so/log/elastalert/*.log /opt/so/log/curator/*.log /opt/so/log/freqserver/*.log /opt/so/log/nginx/*.log; do
 
-if [ "$2" = "--force" ]
-then
-   printf "\nForce-stopping all Salt jobs before proceeding\n\n"
-   salt-call saltutil.kill_all_jobs
+# If file exists, then look for errors or warnings 
+if [ -f $FILE ]; then
+	MESSAGE=`grep -i 'ERROR\|FAIL\|WARN' $FILE` 
+	if [ ! -z "$MESSAGE" ]; then
+		header $FILE
+		echo $MESSAGE | sed 's/WARN/\nWARN/g' | sed 's/WARNING/\nWARNING/g' | sed 's/ERROR/\nERROR/g' | sort | uniq -c | sort -nr
+		echo
+	fi
 fi
-
-
-case $1 in
-   "all") salt-call state.highstate queue=True;;
-   *) if docker ps | grep -q so-$1; then printf "\n$1 is already running!\n\n"; else docker rm so-$1 >/dev/null 2>&1 ; salt-call state.apply $1 queue=True; fi
-esac
+done
