@@ -51,6 +51,7 @@ base:
     - firewall
     - master
     - idstools
+    - auth
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}

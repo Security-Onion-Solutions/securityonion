@@ -655,6 +655,7 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XX\n97\nFinishing touches... \nXXX"
+      salt-call state.apply auth >> $SETUPLOG 2>&1
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n98\nVerifying Setup... \nXXX"
