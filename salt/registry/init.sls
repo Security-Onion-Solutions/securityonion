@@ -24,7 +24,7 @@ dockerregistrylogdir:
 dockerregistryconf:
   file.managed:
     - name: /opt/so/conf/docker-registry/etc/config.yml
-    - source: salt://master/files/registry/config.yml
+    - source: salt://registry/etc/config.yml
 
 # Install the registry container
 so-dockerregistry:
