@@ -100,13 +100,13 @@ eslogdir:
 
 so-elasticsearchimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.4
 
 so-elasticsearch:
   docker_container.running:
     - require:
       - so-elasticsearchimage
-    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
+    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.4
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
