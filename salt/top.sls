@@ -43,10 +43,11 @@ base:
   'G@role:so-eval':
     - ca
     - ssl
+    - registry
+    - master
     - common
     - sensoroni
     - firewall
-    - master
     - idstools
     {%- if OSQUERY != 0 %}
     - mysql
@@ -84,6 +85,7 @@ base:
   'G@role:so-master':
     - ca
     - ssl
+    - registry
     - common
     - cyberchef
     - sensoroni
