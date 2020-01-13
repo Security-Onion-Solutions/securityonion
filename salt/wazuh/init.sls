@@ -64,13 +64,13 @@ wazuhagentregister:
 
 so-wazuhimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-wazuh:HH1.1.3
+   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-wazuh:HH1.1.4
 
 so-wazuh:
   docker_container.running:
     - require:
       - so-wazuhimage
-    - image: docker.io/soshybridhunter/so-wazuh:HH1.1.3
+    - image: docker.io/soshybridhunter/so-wazuh:HH1.1.4
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True
