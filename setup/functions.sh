@@ -500,8 +500,8 @@ docker_seed_registry() {
     echo "Downloading $i"
     docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
     # Tag it with the new registry destination
-    docker tag soshybridhunter/$i $MSRV:5000/soshybridhunter/$i
-    docker push $MSRV:5000/soshybridhunter/$i
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
     echo "Removing $i locally"
     docker rmi soshybridhunter/$i
   done
