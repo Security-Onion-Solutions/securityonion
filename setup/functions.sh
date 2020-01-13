@@ -428,8 +428,6 @@ docker_install() {
       apt-get update >> $SETUPLOG 2>&1
       apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       docker_registry >> $SETUPLOG 2>&1
-      echo "Seeding the registry. This can take a bit" >> $SETUPLOG 2>&1
-      docker_seed_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     else
@@ -438,8 +436,6 @@ docker_install() {
       apt-get update >> $SETUPLOG 2>&1
       apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
       docker_registry >> $SETUPLOG 2>&1
-      echo "Seeding the registry. This can take a bit" >> $SETUPLOG 2>&1
-      docker_seed_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     fi
