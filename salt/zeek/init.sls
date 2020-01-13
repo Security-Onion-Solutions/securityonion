@@ -1,5 +1,5 @@
-{%- set VERSION = salt['pillar.get']('static:soversion', '1.1.4') -%}
-{%- set MASTER = salt['grains.get']('master') -%}
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # Zeek Salt State
 # Add Zeek group
 zeekgroup:
