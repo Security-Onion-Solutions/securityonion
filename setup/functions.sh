@@ -414,7 +414,6 @@ docker_install() {
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker
       systemctl enable docker
-      docker_seed_registry >> $SETUPLOG 2>&1
     else
       docker_registry
       echo "Restarting Docker" >> $SETUPLOG 2>&1
