@@ -364,6 +364,7 @@ if (whiptail_you_sure) ; then
       salt_checkin >> $SETUPLOG 2>&1
       salt-call state.apply ca >> $SETUPLOG 2>&1
       salt-call state.apply ssl >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
       salt-call state.apply registry >> $SETUPLOG 2>&1
       echo "Seeding Repo"
       docker_seed_registry >> $SETUPLOG 2>&1
@@ -606,6 +607,7 @@ if (whiptail_you_sure) ; then
       salt_checkin >> $SETUPLOG 2>&1
       salt-call state.apply ca >> $SETUPLOG 2>&1
       salt-call state.apply ssl >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
       salt-call state.apply registry >> $SETUPLOG 2>&1
       echo "Seeding Repo"
       docker_seed_registry >> $SETUPLOG 2>&1
