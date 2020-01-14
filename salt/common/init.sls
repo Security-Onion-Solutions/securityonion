@@ -227,7 +227,7 @@ influxdbconf:
 
 so-influxdb:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-influxdb:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-influxdb:HH{{ VERSION }}
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
