@@ -59,7 +59,6 @@ base:
     - suricata
     - zeek
     - curator
-    - cyberchef
     - elastalert
     {%- if OSQUERY != 0 %}
     - fleet
@@ -87,7 +86,6 @@ base:
     - ssl
     - registry
     - common
-    - cyberchef
     - sensoroni
     - firewall
     - master
