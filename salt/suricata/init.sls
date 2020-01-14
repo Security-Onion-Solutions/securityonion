@@ -14,7 +14,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{% set BROVER = salt['pillar.get']('static:broversion', '') %}
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 
 # Suricata
 
@@ -70,15 +72,9 @@ suriconfigsync:
     - group: 940
     - template: jinja
 
-so-suricataimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-suricata:HH1.1.1
-
 so-suricata:
   docker_container.running:
-    - require:
-      - so-suricataimage
-    - image: docker.io/soshybridhunter/so-suricata:HH1.1.1
+    - image: {{ MASTER }}/soshybridhunter/so-suricata:HH{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}

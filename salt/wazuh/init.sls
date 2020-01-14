@@ -1,5 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
   group.present:
@@ -62,15 +63,9 @@ wazuhagentregister:
     - mode: 755
     - template: jinja
 
-so-wazuhimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-wazuh:HH1.1.3
-
 so-wazuh:
   docker_container.running:
-    - require:
-      - so-wazuhimage
-    - image: docker.io/soshybridhunter/so-wazuh:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:HH{{ VERSION }}
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True

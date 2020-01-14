@@ -1,3 +1,6 @@
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
+
 sensoronidir:
   file.directory:
     - name: /opt/so/conf/sensoroni
@@ -27,15 +30,9 @@ sensoronisync:
     - group: 939
     - template: jinja
 
-so-sensoroniimage:
-  cmd.run:
-    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-sensoroni:HH1.1.3
-
 so-sensoroni:
   docker_container.running:
-    - require:
-      - so-sensoroniimage
-    - image: docker.io/soshybridhunter/so-sensoroni:HH1.1.3
+    - image: {{ MASTER }}/soshybridhunter/so-sensoroni:HH{{ VERSION }}
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:

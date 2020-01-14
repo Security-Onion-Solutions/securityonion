@@ -17,7 +17,7 @@ base:
     - idstools
     - pcap
     - suricata
-    - bro
+    - zeek
     - redis
     - logstash
     - filebeat
@@ -31,7 +31,7 @@ base:
     - pcap
     - suricata
     {%- if BROVER != 'SURICATA' %}
-    - bro
+    - zeek
     {%- endif %}
     - wazuh
     - filebeat
@@ -57,7 +57,7 @@ base:
     - kibana
     - pcap
     - suricata
-    - bro
+    - zeek
     - curator
     - cyberchef
     - elastalert

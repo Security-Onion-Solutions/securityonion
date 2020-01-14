@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # IDSTools Setup
 idstoolsdir:
   file.directory:
@@ -61,15 +62,9 @@ ruleslink:
     - name: /opt/so/saltstack/salt/suricata/rules
     - target: /opt/so/rules/nids
 
-so-idstoolsimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-idstools:HH1.1.0
-
 so-idstools:
   docker_container.running:
-    - require:
-      - so-idstoolsimage
-    - image: docker.io/soshybridhunter/so-idstools:HH1.1.0
+    - image: {{ MASTER }}/soshybridhunter/so-idstools:HH{{ VERSION }}
     - hostname: so-idstools
     - user: socore
     - binds:

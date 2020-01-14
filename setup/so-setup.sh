@@ -366,7 +366,7 @@ if (whiptail_you_sure) ; then
       salt-call state.apply ssl >> $SETUPLOG 2>&1
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       salt-call state.apply registry >> $SETUPLOG 2>&1
-      echo "Seeding Repo"
+      echo -e "XXX\n42\nDownloading Containers from the Internet... \nXXX"
       docker_seed_registry >> $SETUPLOG 2>&1
       echo -e "XXX\n43\nInstalling Common Components... \nXXX"
       salt-call state.apply common >> $SETUPLOG 2>&1
@@ -609,7 +609,7 @@ if (whiptail_you_sure) ; then
       salt-call state.apply ssl >> $SETUPLOG 2>&1
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       salt-call state.apply registry >> $SETUPLOG 2>&1
-      echo "Seeding Repo"
+      echo -e "XXX\n14\nDownloading Containers from the Internet... \nXXX"
       docker_seed_registry >> $SETUPLOG 2>&1
       salt-call state.apply master >> $SETUPLOG 2>&1
       echo -e "XXX\n15\nInstalling core components... \nXXX"

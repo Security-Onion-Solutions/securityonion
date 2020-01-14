@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set MASTER = grains['master'] %}
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 
 # Filebeat Setup
@@ -46,25 +47,9 @@ filebeatconfsync:
     - group: 0
     - template: jinja
 
-#filebeatcrt:
-#  file.managed:
-#    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
-#    - source: salt://filebeat/files/filebeat.crt
-
-#filebeatkey:
-#  file.managed:
-#    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-#    - source: salt://filebeat/files/filebeat.key
-
-so-filebeatimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-filebeat:HH1.1.1
-
 so-filebeat:
   docker_container.running:
-    - require:
-      - so-filebeatimage
-    - image: docker.io/soshybridhunter/so-filebeat:HH1.1.1
+    - image: {{ MASTER }}/soshybridhunter/so-filebeat:HH{{ VERSION }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
