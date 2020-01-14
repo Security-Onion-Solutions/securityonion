@@ -20,7 +20,7 @@
 . /usr/sbin/so-common
 
 echo $banner
-printf "Restarting $1\n"
+printf "Restarting $1...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n"
 echo $banner
 
 if [ "$2" = "--force" ]
@@ -31,6 +31,5 @@ fi
 
 case $1 in
    "cortex") docker stop so-thehive-cortex so-thehive && docker rm so-thehive-cortex so-thehive && salt-call state.apply hive queue=True;;
-   "fleet") docker stop so-fleet so-redis && docker rm so-fleet so-redis && salt-call state.apply fleet queue=True;;
-   *) docker stop so-$1 && docker rm so-$1 && salt-call state.apply $1 queue=True;;
+   *)  docker stop so-$1 ; docker rm so-$1 ; salt-call state.apply $1 queue=True;;
 esac

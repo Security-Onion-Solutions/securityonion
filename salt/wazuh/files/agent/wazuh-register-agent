@@ -31,6 +31,7 @@ USER="foo"
 PASSWORD="bar"
 AGENT_NAME=$(hostname)
 AGENT_IP="{{ip}}"
+AGENT_ID=001
 
 display_help() {
 cat <<HELP_USAGE
@@ -135,5 +136,10 @@ shift $(($OPTIND - 1))
 
 # Default action -> try to register the agent
 sleep 10s
-register_agent
+STATUS=$(curl -s -k -u $USER:$PASSWORD $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID | jq .data.status | sed s'/"//g')
+if [[ $STATUS == "Active" ]]; then 
+  echo "Agent $AGENT_ID already registered!"
+else
+  register_agent
+fi
 #remove_agent

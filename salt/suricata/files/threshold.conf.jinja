@@ -1,0 +1,36 @@
+{% set THRESHOLDING  = salt['pillar.get']('thresholding', {}) -%}
+
+{% if THRESHOLDING -%}
+  
+  {% for EACH_SID in THRESHOLDING.sids -%}
+    {% for ACTIONS_LIST in THRESHOLDING.sids[EACH_SID] -%}
+      {% for EACH_ACTION in ACTIONS_LIST -%}
+        
+        {%- if EACH_ACTION == 'threshold' %}
+{{ EACH_ACTION }} gen_id {{ ACTIONS_LIST[EACH_ACTION].gen_id }}, sig_id {{ EACH_SID }}, type {{ ACTIONS_LIST[EACH_ACTION].type }}, track {{ ACTIONS_LIST[EACH_ACTION].track }}, count {{ ACTIONS_LIST[EACH_ACTION].count }}, seconds {{ ACTIONS_LIST[EACH_ACTION].seconds }}
+        
+        {%- elif EACH_ACTION == 'rate_filter' %}
+          {%- if ACTIONS_LIST[EACH_ACTION].new_action not in ['drop','reject'] %}
+{{ EACH_ACTION }} gen_id {{ ACTIONS_LIST[EACH_ACTION].gen_id }}, sig_id {{ EACH_SID }}, track {{ ACTIONS_LIST[EACH_ACTION].track }}, count {{ ACTIONS_LIST[EACH_ACTION].count }}, seconds {{ ACTIONS_LIST[EACH_ACTION].seconds }}, new_action {{ ACTIONS_LIST[EACH_ACTION].new_action }}, timeout {{ ACTIONS_LIST[EACH_ACTION].timeout }}
+          {%- else %}
+##### Security Onion does not support drop or reject actions for rate_filter
+##### {{ EACH_ACTION }} gen_id {{ ACTIONS_LIST[EACH_ACTION].gen_id }}, sig_id {{ EACH_SID }}, track {{ ACTIONS_LIST[EACH_ACTION].track }}, count {{ ACTIONS_LIST[EACH_ACTION].count }}, seconds {{ ACTIONS_LIST[EACH_ACTION].seconds }}, new_action {{ ACTIONS_LIST[EACH_ACTION].new_action }}, timeout {{ ACTIONS_LIST[EACH_ACTION].timeout }}
+          {%- endif %}
+        
+        {%- elif EACH_ACTION == 'suppress' %}
+          {%- if ACTIONS_LIST[EACH_ACTION].track is defined %}
+{{ EACH_ACTION }} gen_id {{ ACTIONS_LIST[EACH_ACTION].gen_id }}, sig_id {{ EACH_SID }}, track {{ ACTIONS_LIST[EACH_ACTION].track }}, ip {{ ACTIONS_LIST[EACH_ACTION].ip }}
+          {%- else %}
+{{ EACH_ACTION }} gen_id {{ ACTIONS_LIST[EACH_ACTION].gen_id }}, sig_id {{ EACH_SID }}
+          {%- endif %}
+        
+        {%- endif %}
+      
+      {%- endfor %}
+    {%- endfor %}
+  {%- endfor %}
+
+{%- else %}
+##### The thresholding pillar has not been defined
+
+{%- endif %}

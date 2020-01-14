@@ -4,6 +4,9 @@
 {%- set GRAFANA = salt['pillar.get']('master:grafana', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
+{%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
+{%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
+
 base:
   '*':
     - patch.os.schedule
@@ -49,6 +52,7 @@ base:
     - sensoroni
     - firewall
     - idstools
+    - auth
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
@@ -78,7 +82,12 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
-
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
 
 
   'G@role:so-master':
@@ -115,7 +124,12 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
-
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
 
   # Search node logic
 

@@ -79,6 +79,21 @@ plcronscript:
     - source: salt://bro/cron/packetloss.sh
     - mode: 755
 
+zeekcleanscript:
+  file.managed:
+    - name: /usr/local/bin/zeek_clean
+    - source: salt://bro/cron/zeek_clean
+    - mode: 755
+
+/usr/local/bin/zeek_clean:
+  cron.present:
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 /usr/local/bin/packetloss.sh:
   cron.present:
     - user: root

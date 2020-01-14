@@ -72,6 +72,14 @@ suriconfigsync:
     - group: 940
     - template: jinja
 
+surithresholding:
+  file.managed:
+    - name: /opt/so/conf/suricata/threshold.conf
+    - source: salt://suricata/files/threshold.conf.jinja
+    - user: 940
+    - group: 940
+    - template: jinja
+    
 so-suricata:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:HH{{ VERSION }}
@@ -80,9 +88,11 @@ so-suricata:
       - INTERFACE={{ interface }}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
     - network_mode: host
     - watch:
       - file: /opt/so/conf/suricata/suricata.yaml
+      - file: surithresholding
       - file: /opt/so/conf/suricata/rules/

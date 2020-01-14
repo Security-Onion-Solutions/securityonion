@@ -63,6 +63,15 @@ wazuhagentregister:
     - mode: 755
     - template: jinja
 
+wazuhmgrwhitelist:
+   file.managed:
+    - name: /usr/sbin/wazuh-manager-whitelist
+    - source: salt://wazuh/files/wazuh-manager-whitelist
+    - user: 0
+    - group: 0
+    - mode: 755
+    - template: jinja
+
 so-wazuh:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:HH{{ VERSION }}
@@ -82,3 +91,9 @@ registertheagent:
     - name: /usr/sbin/wazuh-register-agent
     - cwd: /
     #- stateful: True
+
+# Whitelist manager IP
+whitelistmanager:
+  cmd.run:
+    - name: /usr/sbin/wazuh-manager-whitelist
+    - cwd: /

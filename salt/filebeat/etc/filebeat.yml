@@ -3,6 +3,7 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
 {%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
+{%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '1') %}
 
 name: {{ HOSTNAME }}
 
@@ -122,6 +123,19 @@ filebeat.prospectors:
       - /osquery/logs/result.log
     fields:
       type: osquery
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+{%- endif %}
+
+{%- if STRELKAENABLED == '1' %}
+
+  - type: log
+    paths:
+      - /opt/so/log/strelka/strelka.log
+    fields:
+      type: strelka
     fields_under_root: true
     clean_removed: false
     close_removed: false

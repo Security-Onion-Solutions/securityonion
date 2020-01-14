@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -18,22 +18,16 @@
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
 {% elif grains['role'] == 'so-eval' %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
 {% elif grains['role'] == 'so-node' %}
 
 {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
 {% set esheap = salt['pillar.get']('node:esheap', '') %}
-{% set freq = salt['pillar.get']('node:freq', '0') %}
-{% set dstats = salt['pillar.get']('node:dstats', '0') %}
 
 {% endif %}
 
