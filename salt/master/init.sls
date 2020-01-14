@@ -24,7 +24,7 @@ socore_own_saltstack:
     - group: socore
     - recurse:
       - user
-      - group	
+      - group
 
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
@@ -72,40 +72,5 @@ so-aptcacherng:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
-
-
-# Create the config directory for the docker registry
-dockerregistryconfdir:
-  file.directory:
-    - name: /opt/so/conf/docker-registry/etc
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-dockerregistrylogdir:
-  file.directory:
-    - name: /opt/so/log/docker-registry
-    - user: 939
-    - group: 939
-    - makedirs: true
-
-# Copy the config
-dockerregistryconf:
-  file.managed:
-    - name: /opt/so/conf/docker-registry/etc/config.yml
-    - source: salt://master/files/registry/config.yml
-
-# Install the registry container
-so-dockerregistry:
-  docker_container.running:
-    - image: registry:2
-    - hostname: so-registry
-    - port_bindings:
-      - 0.0.0.0:5000:5000
-    - binds:
-      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
-      - /opt/so/conf/docker-registry:/var/lib/registry:rw
-      - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
-      - /etc/pki/registry.key:/etc/pki/registry.key:ro
 
 {% endif %}
