@@ -497,9 +497,14 @@ docker_seed_registry() {
     # Tag it with the new registry destination
     docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
     docker push $HOSTNAME:5000/soshybridhunter/$i
+  done
+
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
     echo "Removing $i locally"
     docker rmi soshybridhunter/$i
   done
+  
 }
 
 es_heapsize() {
