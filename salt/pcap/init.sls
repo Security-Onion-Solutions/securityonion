@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # PCAP Section
 
 # Create the logstash group
@@ -94,15 +95,9 @@ stenolog:
     - group: 941
     - makedirs: True
 
-so-stenoimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-steno:HH1.1.3
-
 so-steno:
   docker_container.running:
-    - require:
-      - so-stenoimage
-    - image: docker.io/soshybridhunter/so-steno:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:HH{{ VERSION }}
     - network_mode: host
     - privileged: True
     - port_bindings:

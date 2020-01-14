@@ -11,4 +11,5 @@ chown -R socore:socore /opt/so/saltstack/salt
 chmod 755 /opt/so/saltstack/pillar/firewall/addfirewall.sh
 cd ~
 rm -rf /tmp/sogh
+# Run so-elastic-download here and call this soup with some magic
 salt-call state.highstate

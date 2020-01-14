@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # Logstash Section - Decide which pillar to use
 {% if grains['role'] == 'so-sensor' %}
 
@@ -152,16 +153,9 @@ lslogdir:
     - group: 939
     - makedirs: True
 
-# Add the container
-so-logstashimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-logstash:HH1.1.4
-
 so-logstash:
   docker_container.running:
-    - require:
-      - so-logstashimage
-    - image: docker.io/soshybridhunter/so-logstash:HH1.1.4
+    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:HH{{ VERSION }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

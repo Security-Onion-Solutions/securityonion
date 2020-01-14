@@ -12,6 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 {% if grains['role'] == 'so-master' %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
@@ -98,15 +100,9 @@ eslogdir:
     - group: 939
     - makedirs: True
 
-so-elasticsearchimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.4
-
 so-elasticsearch:
   docker_container.running:
-    - require:
-      - so-elasticsearchimage
-    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.4
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:HH{{ VERSION }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -140,7 +136,3 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
-
-# Tell the main cluster I am here
-#curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
-

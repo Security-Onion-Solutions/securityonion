@@ -1,3 +1,5 @@
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 {%- set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 # Add socore Group
 socoregroup:
@@ -114,16 +116,9 @@ nginxtmp:
     - group: 939
     - makedirs: True
 
-# Start the core docker
-so-coreimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-core:HH1.1.4
-
 so-core:
   docker_container.running:
-    - require:
-      - so-coreimage
-    - image: docker.io/soshybridhunter/so-core:HH1.1.4
+    - image: {{ MASTER }}:5000/soshybridhunter/so-core:HH{{ VERSION }}
     - hostname: so-core
     - user: socore
     - binds:
@@ -175,15 +170,9 @@ tgrafconf:
     - template: jinja
     - source: salt://common/telegraf/etc/telegraf.conf
 
-so-telegrafimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-telegraf:HH1.1.0
-
 so-telegraf:
   docker_container.running:
-    - require:
-      - so-telegrafimage
-    - image: docker.io/soshybridhunter/so-telegraf:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:HH{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -214,7 +203,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/etc/telegraf.conf
       - /opt/so/conf/telegraf/scripts
 
-# If its a master or eval lets install the back end for now		
+# If its a master or eval lets install the back end for now
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
 
 # Influx DB
@@ -236,15 +225,9 @@ influxdbconf:
     - template: jinja
     - source: salt://common/influxdb/etc/influxdb.conf
 
-so-influximage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-influxdb:HH1.1.0
-
 so-influxdb:
   docker_container.running:
-    - require:
-      - so-influximage
-    - image: docker.io/soshybridhunter/so-influxdb:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-influxdb:HH{{ VERSION }}
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -303,7 +286,7 @@ grafanadashfndir:
 
 grafanadashsndir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes
+    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes
     - user: 939
     - group: 939
     - makedirs: True
@@ -362,11 +345,11 @@ dashboard-{{ SN }}:
 {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/storage_nodes/{{ SN }}-Node.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/storage_nodes/storage.json
+    - source: salt://common/grafana/grafana_dashboards/search_nodes/searchnode.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
@@ -400,14 +383,9 @@ dashboard-{{ SN }}:
 {% endfor %}
 {% endif %}
 
-# Install the docker. This needs to be behind nginx at some point
-so-grafanaimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-grafana:HH1.1.0
-
 so-grafana:
   docker_container.running:
-    - image: docker.io/soshybridhunter/so-grafana:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-grafana:HH{{ VERSION }}
     - hostname: grafana
     - user: socore
     - binds:

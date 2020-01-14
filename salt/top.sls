@@ -20,7 +20,7 @@ base:
     - idstools
     - pcap
     - suricata
-    - bro
+    - zeek
     - redis
     - logstash
     - filebeat
@@ -34,7 +34,7 @@ base:
     - pcap
     - suricata
     {%- if BROVER != 'SURICATA' %}
-    - bro
+    - zeek
     {%- endif %}
     - wazuh
     - filebeat
@@ -46,10 +46,11 @@ base:
   'G@role:so-eval':
     - ca
     - ssl
+    - registry
+    - master
     - common
     - sensoroni
     - firewall
-    - master
     - idstools
     - auth
     {%- if OSQUERY != 0 %}
@@ -60,7 +61,7 @@ base:
     - kibana
     - pcap
     - suricata
-    - bro
+    - zeek
     - curator
     - elastalert
     {%- if OSQUERY != 0 %}
@@ -92,6 +93,7 @@ base:
   'G@role:so-master':
     - ca
     - ssl
+    - registry
     - common
     - sensoroni
     - firewall

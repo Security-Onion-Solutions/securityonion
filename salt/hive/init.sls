@@ -1,4 +1,6 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
@@ -53,15 +55,9 @@ hiveesdata:
     - user: 939
     - group: 939
 
-so-thehive-esimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-es:HH1.1.4
-
 so-thehive-es:
   docker_container.running:
-    - require:
-      - so-thehive-esimage
-    - image: docker.io/soshybridhunter/so-thehive-es:HH1.1.4
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:HH{{ VERSION }}
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
