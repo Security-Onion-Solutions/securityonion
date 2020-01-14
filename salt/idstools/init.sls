@@ -64,7 +64,7 @@ ruleslink:
 
 so-idstools:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-idstools:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-idstools:HH{{ VERSION }}
     - hostname: so-idstools
     - user: socore
     - binds:

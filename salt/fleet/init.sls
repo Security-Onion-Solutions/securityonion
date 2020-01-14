@@ -63,7 +63,7 @@ fleetdbpriv:
 
 so-fleet:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-fleet:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-fleet:HH{{ VERSION }}
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080

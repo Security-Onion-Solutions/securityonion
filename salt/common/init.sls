@@ -172,7 +172,7 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-telegraf:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:HH{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc

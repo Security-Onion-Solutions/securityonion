@@ -56,7 +56,7 @@ synckibanacustom:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-kibana:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-kibana:HH{{ VERSION }}
     - hostname: kibana
     - user: kibana
     - environment:

@@ -32,7 +32,7 @@ sensoronisync:
 
 so-sensoroni:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-sensoroni:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-sensoroni:HH{{ VERSION }}
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:

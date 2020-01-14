@@ -49,7 +49,7 @@ filebeatconfsync:
 
 so-filebeat:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-filebeat:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:HH{{ VERSION }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}

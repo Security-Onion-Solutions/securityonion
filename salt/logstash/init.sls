@@ -155,7 +155,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-logstash:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:HH{{ VERSION }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

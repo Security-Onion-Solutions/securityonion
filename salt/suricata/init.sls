@@ -74,7 +74,7 @@ suriconfigsync:
 
 so-suricata:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-suricata:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:HH{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}

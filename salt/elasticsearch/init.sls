@@ -108,7 +108,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MASTER }}/soshybridhunter/so-elasticsearch:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:HH{{ VERSION }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
