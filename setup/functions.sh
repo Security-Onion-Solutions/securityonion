@@ -964,15 +964,15 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install epel-release salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y install epel-release salt-minion-2019.2.3 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-      yum -y install salt-master-2019.2.2 python3 python36-m2crypto salt-minion-2019.2.2 python36-dateutil python36-mysql python36-docker
+      yum -y install salt-master-2019.2.3 python3 python36-m2crypto salt-minion-2019.2.3 python36-dateutil python36-mysql python36-docker
       systemctl enable salt-master
     else
-      yum -y install salt-minion-2019.2.2 python3 python36-m2crypto python36-dateutil python36-docker
+      yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker
     fi
     echo "exclude=salt*" >> /etc/yum.conf
 
@@ -1014,7 +1014,7 @@ EOF
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
       # Need to add python packages here
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -1030,7 +1030,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
