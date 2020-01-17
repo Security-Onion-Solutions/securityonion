@@ -573,7 +573,7 @@ install_master() {
     #wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1 libssl-dev python-m2crypto
+    apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
     apt-mark hold salt-common salt-master salt-minion
   fi
 
