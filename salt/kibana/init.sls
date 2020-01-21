@@ -1,4 +1,5 @@
-{% set master = salt['grains.get']('master') %}
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -52,25 +53,17 @@ synckibanacustom:
     - user: 932
     - group: 939
 
-# File.Recurse for custom saved dashboards
-
-so-kibanaimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-kibana:HH1.1.1
-
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - require:
-      - so-kibanaimage
-    - image: docker.io/soshybridhunter/so-kibana:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-kibana:HH{{ VERSION }}
     - hostname: kibana
     - user: kibana
     - environment:
       - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
-      - ELASTICSEARCH_HOST={{ master }}
+      - ELASTICSEARCH_HOST={{ MASTER }}
       - ELASTICSEARCH_PORT=9200
-      - MASTER={{ master }}
+      - MASTER={{ MASTER }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
@@ -78,11 +71,3 @@ so-kibana:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
-
-# Keep the setting correct
-#KibanaHappy:
-#  cmd.script:
-#    - shell: /bin/bash
-#    - runas: socore
-#    - source: salt://kibana/bin/keepkibanahappy.sh
-#    - template: jinja

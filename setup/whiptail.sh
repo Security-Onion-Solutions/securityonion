@@ -672,8 +672,8 @@ whiptail_set_hostname() {
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
-  while [[ "$HOSTNAME" == 'localhost' ]] ; do
-    whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that isn't localhost." 8 75
+  while [[ "$HOSTNAME" == *'localhost'* ]] ; do
+    whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that doesn't contain localhost." 8 75
     HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
     "Enter the Hostname you would like to set." 10 75 $HOSTNAME 3>&1 1>&2 2>&3)
     local exitstatus=$?

@@ -58,9 +58,9 @@ http {
     #    }
     #}
     server {
-	      listen 80 default_server;
-	      server_name _;
-	      return 301 https://$host$request_uri;
+        listen 80 default_server;
+        server_name _;
+        return 301 https://$host$request_uri;
     }
 
 
@@ -88,8 +88,8 @@ http {
     #    }
 
         location /grafana/ {
-	  rewrite /grafana/(.*) /$1 break;
-          proxy_pass http://{{ masterip }}:3000/;
+          rewrite               /grafana/(.*) /$1 break;
+          proxy_pass            http://{{ masterip }}:3000/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -100,10 +100,9 @@ http {
         }
 
         location /kibana/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
-	  rewrite /kibana/(.*) /$1 break;
-          proxy_pass http://{{ masterip }}:5601/;
+          auth_request          /so-auth/api/auth/;
+          rewrite               /kibana/(.*) /$1 break;
+          proxy_pass            http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -114,7 +113,7 @@ http {
         }
 
         location /playbook/ {
-          proxy_pass http://{{ masterip }}:3200/playbook/;
+          proxy_pass            http://{{ masterip }}:3200/playbook/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -126,9 +125,8 @@ http {
 
 
         location /navigator/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
-          proxy_pass http://{{ masterip }}:4200/navigator/;
+          auth_request          /so-auth/api/auth/;
+          proxy_pass            http://{{ masterip }}:4200/navigator/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -139,7 +137,7 @@ http {
         }
 
         location /api/ {
-          proxy_pass https://{{ masterip }}:8080/api/;
+          proxy_pass            https://{{ masterip }}:8080/api/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Upgrade $http_upgrade;
@@ -152,7 +150,7 @@ http {
         }
 
         location /fleet/ {
-          proxy_pass https://{{ masterip }}:8080/fleet/;
+          proxy_pass            https://{{ masterip }}:8080/fleet/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -163,10 +161,10 @@ http {
         }
 
         location /thehive/ {
-          proxy_pass http://{{ masterip }}:9000/thehive/;
+          proxy_pass            http://{{ masterip }}:9000/thehive/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
-          proxy_http_version 1.1; # this is essential for chunked responses to work
+          proxy_http_version    1.1; # this is essential for chunked responses to work
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -175,10 +173,10 @@ http {
         }
 
         location /cortex/ {
-          proxy_pass http://{{ masterip }}:9001/cortex/;
+          proxy_pass            http://{{ masterip }}:9001/cortex/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
-          proxy_http_version 1.1; # this is essential for chunked responses to work
+          proxy_http_version    1.1; # this is essential for chunked responses to work
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -186,20 +184,8 @@ http {
 
         }
         
-        location /cyberchef/ {
-          proxy_pass http://{{ masterip }}:9080/;
-          proxy_read_timeout    90;
-          proxy_connect_timeout 90;
-          proxy_http_version 1.1; # this is essential for chunked responses to work
-          proxy_set_header      Host $host;
-          proxy_set_header      X-Real-IP $remote_addr;
-          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header      Proxy "";
-
-        }
-	
         location /soctopus/ {
-          proxy_pass http://{{ masterip }}:7000/;
+          proxy_pass            http://{{ masterip }}:7000/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -210,17 +196,16 @@ http {
         }
 
         location /sensoroni/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
-          proxy_pass http://{{ masterip }}:9822/;
+          auth_request          /so-auth/api/auth/;
+          proxy_pass            http://{{ masterip }}:9822/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection "Upgrade";
+          proxy_set_header      Upgrade $http_upgrade;
+          proxy_set_header      Connection "Upgrade";
 
         }
 
@@ -237,15 +222,34 @@ http {
         }
 
         location /sensoroniagents/ {
-          proxy_pass http://{{ masterip }}:9822/;
+          proxy_pass            http://{{ masterip }}:9822/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
-
         }
+
+        location /so-auth/loginpage/ {
+            proxy_pass          http://{{ masterip }}:4242/;
+            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        location /so-auth/api/ {
+            proxy_pass          http://{{ masterip }}:5656/;
+            proxy_set_header    X-Real-IP $remote_addr;
+            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header    X-Forwarded-Host $host;
+        }
+
+        error_page 401 = @error401;
+
+        location @error401 {
+          add_header    Set-Cookie "NSREDIRECT=http://{{ masterip }}$request_uri;Domain={{ masterip }};Path=/";
+          return        302 http://{{ masterip }}/so-auth/loginpage/;
+        }
+
         error_page 404 /404.html;
             location = /40x.html {
         }

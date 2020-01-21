@@ -409,20 +409,24 @@ docker_install() {
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum -y update
     yum -y install docker-ce python36-docker
-    if [ $INSTALLTYPE != 'EVALMODE' ]; then
+    if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       docker_registry
+      echo "Restarting Docker" >> $SETUPLOG 2>&1
+      systemctl restart docker
+      systemctl enable docker
+    else
+      docker_registry
+      echo "Restarting Docker" >> $SETUPLOG 2>&1
+      systemctl restart docker
+      systemctl enable docker
     fi
-    echo "Restarting Docker" >> $SETUPLOG 2>&1
-    systemctl restart docker
-    systemctl enable docker
 
   else
+
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
       apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
-      if [ $INSTALLTYPE != 'EVALMODE'  ]; then
-        docker_registry >> $SETUPLOG 2>&1
-      fi
+      docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
     else
@@ -448,6 +452,59 @@ docker_registry() {
   echo "}" >> /etc/docker/daemon.json
   echo "Docker Registry Setup - Complete" >> $SETUPLOG 2>&1
 
+}
+
+docker_seed_registry() {
+  VERSION="HH1.1.4"
+  TRUSTED_CONTAINERS=( \
+  "so-auth-api:$VERSION" \
+  "so-auth-ui:$VERSION" \
+  "so-core:$VERSION" \
+  "so-thehive-cortex:$VERSION" \
+  "so-curator:$VERSION" \
+  "so-domainstats:$VERSION" \
+  "so-elastalert:$VERSION" \
+  "so-elasticsearch:$VERSION" \
+  "so-filebeat:$VERSION" \
+  "so-fleet:$VERSION" \
+  "so-fleet-launcher:$VERSION" \
+  "so-freqserver:$VERSION" \
+  "so-grafana:$VERSION" \
+  "so-idstools:$VERSION" \
+  "so-influxdb:$VERSION" \
+  "so-kibana:$VERSION" \
+  "so-logstash:$VERSION" \
+  "so-mysql:$VERSION" \
+  "so-navigator:$VERSION" \
+  "so-playbook:$VERSION" \
+  "so-redis:$VERSION" \
+  "so-sensoroni:$VERSION" \
+  "so-soctopus:$VERSION" \
+  "so-steno:$VERSION" \
+  #"so-strelka:$VERSION" \
+  "so-suricata:$VERSION" \
+  "so-telegraf:$VERSION" \
+  "so-thehive:$VERSION" \
+  "so-thehive-es:$VERSION" \
+  "so-wazuh:$VERSION" \
+  "so-zeek:$VERSION" )
+
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    # Pull down the trusted docker image
+    echo "Downloading $i"
+    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    # Tag it with the new registry destination
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
+  done
+
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    echo "Removing $i locally"
+    docker rmi soshybridhunter/$i
+  done
+  
 }
 
 es_heapsize() {
@@ -650,6 +707,7 @@ master_static() {
   touch /opt/so/saltstack/pillar/static.sls
 
   echo "static:" > /opt/so/saltstack/pillar/static.sls
+  echo "  soversion: 1.1.4" >> /opt/so/saltstack/pillar/static.sls
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls

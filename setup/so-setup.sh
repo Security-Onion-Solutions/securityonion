@@ -364,6 +364,10 @@ if (whiptail_you_sure) ; then
       salt_checkin >> $SETUPLOG 2>&1
       salt-call state.apply ca >> $SETUPLOG 2>&1
       salt-call state.apply ssl >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      salt-call state.apply registry >> $SETUPLOG 2>&1
+      echo -e "XXX\n42\nDownloading Containers from the Internet... \nXXX"
+      docker_seed_registry >> $SETUPLOG 2>&1
       echo -e "XXX\n43\nInstalling Common Components... \nXXX"
       salt-call state.apply common >> $SETUPLOG 2>&1
       echo -e "XXX\n45\nApplying firewall rules... \nXXX"
@@ -626,16 +630,18 @@ if (whiptail_you_sure) ; then
       salt_checkin >> $SETUPLOG 2>&1
       salt-call state.apply ca >> $SETUPLOG 2>&1
       salt-call state.apply ssl >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      salt-call state.apply registry >> $SETUPLOG 2>&1
+      echo -e "XXX\n14\nDownloading Containers from the Internet... \nXXX"
+      docker_seed_registry >> $SETUPLOG 2>&1
+      salt-call state.apply master >> $SETUPLOG 2>&1
       echo -e "XXX\n15\nInstalling core components... \nXXX"
       salt-call state.apply common >> $SETUPLOG 2>&1
       echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nInstalling master components... \nXXX"
       salt-call state.apply master >> $SETUPLOG 2>&1
-
-      if [ $INSTALLTYPE == 'EVALMODE' ]; then
-        salt-call state.apply idstools >> $SETUPLOG 2>&1
-      fi
+      salt-call state.apply idstools >> $SETUPLOG 2>&1
 
       if [[ $OSQUERY == '1' ]]; then
         salt-call state.apply mysql >> $SETUPLOG 2>&1
@@ -686,6 +692,7 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XX\n97\nFinishing touches... \nXXX"
+      salt-call state.apply auth >> $SETUPLOG 2>&1
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n98\nVerifying Setup... \nXXX"

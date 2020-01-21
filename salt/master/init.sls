@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 {% set masterproxy = salt['pillar.get']('static:masterupdate', '0') %}
 
 socore_own_saltstack:
@@ -23,8 +24,6 @@ socore_own_saltstack:
     - recurse:
       - user
       - group
-
-{% if masterproxy == 1 %}
 
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
@@ -55,16 +54,10 @@ acngcopyconf:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
     - source: salt://master/files/acng/acng.conf
 
-so-acngimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-acng:HH1.1.0
-
 # Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
-    - require:
-      - so-acngimage
-    - image: docker.io/soshybridhunter/so-acng:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-acng:HH{{ VERSION }}
     - hostname: so-acng
     - port_bindings:
       - 0.0.0.0:3142:3142
@@ -72,40 +65,5 @@ so-aptcacherng:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
-
-
-# Create the config directory for the docker registry
-dockerregistryconfdir:
-  file.directory:
-    - name: /opt/so/conf/docker-registry/etc
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-dockerregistrylogdir:
-  file.directory:
-    - name: /opt/so/log/docker-registry
-    - user: 939
-    - group: 939
-    - makedirs: true
-
-# Copy the config
-dockerregistryconf:
-  file.managed:
-    - name: /opt/so/conf/docker-registry/etc/config.yml
-    - source: salt://master/files/registry/config.yml
-
-# Install the registry container
-so-dockerregistry:
-  docker_container.running:
-    - image: registry:2
-    - hostname: so-registry
-    - port_bindings:
-      - 0.0.0.0:5000:5000
-    - binds:
-      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
-      - /opt/so/conf/docker-registry:/var/lib/registry:rw
-      - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
-      - /etc/pki/registry.key:/etc/pki/registry.key:ro
 
 {% endif %}
