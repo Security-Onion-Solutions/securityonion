@@ -224,7 +224,7 @@ configure_minion() {
   echo "Configuring minion type as $TYPE" >> $SETUPLOG 2>&1
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
-  if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ]; then
+  if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ] || [ $TYPE == 'mastersearch' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $MINION_ID" >> /etc/salt/minion
     echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
@@ -268,7 +268,7 @@ copy_master_config() {
 
 copy_minion_tmp_files() {
 
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
     cp -Rv $TMP/pillar/ /opt/so/saltstack/ >> $SETUPLOG 2>&1
     if [ -d $TMP/salt ] ; then
@@ -546,7 +546,7 @@ got_root() {
 install_cleanup() {
 
   echo "install_cleanup removing the following files:"
-  ls -lR $TMP 
+  ls -lR $TMP
 
   # Clean up after ourselves
   rm -rf /root/installtmp
@@ -576,7 +576,7 @@ install_master() {
     #wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2019.2.2+ds-1 salt-master=2019.2.2+ds-1 salt-minion=2019.2.2+ds-1 libssl-dev python-m2crypto
+    apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
     apt-mark hold salt-common salt-master salt-minion
   fi
 
@@ -606,7 +606,7 @@ master_pillar() {
   echo "  mainint: $MAININT" >> $PILLARFILE
   echo "  esheap: $ES_HEAP_SIZE" >> $PILLARFILE
   echo "  esclustername: {{ grains.host }}" >> $PILLARFILE
-  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     echo "  freq: 0" >> $PILLARFILE
     echo "  domainstats: 0" >> $PILLARFILE
     echo "  ls_pipeline_batch_size: 125" >> $PILLARFILE
@@ -956,15 +956,15 @@ EOF
     fi
 
     yum clean expire-cache
-    yum -y install epel-release salt-minion-2019.2.2 yum-utils device-mapper-persistent-data lvm2 openssl
+    yum -y install epel-release salt-minion-2019.2.3 yum-utils device-mapper-persistent-data lvm2 openssl
     yum -y update exclude=salt*
     systemctl enable salt-minion
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-      yum -y install salt-master-2019.2.2 python3 python36-m2crypto salt-minion-2019.2.2 python36-dateutil python36-mysql python36-docker
+      yum -y install salt-master-2019.2.3 python3 python36-m2crypto salt-minion-2019.2.3 python36-dateutil python36-mysql python36-docker
       systemctl enable salt-master
     else
-      yum -y install salt-minion-2019.2.2 python3 python36-m2crypto python36-dateutil python36-docker
+      yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker
     fi
     echo "exclude=salt*" >> /etc/yum.conf
 
@@ -1006,7 +1006,7 @@ EOF
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
       # Need to add python packages here
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     else
@@ -1022,7 +1022,7 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.2+ds-1 salt-common=2019.2.2+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
       apt-mark hold salt-minion salt-common
 
     fi
@@ -1033,7 +1033,7 @@ EOF
 
 salt_checkin() {
   # Master State to Fix Mine Usage
-  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+  if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
   echo "Building Certificate Authority"
   salt-call state.apply ca >> $SETUPLOG 2>&1
   echo " *** Restarting Salt to fix any SSL errors. ***"
@@ -1149,13 +1149,16 @@ set_environment_var() {
 
 set_hostname() {
 
+  echo 'set_hostname called' >> $SETUPLOG 2>&1
+  echo $TESTHOST >> $SETUPLOG 2>&1
+  echo $INSTALLTYPE >> $SETUPLOG 2>&1
   hostnamectl set-hostname --static $HOSTNAME
   echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
   HOSTNAME=$(cat /etc/hostname)
   MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
-  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
+  if [ $INSTALLTYPE != 'MASTERONLY' ] || [ $INSTALLTYPE != 'EVALMODE' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
         echo "$MSRVIP   $MSRV" >> /etc/hosts
@@ -1183,12 +1186,16 @@ set_initial_firewall_policy() {
     /opt/so/saltstack/pillar/data/addtotab.sh mastertab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
-  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
     printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/search_nodes.sls
-    /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+        /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+      elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+        /opt/so/saltstack/pillar/data/addtotab.sh mastersearchtab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+      fi
   fi
 
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
@@ -1242,7 +1249,7 @@ set_management_interface() {
 set_node_type() {
 
   # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     NODETYPE='search'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then

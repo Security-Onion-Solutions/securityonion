@@ -15,8 +15,6 @@
 
 {% set masterproxy = salt['pillar.get']('static:masterupdate', '0') %}
 
-{% if masterproxy == 1 %}
-
 socore_own_saltstack:
   file.directory:
     - name: /opt/so/saltstack
@@ -24,7 +22,9 @@ socore_own_saltstack:
     - group: socore
     - recurse:
       - user
-      - group	
+      - group
+
+{% if masterproxy == 1 %}
 
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:

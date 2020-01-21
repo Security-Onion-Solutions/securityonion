@@ -1,5 +1,5 @@
 # Firewall Magic for the grid
-{%- if grains['role'] in ['so-eval','so-master','so-helix'] %}
+{%- if grains['role'] in ['so-eval','so-master','so-helix','so-mastersearch'] %}
 {%- set ip = salt['pillar.get']('static:masterip', '') %}
 {%- elif grains['role'] == 'so-node' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
@@ -131,7 +131,7 @@ enable_wazuh_manager_1514_udp_{{ip}}:
     - save: True
 
 # Rules if you are a Master
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix'%}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
 #This should be more granular
 iptables_allow_master_docker:
   iptables.insert:

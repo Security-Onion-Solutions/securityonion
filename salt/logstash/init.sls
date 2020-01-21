@@ -37,7 +37,7 @@
 {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
 {% set nodetype = salt['grains.get']('role', '')  %}
 
-{% elif grains['role'] == 'so-eval' %}
+{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
 
 {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
 {% set freq = salt['pillar.get']('master:freq', '0') %}
@@ -45,6 +45,8 @@
 {% set nodetype = salt['grains.get']('role', '')  %}
 
 {% endif %}
+
+{% set pipelines = salt['pillar.get']('logstash:pipelines', {}) %}
 
 # Create the logstash group
 logstashgroup:
@@ -95,6 +97,34 @@ lscusttemplatedir:
     - group: 939
     - makedirs: True
 
+{% for pl in pipelines %}
+
+ls_pipeline_{{pl}}:
+  file.recurse:
+    - name: /opt/so/conf/logstash/pipelines/{{pl}}
+    - source: salt://logstash/conf/pipelines/{{pl}}
+    - user: 931
+    - group: 939
+    - maxdepth: 0
+
+ls_pipeline_{{pl}}_jinja:
+  file.recurse:
+    - name: /opt/so/conf/logstash/pipelines/{{pl}}
+    - source: salt://logstash/conf/pipelines/{{pl}}/templates
+    - user: 931
+    - group: 939
+    - template: jinja
+
+{% endfor %}
+
+lspipelinesyml:
+  file.managed:
+    - name: /opt/so/conf/logstash/etc/pipelines.yml
+    - source: salt://logstash/etc/pipelines.yml.jinja
+    - template: jinja
+    - defaults: 
+        pipelines: {{ pipelines }}
+
 # Copy down all the configs including custom - TODO add watch restart
 lsetcsync:
   file.recurse:
@@ -103,6 +133,7 @@ lsetcsync:
     - user: 931
     - group: 939
     - template: jinja
+    - exclude_pat: pipelines*
 
 lssync:
   file.recurse:
@@ -123,10 +154,24 @@ lscustsync:
 lsconfsync:
   file.managed:
     - name: /opt/so/conf/logstash/conf.enabled.txt
+{% if grains.role == 'so-mastersearch' %}
+    - source: salt://logstash/conf/conf.enabled.txt.so-master
+{% else %}
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
+{% endif %} 
     - user: 931
     - group: 939
     - template: jinja
+
+{% if grains.role == 'so-mastersearch' %}
+lssearchsync:
+  file.managed:
+    - name: /opt/so/conf/logstash/conf.enabled.txt.search
+    - source: salt://logstash/conf/conf.enabled.txt.search
+    - user: 931
+    - group: 939
+    - template: jinja
+{% endif %}
 
 # Create the import directory
 importdir:
@@ -152,16 +197,9 @@ lslogdir:
     - group: 939
     - makedirs: True
 
-# Add the container
-so-logstashimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-logstash:HH1.1.1
-
 so-logstash:
   docker_container.running:
-    - require:
-      - so-logstashimage
-    - image: docker.io/soshybridhunter/so-logstash:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:HH{{ VERSION }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -182,10 +220,8 @@ so-logstash:
       - /opt/so/conf/logstash/etc/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/etc/logstash-ossec-template.json:/logstash-ossec-template.json:ro
       - /opt/so/conf/logstash/etc/beats-template.json:/beats-template.json:ro
-      - /opt/so/conf/logstash/custom:/usr/share/logstash/pipeline.custom:ro
-      - /opt/so/conf/logstash/rulesets:/usr/share/logstash/rulesets:ro
-      - /opt/so/conf/logstash/dynamic:/usr/share/logstash/pipeline.dynamic
-      - /opt/so/conf/logstash/conf.enabled.txt:/usr/share/logstash/conf.enabled.txt:ro
+      - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+      - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw

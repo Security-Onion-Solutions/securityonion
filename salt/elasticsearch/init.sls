@@ -17,7 +17,7 @@
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 
-{% elif grains['role'] == 'so-eval' %}
+{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
@@ -143,4 +143,3 @@ so-elasticsearch-pipelines:
 
 # Tell the main cluster I am here
 #curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
-
