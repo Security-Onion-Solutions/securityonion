@@ -468,7 +468,6 @@ if (whiptail_you_sure) ; then
       sleep 0.5
       echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
       set_initial_firewall_policy >> $SETUPLOG 2>&1
-      echo -e "XXX\n1\nInstalling pip3... \nXXX"
       echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
       create_sensor_bond >> $SETUPLOG 2>&1
       echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
@@ -515,20 +514,25 @@ if (whiptail_you_sure) ; then
     fi
   fi
 
-  #######################
-  ##     Eval Mode     ##
-  #######################
+  #######################################
+  ##     Eval Mode  or Master Search   ##
+  #######################################
 
-  if [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
 
     # Filter out the management NIC
     filter_unused_nics
 
-    # Select which NICs are in the bond
-    whiptail_bond_nics
+    if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      TYPE='eval'
+      # Select which NICs are in the bond
+      whiptail_bond_nics
+      # Snag the HOME_NET
+      whiptail_homenet_master
+    elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+      TYPE='mastersearch'
+    fi
 
-    # Snag the HOME_NET
-    whiptail_homenet_master
     whiptail_eval_adv_warning
     whiptail_enable_components
 
@@ -547,6 +551,18 @@ if (whiptail_you_sure) ; then
     BROVERSION=ZEEK
     CURCLOSEDAYS=30
     process_components
+    if [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+      # Find out how to handle updates
+      whiptail_master_updates
+      # Get a password for the socore user
+      whiptail_create_socore_user
+      SCMATCH=no
+      while [ $SCMATCH != yes ]; do
+        whiptail_create_socore_user_password1
+        whiptail_create_socore_user_password2
+        check_socore_pass
+      done
+    fi
     whiptail_make_changes
     set_hostname
     generate_passwords
@@ -561,12 +577,15 @@ if (whiptail_you_sure) ; then
       add_admin_user
       disable_onion_user
     fi
+
     # Add the user so we can sit back and relax
     add_socore_user_master
     {
       sleep 0.5
-      echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-      create_sensor_bond >> $SETUPLOG 2>&1
+      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+        echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
+        create_sensor_bond >> $SETUPLOG 2>&1
+      fi
       echo -e "XXX\n1\nInstalling Python 3... \nXXX"
       echo -e "XXX\n2\nInstalling saltstack... \nXXX"
       saltify >> $SETUPLOG 2>&1
@@ -589,10 +608,14 @@ if (whiptail_you_sure) ; then
       master_pillar >> $SETUPLOG 2>&1
       echo "** Generating the patch pillar **" >> $SETUPLOG
       patch_pillar >> $SETUPLOG 2>&1
+
+
       echo -e "XXX\n7\nConfiguring minion... \nXXX"
-      configure_minion eval >> $SETUPLOG 2>&1
-      echo -e "XXX\n7\nSetting the node type to eval... \nXXX"
+      configure_minion $TYPE >> $SETUPLOG 2>&1
+      echo -e "XXX\n7\nSetting the node type to $TYPE... \nXXX"
       set_node_type >> $SETUPLOG 2>&1
+
+
       echo -e "XXX\n7\nSearch node pillar... \nXXX"
       node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
@@ -617,7 +640,9 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       echo -e "XXX\n25\nInstalling master components... \nXXX"
+      salt-call state.apply master >> $SETUPLOG 2>&1
       salt-call state.apply idstools >> $SETUPLOG 2>&1
+
       if [[ $OSQUERY == '1' ]]; then
         salt-call state.apply mysql >> $SETUPLOG 2>&1
       fi
@@ -627,12 +652,16 @@ if (whiptail_you_sure) ; then
       salt-call state.apply logstash >> $SETUPLOG 2>&1
       echo -e "XXX\n45\nInstalling Kibana... \nXXX"
       salt-call state.apply kibana >> $SETUPLOG 2>&1
-      echo -e "XXX\n50\nInstalling pcap... \nXXX"
-      salt-call state.apply pcap >> $SETUPLOG 2>&1
-      echo -e "XXX\n52\nInstalling Suricata... \nXXX"
-      salt-call state.apply suricata >> $SETUPLOG 2>&1
-      echo -e "XXX\n54\nInstalling Zeek... \nXXX"
-      salt-call state.apply bro >> $SETUPLOG 2>&1
+
+      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+        echo -e "XXX\n50\nInstalling pcap... \nXXX"
+        salt-call state.apply pcap >> $SETUPLOG 2>&1
+        echo -e "XXX\n52\nInstalling Suricata... \nXXX"
+        salt-call state.apply suricata >> $SETUPLOG 2>&1
+        echo -e "XXX\n54\nInstalling Zeek... \nXXX"
+       salt-call state.apply bro >> $SETUPLOG 2>&1
+      fi
+
       echo -e "XXX\n56\nInstalling curator... \nXXX"
       salt-call state.apply curator >> $SETUPLOG 2>&1
       echo -e "XXX\n58\nInstalling elastalert... \nXXX"

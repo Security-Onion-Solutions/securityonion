@@ -16,8 +16,6 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set masterproxy = salt['pillar.get']('static:masterupdate', '0') %}
 
-{% if masterproxy == 1 %}
-
 socore_own_saltstack:
   file.directory:
     - name: /opt/so/saltstack

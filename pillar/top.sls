@@ -8,7 +8,11 @@ base:
     - firewall.*
     - brologs
 
-  'G@role:so-master':
+  'G@role:so-mastersearch':
+    - logstash.mastersearch
+
+  'G@role:so-master or G@role:so-mastersearch':
+    - match: compound
     - minions.{{ grains.id }}
     - static
     - firewall.*

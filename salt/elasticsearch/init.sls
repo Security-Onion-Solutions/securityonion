@@ -19,7 +19,7 @@
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 
-{% elif grains['role'] == 'so-eval' %}
+{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}

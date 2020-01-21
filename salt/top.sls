@@ -192,3 +192,44 @@ base:
     - launcher
     {%- endif %}
     - schedule
+
+  'G@role:so-mastersearch':
+    - ca
+    - ssl
+    - common
+    - sensoroni
+    - firewall
+    - master
+    - idstools
+    - redis
+    {%- if OSQUERY != 0 %}
+    - mysql
+    {%- endif %}
+    - logstash
+    - elasticsearch
+    - curator
+    - kibana
+    - elastalert
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    - filebeat
+    - utility
+    - schedule
+    {%- if OSQUERY != 0 %}
+    - fleet
+    - launcher
+    {%- endif %}
+    - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
