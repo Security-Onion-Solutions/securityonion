@@ -457,6 +457,7 @@ docker_registry() {
 docker_seed_registry() {
   VERSION="HH1.1.4"
   TRUSTED_CONTAINERS=( \
+  "so-acng:$VERSION" \
   "so-auth-api:$VERSION" \
   "so-auth-ui:$VERSION" \
   "so-core:$VERSION" \
@@ -489,22 +490,28 @@ docker_seed_registry() {
   "so-wazuh:$VERSION" \
   "so-zeek:$VERSION" )
 
-  for i in "${TRUSTED_CONTAINERS[@]}"
-  do
-    # Pull down the trusted docker image
-    echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
-    # Tag it with the new registry destination
-    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
-    docker push $HOSTNAME:5000/soshybridhunter/$i
-  done
+  if [ ! -f /nsm/docker-registry/docker/so-dockers-$VERSION.tar ]; then
+    # Download the container from the interwebs
+    for i in "${TRUSTED_CONTAINERS[@]}"
+    do
+      # Pull down the trusted docker image
+      echo "Downloading $i"
+      docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+      # Tag it with the new registry destination
+      docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+      docker push $HOSTNAME:5000/soshybridhunter/$i
+    done
 
-  for i in "${TRUSTED_CONTAINERS[@]}"
-  do
-    echo "Removing $i locally"
-    docker rmi soshybridhunter/$i
-  done
-  
+    for i in "${TRUSTED_CONTAINERS[@]}"
+    do
+      echo "Removing $i locally"
+      docker rmi soshybridhunter/$i
+    done
+  else
+    # We already have the goods son
+    rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
+  fi
+
 }
 
 es_heapsize() {
