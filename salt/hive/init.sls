@@ -83,16 +83,11 @@ so-thehive-es:
       - 0.0.0.0:9500:9500
 
 # Install Cortex
-
-so-corteximage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
-
 so-cortex:
   docker_container.running:
     - require:
       - so-corteximage
-    - image: docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:HH{{ VERSION }}
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
@@ -107,15 +102,11 @@ cortexscript:
     - cwd: /opt/so
     - template: jinja
 
-so-thehiveimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive:HH1.1.1
-
 so-thehive:
   docker_container.running:
     - require:
       - so-thehiveimage
-    - image: docker.io/soshybridhunter/so-thehive:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:HH{{ VERSION }}
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive
