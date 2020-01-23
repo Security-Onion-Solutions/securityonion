@@ -98,7 +98,7 @@ so-cortex:
 
 cortexscript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/cortex_init.sh
+    - source: salt://hive/thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
 
@@ -119,6 +119,6 @@ so-thehive:
 
 hivescript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/hive_init.sh
+    - source: salt://hive/thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja

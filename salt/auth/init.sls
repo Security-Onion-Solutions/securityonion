@@ -10,8 +10,6 @@ so-auth-api-dir:
 
 so-auth-api:
     docker_container.running:
-        - require:
-            - so-auth-api-image
         - image: {{ MASTER }}:5000/soshybridhunter/so-auth-api:HH{{ VERSION }}
         - hostname: so-auth-api
         - name: so-auth-api
@@ -24,8 +22,6 @@ so-auth-api:
 
 so-auth-ui:
     docker_container.running:
-        - require:
-            - so-auth-ui-image
         - image: {{ MASTER }}:5000/soshybridhunter/so-auth-ui:HH{{ VERSION }}
         - hostname: so-auth-ui
         - name: so-auth-ui
