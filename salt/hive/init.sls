@@ -85,8 +85,6 @@ so-thehive-es:
 # Install Cortex
 so-cortex:
   docker_container.running:
-    - require:
-      - so-corteximage
     - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:HH{{ VERSION }}
     - hostname: so-cortex
     - name: so-cortex
@@ -104,8 +102,6 @@ cortexscript:
 
 so-thehive:
   docker_container.running:
-    - require:
-      - so-thehiveimage
     - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:HH{{ VERSION }}
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
