@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SCRIPTDIR=$(dirname "$0")
-source $SCRIPTDIR/whiptail.sh
+source $SCRIPTDIR/so-whiptail
 
 accept_salt_key_local() {
   echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
@@ -757,11 +757,11 @@ network_setup() {
   echo "... Setting ONBOOT for management interface" >> $SETUPLOG 2>&1
   nmcli con mod $MAININT connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
-  echo "... Copying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
-  cp $SCRIPTDIR/install_scripts/disable-checksum-offload.sh /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh  >> $SETUPLOG 2>&1
+  echo "... Copying 00-so-checksum-offload-disable" >> $SETUPLOG 2>&1
+  cp $SCRIPTDIR/install_scripts/00-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/00-so-checksum-offload-disable  >> $SETUPLOG 2>&1
 
-  echo "... Modifying disable-checksum-offload.sh" >> $SETUPLOG 2>&1
-  sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/disable-checksum-offload.sh >> $SETUPLOG 2>&1
+  echo "... Modifying 00-so-checksum-offload-disable" >> $SETUPLOG 2>&1
+  sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/00-so-checksum-offload-disable >> $SETUPLOG 2>&1
 }
 
 node_pillar() {
@@ -1107,7 +1107,7 @@ salt_checkin() {
   service salt-minion restart >> $SETUPLOG 2>&1
   sleep 15
   echo " Applyng a mine hack "
-  sudo salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >> $SETUPLOG 2>&1
+  salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >> $SETUPLOG 2>&1
   echo " Applying SSL state "
   salt-call state.apply ssl >> $SETUPLOG 2>&1
   echo "Still Working... Hang in there"
@@ -1351,9 +1351,9 @@ update_sudoers() {
 
   if ! grep -qE '^socore\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
     # Update Sudoers so that socore can accept keys without a password
-    echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | sudo tee -a /etc/sudoers
-    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | sudo tee -a /etc/sudoers
-    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | sudo tee -a /etc/sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
+    echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
   else
     echo "User socore already granted sudo privileges"
   fi

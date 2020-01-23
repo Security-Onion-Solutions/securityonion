@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #so-fleet-setup.sh $MasterIP $FleetEmail
 
 if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
@@ -16,7 +18,7 @@ docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/o
 docker exec so-fleet fleetctl apply -f /packs/hh/hhdefault.yml
 docker exec so-fleet /bin/sh -c 'for pack in /packs/palantir/Fleet/Endpoints/packs/*.yaml; do fleetctl apply -f "$pack"; done'
 
-esecret=$(sudo docker exec so-fleet fleetctl get enroll-secret)
+esecret=$(docker exec so-fleet fleetctl get enroll-secret)
 
 #Concat fleet.crt & ca.crt  - this is required for launcher connectivity
 cat /etc/pki/fleet.crt /etc/pki/ca.crt > /etc/pki/launcher.crt

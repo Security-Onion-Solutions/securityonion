@@ -17,7 +17,7 @@ while [[ "$COUNT" -le 30 ]]; do
 done
 if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
   echo
-  echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+  echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'docker ps' \n  -running 'sudo so-elastic-restart'"
   echo
 
   exit
