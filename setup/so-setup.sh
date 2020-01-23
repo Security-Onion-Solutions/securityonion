@@ -527,11 +527,12 @@ if (whiptail_you_sure) ; then
       TYPE='eval'
       # Select which NICs are in the bond
       whiptail_bond_nics
-      # Snag the HOME_NET
-      whiptail_homenet_master
     elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       TYPE='mastersearch'
     fi
+
+    # Snag the HOME_NET
+    whiptail_homenet_master
 
     whiptail_eval_adv_warning
     whiptail_enable_components
