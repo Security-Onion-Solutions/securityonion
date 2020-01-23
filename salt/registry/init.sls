@@ -31,6 +31,7 @@ dockerregistrybuild:
   file.managed:
     - name: /opt/so/conf/docker-registry/so-buildregistry
     - source: salt://registry/bin/so-buildregistry
+    - mode: 755
 
 dockerexpandregistry:
  cmd.run:

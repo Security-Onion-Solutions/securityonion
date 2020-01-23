@@ -490,7 +490,7 @@ docker_seed_registry() {
   "so-wazuh:$VERSION" \
   "so-zeek:$VERSION" )
 
-  if [ ! -f /nsm/docker-registry/docker/so-dockers-1.1.4.tar ]; then
+  if [ ! -f /nsm/docker-registry/docker/so-dockers-$VERSION.tar ]; then
     # Download the container from the interwebs
     for i in "${TRUSTED_CONTAINERS[@]}"
     do
