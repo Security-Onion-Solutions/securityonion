@@ -36,6 +36,33 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
+{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set bpf_global = salt['pillar.get']('static:steno:bpf', None) %}
+{% set bpf_steno = salt['pillar.get']('steno:bpf', None) %}
+
+{% if bpf_steno != None or bpf_global != None %}
+   {% if bpf_steno != None %}
+      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_steno) %}
+   {% else %}
+      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_global) %}
+   {% endif %}
+   {% if bpf_calc['stderr'] == "" %}
+      {% set bpf_compiled = bpf_calc['stdout'] %}
+   {% else  %}
+         {% set bpf_compiled = None %}
+
+bpfcompilationfailure:
+  test.configurable_test_state:
+   - name: bpfcompfailure
+   - changes: False
+   - result: False
+   - comment: "BPF Compilation Failed - Discarding specified BPF"
+
+   {% endif %}
+{% else  %}
+   {% set bpf_compiled = None %}
+{% endif %}
+
 stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
@@ -44,6 +71,12 @@ stenoconf:
     - group: root
     - mode: 644
     - template: jinja
+    - defaults:
+        bpf_compiled: ""
+{% if bpf_compiled != None %}
+    - context:
+        bpf_compiled: ',"--filter={{ bpf_compiled }}"'
+{% endif %}
 
 sensoroniagentconf:
   file.managed:
@@ -113,4 +146,5 @@ so-steno:
       - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/log/stenographer:/opt/sensoroni/logs:rw
     - watch:
-      - /opt/so/conf/steno/sensoroni.json
+      - file: /opt/so/conf/steno/config
+      - file: /opt/so/conf/steno/sensoroni.json
