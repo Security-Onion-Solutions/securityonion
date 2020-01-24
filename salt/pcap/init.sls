@@ -53,7 +53,7 @@ stenoconfdir:
 
 bpfcompilationfailure:
   test.configurable_test_state:
-   - name: foo
+   - name: bpfcompfailure
    - changes: False
    - result: False
    - comment: "BPF Compilation Failed - Discarding specified BPF"
