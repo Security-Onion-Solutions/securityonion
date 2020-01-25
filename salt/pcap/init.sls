@@ -14,6 +14,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set bpf_steno = salt['pillar.get']('steno:bpf', None) %}
+{% set bpf_compiled = "" %}
+
 # PCAP Section
 
 # Create the logstash group
@@ -36,31 +40,18 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set bpf_global = salt['pillar.get']('static:steno:bpf', None) %}
-{% set bpf_steno = salt['pillar.get']('steno:bpf', None) %}
-
-{% if bpf_steno != None or bpf_global != None %}
-   {% if bpf_steno != None %}
-      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_steno) %}
-   {% else %}
-      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_global) %}
-   {% endif %}
+# BPF compilation and configuration
+{% if bpf_steno %}
+   {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_steno) %}
    {% if bpf_calc['stderr'] == "" %}
-      {% set bpf_compiled = bpf_calc['stdout'] %}
+      {% set bpf_compiled =  ",\\\"--filter=" + bpf_calc['stdout'] + "\\\""  %}
    {% else  %}
-         {% set bpf_compiled = None %}
-
 bpfcompilationfailure:
   test.configurable_test_state:
-   - name: bpfcompfailure
    - changes: False
    - result: False
-   - comment: "BPF Compilation Failed - Discarding specified BPF"
-
+   - comment: "BPF Compilation Failed - Discarding Specified BPF"
    {% endif %}
-{% else  %}
-   {% set bpf_compiled = None %}
 {% endif %}
 
 stenoconf:
@@ -72,11 +63,7 @@ stenoconf:
     - mode: 644
     - template: jinja
     - defaults:
-        bpf_compiled: ""
-{% if bpf_compiled != None %}
-    - context:
-        bpf_compiled: ',"--filter={{ bpf_compiled }}"'
-{% endif %}
+        bpf_compiled: "{{ bpf_compiled }}"
 
 sensoroniagentconf:
   file.managed:
