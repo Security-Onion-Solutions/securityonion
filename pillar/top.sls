@@ -2,40 +2,40 @@ base:
   '*':
     - patch.needs_restarting
 
-  'G@role:so-sensor':
-    - minions.{{ grains.id }}
-    - static
-    - firewall.*
-    - brologs
-
   'G@role:so-mastersearch':
     - logstash.mastersearch
 
+  'G@role:so-sensor':
+    - static
+    - firewall.*
+    - brologs
+    - minions.{{ grains.id }}
+
   'G@role:so-master or G@role:so-mastersearch':
     - match: compound
-    - minions.{{ grains.id }}
     - static
     - firewall.*
     - data.*
     - auth
+    - minions.{{ grains.id }}
 
   'G@role:so-eval':
-    - minions.{{ grains.id }}
     - static
     - firewall.*
     - data.*
     - brologs
     - auth
+    - minions.{{ grains.id }}
 
   'G@role:so-node':
-    - minions.{{ grains.id }}
     - static
     - firewall.*
+    - minions.{{ grains.id }}
 
   'G@role:so-helix':
-    - minions.{{ grains.id }}
     - static
     - firewall.*
     - fireeye
     - static
     - brologs
+    - minions.{{ grains.id }}
