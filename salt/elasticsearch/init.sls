@@ -31,7 +31,7 @@
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
 
-{% elif grains['role'] == 'so-node' %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 
 {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
 {% set esheap = salt['pillar.get']('node:esheap', '') %}
