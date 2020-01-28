@@ -120,8 +120,10 @@ so-suricata:
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
+      - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
       - file: /opt/so/conf/suricata/suricata.yaml
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
+      - file: /opt/so/conf/suricata/bpf
