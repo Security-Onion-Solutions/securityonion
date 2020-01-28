@@ -1,0 +1,42 @@
+#!/bin/bash
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+VERSION=$(grep soversion /opt/so/saltstack/pillar/static.sls | cut -d':' -f2|sed 's/ //g')
+# Modify static.sls to enable Features
+sed -i 's/features: False/features: True/' /opt/so/saltstack/pillar/static.sls
+SUFFIX="-features"
+TRUSTED_CONTAINERS=( \
+  "so-elasticsearch:$VERSION$SUFFIX" \
+  "so-filebeat:$VERSION$SUFFIX" \
+  "so-kibana:$VERSION$SUFFIX" \
+  "so-logstash:$VERSION$SUFFIX" )
+
+for i in "${TRUSTED_CONTAINERS[@]}"
+do
+    # Pull down the trusted docker image
+    echo "Downloading $i"
+    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    # Tag it with the new registry destination
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
+done
+for i in "${TRUSTED_CONTAINERS[@]}"
+do
+    echo "Removing $i locally"
+    docker rmi soshybridhunter/$i
+done
