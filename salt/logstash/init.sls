@@ -12,8 +12,15 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
+{% endif %}
+
 # Logstash Section - Decide which pillar to use
 {% if grains['role'] == 'so-sensor' %}
 
@@ -200,7 +207,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:{{ VERSION }}{{ FEATURES }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

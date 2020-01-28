@@ -12,8 +12,15 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
+{% endif %}
+
 {% if grains['role'] == 'so-master' %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
@@ -102,7 +109,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
