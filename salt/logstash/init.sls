@@ -20,7 +20,7 @@
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 
-{% elif grains['role'] == 'so-node' %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
 {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 

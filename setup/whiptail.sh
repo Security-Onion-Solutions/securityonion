@@ -254,6 +254,7 @@ whiptail_install_type() {
   "MASTERONLY" "Start a new grid" OFF \
   "EVALMODE" "Evaluate all the things" OFF \
   "MASTERSEARCH" "Master + Search Node" OFF \
+  "HEAVYNODE" "Sensor + Search Node" OFF \
   "HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
   "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
   "HOTNODE" "TODO Add Hot Node (Search Node without Parsing)" OFF \

@@ -1,6 +1,6 @@
 {% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
-{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
+{% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -343,7 +343,7 @@ dashboard-{{ SN }}:
 
 {% if salt['pillar.get']('nodestab', False) %}
 {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-dashboard-{{ SN }}:
+dashboardsearch-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
     - user: 939
