@@ -714,7 +714,7 @@ master_static() {
   touch /opt/so/saltstack/pillar/static.sls
 
   echo "static:" > /opt/so/saltstack/pillar/static.sls
-  echo "  soversion: 1.1.4" >> /opt/so/saltstack/pillar/static.sls
+  echo "  soversion: HH1.1.4" >> /opt/so/saltstack/pillar/static.sls
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
@@ -732,6 +732,8 @@ master_static() {
   echo "  cortexorguserkey: $CORTEXORGUSERKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
+  echo "elastic:" >> /opt/so/saltstack/pillar/static.sls
+  echo "  features: False" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
