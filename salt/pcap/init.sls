@@ -14,9 +14,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set bpf_steno = salt['pillar.get']('steno:bpf', None) %}
-{% set bpf_compiled = "" %}
+{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
+{% set BPF_COMPILED = "" %}
 
 # PCAP Section
 
@@ -40,12 +40,12 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-# BPF compilation and configuration
-{% if bpf_steno %}
-   {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_steno) %}
-   {% if bpf_calc['stderr'] == "" %}
-      {% set bpf_compiled =  ",\\\"--filter=" + bpf_calc['stdout'] + "\\\""  %}
+{% if BPF_STENO %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+      {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
    {% else  %}
+
 bpfcompilationfailure:
   test.configurable_test_state:
    - changes: False
@@ -63,7 +63,7 @@ stenoconf:
     - mode: 644
     - template: jinja
     - defaults:
-        bpf_compiled: "{{ bpf_compiled }}"
+        BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 sensoroniagentconf:
   file.managed:
