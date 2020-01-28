@@ -1,5 +1,11 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
+{% endif %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -56,7 +62,7 @@ synckibanacustom:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-kibana:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-kibana:{{ VERSION }}{{ FEATURES }}
     - hostname: kibana
     - user: kibana
     - environment:

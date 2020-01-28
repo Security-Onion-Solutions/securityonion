@@ -12,9 +12,15 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
+{% endif %}
 
 # Filebeat Setup
 filebeatetcdir:
@@ -49,7 +55,7 @@ filebeatconfsync:
 
 so-filebeat:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:{{ VERSION }}{{ FEATURES }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
