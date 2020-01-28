@@ -732,13 +732,13 @@ master_static() {
   echo "  cortexorguserkey: $CORTEXORGUSERKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
-  echo "elastic:" >> /opt/so/saltstack/pillar/static.sls
-  echo "  features: False" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
     echo "  masterupdate: 0" >> /opt/so/saltstack/pillar/static.sls
   fi
+  echo "elastic:" >> /opt/so/saltstack/pillar/static.sls
+  echo "  features: False" >> /opt/so/saltstack/pillar/static.sls
 }
 
 minio_generate_keys() {
