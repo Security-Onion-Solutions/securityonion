@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 # PCAP Section
 
@@ -130,7 +130,7 @@ stenolog:
 
 so-steno:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
     - network_mode: host
     - privileged: True
     - port_bindings:

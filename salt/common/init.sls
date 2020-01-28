@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {%- set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 # Add socore Group
@@ -118,7 +118,7 @@ nginxtmp:
 
 so-core:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-core:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-core:{{ VERSION }}
     - hostname: so-core
     - user: socore
     - binds:
@@ -172,7 +172,7 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -227,7 +227,7 @@ influxdbconf:
 
 so-influxdb:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-influxdb:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-influxdb:{{ VERSION }}
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -385,7 +385,7 @@ dashboard-{{ SN }}:
 
 so-grafana:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-grafana:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-grafana:{{ VERSION }}
     - hostname: grafana
     - user: socore
     - binds:
