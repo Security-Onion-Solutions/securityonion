@@ -12,8 +12,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
+{% set BPF_COMPILED = "" %}
+
 # PCAP Section
 
 # Create the logstash group
@@ -36,31 +40,19 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set bpf_global = salt['pillar.get']('static:steno:bpf', None) %}
-{% set bpf_steno = salt['pillar.get']('steno:bpf', None) %}
-
-{% if bpf_steno != None or bpf_global != None %}
-   {% if bpf_steno != None %}
-      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_steno) %}
-   {% else %}
-      {% set bpf_calc = salt['cmd.script']('salt://pcap/files/compile_bpf.sh', interface + ' ' + bpf_global) %}
-   {% endif %}
-   {% if bpf_calc['stderr'] == "" %}
-      {% set bpf_compiled = bpf_calc['stdout'] %}
+{% if BPF_STENO %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+      {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
    {% else  %}
-         {% set bpf_compiled = None %}
 
 bpfcompilationfailure:
   test.configurable_test_state:
-   - name: bpfcompfailure
    - changes: False
    - result: False
    - comment: "BPF Compilation Failed - Discarding specified BPF"
 
    {% endif %}
-{% else  %}
-   {% set bpf_compiled = None %}
 {% endif %}
 
 stenoconf:
@@ -72,11 +64,7 @@ stenoconf:
     - mode: 644
     - template: jinja
     - defaults:
-        bpf_compiled: ""
-{% if bpf_compiled != None %}
-    - context:
-        bpf_compiled: ',"--filter={{ bpf_compiled }}"'
-{% endif %}
+        BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 sensoroniagentconf:
   file.managed:
@@ -130,7 +118,7 @@ stenolog:
 
 so-steno:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
     - network_mode: host
     - privileged: True
     - port_bindings:
