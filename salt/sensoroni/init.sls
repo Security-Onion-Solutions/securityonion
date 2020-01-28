@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 sensoronidir:
@@ -32,7 +32,7 @@ sensoronisync:
 
 so-sensoroni:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-sensoroni:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-sensoroni:{{ VERSION }}
     - hostname: sensoroni
     - name: so-sensoroni
     - binds:

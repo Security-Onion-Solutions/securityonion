@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% if grains['role'] == 'so-master' %}
 
@@ -112,7 +112,7 @@ elastaconf:
 
 so-elastalert:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-elastalert:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elastalert:{{ VERSION }}
     - hostname: elastalert
     - name: so-elastalert
     - user: elastalert

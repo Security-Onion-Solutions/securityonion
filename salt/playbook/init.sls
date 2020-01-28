@@ -1,5 +1,5 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 playbookdb:
@@ -28,7 +28,7 @@ navigatorconfig:
 
 so-playbook:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-playbook:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-playbook:{{ VERSION }}
     - hostname: playbook
     - name: so-playbook
     - binds:
@@ -38,7 +38,7 @@ so-playbook:
 
 so-navigator:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-navigator:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-navigator:{{ VERSION }}
     - hostname: navigator
     - name: so-navigator
     - binds:

@@ -88,7 +88,7 @@ http {
     #    }
 
         location /grafana/ {
-	  rewrite /grafana/(.*) /$1 break;
+          rewrite /grafana/(.*) /$1 break;
           proxy_pass http://{{ masterip }}:3000/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -100,9 +100,8 @@ http {
         }
 
         location /kibana/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
-	  rewrite /kibana/(.*) /$1 break;
+          auth_request          /so-auth/api/auth/;
+	        rewrite /kibana/(.*) /$1 break;
           proxy_pass http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -125,8 +124,7 @@ http {
         }
 
         location /navigator/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
+          auth_request          /so-auth/api/auth/;
           proxy_pass http://{{ masterip }}:4200/navigator/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -151,9 +149,8 @@ http {
         }
 
         location /fleet/ {
-	  rewrite /fleet/(.*) /$1 break;
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
+	        rewrite /fleet/(.*) /$1 break;
+          auth_request          /so-auth/api/auth/;
           proxy_pass https://{{ masterip }}:8080/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -200,8 +197,7 @@ http {
         }
 
         location /sensoroni/ {
-          auth_basic            "Security Onion";
-          auth_basic_user_file  /opt/so/conf/nginx/.htpasswd;
+          auth_request          /so-auth/api/auth/;
           proxy_pass http://{{ masterip }}:9822/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -236,6 +232,26 @@ http {
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
 
+        }
+
+
+        location /so-auth/loginpage/ {
+            proxy_pass          http://{{ masterip }}:4242/;
+            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        location /so-auth/api/ {
+            proxy_pass          http://{{ masterip }}:5656/;
+            proxy_set_header    X-Real-IP $remote_addr;
+            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header    X-Forwarded-Host $host;
+        }
+
+        error_page 401 = @error401;
+
+        location @error401 {
+          add_header    Set-Cookie "NSREDIRECT=http://{{ masterip }}$request_uri;Domain={{ masterip }};Path=/";
+          return        302 http://{{ masterip }}/so-auth/loginpage/;
         }
 
         error_page 404 /404.html;

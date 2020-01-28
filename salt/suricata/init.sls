@@ -15,7 +15,7 @@
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 # Suricata
@@ -82,7 +82,7 @@ surithresholding:
     
 so-suricata:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
