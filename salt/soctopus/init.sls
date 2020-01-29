@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 soctopusdir:
@@ -49,7 +49,7 @@ navigatordefaultlayer:
 
 so-soctopus:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
     - hostname: soctopus
     - name: so-soctopus
     - binds:

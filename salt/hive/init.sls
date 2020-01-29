@@ -1,5 +1,5 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 hiveconfdir:
   file.directory:
@@ -57,7 +57,7 @@ hiveesdata:
 
 so-thehive-es:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:{{ VERSION }}
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -85,7 +85,7 @@ so-thehive-es:
 # Install Cortex
 so-cortex:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:{{ VERSION }}
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
@@ -102,7 +102,7 @@ cortexscript:
 
 so-thehive:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:{{ VERSION }}
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive

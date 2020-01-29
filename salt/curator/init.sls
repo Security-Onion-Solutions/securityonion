@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% if grains['role'] == 'so-node' or grains['role'] == 'so-eval' %}
 # Curator
@@ -116,7 +116,7 @@ curdel:
 
 so-curator:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-curator:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-curator:{{ VERSION }}
     - hostname: curator
     - name: so-curator
     - user: curator

@@ -15,8 +15,10 @@
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
+
 
 # Suricata
 
@@ -79,10 +81,34 @@ surithresholding:
     - user: 940
     - group: 940
     - template: jinja
+
+# BPF compilation and configuration
+{% if BPF_NIDS %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] != "" %}
+suribpfcompilationfailure:
+  test.configurable_test_state:
+   - changes: False
+   - result: False
+   - comment: "BPF Syntax Error - Discarding Specified BPF"
+   {% endif %}
+{% endif %}
+
+suribpf:
+  file.managed:
+    - name: /opt/so/conf/suricata/bpf
+    - user: 940
+    - group: 940
+   {% if BPF_CALC['stderr'] == "" %}
+    - contents_pillar: nids:bpf
+   {% else %}
+    - contents:
+      - ""
+   {% endif %}
     
 so-suricata:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:HH{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
@@ -91,8 +117,10 @@ so-suricata:
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
+      - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
       - file: /opt/so/conf/suricata/suricata.yaml
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
+      - file: /opt/so/conf/suricata/bpf
