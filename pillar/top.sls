@@ -2,7 +2,8 @@ base:
   '*':
     - patch.needs_restarting
 
-  'G@role:so-mastersearch':
+  'G@role:so-mastersearch or G@role:so-heavynode':
+    - match: compound
     - logstash.mastersearch
 
   'G@role:so-sensor':
@@ -19,6 +20,9 @@ base:
     - auth
     - minions.{{ grains.id }}
 
+  'G@role:so-master':
+    - logstash.master
+
   'G@role:so-eval':
     - static
     - firewall.*
@@ -30,6 +34,12 @@ base:
   'G@role:so-node':
     - static
     - firewall.*
+    - minions.{{ grains.id }}
+
+  'G@role:so-heavynode':
+    - static
+    - firewall.*
+    - brologs
     - minions.{{ grains.id }}
 
   'G@role:so-helix':

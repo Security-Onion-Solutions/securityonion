@@ -1283,6 +1283,14 @@ set_initial_firewall_policy() {
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
+  if [ $INSTALLTYPE == 'HEAVYNODE' ]; then
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+  fi
+
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
     echo "blah"
   fi
@@ -1316,7 +1324,7 @@ set_management_interface() {
 set_node_type() {
 
   # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+  if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ] || [ $INSTALLTYPE == 'HEAVYNODE' ] ; then
     NODETYPE='search'
   fi
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then

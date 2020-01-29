@@ -803,6 +803,132 @@ if (whiptail_you_sure) ; then
 
   fi
 
+  ########################
+  ##     Heavy Node     ##
+  ########################
+
+  if [ $INSTALLTYPE == 'HEAVYNODE' ]; then
+
+    filter_unused_nics
+    whiptail_bond_nics
+    whiptail_management_server
+    whiptail_master_updates
+    set_updates
+    whiptail_homenet_sensor
+    whiptail_sensor_config
+    # Calculate lbprocs so we can call it in the prompts
+    calculate_useable_cores
+    if [ $NSMSETUP == 'ADVANCED' ]; then
+      whiptail_bro_pins
+      whiptail_suricata_pins
+      whiptail_bond_nics_mtu
+    else
+      whiptail_basic_bro
+      whiptail_basic_suri
+    fi
+
+    get_log_size_limit
+    CURCLOSEDAYS=30
+    es_heapsize
+    ls_heapsize
+    whiptail_node_advanced
+    if [ $NODESETUP == 'NODEADVANCED' ]; then
+      whiptail_node_es_heap
+      whiptail_node_ls_heap
+      whiptail_node_ls_pipeline_worker
+      whiptail_node_ls_pipline_batchsize
+      whiptail_node_ls_input_threads
+      whiptail_node_ls_input_batch_count
+      whiptail_cur_close_days
+      whiptail_log_size_limit
+    else
+      NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+      NODE_LS_HEAP_SIZE=1000m
+      LSPIPELINEWORKERS=$CPUCORES
+      LSPIPELINEBATCH=125
+      LSINPUTTHREADS=1
+      LSINPUTBATCHCOUNT=125
+    fi
+    whiptail_make_changes
+    set_hostname
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
+    if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
+      disable_onion_user
+    fi
+    copy_ssh_key >> $SETUPLOG 2>&1
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
+
+      echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
+      create_sensor_bond >> $SETUPLOG 2>&1
+      echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
+      sensor_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
+
+
+
+      echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
+      saltify >> $SETUPLOG 2>&1
+      echo -e "XXX\n20\nInstalling Docker... \nXXX"
+      docker_install >> $SETUPLOG 2>&1
+      echo -e "XXX\n30\nInitializing Minion... \nXXX"
+      configure_minion heavynode >> $SETUPLOG 2>&1
+      set_node_type >> $SETUPLOG 2>&1
+      node_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
+      echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
+      salt_firstcheckin >> $SETUPLOG 2>&1
+      # Accept the Salt Key
+      accept_salt_key_remote >> $SETUPLOG 2>&1
+      echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nConfiguring Firewall... \nXXX"
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      echo -e "XXX\n70\nInstalling Elastic Components... \nXXX"
+      salt-call state.apply logstash >> $SETUPLOG 2>&1
+      salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
+      salt-call state.apply curator >> $SETUPLOG 2>&1
+      salt-call state.apply filebeat >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nInstalling PCAP... \nXXX"
+      salt-call state.apply pcap >> $SETUPLOG 2>&1
+      echo -e "XXX\n60\nInstalling IDS components... \nXXX"
+      salt-call state.apply suricata >> $SETUPLOG 2>&1
+
+      checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n97\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+      shutdown -r now
+    else
+      whiptail_setup_failed
+      shutdown -r now
+    fi
+
+  fi
+
+
+
+
+
+
+
+
+
 else
     echo "User not sure. Cancelling setup.">> $SETUPLOG 2>&1
     whiptail_cancel

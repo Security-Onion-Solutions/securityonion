@@ -27,7 +27,7 @@
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 
-{% elif grains['role'] == 'so-node' %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
 {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 
@@ -162,7 +162,7 @@ lscustsync:
 lsconfsync:
   file.managed:
     - name: /opt/so/conf/logstash/conf.enabled.txt
-{% if grains.role == 'so-mastersearch' %}
+{% if grains.role == 'so-mastersearch' or grains.role == 'so-heavynode' %}
     - source: salt://logstash/conf/conf.enabled.txt.so-master
 {% else %}
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}

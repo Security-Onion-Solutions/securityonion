@@ -2,7 +2,7 @@
 {% set master_minion_id = master.split(".")[0] %}
 {%- set masterip = salt['pillar.get']('static:masterip', '') -%}
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval'  or grains['role'] == 'so-heavynode' %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
@@ -41,7 +41,7 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch'  %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' or grains['role'] == 'so-heavynode' %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -49,7 +49,11 @@ m2cryptopkgs:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-    - CN: {{ master }}
+{% if grains.role == 'so-heavynode' %}
+    - CN: {{grains.id}}
+{% else %}
+    - CN: {{master}}
+{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -129,7 +133,7 @@ fbcrtlink:
         backup: True
 
 {% endif %}
-{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch'  %}
+{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' or grains['role'] == 'so-heavynode' %}
 
 fbcertdir:
   file.directory:
@@ -142,7 +146,11 @@ fbcertdir:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - CN: {{ master }}
+{% if grains.role == 'so-heavynode' %}
+    - CN: {{grains.id}}
+{% else %}
+    - CN: {{master}}
+{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
