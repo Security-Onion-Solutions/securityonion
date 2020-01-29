@@ -18,7 +18,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
-
+{% set BPF_STATUS = 0  %}
 
 # Suricata
 
@@ -85,7 +85,9 @@ surithresholding:
 # BPF compilation and configuration
 {% if BPF_NIDS %}
    {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" ")  ) %}
-   {% if BPF_CALC['stderr'] != "" %}
+   {% if BPF_CALC['stderr'] == "" %}
+      {% set BPF_STATUS = 1  %}
+   {% else  %}
 suribpfcompilationfailure:
   test.configurable_test_state:
    - changes: False
@@ -99,7 +101,7 @@ suribpf:
     - name: /opt/so/conf/suricata/bpf
     - user: 940
     - group: 940
-   {% if BPF_CALC['stderr'] == "" %}
+   {% if BPF_STATUS %}
     - contents_pillar: nids:bpf
    {% else %}
     - contents:
