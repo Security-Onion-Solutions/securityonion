@@ -1,0 +1,76 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+. /usr/sbin/so-common
+
+SKIP=0
+#########################################
+# Options
+#########################################
+usage()
+{
+cat <<EOF
+Security Onion NSM Data Deletion
+  Options:
+  -h         This message
+  -y         Skip interactive mode
+EOF
+}
+while getopts "h:y" OPTION
+do
+        case $OPTION in
+                h)
+                        usage
+                        exit 0
+                        ;;
+                
+                y)
+                        SKIP=1
+                        ;;
+                *)
+                        usage
+                        exit 0
+                        ;;
+        esac
+done
+if [ $SKIP -ne 1 ]; then
+        # Inform user we are about to delete all data
+        echo
+        echo "This script will delete all NIDS data (PCAP, Suricata, Zeek)" 
+        echo "If you would like to proceed, please type "AGREE" and hit ENTER."
+        echo
+        # Read user input
+        read INPUT
+        if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
+fi
+
+delete_pcap() {
+  PCAP_DATA="/nsm/pcap/"
+  [ -f $PCAP_DATA ] && so-pcap-stop && rm -rf $PCAP_DATA/* && so-pcap-start
+}
+delete_suricata() {
+  SURI_LOG="/opt/so/log/suricata/eve.json"
+  [ -f $SURI_LOG ] && so-suricata-stop && rm -f $SURI_LOG && so-suricata-start
+}
+delete_zeek() {
+  ZEEK_LOG="/nsm/zeek/logs/"
+  [ -f $ZEEK_LOG ] && so-zeek-stop && rm -rf $ZEEK_LOG/* && so-zeek-start
+}
+
+delete_pcap
+delete_suricata
+delete_zeek
+
