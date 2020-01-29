@@ -1,3 +1,7 @@
+{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf') %}
+{% set BPF_STATUS = 0  %}
+
 # Bro Salt State
 # Add Bro group
 brogroup:
@@ -103,6 +107,32 @@ zeekcleanscript:
     - month: '*'
     - dayweek: '*'
 
+# BPF compilation and configuration
+{% if BPF_ZEEK %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+       {% set BPF_STATUS = 1  %}
+  {% else  %}
+zeekbpfcompilationfailure:
+  test.configurable_test_state:
+   - changes: False
+   - result: False
+   - comment: "BPF Syntax Error - Discarding Specified BPF"
+   {% endif %}
+{% endif %}
+
+zeekbpf:
+  file.managed:
+    - name: /opt/so/conf/bro/bpf
+    - user: 940
+    - group: 940
+   {% if BPF_STATUS %}
+    - contents_pillar: zeek:bpf
+   {% else %}
+    - contents:
+      - "ip or not ip"
+   {% endif %}
+
 # Sync local.bro
 {% if salt['pillar.get']('static:broversion', '') == 'COMMUNITY' %}
 localbrosync:
@@ -163,6 +193,7 @@ so-bro:
       - /nsm/bro/extracted:/nsm/bro/extracted:rw
       - /opt/so/conf/bro/local.bro:/opt/bro/share/bro/site/local.bro:ro
       - /opt/so/conf/bro/node.cfg:/opt/bro/etc/node.cfg:ro
+      - /opt/so/conf/bro/bpf:/opt/bro/share/bro/site/bpf:ro
       - /opt/so/conf/bro/policy/securityonion:/opt/bro/share/bro/policy/securityonion:ro
       - /opt/so/conf/bro/policy/custom:/opt/bro/share/bro/policy/custom:ro
       - /opt/so/conf/bro/policy/intel:/opt/bro/share/bro/policy/intel:rw
@@ -171,6 +202,5 @@ so-bro:
       - file: /opt/so/conf/bro/local.bro
       - file: /opt/so/conf/bro/node.cfg
       - file: /opt/so/conf/bro/policy
-
-
+      - file: /opt/so/conf/bro/bpf
 {% endif %}
