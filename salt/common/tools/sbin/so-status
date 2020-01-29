@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+if ! [ $(id -u)=0 ]; then
+   echo "This command must be run as root"
+   exit 1
+fi
+
+# Constants
+ERROR_STRING="ERROR"
+SUCCESS_STRING="OK"
+PENDING_STRING="PENDING"
+declare -a BAD_STATUSES=("removing", "paused", "exited", "dead")
+declare -a PENDING_STATUSES=("paused", "created", "restarting")
+declare -a GOOD_STATUSES=("running")
+
+
+declare -a container_name_list=()
+declare -a container_state_list=()
+populate_container_lists() {
+    systemctl is-active --quiet docker
+
+    if [[ $? = 0 ]]; then
+        mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/containers/json?all=1 \
+            | jq -c '.[] | { Name: .Names[0], State: .State }' \
+            | tr -d '/{"}')
+    else
+        exit 1
+    fi
+
+    local container_name=""
+    local container_state=""
+
+    for line in ${docker_raw_list[@]}; do
+        container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
+        container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
+        container_name_list+=( "${container_name}" )
+        container_state_list+=( "${container_state}" )
+    done
+}
+
+parse_status() {
+    local container_state=${1}
+    local found=0
+
+    for state in "${GOOD_STATUSES[@]}"; do
+        [[ $container_state = $state ]] && printf $SUCCESS_STRING && return 0
+    done
+
+    if [[ $found = 0 ]]; then
+        for state in "${PENDING_STATUSES[@]}"; do
+            [[ $container_state = $state ]] && printf $PENDING_STRING && return 0
+        done
+    fi
+
+    # This is technically not needed since the default is error state
+    if [[ $found = 0 ]]; then
+        for state in "${BAD_STATUSES[@]}"; do
+            [[ $container_state = $state ]] && printf $ERROR_STRING && return 1
+        done
+    fi
+
+    printf $ERROR_STRING && return 1
+}
+
+columns=$(tput cols)
+
+print_line() {
+    local service_name=${1}
+    local service_state=$( parse_status ${2} )
+    local PADDING_CONSTANT=14
+    local state_color="\e[0m"
+
+    if [[ $service_state = $ERROR_STRING ]]; then
+        state_color="\e[1;31m"
+    elif [[ $service_state = $SUCCESS_STRING ]]; then
+        state_color="\e[1;32m"
+    elif [[ $service_state = $PENDING_STRING ]]; then
+        state_color="\e[1;33m"
+    else
+        state_color="\e[0m"
+    fi
+
+    printf "    $service_name "
+    for i in $(seq 0 $(( $columns - $PADDING_CONSTANT - ${#service_name} - ${#service_state} ))); do
+        printf "-"
+    done
+    printf " [ "
+    printf "${state_color}%b\e[0m" "$service_state"
+    printf "%s    \n" " ]"
+}
+
+main() {
+    local focus_color="\e[1;34m"
+    printf "\n"
+    printf "${focus_color}%b\e[0m" "Checking Docker status\n\n"
+
+    systemctl is-active --quiet docker
+    if [[ $? = 0 ]]; then
+        print_line "Docker" "running"
+    else
+        print_line "Docker" "exited"
+    fi
+
+    populate_container_lists
+
+    printf "\n"
+
+    printf "${focus_color}%b\e[0m" "Checking container statuses\n\n"
+
+
+    local num_containers=${#docker_raw_list[@]}
+    local container_name=""
+    local container_state=""
+
+    for i in $(seq 0 $(($num_containers - 1 ))); do
+        print_line ${container_name_list[$i]} ${container_state_list[$i]}
+    done
+
+    printf "\n"
+}
+
+main
