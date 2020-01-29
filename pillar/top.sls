@@ -20,6 +20,9 @@ base:
     - auth
     - minions.{{ grains.id }}
 
+  'G@role:so-master':
+    - logstash.master
+
   'G@role:so-eval':
     - static
     - firewall.*
