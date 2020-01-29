@@ -155,7 +155,7 @@ lscustsync:
 lsconfsync:
   file.managed:
     - name: /opt/so/conf/logstash/conf.enabled.txt
-{% if grains.role == 'so-mastersearch' %}
+{% if grains.role == 'so-mastersearch' or grains.role == 'so-heavynode' %}
     - source: salt://logstash/conf/conf.enabled.txt.so-master
 {% else %}
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
