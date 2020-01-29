@@ -110,6 +110,7 @@ so-zeek:
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
+      - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
       - /opt/so/conf/zeek/policy/intel:/opt/zeek/share/zeek/policy/intel:rw
     - network_mode: host
     - watch:
