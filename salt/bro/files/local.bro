@@ -102,6 +102,9 @@
 # is currently considered a preview and therefore not loaded by default.
 @load base/protocols/smb
 
+# BPF Configuration
+@load securityonion/bpfconf
+
 # Add the interface to the log event
 #@load securityonion/add-interface-to-logs.bro
 
