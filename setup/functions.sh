@@ -851,7 +851,7 @@ reserve_group_ids() {
   groupadd -g 932 kibana
   groupadd -g 933 elastalert
   groupadd -g 934 curator
-  groupadd -g 937 bro
+  groupadd -g 937 zeek
   groupadd -g 939 socore
   groupadd -g 940 suricata
   groupadd -g 941 stenographer
