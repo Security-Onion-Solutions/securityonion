@@ -541,7 +541,7 @@ if (whiptail_you_sure) ; then
     es_heapsize
     ls_heapsize
     NODE_ES_HEAP_SIZE="600m"
-    NODE_LS_HEAP_SIZE="500m"
+    NODE_LS_HEAP_SIZE="1000m"
     LSPIPELINEWORKERS=1
     LSPIPELINEBATCH=125
     LSINPUTTHREADS=1
