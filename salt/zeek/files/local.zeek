@@ -121,3 +121,6 @@ redef LogAscii::json_timestamps = JSON::TS_ISO8601;
 
 # CVE-2020-0601
 @load cve-2020-0601
+
+# BPF Configuration
+@load securityonion/bpfconf
