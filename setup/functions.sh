@@ -651,7 +651,7 @@ install_master() {
 ls_heapsize() {
 
   # Determine LS Heap Size
-  if [ $TOTAL_MEM -ge 32000 ] ; then
+  if [ $TOTAL_MEM -ge 32000 ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       LS_HEAP_SIZE="1000m"
   else
       # If minimal RAM, then set minimal heap

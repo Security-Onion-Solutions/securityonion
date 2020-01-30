@@ -843,7 +843,7 @@ if (whiptail_you_sure) ; then
       whiptail_log_size_limit
     else
       NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
-      NODE_LS_HEAP_SIZE=1000m
+      NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
       LSPIPELINEWORKERS=$CPUCORES
       LSPIPELINEBATCH=125
       LSINPUTTHREADS=1

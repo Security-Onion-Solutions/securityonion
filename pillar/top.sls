@@ -4,7 +4,8 @@ base:
 
   'G@role:so-mastersearch or G@role:so-heavynode':
     - match: compound
-    - logstash.mastersearch
+    - logstash.master
+    - logstash.search
 
   'G@role:so-sensor':
     - static
@@ -29,6 +30,7 @@ base:
     - data.*
     - brologs
     - auth
+    - logstash.eval
     - minions.{{ grains.id }}
 
   'G@role:so-node':
