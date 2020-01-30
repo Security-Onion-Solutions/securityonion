@@ -13,14 +13,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
 {% endif %}
-# Filebeat Setup
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
