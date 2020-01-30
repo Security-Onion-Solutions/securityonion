@@ -2,7 +2,7 @@
 {% set master_minion_id = master.split(".")[0] %}
 {%- set masterip = salt['pillar.get']('static:masterip', '') -%}
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval'  or grains['role'] == 'so-heavynode' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
@@ -41,7 +41,7 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' or grains['role'] == 'so-heavynode' %}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
