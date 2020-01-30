@@ -102,10 +102,10 @@
 # @load policy/protocols/conn/mac-logging
 
 # JA3 - SSL Detection Goodness
-@load policy/ja3
+@load ja3
 
 # HASSH
-@load policy/hassh
+@load hassh
 
 # You can load your own intel into:
 # /opt/so/saltstack/bro/policy/intel/ on the master
@@ -121,3 +121,6 @@ redef LogAscii::json_timestamps = JSON::TS_ISO8601;
 
 # CVE-2020-0601
 @load cve-2020-0601
+
+# BPF Configuration
+@load securityonion/bpfconf
