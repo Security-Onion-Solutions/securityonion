@@ -239,7 +239,7 @@ so-logstash:
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
-      - /nsm/bro:/nsm/bro:ro
+      - /nsm/zeek:/nsm/zeek:ro
       - /opt/so/log/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
