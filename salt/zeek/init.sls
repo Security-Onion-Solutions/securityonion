@@ -1,5 +1,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf') %}
+{% set BPF_STATUS = 0  %}
 # Zeek Salt State
 # Add Zeek group
 zeekgroup:
@@ -89,6 +91,32 @@ plcronscript:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+# BPF compilation and configuration
+{% if BPF_ZEEK %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+       {% set BPF_STATUS = 1  %}
+  {% else  %}
+zeekbpfcompilationfailure:
+  test.configurable_test_state:
+   - changes: False
+   - result: False
+   - comment: "BPF Syntax Error - Discarding Specified BPF"
+   {% endif %}
+{% endif %}
+
+zeekbpf:
+  file.managed:
+    - name: /opt/so/conf/zeek/bpf
+    - user: 940
+    - group: 940
+   {% if BPF_STATUS %}
+    - contents_pillar: zeek:bpf
+   {% else %}
+    - contents:
+      - "ip or not ip"
+   {% endif %}
 
 localzeeksync:
   file.managed:
