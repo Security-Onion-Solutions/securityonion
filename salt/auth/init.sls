@@ -1,3 +1,6 @@
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
+
 so-auth-api-dir:
   file.directory:
     - name: /opt/so/conf/auth/api
@@ -5,19 +8,9 @@ so-auth-api-dir:
     - group: 939
     - makedirs: True
 
-so-auth-api-image:
-    cmd.run:
-        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-api:HH1.1.4
-
-so-auth-ui-image:
-    cmd.run:
-        - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-auth-ui:HH1.1.4
-
 so-auth-api:
     docker_container.running:
-        - require:
-            - so-auth-api-image
-        - image: docker.io/soshybridhunter/so-auth-api:HH1.1.4
+        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-api:{{ VERSION }}
         - hostname: so-auth-api
         - name: so-auth-api
         - environment:
@@ -29,9 +22,7 @@ so-auth-api:
 
 so-auth-ui:
     docker_container.running:
-        - require:
-            - so-auth-ui-image
-        - image: docker.io/soshybridhunter/so-auth-ui:HH1.1.4
+        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-ui:{{ VERSION }}
         - hostname: so-auth-ui
         - name: so-auth-ui
         - port_bindings:
