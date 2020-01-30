@@ -241,6 +241,10 @@ so-logstash:
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
+      - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
+      - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
+      - /opt/so/log/fleet/:/osquery/logs:ro
+      - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc

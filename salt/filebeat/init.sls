@@ -1,4 +1,4 @@
-  # Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -14,11 +14,11 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}		
-{% if FEATURES %}		
-  {% set FEATURES = "-features" %}		
-{% else %}		
-  {% set FEATURES = '' %}		
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
 {% endif %}
 # Filebeat Setup
 filebeatetcdir:

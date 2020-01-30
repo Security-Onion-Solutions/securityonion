@@ -72,7 +72,6 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - filebeat
     - utility
     - schedule
     - soctopus
