@@ -130,7 +130,7 @@ lspipelinesyml:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
-    - defaults: 
+    - defaults:
         pipelines: {{ pipelines }}
 
 # Copy down all the configs including custom - TODO add watch restart
@@ -166,7 +166,7 @@ lsconfsync:
     - source: salt://logstash/conf/conf.enabled.txt.so-master
 {% else %}
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
-{% endif %} 
+{% endif %}
     - user: 931
     - group: 939
     - template: jinja
@@ -241,6 +241,10 @@ so-logstash:
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/bro:/nsm/bro:ro
       - /opt/so/log/suricata:/suricata:ro
+      - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
+      - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
+      - /opt/so/log/fleet/:/osquery/logs:ro
+      - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc
