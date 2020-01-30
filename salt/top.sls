@@ -89,6 +89,52 @@ base:
     - domainstats
     {%- endif %}
 
+  'G@role:so-standalone':
+    - ca
+    - ssl
+    - registry
+    - master
+    - common
+    - sensoroni
+    - firewall
+    - idstools
+    - auth
+    {%- if OSQUERY != 0 %}
+    - mysql
+    {%- endif %}
+    - elasticsearch
+    - logstash
+    - kibana
+    - pcap
+    - suricata
+    - zeek
+    - curator
+    - elastalert
+    {%- if OSQUERY != 0 %}
+    - fleet
+    - redis
+    - launcher
+    {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    - filebeat
+    - utility
+    - schedule
+    - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
+
 
   'G@role:so-master':
     - ca
