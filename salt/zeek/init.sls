@@ -2,6 +2,7 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf') %}
 {% set BPF_STATUS = 0  %}
+{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 # Zeek Salt State
 # Add Zeek group
 zeekgroup:
@@ -94,7 +95,7 @@ plcronscript:
 
 # BPF compilation and configuration
 {% if BPF_ZEEK %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" ")  ) %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
@@ -140,8 +141,10 @@ so-zeek:
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
       - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
       - /opt/so/conf/zeek/policy/intel:/opt/zeek/share/zeek/policy/intel:rw
-    - network_mode: host
+      - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro 
+   - network_mode: host
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
       - file: /opt/so/conf/zeek/policy
+      - file: /opt/so/conf/zeek/bpf
