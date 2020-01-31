@@ -10,7 +10,7 @@ export {
 	## The file that is watched on disk for BPF filter changes.
 	## Two templated variables are available; "sensorname" and "interface".
 	## They can be used by surrounding the term by doubled curly braces.
-	const filename = "/opt/zeek/share/zeek/site/bpf" &redef;
+	const filename = "/opt/zeek/etc/bpf" &redef;
 
 	redef enum Notice::Type += { 
 		## Invalid filter notice.
