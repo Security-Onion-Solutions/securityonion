@@ -1,7 +1,7 @@
 #!/bin/bash
 
-BROLOG=$(tac /host/nsm/bro/logs/packetloss.log | head -2)
-declare RESULT=($BROLOG)
+ZEEKLOG=$(tac /host/nsm/zeek/logs/packetloss.log | head -2)
+declare RESULT=($ZEEKLOG)
 CURRENTDROP=${RESULT[3]}
 PASTDROP=${RESULT[9]}
 DROPPED=$(($CURRENTDROP - $PASTDROP))
