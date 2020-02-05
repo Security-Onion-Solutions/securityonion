@@ -15,6 +15,7 @@ base:
   'G@role:so-helix':
     - ca
     - ssl
+    - registry
     - common
     - firewall
     - idstools
