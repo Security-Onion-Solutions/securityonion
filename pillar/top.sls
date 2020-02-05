@@ -48,6 +48,7 @@ base:
     - static
     - firewall.*
     - fireeye
-    - static
     - brologs
+    - logstash.helix
+    - static
     - minions.{{ grains.id }}
