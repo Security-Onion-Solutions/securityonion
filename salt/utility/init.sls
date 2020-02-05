@@ -6,7 +6,7 @@ crossclusterson:
     - shell: /bin/bash
     - cwd: /opt/so
     - runas: socore
-    - source: salt://utility/bin/crossthestreams.sh
+    - source: salt://utility/bin/crossthestreams
     - template: jinja
 
 {% endif %}
@@ -16,6 +16,6 @@ fixsearch:
     - shell: /bin/bash
     - cwd: /opt/so
     - runas: socore
-    - source: salt://utility/bin/eval.sh
+    - source: salt://utility/bin/eval
     - template: jinja
 {% endif %}
