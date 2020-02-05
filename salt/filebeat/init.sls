@@ -1,5 +1,4 @@
-  # Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
-
+# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -14,36 +13,31 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
 {% endif %}
-
-# Filebeat Setup
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
     - user: 939
     - group: 939
     - makedirs: True
-
 filebeatlogdir:
   file.directory:
     - name: /opt/so/log/filebeat
     - user: 939
     - group: 939
     - makedirs: True
-
 filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
     - user: 939
     - group: 939
     - makedirs: True
-
 # This needs to be owned by root
 filebeatconfsync:
   file.managed:
@@ -52,7 +46,6 @@ filebeatconfsync:
     - user: 0
     - group: 0
     - template: jinja
-
 so-filebeat:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:{{ VERSION }}{{ FEATURES }}
@@ -67,13 +60,8 @@ so-filebeat:
       - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
-{%- if grains['role'] == 'so-master' %}
-      - /etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
-      - /etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
-{%- else %}
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
-{%- endif %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml

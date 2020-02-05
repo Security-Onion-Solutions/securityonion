@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', '1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 so-auth-api-dir:
@@ -10,7 +10,7 @@ so-auth-api-dir:
 
 so-auth-api:
     docker_container.running:
-        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-api:HH{{ VERSION }}
+        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-api:{{ VERSION }}
         - hostname: so-auth-api
         - name: so-auth-api
         - environment:
@@ -22,7 +22,7 @@ so-auth-api:
 
 so-auth-ui:
     docker_container.running:
-        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-ui:HH{{ VERSION }}
+        - image: {{ MASTER }}:5000/soshybridhunter/so-auth-ui:{{ VERSION }}
         - hostname: so-auth-ui
         - name: so-auth-ui
         - port_bindings:

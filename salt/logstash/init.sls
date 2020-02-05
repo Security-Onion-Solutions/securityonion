@@ -27,7 +27,7 @@
 {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
 {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 
-{% elif grains['role'] == 'so-node' %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
 {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
 
@@ -130,7 +130,7 @@ lspipelinesyml:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
-    - defaults: 
+    - defaults:
         pipelines: {{ pipelines }}
 
 # Copy down all the configs including custom - TODO add watch restart
@@ -162,11 +162,11 @@ lscustsync:
 lsconfsync:
   file.managed:
     - name: /opt/so/conf/logstash/conf.enabled.txt
-{% if grains.role == 'so-mastersearch' %}
+{% if grains.role == 'so-mastersearch' or grains.role == 'so-heavynode' %}
     - source: salt://logstash/conf/conf.enabled.txt.so-master
 {% else %}
     - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
-{% endif %} 
+{% endif %}
     - user: 931
     - group: 939
     - template: jinja
@@ -239,8 +239,12 @@ so-logstash:
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
-      - /nsm/bro:/nsm/bro:ro
+      - /nsm/zeek:/nsm/zeek:ro
       - /opt/so/log/suricata:/suricata:ro
+      - /opt/so/wazuh/logs/alerts/:/wazuh/alerts:ro
+      - /opt/so/wazuh/logs/archives/:/wazuh/archives:ro
+      - /opt/so/log/fleet/:/osquery/logs:ro
+      - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc

@@ -72,7 +72,6 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - filebeat
     - utility
     - schedule
     - soctopus
@@ -233,3 +232,31 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
+
+  'G@role:so-heavynode':
+    - ca
+    - ssl
+    - common
+    - firewall
+    - redis
+    - logstash
+    - elasticsearch
+    - curator
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
+    - pcap
+    - suricata
+    {%- if BROVER != 'SURICATA' %}
+    - zeek
+    {%- endif %}
+    - wazuh
+    - filebeat
+    {%- if OSQUERY != 0 %}
+    - launcher
+    {%- endif %}
+    - schedule

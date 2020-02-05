@@ -1,5 +1,8 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
+{% set BPF_STATUS = 0  %}
+{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 # Zeek Salt State
 # Add Zeek group
 zeekgroup:
@@ -90,6 +93,32 @@ plcronscript:
     - month: '*'
     - dayweek: '*'
 
+# BPF compilation and configuration
+{% if BPF_ZEEK %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+       {% set BPF_STATUS = 1  %}
+  {% else  %}
+zeekbpfcompilationfailure:
+  test.configurable_test_state:
+    - changes: False
+    - result: False
+    - comment: "BPF Syntax Error - Discarding Specified BPF"
+   {% endif %}
+{% endif %}
+
+zeekbpf:
+  file.managed:
+    - name: /opt/so/conf/zeek/bpf
+    - user: 940
+    - group: 940
+{% if BPF_STATUS %}
+    - contents_pillar: zeek:bpf
+{% else %}
+    - contents:
+      - "ip or not ip"
+{% endif %}
+
 localzeeksync:
   file.managed:
     - name: /opt/so/conf/zeek/local.zeek
@@ -110,9 +139,12 @@ so-zeek:
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
+      - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
       - /opt/so/conf/zeek/policy/intel:/opt/zeek/share/zeek/policy/intel:rw
+      - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro 
     - network_mode: host
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
       - file: /opt/so/conf/zeek/policy
+      - file: /opt/so/conf/zeek/bpf
