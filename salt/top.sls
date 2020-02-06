@@ -1,7 +1,6 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
 {%- set OSQUERY = salt['pillar.get']('master:osquery', '0') -%}
 {%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
-{%- set GRAFANA = salt['pillar.get']('master:grafana', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
@@ -100,6 +99,7 @@ base:
     - master
     - idstools
     - redis
+    - auth
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
@@ -188,6 +188,7 @@ base:
     - firewall
     - sensor
     - master
+    - auth
     {%- if OSQUERY != 0 %}
     - launcher
     {%- endif %}
@@ -204,6 +205,7 @@ base:
     - master
     - idstools
     - redis
+    - auth
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
@@ -257,9 +259,5 @@ base:
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
-    - wazuh
     - filebeat
-    {%- if OSQUERY != 0 %}
-    - launcher
-    {%- endif %}
     - schedule

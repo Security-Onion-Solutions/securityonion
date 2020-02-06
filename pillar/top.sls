@@ -1,6 +1,7 @@
 base:
   '*':
     - patch.needs_restarting
+    - docker.config
 
   'G@role:so-mastersearch or G@role:so-heavynode':
     - match: compound
