@@ -15,6 +15,7 @@ so-auth-api:
         - name: so-auth-api
         - environment:
             - BASE_PATH: "/so-auth/api"
+            - AUTH_TOKEN_TIMEOUT: 32400
         - binds:
             - /opt/so/conf/auth/api:/data
         - port_bindings:
