@@ -15,7 +15,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# {% raw %}
+{%- set pillar_suffix = ':containers' -%}
+{%- if (salt['grains.get']('role') == 'so-mastersearch') -%}
+    {%- set pillar_val = 'master_search' -%}
+{%- elif (salt['grains.get']('role') == 'so-master') -%}
+    {%- set pillar_val = 'master' -%}
+{%- elif (salt['grains.get']('role') == 'so-heavynode') -%}
+    {%- set pillar_val = 'heavy_node' -%}
+{%- elif (salt['grains.get']('role') == 'so-sensor') -%}
+    {%- set pillar_val = 'sensor' -%}
+{%- elif (salt['grains.get']('role') == 'so-eval') -%}
+    {%- set pillar_val = 'eval' -%}
+{%- elif (salt['grains.get']('role') == 'so-helix') -%}
+    {%- set pillar_val = 'helix' -%}
+{%- elif (salt['grains.get']('role') == 'so-node') -%}
+    {%- if (salt['pillar.get']('node:node_type') == 'parser') -%}
+        {%- set pillar_val = 'parser_node' -%}
+    {%- elif (salt['pillar.get']('node:node_type') == 'hot') -%}
+        {%- set pillar_val = 'hot_node' -%}
+    {%- elif (salt['pillar.get']('node:node_type') == 'warm') -%}
+        {%- set pillar_val = 'warm_node' -%}
+    {%- elif (salt['pillar.get']('node:node_type') == 'search') -%}
+        {%- set pillar_val = 'search_node' -%}
+    {%- endif -%}
+{%- endif -%}
+{%- set pillar_name = pillar_val ~ pillar_suffix -%}
+{%- set container_list = salt['pillar.get'](pillar_name) %}
 
 if ! [ $(id -u)=0 ]; then
    echo "This command must be run as root"
@@ -26,13 +51,56 @@ fi
 ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
 PENDING_STRING="PENDING"
+MISSING_STRING='MISSING'
 declare -a BAD_STATUSES=("removing", "paused", "exited", "dead")
 declare -a PENDING_STATUSES=("paused", "created", "restarting")
 declare -a GOOD_STATUSES=("running")
 
+declare -a temp_container_name_list=()
+declare -a temp_container_state_list=()
 
 declare -a container_name_list=()
 declare -a container_state_list=()
+
+declare -a expected_container_list=()
+
+# {% raw %}
+
+compare_lists() {
+    local found=0
+
+    create_expected_container_list
+
+    if [[ ${#expected_container_list[@]} = 0 ]]; then
+        container_name_list=$temp_container_name_list
+        container_state_list=$temp_container_state_list
+        return 1
+    fi
+
+    for intended_item in ${expected_container_list[@]}; do
+        found = 0
+        for i in ${!temp_container_name_list[@]}; do
+            [[ ${temp_container_name_list[$i]} = $intended_item ]] \
+                && found = 1 \
+                && container_name_list+=("${temp_container_name_list[$i]}") \
+                && container_state_list+=("${temp_container_state_list[$i]}") \
+                && break
+        done
+        if [[ $found = 0 ]]; then
+            container_name_list+=("$intended_item")
+            container_state_list+=("missing")
+        fi
+    done
+}
+
+# {% endraw %}
+
+create_expected_container_list() {
+    {% for item in container_list%}
+        expected_container_list+=("{{ item }}")
+    {% endfor %}
+}
+
 populate_container_lists() {
     systemctl is-active --quiet docker
 
@@ -50,51 +118,51 @@ populate_container_lists() {
     for line in ${docker_raw_list[@]}; do
         container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
         container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
-        container_name_list+=( "${container_name}" )
-        container_state_list+=( "${container_state}" )
+        
+        temp_container_name_list+=( "${container_name}" )
+        temp_container_state_list+=( "${container_state}" )
     done
+
+    compare_lists
 }
 
 parse_status() {
     local container_state=${1}
-    local found=0
+
+    [[ $container_state = "missing" ]] && printf $MISSING_STRING && return 1
 
     for state in "${GOOD_STATUSES[@]}"; do
         [[ $container_state = $state ]] && printf $SUCCESS_STRING && return 0
     done
 
-    if [[ $found = 0 ]]; then
-        for state in "${PENDING_STATUSES[@]}"; do
-            [[ $container_state = $state ]] && printf $PENDING_STRING && return 0
-        done
-    fi
+    for state in "${PENDING_STATUSES[@]}"; do
+        [[ $container_state = $state ]] && printf $PENDING_STRING && return 0
+    done
 
     # This is technically not needed since the default is error state
-    if [[ $found = 0 ]]; then
-        for state in "${BAD_STATUSES[@]}"; do
-            [[ $container_state = $state ]] && printf $ERROR_STRING && return 1
-        done
-    fi
+    for state in "${BAD_STATUSES[@]}"; do
+        [[ $container_state = $state ]] && printf $ERROR_STRING && return 1
+    done
 
     printf $ERROR_STRING && return 1
 }
 
-columns=$(tput cols)
+# {% raw %}
 
 print_line() {
     local service_name=${1}
     local service_state=$( parse_status ${2} )
-    local PADDING_CONSTANT=14
+    local columns=$(tput cols)
     local state_color="\e[0m"
 
-    if [[ $service_state = $ERROR_STRING ]]; then
+    local PADDING_CONSTANT=14
+
+    if [[ $service_state = $ERROR_STRING ]] || [[ $service_state = $MISSING_STRING ]]; then
         state_color="\e[1;31m"
     elif [[ $service_state = $SUCCESS_STRING ]]; then
         state_color="\e[1;32m"
     elif [[ $service_state = $PENDING_STRING ]]; then
         state_color="\e[1;33m"
-    else
-        state_color="\e[0m"
     fi
 
     printf "    $service_name "
@@ -121,13 +189,9 @@ main() {
     populate_container_lists
 
     printf "\n"
-
     printf "${focus_color}%b\e[0m" "Checking container statuses\n\n"
 
-
     local num_containers=${#docker_raw_list[@]}
-    local container_name=""
-    local container_state=""
 
     for i in $(seq 0 $(($num_containers - 1 ))); do
         print_line ${container_name_list[$i]} ${container_state_list[$i]}
@@ -136,6 +200,8 @@ main() {
     printf "\n"
 }
 
+# {% endraw %}
+
+
 main
 
-# {% endraw %}
