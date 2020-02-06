@@ -664,8 +664,10 @@ install_master() {
 ls_heapsize() {
 
   # Determine LS Heap Size
-  if [ $TOTAL_MEM -ge 32000 ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
+  if [ $TOTAL_MEM -ge 32000 ] || [ $INSTALLTYPE == 'MASTERSEARCH' ] || [ $INSTALLTYPE == 'HEAVYNODE' ] ||  [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
       LS_HEAP_SIZE="1000m"
+  elif [ $INSTALLTYPE == 'EVALMODE' ]; then
+      LS_HEAP_SIZE="700m"
   else
       # If minimal RAM, then set minimal heap
       LS_HEAP_SIZE="500m"
@@ -695,11 +697,7 @@ master_pillar() {
     echo "  freq: 0" >> $PILLARFILE
     echo "  domainstats: 0" >> $PILLARFILE
   fi
-  if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
-    echo "  lsheap: 1000m" >> $PILLARFILE
-  else
-    echo "  lsheap: $LS_HEAP_SIZE" >> $PILLARFILE
-  fi
+  echo "  lsheap: $LS_HEAP_SIZE" >> $PILLARFILE
   echo "  lsaccessip: 127.0.0.1" >> $PILLARFILE
   echo "  elastalert: 1" >> $PILLARFILE
   echo "  ls_pipeline_workers: $CPUCORES" >> $PILLARFILE
