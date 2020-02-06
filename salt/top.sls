@@ -199,6 +199,7 @@ base:
     - registry
     - common
     - sensoroni
+    - auth
     - firewall
     - master
     - idstools
