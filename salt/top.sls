@@ -196,6 +196,7 @@ base:
   'G@role:so-mastersearch':
     - ca
     - ssl
+    - registry
     - common
     - sensoroni
     - firewall
