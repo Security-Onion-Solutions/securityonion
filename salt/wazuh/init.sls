@@ -98,7 +98,6 @@ so-wazuh:
       - /opt/so/conf/wazuh/etc:/var/ossec/data/etc:rw
       - /opt/so/log/wazuh:/var/ossec/data/logs:rw
 
-
 # Register the agent
 registertheagent:
   cmd.run:
