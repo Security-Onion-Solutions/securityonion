@@ -12,7 +12,7 @@ ossecm:
   user.present:
     - uid: 943
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -22,7 +22,7 @@ ossecr:
   user.present:
     - uid: 944
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -32,10 +32,22 @@ ossec:
   user.present:
     - uid: 945
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
+
+wazuhdir:
+  file.directory:
+    - name: /opt/so/conf/wazuh
+    - user: 945
+    - group: 945
+
+wazuhlogdir:
+  file.directory:
+    - name: /opt/so/log/wazuh
+    - user: 945
+    - group: 945
 
 # Add wazuh agent
 wazuhpkgs:
@@ -83,7 +95,9 @@ so-wazuh:
       - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/wazuh/:/var/ossec/data/:rw
+      - /opt/so/conf/wazuh/etc:/var/ossec/data/etc:rw
+      - /opt/so/log/wazuh:/var/ossec/data/logs:rw
+
 
 # Register the agent
 registertheagent:
