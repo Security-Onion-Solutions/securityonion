@@ -43,11 +43,19 @@ wazuhdir:
     - user: 945
     - group: 945
 
-wazuhlogdir:
+wazuhalertlogdir:
   file.directory:
-    - name: /opt/so/log/wazuh
+    - name: /opt/so/log/wazuh/logs/alerts
     - user: 945
     - group: 945
+    - makedirs: True
+
+wazuharchlogdir:
+  file.directory:
+    - name: /opt/so/log/wazuh/logs/archives
+    - user: 945
+    - group: 945
+    - makedirs: True
 
 # Add wazuh agent
 wazuhpkgs:

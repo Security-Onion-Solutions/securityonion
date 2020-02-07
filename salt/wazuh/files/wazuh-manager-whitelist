@@ -18,7 +18,7 @@
 
 # Check if Wazuh enabled
 if grep -q -R "wazuh: 1" /opt/so/saltstack/pillar/*; then
-      WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
+      WAZUH_MGR_CFG="/opt/so/conf/wazuh/etc/ossec.conf"
       if ! grep -q "<white_list>{{ MASTERIP }}</white_list>" $WAZUH_MGR_CFG ; then
               DATE=`date`
               sed -i 's/<\/ossec_config>//' $WAZUH_MGR_CFG
@@ -26,8 +26,5 @@ if grep -q -R "wazuh: 1" /opt/so/saltstack/pillar/*; then
               echo -e "<!--Address {{ MASTERIP }} added by setup on "$DATE"-->\n  <global>\n    <white_list>{{ MASTERIP }}</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
               echo "Added whitelist entry for {{ MASTERIP }} in $WAZUH_MGR_CFG."
               echo
-              echo "Restarting OSSEC Server..."
-              #/usr/sbin/so-wazuh-restart
       fi
 fi
-
