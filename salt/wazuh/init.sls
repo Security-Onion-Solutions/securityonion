@@ -95,7 +95,8 @@ so-wazuh:
       - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/conf/wazuh/:/var/ossec/data/:rw
+      - /opt/so/conf/wazuh/etc:/var/ossec/data/etc:rw
+      - /opt/so/log/wazuh:/var/ossec/data/logs:rw
 
 # Register the agent
 registertheagent:
