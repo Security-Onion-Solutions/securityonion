@@ -73,6 +73,15 @@ wazuhagentconf:
     - group: 945
     - template: jinja
 
+# Add Wazuh server conf
+wazuhserverconf:
+  file.managed:
+    - name: /opt/so/conf/wazuh/etc/ossec.conf
+    - source: salt://wazuh/files/server/ossec.conf
+    - user: 0
+    - group: 945
+    - template: jinja
+
 # Add Wazuh agent conf
 wazuhagentregister:
   file.managed:
