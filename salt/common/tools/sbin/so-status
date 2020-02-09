@@ -42,7 +42,7 @@
 {%- set pillar_name = pillar_val ~ pillar_suffix -%}
 {%- set container_list = salt['pillar.get'](pillar_name) %}
 
-if ! [ $(id -u)=0 ]; then
+if ! [ "$(id -u)" = 0 ]; then
    echo "This command must be run as root"
    exit 1
 fi
@@ -52,8 +52,8 @@ ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
 PENDING_STRING="PENDING"
 MISSING_STRING='MISSING'
-declare -a BAD_STATUSES=("removing", "paused", "exited", "dead")
-declare -a PENDING_STATUSES=("paused", "created", "restarting")
+declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
+declare -a PENDING_STATUSES=("paused" "created" "restarting")
 declare -a GOOD_STATUSES=("running")
 
 declare -a temp_container_name_list=()
@@ -72,16 +72,16 @@ compare_lists() {
     create_expected_container_list
 
     if [[ ${#expected_container_list[@]} = 0 ]]; then
-        container_name_list=$temp_container_name_list
-        container_state_list=$temp_container_state_list
+        container_name_list="${temp_container_name_list[*]}"
+        container_state_list="${temp_container_state_list[*]}"
         return 1
     fi
 
-    for intended_item in ${expected_container_list[@]}; do
-        found = 0
-        for i in ${!temp_container_name_list[@]}; do
-            [[ ${temp_container_name_list[$i]} = $intended_item ]] \
-                && found = 1 \
+    for intended_item in "${expected_container_list[@]}"; do
+        found=0
+        for i in "${!temp_container_name_list[@]}"; do
+            [[ ${temp_container_name_list[$i]} = "$intended_item" ]] \
+                && found=1 \
                 && container_name_list+=("${temp_container_name_list[$i]}") \
                 && container_state_list+=("${temp_container_state_list[$i]}") \
                 && break
@@ -115,7 +115,7 @@ populate_container_lists() {
     local container_name=""
     local container_state=""
 
-    for line in ${docker_raw_list[@]}; do
+    for line in "${docker_raw_list[@]}"; do
         container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
         container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
         
@@ -132,16 +132,16 @@ parse_status() {
     [[ $container_state = "missing" ]] && printf $MISSING_STRING && return 1
 
     for state in "${GOOD_STATUSES[@]}"; do
-        [[ $container_state = $state ]] && printf $SUCCESS_STRING && return 0
+        [[ $container_state = "$state" ]] && printf $SUCCESS_STRING && return 0
     done
 
     for state in "${PENDING_STATUSES[@]}"; do
-        [[ $container_state = $state ]] && printf $PENDING_STRING && return 0
+        [[ $container_state = "$state" ]] && printf $PENDING_STRING && return 0
     done
 
     # This is technically not needed since the default is error state
     for state in "${BAD_STATUSES[@]}"; do
-        [[ $container_state = $state ]] && printf $ERROR_STRING && return 1
+        [[ $container_state = "$state" ]] && printf $ERROR_STRING && return 1
     done
 
     printf $ERROR_STRING && return 1
@@ -151,17 +151,17 @@ parse_status() {
 
 print_line() {
     local service_name=${1}
-    local service_state=$( parse_status ${2} )
+    local service_state="$( parse_status ${2} )"
     local columns=$(tput cols)
     local state_color="\e[0m"
 
     local PADDING_CONSTANT=14
 
-    if [[ $service_state = $ERROR_STRING ]] || [[ $service_state = $MISSING_STRING ]]; then
+    if [[ $service_state = "$ERROR_STRING" ]] || [[ $service_state = "$MISSING_STRING" ]]; then
         state_color="\e[1;31m"
-    elif [[ $service_state = $SUCCESS_STRING ]]; then
+    elif [[ $service_state = "$SUCCESS_STRING" ]]; then
         state_color="\e[1;32m"
-    elif [[ $service_state = $PENDING_STRING ]]; then
+    elif [[ $service_state = "$PENDING_STRING" ]]; then
         state_color="\e[1;33m"
     fi
 
@@ -204,4 +204,3 @@ main() {
 
 
 main
-
