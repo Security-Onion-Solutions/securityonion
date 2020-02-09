@@ -29,7 +29,7 @@ eval:
     - so-suricata
     - so-zeek
     - so-curator
-    - so-elasalert
+    - so-elastalert
     {%- if WAZUH != 0 %}
     - so-wazuh
     {%- endif %}
@@ -104,7 +104,7 @@ master_search:
     - so-elasticsearch
     - so-curator
     - so-kibana
-    - so-elasalert
+    - so-elastalert
     - so-filebeat
     - so-soctopus
     {%- if OSQUERY != 0 %}
@@ -147,7 +147,7 @@ master:
     - so-elasticsearch
     - so-logstash
     - so-kibana
-    - so-elasalert
+    - so-elastalert
     - so-filebeat
     {%- if OSQUERY != 0 %}
     - so-mysql
