@@ -43,20 +43,6 @@ wazuhdir:
     - user: 945
     - group: 945
 
-wazuhalertlogdir:
-  file.directory:
-    - name: /opt/so/log/wazuh/logs/alerts
-    - user: 945
-    - group: 945
-    - makedirs: True
-
-wazuharchlogdir:
-  file.directory:
-    - name: /opt/so/log/wazuh/logs/archives
-    - user: 945
-    - group: 945
-    - makedirs: True
-
 # Add wazuh agent
 wazuhpkgs:
  pkg.installed:
@@ -112,8 +98,7 @@ so-wazuh:
       - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/conf/wazuh/etc:/var/ossec/data/etc:rw
-      - /opt/so/log/wazuh:/var/ossec/data/logs:rw
+      - /opt/so/conf/wazuh:/var/ossec/data:rw
 
 # Register the agent
 registertheagent:
