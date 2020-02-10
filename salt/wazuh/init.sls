@@ -59,16 +59,7 @@ wazuhagentconf:
     - group: 945
     - template: jinja
 
-# Add Wazuh server conf
-wazuhserverconf:
-  file.managed:
-    - name: /opt/so/conf/wazuh/etc/ossec.conf
-    - source: salt://wazuh/files/server/ossec.conf
-    - user: 0
-    - group: 945
-    - template: jinja
-
-# Add Wazuh agent conf
+# Wazuh agent registration script
 wazuhagentregister:
   file.managed:
     - name: /usr/sbin/wazuh-register-agent
@@ -78,6 +69,7 @@ wazuhagentregister:
     - mode: 755
     - template: jinja
 
+# Whitelist script
 wazuhmgrwhitelist:
    file.managed:
     - name: /usr/sbin/wazuh-manager-whitelist
