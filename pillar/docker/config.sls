@@ -17,7 +17,7 @@ eval:
     - so-idstools
     - so-auth-api
     - so-auth-ui
-    {%- if OSQUERY != 0 %}
+    {%- if OSQUERY != '0' %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -29,24 +29,24 @@ eval:
     - so-suricata
     - so-zeek
     - so-curator
-    - so-elasalert
-    {%- if WAZUH != 0 %}
+    - so-elastalert
+    {%- if WAZUH != '0' %}
     - so-wazuh
     {%- endif %}
     - so-soctopus
-    {%- if THEHIVE != 0 %}
+    {%- if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {%- endif %}
-    {%- if PLAYBOOK != 0 %}
+    {%- if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {%- endif %}
-    {%- if FREQSERVER != 0 %}
+    {%- if FREQSERVER != '0' %}
     - so-freqserver
     {%- endif %}
-    {%- if DOMAINSTATS != 0 %}
+    {%- if DOMAINSTATS != '0' %}
     - so-domainstats
     {%- endif %}
 heavy_node:
@@ -104,31 +104,31 @@ master_search:
     - so-elasticsearch
     - so-curator
     - so-kibana
-    - so-elasalert
+    - so-elastalert
     - so-filebeat
     - so-soctopus
-    {%- if OSQUERY != 0 %}
+    {%- if OSQUERY != '0' %}
     - so-mysql
     - so-fleet
     - so-redis
     {%- endif %}
-    {%- if WAZUH != 0 %}
+    {%- if WAZUH != '0' %}
     - so-wazuh
     {%- endif %}
     - so-soctopus
-    {%- if THEHIVE != 0 %}
+    {%- if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {%- endif %}
-    {%- if PLAYBOOK != 0 %}
+    {%- if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {%- endif %}
-    {%- if FREQSERVER != 0 %}
+    {%- if FREQSERVER != '0' %}
     - so-freqserver
     {%- endif %}
-    {%- if DOMAINSTATS != 0 %}
+    {%- if DOMAINSTATS != '0' %}
     - so-domainstats
     {%- endif %}
 master:
@@ -147,30 +147,30 @@ master:
     - so-elasticsearch
     - so-logstash
     - so-kibana
-    - so-elasalert
+    - so-elastalert
     - so-filebeat
-    {%- if OSQUERY != 0 %}
+    {%- if OSQUERY != '0' %}
     - so-mysql
     - so-fleet
     - so-redis
     {%- endif %}
-    {%- if WAZUH != 0 %}
+    {%- if WAZUH != '0' %}
     - so-wazuh
     {%- endif %}
     - so-soctopus
-    {%- if THEHIVE != 0 %}
+    {%- if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {%- endif %}
-    {%- if PLAYBOOK != 0 %}
+    {%- if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {%- endif %}
-    {%- if FREQSERVER != 0 %}
+    {%- if FREQSERVER != '0' %}
     - so-freqserver
     {%- endif %}
-    {%- if DOMAINSTATS != 0 %}
+    {%- if DOMAINSTATS != '0' %}
     - so-domainstats
     {%- endif %}
 parser_node:
@@ -190,7 +190,7 @@ search_node:
     - so-elasticsearch
     - so-curator
     - so-filebeat
-    {%- if WAZUH != 0 %}
+    {%- if WAZUH != '0' %}
     - so-wazuh
     {%- endif %}
 sensor:
@@ -213,3 +213,4 @@ warm_node:
     - so-influxdb
     - so-grafana
     - so-elasticsearch
+    
