@@ -72,7 +72,6 @@ helix:
   containers:
     - so-core
     - so-telegraf
-
     - so-idstools
     - so-steno
     - so-zeek
@@ -175,13 +174,11 @@ parser_node:
   containers:
     - so-core
     - so-telegraf
-
     - so-logstash
 search_node:
   containers:
     - so-core
     - so-telegraf
-
     - so-logstash
     - so-elasticsearch
     - so-curator
@@ -193,7 +190,6 @@ sensor:
   containers:
     - so-core
     - so-telegraf
-
     - so-steno
     - so-suricata
     {% if BROVER != 'SURICATA' %}
@@ -205,6 +201,5 @@ warm_node:
   containers:
     - so-core
     - so-telegraf
-
     - so-elasticsearch
     
