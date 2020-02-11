@@ -241,8 +241,8 @@ so-logstash:
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /opt/so/log/suricata:/suricata:ro
-      - /opt/so/log/wazuh/logs/alerts:/wazuh/alerts:ro
-      - /opt/so/log/wazuh/logs/archives:/wazuh/archives:ro
+      - /opt/so/conf/wazuh/logs/alerts:/wazuh/alerts:ro
+      - /opt/so/conf/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
