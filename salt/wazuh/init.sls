@@ -37,11 +37,11 @@ ossec:
     - allow_uid_change: True
     - allow_gid_change: True
 
-wazuhdir:
-  file.directory:
-    - name: /opt/so/conf/wazuh
-    - user: 945
-    - group: 945
+#wazuhdir:
+#  file.directory:
+#    - name: /opt/so/conf/wazuh
+#    - user: 945
+#    - group: 945
 
 # Add wazuh agent
 wazuhpkgs:
