@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PREVCOUNTFILE='/tmp/helixevents.txt'
-EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.eval.events.out')"
+EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.helix.events.out')"
 
 if [ ! -z "$EVENTCOUNTCURRENT" ]; then
 
