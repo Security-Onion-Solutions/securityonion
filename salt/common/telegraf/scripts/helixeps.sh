@@ -13,12 +13,12 @@ if [ ! -z "$EVENTCOUNTCURRENT" ]; then
   fi
 
   echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-  EVENTS=$((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS))
+  EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
   if [ "$EVENTS" -lt 0 ]; then
     EVENTS=0
   fi
 
-  echo "helixeps eps=${EVENTS}"
+  echo "helixeps eps=${EVENTS%%.*}"
 
 fi
 
