@@ -1,8 +1,15 @@
+{%- if grains.role == 'so-heavynode' %}
+{%- set MASTER = salt['pillar.get']('sensor:mainip' '') %}
+{%- else %}
 {%- set MASTER = grains['master'] %}
+{%- endif %}
+
+
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
 {%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
+{%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '1') %}
 
 name: {{ HOSTNAME }}
 
@@ -66,12 +73,12 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.prospectors:
 #------------------------------ Log prospector --------------------------------
-{%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" %}
+{%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" or grains['role'] == "so-heavynode" %}
 {%- if BROVER != 'SURICATA' %}
 {%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
   - type: log
     paths:
-      - /nsm/bro/logs/current/{{ LOGNAME }}.log
+      - /nsm/zeek/logs/current/{{ LOGNAME }}.log
     fields:
       type: bro_{{ LOGNAME }}
     fields_under_root: true
@@ -122,6 +129,19 @@ filebeat.prospectors:
       - /osquery/logs/result.log
     fields:
       type: osquery
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+{%- endif %}
+
+{%- if STRELKAENABLED == '1' %}
+
+  - type: log
+    paths:
+      - /opt/so/log/strelka/strelka.log
+    fields:
+      type: strelka
     fields_under_root: true
     clean_removed: false
     close_removed: false

@@ -1,7 +1,7 @@
 # Firewall Magic for the grid
-{%- if grains['role'] in ['so-eval','so-master','so-helix'] %}
+{%- if grains['role'] in ['so-eval','so-master','so-helix','so-mastersearch'] %}
 {%- set ip = salt['pillar.get']('static:masterip', '') %}
-{%- elif grains['role'] == 'so-node' %}
+{%- elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- elif grains['role'] == 'so-sensor' %}
 {%- set ip = salt['pillar.get']('sensor:mainip', '') %}
@@ -131,7 +131,7 @@ enable_wazuh_manager_1514_udp_{{ip}}:
     - save: True
 
 # Rules if you are a Master
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix'%}
+{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
 #This should be more granular
 iptables_allow_master_docker:
   iptables.insert:
@@ -359,6 +359,17 @@ enable_minion_osquery_8080_{{ip}}:
     - position: 1
     - save: True
 
+enable_minion_wazuh_55000_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 55000
+    - position: 1
+    - save: True
+
 {% endfor %}
 
 # Allow Forward Nodes to send their beats traffic
@@ -410,9 +421,9 @@ enable_forwardnode_sensoroni_9822_{{ip}}:
 
 {% endfor %}
 
-{% for ip in pillar.get('storage_nodes')  %}
+{% for ip in pillar.get('search_nodes')  %}
 
-enable_storagenode_redis_6379_{{ip}}:
+enable_searchnode_redis_6379_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -423,7 +434,7 @@ enable_storagenode_redis_6379_{{ip}}:
     - position: 1
     - save: True
 
-enable_storagenode_ES_9300_{{ip}}:
+enable_searchnode_ES_9300_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -578,13 +589,13 @@ enable_standard_analyst_443_{{ip}}:
 
 {% endfor %}
 
-# Rules for storage nodes connecting to master
+# Rules for search nodes connecting to master
 
 
 {% endif %}
 
-# Rules if you are a Storage Node
-{% if grains['role'] == 'so-node' %}
+# Rules if you are a Node
+{% if 'node' in grains['role'] %}
 
 #This should be more granular
 iptables_allow_docker:
@@ -655,3 +666,39 @@ iptables_drop_all_the_things:
     - chain: LOGGING
     - jump: DROP
     - save: True
+
+{% if grains['role'] == 'so-heavynode' %}
+# Allow Redis
+enable_heavynode_redis_6379_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 6379
+    - position: 1
+    - save: True
+
+enable_forwardnode_beats_5044_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5044
+    - position: 1
+    - save: True
+
+enable_forwardnode_beats_5644_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 5644
+    - position: 1
+    - save: True
+{% endif %}

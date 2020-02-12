@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Source common settings
+. /usr/sbin/so-common
+
+# Check for log files
+for FILE in /opt/so/log/elasticsearch/*.log /opt/so/log/logstash/*.log /opt/so/log/kibana/*.log /opt/so/log/elastalert/*.log /opt/so/log/curator/*.log /opt/so/log/freqserver/*.log /opt/so/log/nginx/*.log; do
+
+# If file exists, then look for errors or warnings 
+if [ -f $FILE ]; then
+	MESSAGE=`grep -i 'ERROR\|FAIL\|WARN' $FILE` 
+	if [ ! -z "$MESSAGE" ]; then
+		header $FILE
+		echo $MESSAGE | sed 's/WARN/\nWARN/g' | sed 's/WARNING/\nWARNING/g' | sed 's/ERROR/\nERROR/g' | sort | uniq -c | sort -nr
+		echo
+	fi
+fi
+done

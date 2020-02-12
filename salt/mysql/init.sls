@@ -1,6 +1,8 @@
 {%- set MYSQLPASS = salt['pillar.get']('auth:mysql', 'iwonttellyou') %}
 {%- set FLEETPASS = salt['pillar.get']('auth:fleet', 'bazinga') %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # MySQL Setup
 mysqlpkgs:
   pkg.installed:
@@ -48,15 +50,9 @@ mysqldatadir:
     - group: 939
     - makedirs: True
 
-so-mysqlimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-mysql:HH1.1.0
-
 so-mysql:
   docker_container.running:
-    - require:
-      - so-mysqlimage
-    - image: docker.io/soshybridhunter/so-mysql:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
     - hostname: so-mysql
     - user: socore
     - port_bindings:

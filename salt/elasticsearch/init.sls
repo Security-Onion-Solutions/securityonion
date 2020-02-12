@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -12,26 +12,29 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% if FEATURES %}
+  {% set FEATURES = "-features" %}
+{% else %}
+  {% set FEATURES = '' %}
+{% endif %}
+
 {% if grains['role'] == 'so-master' %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
-{% elif grains['role'] == 'so-eval' %}
+{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
 
 {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
 {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:dstats', '0') %}
 
-{% elif grains['role'] == 'so-node' %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
 
 {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
 {% set esheap = salt['pillar.get']('node:esheap', '') %}
-{% set freq = salt['pillar.get']('node:freq', '0') %}
-{% set dstats = salt['pillar.get']('node:dstats', '0') %}
 
 {% endif %}
 
@@ -104,15 +107,9 @@ eslogdir:
     - group: 939
     - makedirs: True
 
-so-elasticsearchimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
-
 so-elasticsearch:
   docker_container.running:
-    - require:
-      - so-elasticsearchimage
-    - image: docker.io/soshybridhunter/so-elasticsearch:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -146,91 +143,3 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
-
-# Tell the main cluster I am here
-#curl -XPUT http://\$ELASTICSEARCH_HOST:\$ELASTICSEARCH_PORT/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"$HOSTNAME": {"skip_unavailable": "true", "seeds": ["$DOCKER_INTERFACE:$REVERSE_PORT"]}}}}}'
-
-# See if Freqserver is enabled
-{% if freq == 1 %}
-
-# Create the user
-fservergroup:
-  group.present:
-    - name: freqserver
-    - gid: 935
-
-# Add ES user
-freqserver:
-  user.present:
-    - uid: 935
-    - gid: 935
-    - home: /opt/so/conf/freqserver
-    - createhome: False
-
-# Create the log directory
-freqlogdir:
-  file.directory:
-    - name: /opt/so/log/freq_server
-    - user: 935
-    - group: 935
-    - makedirs: True
-
-so-freqimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-freqserver:HH1.0.3
-
-so-freq:
-  docker_container.running:
-    - require:
-      - so-freqimage
-    - image: docker.io/soshybridhunter/so-freqserver:HH1.0.3
-    - hostname: freqserver
-    - name: so-freqserver
-    - user: freqserver
-    - binds:
-      - /opt/so/log/freq_server:/var/log/freq_server:rw
-
-
-{% endif %}
-
-{% if dstats == 1 %}
-
-# Create the group
-dstatsgroup:
-  group.present:
-    - name: domainstats
-    - gid: 936
-
-# Add user
-domainstats:
-  user.present:
-    - uid: 936
-    - gid: 936
-    - home: /opt/so/conf/domainstats
-    - createhome: False
-
-# Create the log directory
-dstatslogdir:
-  file.directory:
-    - name: /opt/so/log/domainstats
-    - user: 936
-    - group: 939
-    - makedirs: True
-
-so-domainstatsimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-domainstats:HH1.0.3
-
-so-domainstats:
-  docker_container.running:
-    - require:
-      - so-domainstatsimage
-    - image: docker.io/soshybridhunter/so-domainstats:HH1.0.3
-    - hostname: domainstats
-    - name: so-domainstats
-    - user: domainstats
-    - binds:
-      - /opt/so/log/domainstats:/var/log/domain_stats
-
-
-{% endif %}

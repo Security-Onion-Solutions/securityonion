@@ -1,3 +1,6 @@
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
+
 soctopusdir:
   file.directory:
     - name: /opt/so/conf/soctopus
@@ -44,15 +47,9 @@ navigatordefaultlayer:
     - replace: False
     - template: jinja
 
-so-soctopusimage:
-  cmd.run:
-    - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-soctopus:HH1.1.3
-
 so-soctopus:
   docker_container.running:
-    - require:
-      - so-soctopusimage
-    - image: docker.io/soshybridhunter/so-soctopus:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
     - hostname: soctopus
     - name: so-soctopus
     - binds:

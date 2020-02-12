@@ -12,7 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 {% if grains['role'] == 'so-master' %}
 
 {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
@@ -20,7 +21,7 @@
 {% set esport = salt['pillar.get']('master:es_port', '') %}
 
 
-{% elif grains['role'] == 'so-eval' %}
+{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
 
 {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
 {% set esip = salt['pillar.get']('master:mainip', '') %}
@@ -109,15 +110,9 @@ elastaconf:
     - group: 939
     - template: jinja
 
-so-elastalertimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-elastalert:HH1.1.1
-
 so-elastalert:
   docker_container.running:
-    - require:
-      - so-elastalertimage
-    - image: docker.io/soshybridhunter/so-elastalert:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-elastalert:{{ VERSION }}
     - hostname: elastalert
     - name: so-elastalert
     - user: elastalert

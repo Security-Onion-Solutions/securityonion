@@ -1,5 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
   group.present:
@@ -11,7 +12,7 @@ ossecm:
   user.present:
     - uid: 943
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -21,7 +22,7 @@ ossecr:
   user.present:
     - uid: 944
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -31,10 +32,16 @@ ossec:
   user.present:
     - uid: 945
     - gid: 945
-    - home: /opt/so/wazuh
+    - home: /opt/so/conf/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
+
+#wazuhdir:
+#  file.directory:
+#    - name: /opt/so/conf/wazuh
+#    - user: 945
+#    - group: 945
 
 # Add wazuh agent
 wazuhpkgs:
@@ -52,7 +59,7 @@ wazuhagentconf:
     - group: 945
     - template: jinja
 
-# Add Wazuh agent conf
+# Wazuh agent registration script
 wazuhagentregister:
   file.managed:
     - name: /usr/sbin/wazuh-register-agent
@@ -62,15 +69,19 @@ wazuhagentregister:
     - mode: 755
     - template: jinja
 
-so-wazuhimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-wazuh:HH1.1.3
+# Whitelist script
+wazuhmgrwhitelist:
+   file.managed:
+    - name: /usr/sbin/wazuh-manager-whitelist
+    - source: salt://wazuh/files/wazuh-manager-whitelist
+    - user: 0
+    - group: 0
+    - mode: 755
+    - template: jinja
 
 so-wazuh:
   docker_container.running:
-    - require:
-      - so-wazuhimage
-    - image: docker.io/soshybridhunter/so-wazuh:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:{{ VERSION }}
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True
@@ -79,7 +90,7 @@ so-wazuh:
       - 0.0.0.0:1514:1514/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/wazuh/:/var/ossec/data/:rw
+      - /opt/so/wazuh:/var/ossec/data:rw
 
 # Register the agent
 registertheagent:
@@ -87,3 +98,9 @@ registertheagent:
     - name: /usr/sbin/wazuh-register-agent
     - cwd: /
     #- stateful: True
+
+# Whitelist manager IP
+whitelistmanager:
+  cmd.run:
+    - name: /usr/sbin/wazuh-manager-whitelist
+    - cwd: /

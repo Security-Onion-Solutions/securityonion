@@ -1,4 +1,6 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 hiveconfdir:
   file.directory:
     - name: /opt/so/conf/hive/etc
@@ -53,15 +55,9 @@ hiveesdata:
     - user: 939
     - group: 939
 
-so-thehive-esimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-es:HH1.1.1
-
 so-thehive-es:
   docker_container.running:
-    - require:
-      - so-thehive-esimage
-    - image: docker.io/soshybridhunter/so-thehive-es:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:{{ VERSION }}
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -87,16 +83,9 @@ so-thehive-es:
       - 0.0.0.0:9500:9500
 
 # Install Cortex
-
-so-corteximage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
-
 so-cortex:
   docker_container.running:
-    - require:
-      - so-corteximage
-    - image: docker.io/soshybridhunter/so-thehive-cortex:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:{{ VERSION }}
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
@@ -107,19 +96,13 @@ so-cortex:
 
 cortexscript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/cortex_init.sh
+    - source: salt://hive/thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
 
-so-thehiveimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-thehive:HH1.1.1
-
 so-thehive:
   docker_container.running:
-    - require:
-      - so-thehiveimage
-    - image: docker.io/soshybridhunter/so-thehive:HH1.1.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:{{ VERSION }}
     - environment:
       - ELASTICSEARCH_HOST={{ MASTERIP }}
     - hostname: so-thehive
@@ -132,6 +115,6 @@ so-thehive:
 
 hivescript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/hive_init.sh
+    - source: salt://hive/thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja

@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -13,6 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 
 # Redis Setup
 redisconfdir:
@@ -44,15 +46,9 @@ redisconfsync:
     - group: 939
     - template: jinja
 
-so-redisimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-redis:HH1.1.0
-
 so-redis:
   docker_container.running:
-    - require:
-      - so-redisimage
-    - image: docker.io/soshybridhunter/so-redis:HH1.1.0
+    - image: {{ MASTER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
     - hostname: so-redis
     - user: socore
     - port_bindings:

@@ -1,6 +1,8 @@
 {%- set MYSQLPASS = salt['pillar.get']('auth:mysql', 'iwonttellyou') %}
 {%- set FLEETPASS = salt['pillar.get']('auth:fleet', 'bazinga') -%}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
 
 # Fleet Setup
 fleetcdir:
@@ -59,15 +61,9 @@ fleetdbpriv:
     - user: fleetdbuser
     - host: 172.17.0.0/255.255.0.0
 
-so-fleetimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-fleet:HH1.1.3
-
 so-fleet:
   docker_container.running:
-    - require:
-      - so-fleetimage
-    - image: docker.io/soshybridhunter/so-fleet:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-fleet:{{ VERSION }}
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080

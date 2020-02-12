@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
+. /usr/sbin/so-common
+
+SKIP=0
+#########################################
+# Options
+#########################################
+usage()
+{
+cat <<EOF
+Security Onion Elastic Clear
+  Options:
+  -h         This message
+  -y         Skip interactive mode
+EOF
+}
+while getopts "h:y" OPTION
+do
+        case $OPTION in
+                h)
+                        usage
+                        exit 0
+                        ;;
+                
+                y)
+                        SKIP=1
+                        ;;
+                *)
+                        usage
+                        exit 0
+                        ;;
+        esac
+done
+if [ $SKIP -ne 1 ]; then
+        # List indices
+        echo 
+        curl {{ MASTERIP }}:9200/_cat/indices?v&pretty
+        echo
+        # Inform user we are about to delete all data
+        echo
+        echo "This script will delete all data (documents, indices, etc.) in the Elasticsearch database."
+        echo
+        echo "If you would like to proceed, please type "AGREE" and hit ENTER."
+        echo
+        # Read user input
+        read INPUT
+        if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
+fi
+
+/usr/sbin/so-filebeat-stop
+/usr/sbin/so-logstash-stop
+
+# Delete data
+echo "Deleting data..."
+
+INDXS=$(curl -s -XGET {{ MASTERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert' | awk '{ print $3 }')
+for INDX in ${INDXS}
+do
+    curl -XDELETE "{{ MASTERIP }}:9200/${INDX}" > /dev/null 2>&1
+done
+
+/usr/sbin/so-logstash-start
+/usr/sbin/so-filebeat-start
+

@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -12,6 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set MASTER = salt['grains.get']('master') %}
+{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
+{% set BPF_COMPILED = "" %}
 
 # PCAP Section
 
@@ -35,6 +40,20 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
+{% if BPF_STENO %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" ")  ) %}
+   {% if BPF_CALC['stderr'] == "" %}
+      {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
+   {% else  %}
+
+bpfcompilationfailure:
+  test.configurable_test_state:
+   - changes: False
+   - result: False
+   - comment: "BPF Compilation Failed - Discarding Specified BPF"
+   {% endif %}
+{% endif %}
+
 stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
@@ -43,6 +62,8 @@ stenoconf:
     - group: root
     - mode: 644
     - template: jinja
+    - defaults:
+        BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 sensoroniagentconf:
   file.managed:
@@ -94,15 +115,9 @@ stenolog:
     - group: 941
     - makedirs: True
 
-so-stenoimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-steno:HH1.1.3
-
 so-steno:
   docker_container.running:
-    - require:
-      - so-stenoimage
-    - image: docker.io/soshybridhunter/so-steno:HH1.1.3
+    - image: {{ MASTER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
     - network_mode: host
     - privileged: True
     - port_bindings:
@@ -118,4 +133,5 @@ so-steno:
       - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/log/stenographer:/opt/sensoroni/logs:rw
     - watch:
-      - /opt/so/conf/steno/sensoroni.json
+      - file: /opt/so/conf/steno/config
+      - file: /opt/so/conf/steno/sensoroni.json
