@@ -1,36 +1,25 @@
-## Hybrid Hunter Alpha 1.1.3
-
-### ISO Download:
-
-[HH1.1.3-21.iso](https://github.com/Security-Onion-Solutions/securityonion-hh-iso/releases/download/HH1.1.3/HH-1.1.3-21.iso)  
-MD5: 0FDACF6A2BB63B390C4D7FA46CCA3AA5  
-SHA1: 20506D5C535CF5D0E2F7440C8ACBE9D318049B7D  
-SHA256: EAEE7DC173F0E91BED43BDA13A84A20167975B5F7BD6598BE2D434AB29EAC51B
-
-
-```
-Default Username: onion
-Default Password: V@daL1aZ
-```
+## Hybrid Hunter Alpha 1.1.4 - Feature Parity Release
 
 ### Changes:
 
-- Overhaul of the setup script to support both ISO and network based setups.
-- ISO will now boot properly from a USB stick.
-- Python 3 is now default.
-- Fix Filebeat from restarting every check in due to x509 refresh issue. 
-- Cortex installed and integrated with TheHive. 
-- Switched to using vanilla Kolide Fleet and upgraded to latest version (2.4) .  
-- Playbook changes:
-  - Now preloaded with Plays generated from Sysmon Sigma signatures in the [Sigma community repo](https://github.com/Neo23x0/sigma/tree/master/rules/windows/sysmon).  
-  - New update script that updates / pulls in new Sigma signatures from the community repo .
-  - Bulk enable / disable plays from the webui . 
-  - Updated sigmac mapping template & configuration (backend is now `elastalert`) . 
-  - Updated TheHive alerts formatting . 
-- OS patch scheduling:
-  - During setup, choose between auto, manual, or scheduled OS patch interval
-  - For scheduled, create a new or import an existing named schedule
-
+- Added new in-house auth method [Security Onion Auth](https://github.com/Security-Onion-Solutions/securityonion-auth).
+- Web user creation is done via the browser now instead of so-user-add.
+- New Logstash pipeline setup. Now uses multiple pipelines.
+- New Master + Search node type and well as a Heavy Node type in the install. 
+- Change all nodes to point to the docker registry on the Master. This cuts down on the calls to dockerhub.
+- Zeek 3.0.1
+- Elastic 6.8.6
+- New SO Start | Stop | Restart scripts for all components (eg. `so-playbook-restart`).
+- BPF support for Suricata (NIDS), Steno (PCAP) & Zeek ([Docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/BPF)).
+- Updated Domain Stats & Frequency Server containers to Python3 & created new Salt states for them.
+- Added so-status script which gives an easy to read look at container status.
+- Manage threshold.conf for Suricata using the thresholding pillar.
+- The ISO now includes all the docker containers for faster install speeds.
+- You now set the password for the onion account during the iso install. This account is temporary and will be removed after so-setup. 
+- Updated Helix parsers for better compatibility.
+- Updated telegraf docker to include curl and jq.
+- CVE-2020-0601 Zeek Detection Script. 
+- ISO Install now prompts you to create a password for the onion user during imaging. This account gets disabled during setup.
 
 
 ### Warnings and Disclaimers
