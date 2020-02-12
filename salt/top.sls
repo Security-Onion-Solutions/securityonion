@@ -56,6 +56,9 @@ base:
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
     - elasticsearch
     - logstash
     - kibana
@@ -68,9 +71,6 @@ base:
     - fleet
     - redis
     - launcher
-    {%- endif %}
-    {%- if WAZUH != 0 %}
-    - wazuh
     {%- endif %}
     - utility
     - schedule
@@ -103,13 +103,13 @@ base:
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
     - elasticsearch
     - logstash
     - kibana
     - elastalert
-    {%- if WAZUH != 0 %}
-    - wazuh
-    {%- endif %}
     - filebeat
     - utility
     - schedule
@@ -171,12 +171,12 @@ base:
     - ssl
     - common
     - firewall
-    - logstash
-    - elasticsearch
-    - curator
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - logstash
+    - elasticsearch
+    - curator
     - filebeat
     {%- if OSQUERY != 0 %}
     - launcher
@@ -209,14 +209,14 @@ base:
     {%- if OSQUERY != 0 %}
     - mysql
     {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
     - logstash
     - elasticsearch
     - curator
     - kibana
     - elastalert
-    {%- if WAZUH != 0 %}
-    - wazuh
-    {%- endif %}
     - filebeat
     - utility
     - schedule
@@ -244,12 +244,12 @@ base:
     - common
     - firewall
     - redis
-    - logstash
-    - elasticsearch
-    - curator
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - logstash
+    - elasticsearch
+    - curator
     - filebeat
     {%- if OSQUERY != 0 %}
     - launcher
