@@ -86,14 +86,14 @@ echo "Adding $IP to the $FULLROLE role. This can take a few seconds"
 if grep -q -R "wazuh: 1" /opt/so/saltstack/pillar/*; then
     # If analyst, add to Wazuh AR whitelist
     if [ "$FULLROLE" == "analyst" ]; then
-          WAZUH_MGR_CFG="/opt/so/conf/wazuh/etc/ossec.conf"
+          WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
           if ! grep -q "<white_list>$IP</white_list>" $WAZUH_MGR_CFG ; then
                   DATE=`date`
                   sed -i 's/<\/ossec_config>//' $WAZUH_MGR_CFG
                   sed -i '/^$/N;/^\n$/D' $WAZUH_MGR_CFG
                   echo -e "<!--Address $IP added by /usr/sbin/so-allow on "$DATE"-->\n  <global>\n    <white_list>$IP</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
                   echo "Added whitelist entry for $IP in $WAZUH_MGR_CFG."
-                  echo
+		  echo
                   echo "Restarting OSSEC Server..."
                   /usr/sbin/so-wazuh-restart
           fi
