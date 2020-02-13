@@ -69,7 +69,7 @@ Once you resolve those requirements or are using Ubuntu 16.04 do the following:
 ```
 git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
 cd securityonion-saltstack
-sudo bash so-setup-network.sh
+sudo bash so-setup-network
 ```
 Follow the prompts and reboot if asked to do so.
 
