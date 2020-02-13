@@ -21,6 +21,13 @@
 - CVE-2020-0601 Zeek Detection Script. 
 - ISO Install now prompts you to create a password for the onion user during imaging. This account gets disabled during setup.
 
+## Version 1.1.4 ISO Download
+
+[HH1.1.4-44.ISO](https://download.securityonion.net/file/Hybrid-Hunter/HH-1.1.4-44.iso)  
+
+MD5: C881536D55C5791F69596E474513E953  
+SHA1: 1CF503A46279EDDC5C84AA9F02167839004E7723  
+SHA256: F5C2FB52DFD314540019953BFE1960AF130AB09CD75E60E66CAA122DAD4DA414  
 
 ### Warnings and Disclaimers
 
