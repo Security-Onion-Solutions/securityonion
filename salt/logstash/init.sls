@@ -227,6 +227,7 @@ so-logstash:
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/etc/logstash-template.json:/logstash-template.json:ro
       - /opt/so/conf/logstash/etc/logstash-ossec-template.json:/logstash-ossec-template.json:ro
+      - /opt/so/conf/logstash/etc/logstash-strelka-template.json:/logstash-strelka-template.json:ro
       - /opt/so/conf/logstash/etc/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
