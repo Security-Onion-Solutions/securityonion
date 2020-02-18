@@ -84,7 +84,7 @@ surithresholding:
 
 # BPF compilation and configuration
 {% if BPF_NIDS %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_STATUS = 1  %}
    {% else  %}
