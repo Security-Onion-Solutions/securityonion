@@ -115,13 +115,15 @@ ls_pipeline_{{PL}}:
   {% for CONFIGFILE in PIPELINES[PL].config %}
 ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0]}}:
   file.managed:
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE}}
     - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
+    {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE}}
+    {% endif %}
     - user: 931
     - group: 939
-    {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
-    - template: jinja
-    {% endif %}
   {% endfor %}
 {% endfor %}
 
