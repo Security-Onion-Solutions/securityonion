@@ -131,7 +131,7 @@ lspipelinesyml:
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
     - defaults:
-        pipelines: {{ pipelines }}
+        pipelines: {{ PIPELINES }}
 
 # Copy down all the configs including custom - TODO add watch restart
 lsetcsync:
