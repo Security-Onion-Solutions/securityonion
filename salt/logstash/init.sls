@@ -112,7 +112,7 @@ ls_pipeline_{{PL}}:
     - user: 931
     - group: 939
 
-  {% for CONFIGFILE in PIPELINES.PL.config %}
+  {% for CONFIGFILE in PIPELINES[PL].config %}
 ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0]}}:
   file.managed:
     - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE}}
