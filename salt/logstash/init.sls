@@ -125,6 +125,24 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0]}}:
   {% endfor %}
 {% endfor %}
 
+lspipelinesyml:
+  file.managed:
+    - name: /opt/so/conf/logstash/etc/pipelines.yml
+    - source: salt://logstash/etc/pipelines.yml.jinja
+    - template: jinja
+    - defaults:
+        pipelines: {{ pipelines }}
+
+# Copy down all the configs including custom - TODO add watch restart
+lsetcsync:
+  file.recurse:
+    - name: /opt/so/conf/logstash/etc
+    - source: salt://logstash/etc
+    - user: 931
+    - group: 939
+    - template: jinja
+    - exclude_pat: pipelines*
+
 lssync:
   file.recurse:
     - name: /opt/so/conf/logstash/dynamic
