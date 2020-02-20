@@ -1,4 +1,55 @@
 logstash:
   pipelines:
     eval:
-      config: "/usr/share/logstash/pipelines/eval/*.conf"
+      config:
+        - 0800_input_eval.conf
+        - 1000_preprocess_log_elapsed.conf
+        - 1001_preprocess_syslogng.conf
+        - 1002_preprocess_json.conf
+        - 1004_preprocess_syslog_types.conf
+        - 1026_preprocess_dhcp.conf
+        - 1029_preprocess_esxi.conf
+        - 1030_preprocess_greensql.conf
+        - 1031_preprocess_iis.conf
+        - 1032_preprocess_mcafee.conf
+        - 1033_preprocess_snort.conf
+        - 1034_preprocess_syslog.conf
+        - 2000_network_flow.conf
+        - 6002_syslog.conf
+        - 6101_switch_brocade.conf
+        - 6200_firewall_fortinet.conf
+        - 6201_firewall_pfsense.conf
+        - 6300_windows.conf
+        - 6301_dns_windows.conf
+        - 6400_suricata.conf
+        - 6500_ossec.conf
+        - 6501_ossec_sysmon.conf
+        - 6502_ossec_autoruns.conf
+        - 6600_winlogbeat_sysmon.conf
+        - 6700_winlogbeat.conf
+        - 7100_osquery_wel.conf
+        - 7200_strelka.conf
+        - 8001_postprocess_common_ip_augmentation.conf
+        - 8007_postprocess_http.conf
+        - 8200_postprocess_tagging.conf
+        - 8998_postprocess_log_elapsed.conf
+        - 8999_postprocess_rename_type.conf
+        - 9000_output_bro.conf.jinja
+        - 9001_output_switch.conf.jinja
+        - 9002_output_import.conf.jinja
+        - 9004_output_flow.conf.jinja
+        - 9026_output_dhcp.conf.jinja
+        - 9029_output_esxi.conf.jinja
+        - 9030_output_greensql.conf.jinja
+        - 9031_output_iis.conf.jinja
+        - 9032_output_mcafee.conf.jinja
+        - 9033_output_snort.conf.jinja
+        - 9034_output_syslog.conf.jinja
+        - 9100_output_osquery.conf.jinja
+        - 9200_output_firewall.conf.jinja
+        - 9300_output_windows.conf.jinja
+        - 9301_output_dns_windows.conf.jinja
+        - 9400_output_suricata.conf.jinja
+        - 9500_output_beats.conf.jinja
+        - 9600_output_ossec.conf.jinja
+        - 9700_ouptut_strelka.conf.jinja

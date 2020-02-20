@@ -54,7 +54,7 @@
 
 {% endif %}
 
-{% set pipelines = salt['pillar.get']('logstash:pipelines', {}) %}
+{% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
 
 # Create the logstash group
 logstashgroup:
@@ -105,24 +105,26 @@ lscusttemplatedir:
     - group: 939
     - makedirs: True
 
-{% for pl in pipelines %}
-
-ls_pipeline_{{pl}}:
-  file.recurse:
-    - name: /opt/so/conf/logstash/pipelines/{{pl}}
-    - source: salt://logstash/conf/pipelines/{{pl}}
+{% for PL in PIPELINES %}
+ls_pipeline_{{PL}}:
+  file.directory:
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}
     - user: 931
     - group: 939
-    - maxdepth: 0
 
-ls_pipeline_{{pl}}_jinja:
-  file.recurse:
-    - name: /opt/so/conf/logstash/pipelines/{{pl}}
-    - source: salt://logstash/conf/pipelines/{{pl}}/templates
-    - user: 931
-    - group: 939
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0]}}:
+  file.managed:
+    - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
+    {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE | replace(".jinja", "")}}
     - template: jinja
-
+    {% else %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE}}
+    {% endif %}
+    - user: 931
+    - group: 939
+  {% endfor %}
 {% endfor %}
 
 lspipelinesyml:
@@ -131,7 +133,7 @@ lspipelinesyml:
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
     - defaults:
-        pipelines: {{ pipelines }}
+        pipelines: {{ PIPELINES }}
 
 # Copy down all the configs including custom - TODO add watch restart
 lsetcsync:
@@ -157,29 +159,6 @@ lscustsync:
     - source: salt://logstash/files/custom
     - user: 931
     - group: 939
-
-# Copy the config file for enabled logstash plugins/parsers
-lsconfsync:
-  file.managed:
-    - name: /opt/so/conf/logstash/conf.enabled.txt
-{% if grains.role == 'so-mastersearch' or grains.role == 'so-heavynode' %}
-    - source: salt://logstash/conf/conf.enabled.txt.so-master
-{% else %}
-    - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
-{% endif %}
-    - user: 931
-    - group: 939
-    - template: jinja
-
-{% if grains.role == 'so-mastersearch' %}
-lssearchsync:
-  file.managed:
-    - name: /opt/so/conf/logstash/conf.enabled.txt.search
-    - source: salt://logstash/conf/conf.enabled.txt.search
-    - user: 931
-    - group: 939
-    - template: jinja
-{% endif %}
 
 # Create the import directory
 importdir:
@@ -249,7 +228,6 @@ so-logstash:
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc
-      - file: /opt/so/conf/logstash/conf.enabled.txt
       - file: /opt/so/conf/logstash/custom
       #- file: /opt/so/conf/logstash/rulesets
       - file: /opt/so/conf/logstash/dynamic
