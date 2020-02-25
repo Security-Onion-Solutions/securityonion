@@ -55,6 +55,8 @@
 {% endif %}
 
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
+{% set TEMPLATES = salt['pillar.get']('logstash:templates', {}) %}
+{% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 
 # Create the logstash group
 logstashgroup:
@@ -69,21 +71,6 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
-# Create a directory for people to drop their own custom parsers into
-lscustdir:
-  file.directory:
-    - name: /opt/so/conf/logstash/custom
-    - user: 931
-    - group: 939
-    - makedirs: True
-
-lsdyndir:
-  file.directory:
-    - name: /opt/so/conf/logstash/dynamic
-    - user: 931
-    - group: 939
-    - makedirs: True
-
 lsetcdir:
   file.directory:
     - name: /opt/so/conf/logstash/etc
@@ -91,13 +78,7 @@ lsetcdir:
     - group: 939
     - makedirs: True
 
-lscustparserdir:
-  file.directory:
-    - name: /opt/so/conf/logstash/custom/parsers
-    - user: 931
-    - group: 939
-    - makedirs: True
-
+# templates not specific to pipeline
 lscusttemplatedir:
   file.directory:
     - name: /opt/so/conf/logstash/custom/templates
@@ -113,18 +94,33 @@ ls_pipeline_{{PL}}:
     - group: 939
 
   {% for CONFIGFILE in PIPELINES[PL].config %}
-ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0]}}:
+ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
     - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
     {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE | replace(".jinja", "")}}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
     {% else %}
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE}}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1]}}
     {% endif %}
     - user: 931
     - group: 939
   {% endfor %}
+{% endfor %}
+
+#sync templates to /opt/so/conf/logstash/etc/ here
+{% for TEMPLATE in TEMPLATES %}
+ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://logstash/pipelines/templates/{{TEMPLATE}}
+    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}
+    {% endif %}
+    - user: 931
+    - group: 939
 {% endfor %}
 
 lspipelinesyml:
@@ -193,14 +189,9 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-      - 0.0.0.0:514:514
-      - 0.0.0.0:5044:5044
-      - 0.0.0.0:5644:5644
-      - 0.0.0.0:6050:6050
-      - 0.0.0.0:6051:6051
-      - 0.0.0.0:6052:6052
-      - 0.0.0.0:6053:6053
-      - 0.0.0.0:9600:9600
+{% for BINDING in DOCKER_OPTIONS.port_bindings %}
+      - {{ BINDING }}
+{% endfor %}
     - binds:
       - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
