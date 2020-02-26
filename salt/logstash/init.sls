@@ -78,6 +78,12 @@ lsetcdir:
     - group: 939
     - makedirs: True
 
+lspipelinedir:
+  file.directory:
+    - name: /opt/so/conf/logstash/pipelines
+    - user: 931
+    - group: 939
+
 {% for PL in PIPELINES %}
 ls_pipeline_{{PL}}:
   file.directory:
