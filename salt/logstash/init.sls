@@ -78,14 +78,6 @@ lsetcdir:
     - group: 939
     - makedirs: True
 
-# templates not specific to pipeline
-lscusttemplatedir:
-  file.directory:
-    - name: /opt/so/conf/logstash/custom/templates
-    - user: 931
-    - group: 939
-    - makedirs: True
-
 {% for PL in PIPELINES %}
 ls_pipeline_{{PL}}:
   file.directory:
@@ -140,21 +132,6 @@ lsetcsync:
     - group: 939
     - template: jinja
     - exclude_pat: pipelines*
-
-lssync:
-  file.recurse:
-    - name: /opt/so/conf/logstash/dynamic
-    - source: salt://logstash/files/dynamic
-    - user: 931
-    - group: 939
-    - template: jinja
-
-lscustsync:
-  file.recurse:
-    - name: /opt/so/conf/logstash/custom
-    - source: salt://logstash/files/custom
-    - user: 931
-    - group: 939
 
 # Create the import directory
 importdir:
@@ -219,6 +196,5 @@ so-logstash:
       {%- endif %}
     - watch:
       - file: /opt/so/conf/logstash/etc
-      - file: /opt/so/conf/logstash/custom
+      - file: /opt/so/conf/logstash/pipelines
       #- file: /opt/so/conf/logstash/rulesets
-      - file: /opt/so/conf/logstash/dynamic
