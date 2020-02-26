@@ -1,4 +1,6 @@
 logstash:
   pipelines:
     master:
-      config: "/usr/share/logstash/pipelines/master/*.conf"
+      config:
+        - so/0010_input_hhbeats.conf
+        - so/9999_output_redis.conf.jinja

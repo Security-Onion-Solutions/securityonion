@@ -5,6 +5,7 @@ base:
 
   'G@role:so-mastersearch or G@role:so-heavynode':
     - match: compound
+    - logstash
     - logstash.master
     - logstash.search
 
@@ -23,6 +24,7 @@ base:
     - minions.{{ grains.id }}
 
   'G@role:so-master':
+    - logstash
     - logstash.master
 
   'G@role:so-eval':
@@ -31,6 +33,7 @@ base:
     - data.*
     - brologs
     - auth
+    - logstash
     - logstash.eval
     - minions.{{ grains.id }}
 
@@ -50,6 +53,6 @@ base:
     - firewall.*
     - fireeye
     - brologs
+    - logstash
     - logstash.helix
-    - static
     - minions.{{ grains.id }}
