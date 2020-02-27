@@ -95,7 +95,7 @@ plcronscript:
 
 # BPF compilation and configuration
 {% if BPF_ZEEK %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}

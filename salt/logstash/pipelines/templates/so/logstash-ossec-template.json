@@ -1,8 +1,15 @@
 {
-  "index_patterns": ["logstash-ids-*", "logstash-firewall-*", "logstash-syslog-*", "logstash-bro-*", "logstash-import-*", "logstash-beats-*"],
+  "index_patterns": ["logstash-ossec*"],
   "version":50001,
-  "order" : 0,
+  "order" : 1,
   "settings":{
+    "index": {
+      "mapping": {
+        "total_fields": {
+          "limit": 10000
+        }
+      }
+    },
     "number_of_replicas":0,
     "number_of_shards":1,
     "index.refresh_interval":"30s"
@@ -111,6 +118,10 @@
               "type":"keyword"
             }
           }
+        },
+	"agent":{
+          "type":"object",
+	  "dynamic": true
         },
         "alert":{
           "type":"text",
@@ -489,14 +500,6 @@
             }
           }
         },
-        "client_fqdn":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
         "client_issuer":{
           "type":"text",
           "fields":{
@@ -505,24 +508,8 @@
             }
           }
         },
-        "client_ip": {
-         "type":"ip",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
         "client_major_version":{
           "type":"long",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "client_message":{
-          "type":"text",
           "fields":{
             "keyword":{
               "type":"keyword"
@@ -639,14 +626,6 @@
         "creation_time":{
           "type":"date"
         },
-	"client_host_key_algorithms":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
         "current_directory":{
           "type":"text",
           "fields":{
@@ -662,6 +641,10 @@
               "type":"keyword"
             }
           }
+        },
+	"data":{
+          "type":"object",
+          "dynamic": true
         },
         "data_channel_destination_ip":{
           "type":"ip"
@@ -704,6 +687,10 @@
               "type":"keyword"
             }
           }
+        },
+	"decoder":{
+          "type":"object",
+          "dynamic": true
         },
         "depth":{
           "type":"long"
@@ -1205,6 +1192,14 @@
             }
           }
         },
+	"full_log":{
+          "type":"text",
+           "fields":{
+            "keyword":{
+              "type":"keyword"
+            }
+          }
+        },
         "function":{
           "type":"text",
           "fields":{
@@ -1277,46 +1272,6 @@
           }
         },
         "has_import_table":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"hassh":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"hassh_algorithms":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"hassh_server":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"hassh_server_algorithms":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"hassh_version":{
           "type":"text",
           "fields":{
             "keyword":{
@@ -1679,22 +1634,6 @@
             }
           }
         },
-	"ja3":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-	"ja3s":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
         "kerberos_success":{
           "type":"text",
           "fields":{
@@ -1866,6 +1805,10 @@
             }
           }
         },
+	"manager":{
+          "type":"object",
+          "dynamic": true
+        },
         "matched":{
           "type":"text",
           "fields":{
@@ -1891,14 +1834,6 @@
           }
         },
         "message_id":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "message_types":{
           "type":"text",
           "fields":{
             "keyword":{
@@ -2230,6 +2165,10 @@
             }
           }
         },
+	"predecoder":{
+          "type":"object",
+          "dynamic": true
+        },
         "prev_name":{
           "type":"text",
           "fields":{
@@ -2529,14 +2468,6 @@
             }
           }
         },
-       "requested_ip": {
-        "type":"ip",
-         "fields":{
-           "keyword":{
-             "type":"keyword"
-           }
-         }
-       },
         "resp_filenames":{
           "type":"text",
           "fields":{
@@ -2664,24 +2595,12 @@
             }
           }
         },
-        "rule":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
+	"wazuh-rule":{
+          "type":"object",
+	  "dynamic": true
         },
-        "rule_number":{
+	"rule_number":{
           "type":"long"
-        },
-	"rule_signature":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
         },
         "rule_type":{
           "type":"text",
@@ -2785,31 +2704,7 @@
             }
           }
         },
-        "server_dns_computer_name":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "server_ip": {
-         "type":"ip",
-          "fields":{
-            "keyword":{
-             "type":"keyword"
-            }
-          }
-        },
         "server_major_version":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "server_message":{
           "type":"text",
           "fields":{
             "keyword":{
@@ -2838,22 +2733,6 @@
         },
         "server_name_length":{
           "type":"long"
-        },
-        "server_nb_computer_name":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "server_tree_name":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
         },
         "service":{
           "type":"text",
@@ -2939,14 +2818,6 @@
           }
         },
         "software_type":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
-        "source":{
           "type":"text",
           "fields":{
             "keyword":{
@@ -3055,14 +2926,6 @@
             }
           }
         },
-	"server_host_key_algorithms":{
-          "type":"text",
-          "fields":{
-            "keyword":{
-              "type":"keyword"
-            }
-          }
-        },
         "status":{
           "type":"text",
           "fields":{
@@ -3138,6 +3001,10 @@
         },
         "suppress_for":{
           "type":"long"
+        },
+	"syscheck":{
+          "type":"object",
+          "dynamic": true
         },
         "syslog-facility":{
           "type":"text",
