@@ -11,7 +11,6 @@ logstash:
         - so/6600_winlogbeat_sysmon.conf
         - so/6700_winlogbeat.conf
         - so/7100_osquery_wel.conf
-        - so/7200_strelka.conf
         - so/8999_postprocess_rename_type.conf
         - so/9000_output_bro.conf.jinja
         - so/9002_output_import.conf.jinja
