@@ -3,7 +3,6 @@ logstash:
     eval:
       config:
         - so/0800_input_eval.conf
-        - so/1000_preprocess_log_elapsed.conf
         - so/1002_preprocess_json.conf
         - so/1033_preprocess_snort.conf
         - so/6500_ossec.conf
@@ -13,13 +12,11 @@ logstash:
         - so/6700_winlogbeat.conf
         - so/7100_osquery_wel.conf
         - so/7200_strelka.conf
-        - so/8998_postprocess_log_elapsed.conf
         - so/8999_postprocess_rename_type.conf
         - so/9000_output_bro.conf.jinja
         - so/9002_output_import.conf.jinja
         - so/9033_output_snort.conf.jinja
         - so/9100_output_osquery.conf.jinja
-        - so/9200_output_firewall.conf.jinja
         - so/9400_output_suricata.conf.jinja
         - so/9500_output_beats.conf.jinja
         - so/9600_output_ossec.conf.jinja
