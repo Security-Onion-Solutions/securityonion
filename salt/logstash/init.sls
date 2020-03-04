@@ -85,12 +85,6 @@ lspipelinedir:
     - group: 939
 
 {% for PL in PIPELINES %}
-ls_pipeline_{{PL}}:
-  file.directory:
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}
-    - user: 931
-    - group: 939
-
   {% for CONFIGFILE in PIPELINES[PL].config %}
 ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
@@ -103,10 +97,23 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
     {% endif %}
     - user: 931
     - group: 939
+    - makedirs: True
   {% endfor %}
+
+ls_pipeline_{{PL}}:
+  file.directory:
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}
+    - user: 931
+    - group: 939
+    - require:
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+    - clean: True
+
 {% endfor %}
 
-#sync templates to /opt/so/conf/logstash/etc/ here
+#sync templates to /opt/so/conf/logstash/etc
 {% for TEMPLATE in TEMPLATES %}
 ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
   file.managed:
@@ -129,7 +136,7 @@ lspipelinesyml:
     - defaults:
         pipelines: {{ PIPELINES }}
 
-# Copy down all the configs including custom - TODO add watch restart
+# Copy down all the configs
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/logstash/etc
@@ -137,6 +144,11 @@ lsetcsync:
     - user: 931
     - group: 939
     - template: jinja
+    - clean: True
+    - require:
+{% for TEMPLATE in TEMPLATES %}
+      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+{% endfor %}
     - exclude_pat: pipelines*
 
 # Create the import directory
@@ -176,12 +188,15 @@ so-logstash:
       - {{ BINDING }}
 {% endfor %}
     - binds:
+{% for TEMPLATE in TEMPLATES %}
+  {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:ro
+  {% else %}
+      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}:/{{TEMPLATE.split('/')[1]}}:ro
+  {% endif %}
+{% endfor %}
       - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - /opt/so/conf/logstash/etc/logstash-template.json:/logstash-template.json:ro
-      - /opt/so/conf/logstash/etc/logstash-ossec-template.json:/logstash-ossec-template.json:ro
-      - /opt/so/conf/logstash/etc/logstash-strelka-template.json:/logstash-strelka-template.json:ro
-      - /opt/so/conf/logstash/etc/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
       - /opt/so/rules:/etc/nsm/rules:ro
@@ -201,6 +216,14 @@ so-logstash:
       - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
     - watch:
-      - file: /opt/so/conf/logstash/etc
-      - file: /opt/so/conf/logstash/pipelines
-      #- file: /opt/so/conf/logstash/rulesets
+      - file: lsetcsync
+{% for PL in PIPELINES %}
+      - file: ls_pipeline_{{PL}}
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+{% endfor %}
+{% for TEMPLATE in TEMPLATES %}
+      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+{% endfor %}
+#     - file: /opt/so/conf/logstash/rulesets
