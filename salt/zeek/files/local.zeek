@@ -124,3 +124,6 @@ redef LogAscii::json_timestamps = JSON::TS_ISO8601;
 
 # BPF Configuration
 @load securityonion/bpfconf
+
+# Extracted files
+@load securityonion/file-extraction

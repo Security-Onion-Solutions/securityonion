@@ -16,6 +16,6 @@ event file_sniff(f: fa_file, meta: fa_metadata)
     if ( meta?$mime_type )
         ext = ext_map[meta$mime_type];
 
-    local fname = fmt("/nsm/bro/extracted/%s-%s.%s", f$source, f$id, ext);
+    local fname = fmt("/nsm/zeek/extracted/%s-%s.%s", f$source, f$id, ext);
     Files::add_analyzer(f, Files::ANALYZER_EXTRACT, [$extract_filename=fname]);
     }

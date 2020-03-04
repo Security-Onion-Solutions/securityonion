@@ -54,36 +54,8 @@ strelkastagedir:
     - group: 939
     - makedirs: True
 
-
-so-strelka-frontendimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-frontend:HH1.1.5
-
-so-strelka-coordinatorimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/redis:5.0.5-alpine3.10
-
-so-strelka-gatekeeperimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/redis:5.0.5-alpine3.10
-
-so-strelka-backendimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-backend:HH1.1.5
-
-so-strelka-managerimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-manager:HH1.1.5
-
-so-strelka-backendimage:
- cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-strelka-backend:HH1.1.5
-
-
 strelka_coordinator:
   docker_container.running:
-    - require:
-      - so-strelka-coordinatorimage
     - image: docker.io/redis:5.0.5-alpine3.10
     - name: so-strelka-coordinator
     - command: redis-server --save "" --appendonly no
@@ -92,19 +64,15 @@ strelka_coordinator:
 
 strelka_gatekeeper:
   docker_container.running:
-    - require:
-      - so-strelka-gatekeeperimage
     - image: docker.io/redis:5.0.5-alpine3.10
     - name: so-strelka-gatekeeper
     - command: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
       - 0.0.0.0:6381:6379
-   
+
 strelka_frontend:
   docker_container.running:
-    - require:
-      - so-strelka-frontendimage
-    - image: docker.io/soshybridhunter/so-strelka-frontend:HH1.1.5 
+    - image: soshybridhunter/so-strelka-frontend:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /opt/so/log/strelka/:/var/log/strelka/:rw
@@ -116,9 +84,7 @@ strelka_frontend:
 
 strelka_backend:
   docker_container.running:
-    - require:
-      - so-strelka-backendimage
-    - image: docker.io/soshybridhunter/so-strelka-backend:HH1.1.5
+    - image: soshybridhunter/so-strelka-backend:HH1.2.1
     - restart_policy: unless-stopped
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
@@ -128,9 +94,7 @@ strelka_backend:
 
 strelka_manager:
   docker_container.running:
-    - require:
-      - so-strelka-managerimage
-    - image: docker.io/soshybridhunter/so-strelka-manager:HH1.1.5
+    - image: soshybridhunter/so-strelka-manager:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
@@ -138,12 +102,9 @@ strelka_manager:
 
 strelka_filestream:
   docker_container.running:
-    - require:
-      - so-strelka-filestreamimage
-    - image: docker.io/soshybridhunter/so-strelka-filestream:HH1.1.5   
-    - image: docker.io/wlambert/sfilestream:grpc
+    - image: soshybridhunter/so-strelka-filestream:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
-    - command: strelka-filestream
+    - command: strelka-filestream 
