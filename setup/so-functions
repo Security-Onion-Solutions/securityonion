@@ -423,7 +423,11 @@ docker_install() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      else
+        apt-get -y install docker-ce python-docker >> $SETUPLOG 2>&1
+      fi
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
@@ -431,7 +435,11 @@ docker_install() {
       apt-key add $TMP/gpg/docker.pub >> $SETUPLOG 2>&1
       add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> $SETUPLOG 2>&1
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      else
+        apt-get -y install docker-ce python-docker >> $SETUPLOG 2>&1
+      fi
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
@@ -651,8 +659,13 @@ install_master() {
     #wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
-    apt-mark hold salt-common salt-master salt-minion
+    if [ $OSVER != "xenial" ]; then
+      apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
+      apt-mark hold salt-common salt-master salt-minion
+    else
+      apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
+      apt-mark hold salt-common salt-master salt-minion
+    fi
   fi
 
   copy_master_config
@@ -1050,7 +1063,7 @@ EOF
     DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
     if [ $OSVER != "xenial" ]; then
-      
+
       # Switch to Python 3 as default is this is not xenial
       update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10
 
@@ -1094,10 +1107,14 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      # Need to add python packages here
-      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
-      apt-mark hold salt-minion salt-common
-
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      else
+        # Need to add python packages here
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      fi
     else
 
       # Copy down the gpg keys and install them from the master
@@ -1111,9 +1128,14 @@ EOF
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
-      apt-mark hold salt-minion salt-common
-
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      else
+        # Need to add python packages here
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      fi
     fi
 
   fi
@@ -1180,7 +1202,11 @@ salt_install_mysql_deps() {
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install python-mysqldb
+    if [ $OSVER != "xenial" ]; then
+      apt-get -y install python3-mysql >> $SETUPLOG 2>&1
+    else
+      apt-get -y install python-mysqldb
+    fi
   fi
 
 }
