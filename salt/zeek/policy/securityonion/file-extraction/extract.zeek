@@ -1,4 +1,3 @@
- Hit up TOoSmOotH with questions
 # Directory to stage Zeek extracted files before processing
 redef FileExtract::prefix = "/nsm/zeek/extracted/";
 # Set a limit to the file size
