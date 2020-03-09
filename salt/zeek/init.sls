@@ -48,15 +48,9 @@ zeekextractdir:
     - group: 939
     - makedirs: True
 
-zeeksfafincompletedir:
+zeekextractcompletedir:
   file.directory:
-    - name: /nsm/faf/files/incomplete
-    - user: 937
-    - makedirs: true
-
-zeeksfafcompletedir:
-  file.directory:
-    - name: /nsm/faf/files/complete
+    - name: /nsm/zeek/extracted/complete
     - user: 937
     - makedirs: true
 

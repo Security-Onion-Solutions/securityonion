@@ -34,6 +34,23 @@ nodered:
 #    - mode: 775
 #    - makedirs: True
 
+noderedflows:
+  file.recurse:
+    - name: /opt/so/saltstack/salt/nodered/
+    - source: salt://nodered/files
+    - user: 947
+    - group: 939
+    - template: jinja
+
+noderedflowsload:
+  file.managed:
+    - name: /usr/sbin/so-nodered-load-flows
+    - source: salt://nodered/files/nodered_load_flows
+    - user: 0
+    - group: 0
+    - mode: 755
+    - template: jinja
+
 noderedlog:
   file.directory:
     - name: /opt/so/log/nodered
@@ -44,10 +61,15 @@ noderedlog:
 
 so-nodered:
   docker_container.running:
-    - image: soshybridhunter/so-nodered:HH1.1.5
+    - image: soshybridhunter/so-nodered:HH1.2.1
     - interactive: True
     - binds:
       - /opt/so/conf/nodered/:/data:rw
     - port_bindings:
       - 0.0.0.0:1880:1880
+
+so-nodered-flows:
+  cmd.run:
+    - name: /usr/sbin/so-nodered-load-flows
+    - cwd: /
 
