@@ -56,3 +56,8 @@ base:
     - logstash
     - logstash.helix
     - minions.{{ grains.id }}
+
+  'G@role:so-fleet':
+    - static
+    - firewall.*
+    - minions.{{ grains.id }}

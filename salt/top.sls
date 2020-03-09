@@ -261,3 +261,14 @@ base:
     {%- endif %}
     - filebeat
     - schedule
+  
+    'G@role:so-fleet':
+    - ca
+    - ssl
+    - common
+    - firewall
+    - mysql
+    - redis
+    - fleet
+    - launcher
+    - filebeat

@@ -923,12 +923,74 @@ if (whiptail_you_sure) ; then
 
   fi
 
+###########################
+###  Standalone Fleet   ###
+###########################
 
-
-
-
-
-
+  if [ $INSTALLTYPE == 'FLEET' ]; then
+    whiptail_management_server
+    whiptail_master_updates
+    set_updates
+    whiptail_make_changes
+    set_hostname
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
+    if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
+      disable_onion_user
+    fi
+    copy_ssh_key >> $SETUPLOG 2>&1
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
+      echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
+      sensor_pillar >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
+      saltify >> $SETUPLOG 2>&1
+      echo -e "XXX\n20\nInstalling Docker... \nXXX"
+      docker_install >> $SETUPLOG 2>&1
+      echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
+      configure_minion sensor >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
+      echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
+      salt_firstcheckin >> $SETUPLOG 2>&1
+      echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
+      # Accept the Salt Key
+      accept_salt_key_remote >> $SETUPLOG 2>&1
+      echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
+      echo -e "XXX\n35\nInstalling Core Components... \nXXX"
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nInstalling MySQL... \nXXX"
+      salt-call state.apply mysql >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nInstalling Redis... \nXXX"
+      salt-call state.apply redis >> $SETUPLOG 2>&1
+      echo -e "XXX\n60\nInstalling Fleet... \nXXX"
+      salt-call state.apply fleet >> $SETUPLOG 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n97\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+      shutdown -r now
+    else
+      whiptail_setup_failed
+      shutdown -r now
+    fi
+  fi
 
 
 else
