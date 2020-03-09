@@ -25,3 +25,4 @@ logstash:
     - so/logstash-ossec-template.json
     - so/logstash-strelka-template.json
     - so/logstash-template.json
+    - so/logstash-bro-template.json
