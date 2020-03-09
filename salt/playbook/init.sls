@@ -52,3 +52,10 @@ so-navigator:
     - identifier: so-playbook-sync
     - user: root
     - minute: '*/5'
+
+/usr/sbin/so-playbook-ruleupdate:
+  cron.present:
+    - identifier: so-playbook-ruleupdate
+    - user: root
+    - minute: '1'
+    - hour: '6'
