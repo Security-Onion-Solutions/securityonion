@@ -611,7 +611,14 @@ get_filesystem_root(){
 get_main_ip() {
 
   # Get the main IP address the box is using
-  MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+
+  # Add some logic because Bubntu 18.04 like to be different
+  if [ $OSVER == 'bionic' ]; then
+    MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+  else
+    MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+  fi
+  
   MAININT=$(ip route get 1 | awk '{print $5;exit}')
 
 }
