@@ -60,4 +60,6 @@ base:
   'G@role:so-fleet':
     - static
     - firewall.*
+    - data.*
+    - auth
     - minions.{{ grains.id }}
