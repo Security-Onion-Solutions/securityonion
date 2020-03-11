@@ -3,7 +3,7 @@
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% set MAINIP = salt['pillar.get']('fleet:mainip') %}
+{% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
 # MySQL Setup
