@@ -423,7 +423,11 @@ docker_install() {
 
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ]; then
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      else
+        apt-get -y install docker-ce python-docker >> $SETUPLOG 2>&1
+      fi
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
@@ -431,7 +435,11 @@ docker_install() {
       apt-key add $TMP/gpg/docker.pub >> $SETUPLOG 2>&1
       add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> $SETUPLOG 2>&1
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install docker-ce python3-docker >> $SETUPLOG 2>&1
+      else
+        apt-get -y install docker-ce python-docker >> $SETUPLOG 2>&1
+      fi
       docker_registry >> $SETUPLOG 2>&1
       echo "Restarting Docker" >> $SETUPLOG 2>&1
       systemctl restart docker >> $SETUPLOG 2>&1
@@ -603,7 +611,14 @@ get_filesystem_root(){
 get_main_ip() {
 
   # Get the main IP address the box is using
-  MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+
+  # Add some logic because Bubntu 18.04 like to be different
+  if [ $OSVER == 'bionic' ]; then
+    MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+  else
+    MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
+  fi
+
   MAININT=$(ip route get 1 | awk '{print $5;exit}')
 
 }
@@ -651,8 +666,13 @@ install_master() {
     #wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 
   else
-    apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
-    apt-mark hold salt-common salt-master salt-minion
+    if [ $OSVER != "xenial" ]; then
+      apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
+      apt-mark hold salt-common salt-master salt-minion
+    else
+      apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
+      apt-mark hold salt-common salt-master salt-minion
+    fi
   fi
 
   copy_master_config
@@ -1049,6 +1069,12 @@ EOF
     ADDUSER=useradd
     DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
+    if [ $OSVER != "xenial" ]; then
+
+      # Switch to Python 3 as default is this is not xenial
+      update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10
+
+    fi
     # Add the pre-requisites for installing docker-ce
     apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl jq >> $SETUPLOG 2>&1
 
@@ -1058,12 +1084,19 @@ EOF
     # Nasty hack but required for now
     if [ $INSTALLTYPE == 'MASTERONLY' ] || [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
 
-      # Install the repo for salt
-      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
-      wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest xenial main" > /etc/apt/sources.list.d/saltstack.list
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack2019.list
-
+      if [ $OSVER != "xenial" ]; then
+        # Install the repo for salt py3 edition
+        wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/3000/SALTSTACK-GPG-KEY.pub | apt-key add -
+        wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
+        echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+        echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
+      else
+        # Install the repo for salt
+        wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
+        wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
+        echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+        echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
+      fi
       # Lets get the docker repo added
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
       add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
@@ -1081,10 +1114,14 @@ EOF
 
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      # Need to add python packages here
-      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
-      apt-mark hold salt-minion salt-common
-
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      else
+        # Need to add python packages here
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      fi
     else
 
       # Copy down the gpg keys and install them from the master
@@ -1094,13 +1131,18 @@ EOF
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 xenial main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
-      apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
-      apt-mark hold salt-minion salt-common
-
+      if [ $OSVER != "xenial" ]; then
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      else
+        # Need to add python packages here
+        apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> $SETUPLOG 2>&1
+        apt-mark hold salt-minion salt-common
+      fi
     fi
 
   fi
@@ -1167,7 +1209,11 @@ salt_install_mysql_deps() {
   if [ $OS == 'centos' ]; then
     yum -y install mariadb-devel
   elif [ $OS == 'ubuntu' ]; then
-    apt-get -y install python-mysqldb
+    if [ $OSVER != "xenial" ]; then
+      apt-get -y install python3-mysqldb >> $SETUPLOG 2>&1
+    else
+      apt-get -y install python-mysqldb
+    fi
   fi
 
 }
