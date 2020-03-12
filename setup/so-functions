@@ -1236,7 +1236,6 @@ set_hostname() {
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
   HOSTNAME=$(cat /etc/hostname)
-  MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
   if [ $INSTALLTYPE != 'MASTER' ] || [ $INSTALLTYPE != 'EVAL' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
     if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
@@ -1273,7 +1272,7 @@ set_initial_firewall_policy() {
       if [ $INSTALLTYPE == 'EVAL' ]; then
         /opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
       elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
-        /opt/so/saltstack/pillar/data/addtotab.sh mastersearchtab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+        /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
       fi
   fi
 
