@@ -5,7 +5,10 @@
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- elif grains['role'] == 'so-sensor' %}
 {%- set ip = salt['pillar.get']('sensor:mainip', '') %}
+{%- elif grains['role'] == 'so-fleet' %}
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- endif %}
+
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
   iptables.chain_present:
@@ -701,4 +704,94 @@ enable_forwardnode_beats_5644_{{ip}}:
     - dport: 5644
     - position: 1
     - save: True
+{% endif %}
+
+
+# Rules if you are a Standalone Fleet node
+{% if grains['role'] == 'so-fleet' %}
+#This should be more granular
+iptables_allow_fleetnode_docker:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - source: 172.17.0.0/24
+    - position: 1
+    - save: True
+
+# Allow Redis
+enable_fleetnode_redis_6379_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 6379
+    - position: 1
+    - save: True
+
+enable_fleetnode_mysql_3306_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3306
+    - position: 1
+    - save: True
+
+enable_fleet_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
+    - position: 1
+    - save: True
+
+    
+enable_fleetnodetemp_mysql_3306_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 127.0.0.1
+    - dport: 3306
+    - position: 1
+    - save: True
+
+enable_fleettemp_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 127.0.0.1
+    - dport: 8080
+    - position: 1
+    - save: True
+
+
+     
+{% for ip in pillar.get('fleet_nodes')  %}
+
+enable_standard_fleet_443_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 443
+    - position: 1
+    - save: True
+    
+
+{% endfor %}
+
 {% endif %}

@@ -1,4 +1,5 @@
 {% set master = salt['grains.get']('master') %}
+{% set main_hostname = salt['grains.get']('host') %}
 {% set master_minion_id = master.split(".")[0] %}
 {%- set masterip = salt['pillar.get']('static:masterip', '') -%}
 
@@ -163,5 +164,47 @@ fbcertdir:
 filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
+
+{% endif %}
+
+{% if grains['role'] == 'so-fleet' %}
+
+# Create a cert for the reverse proxy
+/etc/pki/masterssl.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: masterssl
+    - public_key: /etc/pki/masterssl.key
+    - CN: {{ main_hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/masterssl.key
+        bits: 4096
+        backup: True
+
+
+# Create a private key and cert for OSQuery
+/etc/pki/fleet.key:
+  x509.private_key_managed:
+    - CN: {{ main_hostname }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+
+/etc/pki/fleet.crt:
+  x509.certificate_managed:
+    - signing_private_key: /etc/pki/fleet.key
+    - CN: {{ main_hostname }}
+    - subjectAltName: DNS:{{ main_hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - managed_private_key:
+        name: /etc/pki/fleet.key
+        bits: 4096
+        backup: True
 
 {% endif %}

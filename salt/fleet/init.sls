@@ -3,6 +3,8 @@
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
+{% set MAINIP = salt['pillar.get']('node:mainip') %}
+{% set FLEETARCH = salt['grains.get']('role') %}
 
 # Fleet Setup
 fleetcdir:
@@ -68,11 +70,16 @@ so-fleet:
     - port_bindings:
       - 0.0.0.0:8080:8080
     - environment:
+  {% if FLEETARCH == "so-fleet" %}
+      - KOLIDE_MYSQL_ADDRESS={{ MAINIP }}:3306
+      - KOLIDE_REDIS_ADDRESS={{ MAINIP }}:6379
+  {% else %}
       - KOLIDE_MYSQL_ADDRESS={{ MASTERIP }}:3306
+      - KOLIDE_REDIS_ADDRESS={{ MASTERIP }}:6379
+  {% endif %}
       - KOLIDE_MYSQL_DATABASE=fleet
       - KOLIDE_MYSQL_USERNAME=fleetdbuser
       - KOLIDE_MYSQL_PASSWORD={{ FLEETPASS }}
-      - KOLIDE_REDIS_ADDRESS={{ MASTERIP }}:6379
       - KOLIDE_SERVER_CERT=/ssl/server.cert
       - KOLIDE_SERVER_KEY=/ssl/server.key
       - KOLIDE_LOGGING_JSON=true

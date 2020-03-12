@@ -55,11 +55,7 @@ mysqldatadir:
 
 so-mysql:
   docker_container.running:
-{% if FLEETARCH == "so-fleet" %}
-    - image: {{ MAINIP }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
-{% else %}
     - image: {{ MASTER }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
-{% endif %}
     - hostname: so-mysql
     - user: socore
     - port_bindings:

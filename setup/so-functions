@@ -239,6 +239,18 @@ configure_minion() {
   elif [ $TYPE == 'helix' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
     echo "id: $MINION_ID" >> /etc/salt/minion
+  elif [ $TYPE == 'fleet' ]; then
+    echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
+    echo "mysql.port: 3306" >> /etc/salt/minion
+    echo "mysql.user: 'root'" >> /etc/salt/minion
+    if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+      echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
+    else
+      OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
+      echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
+    fi
+    echo "master: $MSRV" > /etc/salt/minion
+    echo "id: $MINION_ID" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
     echo "id: $MINION_ID" >> /etc/salt/minion
