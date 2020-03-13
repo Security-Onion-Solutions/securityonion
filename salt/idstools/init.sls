@@ -37,8 +37,9 @@ idstoolsetcsync:
     - group: 939
     - template: jinja
 
-/usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log:
+so-ruleupdatecron:
   cron.present:
+    - name: /usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log
     - user: root
     - minute: '1'
     - hour: '7'

@@ -78,8 +78,9 @@ plcronscript:
     - source: salt://zeek/cron/packetloss.sh
     - mode: 755
 
-/usr/local/bin/packetloss.sh:
+zeekpacketlosscron:
   cron.present:
+    - name: /usr/local/bin/packetloss.sh
     - user: root
     - minute: '*/10'
     - hour: '*'
