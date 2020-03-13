@@ -1,0 +1,23 @@
+{
+  "description" : "zeek.smb_files",
+  "processors" : [
+    { "remove":         { "field": ["host"],     "ignore_failure": true                                                                  } },
+    { "json":		{ "field": "message",			"target_field": "message2",		"ignore_failure": true	} },
+    { "rename": 	{ "field": "message2.fuid", 		"target_field": "log.id.fuid",			"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.action", 		"target_field": "file.action",		"ignore_missing": true 	} },
+    { "remove":		{ "field": "path",			"ignore_failure": true						} },
+    { "rename": 	{ "field": "message2.path", 		"target_field": "file.path",			"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.name", 		"target_field": "file.name",			"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.size", 		"target_field": "file.size",			"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.prev_name", 	"target_field": "file.previous_name",		"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "times.modified", 		"path": "message2", 			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.times.modified", 	"target_field": "file.times_modified",	"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "times.accessed", 		"path": "message2", 			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.times.accessed", 	"target_field": "file.times_accessed",	"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "times.created", 		"path": "message2", 			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.times.created", 	"target_field": "file.times_created",	"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "times.changed", 		"path": "message2", 			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.times.changed", 	"target_field": "file.times_changed",	"ignore_missing": true 	} },
+    { "pipeline":       { "name": "zeek.common"                                                                                   } }
+  ]
+}

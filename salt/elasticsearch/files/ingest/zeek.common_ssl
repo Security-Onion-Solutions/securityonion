@@ -1,0 +1,58 @@
+{
+  "description" : "zeek.common_ssl",
+  "processors" : [
+    {
+  	"kv": {
+    		"field": "certificate_issuer",
+		"field_split": ",",
+		"value_split": "=",
+		"ignore_missing": true,
+		"ignore_failure": true,
+		"include_keys": [ "CN", "C", "O", "OU", "ST", "SN", "L", "DC", "GN", "pseudonym", "serialNumber", "title", "initials" ]
+	}
+    },
+    { 	"rename":{ "field": "CN",		"target_field": "issuer_common_name",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "C",		"target_field": "issuer_country_code",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "O",		"target_field": "issuer_organization",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "OU",		"target_field": "issuer_organization_unit",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "ST",		"target_field": "issuer_state",			"ignore_failure": true 	} },
+    { 	"rename":{ "field": "SN",		"target_field": "issuer_surname",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "L",		"target_field": "issuer_locality",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "DC",		"target_field": "issuer_distinguised_name",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "GN",		"target_field": "issuer_given_name",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "pseudonym",	"target_field": "issuer_pseudonym",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "serialNumber",	"target_field": "issuer_serial_number",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "title",		"target_field": "issuer_title",			"ignore_failure": true 	} },
+    { 	"rename":{ "field": "initials",		"target_field": "issuer_initials",		"ignore_failure": true 	} },
+    {
+  	"kv": {
+    		"field": "certificate_subject",
+		"field_split": ",",
+		"value_split": "=",
+		"ignore_missing": true,
+		"ignore_failure": true,
+		"include_keys": [ "CN", "C", "O", "OU", "ST", "SN", "L", "GN", "pseudonym", "serialNumber", "title", "initials" ]
+	}
+    },
+    { 	"rename":{ "field": "CN",		"target_field": "certificate_common_name",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "C",		"target_field": "certificate_country_code",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "O",		"target_field": "certificate_organization",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "OU",		"target_field": "certificate_organization_unit","ignore_failure": true 	} },
+    { 	"rename":{ "field": "ST",		"target_field": "certificate_state",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "SN",		"target_field": "certificate_surname",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "L",		"target_field": "certificate_locality",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "GN",		"target_field": "certificate_given_name",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "pseudonym",	"target_field": "certificate_pseudonym",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "serialNumber",	"target_field": "certificate_serial_number",	"ignore_failure": true 	} },
+    { 	"rename":{ "field": "title",		"target_field": "certificate_title",		"ignore_failure": true 	} },
+    { 	"rename":{ "field": "initials",		"target_field": "certificate_initials",		"ignore_failure": true 	} },
+    { 	"script":{ "lang": "painless", "source": "ctx.certificate_common_name_length = ctx.certificate_common_name.length()", "ignore_failure": true } },
+    { 	"script":{ "lang": "painless", "source": "ctx.issuer_common_name_length = ctx.issuer_common_name.length()", "ignore_failure": true } },
+    { 	"script":{ "lang": "painless", "source": "ctx.server_name_length = ctx.server_name.length()", "ignore_failure": true } },
+    { 
+	"pipeline": { 
+		"name": "zeek.common"
+	}
+    }
+  ]
+}

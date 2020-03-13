@@ -1,0 +1,20 @@
+{
+  "description" : "zeek.socks",
+  "processors" : [
+    { "remove":         { "field": ["host"],     "ignore_failure": true                                                                  } },
+    { "json":		{ "field": "message",			"target_field": "message2",		"ignore_failure": true	} },
+    { "rename": 	{ "field": "message2.version", 		"target_field": "socks.version",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.user", 		"target_field": "socks.user",			"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.password", 	"target_field": "socks.password",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.status", 		"target_field": "socks.status",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.request_host", 	"target_field": "socks.request.host",		"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "request.name", 		"path": "message2",			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.request.name", 	"target_field": "socks.request.name",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.request_p", 	"target_field": "socks.request.port",		"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "bound.host", 		"path": "message2",			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.bound.host", 	"target_field": "socks.bound.host",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.bound_name", 	"target_field": "socks.bound.name",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.bound_p", 		"target_field": "socks.bound.port",		"ignore_missing": true 	} },
+    { "pipeline":       { "name": "zeek.common"                                                                                   } }
+  ]
+}

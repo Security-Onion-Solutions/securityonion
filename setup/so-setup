@@ -31,7 +31,6 @@ fi
 
 # Global Variables
 HOSTNAME=$(cat /etc/hostname)
-MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
 CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
@@ -120,6 +119,9 @@ if (whiptail_you_sure) ; then
 
   # What kind of install are we doing?
   whiptail_install_type
+  SHORTNAME=$(echo $HOSTNAME | awk -F. {'print $1'})
+  MINION_ID=$(echo $SHORTNAME'_'$INSTALLTYPE | tr '[:upper:]' '[:lower:]')
+  echo "MINION_ID = $MINION_ID" >> $SETUPLOG 2>&1
 
   # How do we want to handle OS patching? manual, auto or scheduled days and hours
   whiptail_patch_schedule
@@ -252,7 +254,7 @@ if (whiptail_you_sure) ; then
   ####################
   ##     Master     ##
   ####################
-  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE == 'MASTER' ]; then
 
     # Would you like to do an advanced install?
     whiptail_master_adv
@@ -437,7 +439,7 @@ if (whiptail_you_sure) ; then
   ##     Sensor     ##
   ####################
 
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE == 'SENSOR' ]; then
     filter_unused_nics
     whiptail_bond_nics
     whiptail_management_server
@@ -520,12 +522,12 @@ if (whiptail_you_sure) ; then
   ##     Eval Mode  or Master Search   ##
   #######################################
 
-  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+  if [ $INSTALLTYPE == 'EVAL' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
 
     # Filter out the management NIC
     filter_unused_nics
 
-    if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    if [ $INSTALLTYPE == 'EVAL' ]; then
       TYPE='eval'
       # Select which NICs are in the bond
       whiptail_bond_nics
@@ -585,7 +587,7 @@ if (whiptail_you_sure) ; then
     add_socore_user_master
     {
       sleep 0.5
-      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      if [ $INSTALLTYPE == 'EVAL' ]; then
         echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
         create_sensor_bond >> $SETUPLOG 2>&1
       fi
@@ -660,7 +662,7 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n45\nInstalling Kibana... \nXXX"
       salt-call state.apply kibana >> $SETUPLOG 2>&1
 
-      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      if [ $INSTALLTYPE == 'EVAL' ]; then
         echo -e "XXX\n50\nInstalling pcap... \nXXX"
         salt-call state.apply pcap >> $SETUPLOG 2>&1
         echo -e "XXX\n52\nInstalling Suricata... \nXXX"
