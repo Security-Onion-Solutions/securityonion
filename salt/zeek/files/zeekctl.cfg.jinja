@@ -1,78 +1,9 @@
 ## Global ZeekControl configuration file.
 
-###############################################
-# Mail Options
+{%- set ALLOWEDOPTIONS = ['commtimeout','commandtimeout','compresscmd','compressextension','compresslogs','compresslogsinflight','controltopic','crashexpireinterval','croncmd','debug','env_vars','havenfs','keeplogs','logdir','logexpireinterval','logrotationinterval','mailalarmsinterval','mailalarmsto','mailarchivelogfail','mailconnectionsummary','mailfrom','mailhostupdown','mailreceivingpackets','mailreplyto','mailsubjectprefix','mailto','makearchivename','memlimit','mindiskspace','pfringclusterid','pfringclustertype','pfringfirstappinstance','prefixes','savetraces','sendmail','sitepluginpath','sitepolicypath','sitepolicyscripts','statslogenable','statslogexpireinterval','statuscmdshowall','stoptimeout','stopwait','timefmt','timemachinehost','timemachineport','zeekargs','zeekport','bindir','capstatspath','cfgdir','debuglog','defaultstoredir','helperdir','libdir','libdir64','libdirinternal','localnetscfg','lockfile','logexpireminutes','nodecfg','os','pcapbufsize','pcapsnaplen','plugindir','pluginzeekdir','policydir','policydirsiteinstall','policydirsiteinstallauto','postprocdir','scriptsdir','spooldir','standalone','statefile','staticdir','statsdir','statslog','time','tmpdir','tmpexecdir','tracesummary','version','zeek','zeekbase'] %}
 
-# Recipient address for all emails sent out by Zeek and ZeekControl.
-MailTo = {{ ZEEKCTL.MailTo }}
-
-# Mail connection summary reports each log rotation interval.  A value of 1
-# means mail connection summaries, and a value of 0 means do not mail
-# connection summaries.  This option has no effect if the trace-summary
-# script is not available.
-MailConnectionSummary = {{ ZEEKCTL.MailConnectionSummary }}
-
-# Lower threshold (in percentage of disk space) for space available on the
-# disk that holds SpoolDir. If less space is available, "zeekctl cron" starts
-# sending out warning emails.  A value of 0 disables this feature.
-MinDiskSpace = {{ ZEEKCTL.MinDiskSpace }}
-
-# Send mail when "zeekctl cron" notices the availability of a host in the
-# cluster to have changed.  A value of 1 means send mail when a host status
-# changes, and a value of 0 means do not send mail.
-MailHostUpDown = {{ ZEEKCTL.MailHostUpDown }}
-
-###############################################
-# Logging Options
-
-# Rotation interval in seconds for log files on manager (or standalone) node.
-# A value of 0 disables log rotation.
-LogRotationInterval = {{ ZEEKCTL.LogRotationInterval }}
-
-# Expiration interval for archived log files in LogDir.  Files older than this
-# will be deleted by "zeekctl cron".  The interval is an integer followed by
-# one of these time units:  day, hr, min.  A value of 0 means that logs
-# never expire.
-LogExpireInterval = {{ ZEEKCTL.LogExpireInterval }}
-
-# Enable ZeekControl to write statistics to the stats.log file.  A value of 1
-# means write to stats.log, and a value of 0 means do not write to stats.log.
-StatsLogEnable = {{ ZEEKCTL.StatsLogEnable }}
-
-# Number of days that entries in the stats.log file are kept.  Entries older
-# than this many days will be removed by "zeekctl cron".  A value of 0 means
-# that entries never expire.
-StatsLogExpireInterval = {{ ZEEKCTL.StatsLogExpireInterval }}
-
-###############################################
-# Other Options
-
-# Show all output of the zeekctl status command.  If set to 1, then all output
-# is shown.  If set to 0, then zeekctl status will not collect or show the peer
-# information (and the command will run faster).
-StatusCmdShowAll = {{ ZEEKCTL.StatusCmdShowAll }}
-
-# Number of days that crash directories are kept.  Crash directories older
-# than this many days will be removed by "zeekctl cron".  A value of 0 means
-# that crash directories never expire.
-CrashExpireInterval = {{ ZEEKCTL.CrashExpireInterval }}
-
-# Site-specific policy script to load. Zeek will look for this in
-# $PREFIX/share/zeek/site. A default local.zeek comes preinstalled
-# and can be customized as desired.
-SitePolicyScripts = {{ ZEEKCTL.SitePolicyScripts }}
-
-# Location of the log directory where log files will be archived each rotation
-# interval.
-LogDir = {{ ZEEKCTL.LogDir }}
-
-# Location of the spool directory where files and data that are currently being
-# written are stored.
-SpoolDir = {{ ZEEKCTL.SpoolDir }}
-
-# Location of other configuration files that can be used to customize
-# ZeekControl operation (e.g. local networks, nodes).
-CfgDir = {{ ZEEKCTL.CfgDir }}
-
-# True to compress archived log files
-CompressLogs = {{ ZEEKCTL.CompressLogs }}
+{%- for option in ZEEKCTL %}
+  {%- if option|lower in ALLOWEDOPTIONS %}
+{{ option }} = {{ ZEEKCTL[option] }}
+  {%- endif %}
+{%- endfor %}
