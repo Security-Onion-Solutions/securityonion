@@ -87,8 +87,9 @@ curdel:
     - group: 939
     - mode: 755
 
-/usr/sbin/so-curator-closed-delete:
+so-curatorcloseddeletecron:
  cron.present:
+   - name: /usr/sbin/so-curator-closed-delete
    - user: root
    - minute: '*'
    - hour: '*'
@@ -96,8 +97,9 @@ curdel:
    - month: '*'
    - dayweek: '*'
 
-/usr/sbin/so-curator-close:
+so-curatorclosecron:
  cron.present:
+   - name: /usr/sbin/so-curator-close
    - user: root
    - minute: '*'
    - hour: '*'
@@ -105,8 +107,9 @@ curdel:
    - month: '*'
    - dayweek: '*'
 
-/usr/sbin/so-curator-delete:
+so-curatordeletecron:
  cron.present:
+   - name: /usr/sbin/so-curator-delete
    - user: root
    - minute: '*'
    - hour: '*'
