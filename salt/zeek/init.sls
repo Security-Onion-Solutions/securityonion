@@ -3,7 +3,12 @@
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+
+{% import_yml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
+{% set ZEEKCTL = salt['pillar.get']('zeek:zeekctl', default=ZEEKDEFAULTS.zeekctl, merge=True) %}
+
 # Zeek Salt State
+
 # Add Zeek group
 zeekgroup:
   group.present:
@@ -62,6 +67,16 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+
+zeekctlcfg:
+  file.managed:
+    - name: /opt/so/conf/zeek/zeekctl.cfg
+    - source: salt://zeek/files/zeekctl.cfg.jinja
+    - user: 937
+    - group: 939
+    - template: jinja
+    - defaults:
+        ZEEKCTL: {{ ZEEKCTL }}
 
 # Sync node.cfg
 nodecfgsync:
