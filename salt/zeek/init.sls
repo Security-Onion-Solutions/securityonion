@@ -4,8 +4,8 @@
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 
-{% import_yml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
-{% set ZEEKCTL = salt['pillar.get']('zeek:zeekctl', default=ZEEKDEFAULTS.zeekctl, merge=True) %}
+{% import_yaml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
+{% set ZEEK = salt['pillar.get']('zeek', default=ZEEKDEFAULTS, merge=True) %}
 
 # Zeek Salt State
 
@@ -76,7 +76,7 @@ zeekctlcfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKCTL: {{ ZEEKCTL }}
+        ZEEKCTL: {{ ZEEK.zeek.zeekctl }}
 
 # Sync node.cfg
 nodecfgsync:
