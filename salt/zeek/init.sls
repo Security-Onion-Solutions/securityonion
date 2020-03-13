@@ -147,6 +147,7 @@ so-zeek:
       - /nsm/zeek/extracted:/nsm/zeek/extracted:rw
       - /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
+      - /opt/so/conf/zeek/zeekctl.cfg:/opt/zeek/etc/zeekctl.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
       - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
