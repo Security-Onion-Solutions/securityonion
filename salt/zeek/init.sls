@@ -157,5 +157,6 @@ so-zeek:
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
+      - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
