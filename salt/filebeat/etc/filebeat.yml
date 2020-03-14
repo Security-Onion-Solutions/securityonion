@@ -19,7 +19,7 @@ name: {{ HOSTNAME }}
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-logging.level: error
+logging.level: debug
 
 # Enable debug output for selected components. To enable all selectors use ["*"]
 # Other available selectors are "beat", "publish", "service"
@@ -80,9 +80,13 @@ filebeat.prospectors:
     paths:
       - /nsm/zeek/logs/current/{{ LOGNAME }}.log
     fields:
-      type: bro_{{ LOGNAME }}
+        module: zeek 
+        dataset: {{ LOGNAME }}  
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+ 
     fields_under_root: true
-    tags: ["bro"]
     clean_removed: false
     close_removed: false
 
@@ -93,8 +97,13 @@ filebeat.prospectors:
     paths:
       - /suricata/eve.json
     fields:
-      type: ids
-      engine: suricata
+      module: suricata
+      dataset: alert
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
@@ -106,19 +115,25 @@ filebeat.prospectors:
     paths:
       - /wazuh/alerts/alerts.json
     fields:
-      type: ossec
+      module: ossec
+      dataset: alert
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
 
-  - type: log
-    paths:
-      - /wazuh/archives/archives.json
-    fields:
-      type: ossec_archive
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
+# - type: log
+#    paths:
+#      - /wazuh/archives/archives.json
+#    fields:
+#      type: ossec_archive
+#    fields_under_root: true
+#    clean_removed: false
+#    close_removed: false
 
 {%- endif %}
 
@@ -129,6 +144,11 @@ filebeat.prospectors:
       - /osquery/logs/result.log
     fields:
       type: osquery
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
@@ -141,34 +161,56 @@ filebeat.prospectors:
     paths:
       - /opt/so/log/strelka/strelka.log
     fields:
-      type: strelka
+      module: strelka
+      dataset: file
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]    
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
 
 {%- endif %}
 #----------------------------- Logstash output ---------------------------------
-output.logstash:
-  # Boolean flag to enable or disable the output module.
+output.elasticsearch:
   enabled: true
+  hosts: ["{{ MASTER }}:9200"]
+  pipelines:
+    - pipeline: "%{[module]}.%{[dataset]}"
+  indices:
+    - index: "so-zeek-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "zeek"
+    - index: "so-ids-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "suricata"
+    - index: "so-ossec-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "ossec"
+
+#output.logstash:
+  # Boolean flag to enable or disable the output module.
+  #enabled: true
 
   # The Logstash hosts
-  hosts: ["{{ MASTER }}:5644"]
+  #hosts: ["{{ MASTER }}:5644"]
 
   # Number of workers per Logstash host.
-  worker: 1
+  #worker: 1
 
   # Set gzip compression level.
-  compression_level: 3
+  #compression_level: 3
 
   # Enable SSL support. SSL is automatically enabled, if any SSL setting is set.
-  ssl.enabled: true
+  #ssl.enabled: true
 
   # Configure SSL verification mode. If `none` is configured, all server hosts
   # and certificates will be accepted. In this mode, SSL based connections are
   # susceptible to man-in-the-middle attacks. Use only for testing. Default is
   # `full`.
-  ssl.verification_mode: full
+  #ssl.verification_mode: full
 
   # List of supported/valid TLS versions. By default all TLS versions 1.0 up to
   # 1.2 are enabled.
@@ -176,16 +218,14 @@ output.logstash:
 
   # Optional SSL configuration options. SSL is off by default.
   # List of root certificates for HTTPS server verifications
-  ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
+  #ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
 
   # Certificate for SSL client authentication
-  ssl.certificate: "/usr/share/filebeat/filebeat.crt"
+  #ssl.certificate: "/usr/share/filebeat/filebeat.crt"
 
   # Client Certificate Key
-  ssl.key: "/usr/share/filebeat/filebeat.key"
+  #ssl.key: "/usr/share/filebeat/filebeat.key"
 
-# Elasticsearch template settings
-#setup.template.settings:
 
   # A dictionary of settings to place into the settings.index dictionary
   # of the Elasticsearch template. For more details, please check
