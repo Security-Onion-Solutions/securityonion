@@ -76,7 +76,7 @@ zeekctlcfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKCTL: {{ ZEEK.zeekctl }}
+        ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
 
 # Sync node.cfg
 nodecfgsync:
