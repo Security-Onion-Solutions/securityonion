@@ -11,7 +11,7 @@ base:
     - patch.os.schedule
     - motd
 
-  'G@role:so-helix':
+  '*_helix':
     - ca
     - ssl
     - registry
@@ -26,7 +26,7 @@ base:
     - filebeat
     - schedule
 
-  'G@role:so-sensor':
+  '*_sensor':
     - ca
     - ssl
     - common
@@ -43,7 +43,7 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-eval':
+  '*_eval':
     - ca
     - ssl
     - registry
@@ -60,7 +60,7 @@ base:
     - wazuh
     {%- endif %}
     - elasticsearch
-    - logstash
+    - filebeat
     - kibana
     - pcap
     - suricata
@@ -89,7 +89,7 @@ base:
     {%- endif %}
 
 
-  'G@role:so-master':
+  '*_master':
     - ca
     - ssl
     - registry
@@ -133,8 +133,8 @@ base:
 
   # Search node logic
 
-  'G@role:so-node and I@node:node_type:parser':
-    - match: pillar
+  '*_node and I@node:node_type:parser':
+    - match: compound
     - common
     - firewall
     - logstash
@@ -143,8 +143,8 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:hot':
-    - match: pillar
+  '*_node and I@node:node_type:hot':
+    - match: compound
     - common
     - firewall
     - logstash
@@ -155,8 +155,8 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:warm':
-    - match: pillar
+  '*_node and I@node:node_type:warm':
+    - match: compound
     - common
     - firewall
     - elasticsearch
@@ -165,7 +165,7 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:search':
+  '*_node and I@node:node_type:search':
     - match: compound
     - ca
     - ssl
@@ -183,7 +183,7 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:mastersensor':
+  '*_mastersensor':
     - common
     - firewall
     - sensor
@@ -194,7 +194,7 @@ base:
     {%- endif %}
     - schedule
 
-  'G@role:so-mastersearch':
+  '*_mastersearch':
     - ca
     - ssl
     - registry
@@ -238,7 +238,7 @@ base:
     - domainstats
     {%- endif %}
 
-  'G@role:so-heavynode':
+  '*_heavynode':
     - ca
     - ssl
     - common
@@ -262,7 +262,7 @@ base:
     - filebeat
     - schedule
   
-    'G@role:so-fleet':
+  '*_fleet':
     - ca
     - ssl
     - common

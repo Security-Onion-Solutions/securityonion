@@ -114,11 +114,12 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - environment:
-      - bootstrap.memory_lock=true
-      - cluster.name={{ esclustername }}
+      - discovery.type=single-node
+      #- bootstrap.memory_lock=true
+      #- cluster.name={{ esclustername }}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
-      - http.host=0.0.0.0
-      - transport.host=127.0.0.1
+      #- http.host=0.0.0.0
+      #- transport.host=127.0.0.1
     - ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
@@ -143,3 +144,9 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
+
+so-elasticsearch-templates:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates
+    - cwd: /
+

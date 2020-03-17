@@ -3,19 +3,19 @@ base:
     - patch.needs_restarting
     - docker.config
 
-  'G@role:so-mastersearch or G@role:so-heavynode':
+  '*_mastersearch or *_heavynode':
     - match: compound
     - logstash
     - logstash.master
     - logstash.search
 
-  'G@role:so-sensor':
+  '*_sensor':
     - static
     - firewall.*
     - brologs
     - minions.{{ grains.id }}
 
-  'G@role:so-master or G@role:so-mastersearch':
+  '*_master or *_mastersearch':
     - match: compound
     - static
     - firewall.*
@@ -23,11 +23,11 @@ base:
     - auth
     - minions.{{ grains.id }}
 
-  'G@role:so-master':
+  '*_master':
     - logstash
     - logstash.master
 
-  'G@role:so-eval':
+  '*_eval':
     - static
     - firewall.*
     - data.*
@@ -37,18 +37,18 @@ base:
     - logstash.eval
     - minions.{{ grains.id }}
 
-  'G@role:so-node':
+  '*_node':
     - static
     - firewall.*
     - minions.{{ grains.id }}
 
-  'G@role:so-heavynode':
+  '*_heavynode':
     - static
     - firewall.*
     - brologs
     - minions.{{ grains.id }}
 
-  'G@role:so-helix':
+  '*_helix':
     - static
     - firewall.*
     - fireeye
@@ -57,7 +57,7 @@ base:
     - logstash.helix
     - minions.{{ grains.id }}
 
-  'G@role:so-fleet':
+  '*_fleet':
     - static
     - firewall.*
     - data.*

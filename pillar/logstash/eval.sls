@@ -5,11 +5,6 @@ logstash:
         - so/0800_input_eval.conf
         - so/1002_preprocess_json.conf
         - so/1033_preprocess_snort.conf
-        - so/6500_ossec.conf
-        - so/6501_ossec_sysmon.conf
-        - so/6502_ossec_autoruns.conf
-        - so/6600_winlogbeat_sysmon.conf
-        - so/6700_winlogbeat.conf
         - so/7100_osquery_wel.conf
         - so/8999_postprocess_rename_type.conf
         - so/9000_output_bro.conf.jinja
@@ -21,7 +16,6 @@ logstash:
         - so/9600_output_ossec.conf.jinja
         - so/9700_output_strelka.conf.jinja
   templates:
-    - so/beats-template.json
-    - so/logstash-ossec-template.json
-    - so/logstash-strelka-template.json
-    - so/logstash-template.json
+    - so/so-beats-template.json
+    - so/so-common-template.json
+    - so/so-zeek-template.json

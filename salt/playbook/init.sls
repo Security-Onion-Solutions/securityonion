@@ -47,15 +47,15 @@ so-navigator:
     - port_bindings:
       - 0.0.0.0:4200:4200
 
-/usr/sbin/so-playbook-sync:
+so-playbooksynccron:
   cron.present:
-    - identifier: so-playbook-sync
+    - name: /usr/sbin/so-playbook-sync
     - user: root
     - minute: '*/5'
 
-/usr/sbin/so-playbook-ruleupdate:
+so-playbookruleupdatecron:
   cron.present:
-    - identifier: so-playbook-ruleupdate
+    - name: /usr/sbin/so-playbook-ruleupdate
     - user: root
     - minute: '1'
     - hour: '6'

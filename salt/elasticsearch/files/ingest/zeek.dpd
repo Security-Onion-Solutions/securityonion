@@ -1,0 +1,19 @@
+{
+  "description" : "zeek.dpd",
+  "processors" : [
+    { "remove":         { "field": ["host"],     "ignore_failure": true                                                                  } },
+    { "json":		{ "field": "message",			"target_field": "message2",		"ignore_failure": true	} },
+    { "dot_expander": 	{ "field": "id.orig_h", 		"path": "message2", 			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.id.orig_h", 	"target_field": "source.ip",		"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "id.orig_p", 		"path": "message2",			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.id.orig_p", 	"target_field": "source.port",		"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "id.resp_h", 		"path": "message2",			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.id.resp_h", 	"target_field": "destination.ip",	"ignore_missing": true 	} },
+    { "dot_expander": 	{ "field": "id.resp_p", 		"path": "message2",			"ignore_failure": true 	} },
+    { "rename": 	{ "field": "message2.id.resp_p", 	"target_field": "destination.port",	"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.proto", 		"target_field": "network.protocol",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.analyzer", 	"target_field": "observer.analyzer",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.failure_reason", 	"target_field": "error.reason",	"ignore_missing": true 	} },
+    { "pipeline":       { "name": "zeek.common"                                                                                   } }
+  ]
+}
