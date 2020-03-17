@@ -1,0 +1,183 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Set the SO Version
+VERSION=1.2.1
+BUILD=HH
+OLDVERSION=$(cat /etc/soversion)
+
+clone_to_tmp() {
+
+  # TODO Need to add a air gap option
+  # Make a temp location for the files
+  mkdir /tmp/sogh
+  cd /tmp/sogh
+  #git clone -b dev https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+  git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+
+}
+
+detect_os() {
+
+  # Detect Base OS
+  echo "Detecting Base OS" >> $UPDATELOG 2>&1
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+    if grep -q "CentOS Linux release 7" /etc/redhat-release; then
+      OSVER=7
+    elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
+      OSVER=8
+      echo "We currently do not support CentOS $OSVER but we are working on it!"
+      exit
+    else
+      echo "We do not support the version of CentOS you are trying to use"
+      exit
+    fi
+
+  elif [ -f /etc/os-release ]; then
+    OS=ubuntu
+    if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+      OSVER=bionic
+    elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
+      OSVER=xenial
+    else
+      echo "We do not support your current version of Ubuntu"
+      exit
+    fi
+    # Install network manager so we can do interface stuff
+    apt install -y network-manager
+    /bin/systemctl enable network-manager
+    /bin/systemctl start network-manager
+  else
+    echo "We were unable to determine if you are using a supported OS." >> $UPDATELOG 2>&1
+    exit
+  fi
+
+  echo "Found OS: $OS $OSVER" >> $UPDATELOG 2>&1
+
+}
+
+update_held_packages() {
+
+    if [ $OS == "centos" ]
+      SALTVER=2019.2.3
+      DOCKERVER=
+      yum -y --disableexcludes=all update salt-$SALTVER
+      yum -y --disableexcludes=all update docker-ce-$DOCKERVER
+    else
+      SALTVER=2019.2.3+ds-1
+      DOCKERVER=5:19.03.8~3-0~ubuntu-xenial
+    fi 
+
+}
+
+update_all_packages() {
+  
+  # Update all the things based on OS
+  if [ $OS == "centos" ]; then
+    yum -y update
+  else
+    apt -y update && apt -y upgrade
+  fi
+
+}
+
+update_docker_containers() {
+  if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
+    TRUSTED_CONTAINERS=( \
+    "so-acng:$BUILD$VERSION" \
+    "so-auth-api:$BUILD$VERSION" \
+    "so-auth-ui:$BUILD$VERSION" \
+    "so-core:$BUILD$VERSION" \
+    "so-thehive-cortex:$BUILD$VERSION" \
+    "so-curator:$BUILD$VERSION" \
+    "so-domainstats:$BUILD$VERSION" \
+    "so-elastalert:$BUILD$VERSION" \
+    "so-elasticsearch:$BUILD$VERSION" \
+    "so-filebeat:$BUILD$VERSION" \
+    "so-fleet:$BUILD$VERSION" \
+    "so-fleet-launcher:$BUILD$VERSION" \
+    "so-freqserver:$BUILD$VERSION" \
+    "so-grafana:$BUILD$VERSION" \
+    "so-idstools:$BUILD$VERSION" \
+    "so-influxdb:$BUILD$VERSION" \
+    "so-kibana:$BUILD$VERSION" \
+    "so-logstash:$BUILD$VERSION" \
+    "so-mysql:$BUILD$VERSION" \
+    "so-navigator:$BUILD$VERSION" \
+    "so-playbook:$BUILD$VERSION" \
+    "so-redis:$BUILD$VERSION" \
+    "so-sensoroni:$BUILD$VERSION" \
+    "so-soctopus:$BUILD$VERSION" \
+    "so-steno:$BUILD$VERSION" \
+    #"so-strelka:$BUILD$VERSION" \
+    "so-suricata:$BUILD$VERSION" \
+    "so-telegraf:$BUILD$VERSION" \
+    "so-thehive:$BUILD$VERSION" \
+    "so-thehive-es:$BUILD$VERSION" \
+    "so-wazuh:$BUILD$VERSION" \
+    "so-zeek:$BUILD$VERSION" )
+  else
+    TRUSTED_CONTAINERS=( \
+    "so-core:$BUILD$VERSION" \
+    "so-filebeat:$BUILD$VERSION" \
+    "so-idstools:$BUILD$VERSION" \
+    "so-logstash:$BUILD$VERSION" \
+    "so-redis:$BUILD$VERSION" \
+    "so-sensoroni:$BUILD$VERSION" \
+    "so-steno:$BUILD$VERSION" \
+    "so-suricata:$BUILD$VERSION" \
+    "so-telegraf:$BUILD$VERSION" \
+    "so-zeek:$BUILD$VERSION" )
+  fi
+
+  # Download the container from the interwebs
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    # Pull down the trusted docker image
+    echo "Downloading $i"
+    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    # Tag it with the new registry destination
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
+  done
+
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    echo "Removing $i locally"
+    docker rmi soshybridhunter/$i
+  done
+  
+}
+update_hh_version() {
+  # Change the version number in the static pillar
+
+}
+
+# Clone github
+mkdir /tmp/sogh
+cd /tmp/sogh
+#git clone -b dev https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+cd securityonion-saltstack
+rsync -a --exclude-from 'exclude-list.txt' salt /opt/so/saltstack/
+chown -R socore:socore /opt/so/saltstack/salt
+chmod 755 /opt/so/saltstack/pillar/firewall/addfirewall.sh
+cd ~
+rm -rf /tmp/sogh
+# Run so-elastic-download here and call this soup with some magic
+salt-call state.highstate
