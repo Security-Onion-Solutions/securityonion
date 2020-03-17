@@ -262,7 +262,7 @@ base:
     - filebeat
     - schedule
   
-    'G@role:so-fleet':
+  'G@role:so-fleet':
     - ca
     - ssl
     - common

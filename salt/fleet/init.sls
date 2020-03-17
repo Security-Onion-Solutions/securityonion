@@ -45,6 +45,7 @@ fleetsetupscript:
   file.managed:
     - name: /opt/so/conf/fleet/so-fleet-setup.sh
     - source: salt://fleet/so-fleet-setup.sh
+    - template: jinja
 
 osquerypackageswebpage:
   file.managed:
