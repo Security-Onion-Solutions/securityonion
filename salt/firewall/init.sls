@@ -235,14 +235,14 @@ enable_masternode_mysql_3306_{{ip}}:
     - position: 1
     - save: True
 
-enable_master_osquery_8080_{{ip}}:
+enable_master_osquery_8090_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
     - proto: tcp
     - source: {{ ip }}
-    - dport: 8080
+    - dport: 8090
     - position: 1
     - save: True
 
@@ -469,14 +469,14 @@ enable_standard_beats_5044_{{ip}}:
 # Allow OSQuery Endpoints to send their traffic
 {% for ip in pillar.get('osquery_endpoint')  %}
 
-enable_standard_osquery_8080_{{ip}}:
+enable_standard_osquery_8090_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
     - proto: tcp
     - source: {{ ip }}
-    - dport: 8080
+    - dport: 8090
     - position: 1
     - save: True
 
@@ -780,7 +780,8 @@ enable_fleettemp_osquery_8080_{{ip}}:
      
 {% for ip in pillar.get('fleet_nodes')  %}
 
-enable_standard_fleet_443_{{ip}}:
+# Needed for analysts to access Fleet WebUI
+enable_fleetnode_fleet_443_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -788,6 +789,18 @@ enable_standard_fleet_443_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 443
+    - position: 1
+    - save: True
+
+# Needed for osquery endpoints to checkin to Fleet API for mgt
+enable_fleetnode_8090_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8090
     - position: 1
     - save: True
     

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#so-fleet-packages $FleetHostname/IP 
+
+if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
+        echo "so-fleet container not running... Exiting..."
+        exit 1
+fi
+
+esecret=$(docker exec so-fleet fleetctl get enroll-secret)
+
+#Concat fleet.crt & ca.crt  - this is required for launcher connectivity
+#cat /etc/pki/fleet.crt /etc/pki/ca.crt > /etc/pki/launcher.crt
+#Actually only need to use /etc/ssl/certs/intca.crt
+
+#Create the output directory
+mkdir /opt/so/conf/fleet/packages
+
+docker run \
+  --rm \
+  --mount type=bind,source=/opt/so/conf/fleet/packages,target=/output \
+  --mount type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt \
+  docker.io/soshybridhunter/so-fleet-launcher:HH1.1.0 "$esecret" "$1":8090
+
+cp /opt/so/conf/fleet/packages/launcher.* /opt/so/saltstack/salt/launcher/packages/
+
+#Update timestamp on packages webpage
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/osquery-packages.html
