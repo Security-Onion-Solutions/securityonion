@@ -3,7 +3,12 @@
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+
+{% import_yaml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
+{% set ZEEK = salt['pillar.get']('zeek', default=ZEEKDEFAULTS.zeek, merge=True) %}
+
 # Zeek Salt State
+
 # Add Zeek group
 zeekgroup:
   group.present:
@@ -62,6 +67,16 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+
+zeekctlcfg:
+  file.managed:
+    - name: /opt/so/conf/zeek/zeekctl.cfg
+    - source: salt://zeek/files/zeekctl.cfg.jinja
+    - user: 937
+    - group: 939
+    - template: jinja
+    - defaults:
+        ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
 
 # Sync node.cfg
 nodecfgsync:
@@ -132,6 +147,7 @@ so-zeek:
       - /nsm/zeek/extracted:/nsm/zeek/extracted:rw
       - /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
+      - /opt/so/conf/zeek/zeekctl.cfg:/opt/zeek/etc/zeekctl.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
       - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
@@ -141,5 +157,6 @@ so-zeek:
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
+      - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf

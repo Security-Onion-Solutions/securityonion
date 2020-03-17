@@ -60,7 +60,7 @@ base:
     - wazuh
     {%- endif %}
     - elasticsearch
-    - logstash
+    - filebeat
     - kibana
     - pcap
     - suricata

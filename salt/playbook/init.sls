@@ -55,7 +55,7 @@ so-playbooksynccron:
 
 so-playbookruleupdatecron:
   cron.present:
-    - name /usr/sbin/so-playbook-ruleupdate
+    - name: /usr/sbin/so-playbook-ruleupdate
     - user: root
     - minute: '1'
     - hour: '6'
