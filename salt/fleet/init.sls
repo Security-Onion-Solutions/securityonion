@@ -27,10 +27,17 @@ fleetpackcdir:
     - group: 939
     - makedirs: True
 
+fleetnsmdir:
+  file.directory:
+    - name: /nsm/osquery/fleet
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 fleetpacksync:
   file.recurse:
     - name: /opt/so/conf/fleet/packs
-    - source: salt://fleet/packs
+    - source: salt://fleet/files/packs
     - user: 939
     - group: 939
 
@@ -41,16 +48,19 @@ fleetlogdir:
     - group: 939
     - makedirs: True
 
-fleetsetupscript:
-  file.managed:
-    - name: /opt/so/conf/fleet/so-fleet-setup.sh
-    - source: salt://fleet/so-fleet-setup.sh
+fleetsetupscripts:
+  file.recurse:
+    - name: /usr/sbin
+    - user: 0
+    - group: 0
+    - file_mode: 755
     - template: jinja
+    - source: salt://fleet/files/scripts
 
 osquerypackageswebpage:
   file.managed:
     - name: /opt/so/conf/fleet/packages/index.html
-    - source: salt://fleet/osquery-packages.html
+    - source: salt://fleet/files/osquery-packages.html
 
 fleetdb:
   mysql_database.present:
@@ -107,13 +117,14 @@ so-fleet:
       - KOLIDE_SERVER_KEY=/ssl/server.key
       - KOLIDE_LOGGING_JSON=true
       - KOLIDE_AUTH_JWT_KEY= {{ FLEETJWT }}
-      - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/osquery/status.log
+      - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/fleet/status.log
       - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
       - KOLIDE_SERVER_URL_PREFIX=/fleet
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
-      - /opt/so/log/fleet:/var/log/osquery
+      - /opt/so/log/fleet:/var/log/fleet
+      - /nsm/osquery/fleet:/var/log/osquery
       - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
