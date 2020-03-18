@@ -145,10 +145,12 @@ lsetcsync:
     - group: 939
     - template: jinja
     - clean: True
+{% if TEMPLATES %}
     - require:
-{% for TEMPLATE in TEMPLATES %}
+  {% for TEMPLATE in TEMPLATES %}
       - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-{% endfor %}
+  {% endfor %}
+{% endif %}
     - exclude_pat: pipelines*
 
 # Create the import directory
