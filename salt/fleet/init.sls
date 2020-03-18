@@ -5,12 +5,20 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
+{% set FLEETSETUP = salt['pillar.get']('static:fleetsetup', '0') %}
 
-  {% if FLEETARCH == "so-fleet" %}
-    {% set MAINIP = salt['pillar.get']('node:mainip') %}
-  {% else %}
-    {% set MAINIP = salt['pillar.get']('static:masterip') %}
-  {% endif %}
+{% if FLEETARCH == "so-fleet" %}
+  {% set MAINIP = salt['pillar.get']('node:mainip') %}
+{% else %}
+  {% set MAINIP = salt['pillar.get']('static:masterip') %}
+{% endif %}
+
+{% if 'fleet' in grains.id.split('_')|last and not FLEETSETUP %}
+so/fleet/enable:
+  event.send:
+    - data:
+        action: 'enablefleet'
+{% endif %}
 
 # Fleet Setup
 fleetcdir:
