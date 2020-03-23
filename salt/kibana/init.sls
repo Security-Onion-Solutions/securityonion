@@ -1,5 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
-{% set MASTER = salt['grains.get']('master') %}	{% set MASTER = salt['grains.get']('master') %}
+{% set MASTER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
