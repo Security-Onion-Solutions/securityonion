@@ -1,0 +1,207 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Set the new SO Version
+
+UPDATEVERSION=1.2.1
+BUILD=HH
+
+#Determine the current install version
+
+if [ -f /etc/soversion ]; then
+  OLDVERSION=$(cat /etc/soversion)
+else
+  OLDVERSION=1.1.4
+fi
+
+# Use the hostname
+HOSTNAME=$(hostname)
+
+# List all the containers
+if [ $MASTERCHECK != 'so-helix' ]; then
+    TRUSTED_CONTAINERS=( \
+    "so-acng:$BUILD$UPDATEVERSION" \
+    "so-auth-api:$BUILD$UPDATEVERSION" \
+    "so-auth-ui:$BUILD$UPDATEVERSION" \
+    "so-core:$BUILD$UPDATEVERSION" \
+    "so-thehive-cortex:$BUILD$UPDATEVERSION" \
+    "so-curator:$BUILD$UPDATEVERSION" \
+    "so-domainstats:$BUILD$UPDATEVERSION" \
+    "so-elastalert:$BUILD$UPDATEVERSION" \
+    "so-elasticsearch:$BUILD$UPDATEVERSION" \
+    "so-filebeat:$BUILD$UPDATEVERSION" \
+    "so-fleet:$BUILD$UPDATEVERSION" \
+    "so-fleet-launcher:$BUILD$UPDATEVERSION" \
+    "so-freqserver:$BUILD$UPDATEVERSION" \
+    "so-grafana:$BUILD$UPDATEVERSION" \
+    "so-idstools:$BUILD$UPDATEVERSION" \
+    "so-influxdb:$BUILD$UPDATEVERSION" \
+    "so-kibana:$BUILD$UPDATEVERSION" \
+    "so-logstash:$BUILD$UPDATEVERSION" \
+    "so-mysql:$BUILD$UPDATEVERSION" \
+    "so-navigator:$BUILD$UPDATEVERSION" \
+    "so-playbook:$BUILD$UPDATEVERSION" \
+    "so-redis:$BUILD$UPDATEVERSION" \
+    "so-sensoroni:$BUILD$UPDATEVERSION" \
+    "so-soctopus:$BUILD$UPDATEVERSION" \
+    "so-steno:$BUILD$UPDATEVERSION" \
+    "so-strelka:$BUILD$UPDATEVERSION" \
+    "so-suricata:$BUILD$UPDATEVERSION" \
+    "so-telegraf:$BUILD$UPDATEVERSION" \
+    "so-thehive:$BUILD$UPDATEVERSION" \
+    "so-thehive-es:$BUILD$UPDATEVERSION" \
+    "so-wazuh:$BUILD$UPDATEVERSION" \
+    "so-zeek:$BUILD$UPDATEVERSION" )
+  else
+    TRUSTED_CONTAINERS=( \
+    "so-core:$BUILD$UPDATEVERSION" \
+    "so-filebeat:$BUILD$UPDATEVERSION" \
+    "so-idstools:$BUILD$UPDATEVERSION" \
+    "so-logstash:$BUILD$UPDATEVERSION" \
+    "so-redis:$BUILD$UPDATEVERSION" \
+    "so-sensoroni:$BUILD$UPDATEVERSION" \
+    "so-steno:$BUILD$UPDATEVERSION" \
+    "so-suricata:$BUILD$UPDATEVERSION" \
+    "so-telegraf:$BUILD$UPDATEVERSION" \
+    "so-zeek:$BUILD$UPDATEVERSION" )
+  fi
+
+
+clone_to_tmp() {
+
+  # TODO Need to add a air gap option
+  # Make a temp location for the files
+  mkdir /tmp/sogh
+  cd /tmp/sogh
+  #git clone -b dev https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+  git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+  cd /tmp
+
+}
+
+copy_new_files() {
+
+  # Copy new files over to the salt dir
+  cd /tmp/sogh/securityonion-saltstack
+  rsync -a --exclude-from 'exclude-list.txt' salt /opt/so/saltstack/
+  chown -R socore:socore /opt/so/saltstack/salt
+  chmod 755 /opt/so/saltstack/pillar/firewall/addfirewall.sh
+  cd /tmp
+}
+
+detect_os() {
+
+  # Detect Base OS
+  echo "Detecting Base OS" >> $UPDATELOG 2>&1
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+    if grep -q "CentOS Linux release 7" /etc/redhat-release; then
+      OSVER=7
+    elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
+      OSVER=8
+      echo "We currently do not support CentOS $OSVER but we are working on it!"
+      exit
+    else
+      echo "We do not support the version of CentOS you are trying to use"
+      exit
+    fi
+
+  elif [ -f /etc/os-release ]; then
+    OS=ubuntu
+    if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+      OSVER=bionic
+    elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
+      OSVER=xenial
+    else
+      echo "We do not support your current version of Ubuntu"
+      exit
+    fi
+  else
+    echo "We were unable to determine if you are using a supported OS." >> $UPDATELOG 2>&1
+    exit
+  fi
+
+  echo "Found OS: $OS $OSVER" >> $UPDATELOG 2>&1
+
+}
+
+master_check() {
+  # Check to see if this is a master
+  MASTERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [ $MASTERCHECK == 'so-eval' OR $MASTERCHECK == 'so-master' OR $MASTERCHECK == 'so-mastersearch' ]; then
+    echo "This is a master. We can proceed"
+  else
+    echo "Please run soup on the master. The master controls all updates."
+    exit
+}
+
+salt_highstate() {
+
+  salt-call state.highstate
+
+}
+
+update_held_packages() {
+
+    if [ $OS == "centos" ]
+      SALTVER=2019.2.3
+      DOCKERVER=
+      yum -y --disableexcludes=all update salt-$SALTVER
+      yum -y --disableexcludes=all update docker-ce-$DOCKERVER
+    else
+      SALTVER=2019.2.3+ds-1
+      DOCKERVER=5:19.03.8~3-0~ubuntu-xenial
+    fi 
+
+}
+
+update_all_packages() {
+  
+  # Update all the things based on OS
+  if [ $OS == "centos" ]; then
+    yum -y update
+  else
+    apt -y update && apt -y upgrade
+  fi
+
+}
+
+update_docker_containers() {
+  
+  # Download the containers from the interwebs
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    # Pull down the trusted docker image
+    echo "Downloading $i"
+    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    # Tag it with the new registry destination
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
+  done
+
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    echo "Removing $i locally"
+    docker rmi soshybridhunter/$i
+  done
+  
+}
+
+update_hh_version() {
+  # Change the version number in the static pillar
+
+}
