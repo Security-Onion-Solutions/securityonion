@@ -68,9 +68,9 @@ so-kibana:
     - hostname: kibana
     - user: kibana
     - environment:
-      - ELASTICSEARCH_HOST={{ master }}
+      - ELASTICSEARCH_HOST={{ MASTER }}
       - ELASTICSEARCH_PORT=9200
-      - MASTER={{ master }}
+      - MASTER={{ MASTER }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
@@ -79,11 +79,11 @@ so-kibana:
     - port_bindings:
       - 0.0.0.0:5601:5601
 
-so-kibana-config-load:
-  cmd.script:
-    - shell: /bin/bash
-    - runas: socore
-    - source: salt://kibana/bin/so-kibana-config-load
+#o-kibana-config-load:
+#  cmd.script:
+#    - shell: /bin/bash
+#    - runas: socore
+#    - source: salt://kibana/bin/so-kibana-config-load
 
 # Keep the setting correct
 #KibanaHappy:
