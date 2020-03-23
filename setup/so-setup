@@ -299,6 +299,15 @@ if (whiptail_you_sure) ; then
       check_socore_pass
     done
 
+    # Get a password for the web admin user
+    whiptail_create_web_user
+    WPMATCH=no
+    while [ $WPMATCH != yes ]; do
+      whiptail_create_web_user_password1
+      whiptail_create_web_user_password2
+      check_web_pass
+    done
+
     # Last Chance to back out
     whiptail_make_changes
     set_hostname
@@ -417,7 +426,9 @@ if (whiptail_you_sure) ; then
       echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
-      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nAdding user to SOC... \nXXX"
+      add_web_user >> $SETUPLOG 2>&1
+      echo -e "XXX\n99\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
@@ -700,7 +711,9 @@ if (whiptail_you_sure) ; then
       salt-call state.apply auth >> $SETUPLOG 2>&1
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
-      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nAdding user to SOC... \nXXX"
+      add_web_user >> $SETUPLOG 2>&1
+      echo -e "XXX\n99\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
