@@ -1,54 +1,66 @@
+{% set MASTER = salt['grains.get']('master') %}
+
 selfservice:
-    strategies:
+  strategies:
+    password:
+      enabled: true
+
+  verify:
+    return_to: https://{{ MASTER }}/soc/
+
+  logout:
+    redirect_to: https://{{ MASTER }}/login/
+
+  login:
+    request_lifespan: 10m
+    after:
       password:
-        enabled: true
-    verify:
-      return_to: /soc/
-    logout:
-      redirect_to: /login/
-    login:
-      request_lifespan: 10m
-      after:
-        password:
-          -
-            job: session
-          -
-            job: redirect
-            config:
-              default_redirect_url: /soc/
-              allow_user_defined_redirect: true
-    registration:
-      request_lifespan: 10m
-      after:
-        password:
-          -
-            job: verify
-          -
-            job: session
-          -
-            job: redirect
-            config:
-              default_redirect_url: /soc/
-              allow_user_defined_redirect: true
+        -
+          job: session
+        -
+          job: redirect
+          config:
+            default_redirect_url: https://{{ MASTER }}/soc/
+            allow_user_defined_redirect: true
+
+  registration:
+    request_lifespan: 10m
+    after:
+      password:
+        -
+          job: verify
+        -
+          job: session
+        -
+          job: redirect
+          config:
+            default_redirect_url: https://{{ MASTER }}/soc/
+            allow_user_defined_redirect: true
+
   log:
     level: debug
+
   secrets:
     session:
       - PLEASE-CHANGE-ME-I-AM-VERY-INSECURE
+
   urls:
-    login_ui: /login/
-    registration_ui: /login/
-    error_ui: /login/
-    profile_ui: /soc/
-    verify_ui: /soc/
+    login_ui: https://{{ MASTER }}/login/
+    registration_ui: https://{{ MASTER }}/login/
+    error_ui: https://{{ MASTER }}/login/
+    profile_ui: https://{{ MASTER }}/soc/
+    verify_ui: https://{{ MASTER }}/soc/
+
     # These are undefined because not available in this demo
-    mfa_ui: /soc/
+    mfa_ui: https://{{ MASTER }}/soc/
+
     self:
-      public: /auth/
-      admin: /kratos/
-    default_return_to: /soc/
+      public: https://{{ MASTER }}/auth/
+      admin: https://{{ MASTER }}/kratos/
+    default_return_to: https://{{ MASTER }}/soc/
     whitelisted_return_to_domains:
       - http://127.0.0.1
+
   hashers:
     argon2:
       parallelism: 2
@@ -56,6 +68,11 @@ selfservice:
       iterations: 3
       salt_length: 16
       key_length: 32
+
   identity:
     traits:
       default_schema_url: file:///kratos-conf/identity.traits.schema.json
+
+  courier:
+    smtp:
+      connection_uri: smtps://{{ MASTER }}:25
