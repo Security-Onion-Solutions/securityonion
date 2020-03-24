@@ -17,6 +17,7 @@
 
 SCRIPTDIR=$(dirname "$0")
 source $SCRIPTDIR/so-whiptail
+SOVERSION=1.2.1
 
 accept_salt_key_local() {
   echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
@@ -460,7 +461,7 @@ docker_registry() {
 
 }
 docker_seed_registry() {
-  VERSION="HH1.2.1"
+  VERSION="HH$SOVERSION"
   if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
     TRUSTED_CONTAINERS=( \
     "so-acng:$VERSION" \
@@ -743,7 +744,7 @@ master_static() {
   touch /opt/so/saltstack/pillar/static.sls
 
   echo "static:" > /opt/so/saltstack/pillar/static.sls
-  echo "  soversion: HH1.2.1" >> /opt/so/saltstack/pillar/static.sls
+  echo "  soversion: HH$SOVERSION" >> /opt/so/saltstack/pillar/static.sls
   echo "  hnmaster: $HNMASTER" >> /opt/so/saltstack/pillar/static.sls
   echo "  ntpserver: $NTPSERVER" >> /opt/so/saltstack/pillar/static.sls
   echo "  proxy: $PROXY" >> /opt/so/saltstack/pillar/static.sls
@@ -1280,8 +1281,8 @@ set_hostname() {
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
   HOSTNAME=$(cat /etc/hostname)
-  if [ $INSTALLTYPE != 'MASTER' ] || [ $INSTALLTYPE != 'EVAL' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
-    if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
+  if [ $INSTALLTYPE != 'MASTER' || $INSTALLTYPE != 'EVAL' || $INSTALLTYPE == 'HELIXSENSOR' || $INSTALLTYPE == 'MASTERSEARCH' ]; then
+    if [[ $TESTHOST = *"not found"* ]] || [ -z $TESTHOST ] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
         echo "$MSRVIP   $MSRV" >> /etc/hosts
       fi
@@ -1410,6 +1411,11 @@ set_updates() {
 
   fi
     fi
+}
+
+set_version() {
+  # Drop a file with the current version
+  echo "$SOVERSION" > /etc/soversion
 }
 
 update_sudoers() {
