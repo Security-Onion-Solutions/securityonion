@@ -1,4 +1,5 @@
-{% set MASTER = salt['grains.get']('master') %}
+{%- set MASTER = salt['grains.get']('master') -%}
+{%- set KRATOSKEY = salt['pillar.get']('static:kratoskey', '') -%}
 
 selfservice:
   strategies:
@@ -42,7 +43,7 @@ selfservice:
 
   secrets:
     session:
-      - PLEASE-CHANGE-ME-I-AM-VERY-INSECURE
+      - {{ KRATOSKEY }}
 
   urls:
     login_ui: https://{{ MASTER }}/login/
@@ -50,8 +51,6 @@ selfservice:
     error_ui: https://{{ MASTER }}/login/
     profile_ui: https://{{ MASTER }}/soc/
     verify_ui: https://{{ MASTER }}/soc/
-
-    # These are undefined because not available in this demo
     mfa_ui: https://{{ MASTER }}/soc/
 
     self:
@@ -71,7 +70,7 @@ selfservice:
 
   identity:
     traits:
-      default_schema_url: file:///kratos-conf/identity.traits.schema.json
+      default_schema_url: file:///kratos-conf/schema.json
 
   courier:
     smtp:

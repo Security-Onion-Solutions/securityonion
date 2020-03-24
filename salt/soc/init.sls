@@ -50,7 +50,7 @@ kratosgroup:
     - name: kratos
     - gid: 928
 
-# Add socore user
+# Add Kratos user
 kratos:
   user.present:
     - uid: 928
@@ -86,6 +86,17 @@ kratossync:
     - template: jinja
 
 so-kratos:
+  docker_container.run:
+    - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
+    - name: so-kratos-migrate
+    - command: -c /kratos-conf/kratos.yaml migrate sql -e --yes
+    - binds:
+      - /opt/so/conf/kratos/schema.json:/kratos-conf/identity-traits-schema.json:ro    
+      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
+      - /opt/so/log/kratos/:/kratos-log:rw
+      - /opt/so/conf/kratos/db:/kratos-data:rw
+    - replace: True
+
   docker_container.running:
     - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
     - hostname: kratos
