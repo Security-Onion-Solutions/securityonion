@@ -64,19 +64,25 @@ kratosdir:
     - group: 928
     - makedirs: True
 
+  file.directory:
+    - name: /opt/so/conf/kratos/db
+    - user: 928
+    - group: 928
+    - makedirs: True
+
 kratoslogdir:
   file.directory:
     - name: /opt/so/log/kratos
-    - user: 939
-    - group: 939
+    - user: 928
+    - group: 928
     - makedirs: True
 
 kratossync:
   file.recurse:
     - name: /opt/so/conf/kratos
     - source: salt://soc/files/kratos
-    - user: 939
-    - group: 939
+    - user: 928
+    - group: 928
     - template: jinja
 
 so-kratos:
