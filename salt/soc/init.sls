@@ -25,7 +25,7 @@ soclogdir:
 socsync:
   file.recurse:
     - name: /opt/so/conf/soc
-    - source: salt://soc/files
+    - source: salt://soc/files/soc
     - user: 939
     - group: 939
     - template: jinja
@@ -44,16 +44,53 @@ so-soc:
     - watch:
       - file: /opt/so/conf/soc
 
+# Add Kratos Group
+kratosgroup:
+  group.present:
+    - name: kratos
+    - gid: 929
+
+# Add socore user
+kratos:
+  user.present:
+    - uid: 929
+    - gid: 929
+    - home: /opt/so/conf/kratos
+    
+kratosdir:
+  file.directory:
+    - name: /opt/so/conf/kratos
+    - user: 929
+    - group: 929
+    - makedirs: True
+
+kratoslogdir:
+  file.directory:
+    - name: /opt/so/log/kratos
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+socsync:
+  file.recurse:
+    - name: /opt/so/conf/kratos
+    - source: salt://soc/files/kratos
+    - user: 939
+    - group: 939
+    - template: jinja
+
 so-kratos:
   docker_container.running:
-    - image: docker.io/soshybridhunter/so-soc:{{ VERSION }}
-    - hostname: soc
-    - name: so-soc
+    - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
+    - hostname: kratos
+    - name: so-kratos
     - binds:
-      - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
-      - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
+      - /opt/so/conf/kratos/schema.json:/kratos-conf/identity-traits-schema.json:ro    
+      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
+      - /opt/so/log/kratos/:/kratos-log:rw
+      - /opt/so/conf/kratos/db:/kratos-data:rw
     - port_bindings:
-      - 0.0.0.0:9822:9822
+      - 0.0.0.0:4433:4433
+      - 0.0.0.0:4434:4434
     - watch:
-      - file: /opt/so/conf/soc
+      - file: /opt/so/conf/kratos/kratos.json
