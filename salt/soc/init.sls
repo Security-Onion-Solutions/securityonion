@@ -71,7 +71,7 @@ kratoslogdir:
     - group: 939
     - makedirs: True
 
-socsync:
+kratossync:
   file.recurse:
     - name: /opt/so/conf/kratos
     - source: salt://soc/files/kratos
