@@ -49,7 +49,7 @@ base:
     - registry
     - master
     - common
-    - sensoroni
+    - soc
     - firewall
     - idstools
     - auth
@@ -94,7 +94,7 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
+    - soc
     - firewall
     - master
     - idstools
@@ -199,7 +199,7 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
+    - soc
     - auth
     - firewall
     - master
