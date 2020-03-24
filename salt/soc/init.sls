@@ -48,20 +48,20 @@ so-soc:
 kratosgroup:
   group.present:
     - name: kratos
-    - gid: 929
+    - gid: 928
 
 # Add socore user
 kratos:
   user.present:
-    - uid: 929
-    - gid: 929
+    - uid: 928
+    - gid: 928
     - home: /opt/so/conf/kratos
     
 kratosdir:
   file.directory:
     - name: /opt/so/conf/kratos
-    - user: 929
-    - group: 929
+    - user: 928
+    - group: 928
     - makedirs: True
 
 kratoslogdir:
@@ -93,4 +93,4 @@ so-kratos:
       - 0.0.0.0:4433:4433
       - 0.0.0.0:4434:4434
     - watch:
-      - file: /opt/so/conf/kratos/kratos.json
+      - file: /opt/so/conf/kratos/kratos.yaml
