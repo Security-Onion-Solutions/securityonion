@@ -134,10 +134,13 @@ def start():
  return retval
 
 
-def status():
+def status(verbose=True):
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl status'"
  retval = __salt__['docker.run']('so-zeek', cmd)
+ if not verbose:
+   retval = __context__['retcode']
+
  return retval
 
 
