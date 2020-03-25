@@ -85,7 +85,7 @@ so-kratos-migration:
     - name: so-kratos-migrate
     - command: -c /kratos-conf/kratos.yaml migrate sql -e --yes
     - binds:
-      - /opt/so/conf/kratos/schema.json:/kratos-conf/identity-traits-schema.json:ro    
+      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /opt/so/conf/kratos/db:/kratos-data:rw
@@ -97,7 +97,7 @@ so-kratos:
     - hostname: kratos
     - name: so-kratos
     - binds:
-      - /opt/so/conf/kratos/schema.json:/kratos-conf/identity-traits-schema.json:ro    
+      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /opt/so/conf/kratos/db:/kratos-data:rw
