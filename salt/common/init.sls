@@ -307,7 +307,9 @@ grafanaconf:
     - source: salt://common/grafana/etc
 
 {% if salt['pillar.get']('mastertab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-master:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
@@ -324,11 +326,13 @@ dashboard-master:
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
-{%- endfor %}
+{% endfor %}
 {% endif %}
 
 {% if salt['pillar.get']('sensorstab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
@@ -349,7 +353,9 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('nodestab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboardsearch-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
@@ -370,7 +376,9 @@ dashboardsearch-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('evaltab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json
