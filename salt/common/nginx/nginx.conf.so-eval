@@ -1,4 +1,5 @@
 {%- set masterip = salt['pillar.get']('master:mainip', '') %}
+{%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master') %}
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -63,6 +64,29 @@ http {
         return 301 https://$host$request_uri;
     }
 
+{% if FLEET_MASTER %}
+    server {
+        listen       8090 ssl http2 default_server;
+        server_name  _;
+        root         /opt/socore/html;
+        index        blank.html;
+
+        ssl_certificate "/etc/pki/nginx/server.crt";
+        ssl_certificate_key "/etc/pki/nginx/server.key";
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout  10m;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
+        location ~ ^/kolide.agent.Api/(RequestEnrollment|RequestConfig|RequestQueries|PublishLogs|PublishResults|CheckHealth)$ {
+            grpc_pass  grpcs://{{ masterip }}:8080;
+            grpc_set_header Host $host;
+            grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_buffering off;
+        }
+
+    }
+{% endif %}
 
 # Settings for a TLS enabled server.
 
@@ -159,21 +183,8 @@ http {
 
         }
 
-        location /api/ {
-          proxy_pass            https://{{ masterip }}:8080/api/;
-          proxy_read_timeout    90;
-          proxy_connect_timeout 90;
-          proxy_set_header      Upgrade $http_upgrade;
-          proxy_set_header      Connection "Upgrade";
-          proxy_set_header      Host $host;
-          proxy_set_header      X-Real-IP $remote_addr;
-          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header      Proxy "";
-
-        }
-
         location /fleet/ {
-          proxy_pass            https://{{ masterip }}:8080/fleet/;
+          proxy_pass https://{{ masterip }}:8080;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;

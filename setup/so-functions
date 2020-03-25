@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -94,6 +94,8 @@ auth_pillar(){
     echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
     echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
     echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  fleet_jwt: $FLEETJWT" >> /opt/so/saltstack/pillar/auth.sls
+    echo "  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/auth.sls
   fi
 
 }
@@ -256,6 +258,9 @@ configure_minion() {
     fi
   elif [ $TYPE == 'helix' ]; then
     echo "master: $HOSTNAME" > /etc/salt/minion
+    echo "id: $MINION_ID" >> /etc/salt/minion
+  elif [ $TYPE == 'fleet' ]; then
+    echo "master: $MSRV" > /etc/salt/minion
     echo "id: $MINION_ID" >> /etc/salt/minion
   else
     echo "master: $MSRV" > /etc/salt/minion
@@ -594,10 +599,23 @@ fireeye_pillar() {
 
 }
 
+fleet_pillar() {
+
+  PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+
+  # Create the fleet pillar
+  touch $PILLARFILE
+  echo "fleet:" >> $PILLARFILE
+  echo "  mainip: $MAINIP" >> $PILLARFILE
+  echo "  master: $MSRV" >> $PILLARFILE
+  echo "" >> $PILLARFILE
+}
+
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  FLEETJWT=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   CORTEXKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
   CORTEXORGUSERKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
@@ -778,7 +796,9 @@ master_static() {
   echo "  cortexorgname: SecurityOnion" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexorguser: soadmin" >> /opt/so/saltstack/pillar/static.sls
   echo "  cortexorguserkey: $CORTEXORGUSERKEY" >> /opt/so/saltstack/pillar/static.sls
-  echo "  fleetsetup: 0" >> /opt/so/saltstack/pillar/static.sls
+  echo "  fleet_master: False" >> /opt/so/saltstack/pillar/static.sls
+  echo "  fleet_node: False" >> /opt/so/saltstack/pillar/static.sls
+  echo "  fleet_packages-timestamp: N/A" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
   echo "  kratoskey: $KRATOSKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
@@ -1080,6 +1100,8 @@ EOF
     if [ $INSTALLTYPE == 'MASTER' ] || [ $INSTALLTYPE == 'EVAL' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       yum -y install salt-master-2019.2.3 python3 python36-m2crypto salt-minion-2019.2.3 python36-dateutil python36-mysql python36-docker
       systemctl enable salt-master
+    elif [ $INSTALLTYPE == 'FLEET' ]; then 
+      yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker python36-mysql 
     else
       yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker
     fi
@@ -1152,7 +1174,7 @@ EOF
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list
       echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
@@ -1301,7 +1323,7 @@ set_hostname() {
   echo "::1   localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
   echo $HOSTNAME > /etc/hostname
   HOSTNAME=$(cat /etc/hostname)
-  if [ $INSTALLTYPE != 'MASTER' || $INSTALLTYPE != 'EVAL' || $INSTALLTYPE == 'HELIXSENSOR' || $INSTALLTYPE == 'MASTERSEARCH' ]; then
+  if [[ ! $INSTALLTYPE =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH)$ ]]; then
     if [[ $TESTHOST = *"not found"* ]] || [ -z $TESTHOST ] || [[ $TESTHOST = *"connection timed out"* ]]; then
       if ! grep -q $MSRVIP /etc/hosts; then
         echo "$MSRVIP   $MSRV" >> /etc/hosts
@@ -1365,6 +1387,10 @@ set_initial_firewall_policy() {
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
     ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+  fi
+
+  if [ $INSTALLTYPE == 'FLEET' ]; then
+    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
