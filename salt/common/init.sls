@@ -1,6 +1,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
+{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -142,6 +143,9 @@ so-core:
     - port_bindings:
       - 80:80
       - 443:443
+    {%- if FLEETMASTER %}
+      - 8090:8090
+    {%- endif %}
     - watch:
       - file: /opt/so/conf/nginx/nginx.conf
 
