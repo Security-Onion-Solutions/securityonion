@@ -59,12 +59,6 @@ kratos:
     
 kratosdir:
   file.directory:
-    - name: /opt/so/conf/kratos
-    - user: 928
-    - group: 928
-    - makedirs: True
-
-  file.directory:
     - name: /opt/so/conf/kratos/db
     - user: 928
     - group: 928
@@ -85,7 +79,7 @@ kratossync:
     - group: 928
     - template: jinja
 
-so-kratos:
+so-kratos-migration:
   docker_container.run:
     - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
     - name: so-kratos-migrate
@@ -97,6 +91,7 @@ so-kratos:
       - /opt/so/conf/kratos/db:/kratos-data:rw
     - replace: True
 
+so-kratos:
   docker_container.running:
     - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
     - hostname: kratos
@@ -110,4 +105,4 @@ so-kratos:
       - 0.0.0.0:4433:4433
       - 0.0.0.0:4434:4434
     - watch:
-      - file: /opt/so/conf/kratos/kratos.yaml
+      - file: /opt/so/conf/kratos
