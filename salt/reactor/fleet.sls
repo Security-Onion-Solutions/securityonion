@@ -12,6 +12,8 @@ def run():
   HOSTNAME = data['data']['hostname']
   ROLE = data['data']['role']
   ESECRET = data['data']['enroll-secret']
+  MAINIP = data['data']['mainip']
+
   STATICFILE = '/opt/so/saltstack/pillar/static.sls'
   AUTHFILE = '/opt/so/saltstack/pillar/auth.sls'
 
@@ -27,10 +29,20 @@ def run():
           line = re.sub(r'fleet_master: \S*', f"fleet_master: True", line.rstrip())
         print(line) 
 
-      # Update the enroll secret
+      # Update the enroll secret in the auth pillar
       for line in fileinput.input(AUTHFILE, inplace=True):
         line = re.sub(r'fleet_enroll-secret: \S*', f"fleet_enroll-secret: {ESECRET}", line.rstrip())
-        print(line)       
+        print(line)      
+
+        # Update the Fleet host in the static pillar
+      for line in fileinput.input(STATICFILE, inplace=True):
+        line = re.sub(r'fleet_hostname: \S*', f"fleet_hostname: {HOSTNAME}", line.rstrip())
+        print(line)  
+
+        # Update the Fleet IP in the static pillar
+      for line in fileinput.input(STATICFILE, inplace=True):
+        line = re.sub(r'fleet_ip: \S*', f"fleet_ip: {MAINIP}", line.rstrip())
+        print(line)   
 
     if ACTION == 'genpackages':
       logging.info('so/fleet genpackages reactor')
