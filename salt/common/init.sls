@@ -2,6 +2,7 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 {% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
+{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -143,7 +144,7 @@ so-core:
     - port_bindings:
       - 80:80
       - 443:443
-    {%- if FLEETMASTER %}
+    {%- if FLEETMASTER or FLEETNODE %}
       - 8090:8090
     {%- endif %}
     - watch:
