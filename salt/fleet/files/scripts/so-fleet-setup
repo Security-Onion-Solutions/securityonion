@@ -1,0 +1,38 @@
+#!/bin/bash
+{% set MAIN_HOSTNAME = salt['grains.get']('host') %}
+{% set MAIN_IP = salt['pillar.get']('node:mainip') %}
+
+#so-fleet-setup.sh $FleetEmail
+
+if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
+        echo "so-fleet container not running... Exiting..."
+        exit 1
+fi
+
+initpw=$(date +%s | sha256sum | base64 | head -c 16 ; echo)
+
+docker exec so-fleet /bin/ash -c "echo {{ MAIN_IP }} {{ MAIN_HOSTNAME }} >>  /etc/hosts"
+docker exec so-fleet fleetctl config set --address https://{{ MAIN_HOSTNAME }}:443 --tls-skip-verify --url-prefix /fleet
+docker exec so-fleet fleetctl setup --email $1 --password $initpw
+
+docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/options.yaml
+docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
+docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
+docker exec so-fleet fleetctl apply -f /packs/hh/hhdefault.yml
+docker exec so-fleet /bin/sh -c 'for pack in /packs/palantir/Fleet/Endpoints/packs/*.yaml; do fleetctl apply -f "$pack"; done'
+
+
+# Enable Fleet
+echo "Enabling Fleet..."
+salt-call state.apply fleet.event_enable-fleet queue=True >> /root/fleet-setup.log
+
+# Generate osquery install packages
+echo "Generating osquery install packages - will take some time..."
+salt-call state.apply fleet.event_gen-packages queue=True >> /root/fleet-setup.log
+sleep 180
+
+echo "Installing launcher via salt..."
+salt-call state.apply fleet.install_package queue=True >> /root/fleet-setup.log
+
+echo "Fleet Setup Complete - Login here: https://{{ MAIN_HOSTNAME }}"
+echo "Your username is $2 and your password is $initpw"
