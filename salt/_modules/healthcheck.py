@@ -18,5 +18,5 @@ def zeek():
   else:
     zeek_restarted = False
 
-  __salt__['telegraf.send']('healthcheck zeek_restarted: %s' % str(zeek_restarted))
+  __salt__['telegraf.send']('healthcheck zeek_restarted=%s' % str(zeek_restarted))
   return 'zeek_restarted: %s' % str(zeek_restarted)
