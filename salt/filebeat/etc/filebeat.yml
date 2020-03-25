@@ -8,8 +8,9 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
-{%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
 {%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '1') %}
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
 name: {{ HOSTNAME }}
 
@@ -137,11 +138,11 @@ filebeat.inputs:
 
 {%- endif %}
 
-{%- if FLEETENABLED == '1' %}
+{%- if FLEETMASTER or FLEETNODE %}
 
   - type: log
     paths:
-      - /osquery/logs/result.log
+      - /nsm/osquery/fleet/result.log
     fields:
       type: osquery
 
