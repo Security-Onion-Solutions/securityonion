@@ -79,17 +79,17 @@ kratossync:
     - group: 928
     - template: jinja
 
-so-kratos-migration:
-  docker_container.run:
-    - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
-    - name: so-kratos-migrate
-    - command: -c /kratos-conf/kratos.yaml migrate sql -e --yes
-    - binds:
-      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
-      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
-      - /opt/so/log/kratos/:/kratos-log:rw
-      - /opt/so/conf/kratos/db:/kratos-data:rw
-    - replace: True
+#so-kratos-migration:
+#  docker_container.run:
+#    - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
+#    - name: so-kratos-migrate
+#    - command: -c /kratos-conf/kratos.yaml migrate sql -e --yes
+#    - binds:
+#      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
+#      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
+#      - /opt/so/log/kratos/:/kratos-log:rw
+#      - /opt/so/conf/kratos/db:/kratos-data:rw
+#    - replace: True
 
 so-kratos:
   docker_container.running:
