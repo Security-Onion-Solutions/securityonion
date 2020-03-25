@@ -4,7 +4,6 @@
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
 
-user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
 pid /run/nginx.pid;
@@ -107,9 +106,31 @@ http {
         # Load configuration files for the default server block.
         #include /etc/nginx/default.d/*.conf;
 
-        location / {
-          return 301 /soc/
+        location ~* (^/login/|^/js/.*|^/css/.*|^/images/.*) {
+          proxy_pass            http://{{ masterip }}:9822;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+          proxy_set_header      Upgrade $http_upgrade;
+          proxy_set_header      Connection "Upgrade";
         }
+
+        location / {
+          auth_request          /auth/sessions/whoami;
+          proxy_pass            http://{{ masterip }}:9822/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+          proxy_set_header      Upgrade $http_upgrade;
+          proxy_set_header      Connection "Upgrade";
+        }
+
         location /auth/ {
           rewrite               /auth/(.*) /$1 break;
           proxy_pass            http://{{ masterip }}:4433/;
@@ -134,7 +155,7 @@ http {
         }
 
         location /kibana/ {
-          auth_request          http://{{ masterip }}:4433/sessions/whoami;
+          auth_request          /auth/sessions/whoami;
           rewrite               /kibana/(.*) /$1 break;
           proxy_pass            http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
@@ -172,7 +193,7 @@ http {
 
 
         location /navigator/ {
-          auth_request          http://{{ masterip }}:4433/sessions/whoami;
+          auth_request          /auth/sessions/whoami;
           proxy_pass            http://{{ masterip }}:4200/navigator/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
@@ -229,20 +250,6 @@ http {
 
         }
 
-        location /soc/ {
-          auth_request          http://{{ masterip }}:4433/sessions/whoami;
-          proxy_pass            http://{{ masterip }}:9822/;
-          proxy_read_timeout    90;
-          proxy_connect_timeout 90;
-          proxy_set_header      Host $host;
-          proxy_set_header      X-Real-IP $remote_addr;
-          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header      Proxy "";
-          proxy_set_header      Upgrade $http_upgrade;
-          proxy_set_header      Connection "Upgrade";
-
-        }
-
         location /kibana/app/soc/ {
           rewrite ^/kibana/app/soc/(.*) /soc/$1 permanent;
         }
@@ -281,7 +288,7 @@ http {
 
         location @error401 {
           add_header    Set-Cookie "NSREDIRECT=http://{{ masterip }}$request_uri;Domain={{ masterip }};Path=/;Max-Age=60000";
-          return        302 http://{{ masterip }}/so-auth/loginpage/;
+          return        302 /auth/self-service/browser/flows/login;
         }
 
         error_page 404 /404.html;

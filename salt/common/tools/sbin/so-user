@@ -30,7 +30,7 @@ operation=$1
 email=$2
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
-databasePath=${KRATOS_DB_PATH:-/var/lib/docker/volumes/kratos_kratos-sqlite/_data/db.sqlite}
+databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 argon2Iterations=${ARGON2_ITERATIONS:-3}
 argon2Memory=${ARGON2_MEMORY:-14}
 argon2Parallelism=${ARGON2_PARALLELISM:-2}
@@ -81,8 +81,7 @@ function updatePassword() {
   passwordHash=$(echo "${password}" | argon2 ${salt} -id -t $argon2Iterations -m $argon2Memory -p $argon2Parallelism -l $argon2HashSize -e)
 
   # Update DB with new hash
-  updatePasswordSql="update identity_credentials set config=CAST(JSON_OBJECT('hashed_password',${passwordHash@Q}) as BLOB) where identity_id=${identityId};"
-  sqlite3 "$databasePath" "$updatePasswordSql" ".exit"
+  echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
   [[ $? != 0 ]] && fail "Unable to update password"
 }
 
