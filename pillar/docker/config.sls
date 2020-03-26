@@ -17,7 +17,8 @@ eval:
     - so-grafana
     {% endif %}
     - so-dockerregistry
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-idstools
     - so-auth-api
     - so-auth-ui
@@ -89,7 +90,8 @@ master_search:
   containers:
     - so-core
     - so-telegraf
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-acng
     - so-idstools
     - so-redis
@@ -135,7 +137,8 @@ master:
     - so-influxdb
     - so-grafana
     {% endif %}
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-acng
     - so-idstools
     - so-redis

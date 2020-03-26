@@ -79,9 +79,15 @@ add_socore_user_notmaster() {
 }
 
 add_web_user() {
-
-  # Add a user to the SOC
-  echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER 
+  # Check and see if the DB file is in there
+  if [ ! -f /opt/so/conf/kratos/db/db.sqlite ]; then
+    # Wait 30 Seconds
+    sleep 30
+    # Add a user to the SOC
+    echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
+  else
+    echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
+  fi 
 
 }
 
@@ -508,10 +514,11 @@ docker_seed_registry() {
     "so-navigator:$VERSION" \
     "so-playbook:$VERSION" \
     "so-redis:$VERSION" \
-    "so-sensoroni:$VERSION" \
+    "so-soc:$VERSION" \
+    "so-kratos:$VERSION" \
     "so-soctopus:$VERSION" \
     "so-steno:$VERSION" \
-    #"so-strelka:$VERSION" \
+    "so-strelka:$VERSION" \
     "so-suricata:$VERSION" \
     "so-telegraf:$VERSION" \
     "so-thehive:$VERSION" \
@@ -525,7 +532,7 @@ docker_seed_registry() {
     "so-idstools:$VERSION" \
     "so-logstash:$VERSION" \
     "so-redis:$VERSION" \
-    "so-sensoroni:$VERSION" \
+    #"so-sensoroni:$VERSION" \
     "so-steno:$VERSION" \
     "so-suricata:$VERSION" \
     "so-telegraf:$VERSION" \
