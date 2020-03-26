@@ -13,6 +13,7 @@ base:
     - static
     - firewall.*
     - brologs
+    - healthcheck.sensor
     - minions.{{ grains.id }}
 
   '*_master or *_mastersearch':

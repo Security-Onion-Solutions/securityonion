@@ -35,6 +35,7 @@ base:
     - firewall
     - pcap
     - suricata
+    - healthcheck
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
@@ -55,6 +56,7 @@ base:
     - firewall
     - idstools
     - auth
+    - healthcheck
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
