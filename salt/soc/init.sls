@@ -38,6 +38,7 @@ so-soc:
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
     - port_bindings:
       - 0.0.0.0:9822:9822
