@@ -79,16 +79,25 @@ add_socore_user_notmaster() {
 }
 
 add_web_user() {
-  # Check and see if the DB file is in there
-  if [ ! -f /opt/so/conf/kratos/db/db.sqlite ]; then
-    # Wait 30 Seconds
-    sleep 30
-    # Add a user to the SOC
+  MAXATTEMPTS=30
+  attempts=0
+  while [[ $attempts < $MAXATTEMPTS ]]; do
+    # Check and see if the DB file is in there
+    if [ ! -f /opt/so/conf/kratos/db/db.sqlite ]; then
+      echo "Identity database does not yet exist; waiting 5 seconds and will check again..."
+      sleep 5
+      attempts=$((attempts+1))
+    else
+      attempts=$MAXATTEMPTS
+    fi
+  done
+
+  if [ -f /opt/so/conf/kratos/db/db.sqlite ]; then
+    echo "Adding administrator user for web interface"
     echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
   else
-    echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
-  fi 
-
+    echo "ERROR: Identity database was not found after multiple attempts; unable to add the admin user"
+  fi
 }
 
 # Create an auth pillar so that passwords survive re-install
