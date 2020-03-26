@@ -83,21 +83,18 @@ add_web_user() {
   attempts=0
   while [[ $attempts < $MAXATTEMPTS ]]; do
     # Check and see if the DB file is in there
-    if [ ! -f /opt/so/conf/kratos/db/db.sqlite ]; then
-      echo "Identity database does not yet exist; waiting 5 seconds and will check again..."
-      sleep 5
-      attempts=$((attempts+1))
-    else
+    if [ -f /opt/so/conf/kratos/db/db.sqlite ]; then
       attempts=$MAXATTEMPTS
+    else
+      echo "Identity database does not yet exist; waiting 5 seconds and will check again ($attempts/$MAXATTEMPTS)..."
+      sleep 5
+      attempts=$((attempts+1))      
     fi
   done
 
-  if [ -f /opt/so/conf/kratos/db/db.sqlite ]; then
-    echo "Adding administrator user for web interface"
-    echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
-  else
-    echo "ERROR: Identity database was not found after multiple attempts; unable to add the admin user"
-  fi
+  echo "Attempting to add administrator user for web interface..."
+  echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
+  echo "Add user result: $?"
 }
 
 # Create an auth pillar so that passwords survive re-install
