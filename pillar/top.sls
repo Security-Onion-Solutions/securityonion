@@ -35,6 +35,7 @@ base:
     - auth
     - logstash
     - logstash.eval
+    - healthcheck.eval
     - minions.{{ grains.id }}
 
   '*_node':
