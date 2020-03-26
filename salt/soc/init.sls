@@ -32,7 +32,7 @@ socsync:
 
 so-soc:
   docker_container.running:
-    - image: docker.io/soshybridhunter/so-soc:{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-soc:{{ VERSION }}
     - hostname: soc
     - name: so-soc
     - binds:
@@ -82,7 +82,7 @@ kratossync:
 
 so-kratos:
   docker_container.running:
-    - image: docker.io/soshybridhunter/so-kratos:{{ VERSION }}
+    - image: {{ MASTER }}:5000/soshybridhunter/so-kratos:{{ VERSION }}
     - hostname: kratos
     - name: so-kratos
     - binds:
