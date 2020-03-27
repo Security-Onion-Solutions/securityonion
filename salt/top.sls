@@ -54,7 +54,6 @@ base:
     - soc
     - firewall
     - idstools
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -101,7 +100,6 @@ base:
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -190,7 +188,6 @@ base:
     - firewall
     - sensor
     - master
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -202,12 +199,10 @@ base:
     - registry
     - common
     - soc
-    - auth
     - firewall
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}

@@ -20,8 +20,6 @@ eval:
     - so-soc
     - so-kratos
     - so-idstools
-    - so-auth-api
-    - so-auth-ui
     {% if OSQUERY != '0' %}
     - so-mysql
     - so-fleet
@@ -95,8 +93,6 @@ master_search:
     - so-acng
     - so-idstools
     - so-redis
-    - so-auth-api
-    - so-auth-ui
     - so-logstash
     - so-elasticsearch
     - so-curator
@@ -142,8 +138,6 @@ master:
     - so-acng
     - so-idstools
     - so-redis
-    - so-auth-api
-    - so-auth-ui
     - so-elasticsearch
     - so-logstash
     - so-kibana
