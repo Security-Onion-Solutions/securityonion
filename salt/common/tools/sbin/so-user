@@ -22,7 +22,8 @@ got_root() {
 got_root
 
 if [[ $# < 1 || $# > 2 ]]; then
-  echo "Usage: $0 <list|add|update|delete> [email]"
+  echo "Usage: $0 <list|add|update|delete|checkpw> [email]"
+  echo "Note that checkpw only checks that the given password meets the minimum requirements, it does not test that it matches for an existing user."
   exit 1
 fi
 
@@ -66,6 +67,16 @@ function findIdByEmail() {
   echo $identityId
 }
 
+function validatePassword() {
+  password=$1
+
+  len=$(expr length "$password")
+  if [[ $len -lt 6 ]]; then
+    echo "Password does not meet the minimum requirements"
+    exit 2
+  fi
+}
+
 function updatePassword() {
   identityId=$1
   
@@ -76,13 +87,17 @@ function updatePassword() {
   fi
   read -s password
 
-  # Generate password hash
-  salt=$(openssl rand -hex 8)
-  passwordHash=$(echo "${password}" | argon2 ${salt} -id -t $argon2Iterations -m $argon2Memory -p $argon2Parallelism -l $argon2HashSize -e)
+  validatePassword "$password"
 
-  # Update DB with new hash
-  echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
-  [[ $? != 0 ]] && fail "Unable to update password"
+  if [[ -n $identityId ]]; then
+    # Generate password hash
+    salt=$(openssl rand -hex 8)
+    passwordHash=$(echo "${password}" | argon2 ${salt} -id -t $argon2Iterations -m $argon2Memory -p $argon2Parallelism -l $argon2HashSize -e)
+
+    # Update DB with new hash
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to update password"
+  fi
 }
 
 function listUsers() {
@@ -171,6 +186,11 @@ case "${operation}" in
 
     deleteUser "$email"
     echo "Successfully deleted user"  
+    ;;
+
+  "checkpw")
+    updatePassword
+    echo "Password is acceptable"
     ;;
 
   *)
