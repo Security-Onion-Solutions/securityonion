@@ -677,6 +677,14 @@ get_main_ip() {
 
 }
 
+get_redirect() {
+  whiptail_set_redirect_info
+  whiptail_set_redirect
+  if [ $REDIRECTINFO == 'OTHER' ]; then
+    whiptail_set_redirect_host
+  fi
+}
+
 got_root() {
 
   # Make sure you are root
@@ -788,6 +796,18 @@ master_pillar() {
   echo "  thehive: $THEHIVE" >> $PILLARFILE
   echo "  playbook: $PLAYBOOK" >> $PILLARFILE
   echo "" >> $PILLARFILE
+  echo "kratos:" >> $PILLARFILE
+  if [[ $REDIRECTINFO == 'OTHER' ]]; then
+    REDIRECTIT=$REDIRECT
+  elif [[ $REDIRECTINFO == 'IP' ]]; then
+    REDIRECTIT=$MAINIP
+  elif [[ $REDIRECTINFO == 'HOSTNAME' ]]; then
+    REDIRECTIT=$HOSTNAME
+  fi    
+  echo "  kratoskey: $KRATOSKEY" >> $PILLARFILE
+  echo "  redirect: $REDIRECTIT" >> $PILLARFILE
+  echo "" >> $PILLARFILE
+
 
   }
 
@@ -817,7 +837,6 @@ master_static() {
   echo "  fleet_node: False" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleet_packages-timestamp: N/A" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
-  echo "  kratoskey: $KRATOSKEY" >> /opt/so/saltstack/pillar/static.sls
   if [[ $MASTERUPDATES == 'MASTER' ]]; then
     echo "  masterupdate: 1" >> /opt/so/saltstack/pillar/static.sls
   else
