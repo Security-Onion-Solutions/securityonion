@@ -1,5 +1,5 @@
-{%- set MASTER = salt['grains.get']('master') -%}
-{%- set KRATOSKEY = salt['pillar.get']('static:kratoskey', '') -%}
+{%- set WEBACCESS = salt['pillar.get']('kratos:redirect', '') -%}
+{%- set KRATOSKEY = salt['pillar.get']('kratos:kratoskey', '') -%}
 
 selfservice:
   strategies:
@@ -7,10 +7,10 @@ selfservice:
       enabled: true
 
   verify:
-    return_to: https://{{ MASTER }}/
+    return_to: https://{{ WEBACCESS }}/
 
   logout:
-    redirect_to: https://{{ MASTER }}/login/
+    redirect_to: https://{{ WEBACCESS }}/login/
 
   login:
     request_lifespan: 10m
@@ -21,7 +21,7 @@ selfservice:
         -
           job: redirect
           config:
-            default_redirect_url: https://{{ MASTER }}/
+            default_redirect_url: https://{{ WEBACCESS }}/
             allow_user_defined_redirect: true
 
   registration:
@@ -35,7 +35,7 @@ selfservice:
         -
           job: redirect
           config:
-            default_redirect_url: https://{{ MASTER }}/
+            default_redirect_url: https://{{ WEBACCESS }}/
             allow_user_defined_redirect: true
 
 log:
@@ -47,17 +47,17 @@ secrets:
     - {{ KRATOSKEY }}
 
 urls:
-  login_ui: https://{{ MASTER }}/login/
-  registration_ui: https://{{ MASTER }}/login/
-  error_ui: https://{{ MASTER }}/login/
-  profile_ui: https://{{ MASTER }}/
-  verify_ui: https://{{ MASTER }}/
-  mfa_ui: https://{{ MASTER }}/
+  login_ui: https://{{ WEBACCESS }}/login/
+  registration_ui: https://{{ WEBACCESS }}/login/
+  error_ui: https://{{ WEBACCESS }}/login/
+  profile_ui: https://{{ WEBACCESS }}/
+  verify_ui: https://{{ WEBACCESS }}/
+  mfa_ui: https://{{ WEBACCESS }}/
 
   self:
-    public: https://{{ MASTER }}/auth/
-    admin: https://{{ MASTER }}/kratos/
-  default_return_to: https://{{ MASTER }}/
+    public: https://{{ WEBACCESS }}/auth/
+    admin: https://{{ WEBACCESS }}/kratos/
+  default_return_to: https://{{ WEBACCESS }}/
   whitelisted_return_to_domains:
     - http://127.0.0.1
 
@@ -75,4 +75,4 @@ identity:
 
 courier:
   smtp:
-    connection_uri: smtps://{{ MASTER }}:25
+    connection_uri: smtps://{{ WEBACCESS }}:25
