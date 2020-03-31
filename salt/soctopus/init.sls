@@ -18,10 +18,11 @@ soctopussync:
 
 soctopusconf:
   file.managed:
-    - name: /opt/so/conf/SOCtopus.conf
+    - name: /opt/so/conf/soctopus/SOCtopus.conf
     - source: salt://soctopus/files/SOCtopus.conf
     - user: 939
     - group: 939
+    - replace: False
     - mode: 600
     - template: jinja
 
