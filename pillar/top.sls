@@ -13,6 +13,7 @@ base:
     - static
     - firewall.*
     - brologs
+    - healthcheck.sensor
     - minions.{{ grains.id }}
 
   '*_master or *_mastersearch':
@@ -20,7 +21,6 @@ base:
     - static
     - firewall.*
     - data.*
-    - auth
     - minions.{{ grains.id }}
 
   '*_master':
@@ -32,9 +32,9 @@ base:
     - firewall.*
     - data.*
     - brologs
-    - auth
     - logstash
     - logstash.eval
+    - healthcheck.eval
     - minions.{{ grains.id }}
 
   '*_node':
@@ -61,5 +61,4 @@ base:
     - static
     - firewall.*
     - data.*
-    - auth
     - minions.{{ grains.id }}
