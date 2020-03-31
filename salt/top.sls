@@ -52,10 +52,9 @@ base:
     - registry
     - master
     - common
-    - sensoroni
+    - soc
     - firewall
     - idstools
-    - auth
     - healthcheck
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
@@ -98,12 +97,11 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -192,7 +190,6 @@ base:
     - firewall
     - sensor
     - master
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -203,13 +200,11 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
-    - auth
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
