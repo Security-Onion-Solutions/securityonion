@@ -50,7 +50,7 @@ fleetpacksync:
     - user: 939
     - group: 939
 
-  fleetpackagessync:
+fleetpackagessync:
   file.recurse:
     - name: /opt/so/conf/fleet/packages
     - source: salt://fleet/packages/
