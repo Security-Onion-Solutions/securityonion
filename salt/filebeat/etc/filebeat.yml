@@ -20,7 +20,7 @@ name: {{ HOSTNAME }}
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-logging.level: error
+logging.level: warning
 
 # Enable debug output for selected components. To enable all selectors use ["*"]
 # Other available selectors are "beat", "publish", "service"
@@ -82,7 +82,8 @@ filebeat.inputs:
       - /nsm/zeek/logs/current/{{ LOGNAME }}.log
     fields:
         module: zeek 
-        dataset: {{ LOGNAME }}  
+        dataset: {{ LOGNAME }}
+        category: network
     processors:
     - drop_fields:
         fields: ["source", "prospector", "input", "offset", "beat"]
@@ -100,6 +101,7 @@ filebeat.inputs:
     fields:
       module: suricata
       dataset: alert
+      category: network
 
     processors:
     - drop_fields:
@@ -118,7 +120,7 @@ filebeat.inputs:
     fields:
       module: ossec
       dataset: alert
-
+      category: host
     processors:
     - drop_fields:
         fields: ["source", "prospector", "input", "offset", "beat"]
