@@ -1,0 +1,26 @@
+{
+  "description" : "osquery",
+  "processors" : [
+    { "json":        { "field": "message",                            "target_field": "message2",             "ignore_failure": true  } },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "def dict = ['result': new HashMap()]; for (entry in ctx['message2'].entrySet()) { dict['result'][entry.getKey()] = entry.getValue(); } ctx['osquery'] = dict; "
+      }
+    },
+    { "rename":      { "field": "osquery.result.hostIdentifier",      "target_field": "osquery.result.host_identifier",              "ignore_missing": true  } },
+    { "rename":      { "field": "osquery.result.calendarTime",        "target_field": "osquery.result.calendar_time",              "ignore_missing": true  } },
+    { "rename":      { "field": "osquery.result.unixTime",            "target_field": "osquery.result.unix_time",                "ignore_missing": true  } },    
+    { "json":        { "field": "message",                            "target_field": "message3",             "ignore_failure": true  } },
+    { "rename":      { "field": "message3.columns.username",          "target_field": "user.name",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.uid",               "target_field": "user.uid",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.gid",               "target_field": "user.gid",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.shell",             "target_field": "user.shell",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.cmdline",           "target_field": "process.command_line",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.pid",               "target_field": "process.pid",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.parent",            "target_field": "process.ppid",              "ignore_missing": true  } },
+    { "rename":      { "field": "message3.columns.cwd",               "target_field": "process.working_directory",              "ignore_missing": true  } },
+    { "remove":      { "field": [ "message3"],                        "ignore_failure": false } },
+    { "pipeline":    { "name": "common" } }
+  ]
+}

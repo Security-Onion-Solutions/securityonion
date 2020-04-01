@@ -50,7 +50,7 @@ fleetpacksync:
     - user: 939
     - group: 939
 
-  fleetpackagessync:
+fleetpackagessync:
   file.recurse:
     - name: /opt/so/conf/fleet/packages
     - source: salt://fleet/packages/
@@ -76,11 +76,7 @@ fleetsetupscripts:
 osquerypackageswebpage:
   file.managed:
     - name: /opt/so/conf/fleet/packages/index.html
-{% if FLEETARCH == "so-fleet" %}
     - source: salt://fleet/files/dedicated-index.html
-{% else %}
-    - source: salt://fleet/files/osquery-packages.html
-{% endif %}
     - template: jinja
 
 fleetdb:

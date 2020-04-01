@@ -6,6 +6,7 @@
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set STRELKA = salt['pillar.get']('master:strelka', '1') -%}
 
 
 base:
@@ -53,7 +54,7 @@ base:
     - registry
     - master
     - common
-    - sensoroni
+    - soc
     - firewall
     - idstools
     - auth
@@ -65,11 +66,14 @@ base:
     - wazuh
     {%- endif %}
     - elasticsearch
-    - filebeat
     - kibana
     - pcap
     - suricata
     - zeek
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
+    - filebeat
     - curator
     - elastalert
     {%- if FLEETMASTER or FLEETNODE %}
@@ -99,12 +103,11 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -193,7 +196,6 @@ base:
     - firewall
     - sensor
     - master
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -204,13 +206,11 @@ base:
     - ssl
     - registry
     - common
-    - sensoroni
-    - auth
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}

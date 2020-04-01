@@ -100,13 +100,6 @@ nginxconf:
     - template: jinja
     - source: salt://common/nginx/nginx.conf.{{ grains.role }}
 
-copyindex:
-  file.managed:
-    - name: /opt/so/conf/nginx/index.html
-    - user: 939
-    - group: 939
-    - source: salt://common/nginx/index.html
-
 nginxlogdir:
   file.directory:
     - name: /opt/so/log/nginx/
@@ -129,7 +122,6 @@ so-core:
     - binds:
       - /opt/so:/opt/so:rw
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /opt/so/conf/nginx/index.html:/opt/socore/html/index.html:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
