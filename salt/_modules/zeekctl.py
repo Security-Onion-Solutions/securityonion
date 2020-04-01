@@ -1,5 +1,7 @@
 #!py
 
+import logging
+
 
 def capstats(interval=10):
 
@@ -140,7 +142,7 @@ def status(verbose=True):
  retval = __salt__['docker.run']('so-zeek', cmd)
  if not verbose:
    retval = __context__['retcode']
-
+   logging.info('zeekctl_module: zeekctl.status_NOTVERBOSE retval: %s' % retval)
  return retval
 
 

@@ -83,10 +83,6 @@ docker:
   service.running:
     - enable: True
 
-salt-minion:
-  service.running:
-    - enable: True
-
 # Drop the correct nginx config based on role
 
 nginxconfdir:
