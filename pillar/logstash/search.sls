@@ -2,7 +2,7 @@ logstash:
   pipelines:
     search:
       config:
-	    - so/0900_input_redis.conf.jinja
+	- so/0900_input_redis.conf.jinja
         - so/9000_output_bro.conf.jinja
         - so/9002_output_import.conf.jinja
         - so/9033_output_snort.conf.jinja
