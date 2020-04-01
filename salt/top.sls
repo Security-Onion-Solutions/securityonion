@@ -13,6 +13,7 @@ base:
   '*':
     - patch.os.schedule
     - motd
+    - salt
 
   '*_helix':
     - ca
@@ -36,7 +37,7 @@ base:
     - firewall
     - pcap
     - suricata
-    - healthcheck
+    - salt.beacons
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
@@ -56,7 +57,8 @@ base:
     - soc
     - firewall
     - idstools
-    - healthcheck
+    - auth
+    - salt.beacons
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
