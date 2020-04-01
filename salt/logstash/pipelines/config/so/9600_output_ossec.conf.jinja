@@ -9,7 +9,7 @@
 # Last Update: 9/19/2018
 
 filter {
-  if [event_type] =~ "ossec" {
+  if [module] =~ "ossec" {
     mutate {
           ##add_tag => [ "conf_file_9600"]
         }
@@ -17,9 +17,9 @@ filter {
 }
 
 output {
-  if [event_type] =~ "ossec" or "ossec" in [tags] {
+  if [module] =~ "ossec" {
     elasticsearch {
-      pipeline => "%{event_type}"
+      pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-ossec-%{+YYYY.MM.dd}"
       template_name => "so-common"
