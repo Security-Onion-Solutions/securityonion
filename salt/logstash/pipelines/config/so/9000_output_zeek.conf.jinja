@@ -10,17 +10,16 @@
 
 
 filter {
-  if "zeek" in [tags] and "test_data" not in [tags] and "import" not in [tags] {
+  if [module] =~ "zeek" {
     mutate {
 	  ##add_tag => [ "conf_file_9000"]
 	}
   }
 }
 output {
-  if "zeek" in [tags] and "test_data" not in [tags] and "import" not in [tags] {
-#    stdout { codec => rubydebug }
+  if [module] =~ "zeek" {
     elasticsearch {
-      pipeline => "%{event_type}"
+      pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-zeek-%{+YYYY.MM.dd}"
       template_name => "so-zeek"
