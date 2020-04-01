@@ -84,7 +84,6 @@ strelka_frontend:
 strelka_backend:
   docker_container.running:
     - image: soshybridhunter/so-strelka-backend:HH1.2.1
-    - restart_policy: unless-stopped
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
