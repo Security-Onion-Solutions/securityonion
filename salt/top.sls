@@ -6,12 +6,14 @@
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set STRELKA = salt['pillar.get']('master:strelka', '1') -%}
 
 
 base:
   '*':
     - patch.os.schedule
     - motd
+    - salt
 
   '*_helix':
     - ca
@@ -35,7 +37,7 @@ base:
     - firewall
     - pcap
     - suricata
-    - healthcheck
+    - salt.beacons
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
@@ -55,7 +57,8 @@ base:
     - soc
     - firewall
     - idstools
-    - healthcheck
+    - auth
+    - salt.beacons
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -63,11 +66,14 @@ base:
     - wazuh
     {%- endif %}
     - elasticsearch
-    - filebeat
     - kibana
     - pcap
     - suricata
     - zeek
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
+    - filebeat
     - curator
     - elastalert
     {%- if FLEETMASTER or FLEETNODE %}

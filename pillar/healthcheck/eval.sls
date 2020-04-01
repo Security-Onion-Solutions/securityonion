@@ -1,5 +1,5 @@
 healthcheck:
   enabled: False
-  schedule: 10
+  schedule: 60
   checks:
     - zeek
