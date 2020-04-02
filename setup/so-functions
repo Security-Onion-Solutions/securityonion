@@ -101,17 +101,17 @@ add_web_user() {
   echo "Add user result: $?"
 }
 
-# Create an auth pillar so that passwords survive re-install
-auth_pillar(){
+# Create an secrets pillar so that passwords survive re-install
+secrets_pillar(){
 
-  if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
-    echo "Creating Auth Pillar" >> $SETUPLOG 2>&1
+  if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
+    echo "Creating Secrets Pillar" >> $SETUPLOG 2>&1
     mkdir -p /opt/so/saltstack/pillar
-    echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet_jwt: $FLEETJWT" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/auth.sls
+    echo "secrets:" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet_jwt: $FLEETJWT" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/secrets.sls
   fi
 
 }
@@ -288,10 +288,10 @@ configure_minion() {
     echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
     echo "mysql.port: 3306" >> /etc/salt/minion
     echo "mysql.user: 'root'" >> /etc/salt/minion
-    if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+    if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
       echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
     else
-      OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
+      OLDPASS=$(cat /opt/so/saltstack/pillar/secrets.sls | grep mysql | awk {'print $2'})
       echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
     fi
   elif [ $TYPE == 'helix' ]; then
@@ -551,8 +551,6 @@ docker_seed_registry() {
   if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
     TRUSTED_CONTAINERS=( \
     "so-acng:$VERSION" \
-    "so-auth-api:$VERSION" \
-    "so-auth-ui:$VERSION" \
     "so-core:$VERSION" \
     "so-thehive-cortex:$VERSION" \
     "so-curator:$VERSION" \
