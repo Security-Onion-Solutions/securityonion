@@ -37,7 +37,7 @@ base:
     - firewall
     - pcap
     - suricata
-    - salt.beacons
+    - healthcheck
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
@@ -58,7 +58,7 @@ base:
     - firewall
     - idstools
     - auth #Shared secrets
-    - salt.beacons
+    - healthcheck
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}

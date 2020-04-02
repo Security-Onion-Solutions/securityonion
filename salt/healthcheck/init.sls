@@ -1,9 +1,6 @@
-### This state isn't used for anything. It was written to handle healthcheck scheduling,
-### but we handle that with beacons now.
-
 {% set CHECKS = salt['pillar.get']('healthcheck:checks', {}) %}
 {% set ENABLED = salt['pillar.get']('healthcheck:enabled', False) %}
-{% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 30) %}
+{% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 10) %}
 
 {% if CHECKS and ENABLED %}
   {% set STATUS = ['present','enabled'] %}
@@ -21,7 +18,7 @@ healthcheck_schedule_{{ STATUS[0] }}:
   schedule.{{ STATUS[0] }}:
     - name: healthcheck
     - function: healthcheck.run
-    - minutes: {{ SCHEDULE }}
+    - seconds: {{ SCHEDULE }}
 
 healthcheck_schedule_{{ STATUS[1] }}:
   schedule.{{ STATUS[1] }}:

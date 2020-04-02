@@ -6,7 +6,7 @@ local = salt.client.LocalClient()
 
 def run():
   minionid = data['id']
-  zeek_restart = data['zeek_restart']
+  zeek_restart = data['data']['zeek_restart']
   
   logging.info('zeek_reactor: zeek_need_restarted:%s on:%s' % (zeek_restart, minionid))
   if zeek_restart:

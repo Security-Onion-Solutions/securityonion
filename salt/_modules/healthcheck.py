@@ -3,7 +3,7 @@
 import logging
 import sys
 
-allowed_functions = ['is_enabled,zeek']
+allowed_functions = ['is_enabled', 'zeek']
 states_to_apply = []
 
 
@@ -42,14 +42,14 @@ def run(checks=''):
   
   retval = []
   calling_func = sys._getframe().f_back.f_code.co_name
-  logging.debug('healthcheck_module: run function caller: %s' % calling_func)
+  logging.info('healthcheck_module: run function caller: %s' % calling_func)
   
   if checks:
     checks = checks.split(',')
   else:  
     checks = __salt__['pillar.get']('healthcheck:checks', {})
   
-  logging.debug('healthcheck_module: run checks to be run: %s' % str(checks))
+  logging.info('healthcheck_module: run checks to be run: %s' % str(checks))
   for check in checks:
     if check in allowed_functions:
       retval.append(check)
@@ -63,6 +63,11 @@ def run(checks=''):
   apply_states()
 
   return retval
+
+
+def send_event(tag, eventdata):
+  #__salt__['event.send'](tag, data={'stuff': 'things'})
+  __salt__['event.send'](tag, eventdata[0])
 
 
 def zeek():
@@ -86,5 +91,6 @@ def zeek():
   
   retval.append({'zeek_restart': zeek_restart})
 
+  send_event('so/healthcheck/zeek', retval)
   __salt__['telegraf.send']('healthcheck zeek_restart=%s' % str(zeek_restart))
   return retval
