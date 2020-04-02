@@ -21,7 +21,7 @@ base:
     - static
     - firewall.*
     - data.*
-    - auth #Shared secrets
+    - secrets
     - minions.{{ grains.id }}
 
   '*_master':
@@ -33,7 +33,7 @@ base:
     - firewall.*
     - data.*
     - brologs
-    - auth #Shared secrets
+    - secrets
     - logstash
     - logstash.eval
     - healthcheck.eval
@@ -63,5 +63,5 @@ base:
     - static
     - firewall.*
     - data.*
-    - auth #Shared secrets
+    - secrets
     - minions.{{ grains.id }}

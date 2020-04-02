@@ -57,7 +57,6 @@ base:
     - soc
     - firewall
     - idstools
-    - auth #Shared secrets
     - salt.beacons
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
@@ -108,7 +107,6 @@ base:
     - master
     - idstools
     - redis
-    - auth #Shared secrets
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
@@ -197,7 +195,6 @@ base:
     - firewall
     - sensor
     - master
-    - auth #Shared secrets
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -213,7 +210,6 @@ base:
     - master
     - idstools
     - redis
-    - auth #Shared secrects
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
