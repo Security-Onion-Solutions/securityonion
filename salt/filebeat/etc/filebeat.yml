@@ -179,7 +179,8 @@ filebeat.inputs:
     close_removed: false
 
 {%- endif %}
-#----------------------------- Logstash output ---------------------------------
+#----------------------------- Elasticsearch/Logstash output ---------------------------------
+{%- if grains['role'] == "so-eval" %}
 output.elasticsearch:
   enabled: true
   hosts: ["{{ MASTER }}:9200"]
@@ -202,12 +203,15 @@ output.elasticsearch:
       when.contains:
         module: "strelka"
 
-#output.logstash:
+setup.template.enabled: false
+{%- else %}
+
+output.logstash:
   # Boolean flag to enable or disable the output module.
-  #enabled: true
+  enabled: true
 
   # The Logstash hosts
-  #hosts: ["{{ MASTER }}:5644"]
+  hosts: ["{{ MASTER }}:5644"]
 
   # Number of workers per Logstash host.
   #worker: 1
@@ -222,21 +226,21 @@ output.elasticsearch:
   # and certificates will be accepted. In this mode, SSL based connections are
   # susceptible to man-in-the-middle attacks. Use only for testing. Default is
   # `full`.
-  #ssl.verification_mode: full
+  ssl.verification_mode: full
 
   # List of supported/valid TLS versions. By default all TLS versions 1.0 up to
   # 1.2 are enabled.
-  #ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
+  ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
 
   # Optional SSL configuration options. SSL is off by default.
   # List of root certificates for HTTPS server verifications
-  #ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
 
   # Certificate for SSL client authentication
-  #ssl.certificate: "/usr/share/filebeat/filebeat.crt"
+  ssl.certificate: "/usr/share/filebeat/filebeat.crt"
 
   # Client Certificate Key
-  #ssl.key: "/usr/share/filebeat/filebeat.key"
+  ssl.key: "/usr/share/filebeat/filebeat.key"
 
 setup.template.enabled: false
   # A dictionary of settings to place into the settings.index dictionary
@@ -251,7 +255,7 @@ setup.template.enabled: false
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
   #_source:
     #enabled: false
-
+{%- endif %}
 #============================== Kibana =====================================
 
 # Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.
