@@ -1,6 +1,6 @@
 {% set CHECKS = salt['pillar.get']('healthcheck:checks', {}) %}
 {% set ENABLED = salt['pillar.get']('healthcheck:enabled', False) %}
-{% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 10) %}
+{% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 300) %}
 
 {% if CHECKS and ENABLED %}
   {% set STATUS = ['present','enabled'] %}
