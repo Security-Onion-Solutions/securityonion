@@ -29,9 +29,9 @@ accept_salt_key_local() {
 accept_salt_key_remote() {
 	echo "Accept the key remotely on the master" >> $SETUPLOG 2>&1
 	# Delete the key just in case.
-	ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -d $MINION_ID -y
+	ssh -i /root/.ssh/so.key soremote@$MSRV sudo salt-key -d $MINION_ID -y
 	salt-call state.apply ca
-	ssh -i /root/.ssh/so.key socore@$MSRV sudo salt-key -a $MINION_ID -y
+	ssh -i /root/.ssh/so.key soremote@$MSRV sudo salt-key -a $MINION_ID -y
 
 }
 
@@ -65,8 +65,23 @@ add_socore_user_master() {
 	fi
 	groupadd --gid 939 socore
 	$ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
-	# Set the password for socore that we got during setup
-	echo socore:$COREPASS1 | chpasswd --crypt-method=SHA512
+
+}
+
+add_soremote_user_master() {
+
+	echo "Add soremote on the master" >>~/sosetup.log 2>&1
+	# Add user "soremote" to the master. This will be for things like accepting keys.
+	if [ $OS == 'centos' ]; then
+		local ADDUSER=adduser
+	else
+		local ADDUSER=useradd
+	fi
+	groupadd --gid 947 soremote
+	$ADDUSER --uid 947 --gid 947 soremote
+	
+	# Set the password for soremote that we got during setup
+	echo soremote:$REMOTEPASS1 | chpasswd --crypt-method=SHA512
 
 }
 
@@ -101,17 +116,17 @@ add_web_user() {
   echo "Add user result: $?"
 }
 
-# Create an auth pillar so that passwords survive re-install
-auth_pillar(){
+# Create an secrets pillar so that passwords survive re-install
+secrets_pillar(){
 
-  if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
-    echo "Creating Auth Pillar" >> $SETUPLOG 2>&1
+  if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
+    echo "Creating Secrets Pillar" >> $SETUPLOG 2>&1
     mkdir -p /opt/so/saltstack/pillar
-    echo "auth:" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet_jwt: $FLEETJWT" >> /opt/so/saltstack/pillar/auth.sls
-    echo "  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/auth.sls
+    echo "secrets:" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  mysql: $MYSQLPASS" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet: $FLEETPASS" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet_jwt: $FLEETJWT" >> /opt/so/saltstack/pillar/secrets.sls
+    echo "  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/secrets.sls
   fi
 
 }
@@ -232,9 +247,9 @@ check_network_manager_conf() {
 	fi
 }
 
-check_socore_pass() {
+check_soremote_pass() {
 
-	if [ $COREPASS1 == $COREPASS2 ]; then
+	if [ $SOREMOTEPASS1 == $SOREMOTEPASS2 ]; then
 		SCMATCH=yes
 	else
 		whiptail_passwords_dont_match
@@ -288,10 +303,10 @@ configure_minion() {
     echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
     echo "mysql.port: 3306" >> /etc/salt/minion
     echo "mysql.user: 'root'" >> /etc/salt/minion
-    if [ ! -f /opt/so/saltstack/pillar/auth.sls ]; then
+    if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
       echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
     else
-      OLDPASS=$(cat /opt/so/saltstack/pillar/auth.sls | grep mysql | awk {'print $2'})
+      OLDPASS=$(cat /opt/so/saltstack/pillar/secrets.sls | grep mysql | awk {'print $2'})
       echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
     fi
   elif [ $TYPE == 'helix' ]; then
@@ -337,8 +352,8 @@ copy_minion_tmp_files() {
     fi
   else
     echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
-    scp -prv -i /root/.ssh/so.key $TMP/pillar/* socore@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP/salt/* socore@$MSRV:/opt/so/saltstack/salt >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/pillar/* soremote@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
+    scp -prv -i /root/.ssh/so.key $TMP/salt/* soremote@$MSRV:/opt/so/saltstack/salt >> $SETUPLOG 2>&1
   fi
 
   }
@@ -352,7 +367,7 @@ copy_ssh_key() {
 	chown -R $SUDO_USER:$SUDO_USER /root/.ssh
 	echo "Copying the SSH key to the master"
 	#Copy the key over to the master
-	ssh-copy-id -f -i /root/.ssh/so.key socore@$MSRV
+	ssh-copy-id -f -i /root/.ssh/so.key soremote@$MSRV
 
 }
 
@@ -551,8 +566,6 @@ docker_seed_registry() {
   if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
     TRUSTED_CONTAINERS=( \
     "so-acng:$VERSION" \
-    "so-auth-api:$VERSION" \
-    "so-auth-ui:$VERSION" \
     "so-core:$VERSION" \
     "so-thehive-cortex:$VERSION" \
     "so-curator:$VERSION" \
@@ -1018,6 +1031,7 @@ reserve_group_ids() {
 	groupadd -g 941 stenographer
 	groupadd -g 945 ossec
 	groupadd -g 946 cyberchef
+	groupadd -g 947 soremote
 
 }
 
@@ -1029,6 +1043,7 @@ saltify() {
 
     if [ $INSTALLTYPE == 'MASTER' ] || [ $INSTALLTYPE == 'EVAL' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       reserve_group_ids
+	  yum -y install epel-release
       yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
       cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
       sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
@@ -1262,7 +1277,7 @@ EOF
       # Copy down the gpg keys and install them from the master
       mkdir $TMP/gpg
       echo "scp the gpg keys and install them from the master"
-      scp -v -i /root/.ssh/so.key socore@$MSRV:/opt/so/gpg/* $TMP/gpg
+      scp -v -i /root/.ssh/so.key soremote@$MSRV:/opt/so/gpg/* $TMP/gpg
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
@@ -1462,27 +1477,27 @@ set_initial_firewall_policy() {
   fi
 
   if [ $INSTALLTYPE == 'SENSOR' ]; then
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
   fi
 
   if [ $INSTALLTYPE == 'SEARCHNODE' ]; then
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'HEAVYNODE' ]; then
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
   fi
 
   if [ $INSTALLTYPE == 'FLEET' ]; then
-    ssh -i /root/.ssh/so.key socore@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
+    ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
   fi
 
   if [ $INSTALLTYPE == 'PARSINGNODE' ]; then
@@ -1558,13 +1573,13 @@ set_version() {
 
 update_sudoers() {
 
-	if ! grep -qE '^socore\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
-		# Update Sudoers so that socore can accept keys without a password
-		echo "socore ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
-		echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
-		echo "socore ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
+	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
+		# Update Sudoers so that soremote can accept keys without a password
+		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
+		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
+		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 	else
-		echo "User socore already granted sudo privileges"
+		echo "User soremote already granted sudo privileges"
 	fi
 
 }
