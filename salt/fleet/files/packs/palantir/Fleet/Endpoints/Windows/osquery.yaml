@@ -227,8 +227,35 @@ spec:
     platform: windows
     query: scheduled_tasks_snapshot
     snapshot: true
+  - description: Appcompat shims (.sdb files) installed on Windows hosts.
+    interval: 3600
+    name: appcompat_shims
+    platform: windows
+    query: appcompat_shims
+  - description: Disk encryption status and information snapshot query.
+    interval: 28800
+    name: bitlocker_info_snapshot
+    platform: windows
+    query: bitlocker_info_snapshot
+    snapshot: true
   targets:
-    labels: null
+    labels: 
+    - MS Windows
+---
+apiVersion: v1
+kind: query
+spec:
+  description: Appcompat shims (.sdb files) installed on Windows hosts.
+  name: appcompat_shims
+  query: SELECT * FROM appcompat_shims WHERE description!='EMET_Database' AND
+    executable NOT IN ('setuphost.exe','setupprep.exe','iisexpress.exe');
+---
+apiVersion: v1
+kind: query
+spec:
+  description: Disk encryption status and information snapshot query.
+  name: bitlocker_info_snapshot
+  query: SELECT * FROM bitlocker_info;
 ---
 apiVersion: v1
 kind: query
@@ -302,7 +329,7 @@ kind: query
 spec:
   description: Snapshot query for Chrome extensions
   name: chrome_extensions_snapshot
-  query: SELECT * FROM users JOIN chrome_extensions USING (uid);
+  query: SELECT * FROM users CROSS JOIN chrome_extensions USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -466,7 +493,7 @@ kind: query
 spec:
   description: List installed Chrome Extensions for all users
   name: chrome_extensions
-  query: SELECT * FROM users JOIN chrome_extensions USING (uid);
+  query: SELECT * FROM users CROSS JOIN chrome_extensions USING (uid);
 ---
 apiVersion: v1
 kind: query
