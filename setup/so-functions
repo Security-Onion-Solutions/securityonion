@@ -81,7 +81,7 @@ add_soremote_user_master() {
 	$ADDUSER --uid 947 --gid 947 soremote
 	
 	# Set the password for soremote that we got during setup
-	echo soremote:$REMOTEPASS1 | chpasswd --crypt-method=SHA512
+	echo soremote:$SOREMOTEPASS1 | chpasswd --crypt-method=SHA512
 
 }
 
@@ -352,8 +352,12 @@ copy_minion_tmp_files() {
     fi
   else
     echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
-    scp -prv -i /root/.ssh/so.key $TMP/pillar/* soremote@$MSRV:/opt/so/saltstack/pillar >> $SETUPLOG 2>&1
-    scp -prv -i /root/.ssh/so.key $TMP/salt/* soremote@$MSRV:/opt/so/saltstack/salt >> $SETUPLOG 2>&1
+	ssh -i /root/.ssh/so.key soremote@$MSRV mkdir -p /tmp/$MINION_ID/pillar >> $SETUPLOG 2>&1
+	ssh -i /root/.ssh/so.key soremote@$MSRV mkdir -p /tmp/$MINION_ID/schedules >> $SETUPLOG 2>&1
+	scp -prv -i /root/.ssh/so.key $TMP/pillar/minions/* soremote@$MSRV:/tmp/$MINION_ID/pillar/ >> $SETUPLOG 2>&1
+	scp -prv -i /root/.ssh/so.key $TMP/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules >> $SETUPLOG 2>&1
+	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/salt/master/files/add_minion.sh $MINION_ID >> $SETUPLOG 2>&1
+    
   fi
 
   }
@@ -1578,6 +1582,7 @@ update_sudoers() {
 		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
+		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else
 		echo "User soremote already granted sudo privileges"
 	fi
