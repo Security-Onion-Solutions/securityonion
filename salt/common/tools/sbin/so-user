@@ -22,13 +22,17 @@ got_root() {
 got_root
 
 if [[ $# < 1 || $# > 2 ]]; then
-  echo "Usage: $0 <list|add|update|delete|validate> [email]"
+  echo "Usage: $0 <list|add|update|delete|validate|valemail|valpass> [email]"
   echo ""
   echo "     list: Lists all user email addresses currently defined in the identity system"
   echo "      add: Adds a new user to the identity system; requires 'email' parameter"
   echo "   update: Updates a user's password; requires 'email' parameter"
   echo "   delete: Deletes an existing user; requires 'email' parameter"
   echo " validate: Validates that the given email address and password are acceptable for defining a new user; requires 'email' parameter"
+  echo " valemail: Validates that the given email address is acceptable for defining a new user; requires 'email' parameter"
+  echo "  valpass: Validates that a password is acceptable for defining a new user"
+  echo ""
+  echo " Note that the password can be piped into stdin to avoid prompting for it."
   exit 1
 fi
 
@@ -211,6 +215,16 @@ case "${operation}" in
 
   "validate")
     validateEmail "$email"
+    updatePassword
+    echo "Email and password are acceptable"
+    ;;
+
+  "valemail")
+    validateEmail "$email"
+    echo "Email is acceptable"
+    ;;
+
+  "valpass")
     updatePassword
     echo "Password is acceptable"
     ;;
