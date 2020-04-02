@@ -42,14 +42,14 @@ def run(checks=''):
   
   retval = []
   calling_func = sys._getframe().f_back.f_code.co_name
-  logging.info('healthcheck_module: run function caller: %s' % calling_func)
+  logging.debug('healthcheck_module: run function caller: %s' % calling_func)
   
   if checks:
     checks = checks.split(',')
   else:  
     checks = __salt__['pillar.get']('healthcheck:checks', {})
   
-  logging.info('healthcheck_module: run checks to be run: %s' % str(checks))
+  logging.debug('healthcheck_module: run checks to be run: %s' % str(checks))
   for check in checks:
     if check in allowed_functions:
       retval.append(check)
@@ -73,11 +73,11 @@ def send_event(tag, eventdata):
 def zeek():
 
   calling_func = sys._getframe().f_back.f_code.co_name
-  logging.info('healthcheck_module: zeek function caller: %s' % calling_func)
+  logging.debug('healthcheck_module: zeek function caller: %s' % calling_func)
   retval = []
 
   retcode = __salt__['zeekctl.status'](verbose=False)
-  logging.info('healthcheck_module: zeekctl.status retcode: %i' % retcode)
+  logging.debug('healthcheck_module: zeekctl.status retcode: %i' % retcode)
   if retcode:
     zeek_restart = True
     if calling_func != 'beacon':
