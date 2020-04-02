@@ -66,7 +66,6 @@ def run(checks=''):
 
 
 def send_event(tag, eventdata):
-  #__salt__['event.send'](tag, data={'stuff': 'things'})
   __salt__['event.send'](tag, eventdata[0])
 
 
