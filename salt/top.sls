@@ -42,6 +42,9 @@ base:
     - zeek
     {%- endif %}
     - wazuh
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
     - filebeat
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
