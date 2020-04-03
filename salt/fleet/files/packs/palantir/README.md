@@ -10,11 +10,11 @@ exactly what we have done with our [unwanted-chrome-extensions](https://github.c
 However, we have included additional query packs
 that are more tailored to our specific environment that may be useful to some or at least serve as a reference to other organizations. osquery operates best when
 operators have carefully considered the datasets to be collected and the potential use-cases for that data.
-* [performance-metrics.conf](https://github.com/palantir/osquery-configuration/blob/master/Endpoints/packs/performance-metrics.conf)
-* [security-tooling-checks.conf](https://github.com/palantir/osquery-configuration/blob/master/Endpoints/packs/security-tooling-checks.conf)
-* [windows-application-security.conf](https://github.com/palantir/osquery-configuration/blob/master/Endpoints/packs/windows-application-security.conf)
-* [windows-compliance.conf](https://github.com/palantir/osquery-configuration/blob/master/Endpoints/packs/windows-compliance.conf)
-* [windows-registry-monitoring.conf](https://github.com/palantir/osquery-configuration/blob/master/Endpoints/packs/windows-registry-monitoring.conf)
+* [performance-metrics.conf](https://github.com/palantir/osquery-configuration/blob/master/Classic/Endpoints/packs/performance-metrics.conf)
+* [security-tooling-checks.conf](https://github.com/palantir/osquery-configuration/blob/master/Classic/Endpoints/packs/security-tooling-checks.conf)
+* [windows-application-security.conf](https://github.com/palantir/osquery-configuration/blob/master/Classic/Endpoints/packs/windows-application-security.conf)
+* [windows-compliance.conf](https://github.com/palantir/osquery-configuration/blob/master/Classic/Endpoints/packs/windows-compliance.conf)
+* [windows-registry-monitoring.conf](https://github.com/palantir/osquery-configuration/blob/master/Classic/Endpoints/packs/windows-registry-monitoring.conf)
 
 
 **Note**: We also utilize packs that are maintained in the official osquery project. In order to ensure you receive the most up to date version of the pack, please view them using the links below:
@@ -41,15 +41,15 @@ environment.
 **Endpoints Configuration Overview**
 * The configurations in this folder are meant for MacOS and Windows and the interval timings assume that these hosts are only online for ~8 hours per day
 * The flags included in this configuration enable TLS client mode in osquery and assume it will be connected to a TLS server. We have also included non-TLS flagfiles for local testing.
-* File integrity monitoring on MacOS is enabled for specific files and directories defined in [osquery.conf](./Endpoints/MacOS/osquery.conf)
-* Events are disabled on Windows via the `--disable_events` flag in [osquery.flags](./Endpoints/Windows/osquery.flags). We use [Windows Event Forwarding](https://github.com/palantir/windows-event-forwarding) and don't have a need for osquery to process Windows event logs.
-* These configuration files utilize packs within the [packs](./Endpoints/packs) folder and may generate errors if started without them
+* File integrity monitoring on MacOS is enabled for specific files and directories defined in [osquery.conf](./Classic/Endpoints/MacOS/osquery.conf)
+* Events are disabled on Windows via the `--disable_events` flag in [osquery.flags](./Classic/Endpoints/Windows/osquery.flags). We use [Windows Event Forwarding](https://github.com/palantir/windows-event-forwarding) and don't have a need for osquery to process Windows event logs.
+* These configuration files utilize packs within the [packs](./Classic/Endpoints/packs) folder and may generate errors if started without them
 
 **Servers Configuration Overview**
 * This configuration assumes the destination operating system is Linux-based and that the hosts are online at all times
 * Auditing mode is enabled for processes and network events. Ensure auditd is disabled or removed from the system where this will be running as it may conflict with osqueryd.
-* File integrity monitoring is enabled for specific files and directories defined in [osquery.conf](./Servers/Linux/osquery.conf)
-* Requires the [ossec-rootkit.conf](./Servers/Linux/packs/ossec-rootkit.conf) pack found to be located at `/etc/osquery/packs/ossec-rootkit.conf`
+* File integrity monitoring is enabled for specific files and directories defined in [osquery.conf](./Classic/Servers/Linux/osquery.conf)
+* Requires the [ossec-rootkit.conf](./Classic/Servers/Linux/packs/ossec-rootkit.conf) pack found to be located at `/etc/osquery/packs/ossec-rootkit.conf`
 * The subscriber for `user_events` is disabled
 
 ## Quickstart - Classic
@@ -59,10 +59,10 @@ environment.
 4. Logs are located in `/var/log/osquery` (Linux/MacOS) and `c:\ProgramData\osquery\logs` (Windows)
 
 ## Quickstart - Fleet
-1. Install Fleet version 2.0.0 or higher 
-2. [Enroll hosts to your Fleet server](https://github.com/kolide/fleet/blob/master/docs/infrastructure/adding-hosts-to-fleet.md) by configuring the appropriate [flags](https://github.com/kolide/fleet/blob/master/tools/osquery/example_osquery.flags)
-2. [Configure the fleetctl utility](https://github.com/kolide/fleet/blob/master/docs/cli/setup-guide.md#fleetctl-setup) to communicate with your Fleet server
-3. Assuming you'd like to use the endpoint configs, you can use the commands below to apply them:
+Install Fleet version 2.0.0 or higher
+2. [Enroll hosts to your Fleet server](https://github.com/kolide/fleet/blob/master/docs/infrastructure/adding-hosts-to-fleet.md) by configuring the appropriate [flags]
+3. [Configure the fleetctl utility](https://github.com/kolide/fleet/blob/master/docs/cli/setup-guide.md#fleetctl-setup) to communicate with your Fleet server
+4. Assuming you'd like to use the endpoint configs, you can use the commands below to apply them:
 
 ```
 git clone https://github.com/palantir/osquery-configuration.git
@@ -79,7 +79,7 @@ The desired osquery directory structure for Linux, MacOS, and Windows is outline
 **Linux**
 ```
 $ git clone https://github.com/palantir/osquery-configuration.git
-$ cp -R osquery-configuration/Servers/Linux/* /etc/osquery
+$ cp -R osquery-configuration/Fleet/Servers/Linux/* /etc/osquery
 $ sudo osqueryctl start
 
 /etc/osquery
@@ -93,8 +93,8 @@ $ sudo osqueryctl start
 **MacOS**
 ```
 $ git clone https://github.com/palantir/osquery-configuration.git
-$ cp osquery-configuration/Endpoints/MacOS/* /var/osquery
-$ cp osquery-configuration/Endpoints/packs/* /var/osquery/packs
+$ cp osquery-configuration/Fleet/Endpoints/MacOS/* /var/osquery
+$ cp osquery-configuration/Fleet/Endpoints/packs/* /var/osquery/packs
 $ mv /var/osquery/osquery_no_tls.flags /var/osquery/osquery.flags   ## Non-TLS server testing
 $ sudo osqueryctl start
 
@@ -113,8 +113,8 @@ $ sudo osqueryctl start
 **Windows**
 ```
 PS> git clone https://github.com/palantir/osquery-configuration.git
-PS> copy-item osquery-configuration/Endpoints/Windows/* c:\ProgramData\osquery
-PS> copy-item osquery-configuration/Endpoints/packs/* c:\ProgramData\osquery\packs
+PS> copy-item osquery-configuration/Fleet/Endpoints/Windows/* c:\ProgramData\osquery
+PS> copy-item osquery-configuration/Fleet/Endpoints/packs/* c:\ProgramData\osquery\packs
 PS> copy-item c:\ProgramData\osquery\osquery_no_tls.flags c:\ProgramData\osquery\osquery.flags -force   ## Non-TLS server testing
 PS> start-service osqueryd
 

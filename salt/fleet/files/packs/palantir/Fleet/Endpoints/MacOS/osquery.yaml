@@ -239,9 +239,10 @@ spec:
     query: chrome_extensions
   - description: Disk encryption status and information.
     interval: 3600
-    name: disk_encryption
+    name: disk_encryption_snapshot
     platform: darwin
-    query: disk_encryption
+    query: disk_encryption_snapshot
+    snapshot: true
   - description: Local system users.
     interval: 28800
     name: users_snapshot
@@ -282,6 +283,12 @@ spec:
     name: sip_config
     platform: darwin
     query: sip_config
+  - description: Shows information about the wifi network that a host is currently connected to.
+    interval: 28800
+    name: wifi_status_snapshot
+    platform: darwin
+    query: wifi_status_snapshot
+    snapshot: true
   - description: Returns the private keys in the users ~/.ssh directory and whether
       or not they are encrypted.
     interval: 3600
@@ -290,7 +297,8 @@ spec:
     query: user_ssh_keys
     removed: false
   targets:
-    labels: null
+    labels: 
+    - macOS
 ---
 apiVersion: v1
 kind: query
@@ -365,13 +373,10 @@ spec:
   description: Returns information about installed event taps. Can be used to detect
     keyloggers
   name: event_taps
-  query: SELECT * FROM event_taps INNER JOIN processes ON event_taps.tapping_process
-    = processes.pid WHERE event_tapped NOT LIKE '%mouse%' AND processes.path NOT LIKE
-    '%.app%' AND processes.path!='/Library/Application Support/org.pqrs/Karabiner-Elements/bin/karabiner_grabber'
-    AND processes.path NOT LIKE '/Users/%/bin/kwm' AND processes.path!='/Library/Rapport/bin/rooksd'
-    AND processes.path!='/usr/sbin/universalaccessd' AND processes.path NOT LIKE '/usr/local/Cellar/%'
-    AND  processes.path NOT LIKE '/System/Library/%' AND processes.path NOT LIKE '%/steamapps/%'
-    AND event_taps.enabled=1;
+  query: SELECT * FROM event_taps INNER JOIN processes ON event_taps.tapping_process = processes.pid
+    WHERE event_tapped NOT LIKE '%mouse%' AND processes.path NOT IN ('/usr/libexec/airportd',
+    '/usr/sbin/universalaccessd') AND processes.path NOT LIKE '/System/Library/%' AND processes.path
+    NOT LIKE '%/steamapps/%' AND processes.path NOT LIKE '%.app%' AND event_taps.enabled=1;
 ---
 apiVersion: v1
 kind: query
@@ -456,6 +461,13 @@ spec:
 apiVersion: v1
 kind: query
 spec:
+  description: Shows information about the wifi network that a host is currently connected to.
+  name: wifi_status_snapshot
+  query: SELECT * FROM wifi_status;
+---
+apiVersion: v1
+kind: query
+spec:
   description: Snapshot query for macosx_kextstat
   name: macosx_kextstat_snapshot
   query: SELECT kernel_extensions.name, kernel_extensions.version, kernel_extensions.path,
@@ -479,7 +491,7 @@ kind: query
 spec:
   description: Safari browser extension details for all users.
   name: safari_extensions
-  query: SELECT * FROM users JOIN safari_extensions USING (uid);
+  query: SELECT * FROM users CROSS JOIN safari_extensions USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -500,7 +512,7 @@ kind: query
 spec:
   description: List authorized_keys for each user on the system
   name: authorized_keys
-  query: SELECT * FROM users JOIN authorized_keys USING (uid);
+  query: SELECT * FROM users CROSS JOIN authorized_keys USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -508,7 +520,7 @@ spec:
   description: Application, System, and Mobile App crash logs.
   name: crashes
   query: SELECT uid, datetime, responsible, exception_type, identifier, version, crash_path
-    FROM users JOIN crashes USING (uid);
+    FROM users CROSS JOIN crashes USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -516,7 +528,7 @@ spec:
   description: Displays the percentage of free space available on the primary disk
     partition
   name: disk_free_space_pct
-  query: SELECT (blocks_available * 100 / blocks) AS pct FROM mounts WHERE device='/dev/disk1';
+  query: SELECT (blocks_available * 100 / blocks) AS pct FROM mounts WHERE device='/dev/disk1s1';
 ---
 apiVersion: v1
 kind: query
@@ -553,7 +565,7 @@ kind: query
 spec:
   description: Snapshot query for Chrome extensions
   name: chrome_extensions_snapshot
-  query: SELECT * FROM users JOIN chrome_extensions USING (uid);
+  query: SELECT * FROM users CROSS JOIN chrome_extensions USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -589,14 +601,14 @@ kind: query
 spec:
   description: All C/NPAPI browser plugin details for all users.
   name: browser_plugins
-  query: SELECT * FROM users JOIN browser_plugins USING (uid);
+  query: SELECT * FROM users CROSS JOIN browser_plugins USING (uid);
 ---
 apiVersion: v1
 kind: query
 spec:
   description: List installed Firefox addons for all users
   name: firefox_addons
-  query: SELECT * FROM users JOIN firefox_addons USING (uid);
+  query: SELECT * FROM users CROSS JOIN firefox_addons USING (uid);
 ---
 apiVersion: v1
 kind: query
@@ -625,13 +637,13 @@ kind: query
 spec:
   description: List installed Chrome Extensions for all users
   name: chrome_extensions
-  query: SELECT * FROM users JOIN chrome_extensions USING (uid);
+  query: SELECT * FROM users CROSS JOIN chrome_extensions USING (uid);
 ---
 apiVersion: v1
 kind: query
 spec:
   description: Disk encryption status and information.
-  name: disk_encryption
+  name: disk_encryption_snapshot
   query: SELECT * FROM disk_encryption;
 ---
 apiVersion: v1
@@ -691,4 +703,4 @@ spec:
   description: Returns the private keys in the users ~/.ssh directory and whether
     or not they are encrypted.
   name: user_ssh_keys
-  query: SELECT * FROM users JOIN user_ssh_keys USING (uid);
+  query: SELECT * FROM users CROSS JOIN user_ssh_keys USING (uid);

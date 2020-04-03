@@ -37,11 +37,14 @@ base:
     - firewall
     - pcap
     - suricata
-    - salt.beacons
+    - healthcheck
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - wazuh
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
     - filebeat
     {%- if FLEETMASTER or FLEETNODE %}
     - fleet.install_package
@@ -57,8 +60,7 @@ base:
     - soc
     - firewall
     - idstools
-    - auth
-    - salt.beacons
+    - healthcheck
     {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}

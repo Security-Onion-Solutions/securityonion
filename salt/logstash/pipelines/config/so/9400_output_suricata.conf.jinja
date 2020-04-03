@@ -9,16 +9,16 @@
 # Last Update: 12/9/2016
 
 filter {
-  if [event_type] == "suricata" and "test_data" not in [tags] {
+  if [module] == "suricata" {
     mutate {
 	  ##add_tag => [ "conf_file_9400"]
 	}
   }
 }
 output {
-  if [event_type] == "suricata" and "test_data" not in [tags] {
-    #stdout { codec => rubydebug }
+  if [module] =~ "suricata" {
     elasticsearch {
+      pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-ids-%{+YYYY.MM.dd}"
       template => "/so-common-template.json"

@@ -105,4 +105,10 @@ strelka_filestream:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
-    - command: strelka-filestream 
+    - command: strelka-filestream
+    
+strelka_zeek_extracted_sync:
+  cron.present:
+    - user: socore
+    - name: mv /nsm/zeek/extracted/complete/* /nsm/strelka
+    - minute: '*'
