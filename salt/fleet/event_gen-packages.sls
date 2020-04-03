@@ -1,4 +1,4 @@
-{% set ENROLLSECRET = salt['pillar.get']('auth:fleet_enroll-secret') %}
+{% set ENROLLSECRET = salt['pillar.get']('secrets:fleet_enroll-secret') %}
 
 so/fleet:
   event.send:

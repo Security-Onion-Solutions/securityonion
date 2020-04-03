@@ -8,6 +8,8 @@
 {%- elif grains['role'] == 'so-fleet' %}
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- endif %}
+{%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
+{%- set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
 
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
@@ -423,6 +425,22 @@ enable_forwardnode_sensoroni_9822_{{ip}}:
     - save: True
 
 {% endfor %}
+
+# Allow Fleet Node to send its beats traffic
+{% if FLEET_NODE %}
+
+enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ FLEET_NODE_IP }}
+    - dport: 5644
+    - position: 1
+    - save: True
+
+{% endif %}
 
 {% for ip in pillar.get('search_nodes')  %}
 
