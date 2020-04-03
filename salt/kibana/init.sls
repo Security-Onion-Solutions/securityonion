@@ -84,6 +84,7 @@ so-kibana-config-load:
     - shell: /bin/bash
     - runas: socore
     - source: salt://kibana/bin/so-kibana-config-load
+    - template: jinja 
 
 # Keep the setting correct
 #KibanaHappy:
