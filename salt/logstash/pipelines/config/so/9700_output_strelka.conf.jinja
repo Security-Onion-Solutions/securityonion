@@ -10,7 +10,7 @@
 
 
 filter {
-  if [event_type] =~ "strelka" {
+  if [module] =~ "strelka" {
     mutate {
           ##add_tag => [ "conf_file_9000"]
         }
@@ -19,6 +19,7 @@ filter {
 output {
   if [event_type] =~ "strelka" {
     elasticsearch {
+      pipeline => "%{module}.%{dataset}" 
       hosts => "{{ ES }}"
       index => "so-strelka-%{+YYYY.MM.dd}"
       template_name => "so-common"

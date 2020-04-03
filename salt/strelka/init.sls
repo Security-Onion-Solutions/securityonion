@@ -23,14 +23,6 @@ strelkaconfdir:
     - group: 939
     - makedirs: True
 
-# Strelka logs 
-strelkalogdir:
-  file.directory:
-    - name: /opt/so/log/strelka
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 # Sync dynamic config to conf dir
 strelkasync:
   file.recurse:
@@ -43,6 +35,13 @@ strelkasync:
 strelkadatadir:
    file.directory:
     - name: /nsm/strelka
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkalogdir:
+  file.directory:
+    - name: /nsm/strelka/log
     - user: 939
     - group: 939
     - makedirs: True
@@ -75,7 +74,7 @@ strelka_frontend:
     - image: soshybridhunter/so-strelka-frontend:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
-      - /opt/so/log/strelka/:/var/log/strelka/:rw
+      - /nsm/strelka/log/:/var/log/strelka/:rw
     - privileged: True
     - name: so-strelka-frontend
     - command: strelka-frontend
@@ -85,7 +84,6 @@ strelka_frontend:
 strelka_backend:
   docker_container.running:
     - image: soshybridhunter/so-strelka-backend:HH1.2.1
-    - restart_policy: unless-stopped
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
@@ -107,4 +105,10 @@ strelka_filestream:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
-    - command: strelka-filestream 
+    - command: strelka-filestream
+    
+strelka_zeek_extracted_sync:
+  cron.present:
+    - user: socore
+    - name: mv /nsm/zeek/extracted/complete/* /nsm/strelka
+    - minute: '*'

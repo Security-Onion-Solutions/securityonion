@@ -1,9 +1,9 @@
 {%- set masterip = salt['pillar.get']('master:mainip', '') %}
+{%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master') %}
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
 
-user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
 pid /run/nginx.pid;
@@ -27,6 +27,7 @@ http {
     tcp_nodelay         on;
     keepalive_timeout   65;
     types_hash_max_size 2048;
+    client_max_body_size 1024M;
 
     include             /etc/nginx/mime.types;
     default_type        application/octet-stream;
@@ -58,11 +59,34 @@ http {
     #    }
     #}
     server {
-	      listen 80 default_server;
-	      server_name _;
-	      return 301 https://$host$request_uri;
+        listen 80 default_server;
+        server_name _;
+        return 301 https://$host$request_uri;
     }
 
+{% if FLEET_MASTER %}
+    server {
+        listen       8090 ssl http2 default_server;
+        server_name  _;
+        root         /opt/socore/html;
+        index        blank.html;
+
+        ssl_certificate "/etc/pki/nginx/server.crt";
+        ssl_certificate_key "/etc/pki/nginx/server.key";
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout  10m;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
+        location ~ ^/kolide.agent.Api/(RequestEnrollment|RequestConfig|RequestQueries|PublishLogs|PublishResults|CheckHealth)$ {
+            grpc_pass  grpcs://{{ masterip }}:8080;
+            grpc_set_header Host $host;
+            grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_buffering off;
+        }
+
+    }
+{% endif %}
 
 # Settings for a TLS enabled server.
 
@@ -83,13 +107,57 @@ http {
         # Load configuration files for the default server block.
         #include /etc/nginx/default.d/*.conf;
 
-        #location / {
-    #      try_files $uri $uri.html /index.html;
-    #    }
+        location ~* (^/login/|^/js/.*|^/css/.*|^/images/.*) {
+          proxy_pass            http://{{ masterip }}:9822;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+          proxy_set_header      Upgrade $http_upgrade;
+          proxy_set_header      Connection "Upgrade";
+        }
 
+        location / {
+          auth_request          /auth/sessions/whoami;
+          proxy_pass            http://{{ masterip }}:9822/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+          proxy_set_header      Upgrade $http_upgrade;
+          proxy_set_header      Connection "Upgrade";
+        }
+
+        location /auth/ {
+          rewrite               /auth/(.*) /$1 break;
+          proxy_pass            http://{{ masterip }}:4433/;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+
+        }
+
+        location /packages/ {
+          try_files $uri =206;
+          auth_request          /auth/sessions/whoami;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+        } 
+        
         location /grafana/ {
-          rewrite /grafana/(.*) /$1 break;
-          proxy_pass http://{{ masterip }}:3000/;
+          rewrite               /grafana/(.*) /$1 break;
+          proxy_pass            http://{{ masterip }}:3000/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -100,9 +168,9 @@ http {
         }
 
         location /kibana/ {
-          auth_request          /so-auth/api/auth/;
-	        rewrite /kibana/(.*) /$1 break;
-          proxy_pass http://{{ masterip }}:5601/;
+          auth_request          /auth/sessions/whoami;
+          rewrite               /kibana/(.*) /$1 break;
+          proxy_pass            http://{{ masterip }}:5601/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -126,7 +194,7 @@ http {
         }
         
         location /playbook/ {
-          proxy_pass http://{{ masterip }}:3200/playbook/;
+          proxy_pass            http://{{ masterip }}:3200/playbook/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -135,25 +203,13 @@ http {
           proxy_set_header      Proxy "";
 
         }
+
 
         location /navigator/ {
-          auth_request          /so-auth/api/auth/;
-          proxy_pass http://{{ masterip }}:4200/navigator/;
+          auth_request          /auth/sessions/whoami;
+          proxy_pass            http://{{ masterip }}:4200/navigator/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
-          proxy_set_header      Host $host;
-          proxy_set_header      X-Real-IP $remote_addr;
-          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header      Proxy "";
-
-        }
-
-        location /api/ {
-          proxy_pass https://{{ masterip }}:8080/api/;
-          proxy_read_timeout    90;
-          proxy_connect_timeout 90;
-          proxy_set_header      Upgrade $http_upgrade;
-          proxy_set_header      Connection "Upgrade";
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -162,9 +218,7 @@ http {
         }
 
         location /fleet/ {
-	        rewrite /fleet/(.*) /$1 break;
-          auth_request          /so-auth/api/auth/;
-          proxy_pass https://{{ masterip }}:8080/;
+          proxy_pass https://{{ masterip }}:8080;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -175,10 +229,10 @@ http {
         }
 
         location /thehive/ {
-          proxy_pass http://{{ masterip }}:9000/thehive/;
+          proxy_pass            http://{{ masterip }}:9000/thehive/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
-          proxy_http_version 1.1; # this is essential for chunked responses to work
+          proxy_http_version    1.1; # this is essential for chunked responses to work
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -187,19 +241,19 @@ http {
         }
 
         location /cortex/ {
-          proxy_pass http://{{ masterip }}:9001/cortex/;
+          proxy_pass            http://{{ masterip }}:9001/cortex/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
-          proxy_http_version 1.1; # this is essential for chunked responses to work
+          proxy_http_version    1.1; # this is essential for chunked responses to work
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
 
         }
-
+        
         location /soctopus/ {
-          proxy_pass http://{{ masterip }}:7000/;
+          proxy_pass            http://{{ masterip }}:7000/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -209,22 +263,8 @@ http {
 
         }
 
-        location /sensoroni/ {
-          auth_request          /so-auth/api/auth/;
-          proxy_pass http://{{ masterip }}:9822/;
-          proxy_read_timeout    90;
-          proxy_connect_timeout 90;
-          proxy_set_header      Host $host;
-          proxy_set_header      X-Real-IP $remote_addr;
-          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header      Proxy "";
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection "Upgrade";
-
-        }
-
-        location /kibana/app/sensoroni/ {
-          rewrite ^/kibana/app/sensoroni/(.*) /sensoroni/$1 permanent;
+        location /kibana/app/soc/ {
+          rewrite ^/kibana/app/soc/(.*) /soc/$1 permanent;
         }
 
         location /kibana/app/fleet/ {
@@ -235,36 +275,21 @@ http {
           rewrite ^/kibana/app/soctopus/(.*) /soctopus/$1 permanent;
         }
 
-
         location /sensoroniagents/ {
-          proxy_pass http://{{ masterip }}:9822/;
+          proxy_pass            http://{{ masterip }}:9822/;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
-
-        }
-
-
-        location /so-auth/loginpage/ {
-            proxy_pass          http://{{ masterip }}:4242/;
-            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
-        }
-
-        location /so-auth/api/ {
-            proxy_pass          http://{{ masterip }}:5656/;
-            proxy_set_header    X-Real-IP $remote_addr;
-            proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header    X-Forwarded-Host $host;
         }
 
         error_page 401 = @error401;
 
         location @error401 {
           add_header    Set-Cookie "NSREDIRECT=http://{{ masterip }}$request_uri;Domain={{ masterip }};Path=/;Max-Age=60000";
-          return        302 http://{{ masterip }}/so-auth/loginpage/;
+          return        302 /auth/self-service/browser/flows/login;
         }
 
         error_page 404 /404.html;

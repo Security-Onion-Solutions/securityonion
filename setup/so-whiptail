@@ -132,31 +132,59 @@ whiptail_create_admin_user_password2() {
 
 }
 
-whiptail_create_socore_user() {
+whiptail_create_soremote_user() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Set a password for the socore user. This account is used for adding sensors remotely." 8 75
+  whiptail --title "Security Onion Setup" --msgbox "Set a password for the soremote user. This account is used for adding sensors remotely." 8 75
 
 }
 
-whiptail_create_socore_user_password1() {
+whiptail_create_soremote_user_password1() {
 
-  COREPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Enter a password for user socore" 10 75 3>&1 1>&2 2>&3)
+  SOREMOTEPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
 }
 
-whiptail_create_socore_user_password2() {
+whiptail_create_soremote_user_password2() {
 
-  COREPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Re-enter a password for user socore" 10 75 3>&1 1>&2 2>&3)
+  SOREMOTEPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Re-enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
 
 }
+
+whiptail_create_web_user() {
+
+  WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
+  "Please enter an email address to create an administrator account for the web interface." 10 60 3>&1 1>&2 2>&3)
+
+}
+
+
+whiptail_create_web_user_password1() {
+
+  WEBPASSWD1=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_create_web_user_password2() {
+
+  WEBPASSWD2=$(whiptail --title "Security Onion Install" --passwordbox \
+  "Re-enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+
+}
+
 
 whiptail_cur_close_days() {
 
@@ -186,7 +214,8 @@ whiptail_enable_components() {
   "OSQUERY" "Enable Fleet with osquery" ON \
   "WAZUH" "Enable Wazuh" ON \
   "THEHIVE" "Enable TheHive" ON \
-  "PLAYBOOK" "Enable Playbook" ON 3>&1 1>&2 2>&3 )
+  "PLAYBOOK" "Enable Playbook" ON \
+  "STRELKA" "Enable Strelka" ON 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -256,12 +285,12 @@ whiptail_install_type() {
   "MASTERSEARCH" "Master + Search Node" OFF \
   "HEAVYNODE" "Sensor + Search Node" OFF \
   "HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
-  "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF \
+  "FLEET" "Dedicated Fleet Osquery Node" OFF \
   "HOTNODE" "TODO Add Hot Node (Search Node without Parsing)" OFF \
   "WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
   "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
   "STRELKA" "TODO Stand Alone Strelka Node" OFF \
-  "FLEET" "TODO Stand Alone Fleet OSQuery Node" OFF 3>&1 1>&2 2>&3 )
+  "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF 3>&1 1>&2 2>&3 )
 
   local exitstatus=$?
   whiptail_check_exitstatus $exitstatus
@@ -371,7 +400,7 @@ whiptail_management_server() {
   # See if it resolves. Otherwise prompt to add to host file
   TESTHOST=$(host $MSRV)
 
-  if [[ $TESTHOST = *"not found"* ]] || [[ $TESTHOST = *"connection timed out"* ]]; then
+  if [[ $TESTHOST = *"not found"* ]] || [ -z $TESTHOST ] || [[ $TESTHOST = *"connection timed out"* ]]; then
     add_master_hostfile
   fi
 
@@ -681,6 +710,28 @@ whiptail_set_hostname() {
     whiptail_check_exitstatus $exitstatus
   done
 
+}
+
+whiptail_set_redirect() {
+  REDIRECTINFO=$(whiptail --title "Security Onion Setup" --radiolist \
+  "Choose the access method for the web interface:" 20 75 4 \
+  "IP" "Use IP to access the web interface" ON  \
+  "HOSTNAME" "Use Hostname ($HOSTNAME) to access the web interface" OFF \
+  "OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
+  local exitstatus=$?
+  whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_set_redirect_host() {
+  REDIRECTHOST=$(whiptail --title "Security Onion Setup" --inputbox \
+    "Enter the Hostname or IP you would like to use for the web interface." 10 75 $HOSTNAME 3>&1 1>&2 2>&3)
+    local exitstatus=$?
+    whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_set_redirect_info() {
+  whiptail --title "Security Onion Setup" --msgbox "The following selection refers to accessing the web interface. \n
+For security reasons, we use strict cookie enforcement." 10 75
 }
 
 whiptail_setup_complete() {

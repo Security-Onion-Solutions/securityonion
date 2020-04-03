@@ -32,16 +32,5 @@ fi
 case $1 in
    "all") salt-call state.highstate queue=True;;
    "steno") if docker ps | grep -q so-$1; then printf "\n$1 is already running!\n\n"; else docker rm so-$1 >/dev/null 2>&1 ; salt-call state.apply pcap queue=True; fi ;; 
-   "auth") 
-      if docker ps | grep -q so-auth-api; then
-         if docker ps | grep -q so-auth-ui; then
-            printf "\n$1 is already running!\n\n"
-         else
-            docker rm so-auth-api >/dev/null 2>&1; docker rm so-auth-ui >/dev/null 2>&1; salt-call state.apply $1 queue=True
-         fi
-      else
-         docker rm so-auth-api >/dev/null 2>&1; docker rm so-auth-ui >/dev/null 2>&1; salt-call state.apply $1 queue=True
-      fi
-      ;;
    *) if docker ps | grep -q so-$1; then printf "\n$1 is already running\n\n"; else docker rm so-$1 >/dev/null 2>&1 ; salt-call state.apply $1 queue=True; fi ;; 
 esac

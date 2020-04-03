@@ -8,8 +8,9 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
-{%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
 {%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '1') %}
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
 name: {{ HOSTNAME }}
 
@@ -19,7 +20,7 @@ name: {{ HOSTNAME }}
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-logging.level: error
+logging.level: warning
 
 # Enable debug output for selected components. To enable all selectors use ["*"]
 # Other available selectors are "beat", "publish", "service"
@@ -81,7 +82,8 @@ filebeat.inputs:
       - /nsm/zeek/logs/current/{{ LOGNAME }}.log
     fields:
         module: zeek 
-        dataset: {{ LOGNAME }}  
+        dataset: {{ LOGNAME }}
+        category: network
     processors:
     - drop_fields:
         fields: ["source", "prospector", "input", "offset", "beat"]
@@ -99,6 +101,7 @@ filebeat.inputs:
     fields:
       module: suricata
       dataset: alert
+      category: network
 
     processors:
     - drop_fields:
@@ -117,7 +120,7 @@ filebeat.inputs:
     fields:
       module: ossec
       dataset: alert
-
+      category: host
     processors:
     - drop_fields:
         fields: ["source", "prospector", "input", "offset", "beat"]
@@ -137,13 +140,15 @@ filebeat.inputs:
 
 {%- endif %}
 
-{%- if FLEETENABLED == '1' %}
+{%- if FLEETMASTER or FLEETNODE %}
 
   - type: log
     paths:
-      - /osquery/logs/result.log
+      - /nsm/osquery/fleet/result.log
     fields:
-      type: osquery
+      module: osquery
+      dataset: query_result
+      category: host
 
     processors:
     - drop_fields:
@@ -159,9 +164,10 @@ filebeat.inputs:
 
   - type: log
     paths:
-      - /opt/so/log/strelka/strelka.log
+      - /nsm/strelka/log/strelka.log
     fields:
       module: strelka
+      category: file
       dataset: file
 
     processors:
@@ -173,7 +179,8 @@ filebeat.inputs:
     close_removed: false
 
 {%- endif %}
-#----------------------------- Logstash output ---------------------------------
+#----------------------------- Elasticsearch/Logstash output ---------------------------------
+{%- if grains['role'] == "so-eval" %}
 output.elasticsearch:
   enabled: true
   hosts: ["{{ MASTER }}:9200"]
@@ -189,13 +196,22 @@ output.elasticsearch:
     - index: "so-ossec-%{+yyyy.MM.dd}"
       when.contains:
         module: "ossec"
+    - index: "so-osquery-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "osquery"
+    - index: "so-strelka-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "strelka"
 
-#output.logstash:
+setup.template.enabled: false
+{%- else %}
+
+output.logstash:
   # Boolean flag to enable or disable the output module.
-  #enabled: true
+  enabled: true
 
   # The Logstash hosts
-  #hosts: ["{{ MASTER }}:5644"]
+  hosts: ["{{ MASTER }}:5644"]
 
   # Number of workers per Logstash host.
   #worker: 1
@@ -210,21 +226,21 @@ output.elasticsearch:
   # and certificates will be accepted. In this mode, SSL based connections are
   # susceptible to man-in-the-middle attacks. Use only for testing. Default is
   # `full`.
-  #ssl.verification_mode: full
+  ssl.verification_mode: full
 
   # List of supported/valid TLS versions. By default all TLS versions 1.0 up to
   # 1.2 are enabled.
-  #ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
+  ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
 
   # Optional SSL configuration options. SSL is off by default.
   # List of root certificates for HTTPS server verifications
-  #ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
 
   # Certificate for SSL client authentication
-  #ssl.certificate: "/usr/share/filebeat/filebeat.crt"
+  ssl.certificate: "/usr/share/filebeat/filebeat.crt"
 
   # Client Certificate Key
-  #ssl.key: "/usr/share/filebeat/filebeat.key"
+  ssl.key: "/usr/share/filebeat/filebeat.key"
 
 setup.template.enabled: false
   # A dictionary of settings to place into the settings.index dictionary
@@ -239,7 +255,7 @@ setup.template.enabled: false
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
   #_source:
     #enabled: false
-
+{%- endif %}
 #============================== Kibana =====================================
 
 # Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.
