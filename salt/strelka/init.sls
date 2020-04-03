@@ -89,6 +89,7 @@ strelka_backend:
       - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
     - name: so-strelka-backend
     - command: strelka-backend
+    - restart_policy: on-failure
 
 strelka_manager:
   docker_container.running:
