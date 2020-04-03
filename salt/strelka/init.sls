@@ -109,6 +109,6 @@ strelka_filestream:
     
 strelka_zeek_extracted_sync:
   cron.present:
-    - user: socore
+    - user: root
     - name: mv /nsm/zeek/extracted/complete/* /nsm/strelka
     - minute: '*'
