@@ -234,7 +234,7 @@ check_network_manager_conf() {
 		{
 			mv "$gmdconf" "${gmdconf}.bak"
 			touch "$gmdconf"
-			systemctl restart network-manager
+			systemctl restart NetworkManager
 		} >> $SETUPLOG 2>&1
 	fi
 
@@ -395,7 +395,7 @@ create_sensor_bond() {
 		ethernet.mtu $MTU \
 		connection.autoconnect "yes" >> $SETUPLOG 2>&1
 
-	for BNIC in "${BNICS[@]}"; do
+	for BNIC in ${BNICS[@]}; do
 		BONDNIC="$(echo -e "${BNIC}" | tr -d '"')" # Strip the quotes from the NIC names
 
 		# Check if specific offload features are able to be disabled
@@ -458,8 +458,8 @@ detect_os() {
 		fi
 		# Install network manager so we can do interface stuff
 		apt-get install -y network-manager
-		/bin/systemctl enable network-manager
-		/bin/systemctl start network-manager
+		/bin/systemctl enable NetworkManager
+		/bin/systemctl start NetworkManager
 	else
 		echo "We were unable to determine if you are using a supported OS." >> $SETUPLOG 2>&1
 		exit
@@ -486,7 +486,7 @@ disable_onion_user() {
 }
 
 disable_misc_network_features() {
-	for UNUSED_NIC in "${FNICS[@]}"; do
+	for UNUSED_NIC in ${FNICS[@]}; do
 		# Disable DHCPv4/v6 and autoconnect
 		nmcli con mod "$UNUSED_NIC" \
 			ipv4.method disabled \
@@ -745,7 +745,7 @@ get_main_ip() {
 get_redirect() {
   whiptail_set_redirect_info
   whiptail_set_redirect
-  if [ $REDIRECTINFO == 'OTHER' ]; then
+  if [ "$REDIRECTINFO" == "OTHER" ]; then
     whiptail_set_redirect_host
   fi
 }

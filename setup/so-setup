@@ -29,6 +29,9 @@ else
   INSTALLMETHOD="network"
 fi
 
+# Allow execution of SO tools during setup
+export PATH=$PATH:../salt/common/tools/sbin
+
 # Global Variables
 HOSTNAME=$(cat /etc/hostname)
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
@@ -141,7 +144,7 @@ if (whiptail_you_sure) ; then
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     MASTERUPDATES=OPEN
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_helix_apikey
     whiptail_homenet_master
     RULESETUP=ETOPEN
@@ -244,6 +247,32 @@ if (whiptail_you_sure) ; then
 
   fi
 
+  function collect_webuser_inputs() {
+    # Get a password for the web admin user
+    VALIDUSER=no
+    while [ $VALIDUSER != yes ]; do
+      whiptail_create_web_user
+      so-user valemail "$WEBUSER"
+      if [ $? == 0 ]; then
+        VALIDUSER=yes
+      else
+        whiptail_invalid_user_warning
+      fi
+    done
+
+    WPMATCH=no
+    while [ $WPMATCH != yes ]; do
+      whiptail_create_web_user_password1
+      echo "$WEBPASSWD1" | so-user valpass
+      if [ $? == 0 ]; then
+        whiptail_create_web_user_password2
+        check_web_pass
+      else
+        whiptail_invalid_pass_warning
+      fi
+    done
+  }
+
   ####################
   ##     Master     ##
   ####################
@@ -292,14 +321,7 @@ if (whiptail_you_sure) ; then
       check_soremote_pass
     done
 
-    # Get a password for the web admin user
-    whiptail_create_web_user
-    WPMATCH=no
-    while [ $WPMATCH != yes ]; do
-      whiptail_create_web_user_password1
-      whiptail_create_web_user_password2
-      check_web_pass
-    done
+    collect_webuser_inputs
     get_redirect
     # Last Chance to back out
     whiptail_make_changes
@@ -446,7 +468,7 @@ if (whiptail_you_sure) ; then
 
   if [ $INSTALLTYPE == 'SENSOR' ]; then
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
     set_updates
@@ -506,6 +528,8 @@ if (whiptail_you_sure) ; then
       salt-call state.apply pcap >> $SETUPLOG 2>&1
       echo -e "XXX\n60\nInstalling IDS components... \nXXX"
       salt-call state.apply suricata >> $SETUPLOG 2>&1
+      echo -e "XXX\n70\nInstalling Strelka... \nXXX"
+      salt-call state.apply strelka >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
@@ -535,7 +559,7 @@ if (whiptail_you_sure) ; then
     if [ $INSTALLTYPE == 'EVAL' ]; then
       TYPE='eval'
       # Select which NICs are in the bond
-      whiptail_bond_nics
+      [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       TYPE='mastersearch'
     fi
@@ -573,14 +597,7 @@ if (whiptail_you_sure) ; then
         check_soremote_pass
       done
     fi
-    # Get a password for the web admin user
-    whiptail_create_web_user
-    WPMATCH=no
-    while [ $WPMATCH != yes ]; do
-      whiptail_create_web_user_password1
-      whiptail_create_web_user_password2
-      check_web_pass
-    done
+    collect_webuser_inputs
     get_redirect
     whiptail_make_changes
     set_hostname
@@ -832,7 +849,7 @@ if (whiptail_you_sure) ; then
   if [ $INSTALLTYPE == 'HEAVYNODE' ]; then
 
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
     set_updates

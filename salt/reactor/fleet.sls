@@ -15,9 +15,9 @@ def run():
   MAINIP = data['data']['mainip']
 
   STATICFILE = '/opt/so/saltstack/pillar/static.sls'
-  AUTHFILE = '/opt/so/saltstack/pillar/auth.sls'
+  SECRETSFILE = '/opt/so/saltstack/pillar/secrets.sls'
 
-  if MINIONID.split('_')[-1] in ['master','eval','fleet']:
+  if MINIONID.split('_')[-1] in ['master','eval','fleet','mastersearch']:
     if ACTION == 'enablefleet':
       logging.info('so/fleet enablefleet reactor')
       
@@ -29,8 +29,8 @@ def run():
           line = re.sub(r'fleet_master: \S*', f"fleet_master: True", line.rstrip())
         print(line) 
 
-      # Update the enroll secret in the auth pillar
-      for line in fileinput.input(AUTHFILE, inplace=True):
+      # Update the enroll secret in the secrets pillar
+      for line in fileinput.input(SECRETSFILE, inplace=True):
         line = re.sub(r'fleet_enroll-secret: \S*', f"fleet_enroll-secret: {ESECRET}", line.rstrip())
         print(line)      
 

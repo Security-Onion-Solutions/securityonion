@@ -1,18 +1,18 @@
+{%- set MASTER = salt['pillar.get']('static:masterip', '') %}
 #!/bin/bash
 KIBANA_VERSION="7.6.1"
 MAX_WAIT=60
 
 # Check to see if Kibana is available
-wait_step=0
-  until curl -s -XGET http://localhost:5601 > /dev/null ; do
-  wait_step=$(( ${wait_step} + 1 ))
-  echo "Waiting on Kibana...Attempt #$wait_step"
+until curl "{{ MASTER }}:5601/nonexistenturl" 2>&1 |grep -q "Not Found" ; do
+        wait_step=$(( ${wait_step} + 1 ))
+        echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
         if [ ${wait_step} -gt ${MAX_WAIT} ]; then
                 echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
                 exit 5
         fi
-                  sleep 1s;
-  done
+        sleep 1s;
+done
 
 # Sleep additional JIC server is not ready
 sleep 30s
@@ -29,6 +29,11 @@ curl -X PUT "localhost:5601/api/saved_objects/config/$KIBANA_VERSION" -H 'kbn-xs
           "timepicker:timeDefaults":"{\n  \"from\": \"now-24h\",\n  \"to\": \"now\",\n  \"mode\": \"quick\"\n}"
         }
 }'
+
+# Sub our IP for placholders
+for i in PLACEHOLDER FLEETPLACEHOLDER PCAPPLACEHOLDER SOCTOPUSPLACEHOLDER; do
+        sed -i "s/$i/{{ MASTER }}/g" /opt/so/saltstack/salt/kibana/saved_objects.ndjson
+done
 
 # Load saved objects
 curl -X POST "localhost:5601/api/saved_objects/_import" -H "kbn-xsrf: true" --form file=@/opt/so/saltstack/salt/kibana/saved_objects.ndjson
