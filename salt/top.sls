@@ -6,7 +6,7 @@
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
-{%- set STRELKA = salt['pillar.get']('master:strelka', '1') -%}
+{%- set STRELKA = salt['pillar.get']('master:strelka', '0') -%}
 
 
 base:
