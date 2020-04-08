@@ -231,14 +231,16 @@ check_network_manager_conf() {
 	local nmconf="/etc/NetworkManager/NetworkManager.conf"
 	local preupdir="/etc/NetworkManager/dispatcher.d/pre-up.d"
 
-	if ! test -f "${gmdconf}.bak"; then
-		{
-			mv "$gmdconf" "${gmdconf}.bak"
-			touch "$gmdconf"
-			systemctl restart NetworkManager
-		} >> "$SETUPLOG" 2>&1
+	if test -f "$gmdconf"; then
+		if ! test -f "${gmdconf}.bak"; then
+			{
+				mv "$gmdconf" "${gmdconf}.bak"
+				touch "$gmdconf"
+				systemctl restart NetworkManager
+			} >> "$SETUPLOG" 2>&1
+		fi
 	fi
-
+	
 	if test -f "$nmconf"; then
 		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$SETUPLOG" 2>&1
 	fi
@@ -413,19 +415,22 @@ create_sensor_bond() {
 		MTU=1500
 	fi
 
-	# Create the bond interface
-	nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
-		ipv4.method disabled \
-		ipv6.method ignore \
-		ethernet.mtu $MTU \
-		connection.autoconnect "yes" >> "$SETUPLOG" 2>&1
+	# Create the bond interface only if it doesn't already exist
+	if ! [[ $(nmcli -f name,uuid -p con | sed -n 's/bond0 //p' | tr -d ' ') ]]; then
+		nmcli con add ifname bond0 con-name "bond0" type bond mode 0 -- \
+			ipv4.method disabled \
+			ipv6.method ignore \
+			ethernet.mtu $MTU \
+			connection.autoconnect "yes" >> "$SETUPLOG" 2>&1
+	fi
+
 
 	for BNIC in "${BNICS[@]}"; do
 		BONDNIC="$(echo -e "${BNIC}" | tr -d '"')" # Strip the quotes from the NIC names
 
 		# Check if specific offload features are able to be disabled
 		for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
-			if ethtool -k "$BONDNIC" | grep -e $string | grep -eq "on [fixed]"; then
+			if ethtool -k "$BONDNIC" | grep $string | grep -q "on [fixed]"; then
 				echo "The hardware or driver for interface ${BONDNIC} is not supported, packet capture may not work as expected." >> "$SETUPLOG" 2>&1
 				nic_error=1
 				break
@@ -436,12 +441,16 @@ create_sensor_bond() {
 		for i in rx tx sg tso ufo gso gro lro; do
 			ethtool -K "$BONDNIC" $i off >> "$SETUPLOG" 2>&1
 		done
-
-		# Create the slave interface and assign it to the bond
-		nmcli con add type ethernet ifname "$BONDNIC" con-name "bond0-slave-$BONDNIC" master bond0 -- \
-			ethernet.mtu $MTU \
-			connection.autoconnect "yes" >> "$SETUPLOG" 2>&1
 		
+		# Check if the bond slave connection has already been created
+		if ! [[ $(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BONDNIC //p" | tr -d ' ') ]]; then
+			# Create the slave interface and assign it to the bond
+			
+			nmcli con add type ethernet ifname "$BONDNIC" con-name "bond0-slave-$BONDNIC" master bond0 -- \
+				ethernet.mtu $MTU \
+				connection.autoconnect "yes" >> "$SETUPLOG" 2>&1
+		fi
+
 		nmcli con up "bond0-slave-$BONDNIC" >> "$SETUPLOG" 2>&1 # Bring the slave interface up
 	done
 
@@ -524,14 +533,13 @@ disable_misc_network_features() {
 
 		# Flush any existing IPs
 		ip addr flush "$UNUSED_NIC" >> "$SETUPLOG" 2>&1
-
-		# Disable IPv6
-		{ 
-			echo "net.ipv6.conf.all.disable_ipv6 = 1"
-			echo "net.ipv6.conf.default.disable_ipv6 = 1"
-			echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-		} >> /etc/sysctl.conf
 	done
+    # Disable IPv6
+    { 
+        echo "net.ipv6.conf.all.disable_ipv6 = 1"
+        echo "net.ipv6.conf.default.disable_ipv6 = 1"
+        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+    } >> /etc/sysctl.conf
 }
 
 docker_install() {
@@ -951,22 +959,26 @@ minio_generate_keys() {
 }
 
 network_setup() {
-	echo "Finishing up network setup" >> "$SETUPLOG" 2>&1
+    {
+        echo "Finishing up network setup";
 
-	echo "... Verifying all network devices are managed by Network Manager" >> "$SETUPLOG" 2>&1
-	check_network_manager_conf >> "$SETUPLOG" 2>&1
+        echo "... Verifying all network devices are managed by Network Manager";
+        check_network_manager_conf;
 
-	echo "... Disabling unused NICs" >> "$SETUPLOG" 2>&1
-	disable_misc_network_features >> "$SETUPLOG" 2>&1
+        echo "... Disabling unused NICs";
+        disable_misc_network_features;
 
-	echo "... Setting ONBOOT for management interface" >> "$SETUPLOG" 2>&1
-	nmcli con mod $MAININT connection.autoconnect "yes" >> "$SETUPLOG" 2>&1
+        echo "... Setting ONBOOT for management interface";
+        if ! netplan > /dev/null 2>&1; then
+            nmcli con mod "$MAININT" connection.autoconnect "yes";
+        fi
 
-	echo "... Copying 99-so-checksum-offload-disable" >> "$SETUPLOG" 2>&1
-	cp $SCRIPTDIR/install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable  >> "$SETUPLOG" 2>&1
+        echo "... Copying 99-so-checksum-offload-disable";
+        cp "$SCRIPTDIR/install_scripts/99-so-checksum-offload-disable" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
-	echo "... Modifying 99-so-checksum-offload-disable" >> "$SETUPLOG" 2>&1
-	sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable >> "$SETUPLOG" 2>&1
+        echo "... Modifying 99-so-checksum-offload-disable";
+        sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+    } >> "$SETUPLOG" 2>&1
 }
 
 node_pillar() {
