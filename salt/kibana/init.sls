@@ -83,6 +83,7 @@ so-kibana-config-load:
   cmd.script:
     - shell: /bin/bash
     - runas: socore
+    - cwd: /opt/so
     - source: salt://kibana/bin/so-kibana-config-load
     - template: jinja
 
