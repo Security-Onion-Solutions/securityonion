@@ -65,3 +65,10 @@ base:
     - data.*
     - secrets
     - minions.{{ grains.id }}
+
+  '*_searchnode':
+    - static
+    - firewall.*
+    - logstash
+    - logstash.search
+    - minions.{{ grains.id }}
