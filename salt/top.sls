@@ -175,8 +175,7 @@ base:
     {%- endif %}
     - schedule
 
-  '*_node and I@node:node_type:search':
-    - match: compound
+  '*_searchnode':
     - ca
     - ssl
     - common
