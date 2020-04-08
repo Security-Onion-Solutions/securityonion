@@ -1,7 +1,7 @@
 {%- set MASTER = salt['pillar.get']('static:masterip', '') %}
 #!/bin/bash
 KIBANA_VERSION="7.6.1"
-MAX_WAIT=60
+MAX_WAIT=120
 
 # Check to see if Kibana is available
 until curl "{{ MASTER }}:5601/nonexistenturl" 2>&1 |grep -q "Not Found" ; do
@@ -18,17 +18,17 @@ done
 sleep 30s
 
 # Load config
-curl -X PUT "localhost:5601/api/saved_objects/config/$KIBANA_VERSION" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'
-{ "attributes":
-        {
-          "defaultIndex": "2289a0c0-6970-11ea-a0cd-ffa0f6a1bc29",
-          "defaultRoute":"/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645",
-          "discover:sampleSize":"100",
-          "dashboard:defaultDarkTheme":true,
-          "theme:darkMode":true,
-          "timepicker:timeDefaults":"{\n  \"from\": \"now-24h\",\n  \"to\": \"now\",\n  \"mode\": \"quick\"\n}"
-        }
-}'
+#curl -X PUT "localhost:5601/api/saved_objects/config/$KIBANA_VERSION" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'
+#{ "attributes":
+#        {
+#          "defaultIndex": "2289a0c0-6970-11ea-a0cd-ffa0f6a1bc29",
+#          "defaultRoute":"/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645",
+#          "discover:sampleSize":"100",
+#          "dashboard:defaultDarkTheme":true,
+#          "theme:darkMode":true,
+#          "timepicker:timeDefaults":"{\n  \"from\": \"now-24h\",\n  \"to\": \"now\",\n  \"mode\": \"quick\"\n}"
+#        }
+#}'
 
 # Sub our IP for placholders
 for i in FLEETPLACEHOLDER PCAPPLACEHOLDER SOCTOPUSPLACEHOLDER PLACEHOLDER; do
