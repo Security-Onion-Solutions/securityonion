@@ -149,6 +149,5 @@ so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates
     - cwd: /opt/so
-    - watch: 
-      - /opt/so/saltstack/salt/logstash/pipelines/templates/so/*.json
-
+    - onchanges:
+        - file: lsetcsync
