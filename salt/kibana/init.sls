@@ -59,7 +59,19 @@ synckibanacustom:
     - user: 932
     - group: 939
 
-# File.Recurse for custom saved dashboards
+kibanabin:
+  file.managed:
+    - name: /usr/sbin/so-kibana-config-load
+    - source: salt://kibana/bin/so-kibana-config-load
+    - mode: 755
+    - template: jinja
+
+kibanadashtemplate:
+  file.managed:
+    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
+    - source: salt://kibana/files/saved_objects.ndjson
+    - user: 932
+    - group: 939
 
 # Start the kibana docker
 so-kibana:
@@ -80,12 +92,12 @@ so-kibana:
       - 0.0.0.0:5601:5601
 
 so-kibana-config-load:
-  cmd.script:
-    - shell: /bin/bash
-    - runas: socore
+  cmd.run:
+    - name: /usr/sbin/so-kibana-config-load
     - cwd: /opt/so
-    - source: salt://kibana/bin/so-kibana-config-load
-    - template: jinja
+    - onchanges:
+      - file: kibanadashtemplate
+
 
 # Keep the setting correct
 #KibanaHappy:
