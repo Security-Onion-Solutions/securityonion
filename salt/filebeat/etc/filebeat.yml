@@ -7,8 +7,8 @@
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{%- set WAZUHENABLED = salt['pillar.get']('master:wazuh_enabled', '0') %}
-{%- set STRELKAENABLED = salt['pillar.get']('master:strelka_enabled', '0') %}
+{%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '0') %}
+{%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '0') %}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
@@ -110,6 +110,26 @@ filebeat.inputs:
     fields_under_root: true
     clean_removed: false
     close_removed: false
+
+  {%- if STRELKAENABLED == '1' %}
+
+  - type: log
+    paths:
+      - /nsm/strelka/log/strelka.log
+    fields:
+      module: strelka
+      category: file
+      dataset: file
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]    
+
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+  {%- endif %}
 {%- endif %}
 
 {%- if WAZUHENABLED == '1' %}
@@ -160,25 +180,6 @@ filebeat.inputs:
 
 {%- endif %}
 
-{%- if STRELKAENABLED == '1' %}
-
-  - type: log
-    paths:
-      - /nsm/strelka/log/strelka.log
-    fields:
-      module: strelka
-      category: file
-      dataset: file
-
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]    
-
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
-
-{%- endif %}
 #----------------------------- Elasticsearch/Logstash output ---------------------------------
 {%- if grains['role'] == "so-eval" %}
 output.elasticsearch:

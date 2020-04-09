@@ -148,5 +148,4 @@ so-elasticsearch-pipelines:
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates
-    - cwd: /
-
+    - cwd: /opt/so
