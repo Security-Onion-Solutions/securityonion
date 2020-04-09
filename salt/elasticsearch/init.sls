@@ -145,7 +145,9 @@ so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
 
+{% if grains['role'] == 'so-master' or grains['role'] == "so-eval" or grains['role'] == "so-mastersearch" %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates
     - cwd: /opt/so
+{% endif %}
