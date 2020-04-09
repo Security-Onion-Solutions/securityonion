@@ -1,12 +1,12 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
-{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
+{%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
-{%- set STRELKA = salt['pillar.get']('master:strelka', '0') -%}
+{%- set STRELKA = salt['pillar.get']('static:strelka', '0') -%}
 
 
 base:
