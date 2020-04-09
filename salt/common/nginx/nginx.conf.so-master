@@ -1,5 +1,7 @@
 {%- set masterip = salt['pillar.get']('master:mainip', '') %}
 {%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master') %}
+{%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
+{%- set FLEET_IP = salt['pillar.get']('static:fleet_ip', None) %}
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -217,6 +219,11 @@ http {
 
         }
 
+      {%- if FLEET_NODE %}
+        location /fleet/ {
+          return 301 https://{{ FLEET_IP }}/fleet;
+        }
+      {%- else %}
         location /fleet/ {
           proxy_pass https://{{ masterip }}:8080;
           proxy_read_timeout    90;
@@ -225,8 +232,8 @@ http {
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
-
         }
+      {%- endif %}
 
         location /thehive/ {
           proxy_pass            http://{{ masterip }}:9000/thehive/;
