@@ -28,6 +28,7 @@ socsync:
     - source: salt://soc/files/soc
     - user: 939
     - group: 939
+    - mode: 600
     - template: jinja
 
 so-soc:
@@ -78,6 +79,7 @@ kratossync:
     - source: salt://soc/files/kratos
     - user: 928
     - group: 928
+    - mode: 600
     - template: jinja
 
 so-kratos:
