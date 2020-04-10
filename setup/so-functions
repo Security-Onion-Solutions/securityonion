@@ -720,15 +720,25 @@ get_filesystem_nsm(){
 
 get_log_size_limit() {
 
-	DISK_DIR="/"
-	if [ -d /nsm ]; then
-		DISK_DIR="/nsm"
-	fi
-	DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
-	PERCENTAGE=85
-	DISK_SIZE=DISK_SIZE_K*1000
-	PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
-	LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
+  case $INSTALLTYPE in
+    EVAL | HEAVYNODE)
+      PERCENTAGE=50
+      ;;
+    *)
+      PERCENTAGE=80
+      ;;
+  esac
+
+  DISK_DIR="/"
+
+  if [ -d /nsm ]; then
+    DISK_DIR="/nsm"
+  fi
+
+  DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
+  DISK_SIZE=DISK_SIZE_K*1000
+  PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
+  LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
 
 }
 
