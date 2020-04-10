@@ -69,9 +69,9 @@ sensoroniagentconf:
   file.managed:
     - name: /opt/so/conf/steno/sensoroni.json
     - source: salt://pcap/files/sensoroni.json
-    - user: root
-    - group: root
-    - mode: 644
+    - user: stenographer
+    - group: stenographer
+    - mode: 600
     - template: jinja
 
 stenoca:
