@@ -134,9 +134,9 @@ http {
           proxy_set_header      Connection "Upgrade";
         }
 
-        location /auth/ {
+        location ~ ^/auth/.*?(whoami|login|logout) {
           rewrite               /auth/(.*) /$1 break;
-          proxy_pass            http://{{ masterip }}:4433/;
+          proxy_pass            http://{{ masterip }}:4433;
           proxy_read_timeout    90;
           proxy_connect_timeout 90;
           proxy_set_header      Host $host;
@@ -295,7 +295,7 @@ http {
         error_page 401 = @error401;
 
         location @error401 {
-          add_header    Set-Cookie "NSREDIRECT=http://{{ masterip }}$request_uri;Domain={{ masterip }};Path=/;Max-Age=60000";
+          add_header    Set-Cookie "AUTH_REDIRECT=$request_uri;Path=/;Max-Age=14400";
           return        302 /auth/self-service/browser/flows/login;
         }
 
