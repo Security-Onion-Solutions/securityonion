@@ -282,7 +282,7 @@ grafanadashevaldir:
 
 grafanadashfndir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes
+    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes
     - user: 939
     - group: 939
     - makedirs: True
@@ -331,11 +331,11 @@ dashboard-master:
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes/{{ SN }}-Sensor.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/forward_nodes/sensor.json
+    - source: salt://common/grafana/grafana_dashboards/sensor_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
       MONINT: {{ SNDATA.monint }}
