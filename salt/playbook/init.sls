@@ -17,6 +17,20 @@ playbookwebhook:
       - db: /opt/so/conf/playbook/redmine.db
       - sql: "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
 
+playbookapiendpoints:
+  module.run:
+    - sqlite3.modify:
+      - db: /opt/so/conf/playbook/redmine.db
+      - sql: |- 
+          update settings set value = 
+          "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
+          project: '1'
+          import_trackers:
+          - '6'
+          convert_url: http://{{MASTERIP}}:7000/playbook/sigmac
+          create_url: http://{{MASTERIP}}:7000/playbook/play"
+          where id  = 46;
+      
 navigatorconfig:
   file.managed:
     - name: /opt/so/conf/playbook/navigator_config.json
