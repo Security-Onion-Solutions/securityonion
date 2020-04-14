@@ -78,18 +78,19 @@ def zeek():
   retcode = __salt__['zeekctl.status'](verbose=False)
   logging.debug('healthcheck_module: zeekctl.status retcode: %i' % retcode)
   if retcode:
-    zeek_restart = True
+    zeek_restart = 1
     if calling_func != 'beacon':
       docker_stop('so-zeek')
       states_to_apply.append('zeek')
   else:
-    zeek_restart = False
+    zeek_restart = 0
 
+  __salt__['telegraf.send']('healthcheck zeek_restart=%i' % zeek_restart)
+  
   if calling_func == 'execute' and zeek_restart:
     apply_states()
   
   retval.append({'zeek_restart': zeek_restart})
 
   send_event('so/healthcheck/zeek', retval)
-  __salt__['telegraf.send']('healthcheck zeek_restart=%s' % str(zeek_restart))
   return retval
