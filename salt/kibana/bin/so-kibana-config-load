@@ -1,38 +1,27 @@
-{%- set MASTER = salt['pillar.get']('static:masterip', '') %}
 #!/bin/bash
+
+{%- set MASTER = salt['pillar.get']('static:masterip', '') %}
 KIBANA_VERSION="7.6.1"
 MAX_WAIT=120
 
 # Check to see if Kibana is available
 until curl "{{ MASTER }}:5601/nonexistenturl" 2>&1 |grep -q "Not Found" ; do
-        wait_step=$(( ${wait_step} + 1 ))
-        echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
-        if [ ${wait_step} -gt ${MAX_WAIT} ]; then
-                echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
-                exit 5
-        fi
-        sleep 1s;
+		wait_step=$(( ${wait_step} + 1 ))
+		echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
+		if [ ${wait_step} -gt ${MAX_WAIT} ]; then
+				echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
+				exit 5
+		fi
+		sleep 1s;
 done
 
 # Sleep additional JIC server is not ready
 sleep 30s
 
-# Load config
-#curl -X PUT "localhost:5601/api/saved_objects/config/$KIBANA_VERSION" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'
-#{ "attributes":
-#        {
-#          "defaultIndex": "2289a0c0-6970-11ea-a0cd-ffa0f6a1bc29",
-#          "defaultRoute":"/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645",
-#          "discover:sampleSize":"100",
-#          "dashboard:defaultDarkTheme":true,
-#          "theme:darkMode":true,
-#          "timepicker:timeDefaults":"{\n  \"from\": \"now-24h\",\n  \"to\": \"now\",\n  \"mode\": \"quick\"\n}"
-#        }
-#}'
-
-# Sub our IP for placholders
+# Sub our IP for placeholders
+cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
 for i in FLEETPLACEHOLDER PCAPPLACEHOLDER SOCTOPUSPLACEHOLDER PLACEHOLDER; do
-        sed "s/$i/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson.template > /opt/so/conf/kibana/saved_objects.ndjson
+	sed -i "s/$i/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 done
 
 # Load saved objects

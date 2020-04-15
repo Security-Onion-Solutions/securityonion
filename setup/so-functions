@@ -720,15 +720,25 @@ get_filesystem_nsm(){
 
 get_log_size_limit() {
 
-	DISK_DIR="/"
-	if [ -d /nsm ]; then
-		DISK_DIR="/nsm"
-	fi
-	DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
-	PERCENTAGE=85
-	DISK_SIZE=DISK_SIZE_K*1000
-	PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
-	LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
+  case $INSTALLTYPE in
+    EVAL | HEAVYNODE)
+      PERCENTAGE=50
+      ;;
+    *)
+      PERCENTAGE=80
+      ;;
+  esac
+
+  DISK_DIR="/"
+
+  if [ -d /nsm ]; then
+    DISK_DIR="/nsm"
+  fi
+
+  DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
+  DISK_SIZE=DISK_SIZE_K*1000
+  PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
+  LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
 
 }
 
@@ -909,6 +919,7 @@ master_static() {
   echo "  fleet_master: False" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleet_node: False" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleet_packages-timestamp: N/A" >> /opt/so/saltstack/pillar/static.sls
+  echo "  fleet_packages-version: 1" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleet_hostname: N/A" >> /opt/so/saltstack/pillar/static.sls
   echo "  fleet_ip: N/A" >> /opt/so/saltstack/pillar/static.sls
   echo "  sensoronikey: $SENSORONIKEY" >> /opt/so/saltstack/pillar/static.sls
@@ -1298,8 +1309,17 @@ EOF
       echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
       apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
       apt-key add $TMP/gpg/GPG-KEY-WAZUH
-      echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list
-      echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+	  
+	  if [ $OSVER != "xenial" ]; then
+        # Install the repo for salt py3 edition
+        wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/3000/SALTSTACK-GPG-KEY.pub | apt-key add -
+        wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
+        echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+        echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
+	  else
+        echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+      fi
+	  echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
       # Initialize the new repos
       apt-get update >> $SETUPLOG 2>&1
       if [ $OSVER != "xenial" ]; then
