@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}

@@ -1,5 +1,5 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
