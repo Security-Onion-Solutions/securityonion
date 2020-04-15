@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set lsaccessip = salt['pillar.get']('master:lsaccessip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 # Redis Setup

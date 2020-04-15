@@ -1,5 +1,5 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 playbookdb:

@@ -1,6 +1,6 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}

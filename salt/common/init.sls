@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 {% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
