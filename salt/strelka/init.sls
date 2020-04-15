@@ -55,7 +55,7 @@ strelkastagedir:
 
 strelka_coordinator:
   docker_container.running:
-    - image: docker.io/redis:5.0.5-alpine3.10
+    - image: {{ MASTER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
     - name: so-strelka-coordinator
     - command: redis-server --save "" --appendonly no
     - port_bindings:
@@ -63,7 +63,7 @@ strelka_coordinator:
 
 strelka_gatekeeper:
   docker_container.running:
-    - image: docker.io/redis:5.0.5-alpine3.10
+    - image: {{ MASTER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
     - name: so-strelka-gatekeeper
     - command: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
@@ -71,7 +71,7 @@ strelka_gatekeeper:
 
 strelka_frontend:
   docker_container.running:
-    - image: soshybridhunter/so-strelka-frontend:HH1.2.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-frontend:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /nsm/strelka/log/:/var/log/strelka/:rw
@@ -83,7 +83,7 @@ strelka_frontend:
 
 strelka_backend:
   docker_container.running:
-    - image: soshybridhunter/so-strelka-backend:HH1.2.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-backend:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
@@ -93,7 +93,7 @@ strelka_backend:
 
 strelka_manager:
   docker_container.running:
-    - image: soshybridhunter/so-strelka-manager:HH1.2.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-manager:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
@@ -101,7 +101,7 @@ strelka_manager:
 
 strelka_filestream:
   docker_container.running:
-    - image: soshybridhunter/so-strelka-filestream:HH1.2.1
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-filestream:HH1.2.1
     - binds:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
