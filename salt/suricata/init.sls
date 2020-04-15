@@ -15,7 +15,7 @@
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
