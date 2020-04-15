@@ -58,7 +58,7 @@ strelka_coordinator:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
     - name: so-strelka-coordinator
-    - command: redis-server --save "" --appendonly no
+    - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
       - 0.0.0.0:6380:6379
 
@@ -66,7 +66,7 @@ strelka_gatekeeper:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
     - name: so-strelka-gatekeeper
-    - command: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
+    - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
       - 0.0.0.0:6381:6379
 
