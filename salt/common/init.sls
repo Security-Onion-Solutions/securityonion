@@ -207,7 +207,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/scripts
 
 # If its a master or eval lets install the back end for now
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
+{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval'] and GRAFANA == 1 %}
 
 # Influx DB
 influxconfdir:
