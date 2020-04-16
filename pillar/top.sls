@@ -34,8 +34,6 @@ base:
     - data.*
     - brologs
     - secrets
-    - logstash
-    - logstash.eval
     - healthcheck.eval
     - minions.{{ grains.id }}
 
