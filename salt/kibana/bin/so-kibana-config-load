@@ -1,28 +1,38 @@
 #!/bin/bash
 
 {%- set MASTER = salt['pillar.get']('static:masterip', '') %}
+{%- set FLEET = salt['pillar.get']('static:fleet_ip', '') %}
+{%- set KRATOS = salt['pillar.get']('kratos:redirect', '') %}
+
+
 KIBANA_VERSION="7.6.1"
 MAX_WAIT=120
 
 # Check to see if Kibana is available
 until curl "{{ MASTER }}:5601/nonexistenturl" 2>&1 |grep -q "Not Found" ; do
-		wait_step=$(( ${wait_step} + 1 ))
-		echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
-		if [ ${wait_step} -gt ${MAX_WAIT} ]; then
-				echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
-				exit 5
-		fi
-		sleep 1s;
+                wait_step=$(( ${wait_step} + 1 ))
+                echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
+                if [ ${wait_step} -gt ${MAX_WAIT} ]; then
+                                echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
+                                exit 5
+                fi
+                sleep 1s;
 done
 
 # Sleep additional JIC server is not ready
 sleep 30s
 
-# Sub our IP for placeholders
+# Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
-for i in FLEETPLACEHOLDER PCAPPLACEHOLDER SOCTOPUSPLACEHOLDER PLACEHOLDER; do
-	sed -i "s/$i/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
-done
+
+# SOCtopus and Master
+sed -i "s/PLACEHOLDER/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+
+# Fleet IP
+sed -i "s/FLEETPLACEHOLDER/{{ FLEET }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+
+# Kratos redirect
+sed -i "s/PCAPPLACEHOLDER/{{ KRATOS }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 # Load saved objects
 curl -X POST "localhost:5601/api/saved_objects/_import" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
