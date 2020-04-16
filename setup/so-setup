@@ -20,10 +20,12 @@ cd "$(dirname "$0")" || exit 255
 source "./so-functions"
 source "./so-whiptail"
 source "./so-variables"
+source "./so-constants"
 source "./so-common-functions"
 
 # See if this is an ISO install
-install_type=$1
+setup_type=$1
+export setup_type
 
 case "$install_type" in
 	iso | network) # Accepted values
@@ -39,112 +41,151 @@ esac
 export PATH=$PATH:"$SCRIPTDIR/../salt/common/tools/sbin"
 
 
-# Reset the Install Log
-date -u > $setup_log 2>&1
-echo "stty size is: $(stty size)" >> $setup_log 2>&1
+init_common() {
+	date -u > $setup_log 2>&1
+	echo "stty size is: $(stty size)" >> $setup_log 2>&1
 
-# Check for prerequisites
-got_root
-detect_os
+	got_root
+	detect_os
 
-if [ "$OS" == ubuntu ]; then
-	# Override the horrible Ubuntu whiptail color pallete
-	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
-fi
-
-# Question Time
-echo "Asking user if they are sure they want to proceed" >> $setup_log 2>&1
-if (whiptail_you_sure) ; then
-
-	# Create a temp dir to get started
-	setterm -blank 0
-
-	if [ $install_type == network ]; then
-		# Let folks know they need their management interface already set up.
-		whiptail_network_notice
-
-		# Set the hostname to reduce errors
-		whiptail_set_hostname
-
-		# Set management nic
-		whiptail_management_nic
-
-	else
-
-		# Set the hostname
-		whiptail_set_hostname
-		whiptail_management_nic
-
-		# Ask if you want dhcp or static
-		whiptail_dhcp_or_static
-
-		# Do this if it static is selected
-		if [ "$ADDRESSTYPE" != 'DHCP' ]; then
-			whiptail_management_interface_ip
-			whiptail_management_interface_mask
-			whiptail_management_interface_gateway
-			whiptail_management_interface_dns
-			whiptail_management_interface_dns_search
-		fi
-
-		# Go ahead and bring up networking so other parts of the install work
-		set_hostname_iso
-		set_management_interface
-
-		# Add an admin user
-		whiptail_create_admin_user
-
-		# Get a password for the admin user
-		APMATCH=no
-		while [ $APMATCH != yes ]; do
-			whiptail_create_admin_user_password1
-			whiptail_create_admin_user_password2
-			check_admin_pass
-		done
-
+	if [ "$OS" == ubuntu ]; then
+		update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 	fi
 
-	# Go ahead and gen the keys so we can use them for any sensor type - Disabled for now
-	#minio_generate_keys
+	setterm -blank 0
+
+	echo "Asking user if they are sure they want to proceed" >> $setup_log 2>&1
+	if whiptail_you_sure; then
+		true
+	else
+		echo "User not sure. Cancelling setup.">> $setup_log 2>&1
+		whiptail_cancel
+	fi
+
+	case "$setup_type" in
+		'iso')
+			whiptail_set_hostname
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+
+			if [ "$address_type" != 'DHCP' ]; then
+				whiptail_management_interface_ip
+				whiptail_management_interface_mask
+				whiptail_management_interface_gateway
+				whiptail_management_interface_dns
+				whiptail_management_interface_dns_search
+			fi
+
+			# Init networking so rest of install works
+			set_hostname_iso
+			set_management_interface
+
+			whiptail_create_admin_user
+			add_admin_user
+			disable_onion_user
+
+			collect_adminuser_inputs
+			;;
+		'network')
+			whiptail_network_notice
+			whiptail_set_hostname
+			whiptail_management_nic
+			;;
+	esac
 
 	# What kind of install are we doing?
 	whiptail_install_type
-	SHORTNAME=$(echo "$hostname" | awk -F. '{print $1}')
-	MINION_ID=$(echo "$SHORTNAME'_'$install_type" | tr '[:upper:]' '[:lower:]')
+	
+	local short_name
+	short_name=$(echo "$hostname" | awk -F. '{print $1}')
+
+	MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+	export MINION_ID
 	echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
 
-	# How do we want to handle OS patching? manual, auto or scheduled days and hours
 	whiptail_patch_schedule
-	case $PATCHSCHEDULE in
-		'New Schedule')
-			whiptail_patch_schedule_select_days
-			whiptail_patch_schedule_select_hours
-			whiptail_patch_name_new_schedule
-			patch_schedule_os_new
-			;;
-		'Import Schedule')
-			whiptail_patch_schedule_import
-			;;
-		'Automatic')
-			PATCHSCHEDULENAME=auto
-			;;
-		'Manual')
-			PATCHSCHEDULENAME=manual
-			;;
-	esac
+
+	# TODO: figure out if this works
+	filter_unused_nics
+	minion_type=$(get_minion_type)
+}
+
+init_eval() {
+	whiptail_bond_nics
+	whiptail_homenet_master
+	whiptail_components_adv_warning
+	whiptail_enable_components
+}
+
+init_helix() {
+	whiptail_bond_nics
+	whiptail_homenet_master
+	whiptail_helix_apikey
+
+	set_base_heapsizes
+	calculate_usable_cores
+	set_hostname
+	set_version
+	clear_master
+	set_main_ip
+
+	# Set various constants
+	RULESETUP=ETOPEN
+	NSMSETUP=BASIC
+	home_network_sensor=inherit
+	MASTERUPDATES=0
+
+	{
+		progress_str_printer &
+
+		set_progress_str 1 create_bond_str
+		create_sensor_bond
+
+		set_progress_str 2 salt_install_str
+		saltify # finishes at progress=8
+
+		set_progress_str 10 docker_install_str
+		docker_install
+
+		set_progress_str 12 salt_minion_init_str
+		configure_minion "$minion_type"
+
+		set_progress_str 13 'Configuring salt master'
+		copy_master_config
+		setup_salt_master_dirs
+
+		set_progress_str 15 'Updating sudoers file for soremote user'
+		update_sudoers
+
+		set_progress_str 16 gen_static_pillar_str
+		master_static
+
+		set_progress_str 17 gen_master_pillar_str
+		master_pillar
+
+		set_progress_str 18 gen_patch_pillar_str
+		patch_pillar
+
+		set_progress_str 19 'Generating the FireEye pillar'
+		fireeye_pillar
+
+		
+
+	} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+}
 
 	####################
 	##      Helix     ##
 	####################
-	if [ $"install_type" == 'HELIXSENSOR' ]; then
-		MASTERUPDATES=0
+	if [ "$install_type" == 'HELIXSENSOR' ]; then
 		filter_unused_nics
-		[[ "$SKIP_BOND" != 'yes' ]] && whiptail_bond_nics
-		whiptail_helix_apikey
+		whiptail_bond_nics
 		whiptail_homenet_master
+		whiptail_helix_apikey
 		RULESETUP=ETOPEN
 		NSMSETUP=BASIC
 		home_network_sensor=inherit
+		MASTERUPDATES=0
 		es_heapsize >> $setup_log 2>&1
 		ls_heapsize >> $setup_log 2>&1
 		calculate_useable_cores >> "$setup_log" 2>&1
@@ -154,12 +195,8 @@ if (whiptail_you_sure) ; then
 			set_version;
 			clear_master;
 		} >> "$setup_log" 2>&1
-		mkdir -p /nsm
 		get_main_ip
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
+
 		
 		# Install salt and dependencies
 		{
@@ -177,7 +214,7 @@ if (whiptail_you_sure) ; then
 			echo " ** Configuring Minion **" >> $setup_log
 			configure_minion helix >> $setup_log 2>&1
 			echo " ** Installing Salt Master **" >> $setup_log
-			install_master >> $setup_log 2>&1
+			copy_master_config >> $setup_log 2>&1
 			setup_salt_master_dirs >> $setup_log 2>&1
 			update_sudoers >> $setup_log 2>&1
 			echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
@@ -221,7 +258,7 @@ if (whiptail_you_sure) ; then
 			salt-call state.apply filebeat >> $setup_log 2>&1
 			salt-call state.apply utility >> $setup_log 2>&1
 			salt-call state.apply schedule >> $setup_log 2>&1
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nVerifying Setup... \nXXX"
@@ -301,10 +338,6 @@ if (whiptail_you_sure) ; then
 
 		# Figure out the main IP address
 		get_main_ip
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
 
 		# Add the user so we can sit back and relax
 		add_socore_user_master
@@ -322,7 +355,7 @@ if (whiptail_you_sure) ; then
 			echo " ** Configuring Minion **" >> $setup_log
 			configure_minion master >> $setup_log 2>&1
 			echo " ** Installing Salt Master **" >> $setup_log
-			install_master >> $setup_log 2>&1
+			copy_master_config >> $setup_log 2>&1
 			setup_salt_master_dirs >> $setup_log 2>&1
 			update_sudoers >> $setup_log 2>&1
 			es_heapsize >> $setup_log 2>&1
@@ -397,7 +430,7 @@ if (whiptail_you_sure) ; then
 				echo -e "XXX\n89\nInstalling Playbook... \nXXX"
 				salt-call state.apply playbook >> $setup_log 2>&1
 			fi
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nAdding user to SOC... \nXXX"
@@ -426,7 +459,7 @@ if (whiptail_you_sure) ; then
 
 	if [ $install_type == 'SENSOR' ]; then
 		filter_unused_nics
-		[[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
+		whiptail_bond_nics
 		whiptail_management_server
 		whiptail_master_updates
 		whiptail_homenet_sensor
@@ -445,10 +478,7 @@ if (whiptail_you_sure) ; then
 		set_updates
 		set_hostname
 		clear_master
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
+
 		copy_ssh_key >> $setup_log 2>&1
 		{
 			sleep 0.5
@@ -485,7 +515,7 @@ if (whiptail_you_sure) ; then
 			salt-call state.apply suricata >> $setup_log 2>&1
 			echo -e "XXX\n70\nInstalling Strelka... \nXXX"
 			salt-call state.apply strelka >> $setup_log 2>&1
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nVerifying Setup... \nXXX"
@@ -513,7 +543,7 @@ if (whiptail_you_sure) ; then
 		if [ $install_type == 'EVAL' ]; then
 			TYPE='eval'
 			# Select which NICs are in the bond
-			[[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
+			whiptail_bond_nics
 		elif [ $install_type == 'MASTERSEARCH' ]; then
 			TYPE='mastersearch'
 		fi
@@ -560,27 +590,36 @@ if (whiptail_you_sure) ; then
 		clear_master
 		set_defaul_log_size
 		get_main_ip
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
 
 		# Add the user so we can sit back and relax
 		add_socore_user_master
 		add_soremote_user_master
+
+		{
+			# Check progress in child process
+			progress_str_printer &
+			
+			if [ "$install_type" = 'EVAL' ]; then
+				set_progress_str 1 "Creating bond interface..."
+				create_sensor_bond >> $setup_log 2>&1
+			fi
+
+			set_progress_str 2 "Installing Salt..."
+
+		} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+
 		{
 			sleep 0.5
 			if [ $install_type == 'EVAL' ]; then
 				echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
 				create_sensor_bond >> $setup_log 2>&1
 			fi
-			echo -e "XXX\n1\nInstalling Python 3... \nXXX"
 			echo -e "XXX\n2\nInstalling saltstack... \nXXX"
 			saltify >> $setup_log 2>&1
 			echo -e "XXX\n3\nInstalling docker... \nXXX"
 			docker_install >> $setup_log 2>&1
 			echo -e "XXX\n5\nInstalling master code... \nXXX"
-			install_master >> $setup_log 2>&1
+			copy_master_config >> $setup_log 2>&1
 			echo -e "XXX\n6\nCopying salt code... \nXXX"
 			setup_salt_master_dirs >> $setup_log 2>&1
 			echo -e "XXX\n6\nupdating suduers... \nXXX"
@@ -644,7 +683,7 @@ if (whiptail_you_sure) ; then
 				echo -e "XXX\n52\nInstalling Suricata... \nXXX"
 				salt-call state.apply suricata >> $setup_log 2>&1
 				echo -e "XXX\n54\nInstalling Zeek... \nXXX"
-			 salt-call state.apply bro >> $setup_log 2>&1
+				salt-call state.apply bro >> $setup_log 2>&1
 			fi
 
 			echo -e "XXX\n56\nInstalling curator... \nXXX"
@@ -674,7 +713,7 @@ if (whiptail_you_sure) ; then
 				echo -e "XXX\n95\nInstalling Strelka... \nXXX"
 				salt-call state.apply strelka >> $setup_log 2>&1
 			fi
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nAdding user to SOC... \nXXX"
@@ -729,10 +768,6 @@ if (whiptail_you_sure) ; then
 		set_updates
 		set_hostname
 		clear_master
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
 		copy_ssh_key >> $setup_log 2>&1
 		{
 			sleep 0.5
@@ -766,7 +801,7 @@ if (whiptail_you_sure) ; then
 			salt-call state.apply elasticsearch >> $setup_log 2>&1
 			salt-call state.apply curator >> $setup_log 2>&1
 			salt-call state.apply filebeat >> $setup_log 2>&1
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nVerifying Setup... \nXXX"
@@ -789,7 +824,7 @@ if (whiptail_you_sure) ; then
 	if [ $install_type == 'HEAVYNODE' ]; then
 
 		filter_unused_nics
-		[[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
+		whiptail_bond_nics
 		whiptail_management_server
 		whiptail_master_updates
 		whiptail_homenet_sensor
@@ -831,10 +866,7 @@ if (whiptail_you_sure) ; then
 		set_updates
 		set_hostname
 		clear_master
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
+
 		copy_ssh_key >> $setup_log 2>&1
 		{
 			sleep 0.5
@@ -879,7 +911,7 @@ if (whiptail_you_sure) ; then
 			salt-call state.apply pcap >> $setup_log 2>&1
 			echo -e "XXX\n60\nInstalling IDS components... \nXXX"
 			salt-call state.apply suricata >> $setup_log 2>&1
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nVerifying Setup... \nXXX"
@@ -895,9 +927,9 @@ if (whiptail_you_sure) ; then
 
 	fi
 
-###########################
-###  Standalone Fleet   ###
-###########################
+	###########################
+	###  Standalone Fleet   ###
+	###########################
 
 	if [ $install_type == 'FLEET' ]; then
 		whiptail_management_server
@@ -906,10 +938,7 @@ if (whiptail_you_sure) ; then
 		set_updates
 		set_hostname
 		clear_master
-		if [ $install_type == iso ]; then
-			add_admin_user
-			disable_onion_user
-		fi
+
 		copy_ssh_key >> $setup_log 2>&1
 		{
 			sleep 0.5
@@ -945,7 +974,7 @@ if (whiptail_you_sure) ; then
 			salt-call state.apply redis >> $setup_log 2>&1
 			echo -e "XXX\n60\nInstalling Fleet... \nXXX"
 			salt-call state.apply fleet >> $setup_log 2>&1
-			echo -e "XX\n97\nFinishing touches... \nXXX"
+			echo -e "XXX\n97\nFinishing touches... \nXXX"
 			filter_unused_nics >> $setup_log 2>&1
 			network_setup >> $setup_log 2>&1
 			echo -e "XXX\n98\nVerifying Setup... \nXXX"
@@ -960,9 +989,7 @@ if (whiptail_you_sure) ; then
 			shutdown -r now
 		fi
 	fi
-
-
 else
-		echo "User not sure. Cancelling setup.">> $setup_log 2>&1
-		whiptail_cancel
+	echo "User not sure. Cancelling setup.">> $setup_log 2>&1
+	whiptail_cancel
 fi

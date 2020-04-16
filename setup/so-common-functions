@@ -16,8 +16,8 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	export filtered_nics
     filtered_nics=$(ip link | grep -vwe "$grep_string" | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
+	export filtered_nics
 }
 
 calculate_useable_cores() {
@@ -27,8 +27,8 @@ calculate_useable_cores() {
 	local lb_procs_round
 	lb_procs_round=$(printf "%.0f\n" $cores_for_bro)
 
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
     export lb_procs
-	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1;	else lb_procs=$lb_procs_round; fi
 }
 
 set_defaul_log_size() {
@@ -55,24 +55,4 @@ set_defaul_log_size() {
 	percentage_disk_space=$(( disk_size * (percentage / 100) ))
 
 	export log_size_limit=$(( percentage_disk_space / 1000000000 ))
-}
-
-ls_heapsize() {
-
-	if [ "$total_mem" -ge 32000 ]; then
-		LS_HEAP_SIZE='1000m'
-		return
-	fi
-
-	case "$install_type" in
-		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
-			LS_HEAP_SIZE='1000m'
-			;;
-		'EVAL')
-			LS_HEAP_SIZE='700m'
-			;;
-		*)
-			LS_HEAP_SIZE='500m'
-			;;
-	esac
 }

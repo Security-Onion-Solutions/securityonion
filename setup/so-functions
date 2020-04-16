@@ -260,19 +260,38 @@ clear_master() {
 	# This only happens if you re-install the master.
 	if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
 		echo "Clearing old master key" >> "$setup_log" 2>&1
-		rm /etc/salt/pki/minion/minion_master.pub
-		service salt-minion restart
+		rm -f /etc/salt/pki/minion/minion_master.pub
+		sytemctl -q restart salt-minion
 	fi
 
 }
 
+collect_soremote_inputs() {
+	SCMATCH=no
+	while [ $SCMATCH != yes ]; do
+		whiptail_create_soremote_user_password1
+		whiptail_create_soremote_user_password2
+		check_soremote_pass
+	done
+}
+
+collect_adminuser_inputs() {
+	APMATCH=no
+	while [ $APMATCH != yes ]; do
+		whiptail_create_admin_user_password1
+		whiptail_create_admin_user_password2
+		check_admin_pass
+	done
+}
+
+
 collect_webuser_inputs() {
 	# Get a password for the web admin user
-	local VALIDUSER=no
-	while [ $VALIDUSER != yes ]; do
+	local valid_user=no
+	while [ $valid_user != yes ]; do
 		whiptail_create_web_user
 		if so-user valemail "$WEBUSER"; then
-			VALIDUSER=yes
+			valid_user=yes
 		else
 			whiptail_invalid_user_warning
 		fi
@@ -616,21 +635,6 @@ docker_seed_registry() {
 
 }
 
-es_heapsize() {
-
-	# Determine ES Heap Size
-	if [ "$total_mem" -lt 8000 ] ; then
-		ES_HEAP_SIZE="600m"
-	elif [ "$total_mem" -ge 100000 ]; then
-		# Set a max of 25GB for heap size
-		# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
-		ES_HEAP_SIZE="25000m"
-	else
-		# Set heap size to 25% of available memory
-		ES_HEAP_SIZE=$(( total_mem / 4 ))"m"
-	fi
-
-}
 
 fireeye_pillar() {
 
@@ -669,22 +673,8 @@ generate_passwords(){
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
 
-get_main_ip() {
-
-	# Get the main IP address the box is using
-
-	# FIXME: find a way to get the ip of MNIC instead
-
-	# Add some logic because Bubntu 18.04 like to be different
-	if [ $OSVER = 'bionic' ]; then
-		MAINIP=$(ip route get 1 | awk '{print $7;exit}')
-	else
-		MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
-	fi
-
-	# FIXME: should MAININT be MNIC?
-	MAININT=$(ip route get 1 | awk '{print $5;exit}')
-
+set_main_ip() {
+	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 }
 
 get_redirect() {
@@ -713,22 +703,25 @@ install_cleanup() {
 
 }
 
-# TODO: figure out if this is necessary
-install_master() {
+get_minion_type() {
+	local minion_type
+	case "$install_type" in
+		'EVAL' | 'MASTERSEARCH' | 'MASTER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET')
+			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
+			;;
+		'HELIXSENSOR')
+			minion_type='helix'
+			;;
+		'*NODE')
+			minion_type='node'
+			;;
+	esac
+	echo "$minion_type"
+}
 
-	# Install the salt master package
-	if [ $OS != 'centos' ]; then
-		if [ $OSVER != "xenial" ]; then
-			apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
-			apt-mark hold salt-common salt-master salt-minion
-		else
-			apt-get install -y salt-common=2019.2.3+ds-1 salt-master=2019.2.3+ds-1 salt-minion=2019.2.3+ds-1 libssl-dev python-m2crypto
-			apt-mark hold salt-common salt-master salt-minion
-		fi
-	fi
-
-	copy_master_config
-
+set_base_heapsizes() {
+	es_heapsize
+	ls_heapsize
 }
 
 master_pillar() {
@@ -845,14 +838,14 @@ network_setup() {
 
 		echo "... Setting ONBOOT for management interface";
 		if ! netplan > /dev/null 2>&1; then
-			nmcli con mod "$MAININT" connection.autoconnect "yes";
+			nmcli con mod "$MNIC" connection.autoconnect "yes";
 		fi
 
         echo "... Copying 99-so-checksum-offload-disable";
         cp "$SCRIPTDIR"/install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
-		sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
 }
 
@@ -864,7 +857,7 @@ node_pillar() {
 	printf '%s\n'\
 		"node:"\
 		"  mainip: $MAINIP"\
-		"  mainint: $MAININT"\
+		"  mainint: $MNIC"\
 		"  esheap: $NODE_ES_HEAP_SIZE"\
 		"  esclustername: {{ grains.host }}"\
 		"  lsheap: $NODE_LS_HEAP_SIZE"\
@@ -947,13 +940,15 @@ saltify() {
 				yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
 				cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
 				sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
-				yum -y install sqlite3 argon2 curl jq openssl
+				set_progress_str 6 'Installing various dependencies'
+				yum -y install sqlite3 argon2 curl jq openssl mariadb-devel
 				# Download Ubuntu Keys in case master updates = 1
 				mkdir -p /opt/so/gpg
 				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
 				wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
 				wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
 				cp "$./yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo
+				set_progress_str 7 'Installing salt-master'
 				yum -y install salt-master-2019.2.3
 				systemctl enable salt-master
 				;;
@@ -977,6 +972,7 @@ saltify() {
 		esac
 		cp "$./yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo
 		yum clean expire-cache
+		set_progress_str 8 'Installing salt-minion & python modules'
 		yum -y install epel-release\
 			salt-minion-2019.2.3\
 			python3\
@@ -1041,8 +1037,11 @@ saltify() {
 				# Initialize the new repos
 				apt-get update >> "$setup_log" 2>&1
 				# FIXME: Install salt-master on Ubuntu?
-				apt-get -y install sqlite3 argon2 openssl >> "$setup_log" 2>&1
-				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
+				set_progress_str 6 'Installing various dependencies'
+				apt-get -y install sqlite3 argon2 openssl libssl-dev >> "$setup_log" 2>&1
+				set_progress_str 7 'Installing salt-master'
+				apt-get -y salt-master=2019.2.3+ds-1 >> "$setup_log" 2>&1
+				apt-mark hold salt-master
 				;;
 			*)
 				# Copy down the gpg keys and install them from the master
@@ -1057,10 +1056,15 @@ saltify() {
 				;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
+		set_progress_str 8 'Installing salt-minion & python modules'
 		apt-get -y install salt-minion=2019.2.3+ds-1\
 					salt-common=2019.2.3+ds-1 >> "$setup_log" 2>&1
 		apt-mark hold salt-minion salt-common
-		if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-dateutil python3-m2crypto >> "$setup_log" 2>&1; else apt-get -y install python-dateutil python-m2crypto >> "$setup_log" 2>&1; fi
+		if [ "$OSVER" != 'xenial' ]; then 
+			apt-get -y install python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
+		else 
+			apt-get -y install python-dateutil python-m2crypto python-mysqldb  >> "$setup_log" 2>&1
+		fi
 	fi
 
 }
@@ -1115,6 +1119,29 @@ setup_salt_master_dirs() {
 	chown -R socore:socore /opt/so
 }
 
+# $1 => percentage
+# $2 => text for progress bar
+set_progress_str() {
+	local percentage_input
+	percentage_input=$1
+	local progress_bar_text
+	progress_bar_text=$2
+
+	if [ "$percentage_input" -lt "$percentage" ]; then
+		percentage="$percentage_input"
+	fi
+
+	percentage_str="XXX\n${percentage_input}\n${progress_bar_text}\nXXX"
+	export percentage_str
+}
+
+progress_str_printer() {
+	while [ "$percentage" -lt 100 ]; do
+		echo "$percentage_str"
+	done
+	sleep 0.5s
+}
+
 sensor_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
@@ -1124,7 +1151,7 @@ sensor_pillar() {
 		"sensor"\
 		"  interface: bond0"\
 		"  mainip: $MAINIP"\
-		"  mainint: $MAININT" > "$pillar_file"
+		"  mainint: $MNIC" > "$pillar_file"
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  bro_pins:" >> "$pillar_file"
@@ -1186,12 +1213,12 @@ set_hostname_iso() {
 
 set_initial_firewall_policy() {
 
-  get_main_ip
+  set_main_ip
 
 	case "$install_type" in
 		'MASTER')
 			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls /opt/so/saltstack/pillar/firewall/masterfw.sls
-			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM"
+			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 			;;
 		'EVAL' | 'MASTERSEARCH')
 			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
@@ -1200,10 +1227,10 @@ set_initial_firewall_policy() {
 				/opt/so/saltstack/pillar/firewall/search_nodes.sls
 			case "$install_type" in 
 				'EVAL')
-					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM" bond0
+					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
 					;;
 				'MASTERSEARCH')
-					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM"
+					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 			esac
 			;;
@@ -1217,17 +1244,17 @@ set_initial_firewall_policy() {
 			case "$INSTALLERTYPE" in
 				'SENSOR')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
 					;;
 				'SEARCHNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM" bond0
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MAININT" "$FSROOT" "$FSNSM"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 			esac
 			;;
@@ -1246,7 +1273,7 @@ set_initial_firewall_policy() {
 # Set up the management interface on the ISO
 set_management_interface() {
 
-	if [ "$ADDRESSTYPE" = 'DHCP' ]; then
+	if [ "$address_type" = 'DHCP' ]; then
 		nmcli con mod "$MNIC" connection.autoconnect yes
 		nmcli con up "$MNIC"
 	else
@@ -1309,6 +1336,54 @@ update_sudoers() {
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else
-		echo "User soremote already granted sudo privileges"
+		echo "User soremote already granted sudo privileges" >> "$setup_log"
+	fi
+}
+
+ls_heapsize() {
+
+	if [ "$total_mem" -ge 32000 ]; then
+		LS_HEAP_SIZE='1000m'
+		return
+	fi
+
+	case "$install_type" in
+		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
+			LS_HEAP_SIZE='1000m'
+			;;
+		'EVAL')
+			LS_HEAP_SIZE='700m'
+			;;
+		*)
+			LS_HEAP_SIZE='500m'
+			;;
+	esac
+	export LS_HEAP_SIZE
+
+	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH)$ ]]; then
+		NODE_LS_HEAP_SIZE=LS_HEAP_SIZE
+		export NODE_LS_HEAP_SIZE
+	fi
+}
+
+
+es_heapsize() {
+
+	# Determine ES Heap Size
+	if [ "$total_mem" -lt 8000 ] ; then
+		ES_HEAP_SIZE="600m"
+	elif [ "$total_mem" -ge 100000 ]; then
+		# Set a max of 25GB for heap size
+		# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+		ES_HEAP_SIZE="25000m"
+	else
+		# Set heap size to 25% of available memory
+		ES_HEAP_SIZE=$(( total_mem / 4 ))"m"
+	fi
+	export ES_HEAP_SIZE
+
+	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH)$ ]]; then
+		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
+		export NODE_ES_HEAP_SIZE
 	fi
 }

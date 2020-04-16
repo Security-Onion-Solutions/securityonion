@@ -248,10 +248,11 @@ whiptail_dhcp_or_static() {
 
 	[ -z "$QUIET" ] && return
 
-	ADDRESSTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+	address_type=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose how to set up your management interface:" 20 78 4 \
 	"STATIC" "Set a static IPv4 address" ON  \
 	"DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+	export address_type
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -302,7 +303,7 @@ whiptail_eval_adv() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_eval_adv_warning() {
+whiptail_components_adv_warning() {
 
 	[ -z "$QUIET" ] && return
 
@@ -326,9 +327,9 @@ whiptail_homenet_master() {
 	[ -z "$QUIET" ] && return
 
 	# Ask for the HOME_NET on the master
-	export home_network_master
 	home_network_master=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+	export home_network_master
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -346,9 +347,10 @@ whiptail_homenet_sensor() {
 	if [ $exitstatus == 0 ]; then
 		export home_network_sensor=inherit
 	else
-		export home_network_sensor
 		home_network_sensor=$(whiptail --title "Security Onion Setup" --inputbox \
 		"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+		export home_network_sensor
+
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	fi
@@ -360,7 +362,6 @@ whiptail_install_type() {
 	[ -z "$QUIET" ] && return
 
 	# What kind of install are we doing?
-	export install_type
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose Install Type:" 20 75 13 \
 	"SENSOR" "Create a forward only sensor" ON \
@@ -376,6 +377,7 @@ whiptail_install_type() {
 	"WAZUH" "TODO Stand Alone Wazuh Node" OFF \
 	"STRELKA" "TODO Stand Alone Strelka Node" OFF \
 	"PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF 3>&1 1>&2 2>&3 )
+	export install_type
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -607,7 +609,6 @@ whiptail_node_es_heap() {
 
 	[ -z "$QUIET" ] && return
 
-	es_heapsize
 	NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
 
@@ -620,7 +621,6 @@ whiptail_node_ls_heap() {
 
 	[ -z "$QUIET" ] && return
 
-	ls_heapsize
 	NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
 
@@ -713,13 +713,31 @@ whiptail_patch_schedule() {
 
 	[ -z "$QUIET" ] && return
 
-	# What kind of patch schedule are we doing?
-	PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
+	local patch_schedule
+	patch_schedule=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
 	"Automatic" "Updates installed every 8 hours if available" ON \
 	"Manual" "Updates will be installed manually" OFF \
 	"Import Schedule" "Import named schedule on following screen" OFF \
 	"New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
+
+	case $patch_schedule in
+	'New Schedule')
+		whiptail_patch_schedule_select_days
+		whiptail_patch_schedule_select_hours
+		whiptail_patch_name_new_schedule
+		patch_schedule_os_new
+		;;
+	'Import Schedule')
+		whiptail_patch_schedule_import
+		;;
+	'Automatic')
+		PATCHSCHEDULENAME='auto'
+		;;
+	'Manual')
+		PATCHSCHEDULENAME='manual'
+		;;
+	esac
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -942,16 +960,20 @@ whiptail_master_updates() {
 
 	[ -z "$QUIET" ] && return
 
-	MASTERUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
+	local update_string
+	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
 	"How would you like to download updates for your grid?:" 20 75 4 \
 	"MASTER" "Master node is proxy for OS/Docker updates." ON \
 	"OPEN" "Each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 
-	if [ "$MASTERUPDATES" == "MASTER" ]; then
-		MASTERUPDATES=1
-	else
-	MASTERUPDATES=0
-	fi
+	case "$update_string" in
+		'MASTER')
+			MASTERUPDATES=1
+			;;
+		*)
+			MASTERUPDATES=0
+			;;
+	esac
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
