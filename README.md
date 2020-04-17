@@ -42,7 +42,7 @@ SHA256: D69E327597AB429DCE13C1177BCE6C1FAD934E78A09F73D14778C2CAE616557B
 
 ### Warnings and Disclaimers
 
-- This ALPHA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
+- This BETA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
 - If this breaks your system, you get to keep both pieces!  
 - This script is a work in progress and is in constant flux.  
 - This script is intended to build a quick prototype proof of concept so you can see what our new platform might look like.  This configuration will change drastically over time leading up to the final release.  
