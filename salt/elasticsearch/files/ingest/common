@@ -1,17 +1,10 @@
 {
   "description" : "common",
   "processors" : [
-    { 
-	"rename": {
-		"field": "type",
-		"target_field": "event_type",
-		"ignore_missing": true
-	}
-    },
     { 	
 	"geoip":  { 
-		"field": "destination_ip",
-		"target_field": "destination_geo",
+		"field": "destination.ip",
+		"target_field": "geo",
 		"database_file": "GeoLite2-City.mmdb",
 		"ignore_missing": true, 
 		"properties": ["ip", "country_iso_code", "country_name", "continent_name", "region_iso_code", "region_name", "city_name", "timezone", "location"]
@@ -19,8 +12,8 @@
     },
     { 
 	"geoip":  {
-		"field": "source_ip",
-		"target_field": "source_geo",
+		"field": "source.ip",
+		"target_field": "geo",
 		"database_file": "GeoLite2-City.mmdb",
 		"ignore_missing": true,
 		"properties": ["ip", "country_iso_code", "country_name", "continent_name", "region_iso_code", "region_name", "city_name", "timezone", "location"]
@@ -41,11 +34,15 @@
 	        "ignore_failure": true,
         	"index_name_format": "yyyy.MM.dd"
         }
-    },
+    },    
+    { "rename":         { "field": "module",              "target_field": "event.module",                  "ignore_missing": true  } },
+    { "rename":         { "field": "dataset",              "target_field": "event.dataset",                  "ignore_missing": true  } },
+    { "rename":         { "field": "category",              "target_field": "event.category",                  "ignore_missing": true  } },
+    { "rename":         { "field": "message2.community_id",              "target_field": "network.community_id",                  "ignore_missing": true  } },
     { 
 	"remove": {
-		"field": "index_name_prefix",
-		"ignore_failure": true
+		"field": [ "index_name_prefix", "message2"],
+		"ignore_failure": false
 	}
     }
   ]

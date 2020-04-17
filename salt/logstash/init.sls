@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
@@ -54,7 +54,9 @@
 
 {% endif %}
 
-{% set pipelines = salt['pillar.get']('logstash:pipelines', {}) %}
+{% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
+{% set TEMPLATES = salt['pillar.get']('logstash:templates', {}) %}
+{% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 
 # Create the logstash group
 logstashgroup:
@@ -69,21 +71,6 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
-# Create a directory for people to drop their own custom parsers into
-lscustdir:
-  file.directory:
-    - name: /opt/so/conf/logstash/custom
-    - user: 931
-    - group: 939
-    - makedirs: True
-
-lsdyndir:
-  file.directory:
-    - name: /opt/so/conf/logstash/dynamic
-    - user: 931
-    - group: 939
-    - makedirs: True
-
 lsetcdir:
   file.directory:
     - name: /opt/so/conf/logstash/etc
@@ -91,38 +78,54 @@ lsetcdir:
     - group: 939
     - makedirs: True
 
-lscustparserdir:
+lspipelinedir:
   file.directory:
-    - name: /opt/so/conf/logstash/custom/parsers
+    - name: /opt/so/conf/logstash/pipelines
     - user: 931
     - group: 939
-    - makedirs: True
 
-lscusttemplatedir:
-  file.directory:
-    - name: /opt/so/conf/logstash/custom/templates
-    - user: 931
-    - group: 939
-    - makedirs: True
-
-{% for pl in pipelines %}
-
-ls_pipeline_{{pl}}:
-  file.recurse:
-    - name: /opt/so/conf/logstash/pipelines/{{pl}}
-    - source: salt://logstash/conf/pipelines/{{pl}}
-    - user: 931
-    - group: 939
-    - maxdepth: 0
-
-ls_pipeline_{{pl}}_jinja:
-  file.recurse:
-    - name: /opt/so/conf/logstash/pipelines/{{pl}}
-    - source: salt://logstash/conf/pipelines/{{pl}}/templates
-    - user: 931
-    - group: 939
+{% for PL in PIPELINES %}
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
+    {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
+    {% else %}
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1]}}
+    {% endif %}
+    - user: 931
+    - group: 939
+    - makedirs: True
+  {% endfor %}
 
+ls_pipeline_{{PL}}:
+  file.directory:
+    - name: /opt/so/conf/logstash/pipelines/{{PL}}
+    - user: 931
+    - group: 939
+    - require:
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+    - clean: True
+
+{% endfor %}
+
+#sync templates to /opt/so/conf/logstash/etc
+{% for TEMPLATE in TEMPLATES %}
+ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://logstash/pipelines/templates/{{TEMPLATE}}
+    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}
+    {% endif %}
+    - user: 931
+    - group: 939
 {% endfor %}
 
 lspipelinesyml:
@@ -131,9 +134,9 @@ lspipelinesyml:
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
     - defaults:
-        pipelines: {{ pipelines }}
+        pipelines: {{ PIPELINES }}
 
-# Copy down all the configs including custom - TODO add watch restart
+# Copy down all the configs
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/logstash/etc
@@ -141,45 +144,14 @@ lsetcsync:
     - user: 931
     - group: 939
     - template: jinja
+    - clean: True
+{% if TEMPLATES %}
+    - require:
+  {% for TEMPLATE in TEMPLATES %}
+      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+{% endif %}
     - exclude_pat: pipelines*
-
-lssync:
-  file.recurse:
-    - name: /opt/so/conf/logstash/dynamic
-    - source: salt://logstash/files/dynamic
-    - user: 931
-    - group: 939
-    - template: jinja
-
-lscustsync:
-  file.recurse:
-    - name: /opt/so/conf/logstash/custom
-    - source: salt://logstash/files/custom
-    - user: 931
-    - group: 939
-
-# Copy the config file for enabled logstash plugins/parsers
-lsconfsync:
-  file.managed:
-    - name: /opt/so/conf/logstash/conf.enabled.txt
-{% if grains.role == 'so-mastersearch' or grains.role == 'so-heavynode' %}
-    - source: salt://logstash/conf/conf.enabled.txt.so-master
-{% else %}
-    - source: salt://logstash/conf/conf.enabled.txt.{{ nodetype }}
-{% endif %}
-    - user: 931
-    - group: 939
-    - template: jinja
-
-{% if grains.role == 'so-mastersearch' %}
-lssearchsync:
-  file.managed:
-    - name: /opt/so/conf/logstash/conf.enabled.txt.search
-    - source: salt://logstash/conf/conf.enabled.txt.search
-    - user: 931
-    - group: 939
-    - template: jinja
-{% endif %}
 
 # Create the import directory
 importdir:
@@ -214,20 +186,19 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-      - 0.0.0.0:514:514
-      - 0.0.0.0:5044:5044
-      - 0.0.0.0:5644:5644
-      - 0.0.0.0:6050:6050
-      - 0.0.0.0:6051:6051
-      - 0.0.0.0:6052:6052
-      - 0.0.0.0:6053:6053
-      - 0.0.0.0:9600:9600
+{% for BINDING in DOCKER_OPTIONS.port_bindings %}
+      - {{ BINDING }}
+{% endfor %}
     - binds:
+{% for TEMPLATE in TEMPLATES %}
+  {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:ro
+  {% else %}
+      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}:/{{TEMPLATE.split('/')[1]}}:ro
+  {% endif %}
+{% endfor %}
       - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - /opt/so/conf/logstash/etc/logstash-template.json:/logstash-template.json:ro
-      - /opt/so/conf/logstash/etc/logstash-ossec-template.json:/logstash-ossec-template.json:ro
-      - /opt/so/conf/logstash/etc/beats-template.json:/beats-template.json:ro
       - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
       - /opt/so/rules:/etc/nsm/rules:ro
@@ -247,8 +218,14 @@ so-logstash:
       - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
     - watch:
-      - file: /opt/so/conf/logstash/etc
-      - file: /opt/so/conf/logstash/conf.enabled.txt
-      - file: /opt/so/conf/logstash/custom
-      #- file: /opt/so/conf/logstash/rulesets
-      - file: /opt/so/conf/logstash/dynamic
+      - file: lsetcsync
+{% for PL in PIPELINES %}
+      - file: ls_pipeline_{{PL}}
+  {% for CONFIGFILE in PIPELINES[PL].config %}
+      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+{% endfor %}
+{% for TEMPLATE in TEMPLATES %}
+      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+{% endfor %}
+#     - file: /opt/so/conf/logstash/rulesets

@@ -1,0 +1,78 @@
+{%- set WEBACCESS = salt['pillar.get']('kratos:redirect', '') -%}
+{%- set KRATOSKEY = salt['pillar.get']('kratos:kratoskey', '') -%}
+
+selfservice:
+  strategies:
+    password:
+      enabled: true
+
+  verify:
+    return_to: https://{{ WEBACCESS }}/
+
+  logout:
+    redirect_to: https://{{ WEBACCESS }}/login/
+
+  login:
+    request_lifespan: 10m
+    after:
+      password:
+        -
+          job: session
+        -
+          job: redirect
+          config:
+            default_redirect_url: https://{{ WEBACCESS }}/
+            allow_user_defined_redirect: true
+
+  registration:
+    request_lifespan: 10m
+    after:
+      password:
+        -
+          job: verify
+        -
+          job: session
+        -
+          job: redirect
+          config:
+            default_redirect_url: https://{{ WEBACCESS }}/
+            allow_user_defined_redirect: true
+
+log:
+  level: debug
+  format: json
+
+secrets:
+  session:
+    - {{ KRATOSKEY }}
+
+urls:
+  login_ui: https://{{ WEBACCESS }}/login/
+  registration_ui: https://{{ WEBACCESS }}/login/
+  error_ui: https://{{ WEBACCESS }}/login/
+  settings_ui: https://{{ WEBACCESS }}/
+  verify_ui: https://{{ WEBACCESS }}/
+  mfa_ui: https://{{ WEBACCESS }}/
+
+  self:
+    public: https://{{ WEBACCESS }}/auth/
+    admin: https://{{ WEBACCESS }}/kratos/
+  default_return_to: https://{{ WEBACCESS }}/
+  whitelisted_return_to_domains:
+    - http://127.0.0.1
+
+hashers:
+  argon2:
+    parallelism: 2
+    memory: 16384
+    iterations: 3
+    salt_length: 16
+    key_length: 32
+
+identity:
+  traits:
+    default_schema_url: file:///kratos-conf/schema.json
+
+courier:
+  smtp:
+    connection_uri: smtps://{{ WEBACCESS }}:25

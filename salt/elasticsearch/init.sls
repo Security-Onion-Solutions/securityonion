@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
@@ -114,11 +114,12 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - environment:
-      - bootstrap.memory_lock=true
-      - cluster.name={{ esclustername }}
+      - discovery.type=single-node
+      #- bootstrap.memory_lock=true
+      #- cluster.name={{ esclustername }}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
-      - http.host=0.0.0.0
-      - transport.host=127.0.0.1
+      #- http.host=0.0.0.0
+      #- transport.host=127.0.0.1
     - ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
@@ -143,3 +144,10 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
+
+{% if grains['role'] == 'so-master' or grains['role'] == "so-eval" or grains['role'] == "so-mastersearch" %}
+so-elasticsearch-templates:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates
+    - cwd: /opt/so
+{% endif %}

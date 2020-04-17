@@ -1,17 +1,21 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
-{%- set OSQUERY = salt['pillar.get']('master:osquery', '0') -%}
-{%- set WAZUH = salt['pillar.get']('master:wazuh', '0') -%}
+{%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set STRELKA = salt['pillar.get']('static:strelka', '0') -%}
+
 
 base:
   '*':
     - patch.os.schedule
     - motd
+    - salt
 
-  'G@role:so-helix':
+  '*_helix':
     - ca
     - ssl
     - registry
@@ -26,51 +30,58 @@ base:
     - filebeat
     - schedule
 
-  'G@role:so-sensor':
+  '*_sensor':
     - ca
     - ssl
     - common
     - firewall
     - pcap
     - suricata
+    - healthcheck
     {%- if BROVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - wazuh
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
     - filebeat
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:so-eval':
+  '*_eval':
     - ca
     - ssl
     - registry
     - master
     - common
-    - sensoroni
+    - soc
     - firewall
     - idstools
-    - auth
-    {%- if OSQUERY != 0 %}
+    - healthcheck
+    {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
     - elasticsearch
-    - logstash
     - kibana
     - pcap
     - suricata
     - zeek
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
+    - filebeat
     - curator
     - elastalert
-    {%- if OSQUERY != 0 %}
+    {%- if FLEETMASTER or FLEETNODE %}
     - fleet
     - redis
-    - launcher
+    - fleet.install_package
     {%- endif %}
     - utility
     - schedule
@@ -89,18 +100,17 @@ base:
     {%- endif %}
 
 
-  'G@role:so-master':
+  '*_master':
     - ca
     - ssl
     - registry
     - common
-    - sensoroni
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
-    {%- if OSQUERY != 0 %}
+    {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -113,9 +123,9 @@ base:
     - filebeat
     - utility
     - schedule
-    {%- if OSQUERY != 0 %}
+    {%- if FLEETMASTER or FLEETNODE %}
     - fleet
-    - launcher
+    - fleet.install_package
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -133,40 +143,39 @@ base:
 
   # Search node logic
 
-  'G@role:so-node and I@node:node_type:parser':
-    - match: pillar
+  '*_node and I@node:node_type:parser':
+    - match: compound
     - common
     - firewall
     - logstash
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:hot':
-    - match: pillar
+  '*_node and I@node:node_type:hot':
+    - match: compound
     - common
     - firewall
     - logstash
     - elasticsearch
     - curator
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:warm':
-    - match: pillar
+  '*_node and I@node:node_type:warm':
+    - match: compound
     - common
     - firewall
     - elasticsearch
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:so-node and I@node:node_type:search':
-    - match: compound
+  '*_searchnode':
     - ca
     - ssl
     - common
@@ -178,35 +187,32 @@ base:
     - elasticsearch
     - curator
     - filebeat
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:mastersensor':
+  '*_mastersensor':
     - common
     - firewall
     - sensor
     - master
-    - auth
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - schedule
 
-  'G@role:so-mastersearch':
+  '*_mastersearch':
     - ca
     - ssl
     - registry
     - common
-    - sensoroni
-    - auth
+    - soc
     - firewall
     - master
     - idstools
     - redis
-    - auth
-    {%- if OSQUERY != 0 %}
+    {%- if FLEETMASTER or FLEETNODE %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -220,9 +226,9 @@ base:
     - filebeat
     - utility
     - schedule
-    {%- if OSQUERY != 0 %}
+    {%- if FLEETMASTER or FLEETNODE %}
     - fleet
-    - launcher
+    - fleet.install_package
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -238,7 +244,7 @@ base:
     - domainstats
     {%- endif %}
 
-  'G@role:so-heavynode':
+  '*_heavynode':
     - ca
     - ssl
     - common
@@ -251,8 +257,8 @@ base:
     - elasticsearch
     - curator
     - filebeat
-    {%- if OSQUERY != 0 %}
-    - launcher
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet.install_package
     {%- endif %}
     - pcap
     - suricata
@@ -261,3 +267,14 @@ base:
     {%- endif %}
     - filebeat
     - schedule
+  
+  '*_fleet':
+    - ca
+    - ssl
+    - common
+    - firewall
+    - mysql
+    - redis
+    - fleet
+    - fleet.install_package
+    - filebeat

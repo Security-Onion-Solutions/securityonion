@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
@@ -59,6 +59,20 @@ synckibanacustom:
     - user: 932
     - group: 939
 
+kibanabin:
+  file.managed:
+    - name: /usr/sbin/so-kibana-config-load
+    - source: salt://kibana/bin/so-kibana-config-load
+    - mode: 755
+    - template: jinja
+
+kibanadashtemplate:
+  file.managed:
+    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
+    - source: salt://kibana/files/saved_objects.ndjson
+    - user: 932
+    - group: 939
+
 # Start the kibana docker
 so-kibana:
   docker_container.running:
@@ -66,7 +80,6 @@ so-kibana:
     - hostname: kibana
     - user: kibana
     - environment:
-      - KIBANA_DEFAULTAPPID=dashboard/94b52620-342a-11e7-9d52-4f090484f59e
       - ELASTICSEARCH_HOST={{ MASTER }}
       - ELASTICSEARCH_PORT=9200
       - MASTER={{ MASTER }}
@@ -77,3 +90,19 @@ so-kibana:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
+
+so-kibana-config-load:
+  cmd.run:
+    - name: /usr/sbin/so-kibana-config-load
+    - cwd: /opt/so
+    - onchanges:
+      - file: kibanadashtemplate
+
+
+# Keep the setting correct
+#KibanaHappy:
+#  cmd.script:
+#    - shell: /bin/bash
+#    - runas: socore
+#    - source: salt://kibana/bin/keepkibanahappy.sh
+#    - template: jinja

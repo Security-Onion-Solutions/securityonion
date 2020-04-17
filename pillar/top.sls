@@ -3,53 +3,70 @@ base:
     - patch.needs_restarting
     - docker.config
 
-  'G@role:so-mastersearch or G@role:so-heavynode':
+  '*_mastersearch or *_heavynode':
     - match: compound
+    - logstash
     - logstash.master
     - logstash.search
 
-  'G@role:so-sensor':
+  '*_sensor':
     - static
     - firewall.*
     - brologs
+    - healthcheck.sensor
     - minions.{{ grains.id }}
 
-  'G@role:so-master or G@role:so-mastersearch':
+  '*_master or *_mastersearch':
     - match: compound
     - static
     - firewall.*
     - data.*
-    - auth
+    - secrets
     - minions.{{ grains.id }}
 
-  'G@role:so-master':
+  '*_master':
+    - logstash
     - logstash.master
 
-  'G@role:so-eval':
+  '*_eval':
     - static
     - firewall.*
     - data.*
     - brologs
-    - auth
-    - logstash.eval
+    - secrets
+    - healthcheck.eval
     - minions.{{ grains.id }}
 
-  'G@role:so-node':
+  '*_node':
     - static
     - firewall.*
     - minions.{{ grains.id }}
 
-  'G@role:so-heavynode':
+  '*_heavynode':
     - static
     - firewall.*
     - brologs
     - minions.{{ grains.id }}
 
-  'G@role:so-helix':
+  '*_helix':
     - static
     - firewall.*
     - fireeye
     - brologs
+    - logstash
     - logstash.helix
+    - minions.{{ grains.id }}
+
+  '*_fleet':
     - static
+    - firewall.*
+    - data.*
+    - secrets
+    - minions.{{ grains.id }}
+
+  '*_searchnode':
+    - static
+    - firewall.*
+    - logstash
+    - logstash.search
     - minions.{{ grains.id }}

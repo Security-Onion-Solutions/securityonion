@@ -1,9 +1,14 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+
+{% import_yaml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
+{% set ZEEK = salt['pillar.get']('zeek', default=ZEEKDEFAULTS.zeek, merge=True) %}
+
 # Zeek Salt State
+
 # Add Zeek group
 zeekgroup:
   group.present:
@@ -48,15 +53,9 @@ zeekextractdir:
     - group: 939
     - makedirs: True
 
-zeeksfafincompletedir:
+zeekextractcompletedir:
   file.directory:
-    - name: /nsm/faf/files/incomplete
-    - user: 937
-    - makedirs: true
-
-zeeksfafcompletedir:
-  file.directory:
-    - name: /nsm/faf/files/complete
+    - name: /nsm/zeek/extracted/complete
     - user: 937
     - makedirs: true
 
@@ -69,6 +68,16 @@ zeekpolicysync:
     - group: 939
     - template: jinja
 
+zeekctlcfg:
+  file.managed:
+    - name: /opt/so/conf/zeek/zeekctl.cfg
+    - source: salt://zeek/files/zeekctl.cfg.jinja
+    - user: 937
+    - group: 939
+    - template: jinja
+    - defaults:
+        ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
+
 # Sync node.cfg
 nodecfgsync:
   file.managed:
@@ -78,14 +87,30 @@ nodecfgsync:
     - group: 939
     - template: jinja
 
+zeekcleanscript:
+  file.managed:
+    - name: /usr/local/bin/zeek_clean
+    - source: salt://zeek/cron/zeek_clean
+    - mode: 755
+
+/usr/local/bin/zeek_clean:
+  cron.present:
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 plcronscript:
   file.managed:
     - name: /usr/local/bin/packetloss.sh
     - source: salt://zeek/cron/packetloss.sh
     - mode: 755
 
-/usr/local/bin/packetloss.sh:
+zeekpacketlosscron:
   cron.present:
+    - name: /usr/local/bin/packetloss.sh
     - user: root
     - minute: '*/10'
     - hour: '*'
@@ -95,7 +120,7 @@ plcronscript:
 
 # BPF compilation and configuration
 {% if BPF_ZEEK %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
@@ -137,6 +162,7 @@ so-zeek:
       - /nsm/zeek/extracted:/nsm/zeek/extracted:rw
       - /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
+      - /opt/so/conf/zeek/zeekctl.cfg:/opt/zeek/etc/zeekctl.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
       - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
@@ -146,5 +172,6 @@ so-zeek:
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
+      - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf

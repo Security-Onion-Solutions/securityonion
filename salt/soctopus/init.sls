@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 soctopusdir:
@@ -10,10 +10,20 @@ soctopusdir:
 
 soctopussync:
   file.recurse:
-    - name: /opt/so/conf/soctopus
-    - source: salt://soctopus/files
+    - name: /opt/so/conf/soctopus/templates
+    - source: salt://soctopus/files/templates
     - user: 939
     - group: 939
+    - template: jinja
+
+soctopusconf:
+  file.managed:
+    - name: /opt/so/conf/soctopus/SOCtopus.conf
+    - source: salt://soctopus/files/SOCtopus.conf
+    - user: 939
+    - group: 939
+    - replace: False
+    - mode: 600
     - template: jinja
 
 soctopuslogdir:

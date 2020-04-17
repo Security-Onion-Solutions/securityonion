@@ -5,7 +5,12 @@
 {%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- elif grains['role'] == 'so-sensor' %}
 {%- set ip = salt['pillar.get']('sensor:mainip', '') %}
+{%- elif grains['role'] == 'so-fleet' %}
+{%- set ip = salt['pillar.get']('node:mainip', '') %}
 {%- endif %}
+{%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
+{%- set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
+
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
   iptables.chain_present:
@@ -232,14 +237,14 @@ enable_masternode_mysql_3306_{{ip}}:
     - position: 1
     - save: True
 
-enable_master_osquery_8080_{{ip}}:
+enable_master_osquery_8090_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
     - proto: tcp
     - source: {{ ip }}
-    - dport: 8080
+    - dport: 8090
     - position: 1
     - save: True
 
@@ -421,6 +426,22 @@ enable_forwardnode_sensoroni_9822_{{ip}}:
 
 {% endfor %}
 
+# Allow Fleet Node to send its beats traffic
+{% if FLEET_NODE %}
+
+enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ FLEET_NODE_IP }}
+    - dport: 5644
+    - position: 1
+    - save: True
+
+{% endif %}
+
 {% for ip in pillar.get('search_nodes')  %}
 
 enable_searchnode_redis_6379_{{ip}}:
@@ -466,14 +487,14 @@ enable_standard_beats_5044_{{ip}}:
 # Allow OSQuery Endpoints to send their traffic
 {% for ip in pillar.get('osquery_endpoint')  %}
 
-enable_standard_osquery_8080_{{ip}}:
+enable_standard_osquery_8090_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
     - proto: tcp
     - source: {{ ip }}
-    - dport: 8080
+    - dport: 8090
     - position: 1
     - save: True
 
@@ -701,4 +722,109 @@ enable_forwardnode_beats_5644_{{ip}}:
     - dport: 5644
     - position: 1
     - save: True
+{% endif %}
+
+
+# Rules if you are a Standalone Fleet node
+{% if grains['role'] == 'so-fleet' %}
+#This should be more granular
+iptables_allow_fleetnode_docker:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - source: 172.17.0.0/24
+    - position: 1
+    - save: True
+
+# Allow Redis
+enable_fleetnode_redis_6379_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 6379
+    - position: 1
+    - save: True
+
+enable_fleetnode_mysql_3306_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 3306
+    - position: 1
+    - save: True
+
+enable_fleet_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8080
+    - position: 1
+    - save: True
+
+    
+enable_fleetnodetemp_mysql_3306_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 127.0.0.1
+    - dport: 3306
+    - position: 1
+    - save: True
+
+enable_fleettemp_osquery_8080_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: 127.0.0.1
+    - dport: 8080
+    - position: 1
+    - save: True
+
+
+# Allow Analysts to access Fleet WebUI
+{% for ip in pillar.get('analyst')  %}
+
+enable_fleetnode_fleet_443_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 443
+    - position: 1
+    - save: True
+
+{% endfor %}
+
+# Needed for osquery endpoints to checkin to Fleet API for mgt
+{% for ip in pillar.get('osquery_endpoint')  %}
+
+enable_fleetnode_8090_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8090
+    - position: 1
+    - save: True
+
+{% endfor %}
+
 {% endif %}

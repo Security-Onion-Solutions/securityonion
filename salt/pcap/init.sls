@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
@@ -41,7 +41,7 @@ stenoconfdir:
     - makedirs: True
 
 {% if BPF_STENO %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
    {% else  %}
@@ -69,9 +69,9 @@ sensoroniagentconf:
   file.managed:
     - name: /opt/so/conf/steno/sensoroni.json
     - source: salt://pcap/files/sensoroni.json
-    - user: root
-    - group: root
-    - mode: 644
+    - user: stenographer
+    - group: stenographer
+    - mode: 600
     - template: jinja
 
 stenoca:

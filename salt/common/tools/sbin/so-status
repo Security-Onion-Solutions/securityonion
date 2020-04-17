@@ -26,6 +26,8 @@
     {%- set pillar_val = 'sensor' -%}
 {%- elif (salt['grains.get']('role') == 'so-eval') -%}
     {%- set pillar_val = 'eval' -%}
+{%- elif (salt['grains.get']('role') == 'so-fleet') -%}
+    {%- set pillar_val = 'fleet' -%}
 {%- elif (salt['grains.get']('role') == 'so-helix') -%}
     {%- set pillar_val = 'helix' -%}
 {%- elif (salt['grains.get']('role') == 'so-node') -%}
@@ -105,7 +107,7 @@ populate_container_lists() {
     systemctl is-active --quiet docker
 
     if [[ $? = 0 ]]; then
-        mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/containers/json?all=1 \
+        mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/v1.40/containers/json?all=1 \
             | jq -c '.[] | { Name: .Names[0], State: .State }' \
             | tr -d '/{"}')
     else

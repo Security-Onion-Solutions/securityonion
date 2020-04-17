@@ -1,4 +1,5 @@
-{% set OSQUERY = salt['pillar.get']('master:osquery', '0') %}
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 {% set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
 {% set THEHIVE = salt['pillar.get']('master:thehive', '0') %}
 {% set PLAYBOOK = salt['pillar.get']('master:playbook', '0') %}
@@ -6,7 +7,6 @@
 {% set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
-
 
 eval:
   containers:
@@ -17,11 +17,10 @@ eval:
     - so-grafana
     {% endif %}
     - so-dockerregistry
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-idstools
-    - so-auth-api
-    - so-auth-ui
-    {% if OSQUERY != '0' %}
+    {% if FLEETMASTER %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -89,12 +88,11 @@ master_search:
   containers:
     - so-core
     - so-telegraf
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-acng
     - so-idstools
     - so-redis
-    - so-auth-api
-    - so-auth-ui
     - so-logstash
     - so-elasticsearch
     - so-curator
@@ -102,7 +100,7 @@ master_search:
     - so-elastalert
     - so-filebeat
     - so-soctopus
-    {% if OSQUERY != '0' %}
+    {% if FLEETMASTER %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -135,18 +133,17 @@ master:
     - so-influxdb
     - so-grafana
     {% endif %}
-    - so-sensoroni
+    - so-soc
+    - so-kratos
     - so-acng
     - so-idstools
     - so-redis
-    - so-auth-api
-    - so-auth-ui
     - so-elasticsearch
     - so-logstash
     - so-kibana
     - so-elastalert
     - so-filebeat
-    {% if OSQUERY != '0' %}
+    {% if FLEETMASTER %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -202,4 +199,13 @@ warm_node:
     - so-core
     - so-telegraf
     - so-elasticsearch
-    
+fleet:
+  containers:
+    {% if FLEETNODE %}
+    - so-mysql
+    - so-fleet
+    - so-redis
+    - so-filebeat
+    - so-core
+    - so-telegraf
+    {% endif %}

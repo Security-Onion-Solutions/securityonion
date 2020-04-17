@@ -12,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 # IDSTools Setup
 idstoolsdir:
@@ -37,8 +37,9 @@ idstoolsetcsync:
     - group: 939
     - template: jinja
 
-/usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log:
+so-ruleupdatecron:
   cron.present:
+    - name: /usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log
     - user: root
     - minute: '1'
     - hour: '7'

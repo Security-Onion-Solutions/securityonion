@@ -1,37 +1,48 @@
-## Hybrid Hunter Alpha 1.1.4 - Feature Parity Release
+## Hybrid Hunter Beta 1.2.1 - Beta 1
 
 ### Changes:
 
-- Added new in-house auth method [Security Onion Auth](https://github.com/Security-Onion-Solutions/securityonion-auth).
-- Web user creation is done via the browser now instead of so-user-add.
-- New Logstash pipeline setup. Now uses multiple pipelines.
-- New Master + Search node type and well as a Heavy Node type in the install. 
-- Change all nodes to point to the docker registry on the Master. This cuts down on the calls to dockerhub.
-- Zeek 3.0.1
-- Elastic 6.8.6
-- New SO Start | Stop | Restart scripts for all components (eg. `so-playbook-restart`).
-- BPF support for Suricata (NIDS), Steno (PCAP) & Zeek ([Docs](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/BPF)).
-- Updated Domain Stats & Frequency Server containers to Python3 & created new Salt states for them.
-- Added so-status script which gives an easy to read look at container status.
-- Manage threshold.conf for Suricata using the thresholding pillar.
-- The ISO now includes all the docker containers for faster install speeds.
-- You now set the password for the onion account during the iso install. This account is temporary and will be removed after so-setup. 
-- Updated Helix parsers for better compatibility.
-- Updated telegraf docker to include curl and jq.
-- CVE-2020-0601 Zeek Detection Script. 
-- ISO Install now prompts you to create a password for the onion user during imaging. This account gets disabled during setup.
+- Full support for Ubuntu 18.04. 16.04 is no longer supported for Hybrid Hunter.
+- Introduction of the Security Onion Console. Once logged in you are directly taken to the SOC.
+- New authentication using Kratos.
+- During install you must specify how you would like to access the SOC ui. This is for strict cookie security.
+- Ability to list and delete web users from the SOC ui.
+- The soremote account is now used to add nodes to the grid vs using socore. 
+- Community ID support for Zeek, osquery, and Suricata. You can now tie host events to connection logs!
+- Elastic 7.6.1 with ECS support.
+- New set of Kibana dashboards that align with ECS.
+- Eval mode no longer uses Logstash for parsing (Filebeat -> ES Ingest)
+- Ingest node parsing for osquery-shipped logs (osquery, WEL, Sysmon).
+- Fleet standalone mode with improved Web UI & API access control.
+- Improved Fleet integration support.
+- Playbook now has full Windows Sigma community ruleset builtin.
+- Automatic Sigma community rule updates.
+- Playbook stability enhancements.
+- Zeek health check. Zeek will now auto restart if a worker crashes.
+- zeekctl is now managed by salt.
+- Grafana dashboard improvements and cleanup.
+- Moved logstash configs to pillars.
+- Salt logs moved to /opt/so/log/salt.
+- Strelka integrated for file-oriented detection/analysis at scale
 
-## Version 1.1.4 ISO Download
+### Known issues:
 
-[HH1.1.4-46.ISO](https://download.securityonion.net/file/Hybrid-Hunter/HH-1.1.4-46.iso)  
+- Updating users via the SOC ui is known to fail. To change a user, delete the user and re-add them. 
+- Due to the move to ECS, the current Playbook plays may not alert correctly at this time.
+- The osquery MacOS package does not install correctly.
 
-MD5: ACF6B4586E8EE7D1938FB2C028DFC987  
-SHA1: C29B4F3748604196357EC7262BF071177E696D86  
-SHA256: 4D977B650196441294D53372F248B50C23E933B8FBEC5CC5BAB569DFEF31E7E8  
+
+## Version 1.2.1 Beta 1 ISO Download
+
+[HH1.2.1-6.ISO](https://download.securityonion.net/file/Hybrid-Hunter/HH-1.2.1-6.iso)  
+
+MD5: D7E66CA8AAC37E70E2A2F7BB12EB3C23  
+SHA1: D91D921896F9ADA600EBA0ADAA548D8630B5341F  
+SHA256: D69E327597AB429DCE13C1177BCE6C1FAD934E78A09F73D14778C2CAE616557B  
 
 ### Warnings and Disclaimers
 
-- This ALPHA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
+- This BETA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
 - If this breaks your system, you get to keep both pieces!  
 - This script is a work in progress and is in constant flux.  
 - This script is intended to build a quick prototype proof of concept so you can see what our new platform might look like.  This configuration will change drastically over time leading up to the final release.  

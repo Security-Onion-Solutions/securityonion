@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -29,13 +29,15 @@ else
   INSTALLMETHOD="network"
 fi
 
+# Allow execution of SO tools during setup
+export PATH=$PATH:"$SCRIPTDIR/../salt/common/tools/sbin"
+
 # Global Variables
 HOSTNAME=$(cat /etc/hostname)
-MINION_ID=$(echo $HOSTNAME | awk -F. {'print $1'})
 TOTAL_MEM=`grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//'`
 NICS=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-CPUCORES=$(cat /proc/cpuinfo | grep processor | wc -l)
-LISTCORES=$(cat /proc/cpuinfo | grep processor | awk '{print $3 " \"" "core" "\""}')
+CPUCORES=$(cat /proc/cpuinfo | grep processor | grep -v KVM | wc -l)
+LISTCORES=$(cat /proc/cpuinfo | grep processor | grep -v KVM | awk '{print $3 " \"" "core" "\""}')
 RANDOMUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
 NODE_ES_PORT="9200"
 SETUPLOG="/root/sosetup.log"
@@ -71,14 +73,6 @@ if (whiptail_you_sure) ; then
 
     # Set management nic
     whiptail_management_nic
-
-#    whiptail_create_socore_user
-#    SCMATCH=no
-#    while [ $SCMATCH != yes ]; do
-#      whiptail_create_socore_user_password1
-#      whiptail_create_socore_user_password2
-#      check_socore_pass
-#    done
 
   else
 
@@ -120,6 +114,9 @@ if (whiptail_you_sure) ; then
 
   # What kind of install are we doing?
   whiptail_install_type
+  SHORTNAME=$(echo $HOSTNAME | awk -F. {'print $1'})
+  MINION_ID=$(echo $SHORTNAME'_'$INSTALLTYPE | tr '[:upper:]' '[:lower:]')
+  echo "MINION_ID = $MINION_ID" >> $SETUPLOG 2>&1
 
   # How do we want to handle OS patching? manual, auto or scheduled days and hours
   whiptail_patch_schedule
@@ -147,7 +144,7 @@ if (whiptail_you_sure) ; then
   if [ $INSTALLTYPE == 'HELIXSENSOR' ]; then
     MASTERUPDATES=OPEN
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_helix_apikey
     whiptail_homenet_master
     RULESETUP=ETOPEN
@@ -157,6 +154,7 @@ if (whiptail_you_sure) ; then
     calculate_useable_cores
     whiptail_make_changes
     set_hostname
+    set_version
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -166,7 +164,7 @@ if (whiptail_you_sure) ; then
       add_admin_user
       disable_onion_user
     fi
-    #add_socore_user_master
+    
     # Install salt and dependencies
     {
       sleep 0.5
@@ -249,10 +247,36 @@ if (whiptail_you_sure) ; then
 
   fi
 
+  function collect_webuser_inputs() {
+    # Get a password for the web admin user
+    VALIDUSER=no
+    while [ $VALIDUSER != yes ]; do
+      whiptail_create_web_user
+      so-user valemail "$WEBUSER"
+      if [ $? == 0 ]; then
+        VALIDUSER=yes
+      else
+        whiptail_invalid_user_warning
+      fi
+    done
+
+    WPMATCH=no
+    while [ $WPMATCH != yes ]; do
+      whiptail_create_web_user_password1
+      echo "$WEBPASSWD1" | so-user valpass
+      if [ $? == 0 ]; then
+        whiptail_create_web_user_password2
+        check_web_pass
+      else
+        whiptail_invalid_pass_warning
+      fi
+    done
+  }
+
   ####################
   ##     Master     ##
   ####################
-  if [ $INSTALLTYPE == 'MASTERONLY' ]; then
+  if [ $INSTALLTYPE == 'MASTER' ]; then
 
     # Would you like to do an advanced install?
     whiptail_master_adv
@@ -288,20 +312,23 @@ if (whiptail_you_sure) ; then
       fi
     fi
 
-    # Get a password for the socore user
-    whiptail_create_socore_user
+    # Get a password for the soremote user
+    whiptail_create_soremote_user
     SCMATCH=no
     while [ $SCMATCH != yes ]; do
-      whiptail_create_socore_user_password1
-      whiptail_create_socore_user_password2
-      check_socore_pass
+      whiptail_create_soremote_user_password1
+      whiptail_create_soremote_user_password2
+      check_soremote_pass
     done
 
+    collect_webuser_inputs
+    get_redirect
     # Last Chance to back out
     whiptail_make_changes
     set_hostname
+    set_version
     generate_passwords
-    auth_pillar
+    secrets_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -318,10 +345,8 @@ if (whiptail_you_sure) ; then
     fi
 
     # Add the user so we can sit back and relax
-    #echo ""
-    #echo "**** Please set a password for socore. You will use this password when setting up other Nodes/Sensors"
-    #echo ""
     add_socore_user_master
+    add_soremote_user_master
 
     # Install salt and dependencies
     {
@@ -372,21 +397,23 @@ if (whiptail_you_sure) ; then
       docker_seed_registry >> $SETUPLOG 2>&1
       echo -e "XXX\n43\nInstalling Common Components... \nXXX"
       salt-call state.apply common >> $SETUPLOG 2>&1
+      echo -e "XXX\n44\nInstalling SOC... \nXXX"
+      salt-call state.apply soc >> $SETUPLOG 2>&1
       echo -e "XXX\n45\nApplying firewall rules... \nXXX"
       salt-call state.apply firewall >> $SETUPLOG 2>&1
       salt-call state.apply master >> $SETUPLOG 2>&1
       salt-call state.apply idstools >> $SETUPLOG 2>&1
-      echo -e "XXX\n40\nInstalling Redis... \nXXX"
+      echo -e "XXX\n46\nInstalling Redis... \nXXX"
       salt-call state.apply redis >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
-        echo -e "XXX\n41\nInstalling MySQL... \nXXX"
+        echo -e "XXX\n48\nInstalling MySQL... \nXXX"
         salt-call state.apply mysql >> $SETUPLOG 2>&1
       fi
       if [[ $WAZUH == '1' ]]; then
-        echo -e "XXX\n68\nInstalling Wazuh... \nXXX"
+        echo -e "XXX\n48\nInstalling Wazuh... \nXXX"
         salt-call state.apply wazuh >> $SETUPLOG 2>&1
       fi
-      echo -e "XXX\n45\nInstalling Elastic Components... \nXXX"
+      echo -e "XXX\n49\nInstalling Elastic Components... \nXXX"
       salt-call state.apply elasticsearch >> $SETUPLOG 2>&1
       salt-call state.apply logstash >> $SETUPLOG 2>&1
       salt-call state.apply kibana >> $SETUPLOG 2>&1
@@ -415,7 +442,9 @@ if (whiptail_you_sure) ; then
       echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
-      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nAdding user to SOC... \nXXX"
+      add_web_user >> $SETUPLOG 2>&1
+      echo -e "XXX\n99\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
@@ -437,12 +466,11 @@ if (whiptail_you_sure) ; then
   ##     Sensor     ##
   ####################
 
-  if [ $INSTALLTYPE == 'SENSORONLY' ]; then
+  if [ $INSTALLTYPE == 'SENSOR' ]; then
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
-    set_updates
     whiptail_homenet_sensor
     whiptail_sensor_config
     # Calculate lbprocs so we can call it in the prompts
@@ -456,6 +484,7 @@ if (whiptail_you_sure) ; then
       whiptail_basic_suri
     fi
     whiptail_make_changes
+    set_updates
     set_hostname
     clear_master
     mkdir -p /nsm
@@ -499,6 +528,8 @@ if (whiptail_you_sure) ; then
       salt-call state.apply pcap >> $SETUPLOG 2>&1
       echo -e "XXX\n60\nInstalling IDS components... \nXXX"
       salt-call state.apply suricata >> $SETUPLOG 2>&1
+      echo -e "XXX\n70\nInstalling Strelka... \nXXX"
+      salt-call state.apply strelka >> $SETUPLOG 2>&1
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XX\n97\nFinishing touches... \nXXX"
       filter_unused_nics >> $SETUPLOG 2>&1
@@ -520,15 +551,15 @@ if (whiptail_you_sure) ; then
   ##     Eval Mode  or Master Search   ##
   #######################################
 
-  if [ $INSTALLTYPE == 'EVALMODE' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
+  if [ $INSTALLTYPE == 'EVAL' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
 
     # Filter out the management NIC
     filter_unused_nics
 
-    if [ $INSTALLTYPE == 'EVALMODE' ]; then
+    if [ $INSTALLTYPE == 'EVAL' ]; then
       TYPE='eval'
       # Select which NICs are in the bond
-      whiptail_bond_nics
+      [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     elif [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       TYPE='mastersearch'
     fi
@@ -557,19 +588,22 @@ if (whiptail_you_sure) ; then
     if [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
       # Find out how to handle updates
       whiptail_master_updates
-      # Get a password for the socore user
-      whiptail_create_socore_user
+      # Get a password for the soremote user
+      whiptail_create_soremote_user
       SCMATCH=no
       while [ $SCMATCH != yes ]; do
-        whiptail_create_socore_user_password1
-        whiptail_create_socore_user_password2
-        check_socore_pass
+        whiptail_create_soremote_user_password1
+        whiptail_create_soremote_user_password2
+        check_soremote_pass
       done
     fi
+    collect_webuser_inputs
+    get_redirect
     whiptail_make_changes
     set_hostname
+    set_version
     generate_passwords
-    auth_pillar
+    secrets_pillar
     clear_master
     mkdir -p /nsm
     get_filesystem_root
@@ -583,9 +617,10 @@ if (whiptail_you_sure) ; then
 
     # Add the user so we can sit back and relax
     add_socore_user_master
+    add_soremote_user_master
     {
       sleep 0.5
-      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      if [ $INSTALLTYPE == 'EVAL' ]; then
         echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
         create_sensor_bond >> $SETUPLOG 2>&1
       fi
@@ -611,14 +646,10 @@ if (whiptail_you_sure) ; then
       master_pillar >> $SETUPLOG 2>&1
       echo "** Generating the patch pillar **" >> $SETUPLOG
       patch_pillar >> $SETUPLOG 2>&1
-
-
       echo -e "XXX\n7\nConfiguring minion... \nXXX"
       configure_minion $TYPE >> $SETUPLOG 2>&1
       echo -e "XXX\n7\nSetting the node type to $TYPE... \nXXX"
       set_node_type >> $SETUPLOG 2>&1
-
-
       echo -e "XXX\n7\nSearch node pillar... \nXXX"
       node_pillar >> $SETUPLOG 2>&1
       echo -e "XXX\n8\nCreating firewall policies... \nXXX"
@@ -645,12 +676,13 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n25\nInstalling master components... \nXXX"
       salt-call state.apply master >> $SETUPLOG 2>&1
       salt-call state.apply idstools >> $SETUPLOG 2>&1
-
+      echo -e "XXX\n26\nInstalling SOC... \nXXX"
+      salt-call state.apply soc >> $SETUPLOG 2>&1
       if [[ $OSQUERY == '1' ]]; then
         salt-call state.apply mysql >> $SETUPLOG 2>&1
       fi
       if [[ $WAZUH == '1' ]]; then
-        echo -e "XXX\n65\nInstalling Wazuh components... \nXXX"
+        echo -e "XXX\n27\nInstalling Wazuh components... \nXXX"
         salt-call state.apply wazuh >> $SETUPLOG 2>&1
       fi
       echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
@@ -660,7 +692,7 @@ if (whiptail_you_sure) ; then
       echo -e "XXX\n45\nInstalling Kibana... \nXXX"
       salt-call state.apply kibana >> $SETUPLOG 2>&1
 
-      if [ $INSTALLTYPE == 'EVALMODE' ]; then
+      if [ $INSTALLTYPE == 'EVAL' ]; then
         echo -e "XXX\n50\nInstalling pcap... \nXXX"
         salt-call state.apply pcap >> $SETUPLOG 2>&1
         echo -e "XXX\n52\nInstalling Suricata... \nXXX"
@@ -692,13 +724,18 @@ if (whiptail_you_sure) ; then
         echo -e "XXX\n93\nInstalling Playbook... \nXXX"
         salt-call state.apply playbook >> $SETUPLOG 2>&1
       fi
+      if [[ $STRELKA == '1' ]]; then
+        echo -e "XXX\n95\nInstalling Strelka... \nXXX"
+        salt-call state.apply strelka >> $SETUPLOG 2>&1
+      fi
       echo -e "XXX\n95\nSetting checkin to run on boot... \nXXX"
       checkin_at_boot >> $SETUPLOG 2>&1
       echo -e "XX\n97\nFinishing touches... \nXXX"
-      salt-call state.apply auth >> $SETUPLOG 2>&1
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
-      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      echo -e "XXX\n98\nAdding user to SOC... \nXXX"
+      add_web_user >> $SETUPLOG 2>&1
+      echo -e "XXX\n99\nVerifying Setup... \nXXX"
       salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
@@ -722,7 +759,6 @@ if (whiptail_you_sure) ; then
   if [ $INSTALLTYPE == 'SEARCHNODE' ] || [ $INSTALLTYPE == 'PARSINGNODE' ] || [ $INSTALLTYPE == 'HOTNODE' ] || [ $INSTALLTYPE == 'WARMNODE' ]; then
     whiptail_management_server
     whiptail_master_updates
-    set_updates
     get_log_size_limit
     CURCLOSEDAYS=30
     es_heapsize
@@ -746,6 +782,7 @@ if (whiptail_you_sure) ; then
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    set_updates
     set_hostname
     clear_master
     mkdir -p /nsm
@@ -793,6 +830,7 @@ if (whiptail_you_sure) ; then
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -812,10 +850,9 @@ if (whiptail_you_sure) ; then
   if [ $INSTALLTYPE == 'HEAVYNODE' ]; then
 
     filter_unused_nics
-    whiptail_bond_nics
+    [[ $SKIP_BOND != 'yes' ]] && whiptail_bond_nics
     whiptail_management_server
     whiptail_master_updates
-    set_updates
     whiptail_homenet_sensor
     whiptail_sensor_config
     # Calculate lbprocs so we can call it in the prompts
@@ -852,6 +889,7 @@ if (whiptail_you_sure) ; then
       LSINPUTBATCHCOUNT=125
     fi
     whiptail_make_changes
+    set_updates
     set_hostname
     clear_master
     mkdir -p /nsm
@@ -911,6 +949,7 @@ if (whiptail_you_sure) ; then
       filter_unused_nics >> $SETUPLOG 2>&1
       network_setup >> $SETUPLOG 2>&1
       echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
     } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
     GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
     if [[ $GOODSETUP == '0' ]]; then
@@ -923,12 +962,77 @@ if (whiptail_you_sure) ; then
 
   fi
 
+###########################
+###  Standalone Fleet   ###
+###########################
 
-
-
-
-
-
+  if [ $INSTALLTYPE == 'FLEET' ]; then
+    whiptail_management_server
+    whiptail_master_updates
+    whiptail_make_changes
+    set_updates
+    set_hostname
+    clear_master
+    mkdir -p /nsm
+    get_filesystem_root
+    get_filesystem_nsm
+    if [ $INSTALLMETHOD == iso ]; then
+      add_admin_user
+      disable_onion_user
+    fi
+    copy_ssh_key >> $SETUPLOG 2>&1
+    {
+      sleep 0.5
+      echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
+      set_initial_firewall_policy >> $SETUPLOG 2>&1
+      #echo -e "XXX\n4\nGenerating Fleet Pillar... \nXXX"
+      fleet_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling mysql dependencies for saltstack... \nXXX"
+      salt_install_mysql_deps >> $SETUPLOG 2>&1
+      echo "** Generating the patch pillar **" >> $SETUPLOG
+      patch_pillar >> $SETUPLOG 2>&1
+      node_pillar >> $SETUPLOG 2>&1
+      echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
+      saltify >> $SETUPLOG 2>&1
+      echo -e "XXX\n20\nInstalling Docker... \nXXX"
+      docker_install >> $SETUPLOG 2>&1
+      echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
+      configure_minion fleet >> $SETUPLOG 2>&1
+      echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
+      copy_minion_tmp_files >> $SETUPLOG 2>&1
+      echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
+      salt_firstcheckin >> $SETUPLOG 2>&1
+      echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
+      # Accept the Salt Key
+      accept_salt_key_remote >> $SETUPLOG 2>&1
+      echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
+      salt-call state.apply ca >> $SETUPLOG 2>&1
+      salt-call state.apply ssl >> $SETUPLOG 2>&1
+      echo -e "XXX\n35\nInstalling Core Components... \nXXX"
+      salt-call state.apply common >> $SETUPLOG 2>&1
+      salt-call state.apply firewall >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nInstalling MySQL... \nXXX"
+      salt-call state.apply mysql >> $SETUPLOG 2>&1
+      echo -e "XXX\n50\nInstalling Redis... \nXXX"
+      salt-call state.apply redis >> $SETUPLOG 2>&1
+      echo -e "XXX\n60\nInstalling Fleet... \nXXX"
+      salt-call state.apply fleet >> $SETUPLOG 2>&1
+      checkin_at_boot >> $SETUPLOG 2>&1
+      echo -e "XX\n97\nFinishing touches... \nXXX"
+      filter_unused_nics >> $SETUPLOG 2>&1
+      network_setup >> $SETUPLOG 2>&1
+      echo -e "XXX\n98\nVerifying Setup... \nXXX"
+      salt-call state.highstate >> $SETUPLOG 2>&1
+    } |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+    GOODSETUP=$(tail -10 $SETUPLOG | grep Failed | awk '{ print $2}')
+    if [[ $GOODSETUP == '0' ]]; then
+      whiptail_setup_complete
+      shutdown -r now
+    else
+      whiptail_setup_failed
+      shutdown -r now
+    fi
+  fi
 
 
 else

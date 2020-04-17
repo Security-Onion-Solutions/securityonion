@@ -1,0 +1,30 @@
+{%- if grains['role'] == 'so-eval' -%}
+{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- else %}
+{%- set ES = salt['pillar.get']('node:mainip', '') -%}
+{%- endif %}
+# Author: Justin Henderson
+#         SANS Instructor and author of SANS SEC555: SIEM and Tactical Analytics
+# Email: justin@hasecuritysolution.com
+# Last Update: 12/9/2016
+
+
+filter {
+  if [module] =~ "zeek" {
+    mutate {
+	  ##add_tag => [ "conf_file_9000"]
+	}
+  }
+}
+output {
+  if [module] =~ "zeek" {
+    elasticsearch {
+      pipeline => "%{module}.%{dataset}"
+      hosts => "{{ ES }}"
+      index => "so-zeek-%{+YYYY.MM.dd}"
+      template_name => "so-zeek"
+      template => "/so-zeek-template.json"
+      template_overwrite => true
+    }
+  }
+}

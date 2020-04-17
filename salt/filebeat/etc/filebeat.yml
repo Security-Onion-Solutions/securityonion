@@ -7,9 +7,10 @@
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{%- set WAZUHENABLED = salt['pillar.get']('static:wazuh_enabled', '1') %}
-{%- set FLEETENABLED = salt['pillar.get']('static:fleet_enabled', '1') %}
-{%- set STRELKAENABLED = salt['pillar.get']('static:strelka_enabled', '1') %}
+{%- set WAZUHENABLED = salt['pillar.get']('static:wazuh', '0') %}
+{%- set STRELKAENABLED = salt['pillar.get']('static:strelka', '0') %}
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
 name: {{ HOSTNAME }}
 
@@ -19,7 +20,7 @@ name: {{ HOSTNAME }}
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-logging.level: error
+logging.level: warning
 
 # Enable debug output for selected components. To enable all selectors use ["*"]
 # Other available selectors are "beat", "publish", "service"
@@ -71,7 +72,7 @@ filebeat.modules:
 #=========================== Filebeat prospectors =============================
 
 # List of prospectors to fetch data.
-filebeat.prospectors:
+filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
 {%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" or grains['role'] == "so-heavynode" %}
 {%- if BROVER != 'SURICATA' %}
@@ -80,9 +81,14 @@ filebeat.prospectors:
     paths:
       - /nsm/zeek/logs/current/{{ LOGNAME }}.log
     fields:
-      type: bro_{{ LOGNAME }}
+        module: zeek 
+        dataset: {{ LOGNAME }}
+        category: network
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+ 
     fields_under_root: true
-    tags: ["bro"]
     clean_removed: false
     close_removed: false
 
@@ -93,61 +99,114 @@ filebeat.prospectors:
     paths:
       - /suricata/eve.json
     fields:
-      type: ids
-      engine: suricata
+      module: suricata
+      dataset: alert
+      category: network
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
+
+  {%- if STRELKAENABLED == 1 %}
+
+  - type: log
+    paths:
+      - /nsm/strelka/log/strelka.log
+    fields:
+      module: strelka
+      category: file
+      dataset: file
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]    
+
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+  {%- endif %}
 {%- endif %}
 
-{%- if WAZUHENABLED == '1' %}
+{%- if WAZUHENABLED == 1 %}
 
   - type: log
     paths:
       - /wazuh/alerts/alerts.json
     fields:
-      type: ossec
+      module: ossec
+      dataset: alert
+      category: host
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
 
+# - type: log
+#    paths:
+#      - /wazuh/archives/archives.json
+#    fields:
+#      type: ossec_archive
+#    fields_under_root: true
+#    clean_removed: false
+#    close_removed: false
+
+{%- endif %}
+
+{%- if FLEETMASTER or FLEETNODE %}
+
   - type: log
     paths:
-      - /wazuh/archives/archives.json
+      - /nsm/osquery/fleet/result.log
     fields:
-      type: ossec_archive
+      module: osquery
+      dataset: query_result
+      category: host
+
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+
     fields_under_root: true
     clean_removed: false
     close_removed: false
 
 {%- endif %}
 
-{%- if FLEETENABLED == '1' %}
+#----------------------------- Elasticsearch/Logstash output ---------------------------------
+{%- if grains['role'] == "so-eval" %}
+output.elasticsearch:
+  enabled: true
+  hosts: ["{{ MASTER }}:9200"]
+  pipelines:
+    - pipeline: "%{[module]}.%{[dataset]}"
+  indices:
+    - index: "so-zeek-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "zeek"
+    - index: "so-ids-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "suricata"
+    - index: "so-ossec-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "ossec"
+    - index: "so-osquery-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "osquery"
+    - index: "so-strelka-%{+yyyy.MM.dd}"
+      when.contains:
+        module: "strelka"
 
-  - type: log
-    paths:
-      - /osquery/logs/result.log
-    fields:
-      type: osquery
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
+setup.template.enabled: false
+{%- else %}
 
-{%- endif %}
-
-{%- if STRELKAENABLED == '1' %}
-
-  - type: log
-    paths:
-      - /opt/so/log/strelka/strelka.log
-    fields:
-      type: strelka
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
-
-{%- endif %}
-#----------------------------- Logstash output ---------------------------------
 output.logstash:
   # Boolean flag to enable or disable the output module.
   enabled: true
@@ -156,13 +215,13 @@ output.logstash:
   hosts: ["{{ MASTER }}:5644"]
 
   # Number of workers per Logstash host.
-  worker: 1
+  #worker: 1
 
   # Set gzip compression level.
-  compression_level: 3
+  #compression_level: 3
 
   # Enable SSL support. SSL is automatically enabled, if any SSL setting is set.
-  ssl.enabled: true
+  #ssl.enabled: true
 
   # Configure SSL verification mode. If `none` is configured, all server hosts
   # and certificates will be accepted. In this mode, SSL based connections are
@@ -172,7 +231,7 @@ output.logstash:
 
   # List of supported/valid TLS versions. By default all TLS versions 1.0 up to
   # 1.2 are enabled.
-  #ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
+  ssl.supported_protocols: [TLSv1.0, TLSv1.1, TLSv1.2]
 
   # Optional SSL configuration options. SSL is off by default.
   # List of root certificates for HTTPS server verifications
@@ -184,9 +243,7 @@ output.logstash:
   # Client Certificate Key
   ssl.key: "/usr/share/filebeat/filebeat.key"
 
-# Elasticsearch template settings
-#setup.template.settings:
-
+setup.template.enabled: false
   # A dictionary of settings to place into the settings.index dictionary
   # of the Elasticsearch template. For more details, please check
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html
@@ -199,7 +256,7 @@ output.logstash:
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
   #_source:
     #enabled: false
-
+{%- endif %}
 #============================== Kibana =====================================
 
 # Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.

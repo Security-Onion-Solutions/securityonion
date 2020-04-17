@@ -15,7 +15,7 @@
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
@@ -84,7 +84,7 @@ surithresholding:
 
 # BPF compilation and configuration
 {% if BPF_NIDS %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" ")  ) %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_STATUS = 1  %}
    {% else  %}

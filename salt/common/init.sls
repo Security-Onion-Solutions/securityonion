@@ -1,6 +1,8 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.1.4') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
+{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
+{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
 # Add socore Group
 socoregroup:
   group.present:
@@ -81,10 +83,6 @@ docker:
   service.running:
     - enable: True
 
-salt-minion:
-  service.running:
-    - enable: True
-
 # Drop the correct nginx config based on role
 
 nginxconfdir:
@@ -101,13 +99,6 @@ nginxconf:
     - group: 939
     - template: jinja
     - source: salt://common/nginx/nginx.conf.{{ grains.role }}
-
-copyindex:
-  file.managed:
-    - name: /opt/so/conf/nginx/index.html
-    - user: 939
-    - group: 939
-    - source: salt://common/nginx/index.html
 
 nginxlogdir:
   file.directory:
@@ -131,7 +122,6 @@ so-core:
     - binds:
       - /opt/so:/opt/so:rw
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /opt/so/conf/nginx/index.html:/opt/socore/html/index.html:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
@@ -142,6 +132,9 @@ so-core:
     - port_bindings:
       - 80:80
       - 443:443
+    {%- if FLEETMASTER or FLEETNODE %}
+      - 8090:8090
+    {%- endif %}
     - watch:
       - file: /opt/so/conf/nginx/nginx.conf
 
@@ -187,6 +180,8 @@ so-telegraf:
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
     - network_mode: host
+    - port_bindings:
+      - 127.0.0.1:8094:8094
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
@@ -212,7 +207,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/scripts
 
 # If its a master or eval lets install the back end for now
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' and GRAFANA == 1 %}
+{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval'] and GRAFANA == 1 %}
 
 # Influx DB
 influxconfdir:
@@ -287,7 +282,7 @@ grafanadashevaldir:
 
 grafanadashfndir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes
+    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes
     - user: 939
     - group: 939
     - makedirs: True
@@ -308,7 +303,9 @@ grafanaconf:
     - source: salt://common/grafana/etc
 
 {% if salt['pillar.get']('mastertab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-master:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
@@ -325,18 +322,20 @@ dashboard-master:
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
-{%- endfor %}
+{% endfor %}
 {% endif %}
 
 {% if salt['pillar.get']('sensorstab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-{{ SN }}:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/forward_nodes/{{ SN }}-Sensor.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes/{{ SN }}-Sensor.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://common/grafana/grafana_dashboards/forward_nodes/sensor.json
+    - source: salt://common/grafana/grafana_dashboards/sensor_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
       MONINT: {{ SNDATA.monint }}
@@ -350,7 +349,9 @@ dashboard-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('nodestab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboardsearch-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
@@ -371,7 +372,9 @@ dashboardsearch-{{ SN }}:
 {% endif %}
 
 {% if salt['pillar.get']('evaltab', False) %}
-{%- for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
+{% for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-{{ SN }}:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json
