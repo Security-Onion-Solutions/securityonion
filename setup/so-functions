@@ -56,10 +56,6 @@ add_master_hostfile() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-# $1 => username
-# $2 => uid
-# $3 => gid
-# $4 => home dir
 # $5 => (optional) password variable
 so_add_user() {
 	local username=$1
@@ -86,13 +82,10 @@ add_soremote_user_master() {
 	so_add_user "soremote" "947" "947" "/home/soremote" "$SOREMOTEPASS1"
 }
 
-# $1 => file to wait for
-# $2 => max attempts
-# $3 => wait interval
 wait_for_file() {
-	local max_attempts=$2
-	local cur_attempts=0
 	local filename=$1
+	local max_attempts=$2 # this is multiplied by the wait interval, so make sure it isn't too large
+	local cur_attempts=0
 	local wait_interval=$3
 	local total_time=$(( max_attempts * wait_interval ))
 	local date
@@ -232,9 +225,6 @@ check_network_manager_conf() {
 	fi
 }
 
-# $1 => password
-# $2 => confirm password
-# $3 => variable to set
 check_pass_match() {
 	local pass=$1
 	local confirm_pass=$2
@@ -309,7 +299,6 @@ collect_webuser_inputs() {
 	done
 }
 
-# $1 => minion type
 configure_minion() {
 	local minion_type=$1
 	echo "Configuring minion type as $minion_type" >> "$setup_log" 2>&1
@@ -455,7 +444,6 @@ create_sensor_bond() {
 	fi
 }
 
-# keep ">> $setup_log" syntax 
 detect_os() {
 
 	# Detect Base OS
@@ -574,6 +562,7 @@ docker_registry() {
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
 }
+
 docker_seed_registry() {
 	local VERSION="HH$so_version"
 
@@ -694,7 +683,6 @@ got_root() {
 }
 
 install_cleanup() {
-
 	echo "Installer removing the following files:"
 	ls -lR "$temp_install_dir"
 
@@ -1119,8 +1107,6 @@ setup_salt_master_dirs() {
 	chown -R socore:socore /opt/so
 }
 
-# $1 => percentage
-# $2 => text for progress bar
 set_progress_str() {
 	local percentage_input
 	percentage_input=$1
