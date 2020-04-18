@@ -248,8 +248,12 @@ check_network_manager_conf() {
 # $2 => confirm password
 # $3 => variable to set
 check_pass_match() {
-	if [ "$1" = "$2" ]; then
-		eval "$3"="\"yes\""
+	local pass=$1
+	local confirm_pass=$2
+	local var=$3
+
+	if [ "$pass" = "$confirm_pass" ]; then
+		eval "$var"="\"yes\""
 	else
 		whiptail_passwords_dont_match
 	fi
@@ -288,7 +292,7 @@ clear_master() {
 
 collect_webuser_inputs() {
 	# Get a password for the web admin user
-	VALIDUSER=no
+	local VALIDUSER=no
 	while [ $VALIDUSER != yes ]; do
 		whiptail_create_web_user
 		if so-user valemail "$WEBUSER"; then
@@ -466,10 +470,10 @@ detect_os() {
 		elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
 			OSVER=8
 			echo "We currently do not support CentOS $OSVER but we are working on it!"
-			exit
+			exit 1
 		else
 			echo "We do not support the version of CentOS you are trying to use."
-			exit
+			exit 1
 		fi
 
 		# Install bind-utils so the host command exists
@@ -484,7 +488,7 @@ detect_os() {
 			OSVER=xenial
 		else
 			echo "We do not support your current version of Ubuntu."
-			exit
+			exit 1
 		fi
 		# Install network manager so we can do interface stuff
 		{
@@ -495,7 +499,7 @@ detect_os() {
 
 	else
 		echo "We were unable to determine if you are using a supported OS."
-		exit
+		exit 1
 	fi
 
 	echo "Found OS: $OS $OSVER" >> "$SETUPLOG" 2>&1
@@ -663,27 +667,27 @@ filter_unused_nics() {
 
 fireeye_pillar() {
 
-	local FIREEYEPILLARPATH=/opt/so/saltstack/pillar/fireeye
-	mkdir -p "$FIREEYEPILLARPATH"
+	local fireeye_pillar_path=/opt/so/saltstack/pillar/fireeye
+	mkdir -p "$fireeye_pillar_path"
 
 	printf '%s\n'\
 		"fireeye:"\
 		"  helix:"\
 		"    api_key: $HELIXAPIKEY" 
-		"" > "$FIREEYEPILLARPATH"/init.sls
+		"" > "$fireeye_pillar_path"/init.sls
 
 }
 
 fleet_pillar() {
 
-	local PILLARFILE="$TMP"/pillar/minions/"$MINION_ID".sls
+	local pillar_file="$TMP"/pillar/minions/"$MINION_ID".sls
 
 	# Create the fleet pillar
 	printf '%s\n'\
 		"fleet:"\
 		"  mainip: $MAINIP"\
 		"  master: $MSRV"\
-		"" > "$PILLARFILE"
+		"" > "$pillar_file"
 }
 
 generate_passwords(){
@@ -724,6 +728,8 @@ get_main_ip() {
 
 	# Get the main IP address the box is using
 
+	# FIXME: find a way to get the ip of MNIC instead
+
 	# Add some logic because Bubntu 18.04 like to be different
 	if [ $OSVER = 'bionic' ]; then
 		MAINIP=$(ip route get 1 | awk '{print $7;exit}')
@@ -731,6 +737,7 @@ get_main_ip() {
 		MAINIP=$(ip route get 1 | awk '{print $NF;exit}')
 	fi
 
+	# FIXME: should MAININT be MNIC?
 	MAININT=$(ip route get 1 | awk '{print $5;exit}')
 
 }
@@ -789,21 +796,27 @@ install_master() {
 
 ls_heapsize() {
 
-  # Determine LS Heap Size
-  if [ "$TOTAL_MEM" -ge 32000 ] || [ "$INSTALLTYPE" = 'MASTERSEARCH' ] || [ "$INSTALLTYPE" = 'HEAVYNODE' ] ||  [ "$INSTALLTYPE" = 'HELIXSENSOR' ]; then
-	  LS_HEAP_SIZE="1000m"
-  elif [ "$INSTALLTYPE" = 'EVAL' ]; then
-	  LS_HEAP_SIZE="700m"
-  else
-	  # If minimal RAM, then set minimal heap
-	  LS_HEAP_SIZE="500m"
-  fi
+	if [ "$TOTAL_MEM" -ge 32000 ]; then
+		LS_HEAP_SIZE='1000m'
+		return
+	fi
 
+	case "$INSTALLTYPE" in
+		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
+			LS_HEAP_SIZE='1000m'
+			;;
+		'EVAL')
+			LS_HEAP_SIZE='700m'
+			;;
+		*)
+			LS_HEAP_SIZE='500m'
+			;;
+	esac
 }
 
 master_pillar() {
 
-	PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+	local pillar_file=$TMP/pillar/minions/$MINION_ID.sls
 
 	# Create the master pillar
 	printf '%s\n'\
@@ -812,50 +825,50 @@ master_pillar() {
 		"  esheap: $ES_HEAP_SIZE"\
 		"  esclustername: {{ grains.host }}"\
 		"  freq: 0"\
-		"  domainstats: 0" >> "$PILLARFILE"
+		"  domainstats: 0" >> "$pillar_file"
 
 	if [ "$INSTALLTYPE" = 'EVAL' ] || [ "$INSTALLTYPE" = 'HELIXSENSOR' ] || [ "$INSTALLTYPE" = 'MASTERSEARCH' ]; then
 		printf '%s\n'\
 			"  ls_pipeline_batch_size: 125"\
 			"  ls_input_threads: 1"\
 			"  ls_batch_count: 125"\
-			"  mtu: $MTU" >> "$PILLARFILE"
+			"  mtu: $MTU" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-	"  lsheap: $LS_HEAP_SIZE"\
-	"  lsaccessip: 127.0.0.1"\
-	"  elastalert: 1"\
-	"  ls_pipeline_workers: $CPUCORES"\
-	"  nids_rules: $RULESETUP"\
-	"  oinkcode: $OINKCODE"\
-	"  es_port: $NODE_ES_PORT"\
-	"  log_size_limit: $LOG_SIZE_LIMIT"\
-	"  cur_close_days: $CURCLOSEDAYS"\
-	"  grafana: $GRAFANA"\
-	"  osquery: $OSQUERY"\
-	"  wazuh: $WAZUH"\
-	"  thehive: $THEHIVE"\
-	"  playbook: $PLAYBOOK"\
-	"  strelka: $STRELKA"\
-	""\
-	"kratos:" >> "$PILLARFILE"
+		"  lsheap: $LS_HEAP_SIZE"\
+		"  lsaccessip: 127.0.0.1"\
+		"  elastalert: 1"\
+		"  ls_pipeline_workers: $CPUCORES"\
+		"  nids_rules: $RULESETUP"\
+		"  oinkcode: $OINKCODE"\
+		"  es_port: $NODE_ES_PORT"\
+		"  log_size_limit: $LOG_SIZE_LIMIT"\
+		"  cur_close_days: $CURCLOSEDAYS"\
+		"  grafana: $GRAFANA"\
+		"  osquery: $OSQUERY"\
+		"  wazuh: $WAZUH"\
+		"  thehive: $THEHIVE"\
+		"  playbook: $PLAYBOOK"\
+		"  strelka: $STRELKA"\
+		""\
+		"kratos:" >> "$pillar_file"
 
 	case $REDIRECTINFO in
 		'IP')
-		REDIRECTIT="$MAINIP"
-		;;
+			REDIRECTIT="$MAINIP"
+			;;
 		'HOSTNAME')
-		REDIRECTIT=$HOSTNAME
-		;;
+			REDIRECTIT=$HOSTNAME
+			;;
 		*)
-		REDIRECTIT="$REDIRECT"
-		;;
+			REDIRECTIT="$REDIRECT"
+			;;
 	esac
 
 	printf '%s\n'\
 		"  kratoskey: $KRATOSKEY"\
 		"  redirect: $REDIRECTIT"\
-		"" >> "$PILLARFILE"
+		"" >> "$pillar_file"
 
 
   }
@@ -927,7 +940,7 @@ network_setup() {
 
 node_pillar() {
 
-	local PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+	local pillar_file=$TMP/pillar/minions/$MINION_ID.sls
 
 	# Create the node pillar
 	printf '%s\n'\
@@ -946,13 +959,13 @@ node_pillar() {
 		"  es_port: $NODE_ES_PORT"\
 		"  log_size_limit: $LOG_SIZE_LIMIT"\
 		"  cur_close_days: $CURCLOSEDAYS"\
-		"" >> "$PILLARFILE"
+		"" >> "$pillar_file"
 
 }
 
 patch_pillar() {
 
-	local PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+	local pillar_file=$TMP/pillar/minions/$MINION_ID.sls
 
 	printf '%s\n'\
 		""\
@@ -961,7 +974,7 @@ patch_pillar() {
 		"    schedule_name: $PATCHSCHEDULENAME"\
 		"    enabled: True"\
 		"    splay: 300"\
-		"" >> "$PILLARFILE"
+		"" >> "$pillar_file"
 
 }
 
@@ -1135,111 +1148,100 @@ saltify() {
 }
 
 salt_checkin() {
-  # Master State to Fix Mine Usage
-  if [ $INSTALLTYPE = 'MASTER' ] || [ $INSTALLTYPE = 'EVAL' ] || [ $INSTALLTYPE = 'HELIXSENSOR' ] || [ $INSTALLTYPE = 'MASTERSEARCH' ]; then
-  echo "Building Certificate Authority"
-  salt-call state.apply ca >> "$SETUPLOG" 2>&1
-  echo " *** Restarting Salt to fix any SSL errors. ***"
-  service salt-master restart >> "$SETUPLOG" 2>&1
-  sleep 5
-  service salt-minion restart >> "$SETUPLOG" 2>&1
-  sleep 15
-  echo " Applyng a mine hack "
-  salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt >> "$SETUPLOG" 2>&1
-  echo " Applying SSL state "
-  salt-call state.apply ssl >> "$SETUPLOG" 2>&1
-  echo "Still Working... Hang in there"
-  #salt-call state.highstate
 
-  else
-
-  # Run Checkin
-  salt-call state.apply ca >> "$SETUPLOG" 2>&1
-  salt-call state.apply ssl >> "$SETUPLOG" 2>&1
-  #salt-call state.highstate >> "$SETUPLOG" 2>&1
-
-  fi
-
+	case "$INSTALLTYPE" in
+		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH') # Fix Mine usage
+			{
+				echo "Building Certificate Authority";
+				salt-call state.apply ca;
+				echo " *** Restarting Salt to fix any SSL errors. ***";
+				service salt-master restart;
+				sleep 5;
+				service salt-minion restart;
+				sleep 15;
+				echo " Applyng a mine hack";
+				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
+				echo " Applying SSL state";
+				salt-call state.apply ssl;
+			} >> "$SETUPLOG" 2>&1
+			;;
+		*)
+			salt-call state.apply ca >> "$SETUPLOG" 2>&1
+			salt-call state.apply ssl >> "$SETUPLOG" 2>&1
+			;;
+	esac
 }
 
+# FIXME: should this be a function?
 salt_firstcheckin() {
-
 	#First Checkin
 	salt-call state.highstate >> "$SETUPLOG" 2>&1
 
 }
 
 salt_master_directories() {
-
 	# Create salt paster directories
 	mkdir -p /opt/so/saltstack/salt
 	mkdir -p /opt/so/saltstack/pillar
 
 	# Copy over the salt code and templates
-	if [ $INSTALLMETHOD = 'iso' ]; then
+	if [ "$INSTALLMETHOD" = 'iso' ]; then
 		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
 		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* /opt/so/saltstack/salt/
 	else
-		cp -R $SCRIPTDIR/../pillar/* /opt/so/saltstack/pillar/
-		cp -R $SCRIPTDIR/../salt/* /opt/so/saltstack/salt/
+		cp -R "$SCRIPTDIR"/../pillar/* /opt/so/saltstack/pillar/
+		cp -R "$SCRIPTDIR"/../salt/* /opt/so/saltstack/salt/
 	fi
 
+	# FIXME: why is this being done?
 	chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
 	chmod +x /opt/so/saltstack/pillar/data/addtotab.sh
 
 }
 
-
 sensor_pillar() {
 
-	PILLARFILE=$TMP/pillar/minions/$MINION_ID.sls
+	local pillar_file=$TMP/pillar/minions/$MINION_ID.sls
 
 	# Create the sensor pillar
-	touch $PILLARFILE
-	echo "sensor:" >> $PILLARFILE
-	echo "  interface: bond0" >> $PILLARFILE
-	echo "  mainip: $MAINIP" >> $PILLARFILE
-	echo "  mainint: $MAININT" >> $PILLARFILE
-	if [ $NSMSETUP = 'ADVANCED' ]; then
-		echo "  bro_pins:" >> $PILLARFILE
+	printf '%s\n'\
+		"sensor"\
+		"  interface: bond0"\
+		"  mainip: $MAINIP"\
+		"  mainint: $MAININT" > "$pillar_file"
+	
+	if [ "$NSMSETUP" = 'ADVANCED' ]; then
+		echo "  bro_pins:" >> "$pillar_file"
 		for PIN in $BROPINS; do
-			PIN=$(echo $PIN |  cut -d\" -f2)
-		echo "    - $PIN" >> $PILLARFILE
+			PIN=$(echo "$PIN" |  cut -d\" -f2)
+		echo "    - $PIN" >> "$pillar_file"
 		done
-		echo "  suripins:" >> $PILLARFILE
+		echo "  suripins:" >> "$pillar_file"
 		for SPIN in $SURIPINS; do
-			SPIN=$(echo $SPIN |  cut -d\" -f2)
-		echo "    - $SPIN" >> $PILLARFILE
+			SPIN=$(echo "$SPIN" |  cut -d\" -f2)
+		echo "    - $SPIN" >> "$pillar_file"
 		done
-	elif [ $INSTALLTYPE = 'HELIXSENSOR' ]; then
-		echo "  bro_lbprocs: $LBPROCS" >> $PILLARFILE
-		echo "  suriprocs: $LBPROCS" >> $PILLARFILE
+	elif [ "$INSTALLTYPE" = 'HELIXSENSOR' ]; then
+		echo "  bro_lbprocs: $LBPROCS" >> "$pillar_file"
+		echo "  suriprocs: $LBPROCS" >> "$pillar_file"
 	else
-		echo "  bro_lbprocs: $BASICBRO" >> $PILLARFILE
-		echo "  suriprocs: $BASICSURI" >> $PILLARFILE
+		echo "  bro_lbprocs: $BASICBRO" >> "$pillar_file"
+		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
-	echo "  brobpf:" >> $PILLARFILE
-	echo "  pcapbpf:" >> $PILLARFILE
-	echo "  nidsbpf:" >> $PILLARFILE
-	echo "  master: $MSRV" >> $PILLARFILE
-	echo "  mtu: $MTU" >> $PILLARFILE
-	echo "  uniqueid: $(date '+%s')" >> $PILLARFILE
-	if [ $HNSENSOR != 'inherit' ]; then
-	echo "  hnsensor: $HNSENSOR" >> $PILLARFILE
+	printf '%s\n'\
+		"  brobpf:"\
+		"  pcapbpf:"\
+		"  nidsbpf:"\
+		"  master: $MSRV"\
+		"  mtu: $MTU"\
+		"  uniqueid: $(date '+%s')" >> "$pillar_file"
+	if [ "$HNSENSOR" != 'inherit' ]; then
+		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
-	echo "  access_key: $ACCESS_KEY" >> $PILLARFILE
-	echo "  access_secret: $ACCESS_SECRET" >>  $PILLARFILE
-	echo "" >> $PILLARFILE
-
-}
-
-set_environment_var() {
-
-	echo "Setting environment variable: $1"
-
-	export "$1"
-	echo "$1" >> /etc/environment
-
+	printf '%s\n'\
+		"  access_key: $ACCESS_KEY"\
+		"  access_secret: $ACCESS_SECRET"\
+		"" >> "$pillar_file"
 }
 
 set_hostname() {
@@ -1269,122 +1271,117 @@ set_hostname_iso() {
 set_initial_firewall_policy() {
 
   get_main_ip
-  if [ $INSTALLTYPE = 'MASTER' ]; then
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-	/opt/so/saltstack/pillar/data/addtotab.sh mastertab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
-  fi
 
-  if [ $INSTALLTYPE = 'EVAL' ] || [ $INSTALLTYPE = 'MASTERSEARCH' ]; then
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/search_nodes.sls
-	  if [ $INSTALLTYPE = 'EVAL' ]; then
-		/opt/so/saltstack/pillar/data/addtotab.sh evaltab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
-	  elif [ $INSTALLTYPE = 'MASTERSEARCH' ]; then
-		/opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
-	  fi
-  fi
-
-  if [ $INSTALLTYPE = 'HELIXSENSOR' ]; then
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/minions.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/masterfw.sls
-	printf "  - $MAINIP\n" >> /opt/so/saltstack/pillar/firewall/forward_nodes.sls
-  fi
-
-  if [ $INSTALLTYPE = 'SENSOR' ]; then
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
-  fi
-
-  if [ $INSTALLTYPE = 'SEARCHNODE' ]; then
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
-  fi
-
-  if [ $INSTALLTYPE = 'HEAVYNODE' ]; then
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes $MAINIP
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM bond0
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab $MINION_ID $MAINIP $CPUCORES $RANDOMUID $MAININT $FSROOT $FSNSM
-  fi
-
-  if [ $INSTALLTYPE = 'FLEET' ]; then
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions $MAINIP
-  fi
-
-  if [ $INSTALLTYPE = 'PARSINGNODE' ]; then
-	echo "blah"
-  fi
-
-  if [ $INSTALLTYPE = 'HOTNODE' ]; then
-	echo "blah"
-  fi
-
-  if [ $INSTALLTYPE = 'WARMNODE' ]; then
-	echo "blah"
-  fi
-
+	case "$INSTALLTYPE" in
+		'MASTER')
+			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls /opt/so/saltstack/pillar/firewall/masterfw.sls
+			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM"
+			;;
+		'EVAL' | 'MASTERSEARCH')
+			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
+				/opt/so/saltstack/pillar/firewall/masterfw.sls\
+				/opt/so/saltstack/pillar/firewall/forward_nodes.sls\
+				/opt/so/saltstack/pillar/firewall/search_nodes.sls
+			case "$INSTALLTYPE" in 
+				'EVAL')
+					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM" bond0
+					;;
+				'MASTERSEARCH')
+					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM"
+					;;
+			esac
+			;;
+		'HELIXSENSOR')
+			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
+				/opt/so/saltstack/pillar/firewall/masterfw.sls\
+				/opt/so/saltstack/pillar/firewall/forward_nodes.sls
+			;;
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions "$MAINIP"
+			case "$INSTALLERTYPE" in
+				'SENSOR')
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM" bond0
+					;;
+				'SEARCHNODE')
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM"
+					;;
+				'HEAVYNODE')
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$RANDOMUID" "$MAININT" "$FSROOT" "$FSNSM"
+					;;
+			esac
+			;;
+		'PARSINGNODE')
+			# TODO: implement
+			;;
+		'HOTNODE')
+			# TODO: implement
+			;;
+		'WARMNODE')
+			# TODO: implement
+			;;
+	esac
 }
 
 # Set up the management interface on the ISO
 set_management_interface() {
 
-	if [ $ADDRESSTYPE = 'DHCP' ]; then
-		/usr/bin/nmcli con up $MNIC
-		/usr/bin/nmcli con mod $MNIC connection.autoconnect yes
+	if [ "$ADDRESSTYPE" = 'DHCP' ]; then
+		nmcli con mod "$MNIC" connection.autoconnect yes
+		nmcli con up "$MNIC"
 	else
 		# Set Static IP
-		/usr/bin/nmcli con mod $MNIC ipv4.addresses $MIP/$MMASK ipv4.gateway $MGATEWAY \
-		ipv4.dns $MDNS ipv4.dns-search $MSEARCH ipv4.method manual
-		/usr/bin/nmcli con up $MNIC
-		/usr/bin/nmcli con mod $MNIC connection.autoconnect yes
+		nmcli con mod "$MNIC" ipv4.addresses "$MIP"/"$MMASK"\
+			ipv4.gateway "$MGATEWAY" \
+			ipv4.dns "$MDNS"\
+			ipv4.dns-search "$MSEARCH"\
+			connection.autoconnect yes\
+			ipv4.method manual
+		nmcli con up "$MNIC"
 	fi
-
 }
 
 set_node_type() {
 
-  # Determine the node type based on whiplash choice
-  if [ $INSTALLTYPE = 'SEARCHNODE' ] || [ $INSTALLTYPE = 'EVAL' ] || [ $INSTALLTYPE = 'MASTERSEARCH' ] || [ $INSTALLTYPE = 'HEAVYNODE' ] ; then
-	NODETYPE='search'
-  fi
-  if [ $INSTALLTYPE = 'PARSINGNODE' ]; then
-	NODETYPE='parser'
-  fi
-  if [ $INSTALLTYPE = 'HOTNODE' ]; then
-	NODETYPE='hot'
-  fi
-  if [ $INSTALLTYPE = 'WARMNODE' ]; then
-	NODETYPE='warm'
-  fi
-
+	case "$INSTALLTYPE" in
+		'SEARCHNODE' | 'EVAL' | 'MASTERSEARCH' | 'HEAVYNODE')
+			NODETYPE='search'
+			;;
+		'PARSINGNODE')
+			NODETYPE='parser'
+			;;
+		'HOTNODE')
+			NODETYPE='hot'
+			;;
+		'WARMNODE')
+			NODETYPE='warm'
+			;;
+	esac
 }
 
 set_updates() {
-	if [ "$MASTERUPDATES" = 1 ]; then
-		echo "MASTERUPDATES is MASTER"
-		if [ $OS = 'centos' ]; then
-			if ! grep -q $MSRV /etc/yum.conf; then
-			echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+	if [ "$MASTERUPDATES" -eq 1 ]; then
+		if [ "$OS" = 'centos' ]; then
+			if ! grep -q "$MSRV" /etc/yum.conf; then
+				echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
 			fi
 		else
-		# Set it up so the updates roll through the master
-		echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
-		echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
+			# Set it up so the updates roll through the master
+			printf '%s\n'\
+				"Acquire::http::Proxy \"http://$MSRV:3142\";"\
+				"Acquire::https::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
 		fi
-	else
-		echo "MASTERUPDATES is OPEN"
 	fi
 }
 
+# FIXME: should this be a function?
 set_version() {
-  # Drop a file with the current version
-  echo "$SOVERSION" > /etc/soversion
+	# Drop a file with the current version
+	echo "$SOVERSION" > /etc/soversion
 }
 
 update_sudoers() {
@@ -1398,5 +1395,4 @@ update_sudoers() {
 	else
 		echo "User soremote already granted sudo privileges"
 	fi
-
 }
