@@ -183,7 +183,7 @@ bro_logs_enabled() {
 calculate_useable_cores() {
 
 	# Calculate reasonable core usage
-	local CORES4BRO=$(( $CPUCORES/2 - 1 ))
+	local CORES4BRO=$(( CPUCORES/2 - 1 ))
 	LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
 	# We don't want it to be 0
 	if [ "$LBPROCSROUND" -lt 1 ]; then
@@ -209,6 +209,10 @@ check_hive_init_then_reboot() {
 			return 5
 		fi
 		sleep 1s;
+	done
+	docker stop so-thehive
+	docker rm so-thehive
+	shutdown -r now
 }
 
 check_network_manager_conf() {
@@ -492,20 +496,9 @@ detect_os() {
 
 }
 
-#disable_dnsmasq() {
-
-#  if [ -f /etc/NetworkManager/NetworkManager.conf ]; then
-#    echo "Disabling dnsmasq in /etc/NetworkManager/NetworkManager.conf"
-#    sed -e 's/^dns=dnsmasq/#dns=dnsmasq/g' -i /etc/NetworkManager/NetworkManager.conf
-#  fi
-
-#}
-
 disable_onion_user() {
-
 	# Disable the default account cause security.
 	usermod -L onion
-
 }
 
 disable_misc_network_features() {
