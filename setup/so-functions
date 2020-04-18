@@ -194,15 +194,11 @@ bro_logs_enabled() {
 calculate_useable_cores() {
 
 	# Calculate reasonable core usage
-	local CORES4BRO=$(( CPUCORES/2 - 1 ))
-	LBPROCSROUND=$(printf "%.0f\n" $CORES4BRO)
-	# We don't want it to be 0
-	if [ "$LBPROCSROUND" -lt 1 ]; then
-		LBPROCS=1
-	else
-		LBPROCS=$LBPROCSROUND
-	fi
+	local cores_for_bro=$(( CPUCORES/2 - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_bro)
 
+	if [ "$lb_procs_round" -lt 1 ]; then LBPROCS=1;	else LBPROCS=$lb_procs_round; fi
 }
 
 check_admin_pass() {
