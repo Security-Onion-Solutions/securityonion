@@ -46,14 +46,14 @@
 
 Evaluation Mode:
 
-- ISO or a Single VM running Ubuntu 16.04 or CentOS 7
+- ISO or a Single VM running Ubuntu 18.04 or CentOS 7
 - Minimum 12GB of RAM
 - Minimum 4 CPU cores
 - Minimum 2 NICs
 
 Distributed:
 
-- 3 VMs running the ISO or Ubuntu 16.04 or CentOS 7 (You can mix and match)
+- 3 VMs running the ISO or Ubuntu 18.04 or CentOS 7 (You can mix and match)
 - Minimum 8GB of RAM per VM
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
