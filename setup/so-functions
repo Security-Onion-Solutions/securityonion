@@ -93,23 +93,25 @@ wait_for_file() {
 
 	while [[ $cur_attempts < $max_attempts ]]; do
 		if [ -f "$filename" ]; then
-			echo "File $filename already exists at $date"
+			echo "File $filename already exists at $date" >> "$setup_log" 2>&1
 			return
 		else
-			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..."
+			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
 			((cur_attempts++))
 			sleep "$wait_interval"
 		fi
 	done
-	echo "Could not find $filename after waiting ${total_time}s"
+	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
 	return 1
 }
 
 add_web_user() {
-  wait_for_file /opt/so/conf/kratos/db/db.sqlite 30 5
-  echo "Attempting to add administrator user for web interface..."
-  echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER"
-  echo "Add user result: $?"
+	wait_for_file /opt/so/conf/kratos/db/db.sqlite 30 5
+	{
+		echo "Attempting to add administrator user for web interface...";
+		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER";
+		echo "Add user result: $?";
+	} >> "$setup_log" 2>&1
 }
 
 # Create an secrets pillar so that passwords survive re-install
@@ -1096,11 +1098,11 @@ setup_salt_master_dirs() {
 
 	# Copy over the salt code and templates
 	if [ "$INSTALLMETHOD" = 'iso' ]; then
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* /opt/so/saltstack/pillar/
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* /opt/so/saltstack/salt/
+		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* /opt/so/saltstack/pillar/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* /opt/so/saltstack/salt/ >> "$setup_log" 2>&1
 	else
-		cp -R ../pillar/* /opt/so/saltstack/pillar/
-		cp -R ../salt/* /opt/so/saltstack/salt/
+		cp -R ../pillar/* /opt/so/saltstack/pillar/ >> "$setup_log" 2>&1
+		cp -R ../salt/* /opt/so/saltstack/salt/ >> "$setup_log" 2>&1
 	fi
 
 	echo "Chown the salt dirs on the master for socore" >> "$setup_log" 2>&1
@@ -1322,7 +1324,7 @@ update_sudoers() {
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else
-		echo "User soremote already granted sudo privileges" >> "$setup_log"
+		echo "User soremote already granted sudo privileges" >> "$setup_log" 2>&1
 	fi
 }
 
