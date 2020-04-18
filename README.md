@@ -75,7 +75,7 @@ Install git if using a Centos 7 Minimal install:
 
 ### Installation
 
-Once you resolve those requirements or are using Ubuntu 16.04 do the following:
+Once you resolve those requirements or are using Ubuntu 18.04 do the following:
 
 ```
 git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
