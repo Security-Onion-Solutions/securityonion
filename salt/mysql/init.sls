@@ -85,4 +85,9 @@ so-mysql:
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
       - /opt/so/conf/mysql/etc
+  cmd.run:
+    - name: until nc -z localhost 3306; do sleep 1; done
+    - timeout: 10
+    - onchanges:
+      - docker_container: so-mysql
 {% endif %}
