@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014-2020 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,15 +15,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Source the other pieces of the setup
 cd "$(dirname "$0")" || exit 255
 source "./so-functions"
 source "./so-whiptail"
 source "./so-variables"
-source "./so-constants"
 source "./so-common-functions"
 
-# See if this is an ISO install
 setup_type=$1
 export setup_type
 
@@ -38,958 +35,405 @@ case "$install_type" in
 esac
 
 # Allow execution of SO tools during setup
-export PATH=$PATH:"$SCRIPTDIR/../salt/common/tools/sbin"
+PATH=$PATH:"$(dirname "$0")"/../salt/common/tools/sbin
+export PATH
 
+date -u > $setup_log 2>&1
 
-init_common() {
-	date -u > $setup_log 2>&1
-	echo "stty size is: $(stty size)" >> $setup_log 2>&1
+got_root
+detect_os
 
-	got_root
-	detect_os
+if [ "$OS" == ubuntu ]; then
+	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
+fi
 
-	if [ "$OS" == ubuntu ]; then
-		update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
-	fi
+setterm -blank 0
 
-	setterm -blank 0
+if whiptail_you_sure; then
+	true
+else
+	echo "User cancelled setup.">> $setup_log 2>&1
+	whiptail_cancel
+fi
 
-	echo "Asking user if they are sure they want to proceed" >> $setup_log 2>&1
-	if whiptail_you_sure; then
-		true
-	else
-		echo "User not sure. Cancelling setup.">> $setup_log 2>&1
-		whiptail_cancel
-	fi
+case "$setup_type" in
+	'iso')
+		whiptail_set_hostname
+		whiptail_management_nic
+		whiptail_dhcp_or_static
 
-	case "$setup_type" in
-		'iso')
-			whiptail_set_hostname
-			whiptail_management_nic
-			whiptail_dhcp_or_static
+		if [ "$address_type" != 'DHCP' ]; then
+			whiptail_management_interface_ip
+			whiptail_management_interface_mask
+			whiptail_management_interface_gateway
+			whiptail_management_interface_dns
+			whiptail_management_interface_dns_search
+		fi
 
-			if [ "$address_type" != 'DHCP' ]; then
-				whiptail_management_interface_ip
-				whiptail_management_interface_mask
-				whiptail_management_interface_gateway
-				whiptail_management_interface_dns
-				whiptail_management_interface_dns_search
-			fi
+		# Init networking so rest of install works
+		set_hostname_iso
+		set_management_interface
 
-			# Init networking so rest of install works
-			set_hostname_iso
-			set_management_interface
+		collect_adminuser_inputs
+		add_admin_user
+		disable_onion_user
 
-			whiptail_create_admin_user
-			add_admin_user
-			disable_onion_user
+		;;
+	'network')
+		whiptail_network_notice
+		whiptail_set_hostname
+		whiptail_management_nic
+		;;
+esac
 
-			collect_adminuser_inputs
-			;;
-		'network')
-			whiptail_network_notice
-			whiptail_set_hostname
-			whiptail_management_nic
-			;;
-	esac
+whiptail_install_type
 
-	# What kind of install are we doing?
-	whiptail_install_type
-	
-	local short_name
-	short_name=$(echo "$hostname" | awk -F. '{print $1}')
+short_name=$(echo "$hostname" | awk -F. '{print $1}')
 
-	MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
-	export MINION_ID
-	echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
+MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+export MINION_ID
 
-	whiptail_patch_schedule
+echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
 
-	# TODO: figure out if this works
-	filter_unused_nics
-	minion_type=$(get_minion_type)
-}
+whiptail_patch_schedule
 
-init_eval() {
-	whiptail_bond_nics
-	whiptail_homenet_master
-	whiptail_components_adv_warning
-	whiptail_enable_components
-}
+filter_unused_nics
+minion_type=$(get_minion_type)
 
-init_helix() {
-	whiptail_bond_nics
-	whiptail_homenet_master
-	whiptail_helix_apikey
+if [ "$install_type" = 'EVAL' ]; then
+	is_node=true
+	is_master=true
+	is_sensor=true
+	is_eval=true
+elif [ "$install_type" = 'MASTERSEARCH' ]; then
+	is_master=true
+	is_distmaster=true
+	is_node=true
+elif [ "$install_type" = 'MASTER' ]; then
+	is_master=true
+	is_distmaster=true
+elif [ "$install_type" = 'SENSOR' ]; then
+	is_sensor=true
+	STRELKA=1
+elif [[ "$install_type" =~ ^('SEARCHNODE'|'PARSINGNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
+	is_node=true
+	is_minion=true
+elif [ "$install_type" = 'HEAVYNODE' ]; then
+	is_node=true
+	is_minion=true
+	is_sensor=true
+elif [ "$install_type" = 'FLEET' ]; then
+	is_minion=true
+	OSQUERY=1
+elif [ "$install_type" = 'HELIXSENSOR' ]; then
+	is_helix=true
+fi
 
-	set_base_heapsizes
-	calculate_usable_cores
-	set_hostname
-	set_version
-	clear_master
-	set_main_ip
-
-	# Set various constants
+# Set any constants needed
+if [[ $is_helix ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
-	home_network_sensor=inherit
+	HNSENSOR=inherit
 	MASTERUPDATES=0
+fi
+if [[ $is_helix || ( $is_master && $is_node ) ]]; then
+	RULESETUP=ETOPEN
+	NSMSETUP=BASIC
+fi
+if [[ $is_master && $is_node ]]; then
+	LSPIPELINEWORKERS=1
+	LSPIPELINEBATCH=125
+	LSINPUTTHREADS=1
+	LSINPUTBATCHCOUNT=125
+	NIDS=Suricata
+	BROVERSION=ZEEK
+fi
+if [[ $is_node ]]; then
+	CURCLOSEDAYS=30
+fi
 
-	{
-		progress_str_printer &
+# Start user prompts
+if [[ $is_helix || $is_sensor ]]; then
+	whiptail_bond_nics
+	calculate_useable_cores
+fi
 
-		set_progress_str 1 create_bond_str
-		create_sensor_bond
+if [[ $is_helix ||  $is_master ]]; then
+	whiptail_homenet_master
+fi
 
-		set_progress_str 2 salt_install_str
-		saltify # finishes at progress=8
+if [[ $is_helix || $is_master || $is_node ]]; then
+	set_base_heapsizes
+fi
 
-		set_progress_str 10 docker_install_str
-		docker_install
+if [[ $is_master && ! $is_eval ]]; then
+	whiptail_master_adv
+	whiptail_bro_version
+	whiptail_nids
+	whiptail_rule_setup
 
-		set_progress_str 12 salt_minion_init_str
-		configure_minion "$minion_type"
-
-		set_progress_str 13 'Configuring salt master'
-		copy_master_config
-		setup_salt_master_dirs
-
-		set_progress_str 15 'Updating sudoers file for soremote user'
-		update_sudoers
-
-		set_progress_str 16 gen_static_pillar_str
-		master_static
-
-		set_progress_str 17 gen_master_pillar_str
-		master_pillar
-
-		set_progress_str 18 gen_patch_pillar_str
-		patch_pillar
-
-		set_progress_str 19 'Generating the FireEye pillar'
-		fireeye_pillar
-
-		
-
-	} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-}
-
-	####################
-	##      Helix     ##
-	####################
-	if [ "$install_type" == 'HELIXSENSOR' ]; then
-		filter_unused_nics
-		whiptail_bond_nics
-		whiptail_homenet_master
-		whiptail_helix_apikey
-		RULESETUP=ETOPEN
-		NSMSETUP=BASIC
-		home_network_sensor=inherit
-		MASTERUPDATES=0
-		es_heapsize >> $setup_log 2>&1
-		ls_heapsize >> $setup_log 2>&1
-		calculate_useable_cores >> "$setup_log" 2>&1
-		whiptail_make_changes
-		{
-			set_hostname;
-			set_version;
-			clear_master;
-		} >> "$setup_log" 2>&1
-		get_main_ip
-
-		
-		# Install salt and dependencies
-		{
-			sleep 0.5
-			echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-			create_sensor_bond >> $setup_log 2>&1
-			echo -e "XXX\n1\nGenerating Sensor Pillar... \nXXX"
-			sensor_pillar >> $setup_log 2>&1
-			echo -e "XXX\n2\nInstalling and configuring Salt... \nXXX"
-			echo " ** Installing Salt and Dependencies **" >> $setup_log
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n5\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n10\nConfiguring Salt Master... \nXXX"
-			echo " ** Configuring Minion **" >> $setup_log
-			configure_minion helix >> $setup_log 2>&1
-			echo " ** Installing Salt Master **" >> $setup_log
-			copy_master_config >> $setup_log 2>&1
-			setup_salt_master_dirs >> $setup_log 2>&1
-			update_sudoers >> $setup_log 2>&1
-			echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
-			master_static >> $setup_log 2>&1
-			echo "** Generating the master pillar **" >> $setup_log
-			master_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			echo "** Generating the FireEye pillar **" >> $setup_log
-			fireeye_pillar >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			# Do a checkin to push the key up
-			echo "** Pushing the key up to Master **" >> $setup_log
-			salt_firstcheckin >> $setup_log 2>&1
-			# Accept the Master Key
-			echo "** Accepting the key on the master **" >> $setup_log
-			accept_salt_key_local >> $setup_log 2>&1
-			echo -e "XXX\n35\nConfiguring Firewall... \nXXX"
-			# Open the firewall
-			echo "** Setting the initial firewall policy **" >> $setup_log
-			set_initial_firewall_policy >> $setup_log 2>&1
-			echo -e "XXX\n40\nGenerating CA... \nXXX"
-			salt_checkin >> $setup_log 2>&1
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			echo -e "XXX\n42\nDownloading Containers from the Internet... \nXXX"
-			salt-call state.apply registry >> $setup_log 2>&1
-			docker_seed_registry >> $setup_log 2>&1
-			echo -e "XXX\n43\nInstalling Common Components... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			echo -e "XXX\n45\nApplying firewall rules... \nXXX"
-			salt-call state.apply firewall >> $setup_log 2>&1
-			salt-call state.apply master >> $setup_log 2>&1
-			salt-call state.apply idstools >> $setup_log 2>&1
-			echo -e "XXX\n40\nInstalling Redis... \nXXX"
-			salt-call state.apply redis >> $setup_log 2>&1
-			echo -e "XXX\n60\nInstalling Redis... \nXXX"
-			salt-call state.apply logstash >> $setup_log 2>&1
-			echo -e "XXX\n75\nInstalling Filebeat... \nXXX"
-			salt-call state.apply filebeat >> $setup_log 2>&1
-			salt-call state.apply utility >> $setup_log 2>&1
-			salt-call state.apply schedule >> $setup_log 2>&1
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nVerifying Setup... \nXXX"
-			salt-call state.highstate >> $setup_log 2>&1
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			shutdown -r now
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
-
+	if [ "$RULESETUP" != 'ETOPEN' ]; then
+		whiptail_oinkcode
 	fi
 
-
-	####################
-	##     Master     ##
-	####################
-	if [ "$install_type" == 'MASTER' ]; then
-
-		# Would you like to do an advanced install?
-		whiptail_master_adv
-
-		# Choose Zeek or Community NSM
-		whiptail_bro_version
-
-		# Select Snort or Suricata
-		whiptail_nids
-
-		# Snag the HOME_NET
-		whiptail_homenet_master
-
-		# Pick your Ruleset
-		whiptail_rule_setup
-
-		# Get the code if it isn't ET Open
-		if [ "$RULESETUP" != 'ETOPEN' ]; then
-			# Get the code
-			whiptail_oinkcode
-		fi
-
-		# Find out how to handle updates
-		whiptail_master_updates
-		whiptail_enable_components
-
-		# Do Advacned Setup if they chose it
-		if [ "$MASTERADV" == 'ADVANCED' ]; then
-			# Ask which bro logs to enable - Need to add Suricata check
-			if [ "$BROVERSION" != 'SURICATA' ]; then
-				whiptail_master_adv_service_brologs
-			fi
-		fi
-
-		# Get a password for the soremote user
-		whiptail_create_soremote_user
-		SCMATCH=no
-		while [ "$SCMATCH" != 'yes' ]; do
-			whiptail_create_soremote_user_password1
-			whiptail_create_soremote_user_password2
-			check_soremote_pass
-		done
-
-		collect_webuser_inputs
-		get_redirect
-		# Last Chance to back out
-		whiptail_make_changes
-		set_hostname
-		set_version
-		generate_passwords
-		secrets_pillar
-		clear_master
-		# Enable Bro Logs
-		# comment this out since we already copy this file to the destination that this function writes to
-		#bro_logs_enabled
-
-		# Figure out the main IP address
-		get_main_ip
-
-		# Add the user so we can sit back and relax
-		add_socore_user_master
-		add_soremote_user_master
-
-		# Install salt and dependencies
-		{
-			sleep 0.5
-			echo -e "XXX\n1\nInstalling and configuring Salt... \nXXX"
-			echo " ** Installing Salt and Dependencies **" >> $setup_log
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n5\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n10\nConfiguring Salt Master... \nXXX"
-			echo " ** Configuring Minion **" >> $setup_log
-			configure_minion master >> $setup_log 2>&1
-			echo " ** Installing Salt Master **" >> $setup_log
-			copy_master_config >> $setup_log 2>&1
-			setup_salt_master_dirs >> $setup_log 2>&1
-			update_sudoers >> $setup_log 2>&1
-			es_heapsize >> $setup_log 2>&1
-			ls_heapsize >> $setup_log 2>&1
-			echo -e "XXX\n25\nConfiguring Default Pillars... \nXXX"
-			master_static >> $setup_log 2>&1
-			echo "** Generating the master pillar **" >> $setup_log
-			master_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			echo -e "XXX\n30\nAccepting Salt Keys... \nXXX"
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			# Do a checkin to push the key up
-			echo "** Pushing the key up to Master **" >> $setup_log
-			salt_firstcheckin >> $setup_log 2>&1
-			# Accept the Master Key
-			echo "** Accepting the key on the master **" >> $setup_log
-			accept_salt_key_local >> $setup_log 2>&1
-			echo -e "XXX\n35\nConfiguring Firewall... \nXXX"
-			# Open the firewall
-			echo "** Setting the initial firewall policy **" >> $setup_log
-			set_initial_firewall_policy >> $setup_log 2>&1
-			# Do the big checkin but first let them know it will take a bit.
-			echo -e "XXX\n40\nGenerating CA... \nXXX"
-			salt_checkin >> $setup_log 2>&1
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			salt-call state.apply registry >> $setup_log 2>&1
-			echo -e "XXX\n42\nDownloading Containers from the Internet... \nXXX"
-			docker_seed_registry >> $setup_log 2>&1
-			echo -e "XXX\n43\nInstalling Common Components... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			echo -e "XXX\n44\nInstalling SOC... \nXXX"
-			salt-call state.apply soc >> $setup_log 2>&1
-			echo -e "XXX\n45\nApplying firewall rules... \nXXX"
-			salt-call state.apply firewall >> $setup_log 2>&1
-			salt-call state.apply master >> $setup_log 2>&1
-			salt-call state.apply idstools >> $setup_log 2>&1
-			echo -e "XXX\n46\nInstalling Redis... \nXXX"
-			salt-call state.apply redis >> $setup_log 2>&1
-			if [[ $OSQUERY == '1' ]]; then
-				echo -e "XXX\n48\nInstalling MySQL... \nXXX"
-				salt-call state.apply mysql >> $setup_log 2>&1
-			fi
-			if [[ $WAZUH == '1' ]]; then
-				echo -e "XXX\n48\nInstalling Wazuh... \nXXX"
-				salt-call state.apply wazuh >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n49\nInstalling Elastic Components... \nXXX"
-			salt-call state.apply elasticsearch >> $setup_log 2>&1
-			salt-call state.apply logstash >> $setup_log 2>&1
-			salt-call state.apply kibana >> $setup_log 2>&1
-			salt-call state.apply elastalert >> $setup_log 2>&1
-			echo -e "XXX\n75\nInstalling Filebeat... \nXXX"
-			salt-call state.apply filebeat >> $setup_log 2>&1
-			salt-call state.apply utility >> $setup_log 2>&1
-			salt-call state.apply schedule >> $setup_log 2>&1
-			if [[ $OSQUERY == '1' ]]; then
-				echo -e "XXX\n79\nInstalling Fleet... \nXXX"
-				salt-call state.apply fleet >> $setup_log 2>&1
-				salt-call state.apply launcher >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n85\nConfiguring SOctopus... \nXXX"
-			salt-call state.apply soctopus >> $setup_log 2>&1
-			if [[ $THEHIVE == '1' ]]; then
-				echo -e "XXX\n87\nInstalling TheHive... \nXXX"
-				salt-call state.apply hive >> $setup_log 2>&1
-			fi
-			if [[ $PLAYBOOK == '1' ]]; then
-				echo -e "XXX\n89\nInstalling Playbook... \nXXX"
-				salt-call state.apply playbook >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nAdding user to SOC... \nXXX"
-			add_web_user >> $setup_log 2>&1
-			echo -e "XXX\n99\nVerifying Setup... \nXXX"
-			salt-call state.highstate >> $setup_log 2>&1
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			if [[ $THEHIVE == '1' ]]; then
-				check_hive_init_then_reboot
-			else
-				shutdown -r now
-			fi
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
-
+	if [ "$MASTERADV" = 'ADVANCED' ] && [ "$BROVERSION" != 'SURICATA' ]; then
+		whiptail_master_adv_service_brologs
 	fi
 
-	####################
-	##     Sensor     ##
-	####################
+	get_redirect
+fi
 
-	if [ $install_type == 'SENSOR' ]; then
-		filter_unused_nics
-		whiptail_bond_nics
-		whiptail_management_server
-		whiptail_master_updates
-		whiptail_homenet_sensor
-		whiptail_sensor_config
-		# Calculate lbprocs so we can call it in the prompts
-		calculate_useable_cores
-		if [ $NSMSETUP == 'ADVANCED' ]; then
-			whiptail_bro_pins
-			whiptail_suricata_pins
-			whiptail_bond_nics_mtu
-		else
-			whiptail_basic_bro
-			whiptail_basic_suri
-		fi
-		whiptail_make_changes
-		set_updates
-		set_hostname
-		clear_master
+if [[ $is_master ]]; then
+	whiptail_components_adv_warning
+	whiptail_enable_components
+fi
 
-		copy_ssh_key >> $setup_log 2>&1
-		{
-			sleep 0.5
-			echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-			set_initial_firewall_policy >> $setup_log 2>&1
-			echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-			create_sensor_bond >> $setup_log 2>&1
-			echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
-			sensor_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n20\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
-			configure_minion sensor >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
-			salt_firstcheckin >> $setup_log 2>&1
-			echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
-			# Accept the Salt Key
-			accept_salt_key_remote >> $setup_log 2>&1
-			echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			echo -e "XXX\n35\nInstalling Core Components... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			echo -e "XXX\n50\nInstalling PCAP... \nXXX"
-			salt-call state.apply pcap >> $setup_log 2>&1
-			echo -e "XXX\n60\nInstalling IDS components... \nXXX"
-			salt-call state.apply suricata >> $setup_log 2>&1
-			echo -e "XXX\n70\nInstalling Strelka... \nXXX"
-			salt-call state.apply strelka >> $setup_log 2>&1
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nVerifying Setup... \nXXX"
-			salt-call state.highstate >> $setup_log 2>&1
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			shutdown -r now
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
+if [[ $is_distmaster || ( $is_sensor || $is_node ) && ! $is_eval ]]; then
+	whiptail_master_updates
+fi
+
+if [[ $is_minion ]]; then
+	whiptail_management_server
+fi
+
+if [[ $is_distmaster ]]; then
+	whiptail_create_soremote_user
+	collect_soremote_inputs
+fi
+
+if [[ $is_sensor && ! $is_eval ]]; then
+	whiptail_homenet_sensor
+	whiptail_sensor_config
+	if [ $NSMSETUP == 'ADVANCED' ]; then
+		whiptail_bro_pins
+		whiptail_suricata_pins
+		whiptail_bond_nics_mtu
+	else
+		whiptail_basic_bro
+		whiptail_basic_suri
 	fi
+fi
 
-	#######################################
-	##     Eval Mode  or Master Search   ##
-	#######################################
-
-	if [ $install_type == 'EVAL' ] || [ $install_type == 'MASTERSEARCH' ]; then
-
-		# Filter out the management NIC
-		filter_unused_nics
-
-		if [ $install_type == 'EVAL' ]; then
-			TYPE='eval'
-			# Select which NICs are in the bond
-			whiptail_bond_nics
-		elif [ $install_type == 'MASTERSEARCH' ]; then
-			TYPE='mastersearch'
-		fi
-
-		# Snag the HOME_NET
-		whiptail_homenet_master
-
-		whiptail_eval_adv_warning
-		whiptail_enable_components
-
-		# Set a bunch of stuff since this is eval
-		es_heapsize
-		ls_heapsize
+if [[ $is_node && ! $is_eval ]]; then
+	whiptail_node_advanced
+	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
+		whiptail_node_es_heap
+		whiptail_node_ls_heap
+		whiptail_node_ls_pipeline_worker
+		whiptail_node_ls_pipline_batchsize
+		whiptail_node_ls_input_threads
+		whiptail_node_ls_input_batch_count
+		whiptail_cur_close_days
+		whiptail_log_size_limit
+	else
 		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-		LSPIPELINEWORKERS=1
+		LSPIPELINEWORKERS=$cpu_cores
 		LSPIPELINEBATCH=125
 		LSINPUTTHREADS=1
 		LSINPUTBATCHCOUNT=125
-		RULESETUP=ETOPEN
-		NSMSETUP=BASIC
-		NIDS=Suricata
-		BROVERSION=ZEEK
-		CURCLOSEDAYS=30
-		if [ $install_type == 'MASTERSEARCH' ]; then
-			# Find out how to handle updates
-			whiptail_master_updates
-			# Get a password for the soremote user
-			whiptail_create_soremote_user
-			SCMATCH=no
-			while [ $SCMATCH != yes ]; do
-				whiptail_create_soremote_user_password1
-				whiptail_create_soremote_user_password2
-				check_soremote_pass
-			done
-		fi
-		collect_webuser_inputs
-		get_redirect
-		whiptail_make_changes
-		set_hostname
-		set_version
-		generate_passwords
-		secrets_pillar
-		clear_master
-		set_defaul_log_size
-		get_main_ip
+	fi
+fi
 
-		# Add the user so we can sit back and relax
-		add_socore_user_master
-		add_soremote_user_master
+whiptail_make_changes
+set_hostname
+set_version
+clear_master
 
-		{
-			# Check progress in child process
-			progress_str_printer &
-			
-			if [ "$install_type" = 'EVAL' ]; then
-				set_progress_str 1 "Creating bond interface..."
-				create_sensor_bond >> $setup_log 2>&1
-			fi
+if [[ $is_master && ! $is_eval ]]; then
+	generate_passwords
+	secrets_pillar
+	add_socore_user_master
+	add_soremote_user_master
+fi
 
-			set_progress_str 2 "Installing Salt..."
+if [[ $is_helix || $is_master ]]; then
+	set_main_ip
+fi
 
-		} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+if [[ $is_minion ]]; then
+	set_updates
+fi
 
-		{
-			sleep 0.5
-			if [ $install_type == 'EVAL' ]; then
-				echo -e "XXX\n0\nCreating Bond Interface... \nXXX"
-				create_sensor_bond >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n2\nInstalling saltstack... \nXXX"
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n3\nInstalling docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n5\nInstalling master code... \nXXX"
-			copy_master_config >> $setup_log 2>&1
-			echo -e "XXX\n6\nCopying salt code... \nXXX"
-			setup_salt_master_dirs >> $setup_log 2>&1
-			echo -e "XXX\n6\nupdating suduers... \nXXX"
-			update_sudoers >> $setup_log 2>&1
-			echo -e "XXX\n7\nCreating the static pillar... \nXXX"
-			# Set the static values
-			master_static >> $setup_log 2>&1
-			echo -e "XXX\n7\nCreating the master pillar... \nXXX"
-			master_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			echo -e "XXX\n7\nConfiguring minion... \nXXX"
-			configure_minion $TYPE >> $setup_log 2>&1
-			echo -e "XXX\n7\nSetting the node type to $TYPE... \nXXX"
-			set_node_type >> $setup_log 2>&1
-			echo -e "XXX\n7\nSearch node pillar... \nXXX"
-			node_pillar >> $setup_log 2>&1
-			echo -e "XXX\n8\nCreating firewall policies... \nXXX"
-			set_initial_firewall_policy >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			echo -e "XXX\n10\nRegistering agent... \nXXX"
-			salt_firstcheckin >> $setup_log 2>&1
-			echo -e "XXX\n11\nAccepting Agent... \nXXX"
-			accept_salt_key_local >> $setup_log 2>&1
-			echo -e "XXX\n12\nRunning the SSL states... \nXXX"
-			salt_checkin >> $setup_log 2>&1
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			salt-call state.apply registry >> $setup_log 2>&1
-			echo -e "XXX\n14\nDownloading Containers from the Internet... \nXXX"
-			docker_seed_registry >> $setup_log 2>&1
-			salt-call state.apply master >> $setup_log 2>&1
-			echo -e "XXX\n15\nInstalling core components... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			echo -e "XXX\n18\nInitializing firewall rules... \nXXX"
-			salt-call state.apply firewall >> $setup_log 2>&1
-			echo -e "XXX\n25\nInstalling master components... \nXXX"
-			salt-call state.apply master >> $setup_log 2>&1
-			salt-call state.apply idstools >> $setup_log 2>&1
-			echo -e "XXX\n26\nInstalling SOC... \nXXX"
-			salt-call state.apply soc >> $setup_log 2>&1
-			if [[ $OSQUERY == '1' ]]; then
-				salt-call state.apply mysql >> $setup_log 2>&1
-			fi
-			if [[ $WAZUH == '1' ]]; then
-				echo -e "XXX\n27\nInstalling Wazuh components... \nXXX"
-				salt-call state.apply wazuh >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n35\nInstalling ElasticSearch... \nXXX"
-			salt-call state.apply elasticsearch >> $setup_log 2>&1
-			echo -e "XXX\n40\nInstalling Logstash... \nXXX"
-			salt-call state.apply logstash >> $setup_log 2>&1
-			echo -e "XXX\n45\nInstalling Kibana... \nXXX"
-			salt-call state.apply kibana >> $setup_log 2>&1
+# Begin install
+{
+	progress_str_printer &
 
-			if [ $install_type == 'EVAL' ]; then
-				echo -e "XXX\n50\nInstalling pcap... \nXXX"
-				salt-call state.apply pcap >> $setup_log 2>&1
-				echo -e "XXX\n52\nInstalling Suricata... \nXXX"
-				salt-call state.apply suricata >> $setup_log 2>&1
-				echo -e "XXX\n54\nInstalling Zeek... \nXXX"
-				salt-call state.apply bro >> $setup_log 2>&1
-			fi
-
-			echo -e "XXX\n56\nInstalling curator... \nXXX"
-			salt-call state.apply curator >> $setup_log 2>&1
-			echo -e "XXX\n58\nInstalling elastalert... \nXXX"
-			salt-call state.apply elastalert >> $setup_log 2>&1
-			if [[ $OSQUERY == '1' ]]; then
-				echo -e "XXX\n60\nInstalling fleet... \nXXX"
-				salt-call state.apply fleet >> $setup_log 2>&1
-				salt-call state.apply redis >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n85\nInstalling filebeat... \nXXX"
-			salt-call state.apply filebeat >> $setup_log 2>&1
-			salt-call state.apply utility >> $setup_log 2>&1
-			echo -e "XXX\n90\nInstalling misc components... \nXXX"
-			salt-call state.apply schedule >> $setup_log 2>&1
-			salt-call state.apply soctopus >> $setup_log 2>&1
-			if [[ $THEHIVE == '1' ]]; then
-				echo -e "XXX\n91\nInstalling The Hive... \nXXX"
-				salt-call state.apply hive >> $setup_log 2>&1
-			fi
-			if [[ $PLAYBOOK == '1' ]]; then
-				echo -e "XXX\n93\nInstalling Playbook... \nXXX"
-				salt-call state.apply playbook >> $setup_log 2>&1
-			fi
-			if [[ $STRELKA == '1' ]]; then
-				echo -e "XXX\n95\nInstalling Strelka... \nXXX"
-				salt-call state.apply strelka >> $setup_log 2>&1
-			fi
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nAdding user to SOC... \nXXX"
-			add_web_user >> $setup_log 2>&1
-			echo -e "XXX\n99\nVerifying Setup... \nXXX"
-			salt-call state.highstate >> $setup_log 2>&1
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			if [[ $THEHIVE == '1' ]]; then
-				check_hive_init_then_reboot
-			else
-				shutdown -r now
-			fi
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
+	if [[ $is_sensor || $is_helix ]]; then
+		set_progress_str 1 'Creating bond interface'
+		create_sensor_bond
+		
+		set_progress_str 2 'Generating the sensor pillar'
+		sensor_pillar
 	fi
 
-	###################
-	##     Nodes     ##
-	###################
+	set_progress_str 2 'Installing Salt and dependencies'
+	saltify
+	
+	set_progress_str 10 'Installing Docker and dependencies'
+	docker_install
+	
+	set_progress_str 12 'Initializing Salt minion'
+	configure_minion "$minion_type"
 
-	if [ $install_type == 'SEARCHNODE' ] || [ $install_type == 'PARSINGNODE' ] || [ $install_type == 'HOTNODE' ] || [ $install_type == 'WARMNODE' ]; then
-		whiptail_management_server
-		whiptail_master_updates
-		set_defaul_log_size
-		CURCLOSEDAYS=30
-		es_heapsize
-		ls_heapsize
-		whiptail_node_advanced
-		if [ $NODESETUP == 'NODEADVANCED' ]; then
-			whiptail_node_es_heap
-			whiptail_node_ls_heap
-			whiptail_node_ls_pipeline_worker
-			whiptail_node_ls_pipline_batchsize
-			whiptail_node_ls_input_threads
-			whiptail_node_ls_input_batch_count
-			whiptail_cur_close_days
-			whiptail_log_size_limit
-		else
-			NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
-			NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-			LSPIPELINEWORKERS=$cpu_cores
-			LSPIPELINEBATCH=125
-			LSINPUTTHREADS=1
-			LSINPUTBATCHCOUNT=125
-		fi
-		whiptail_make_changes
-		set_updates
-		set_hostname
-		clear_master
-		copy_ssh_key >> $setup_log 2>&1
-		{
-			sleep 0.5
-			echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-			set_initial_firewall_policy >> $setup_log 2>&1
-			echo -e "XXX\n1\nInstalling pip3... \nXXX"
-			echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n20\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n30\nInitializing Minion... \nXXX"
-			configure_minion node >> $setup_log 2>&1
-			set_node_type >> $setup_log 2>&1
-			node_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
-			salt_firstcheckin >> $setup_log 2>&1
-			# Accept the Salt Key
-			accept_salt_key_remote >> $setup_log 2>&1
-			echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			echo -e "XXX\n50\nConfiguring Firewall... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			echo -e "XXX\n70\nInstalling Elastic Components... \nXXX"
-			salt-call state.apply logstash >> $setup_log 2>&1
-			salt-call state.apply elasticsearch >> $setup_log 2>&1
-			salt-call state.apply curator >> $setup_log 2>&1
-			salt-call state.apply filebeat >> $setup_log 2>&1
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nVerifying Setup... \nXXX"
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			shutdown -r now
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
+	if [[ $is_master || $is_helix ]]; then
+		set_progress_str 13 'Configuring Salt master'
+		copy_master_config
+		setup_salt_master_dirs
+		
+		set_progress_str 15 'Updating sudoers file for soremote user'
+		update_sudoers
+		
+		set_progress_str 16 'Generating master static pillar'
+		master_static
+		
+		set_progress_str 17 'Generating master pillar'
+		master_pillar
 
+		set_progress_str 18 'Accepting Salt key'
+		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
 
-	########################
-	##     Heavy Node     ##
-	########################
-
-	if [ $install_type == 'HEAVYNODE' ]; then
-
-		filter_unused_nics
-		whiptail_bond_nics
-		whiptail_management_server
-		whiptail_master_updates
-		whiptail_homenet_sensor
-		whiptail_sensor_config
-		# Calculate lbprocs so we can call it in the prompts
-		calculate_useable_cores
-		if [ $NSMSETUP == 'ADVANCED' ]; then
-			whiptail_bro_pins
-			whiptail_suricata_pins
-			whiptail_bond_nics_mtu
-		else
-			whiptail_basic_bro
-			whiptail_basic_suri
-		fi
-
-		set_defaul_log_size
-		CURCLOSEDAYS=30
-		es_heapsize
-		ls_heapsize
-		whiptail_node_advanced
-		if [ $NODESETUP == 'NODEADVANCED' ]; then
-			whiptail_node_es_heap
-			whiptail_node_ls_heap
-			whiptail_node_ls_pipeline_worker
-			whiptail_node_ls_pipline_batchsize
-			whiptail_node_ls_input_threads
-			whiptail_node_ls_input_batch_count
-			whiptail_cur_close_days
-			whiptail_log_size_limit
-		else
-			NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
-			NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-			LSPIPELINEWORKERS=$cpu_cores
-			LSPIPELINEBATCH=125
-			LSINPUTTHREADS=1
-			LSINPUTBATCHCOUNT=125
-		fi
-		whiptail_make_changes
-		set_updates
-		set_hostname
-		clear_master
-
-		copy_ssh_key >> $setup_log 2>&1
-		{
-			sleep 0.5
-			echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-			set_initial_firewall_policy >> $setup_log 2>&1
-
-			echo -e "XXX\n3\nCreating Bond Interface... \nXXX"
-			create_sensor_bond >> $setup_log 2>&1
-			echo -e "XXX\n4\nGenerating Sensor Pillar... \nXXX"
-			sensor_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-
-
-
-			echo -e "XXX\n5\nInstalling Salt Packages... \nXXX"
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n20\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n30\nInitializing Minion... \nXXX"
-			configure_minion heavynode >> $setup_log 2>&1
-			set_node_type >> $setup_log 2>&1
-			node_pillar >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			echo -e "XXX\n35\nSending and Accepting Salt Key... \nXXX"
-			salt_firstcheckin >> $setup_log 2>&1
-			# Accept the Salt Key
-			accept_salt_key_remote >> $setup_log 2>&1
-			echo -e "XXX\n40\nApplying SSL Certificates... \nXXX"
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			echo -e "XXX\n50\nConfiguring Firewall... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			echo -e "XXX\n70\nInstalling Elastic Components... \nXXX"
-			salt-call state.apply logstash >> $setup_log 2>&1
-			salt-call state.apply elasticsearch >> $setup_log 2>&1
-			salt-call state.apply curator >> $setup_log 2>&1
-			salt-call state.apply filebeat >> $setup_log 2>&1
-			echo -e "XXX\n50\nInstalling PCAP... \nXXX"
-			salt-call state.apply pcap >> $setup_log 2>&1
-			echo -e "XXX\n60\nInstalling IDS components... \nXXX"
-			salt-call state.apply suricata >> $setup_log 2>&1
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nVerifying Setup... \nXXX"
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			shutdown -r now
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
-
+	if [[ $is_helix ]]; then
+		set_progress_str 19 'Generating the FireEye pillar'
+		fireeye_pillar
 	fi
 
-	###########################
-	###  Standalone Fleet   ###
-	###########################
+	if [[ $is_minion ]]; then
+		set_progress_str 20 'Accepting salt key on master'
+		accept_salt_key_remote
+	fi
 
-	if [ $install_type == 'FLEET' ]; then
-		whiptail_management_server
-		whiptail_master_updates
-		whiptail_make_changes
-		set_updates
-		set_hostname
-		clear_master
+	set_progress_str 20 'Copying minion pillars to master'
+	copy_minion_tmp_files
 
-		copy_ssh_key >> $setup_log 2>&1
-		{
-			sleep 0.5
-			echo -e "XXX\n0\nSetting Initial Firewall Policy... \nXXX"
-			set_initial_firewall_policy >> $setup_log 2>&1
-			#echo -e "XXX\n4\nGenerating Fleet Pillar... \nXXX"
-			fleet_pillar >> $setup_log 2>&1
-			echo "** Generating the patch pillar **" >> $setup_log
-			patch_pillar >> $setup_log 2>&1
-			node_pillar >> $setup_log 2>&1
-			echo -e "XXX\n5\nInstalling Salt Components... \nXXX"
-			saltify >> $setup_log 2>&1
-			echo -e "XXX\n20\nInstalling Docker... \nXXX"
-			docker_install >> $setup_log 2>&1
-			echo -e "XXX\n22\nConfiguring Salt Minion... \nXXX"
-			configure_minion fleet >> $setup_log 2>&1
-			echo -e "XXX\n24\nCopying Minion Pillars to Master... \nXXX"
-			copy_minion_tmp_files >> $setup_log 2>&1
-			echo -e "XXX\n25\nSending Salt Key to Master... \nXXX"
-			salt_firstcheckin >> $setup_log 2>&1
-			echo -e "XXX\n26\nTelling the Master to Accept Key... \nXXX"
-			# Accept the Salt Key
-			accept_salt_key_remote >> $setup_log 2>&1
-			echo -e "XXX\n27\nApplying SSL Certificates... \nXXX"
-			salt-call state.apply ca >> $setup_log 2>&1
-			salt-call state.apply ssl >> $setup_log 2>&1
-			echo -e "XXX\n35\nInstalling Core Components... \nXXX"
-			salt-call state.apply common >> $setup_log 2>&1
-			salt-call state.apply firewall >> $setup_log 2>&1
-			echo -e "XXX\n50\nInstalling MySQL... \nXXX"
-			salt-call state.apply mysql >> $setup_log 2>&1
-			echo -e "XXX\n50\nInstalling Redis... \nXXX"
-			salt-call state.apply redis >> $setup_log 2>&1
-			echo -e "XXX\n60\nInstalling Fleet... \nXXX"
-			salt-call state.apply fleet >> $setup_log 2>&1
-			echo -e "XXX\n97\nFinishing touches... \nXXX"
-			filter_unused_nics >> $setup_log 2>&1
-			network_setup >> $setup_log 2>&1
-			echo -e "XXX\n98\nVerifying Setup... \nXXX"
-			salt-call state.highstate >> $setup_log 2>&1
-		} |whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
-		GOODSETUP=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-		if [[ $GOODSETUP == '0' ]]; then
-			whiptail_setup_complete
-			shutdown -r now
-		else
-			whiptail_setup_failed
-			shutdown -r now
-		fi
+	set_progress_str 21 'Running intial Salt highstate'
+	salt-call state.highstate -l info >> "$setup_log" 2>&1
+
+	set_progress_str 23 'Configuring firewall'
+	set_initial_firewall_policy
+
+	set_progress_str 25 'Generating CA'
+	gen_ca
+
+	if [[ $is_node ]]; then
+		set_progress_str 25 'Setting node type'
+		set_node_type
+
+		set_progress_str 26 'Generating search node pillar'
+		node_pillar
+
+		set_progress_str 27 "$(print_salt_state_apply 'curator')"
+		salt-call state.apply -l info curator >> $setup_log 2>&1
+	fi
+
+	if [[ $is_sensor ]]; then
+		set_progress_str 28 "$(print_salt_state_apply 'pcap')"
+		salt-call state.apply -l info pcap >> $setup_log 2>&1
+
+		set_progress_str 29 "$(print_salt_state_apply 'suricata')"
+		salt-call state.apply -l info suricata >> $setup_log 2>&1
+
+		set_progress_str 30 "$(print_salt_state_apply 'zeek')"
+		salt-call state.apply -l info zeek >> $setup_log 2>&1
+	fi
+
+	if [[ $is_master || $is_helix ]]; then
+		set_progress_str 30 'Downloading containers from the internet'
+		salt-call state.apply -l info registry >> "$setup_log" 2>&1
+		docker_seed_registry # ~ 65% when finished
+	fi
+
+	set_progress_str 65 "$(print_salt_state_apply 'common')"
+	salt-call state.apply -l info common >> $setup_log 2>&1
+
+	if [[ "$OSQUERY" = 1 ]]; then
+		set_progress_str 66 "$(print_salt_state_apply 'fleet')"
+		salt-call state.apply -l info fleet >> $setup_log 2>&1
+
+		set_progress_str 67 "$(print_salt_state_apply 'redis')"
+		salt-call state.apply -l info redis >> $setup_log 2>&1
+	fi
+
+	if [[ "$WAZUH" = 1 ]]; then
+		set_progress_str 68 "$(print_salt_state_apply 'wazuh')"
+		salt-call state.apply -l info wazuh >> $setup_log 2>&1
+	fi
+
+	if [[ "$THEHIVE" = 1 ]]; then
+		set_progress_str 69 "$(print_salt_state_apply 'hive')"
+		salt-call state.apply -l info hive >> $setup_log 2>&1
+	fi
+
+	if [[ "$STRELKA" = 1 ]]; then
+		set_progress_str 70 "$(print_salt_state_apply 'strelka')"
+		salt-call state.apply -l info strelka >> $setup_log 2>&1
+	fi
+
+	if [[ "$PLAYBOOK" = 1 ]]; then
+		set_progress_str 71 "$(print_salt_state_apply 'playbook')"
+		salt-call state.apply -l info playbook >> $setup_log 2>&1
+	fi
+
+	if [[ $is_master || $is_helix ]]; then
+		set_progress_str 72 "$(print_salt_state_apply 'master')"
+		salt-call state.apply -l info master >> $setup_log 2>&1
+
+		set_progress_str 73 "$(print_salt_state_apply 'idstools')"
+		salt-call state.apply -l info idstools >> $setup_log 2>&1
+
+		set_progress_str 74 "$(print_salt_state_apply 'utility')"
+		salt-call state.apply -l info utility >> $setup_log 2>&1
+	fi
+
+	if [[ $is_helix || $is_master || $is_node ]]; then
+		set_progress_str 75 "$(print_salt_state_apply 'logstash')"
+		salt-call state.apply -l info logstash >> $setup_log 2>&1
+
+		set_progress_str 76 "$(print_salt_state_apply 'filebeat')"
+		salt-call state.apply -l info filebeat >> $setup_log 2>&1
+	fi
+
+	if [[ $is_master || $is_node ]]; then
+		set_progress_str 77 "$(print_salt_state_apply 'elasticsearch')"
+		salt-call state.apply -l info elasticsearch >> $setup_log 2>&1
+	fi
+
+	if [[ $is_master ]]; then
+		set_progress_str 78 "$(print_salt_state_apply 'soc')"
+		salt-call state.apply -l info soc >> "$setup_log" 2>&1
+
+		set_progress_str 79 "$(print_salt_state_apply 'kibana')"
+		salt-call state.apply -l info kibana >> $setup_log 2>&1
+
+		set_progress_str 80 "$(print_salt_state_apply 'elastalert')"
+		salt-call state.apply -l info elastalert >> $setup_log 2>&1
+
+		set_progress_str 81 "$(print_salt_state_apply 'soctopus')"
+		salt-call state.apply -l info soctopus >> $setup_log 2>&1
+	fi
+
+	set_progress_str 85 "$(print_salt_state_apply 'schedule')"
+	salt-call state.apply -l info schedule >> $setup_log 2>&1
+
+	set_progress_str 90 'Applying finishing touches'
+	filter_unused_nics
+	network_setup
+
+	set_progress_str 91 'Verifying setup'
+	salt-call -l info  state.highstate >> $setup_log 2>&1
+
+} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+
+success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
+if [[ "$success" = 0 ]]; then
+	whiptail_setup_complete
+	if [[ $THEHIVE == '1' ]]; then
+		check_hive_init_then_reboot
+	else
+		shutdown -r now
 	fi
 else
-	echo "User not sure. Cancelling setup.">> $setup_log 2>&1
-	whiptail_cancel
+	whiptail_setup_failed
+	shutdown -r now
 fi
