@@ -31,15 +31,6 @@
 - Due to the move to ECS, the current Playbook plays may not alert correctly at this time.
 - The osquery MacOS package does not install correctly.
 
-
-## Version 1.2.1 Beta 1 ISO Download
-
-[HH1.2.1-6.ISO](https://download.securityonion.net/file/Hybrid-Hunter/HH-1.2.1-6.iso)  
-
-MD5: D7E66CA8AAC37E70E2A2F7BB12EB3C23  
-SHA1: D91D921896F9ADA600EBA0ADAA548D8630B5341F  
-SHA256: D69E327597AB429DCE13C1177BCE6C1FAD934E78A09F73D14778C2CAE616557B  
-
 ### Warnings and Disclaimers
 
 - This BETA release is BLEEDING EDGE and TOTALLY UNSUPPORTED!  
@@ -67,21 +58,24 @@ Distributed:
 - Minimum 4 CPU cores per VM
 - Minimum 2 NICs for forward nodes
 
-### Prerequisites for Network Based Install
+### Installation
 
-Install git if using a Centos 7 Minimal install:
+For most users, we recommend installing using [our ISO image](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/ISO).
+
+If instead you would like to try a manual installation (not using our ISO), you can build from CentOS 7 or Ubuntu 18.04.
+
+If using CentOS 7 Minimal, you will need to install git:
 
 ```sudo yum -y install git```
 
-### Installation
-
-Once you resolve those requirements or are using Ubuntu 16.04 do the following:
+Once you have git, then do the following:
 
 ```
 git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack
 cd securityonion-saltstack
 sudo bash so-setup-network
 ```
+
 Follow the prompts and reboot if asked to do so.
 
 Then proceed to the [Hybrid Hunter Quick Start Guide](https://github.com/Security-Onion-Solutions/securityonion-saltstack/wiki/Hybrid-Hunter-Quick-Start-Guide).
