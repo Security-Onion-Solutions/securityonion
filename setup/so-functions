@@ -51,46 +51,41 @@ add_master_hostfile() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+}
 
+# $1 => username
+# $2 => uid
+# $3 => gid
+# $4 => home dir
+# $5 => create home dir
+# $6 => (optional) password variable
+so_add_user() {
+	echo "Add $1 user" >> "$SETUPLOG" 2>&1
+	groupadd --gid "$3" "$1"
+	
+
+	if [ "$5" == 0 ]; then
+		useradd --uid "$2" --gid "$3" --home-dir "$4" --no-create-home "$1"
+	else
+		useradd --uid "$2" --gid "$3" --home-dir "$4" "$1"
+	fi
+	
+	# If a password has been passed in, set the password
+	if [ "$6" ]; then
+		echo "$1":"$6" | chpasswd --crypt-method=SHA512
+	fi
 }
 
 add_socore_user_master() {
-
-	echo "Add socore on the master" >>~/sosetup.log 2>&1
-	# Add user "socore" to the master. This will be for things like accepting keys.
-	if [ $OS == 'centos' ]; then
-		local ADDUSER=adduser
-	else
-		local ADDUSER=useradd
-	fi
-	groupadd --gid 939 socore
-	$ADDUSER --uid 939 --gid 939 --home-dir /opt/so socore
-
+	so_add_user "socore" "939" "939" "/opt/so" 1
 }
 
 add_soremote_user_master() {
-
-	echo "Add soremote on the master" >>~/sosetup.log 2>&1
-	# Add user "soremote" to the master. This will be for things like accepting keys.
-	if [ $OS == 'centos' ]; then
-		local ADDUSER=adduser
-	else
-		local ADDUSER=useradd
-	fi
-	groupadd --gid 947 soremote
-	$ADDUSER --uid 947 --gid 947 soremote
-	
-	# Set the password for soremote that we got during setup
-	echo soremote:$SOREMOTEPASS1 | chpasswd --crypt-method=SHA512
-
+	so_add_user "soremote" "947" "947" "/home/soremote" 1 "$SOREMOTEPASS1"
 }
 
 add_socore_user_notmaster() {
-	echo "Add socore user on non master" >> "$SETUPLOG" 2>&1
-	# Add socore user to the non master system. Probably not a bad idea to make system user
-	groupadd --gid 939 socore
-	$ADDUSER --uid 939 --gid 939 --home-dir /opt/so --no-create-home socore
-
+	so_add_user "soremote" "939" "939" "/opt/so" 0
 }
 
 wait_for_identity_db_to_exist() {
@@ -100,13 +95,14 @@ wait_for_identity_db_to_exist() {
 	# Check and see if the DB file is in there
 	if [ -f /opt/so/conf/kratos/db/db.sqlite ]; then
 	  echo "Database file exists at $(date)"
-	  attempts=$MAXATTEMPTS
+	  return 0
 	else
 	  echo "Identity database does not yet exist; waiting 5 seconds and will check again ($attempts/$MAXATTEMPTS)..."
 	  sleep 5
 	  attempts=$((attempts+1))      
 	fi
   done
+  return 1
 }
 
 add_web_user() {
@@ -199,13 +195,7 @@ calculate_useable_cores() {
 }
 
 check_admin_pass() {
-
-	if [ $ADMINPASS1 == $ADMINPASS2 ]; then
-		APMATCH=yes
-	else
-		whiptail_passwords_dont_match
-	fi
-
+	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
 }
 
 check_hive_init_then_reboot() {
@@ -245,24 +235,23 @@ check_network_manager_conf() {
 	fi
 }
 
-check_soremote_pass() {
-
-	if [ $SOREMOTEPASS1 == $SOREMOTEPASS2 ]; then
-		SCMATCH=yes
+# $1 => password
+# $2 => confirm password
+# $3 => variable to set
+check_pass_match() {
+	if [ "$1" == "$2" ]; then
+		eval "$3"="\"yes\""
 	else
 		whiptail_passwords_dont_match
 	fi
+}
 
+check_soremote_pass() {
+	check_pass_match "$SOREMOTEPASS1" "$SOREMOTEPASS2" "SCMATCH"
 }
 
 check_web_pass() {
-
-  if [ $WEBPASSWD1 == $WEBPASSWD2 ]; then
-	WPMATCH=yes
-  else
-	whiptail_passwords_dont_match
-  fi
-
+	check_pass_match "$WEBPASSWD1" "$WEBPASSWD2" "WPMATCH"
 }
 
 checkin_at_boot() {
