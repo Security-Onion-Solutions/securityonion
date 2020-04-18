@@ -522,51 +522,39 @@ disable_misc_network_features() {
 
 docker_install() {
 
-  if [ $OS == 'centos' ]; then
-	yum clean expire-cache
-	yum -y install yum-utils device-mapper-persistent-data lvm2 openssl
-	yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-	yum -y update
-	yum -y install docker-ce python36-docker
-	if [ $INSTALLTYPE == 'MASTER' ] || [ $INSTALLTYPE == 'EVAL' ]; then
-	  docker_registry
-	  echo "Restarting Docker" >> "$SETUPLOG" 2>&1
-	  systemctl restart docker
-	  systemctl enable docker
+	if [ $OS == 'centos' ]; then
+		yum clean expire-cache
+		yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+		yum -y update
+		yum -y install docker-ce
 	else
-	  docker_registry
-	  echo "Restarting Docker" >> "$SETUPLOG" 2>&1
-	  systemctl restart docker
-	  systemctl enable docker
+		if [ "$INSTALLTYPE" == 'MASTER' ] || [ "$INSTALLTYPE" == 'EVAL' ]; then
+			apt-get update >> "$SETUPLOG" 2>&1
+			if [ $OSVER != "xenial" ]; then
+				apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
+			else
+				apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
+			fi
+		else
+			{
+				apt-key add "$TMP"/gpg/docker.pub;
+				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
+				apt-get update;
+			} >> "$SETUPLOG" 2>&1
+
+			if [ $OSVER != "xenial" ]; then
+				apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
+			else
+				apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
+			fi
+		fi
 	fi
-
-  else
-
-	if [ $INSTALLTYPE == 'MASTER' ] || [ $INSTALLTYPE == 'EVAL' ]; then
-	  apt-get update >> "$SETUPLOG" 2>&1
-	  if [ $OSVER != "xenial" ]; then
-		apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
-	  else
-		apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
-	  fi
-	  docker_registry >> "$SETUPLOG" 2>&1
-	  echo "Restarting Docker" >> "$SETUPLOG" 2>&1
-	  systemctl restart docker >> "$SETUPLOG" 2>&1
-	else
-	  apt-key add $TMP/gpg/docker.pub >> "$SETUPLOG" 2>&1
-	  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$SETUPLOG" 2>&1
-	  apt-get update >> "$SETUPLOG" 2>&1
-	  if [ $OSVER != "xenial" ]; then
-		apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
-	  else
-		apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
-	  fi
-	  docker_registry >> "$SETUPLOG" 2>&1
-	  echo "Restarting Docker" >> "$SETUPLOG" 2>&1
-	  systemctl restart docker >> "$SETUPLOG" 2>&1
-	fi
-  fi
-
+	docker_registry
+	{
+		echo "Restarting Docker";
+		systemctl restart docker;
+		systemctl enable docker;
+	} >> "$SETUPLOG" 2>&1
 }
 
 docker_registry() {
@@ -574,9 +562,10 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$SETUPLOG" 2>&1
 	mkdir -p /etc/docker >> "$SETUPLOG" 2>&1
 	# Make the host use the master docker registry
-	echo "{" > /etc/docker/daemon.json
-	echo "  \"registry-mirrors\": [\"https://$MSRV:5000\"]" >> /etc/docker/daemon.json
-	echo "}" >> /etc/docker/daemon.json
+	printf '%s\n'\
+		"{"\
+		"  \"registry-mirrors\": [\"https://$MSRV:5000\"]"\
+		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$SETUPLOG" 2>&1
 
 }
