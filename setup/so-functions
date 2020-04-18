@@ -15,19 +15,22 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-SCRIPTDIR=$(dirname "$0")
-source "$SCRIPTDIR/so-whiptail"
-SOVERSION=1.2.1
+cd "$(dirname "$0")" || exit 255
+source "./so-whiptail"
+source "./so-variables"
+source "./so-common-functions"
+so_version=1.2.1
+
 
 accept_salt_key_local() {
-	echo "Accept the key locally on the master" >> "$SETUPLOG" 2>&1
+	echo "Accept the key locally on the master" >> "$setup_log" 2>&1
 	# Accept the key locally on the master
 	salt-key -ya "$MINION_ID"
 
 }
 
 accept_salt_key_remote() {
-	echo "Accept the key remotely on the master" >> "$SETUPLOG" 2>&1
+	echo "Accept the key remotely on the master" >> "$setup_log" 2>&1
 	# Delete the key just in case.
 	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
 	salt-call state.apply ca
@@ -44,7 +47,7 @@ add_admin_user() {
 }
 
 add_master_hostfile() {
-	echo "Checking if I can resolve master. If not add to hosts file" >> "$SETUPLOG" 2>&1
+	echo "Checking if I can resolve master. If not add to hosts file" >> "$setup_log" 2>&1
 	# Pop up an input to get the IP address
 	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your Master Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
@@ -65,7 +68,7 @@ so_add_user() {
 	local home_dir=$4
 	if [ "$5" ]; then local pass=$5; fi
 
-	echo "Add $username user" >> "$SETUPLOG" 2>&1
+	echo "Add $username user" >> "$setup_log" 2>&1
 	groupadd --gid "$gid" "$username"
 	useradd --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
 
@@ -185,16 +188,6 @@ bro_logs_enabled() {
 			"    - socks"\
 			"    - x509" >> "$brologs_pillar"
 	fi
-}
-
-calculate_useable_cores() {
-
-	# Calculate reasonable core usage
-	local cores_for_bro=$(( CPUCORES/2 - 1 ))
-	local lb_procs_round
-	lb_procs_round=$(printf "%.0f\n" $cores_for_bro)
-
-	if [ "$lb_procs_round" -lt 1 ]; then LBPROCS=1;	else LBPROCS=$lb_procs_round; fi
 }
 
 check_admin_pass() {
@@ -671,19 +664,6 @@ generate_passwords(){
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
 
-get_log_size_limit() {
-
-	local DISK_DIR="/"
-	if [ -d /nsm ]; then
-		DISK_DIR="/nsm"
-	fi
-	DISK_SIZE_K=$(df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}')
-	PERCENTAGE=85
-	DISK_SIZE=$(( DISK_SIZE_K * 1000 ))
-	PERCENTAGE_DISK_SPACE=$(( DISK_SIZE * PERCENTAGE / 100 ))
-	LOG_SIZE_LIMIT=$(( PERCENTAGE_DISK_SPACE / 1000000000 ))
-
-}
 get_main_ip() {
 
 	# Get the main IP address the box is using
@@ -744,26 +724,6 @@ install_master() {
 
 	copy_master_config
 
-}
-
-ls_heapsize() {
-
-	if [ "$TOTAL_MEM" -ge 32000 ]; then
-		LS_HEAP_SIZE='1000m'
-		return
-	fi
-
-	case "$INSTALLTYPE" in
-		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
-			LS_HEAP_SIZE='1000m'
-			;;
-		'EVAL')
-			LS_HEAP_SIZE='700m'
-			;;
-		*)
-			LS_HEAP_SIZE='500m'
-			;;
-	esac
 }
 
 master_pillar() {

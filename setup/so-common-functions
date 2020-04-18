@@ -1,0 +1,69 @@
+#!/bin/bash
+
+source './so-variables'
+
+# Helper functions
+
+filter_unused_nics() {
+	# Set the main NIC as the default grep search string
+	local grep_string="$MNIC"
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	export filtered_nics
+    filtered_nics=$(ip link | grep -vwe "$grep_string" | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_bro=$(( CPUCORES/2 - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_bro)
+
+    export lb_procs
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1;	else lb_procs=$lb_procs_round; fi
+}
+
+set_defaul_log_size() {
+
+	local disk_dir="/"
+	if [ -d /nsm ]; then
+		disk_dir="/nsm"
+	fi
+	local disk_size_kb
+	disk_size_kb=$(df $disk_dir |grep -v "^Filesystem" | awk '{print $2}')
+	local percentage=85
+	local disk_size
+	disk_size=$(( disk_size_kb * 1000 ))
+	local percentage_disk_space
+	percentage_disk_space=$(( disk_size * (percentage / 100) ))
+
+	export log_size_limit=$(( percentage_disk_space / 1000000000 ))
+}
+
+ls_heapsize() {
+
+	if [ "$total_mem" -ge 32000 ]; then
+		LS_HEAP_SIZE='1000m'
+		return
+	fi
+
+	case "$install_type" in
+		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
+			LS_HEAP_SIZE='1000m'
+			;;
+		'EVAL')
+			LS_HEAP_SIZE='700m'
+			;;
+		*)
+			LS_HEAP_SIZE='500m'
+			;;
+	esac
+}
