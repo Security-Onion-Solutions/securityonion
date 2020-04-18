@@ -22,26 +22,25 @@ SOVERSION=1.2.1
 accept_salt_key_local() {
 	echo "Accept the key locally on the master" >> "$SETUPLOG" 2>&1
 	# Accept the key locally on the master
-	salt-key -ya $MINION_ID
+	salt-key -ya "$MINION_ID"
 
 }
 
 accept_salt_key_remote() {
 	echo "Accept the key remotely on the master" >> "$SETUPLOG" 2>&1
 	# Delete the key just in case.
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo salt-key -d $MINION_ID -y
+	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
 	salt-call state.apply ca
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo salt-key -a $MINION_ID -y
+	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 
 }
 
 
 add_admin_user() {
-
-	# Add an admin user with full sudo rights if this is an ISO install.
-	useradd $ADMINUSER && echo $ADMINUSER:$ADMINPASS1 | chpasswd --crypt-method=SHA512
-	usermod -aG wheel $ADMINUSER
-
+	# Add an admin user with full sudo rights if this is an ISO install. 
+	useradd "$ADMINUSER"
+	echo "$ADMINUSER":"$ADMINPASS1" | chpasswd --crypt-method=SHA512
+	usermod -aG wheel "$ADMINUSER"
 }
 
 add_master_hostfile() {
@@ -113,7 +112,7 @@ wait_for_identity_db_to_exist() {
 add_web_user() {
   wait_for_identity_db_to_exist
   echo "Attempting to add administrator user for web interface..."
-  echo "$WEBPASSWD1" | /usr/sbin/so-user add $WEBUSER
+  echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER"
   echo "Add user result: $?"
 }
 
@@ -139,8 +138,8 @@ bro_logs_enabled() {
 	echo "brologs:" > pillar/brologs.sls
 	echo "  enabled:" >> pillar/brologs.sls
 
-	if [ $MASTERADV == 'ADVANCED' ]; then
-		for BLOG in ${BLOGS[@]}; do
+	if [ "$MASTERADV" == 'ADVANCED' ]; then
+		for BLOG in "${BLOGS[@]}"; do
 			echo "    - $BLOG" | tr -d '"' >> pillar/brologs.sls
 		done
 	else
@@ -212,18 +211,14 @@ check_admin_pass() {
 check_hive_init_then_reboot() {
 	WAIT_STEP=0
 	MAX_WAIT=100
-		until [ -f /opt/so/state/thehive.txt ] ; do
-		WAIT_STEP=$(( ${WAIT_STEP} + 1 ))
-		echo "Waiting on the_hive to init...Attempt #$WAIT_STEP"
-			if [ ${WAIT_STEP} -gt ${MAX_WAIT} ]; then
-					echo "ERROR: We waited ${MAX_WAIT} seconds but the_hive is not working."
-					exit 5
-			fi
-				sleep 1s;
-		done
-		docker stop so-thehive
-		docker rm so-thehive
-		shutdown -r now
+	until [ -f /opt/so/state/thehive.txt ] ; do
+	WAIT_STEP=$(( WAIT_STEP + 1 ))
+	echo "Waiting on the_hive to init ($WAIT_STEP/$MAX_WAIT)..."
+		if [ ${WAIT_STEP} -gt ${MAX_WAIT} ]; then
+			echo "ERROR: We waited ${MAX_WAIT} seconds but the_hive is not working."
+			return 5
+		fi
+		sleep 1s;
 }
 
 check_network_manager_conf() {
@@ -324,22 +319,23 @@ configure_minion() {
   echo "Configuring minion type as $TYPE" >> "$SETUPLOG" 2>&1
   touch /etc/salt/grains
   echo "role: so-$TYPE" > /etc/salt/grains
-  if [ $TYPE == 'master' ] || [ $TYPE == 'eval' ] || [ $TYPE == 'mastersearch' ]; then
+  if [ "$TYPE" == 'master' ] || [ "$TYPE" == 'eval' ] || [ "$TYPE" == 'mastersearch' ]; then
 	echo "master: $HOSTNAME" > /etc/salt/minion
-	echo "id: $MINION_ID" >> /etc/salt/minion
-	echo "mysql.host: '$MAINIP'" >> /etc/salt/minion
-	echo "mysql.port: 3306" >> /etc/salt/minion
-	echo "mysql.user: 'root'" >> /etc/salt/minion
+	printf '%s\n'\
+		"id: $MINION_ID"\
+		"mysql.host: '$MAINIP'"\
+		"mysql.port: 3306"\
+		"mysql.user: 'root'" >> /etc/salt/minion
 	if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
 	  echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
 	else
-	  OLDPASS=$(cat /opt/so/saltstack/pillar/secrets.sls | grep mysql | awk {'print $2'})
+	  OLDPASS=$(grep "mysql" /opt/so/saltstack/pillar/secrets.sls | awk '{print $2}')
 	  echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
 	fi
-  elif [ $TYPE == 'helix' ]; then
+  elif [ "$TYPE" == 'helix' ]; then
 	echo "master: $HOSTNAME" > /etc/salt/minion
 	echo "id: $MINION_ID" >> /etc/salt/minion
-  elif [ $TYPE == 'fleet' ]; then
+  elif [ $"TYPE" == 'fleet' ]; then
 	echo "master: $MSRV" > /etc/salt/minion
 	echo "id: $MINION_ID" >> /etc/salt/minion
   else
@@ -358,10 +354,10 @@ configure_minion() {
 copy_master_config() {
 
 	# Copy the master config template to the proper directory
-	if [ $INSTALLMETHOD == 'iso' ]; then
+	if [ "$INSTALLMETHOD" == 'iso' ]; then
 		cp /root/SecurityOnion/files/master /etc/salt/master
 	else
-		cp $SCRIPTDIR/../files/master /etc/salt/master
+		cp "$SCRIPTDIR"/../files/master /etc/salt/master
 	fi
 
 	# Restart the service so it picks up the changes -TODO Enable service on CentOS
@@ -371,35 +367,35 @@ copy_master_config() {
 
 copy_minion_tmp_files() {
 
-  if [ $INSTALLTYPE == 'MASTER' ] || [ $INSTALLTYPE == 'EVAL' ] || [ $INSTALLTYPE == 'HELIXSENSOR' ] || [ $INSTALLTYPE == 'MASTERSEARCH' ]; then
-	echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
-	cp -Rv $TMP/pillar/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
-	if [ -d $TMP/salt ] ; then
-	  cp -Rv $TMP/salt/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
+	if [ "$INSTALLTYPE" == 'MASTER' ] || [ "$INSTALLTYPE" == 'EVAL' ] || [ "$INSTALLTYPE" == 'HELIXSENSOR' ] || [ "$INSTALLTYPE" == 'MASTERSEARCH' ]; then
+		echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
+		cp -Rv "$TMP"/pillar/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
+		if [ -d "$TMP"/salt ] ; then
+			cp -Rv "$TMP"/salt/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
+		fi
+	else
+		{
+			echo "scp pillar and salt files in $TMP to master /opt/so/saltstack";
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
+			scp -prv -i /root/.ssh/so.key "$TMP"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
+			scp -prv -i /root/.ssh/so.key "$TMP"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/salt/master/files/add_minion.sh "$MINION_ID";
+		} >> "$SETUPLOG" 2>&1
 	fi
-  else
-	echo "scp pillar and salt files in $TMP to master /opt/so/saltstack"
-	ssh -i /root/.ssh/so.key soremote@$MSRV mkdir -p /tmp/$MINION_ID/pillar >> "$SETUPLOG" 2>&1
-	ssh -i /root/.ssh/so.key soremote@$MSRV mkdir -p /tmp/$MINION_ID/schedules >> "$SETUPLOG" 2>&1
-	scp -prv -i /root/.ssh/so.key $TMP/pillar/minions/* soremote@$MSRV:/tmp/$MINION_ID/pillar/ >> "$SETUPLOG" 2>&1
-	scp -prv -i /root/.ssh/so.key $TMP/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules >> "$SETUPLOG" 2>&1
-	ssh -i /root/.ssh/so.key soremote@$MSRV sudo /opt/so/saltstack/salt/master/files/add_minion.sh $MINION_ID >> "$SETUPLOG" 2>&1
-	
-  fi
 
-  }
+	}
 
 copy_ssh_key() {
 
 	echo "Generating SSH key"
 	# Generate SSH key
 	mkdir -p /root/.ssh
-	cat /dev/zero | ssh-keygen -f /root/.ssh/so.key -t rsa -q -N ""
-	chown -R $SUDO_USER:$SUDO_USER /root/.ssh
+	ssh-keygen -f /root/.ssh/so.key -t rsa -q -N "" < /dev/zero
+	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
 	echo "Copying the SSH key to the master"
 	#Copy the key over to the master
-	ssh-copy-id -f -i /root/.ssh/so.key soremote@$MSRV
-
+	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
 }
 
 
@@ -534,12 +530,12 @@ disable_misc_network_features() {
 		# Flush any existing IPs
 		ip addr flush "$UNUSED_NIC" >> "$SETUPLOG" 2>&1
 	done
-    # Disable IPv6
-    { 
-        echo "net.ipv6.conf.all.disable_ipv6 = 1"
-        echo "net.ipv6.conf.default.disable_ipv6 = 1"
-        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-    } >> /etc/sysctl.conf
+	# Disable IPv6
+	{ 
+		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+	} >> /etc/sysctl.conf
 }
 
 docker_install() {
@@ -678,15 +674,15 @@ docker_seed_registry() {
 es_heapsize() {
 
 	# Determine ES Heap Size
-	if [ $TOTAL_MEM -lt 8000 ] ; then
+	if [ "$TOTAL_MEM" -lt 8000 ] ; then
 			ES_HEAP_SIZE="600m"
-	elif [ $TOTAL_MEM -ge 100000 ]; then
+	elif [ "$TOTAL_MEM" -ge 100000 ]; then
 			# Set a max of 25GB for heap size
 			# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
 			ES_HEAP_SIZE="25000m"
 	else
 			# Set heap size to 25% of available memory
-			ES_HEAP_SIZE=$(($TOTAL_MEM / 4))"m"
+			ES_HEAP_SIZE=$(( TOTAL_MEM / 4 ))"m"
 	fi
 
 }
@@ -697,19 +693,19 @@ filter_unused_nics() {
 
 	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
 	if [[ $BNICS ]]; then
-		for BONDNIC in ${BNICS[@]}; do
+		for BONDNIC in "${BNICS[@]}"; do
 			grep_string="$grep_string\|$BONDNIC"
 		done
 	fi
 
 	# Finally, set FNICS to any NICs we aren't using (and ignore interfaces that aren't of use)
-	FNICS=$(ip link | grep -vwe $grep_string | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
+	FNICS=$(ip link | grep -vwe "$grep_string" | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}')
 }
 
 fireeye_pillar() {
 
 	FIREEYEPILLARPATH=/opt/so/saltstack/pillar/fireeye
-	mkdir -p $FIREEYEPILLARPATH
+	mkdir -p "$FIREEYEPILLARPATH"
 
 	echo "" >> $FIREEYEPILLARPATH/init.sls
 	echo "fireeye:" >> $FIREEYEPILLARPATH/init.sls
@@ -732,14 +728,14 @@ fleet_pillar() {
 
 generate_passwords(){
   # Generate Random Passwords for Things
-  MYSQLPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  FLEETPASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  FLEETJWT=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  HIVEKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  CORTEXKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  CORTEXORGUSERKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  SENSORONIKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-  KRATOSKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+  MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
+  FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
 
 get_filesystem_nsm(){
@@ -752,11 +748,11 @@ get_log_size_limit() {
 	if [ -d /nsm ]; then
 		DISK_DIR="/nsm"
 	fi
-	DISK_SIZE_K=`df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}'`
+	DISK_SIZE_K=$(df $DISK_DIR |grep -v "^Filesystem" | awk '{print $2}')
 	PERCENTAGE=85
-	DISK_SIZE=DISK_SIZE_K*1000
-	PERCENTAGE_DISK_SPACE=`echo $(($DISK_SIZE*$PERCENTAGE/100))`
-	LOG_SIZE_LIMIT=$(($PERCENTAGE_DISK_SPACE/1000000000))
+	DISK_SIZE=$(( DISK_SIZE_K * 1000 ))
+	PERCENTAGE_DISK_SPACE=$(( DISK_SIZE * PERCENTAGE / 100 ))
+	LOG_SIZE_LIMIT=$(( PERCENTAGE_DISK_SPACE / 1000000000 ))
 
 }
 
@@ -780,11 +776,11 @@ get_main_ip() {
 }
 
 get_redirect() {
-  whiptail_set_redirect_info
-  whiptail_set_redirect
-  if [ "$REDIRECTINFO" == "OTHER" ]; then
-	whiptail_set_redirect_host
-  fi
+	whiptail_set_redirect_info
+	whiptail_set_redirect
+	if [ "$REDIRECTINFO" == "OTHER" ]; then
+		whiptail_set_redirect_host
+	fi
 }
 
 got_root() {
@@ -797,20 +793,18 @@ got_root() {
 
 install_cleanup() {
 
-	echo "install_cleanup removing the following files:"
-	ls -lR $TMP
+	echo "Installer removing the following files:"
+	ls -lR "$TMP"
 
 	# Clean up after ourselves
-	rm -rf /root/installtmp
+	rm -rf "$TMP"
 
 }
 
 install_prep() {
 
 	# Create a tmp space that isn't in /tmp
-	mkdir /root/installtmp
-	mkdir /root/installtmp/pillar
-	mkdir /root/installtmp/pillar/minions
+	mkdir -p /root/installtmp/pillar/minions
 	TMP=/root/installtmp
 
 }
@@ -953,32 +947,32 @@ minio_generate_keys() {
 
 	local charSet="[:graph:]"
 
-	ACCESS_KEY=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 20)
-	ACCESS_SECRET=$(cat /dev/urandom | tr -cd "$charSet" | tr -d \' | tr -d \" | head -c 40)
+	ACCESS_KEY=$(tr -cd "$charSet" < /dev/urandom | tr -d \' | tr -d \" | head -c 20)
+	ACCESS_SECRET=$(tr -cd "$charSet" < /dev/urandom | tr -d \' | tr -d \" | head -c 40)
 
 }
 
 network_setup() {
-    {
-        echo "Finishing up network setup";
+	{
+		echo "Finishing up network setup";
 
-        echo "... Verifying all network devices are managed by Network Manager";
-        check_network_manager_conf;
+		echo "... Verifying all network devices are managed by Network Manager";
+		check_network_manager_conf;
 
-        echo "... Disabling unused NICs";
-        disable_misc_network_features;
+		echo "... Disabling unused NICs";
+		disable_misc_network_features;
 
-        echo "... Setting ONBOOT for management interface";
-        if ! netplan > /dev/null 2>&1; then
-            nmcli con mod "$MAININT" connection.autoconnect "yes";
-        fi
+		echo "... Setting ONBOOT for management interface";
+		if ! netplan > /dev/null 2>&1; then
+			nmcli con mod "$MAININT" connection.autoconnect "yes";
+		fi
 
-        echo "... Copying 99-so-checksum-offload-disable";
-        cp "$SCRIPTDIR/install_scripts/99-so-checksum-offload-disable" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+		echo "... Copying 99-so-checksum-offload-disable";
+		cp "$SCRIPTDIR/install_scripts/99-so-checksum-offload-disable" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
-        echo "... Modifying 99-so-checksum-offload-disable";
-        sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
-    } >> "$SETUPLOG" 2>&1
+		echo "... Modifying 99-so-checksum-offload-disable";
+		sed -i "s/\$MAININT/${MAININT}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+	} >> "$SETUPLOG" 2>&1
 }
 
 node_pillar() {
