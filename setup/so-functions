@@ -130,12 +130,15 @@ secrets_pillar(){
 bro_logs_enabled() {
 	echo "Enabling Bro Logs" >> "$SETUPLOG" 2>&1
 
-	echo "brologs:" > pillar/brologs.sls
-	echo "  enabled:" >> pillar/brologs.sls
+	local brologs_pillar="$SCRIPTDIR/pillar/brologs.sls"
+
+	printf '%s\n'\
+		"brologs:"\
+		"  enabled:" > "$brologs_pillar"
 
 	if [ "$MASTERADV" = 'ADVANCED' ]; then
 		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> pillar/brologs.sls
+			echo "    - $BLOG" | tr -d '"' >> "$brologs_pillar"
 		done
 	else
 		printf '%s\n'\
@@ -176,7 +179,7 @@ bro_logs_enabled() {
 			"    - weird"\
 			"    - mysql"\
 			"    - socks"\
-			"    - x509" >> pillar/brologs.sls
+			"    - x509" >> "$brologs_pillar"
 	fi
 }
 
@@ -307,42 +310,43 @@ collect_webuser_inputs() {
 	done
 }
 
+# $1 => install type
 configure_minion() {
+	local TYPE=$1
+	echo "Configuring minion type as $TYPE" >> "$SETUPLOG" 2>&1
+	echo "role: so-$TYPE" > /etc/salt/grains
 
-  # You have to pass the TYPE to this function so it knows if its a master or not
-  local TYPE=$1
-  echo "Configuring minion type as $TYPE" >> "$SETUPLOG" 2>&1
-  touch /etc/salt/grains
-  echo "role: so-$TYPE" > /etc/salt/grains
-  if [ "$TYPE" == 'master' ] || [ "$TYPE" == 'eval' ] || [ "$TYPE" == 'mastersearch' ]; then
-	echo "master: $HOSTNAME" > /etc/salt/minion
+	local minion_config=/etc/salt/minion
+
+	echo "id: $MINION_ID" > "$minion_config"
+
+	case "$TYPE" in
+		'helix')
+			echo "master: $HOSTNAME" >> "$minion_config"
+			;;
+		'master' | 'eval' | 'mastersearch')
+			printf '%s\n'\
+				"master: $HOSTNAME"\
+				"mysql.host: '$MAINIP'"\
+				"mysql.port: 3306"\
+				"mysql.user: 'root'" >> "$minion_config"
+			if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
+				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
+			else
+				OLDPASS=$(grep "mysql" /opt/so/saltstack/pillar/secrets.sls | awk '{print $2}')
+				echo "mysql.pass: '$OLDPASS'" >> "$minion_config"
+			fi
+			;;
+		*)
+			echo "master: $MSRV" >> "$minion_config"
+			;;
+	esac
+
 	printf '%s\n'\
-		"id: $MINION_ID"\
-		"mysql.host: '$MAINIP'"\
-		"mysql.port: 3306"\
-		"mysql.user: 'root'" >> /etc/salt/minion
-	if [ ! -f /opt/so/saltstack/pillar/secrets.sls ]; then
-	  echo "mysql.pass: '$MYSQLPASS'" >> /etc/salt/minion
-	else
-	  OLDPASS=$(grep "mysql" /opt/so/saltstack/pillar/secrets.sls | awk '{print $2}')
-	  echo "mysql.pass: '$OLDPASS'" >> /etc/salt/minion
-	fi
-  elif [ "$TYPE" == 'helix' ]; then
-	echo "master: $HOSTNAME" > /etc/salt/minion
-	echo "id: $MINION_ID" >> /etc/salt/minion
-  elif [ $"TYPE" == 'fleet' ]; then
-	echo "master: $MSRV" > /etc/salt/minion
-	echo "id: $MINION_ID" >> /etc/salt/minion
-  else
-	echo "master: $MSRV" > /etc/salt/minion
-	echo "id: $MINION_ID" >> /etc/salt/minion
+		"use_superseded:"\
+		"  - module.run" >> /etc/salt/minion
 
-  fi
-
-  echo "use_superseded:" >> /etc/salt/minion
-  echo "  - module.run" >> /etc/salt/minion
-
-  service salt-minion restart
+	service salt-minion restart
 
 }
 
@@ -361,25 +365,26 @@ copy_master_config() {
 }
 
 copy_minion_tmp_files() {
-
-	if [ "$INSTALLTYPE" == 'MASTER' ] || [ "$INSTALLTYPE" == 'EVAL' ] || [ "$INSTALLTYPE" == 'HELIXSENSOR' ] || [ "$INSTALLTYPE" == 'MASTERSEARCH' ]; then
-		echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
-		cp -Rv "$TMP"/pillar/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
-		if [ -d "$TMP"/salt ] ; then
-			cp -Rv "$TMP"/salt/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
-		fi
-	else
-		{
-			echo "scp pillar and salt files in $TMP to master /opt/so/saltstack";
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
-			scp -prv -i /root/.ssh/so.key "$TMP"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
-			scp -prv -i /root/.ssh/so.key "$TMP"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/salt/master/files/add_minion.sh "$MINION_ID";
-		} >> "$SETUPLOG" 2>&1
-	fi
-
-	}
+	case "$INSTALLTYPE" in
+		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH')
+			echo "Copying pillar and salt files in $TMP to /opt/so/saltstack"
+			cp -Rv "$TMP"/pillar/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
+			if [ -d "$TMP"/salt ] ; then
+				cp -Rv "$TMP"/salt/ /opt/so/saltstack/ >> "$SETUPLOG" 2>&1
+			fi
+			;;
+		*)
+			{
+				echo "scp pillar and salt files in $TMP to master /opt/so/saltstack";
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
+				scp -prv -i /root/.ssh/so.key "$TMP"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
+				scp -prv -i /root/.ssh/so.key "$TMP"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/salt/master/files/add_minion.sh "$MINION_ID";
+			} >> "$SETUPLOG" 2>&1
+			;;
+	esac
+}
 
 copy_ssh_key() {
 
@@ -529,25 +534,23 @@ docker_install() {
 		yum -y update
 		yum -y install docker-ce
 	else
-		if [ "$INSTALLTYPE" == 'MASTER' ] || [ "$INSTALLTYPE" == 'EVAL' ]; then
-			apt-get update >> "$SETUPLOG" 2>&1
-			if [ $OSVER != "xenial" ]; then
-				apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
-			else
-				apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
-			fi
+		case "$INSTALLTYPE" in
+			'MASTER' | 'EVAL')
+				apt-get update >> "$SETUPLOG" 2>&1
+				;;
+			*)
+				{
+					apt-key add "$TMP"/gpg/docker.pub;
+					add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
+					apt-get update;
+				} >> "$SETUPLOG" 2>&1
+				;;
+		esac 
+		
+		if [ $OSVER != "xenial" ]; then
+			apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
 		else
-			{
-				apt-key add "$TMP"/gpg/docker.pub;
-				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
-				apt-get update;
-			} >> "$SETUPLOG" 2>&1
-
-			if [ $OSVER != "xenial" ]; then
-				apt-get -y install docker-ce python3-docker >> "$SETUPLOG" 2>&1
-			else
-				apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
-			fi
+			apt-get -y install docker-ce python-docker >> "$SETUPLOG" 2>&1
 		fi
 	fi
 	docker_registry
@@ -571,45 +574,45 @@ docker_registry() {
 
 }
 docker_seed_registry() {
-	VERSION="HH$SOVERSION"
-	TRUSTED_CONTAINERS=(\
-		"so-core:$VERSION" \
-		"so-filebeat:$VERSION" \
-		"so-logstash:$VERSION" \
-		"so-idstools:$VERSION" \
-		"so-redis:$VERSION" \
-		"so-steno:$VERSION" \
-		"so-suricata:$VERSION" \
-		"so-telegraf:$VERSION" \
-		"so-zeek:$VERSION"
-	)
-	if [ "$INSTALLTYPE" != 'HELIXSENSOR' ]; then
-		TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
-			"so-acng:$VERSION" \
-			"so-thehive-cortex:$VERSION" \
-			"so-curator:$VERSION" \
-			"so-domainstats:$VERSION" \
-			"so-elastalert:$VERSION" \
-			"so-elasticsearch:$VERSION" \
-			"so-fleet:$VERSION" \
-			"so-fleet-launcher:$VERSION" \
-			"so-freqserver:$VERSION" \
-			"so-grafana:$VERSION" \
-			"so-influxdb:$VERSION" \
-			"so-kibana:$VERSION" \
-			"so-mysql:$VERSION" \
-			"so-navigator:$VERSION" \
-			"so-playbook:$VERSION" \
-			"so-soc:$VERSION" \
-			"so-kratos:$VERSION" \
-			"so-soctopus:$VERSION" \
-			"so-thehive:$VERSION" \
-			"so-thehive-es:$VERSION" \
-			"so-wazuh:$VERSION" \
-		)
-	fi
+	local VERSION="HH$SOVERSION"
 
 	if [ ! -f /nsm/docker-registry/docker/so-dockers-"$VERSION".tar ]; then
+		local TRUSTED_CONTAINERS=(\
+			"so-core:$VERSION" \
+			"so-filebeat:$VERSION" \
+			"so-logstash:$VERSION" \
+			"so-idstools:$VERSION" \
+			"so-redis:$VERSION" \
+			"so-steno:$VERSION" \
+			"so-suricata:$VERSION" \
+			"so-telegraf:$VERSION" \
+			"so-zeek:$VERSION"
+		)
+		if [ "$INSTALLTYPE" != 'HELIXSENSOR' ]; then
+			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
+				"so-acng:$VERSION" \
+				"so-thehive-cortex:$VERSION" \
+				"so-curator:$VERSION" \
+				"so-domainstats:$VERSION" \
+				"so-elastalert:$VERSION" \
+				"so-elasticsearch:$VERSION" \
+				"so-fleet:$VERSION" \
+				"so-fleet-launcher:$VERSION" \
+				"so-freqserver:$VERSION" \
+				"so-grafana:$VERSION" \
+				"so-influxdb:$VERSION" \
+				"so-kibana:$VERSION" \
+				"so-mysql:$VERSION" \
+				"so-navigator:$VERSION" \
+				"so-playbook:$VERSION" \
+				"so-soc:$VERSION" \
+				"so-kratos:$VERSION" \
+				"so-soctopus:$VERSION" \
+				"so-thehive:$VERSION" \
+				"so-thehive-es:$VERSION" \
+				"so-wazuh:$VERSION" \
+			)
+		fi
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
 			# Pull down the trusted docker image
 			echo "Downloading $i"
@@ -645,7 +648,7 @@ es_heapsize() {
 
 filter_unused_nics() {
 	# Set the main NIC as the default grep search string
-	grep_string=$MNIC
+	local grep_string="$MNIC"
 
 	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
 	if [[ $BNICS ]]; then
@@ -660,7 +663,7 @@ filter_unused_nics() {
 
 fireeye_pillar() {
 
-	FIREEYEPILLARPATH=/opt/so/saltstack/pillar/fireeye
+	local FIREEYEPILLARPATH=/opt/so/saltstack/pillar/fireeye
 	mkdir -p "$FIREEYEPILLARPATH"
 
 	printf '%s\n'\
@@ -673,7 +676,7 @@ fireeye_pillar() {
 
 fleet_pillar() {
 
-	PILLARFILE="$TMP"/pillar/minions/"$MINION_ID".sls
+	local PILLARFILE="$TMP"/pillar/minions/"$MINION_ID".sls
 
 	# Create the fleet pillar
 	printf '%s\n'\
@@ -701,7 +704,7 @@ get_filesystem_nsm(){
 
 get_log_size_limit() {
 
-	DISK_DIR="/"
+	local DISK_DIR="/"
 	if [ -d /nsm ]; then
 		DISK_DIR="/nsm"
 	fi
@@ -766,6 +769,7 @@ install_prep() {
 
 }
 
+# TODO: figure out if this is necessary
 install_master() {
 
 	# Install the salt master package
@@ -984,7 +988,6 @@ patch_schedule_os_new() {
 }
 
 reserve_group_ids() {
-
 	# This is a hack to fix CentOS from taking group IDs that we need
 	groupadd -g 928 kratos
 	groupadd -g 930 elasticsearch
@@ -993,13 +996,10 @@ reserve_group_ids() {
 	groupadd -g 933 elastalert
 	groupadd -g 934 curator
 	groupadd -g 937 zeek
-	groupadd -g 939 socore
 	groupadd -g 940 suricata
 	groupadd -g 941 stenographer
 	groupadd -g 945 ossec
 	groupadd -g 946 cyberchef
-	groupadd -g 947 soremote
-
 }
 
 saltify() {
