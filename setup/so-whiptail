@@ -15,17 +15,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+source "./so-variables"
 
 whiptail_basic_bro() {
 
 	[ -z "$QUIET" ] && return
 
 	BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the number of bro processes:" 10 75 $LBPROCS 3>&1 1>&2 2>&3)
+	"Enter the number of bro processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_basic_suri() {
@@ -33,7 +33,7 @@ whiptail_basic_suri() {
 	[ -z "$QUIET" ] && return
 
 	BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the number of Suricata Processes:" 10 75 $LBPROCS 3>&1 1>&2 2>&3)
+	"Enter the number of Suricata Processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -44,7 +44,7 @@ whiptail_bro_pins() {
 
 	[ -z "$QUIET" ] && return
 	
-	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $LBPROCS cores to pin Bro to:" 20 75 12 "${LISTCORES[@]}" 3>&1 1>&2 2>&3 )
+	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list[@]}" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -68,8 +68,8 @@ whiptail_bond_nics() {
 	[ -z "$QUIET" ] && return
 
 	local nic_list=()
-	for FNIC in "${FNICS[@]}"; do
-		nic_list+=("$FNIC" "Interface" "OFF")
+	for filtered_nic in "${filtered_nics[@]}"; do
+		nic_list+=("$filtered_nic" "Interface" "OFF")
 	done
 
 	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
@@ -102,9 +102,9 @@ whiptail_cancel() {
 
 	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
 	if [ -d "/root/installtmp" ]; then
-		echo "/root/installtmp exists" >> $SETUPLOG 2>&1
-		install_cleanup >> $SETUPLOG 2>&1
-		echo "/root/installtmp removed" >> $SETUPLOG 2>&1
+		echo "/root/installtmp exists" >> $setup_log 2>&1
+		install_cleanup >> $setup_log 2>&1
+		echo "/root/installtmp removed" >> $setup_log 2>&1
 	fi
 	exit
 
@@ -325,7 +325,8 @@ whiptail_homenet_master() {
 	[ -z "$QUIET" ] && return
 
 	# Ask for the HOME_NET on the master
-	HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
+	export home_network_master
+	home_network_master=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
@@ -342,9 +343,10 @@ whiptail_homenet_sensor() {
 
 	local exitstatus=$?
 	if [ $exitstatus == 0 ]; then
-		HNSENSOR=inherit
+		export home_network_sensor=inherit
 	else
-		HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
+		export home_network_sensor
+		home_network_sensor=$(whiptail --title "Security Onion Setup" --inputbox \
 		"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
@@ -357,7 +359,8 @@ whiptail_install_type() {
 	[ -z "$QUIET" ] && return
 
 	# What kind of install are we doing?
-	INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
+	export install_type
+	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose Install Type:" 20 75 13 \
 	"SENSOR" "Create a forward only sensor" ON \
 	"SEARCHNODE" "Add a Search Node with parsing" OFF \
@@ -382,9 +385,9 @@ whiptail_log_size_limit() {
 
 	[ -z "$QUIET" ] && return
 
-	 LOG_SIZE_LIMIT=$(whiptail --title "Security Onion Setup" --inputbox \
+	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
-	By default, this is set to 85% of the disk space allotted for /nsm." 10 75 $LOG_SIZE_LIMIT 3>&1 1>&2 2>&3)
+	By default, this is set to 85% of the disk space allotted for /nsm." 10 75 "$log_size_limit" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -440,13 +443,13 @@ whiptail_management_nic() {
 
 	[ -z "$QUIET" ] && return
 
-	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${NICS[@]}" 3>&1 1>&2 2>&3 )
+	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${all_nics[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$MNIC" ]
 	do
-		MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${NICS[@]}" 3>&1 1>&2 2>&3 )
+		MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${all_nics[@]}" 3>&1 1>&2 2>&3 )
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
@@ -483,7 +486,7 @@ whiptail_make_changes() {
 
 	[ -z "$QUIET" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $INSTALLTYPE. Please hit YES to make changes or NO to cancel." 8 75
+	whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $install_type. Please hit YES to make changes or NO to cancel." 8 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -495,7 +498,7 @@ whiptail_management_server() {
 	[ -z "$QUIET" ] && return
 
 	MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your Master Server HOSTNAME. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
+	"Enter your Master Server hostname. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -630,7 +633,7 @@ whiptail_node_ls_pipeline_worker() {
 	[ -z "$QUIET" ] && return
 
 	LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 $CPUCORES 3>&1 1>&2 2>&3)
+	"\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 "$cpu_cores" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -895,8 +898,8 @@ whiptail_setup_complete() {
 
 	[ -z "$QUIET" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. Press Enter to reboot." 8 75
-	install_cleanup >> $SETUPLOG 2>&1
+	whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $install_type. Press Enter to reboot." 8 75
+	install_cleanup >> $setup_log 2>&1
 
 }
 
@@ -904,8 +907,8 @@ whiptail_setup_failed() {
 
 	[ -z "$QUIET" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details. Press Enter to reboot." 8 75
-	install_cleanup >> $SETUPLOG 2>&1
+	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Enter to reboot." 8 75
+	install_cleanup >> $setup_log 2>&1
 
 }
 
@@ -925,8 +928,9 @@ whiptail_suricata_pins() {
 
 	[ -z "$QUIET" ] && return
 
-	FILTEREDCORES=$(echo "${LISTCORES[@]}" "${BROPINS[@]}" | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
-	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 75 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
+	local filtered_cores
+	filtered_cores=$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
+	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_cores[@]}" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -971,13 +975,10 @@ whiptail_you_sure() {
 
 	[ -z "$QUIET" ] && return
 
-
-
-	echo "whiptail_you_sure called" >> $SETUPLOG 2>&1
+	echo "whiptail_you_sure called" >> $setup_log 2>&1
 	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
 
 	local exitstatus=$?
-	echo "whiptail_you_sure returning $exitstatus" >> $SETUPLOG 2>&1
 	return $exitstatus
 
 }
