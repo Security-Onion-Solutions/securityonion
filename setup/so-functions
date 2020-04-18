@@ -259,6 +259,7 @@ clear_master() {
 }
 
 collect_soremote_inputs() {
+	whiptail_create_soremote_user
 	SCMATCH=no
 	while [ $SCMATCH != yes ]; do
 		whiptail_create_soremote_user_password1
@@ -268,6 +269,7 @@ collect_soremote_inputs() {
 }
 
 collect_adminuser_inputs() {
+	whiptail_create_admin_user
 	APMATCH=no
 	while [ $APMATCH != yes ]; do
 		whiptail_create_admin_user_password1
@@ -589,7 +591,6 @@ docker_seed_registry() {
 				"so-elastalert:$VERSION" \
 				"so-elasticsearch:$VERSION" \
 				"so-fleet:$VERSION" \
-				"so-fleet-launcher:$VERSION" \
 				"so-freqserver:$VERSION" \
 				"so-grafana:$VERSION" \
 				"so-influxdb:$VERSION" \
@@ -609,9 +610,11 @@ docker_seed_registry() {
 				"so-strelka-filestream:$VERSION" 
 			)
 		fi
+		local initial_percent=26
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
+			if [ "$install_type" != 'HELIXSENSOR' ]; then ((intial_percent++)); else ((initial_percent+=6)); fi
 			# Pull down the trusted docker image
-			echo "Downloading $i"
+			set_progress_str "$initial_percent" "Downloading $i"
 			docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
 			# Tag it with the new registry destination
 			docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
@@ -666,6 +669,12 @@ generate_passwords(){
 
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+}
+
+gen_ca() {
+	salt_checkin
+	salt-call state.apply -l info ca >> $setup_log 2>&1
+	salt-call state.apply -l info ssl >> $setup_log 2>&1
 }
 
 get_redirect() {
@@ -899,6 +908,12 @@ patch_schedule_os_new() {
 		done
 	done
 
+}
+
+print_salt_state_apply() {
+	local state=$1
+
+	echo "Applying $state Salt state"
 }
 
 reserve_group_ids() {
