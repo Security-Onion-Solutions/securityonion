@@ -291,6 +291,29 @@ clear_master() {
 
 }
 
+collect_webuser_inputs() {
+	# Get a password for the web admin user
+	VALIDUSER=no
+	while [ $VALIDUSER != yes ]; do
+		whiptail_create_web_user
+		if so-user valemail "$WEBUSER"; then
+			VALIDUSER=yes
+		else
+			whiptail_invalid_user_warning
+		fi
+	done
+
+	WPMATCH=no
+	while [ $WPMATCH != yes ]; do
+		whiptail_create_web_user_password1
+		if echo "$WEBPASSWD1" | so-user valpass; then
+			whiptail_create_web_user_password2
+			check_web_pass
+		else
+			whiptail_invalid_pass_warning
+		fi
+	done
+}
 configure_minion() {
 
   # You have to pass the TYPE to this function so it knows if its a master or not
