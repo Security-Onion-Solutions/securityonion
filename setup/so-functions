@@ -57,52 +57,60 @@ add_master_hostfile() {
 # $2 => uid
 # $3 => gid
 # $4 => home dir
-# $5 => create home dir
-# $6 => (optional) password variable
+# $5 => (optional) password variable
 so_add_user() {
-	echo "Add $1 user" >> "$SETUPLOG" 2>&1
-	groupadd --gid "$3" "$1"
-	
+	local username=$1
+	local uid=$2
+	local gid=$3
+	local home_dir=$4
+	if [ "$5" ]; then local pass=$5; fi
 
-	if [ "$5" = 0 ]; then
-		useradd --uid "$2" --gid "$3" --home-dir "$4" --no-create-home "$1"
-	else
-		useradd --uid "$2" --gid "$3" --home-dir "$4" "$1"
-	fi
-	
+	echo "Add $username user" >> "$SETUPLOG" 2>&1
+	groupadd --gid "$gid" "$username"
+	useradd --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
+
 	# If a password has been passed in, set the password
-	if [ "$6" ]; then
-		echo "$1":"$6" | chpasswd --crypt-method=SHA512
+	if [ "$pass" ]; then
+		echo "$username":"$pass" | chpasswd --crypt-method=SHA512
 	fi
 }
 
 add_socore_user_master() {
-	so_add_user "socore" "939" "939" "/opt/so" 1
+	so_add_user "socore" "939" "939" "/opt/so"
 }
 
 add_soremote_user_master() {
-	so_add_user "soremote" "947" "947" "/home/soremote" 1 "$SOREMOTEPASS1"
+	so_add_user "soremote" "947" "947" "/home/soremote" "$SOREMOTEPASS1"
 }
 
-add_socore_user_notmaster() {
-	so_add_user "soremote" "939" "939" "/opt/so" 0
+# $1 => file to wait for
+# $2 => max attempts
+# $3 => wait interval
+wait_for_file() {
+	local max_attempts=$2
+	local cur_attempts=0
+	local filename=$1
+	local wait_interval=$3
+	local total_time=$(( max_attempts * wait_interval ))
+	local date
+	date=$(date)
+
+	while [[ $cur_attempts < $max_attempts ]]; do
+		if [ -f "$filename" ]; then
+			echo "File $filename already exists at $date"
+			return
+		else
+			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..."
+			((cur_attempts++))
+			sleep "$wait_interval"
+		fi
+	done
+	echo "Could not find $filename after waiting ${total_time}s"
+	return 1
 }
 
 wait_for_identity_db_to_exist() {
-  MAXATTEMPTS=30
-  attempts=0
-  while [[ $attempts -lt $MAXATTEMPTS ]]; do
-	# Check and see if the DB file is in there
-	if [ -f /opt/so/conf/kratos/db/db.sqlite ]; then
-	  echo "Database file exists at $(date)"
-	  return 0
-	else
-	  echo "Identity database does not yet exist; waiting 5 seconds and will check again ($attempts/$MAXATTEMPTS)..."
-	  sleep 5
-	  attempts=$((attempts+1))      
-	fi
-  done
-  return 1
+	return "$(wait_for_file /opt/so/conf/kratos/db/db.sqlite 30 5)"
 }
 
 add_web_user() {
@@ -122,7 +130,7 @@ secrets_pillar(){
 		"  mysql: $MYSQLPASS"\
 		"  fleet: $FLEETPASS"\
 		"  fleet_jwt: $FLEETJWT"\
-		"  fleet_enroll-secret: False" >> /opt/so/saltstack/pillar/secrets.sls
+		"  fleet_enroll-secret: False" > /opt/so/saltstack/pillar/secrets.sls
   fi
 }
 
@@ -202,18 +210,13 @@ check_admin_pass() {
 }
 
 check_hive_init_then_reboot() {
-	WAIT_STEP=0
-	MAX_WAIT=100
 
-	until [ -f /opt/so/state/thehive.txt ] ; do
-		WAIT_STEP=$(( WAIT_STEP + 1 ))
-		echo "Waiting on the_hive to init ($WAIT_STEP/$MAX_WAIT)..."
-		if [ ${WAIT_STEP} -gt ${MAX_WAIT} ]; then
-			echo "ERROR: We waited ${MAX_WAIT} seconds but the_hive is not working."
-			return 5
-		fi
-		sleep 1s;
-	done
+	local return_val
+	return_val="$(wait_for_file /opt/so/state/thehive.txt 20 5)"
+
+	if [ "$return_val" != 0 ]; then
+		return "$return_val"
+	fi
 
 	docker stop so-thehive
 	docker rm so-thehive
