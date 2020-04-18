@@ -581,75 +581,59 @@ docker_registry() {
 
 }
 docker_seed_registry() {
-  VERSION="HH$SOVERSION"
-  if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
-	TRUSTED_CONTAINERS=( \
-	"so-acng:$VERSION" \
-	"so-core:$VERSION" \
-	"so-thehive-cortex:$VERSION" \
-	"so-curator:$VERSION" \
-	"so-domainstats:$VERSION" \
-	"so-elastalert:$VERSION" \
-	"so-elasticsearch:$VERSION" \
-	"so-filebeat:$VERSION" \
-	"so-fleet:$VERSION" \
-	"so-fleet-launcher:$VERSION" \
-	"so-freqserver:$VERSION" \
-	"so-grafana:$VERSION" \
-	"so-idstools:$VERSION" \
-	"so-influxdb:$VERSION" \
-	"so-kibana:$VERSION" \
-	"so-logstash:$VERSION" \
-	"so-mysql:$VERSION" \
-	"so-navigator:$VERSION" \
-	"so-playbook:$VERSION" \
-	"so-redis:$VERSION" \
-	"so-soc:$VERSION" \
-	"so-kratos:$VERSION" \
-	"so-soctopus:$VERSION" \
-	"so-steno:$VERSION" \
-	#"so-strelka:$VERSION" \
-	"so-suricata:$VERSION" \
-	"so-telegraf:$VERSION" \
-	"so-thehive:$VERSION" \
-	"so-thehive-es:$VERSION" \
-	"so-wazuh:$VERSION" \
-	"so-zeek:$VERSION" )
-  else
-	TRUSTED_CONTAINERS=( \
-	"so-core:$VERSION" \
-	"so-filebeat:$VERSION" \
-	"so-idstools:$VERSION" \
-	"so-logstash:$VERSION" \
-	"so-redis:$VERSION" \
-	#"so-sensoroni:$VERSION" \
-	"so-steno:$VERSION" \
-	"so-suricata:$VERSION" \
-	"so-telegraf:$VERSION" \
-	"so-zeek:$VERSION" )
-  fi
+	VERSION="HH$SOVERSION"
+	TRUSTED_CONTAINERS=(\
+		"so-core:$VERSION" \
+		"so-filebeat:$VERSION" \
+		"so-logstash:$VERSION" \
+		"so-idstools:$VERSION" \
+		"so-redis:$VERSION" \
+		"so-steno:$VERSION" \
+		"so-suricata:$VERSION" \
+		"so-telegraf:$VERSION" \
+		"so-zeek:$VERSION"
+	)
+	if [ "$INSTALLTYPE" != 'HELIXSENSOR' ]; then
+		TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
+			"so-acng:$VERSION" \
+			"so-thehive-cortex:$VERSION" \
+			"so-curator:$VERSION" \
+			"so-domainstats:$VERSION" \
+			"so-elastalert:$VERSION" \
+			"so-elasticsearch:$VERSION" \
+			"so-fleet:$VERSION" \
+			"so-fleet-launcher:$VERSION" \
+			"so-freqserver:$VERSION" \
+			"so-grafana:$VERSION" \
+			"so-influxdb:$VERSION" \
+			"so-kibana:$VERSION" \
+			"so-mysql:$VERSION" \
+			"so-navigator:$VERSION" \
+			"so-playbook:$VERSION" \
+			"so-soc:$VERSION" \
+			"so-kratos:$VERSION" \
+			"so-soctopus:$VERSION" \
+			"so-thehive:$VERSION" \
+			"so-thehive-es:$VERSION" \
+			"so-wazuh:$VERSION" \
+		)
+	fi
 
-  if [ ! -f /nsm/docker-registry/docker/so-dockers-$VERSION.tar ]; then
-	# Download the container from the interwebs
-	for i in "${TRUSTED_CONTAINERS[@]}"
-	do
-	  # Pull down the trusted docker image
-	  echo "Downloading $i"
-	  docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
-	  # Tag it with the new registry destination
-	  docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
-	  docker push $HOSTNAME:5000/soshybridhunter/$i
-	done
+	if [ ! -f /nsm/docker-registry/docker/so-dockers-"$VERSION".tar ]; then
+		for i in "${TRUSTED_CONTAINERS[@]}"; do
+			# Pull down the trusted docker image
+			echo "Downloading $i"
+			docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+			# Tag it with the new registry destination
+			docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
+			docker push "$HOSTNAME":5000/soshybridhunter/"$i"
+		done
 
-	for i in "${TRUSTED_CONTAINERS[@]}"
-	do
-	  echo "Removing $i locally"
-	  docker rmi soshybridhunter/$i
-	done
-  else
-	# We already have the goods son
-	rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
-  fi
+		# Prune any images that aren't used by containers
+		docker image prune -af
+	else
+		rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
+	fi
 
 }
 
