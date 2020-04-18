@@ -1004,179 +1004,133 @@ reserve_group_ids() {
 
 saltify() {
 
-  # Install updates and Salt
-  if [ $OS = 'centos' ]; then
-	if [ $INSTALLTYPE = 'MASTER' ] || [ $INSTALLTYPE = 'EVAL' ] || [ $INSTALLTYPE = 'HELIXSENSOR' ] || [ $INSTALLTYPE = 'MASTERSEARCH' ]; then
-	  reserve_group_ids
-	  yum -y install epel-release
-	  yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
-	  cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
-	  sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
-	  yum -y install sqlite3 argon2 curl jq openssl
-	  # Download Ubuntu Keys in case master updates = 1
-	  mkdir -p /opt/so/gpg
-	  wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
-	  wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
-	  wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
-	  cat > /etc/yum.repos.d/wazuh.repo <<\EOF
-[wazuh_repo]
-gpgcheck=1
-gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
-enabled=1
-name=Wazuh repository
-baseurl=https://packages.wazuh.com/3.x/yum/
-protect=1
-EOF
+	# Install updates and Salt
+	if [ $OS = 'centos' ]; then
+		case "$INSTALLTYPE" in
+			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET') # FIXME: should this be separate?
+				yum instal -y mariadb-devel
+				;;
+			'HELIXSENSOR')
+				reserve_group_ids
+				yum -y install epel-release
+				yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
+				cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo
+				sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo
+				yum -y install sqlite3 argon2 curl jq openssl
+				# Download Ubuntu Keys in case master updates = 1
+				mkdir -p /opt/so/gpg
+				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub
+				wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+				wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
+				cp "$SCRIPTDIR/yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo
+				yum -y install salt-master-2019.2.3
+				systemctl enable salt-master
+				;;
+			*)
+				if [ "$MASTERUPDATES" -eq 1 ]; then
+					# Create the GPG Public Key for the Salt Repo
+					cp "$SCRIPTDIR"/public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key
+									
+					# Add the Wazuh Key
+					cp "$SCRIPTDIR"/public_keys/wazuh.pem /etc/pki/rpm-gpg/GPG-KEY-WAZUH
 
-		else
-
-			if [ "$MASTERUPDATES" = 1 ]; then
-
-				# Create the GPG Public Key for the Salt Repo
-				cp "$SCRIPTDIR"/public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key
-				
-				# Add the Wazuh Key
-				cp "$SCRIPTDIR"/public_keys/wazuh.pem /etc/pki/rpm-gpg/GPG-KEY-WAZUH
-
-				# Proxy is hating on me.. Lets just set it manually
-				echo "[salt-latest]" > /etc/yum.repos.d/salt-latest.repo
-				echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-latest.repo
-				echo "baseurl=https://repo.saltstack.com/py3/redhat/7/\$basearch/latest" >> /etc/yum.repos.d/salt-latest.repo
-				echo "failovermethod=priority" >> /etc/yum.repos.d/salt-latest.repo
-				echo "enabled=1" >> /etc/yum.repos.d/salt-latest.repo
-				echo "gpgcheck=1" >> /etc/yum.repos.d/salt-latest.repo
-				echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-latest.repo
-
-				# Proxy is hating on me.. Lets just set it manually
-				echo "[salt-2019.2]" > /etc/yum.repos.d/salt-2019-2.repo
-				echo "name=SaltStack Latest Release Channel for RHEL/Centos \$releasever" >> /etc/yum.repos.d/salt-2019-2.repo
-				echo "baseurl=https://repo.saltstack.com/py3/redhat/7/\$basearch/2019.2" >> /etc/yum.repos.d/salt-2019-2.repo
-				echo "failovermethod=priority" >> /etc/yum.repos.d/salt-2019-2.repo
-				echo "enabled=1" >> /etc/yum.repos.d/salt-2019-2.repo
-				echo "gpgcheck=1" >> /etc/yum.repos.d/salt-2019-2.repo
-				echo "gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key" >> /etc/yum.repos.d/salt-2019-2.repo
-
-				cat > /etc/yum.repos.d/wazuh.repo <<\EOF
-[wazuh_repo]
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
-enabled=1
-name=Wazuh repository
-baseurl=https://packages.wazuh.com/3.x/yum/
-protect=1
-EOF
-			else
-				yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
-				cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-2019-2.repo
-				sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
-cat > /etc/yum.repos.d/wazuh.repo <<\EOF
-[wazuh_repo]
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/GPG-KEY-WAZUH
-enabled=1
-name=Wazuh repository
-baseurl=https://packages.wazuh.com/3.x/yum/
-protect=1
-EOF
-	  fi
-	fi
-
-	yum clean expire-cache
-	yum -y install epel-release salt-minion-2019.2.3 yum-utils device-mapper-persistent-data lvm2 openssl jq
-	yum -y update exclude=salt*
-	systemctl enable salt-minion
-
-	if [ "$INSTALLTYPE" = 'MASTER' ] || [ "$INSTALLTYPE" = 'EVAL' ] || [ "$INSTALLTYPE" = 'HELIXSENSOR' ] || [ "$INSTALLTYPE" = 'MASTERSEARCH' ]; then
-	  yum -y install salt-master-2019.2.3 python3 python36-m2crypto salt-minion-2019.2.3 python36-dateutil python36-mysql python36-docker
-	  systemctl enable salt-master
-	elif [ "$INSTALLTYPE" = 'FLEET' ]; then 
-	  yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker python36-mysql 
+					# Copy repo files over
+					cp "$SCRIPTDIR"/yum_repos/salt-latest.repo /etc/yum.repos.d/salt-latest.repo
+					cp "$SCRIPTDIR"/yum_repos/salt-2019-2.repo /etc/yum.repos.d/salt-2019-2.repo
+				else
+					yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm
+					cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-2019-2.repo
+					sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo
+				fi
+				;;
+		esac
+		cp "$SCRIPTDIR/yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo
+		yum clean expire-cache
+		yum -y install epel-release\
+			salt-minion-2019.2.3\
+			python3\
+			python36-docker\
+			python36-dateutil\
+			python36-m2crypto\
+			python36-mysql\
+			yum-utils\
+			device-mapper-persistent-data\
+			lvm2\
+			openssl\
+			jq
+		yum -y update exclude=salt*
+		systemctl enable salt-minion
+		echo "exclude=salt*" >> /etc/yum.conf
 	else
-	  yum -y install salt-minion-2019.2.3 python3 python36-m2crypto python36-dateutil python36-docker
+		DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
+
+		if [ $OSVER != "xenial" ]; then
+			# Switch to Python 3 as default if this is not xenial
+			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10
+		fi
+		# Add the pre-requisites for installing docker-ce
+		apt-get -y install ca-certificates\
+			curl\
+			software-properties-common\
+			apt-transport-https\
+			openssl\
+			jq >> "$SETUPLOG" 2>&1
+
+		# Grab the version from the os-release file
+		local ubuntu_version
+		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
+
+		case "$INSTALLTYPE" in
+			'FLEET')
+				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$SETUPLOG" 2>&1; else apt-get -y install python-mysqldb >> "$SETUPLOG" 2>&1; fi
+				;;
+			'MASTER' | 'EVAL' | 'MASTERSEARCH') # TODO: should this also be HELIXSENSOR?
+				if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
+
+				# Add saltstack repo(s)
+				wget --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/3000/SALTSTACK-GPG-KEY.pub | apt-key add -
+				wget --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
+
+				# Add Docker repo
+				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+				# Get gpg keys
+				mkdir -p /opt/so/gpg
+				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/"$ubuntu_version"/amd64/latest/SALTSTACK-GPG-KEY.pub
+				wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
+				wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
+
+				# Get key and install wazuh
+				curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
+				# Add repo
+				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+				# Initialize the new repos
+				apt-get update >> "$SETUPLOG" 2>&1
+				# FIXME: Install salt-master on Ubuntu?
+				apt-get -y install sqlite3 argon2 openssl >> "$SETUPLOG" 2>&1
+				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$SETUPLOG" 2>&1; else apt-get -y install python-mysqldb >> "$SETUPLOG" 2>&1; fi
+				;;
+			*)
+				# Copy down the gpg keys and install them from the master
+				mkdir "$TMP"/gpg
+				echo "scp the gpg keys and install them from the master"
+				scp -v -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/gpg/* "$TMP"/gpg
+				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
+				apt-key add "$TMP"/gpg/SALTSTACK-GPG-KEY.pub
+				apt-key add "$TMP"/gpg/GPG-KEY-WAZUH
+				echo "deb http://repo.saltstack.com/apt/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+				;;
+		esac
+		apt-get update >> "$SETUPLOG" 2>&1
+		apt-get -y install salt-minion=2019.2.3+ds-1\
+					salt-common=2019.2.3+ds-1 >> "$SETUPLOG" 2>&1
+		apt-mark hold salt-minion salt-common
+		if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-dateutil python3-m2crypto >> "$SETUPLOG" 2>&1; else apt-get -y install python-dateutil python-m2crypto >> "$SETUPLOG" 2>&1; fi
 	fi
-	echo "exclude=salt*" >> /etc/yum.conf
-
-  # Our OS is not CentOS
-  else
-	DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
-
-	if [ $OSVER != "xenial" ]; then
-
-	  # Switch to Python 3 as default is this is not xenial
-	  update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10
-
-	fi
-	# Add the pre-requisites for installing docker-ce
-	apt-get -y install ca-certificates curl software-properties-common apt-transport-https openssl jq >> "$SETUPLOG" 2>&1
-
-	# Grab the version from the os-release file
-	UVER=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
-
-	# Nasty hack but required for now
-	if [ $INSTALLTYPE = 'MASTER' ] || [ $INSTALLTYPE = 'EVAL' ] || [ $INSTALLTYPE = 'MASTERSEARCH' ]; then
-
-	  if [ $OSVER != "xenial" ]; then
-		# Install the repo for salt py3 edition
-		wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/3000/SALTSTACK-GPG-KEY.pub | apt-key add -
-		wget --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
-		echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
-		echo "deb http://repo.saltstack.com/py3/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
-	  else
-		# Install the repo for salt
-		wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub | apt-key add -
-		wget --inet4-only -O - https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add -
-		echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest $OSVER main" > /etc/apt/sources.list.d/saltstack.list
-		echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
-	  fi
-	  # Lets get the docker repo added
-	  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-	  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-	  # Create a place for the keys
-	  mkdir -p /opt/so/gpg
-	  wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/$UVER/amd64/latest/SALTSTACK-GPG-KEY.pub
-	  wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg
-	  wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH
-
-	  # Get key and install wazuh
-	  curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
-	  # Add repo
-	  echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
-
-	  # Initialize the new repos
-	  apt-get update >> "$SETUPLOG" 2>&1
-	  if [ $OSVER != "xenial" ]; then
-		apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto sqlite3 argon2 curl jq openssl >> "$SETUPLOG" 2>&1
-		apt-mark hold salt-minion salt-common
-	  else
-		# Need to add python packages here
-		apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto sqlite3 argon2 curl jq openssl >> "$SETUPLOG" 2>&1
-		apt-mark hold salt-minion salt-common
-	  fi
-	else
-
-	  # Copy down the gpg keys and install them from the master
-	  mkdir $TMP/gpg
-	  echo "scp the gpg keys and install them from the master"
-	  scp -v -i /root/.ssh/so.key soremote@$MSRV:/opt/so/gpg/* $TMP/gpg
-	  echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH"
-	  apt-key add $TMP/gpg/SALTSTACK-GPG-KEY.pub
-	  apt-key add $TMP/gpg/GPG-KEY-WAZUH
-	  echo "deb http://repo.saltstack.com/apt/ubuntu/$UVER/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list
-	  echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
-	  # Initialize the new repos
-	  apt-get update >> "$SETUPLOG" 2>&1
-	  if [ $OSVER != "xenial" ]; then
-		apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python3-dateutil python3-m2crypto >> "$SETUPLOG" 2>&1
-		apt-mark hold salt-minion salt-common
-	  else
-		# Need to add python packages here
-		apt-get -y install salt-minion=2019.2.3+ds-1 salt-common=2019.2.3+ds-1 python-dateutil python-m2crypto >> "$SETUPLOG" 2>&1
-		apt-mark hold salt-minion salt-common
-	  fi
-	fi
-
-  fi
 
 }
 
@@ -1235,19 +1189,6 @@ salt_master_directories() {
 
 }
 
-salt_install_mysql_deps() {
-
-	if [ $OS = 'centos' ]; then
-		yum -y install mariadb-devel
-	elif [ $OS = 'ubuntu' ]; then
-		if [ $OSVER != "xenial" ]; then
-			apt-get -y install python3-mysqldb >> "$SETUPLOG" 2>&1
-		else
-			apt-get -y install python-mysqldb
-		fi
-	fi
-
-}
 
 sensor_pillar() {
 
