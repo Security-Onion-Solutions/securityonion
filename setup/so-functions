@@ -1430,21 +1430,20 @@ set_node_type() {
 }
 
 set_updates() {
-	echo "MASTERUPDATES is $MASTERUPDATES"
-	if [ $MASTERUPDATES == 'MASTER' ]; then
-		if [ $OS == 'centos' ]; then
+	if [ "$MASTERUPDATES" = 1 ]; then
+		echo "MASTERUPDATES is MASTER"
+		if [ $OS = 'centos' ]; then
 			if ! grep -q $MSRV /etc/yum.conf; then
 			echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
-		fi
-
+			fi
 		else
-
 		# Set it up so the updates roll through the master
 		echo "Acquire::http::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
 		echo "Acquire::https::Proxy \"http://$MSRV:3142\";" >> /etc/apt/apt.conf.d/00Proxy
-
-	fi
 		fi
+	else
+		echo "MASTERUPDATES is OPEN"
+	fi
 }
 
 set_version() {
