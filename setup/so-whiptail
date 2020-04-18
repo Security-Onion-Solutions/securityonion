@@ -268,6 +268,20 @@ whiptail_enable_components() {
 	"THEHIVE" "Enable TheHive" ON \
 	"PLAYBOOK" "Enable Playbook" ON \
 	"STRELKA" "Enable Strelka" ON 3>&1 1>&2 2>&3 )
+	
+	# Init the environment variables
+	GRAFANA=0
+	OSQUERY=0
+	WAZUH=0
+	THEHIVE=0
+	PLAYBOOK=0
+	STRELKA=0
+
+	# Set any variables to 1 if they exist in COMPONENTS
+	for component in "${COMPONENTS[@]}"; do
+		component="$(echo -e "$component" | tr -d '"')"
+		eval "$component"="1"	
+	done
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -659,9 +673,12 @@ whiptail_node_ls_input_batch_count() {
 
 }
 
+
+#TODO: helper function to display error message or exit if batch mode
+
 whiptail_passwords_dont_match() {
 
-	[ -z "$QUIET" ] && return
+	# exit_if_batch "Error string" Error code (int)
 
 	whiptail --title "Security Onion Setup" --msgbox "Passwords don't match. Please re-enter." 8 75
 
@@ -947,6 +964,8 @@ whiptail_node_updates() {
 whiptail_you_sure() {
 
 	[ -z "$QUIET" ] && return
+
+
 
 	echo "whiptail_you_sure called" >> $SETUPLOG 2>&1
 	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
