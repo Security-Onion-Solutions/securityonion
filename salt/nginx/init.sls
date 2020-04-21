@@ -33,10 +33,10 @@ nginxtmp:
     - group: 939
     - makedirs: True
 
-so-core:
+so-nginx:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-core:{{ VERSION }}
-    - hostname: so-core
+    - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
+    - hostname: so-nginx
     - user: socore
     - binds:
       - /opt/so:/opt/so:rw
