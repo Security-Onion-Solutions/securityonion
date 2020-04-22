@@ -46,10 +46,12 @@ whiptail_bro_pins() {
 
 	[ -n "$QUIET" ] && return
 	
-	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
+	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list[@]}" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	BROPINS=$(echo "$BROPINS" | tr -d '"')
 
 	IFS=' ' read -ra BROPINS <<< "$BROPINS"
 }
@@ -72,16 +74,18 @@ whiptail_bond_nics() {
 
 	filter_unused_nics
 
-	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
+	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$BNICS" ]
 	do
-		BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3  | tr -d '"')
+		BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
+
+	BNICS=$(echo "$BNICS" | tr -d '"')
 
 	IFS=' ' read -ra BNICS <<< "$BNICS"
 }
@@ -271,9 +275,11 @@ whiptail_enable_components() {
 	WAZUH "Enable Wazuh" ON \
 	THEHIVE "Enable TheHive" ON \
 	PLAYBOOK "Enable Playbook" ON \
-	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3  | tr -d '"')
+	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	COMPONENTS=$(echo "$COMPONENTS" | tr -d '"')
 
 	IFS=' ' read -ra COMPONENTS <<< "$COMPONENTS"
 
@@ -573,10 +579,12 @@ whiptail_master_adv_service_brologs() {
 	"weird" "Zeek Weird Logs" ON \
 	"mysql" "MySQL Logs" ON \
 	"socks" "SOCKS Logs" ON \
-	"x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 | tr -d '"')
+	"x509" "x.509 Logs" ON 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	BLOGS=$(echo "$BLOGS" | tr -d '"')
 
 	IFS=' ' read -ra BLOGS <<< "$BLOGS"
 
@@ -783,10 +791,12 @@ whiptail_patch_schedule_select_days() {
 	Thursday "" OFF \
 	Friday "" OFF \
 	Saturday "" OFF \
-	Sunday "" OFF 3>&1 1>&2 2>&3 | tr -d '"')
+	Sunday "" OFF 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	PATCHSCHEDULEDAYS=$(echo "$PATCHSCHEDULEDAYS" | tr -d '"')
 
 	IFS=' ' read -ra PATCHSCHEDULEDAYS <<< "$PATCHSCHEDULEDAYS"
 
@@ -808,9 +818,9 @@ whiptail_patch_schedule_select_hours() {
 	06:00 "" OFF \
 	07:00 "" OFF \
 	08:00 "" OFF \
-	09:00 "" OFF 
+	09:00 "" OFF \
 	10:00 "" OFF \
-	11:00 "" OFF 3>&1 1>&2 2>&3 | tr -d '"' )
+	11:00 "" OFF 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -829,10 +839,12 @@ whiptail_patch_schedule_select_hours() {
 	20:00 "" OFF \
 	21:00 "" OFF \
 	22:00 "" OFF \
-	23:00 "" OFF 3>&1 1>&2 2>&3 | tr -d '"' )
+	23:00 "" OFF 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
 
 	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
@@ -956,11 +968,13 @@ whiptail_suricata_pins() {
 	[ -n "$QUIET" ] && return
 
 	local filtered_cores
-	filtered_cores=$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
-	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_cores[@]}" 3>&1 1>&2 2>&3 | tr -d '"' )
+	filtered_cores=$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
+	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_cores[@]}" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	SURIPINS=$(echo "$SURIPINS" | tr -d '"')
 
 	IFS=' ' read -ra SURIPINS <<< "$SURIPINS"
 
