@@ -3,16 +3,10 @@
 total_mem=$(grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//')
 export total_mem
 
-hostname=$(cat /etc/hostname)
-export hostname
+num_cpu_cores=$(grep -c "processor" /proc/cpuinfo | grep -v "KVM")
+export num_cpu_cores
 
-all_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2 " \"" "Interface" "\"" " OFF"}')
-export all_nics
-
-cpu_cores=$(grep -c "processor" /proc/cpuinfo | grep -v "KVM")
-export cpu_cores
-
-cpu_core_list=$(grep "processor" /proc/cpuinfo | grep -v "KVM" | awk '{print $3 " \"" "core" "\""}')
+readarray -t cpu_core_list <<< "$(grep "processor" /proc/cpuinfo | grep -v "KVM" | awk '{print $3 ""}')"
 export cpu_core_list
 
 random_uid=$(</dev/urandom tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
@@ -37,3 +31,5 @@ export temp_install_dir=/root/installtmp
 export percentage=0
 
 export percentage_str='Getting started'
+
+export DEBIAN_FRONTEND=noninteractive

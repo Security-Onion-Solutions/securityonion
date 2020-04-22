@@ -15,10 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-cd "$(dirname "$0")" || exit 255
-source "./so-whiptail"
-source "./so-variables"
-source "./so-common-functions"
+source ./so-whiptail
+source ./so-variables
+source ./so-common-functions
 so_version=1.2.1
 
 
@@ -132,7 +131,7 @@ secrets_pillar(){
 bro_logs_enabled() {
 	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local brologs_pillar="$./pillar/brologs.sls"
+	local brologs_pillar="./pillar/brologs.sls"
 
 	printf '%s\n'\
 		"brologs:"\
@@ -233,7 +232,7 @@ check_pass_match() {
 	local var=$3
 
 	if [ "$pass" = "$confirm_pass" ]; then
-		eval "$var"="\"yes\""
+		declare "$var=yes"
 	else
 		whiptail_passwords_dont_match
 	fi
@@ -416,12 +415,10 @@ create_sensor_bond() {
 
 
 	for BNIC in "${BNICS[@]}"; do
-		BONDNIC="$(echo -e "${BNIC}" | tr -d '"')" # Strip the quotes from the NIC names
-
 		# Check if specific offload features are able to be disabled
 		for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
-			if ethtool -k "$BONDNIC" | grep $string | grep -q "on [fixed]"; then
-				echo "The hardware or driver for interface ${BONDNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
+			if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
+				echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
 				nic_error=1
 				break
 			fi
@@ -429,18 +426,18 @@ create_sensor_bond() {
 
 		# Turn off various offloading settings for the interface
 		for i in rx tx sg tso ufo gso gro lro; do
-			ethtool -K "$BONDNIC" $i off >> "$setup_log" 2>&1
+			ethtool -K "$BNIC" $i off >> "$setup_log" 2>&1
 		done
 		
 		# Check if the bond slave connection has already been created
-		if ! [[ $(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BONDNIC //p" | tr -d ' ') ]]; then
+		if ! [[ $(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ') ]]; then
 			# Create the slave interface and assign it to the bond
-			nmcli con add type ethernet ifname "$BONDNIC" con-name "bond0-slave-$BONDNIC" master bond0 -- \
+			nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
 				ethernet.mtu $MTU \
 				connection.autoconnect "yes" >> "$setup_log" 2>&1
 		fi
 
-		nmcli con up "bond0-slave-$BONDNIC" >> "$setup_log" 2>&1 # Bring the slave interface up
+		nmcli con up "bond0-slave-$BNIC" >> "$setup_log" 2>&1 # Bring the slave interface up
 	done
 
 	if [ $nic_error != 0 ]; then
@@ -624,6 +621,7 @@ docker_seed_registry() {
 		# Prune any images that aren't used by containers
 		docker image prune -af
 	else
+		tar xvf /nsm/docker-registry/dockerso-dockers-$VERSION.tar
 		rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
 	fi
 
@@ -687,7 +685,8 @@ get_redirect() {
 
 got_root() {
 	# Make sure you are root
-	if [ "$(id -u)" -ne 0 ]; then
+	uid="$(id -u)"
+	if [ "$uid" -ne 0 ]; then
 		echo "This script must be run using sudo!"
 		exit 1
 	fi
@@ -811,7 +810,7 @@ master_static() {
 		"  fleet_packages-version: 1"\
 		"  fleet_hostname: N/A"\
 		"  fleet_ip: N/A"\
-		"  sensoronikey: $SENSORONIKEY" 
+		"  sensoronikey: $SENSORONIKEY"\
 		"  masterupdate: $MASTERUPDATES" > "$static_pillar"
 	echo "elastic:" >> /opt/so/saltstack/pillar/static.sls
 	echo "  features: False" >> /opt/so/saltstack/pillar/static.sls
@@ -1140,14 +1139,7 @@ set_progress_str() {
 	fi
 
 	percentage_str="XXX\n${percentage}\n${progress_bar_text}\nXXX"
-	export percentage_str
-}
-
-progress_str_printer() {
-	while [ "$percentage" -lt 100 ]; do
-		echo "$percentage_str"
-	done
-	sleep 0.5s
+	echo -e "$percentage_str"
 }
 
 sensor_pillar() {
@@ -1315,7 +1307,7 @@ set_node_type() {
 }
 
 set_updates() {
-	if [ "$MASTERUPDATES" -eq 1 ]; then
+	if [ "$MASTERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
 			if ! grep -q "$MSRV" /etc/yum.conf; then
 				echo "proxy=http://$MSRV:3142" >> /etc/yum.conf

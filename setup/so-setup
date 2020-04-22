@@ -16,13 +16,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 cd "$(dirname "$0")" || exit 255
-source "./so-functions"
-source "./so-whiptail"
-source "./so-variables"
-source "./so-common-functions"
+source ./so-functions
+source ./so-common-functions
+source ./so-whiptail
+source ./so-variables
 
 setup_type=$1
-export setup_type
 
 case "$setup_type" in
 	iso | network) # Accepted values
@@ -35,8 +34,7 @@ case "$setup_type" in
 esac
 
 # Allow execution of SO tools during setup
-PATH=$PATH:"$(dirname "$0")"/../salt/common/tools/sbin
-export PATH
+export PATH=$PATH:../salt/common/tools/sbin
 
 date -u > $setup_log 2>&1
 
@@ -47,42 +45,12 @@ if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 fi
 
-setterm -blank 0
-
-if ! (whiptail_you_sure); then
-	echo "User cancelled setup.">> $setup_log 2>&1
+if (whiptail_you_sure); then
+	true
+else
+	echo "User cancelled setup." >> $setup_log 2>&1
 	whiptail_cancel
 fi
-
-case "$setup_type" in
-	'iso')
-		whiptail_set_hostname
-		whiptail_management_nic
-		whiptail_dhcp_or_static
-
-		if [ "$address_type" != 'DHCP' ]; then
-			whiptail_management_interface_ip
-			whiptail_management_interface_mask
-			whiptail_management_interface_gateway
-			whiptail_management_interface_dns
-			whiptail_management_interface_dns_search
-		fi
-
-		# Init networking so rest of install works
-		set_hostname_iso
-		set_management_interface
-
-		collect_adminuser_inputs
-		add_admin_user
-		disable_onion_user
-
-		;;
-	'network')
-		whiptail_network_notice
-		whiptail_set_hostname
-		whiptail_management_nic
-		;;
-esac
 
 whiptail_install_type
 
@@ -94,9 +62,6 @@ export MINION_ID
 echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
 
 whiptail_patch_schedule
-
-filter_unused_nics
-minion_type=$(get_minion_type)
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
@@ -126,6 +91,37 @@ elif [ "$install_type" = 'FLEET' ]; then
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 fi
+
+case "$setup_type" in
+	'iso')
+		whiptail_set_hostname
+		whiptail_management_nic
+		whiptail_dhcp_or_static
+
+		if [ "$address_type" != 'DHCP' ]; then
+			whiptail_management_interface_ip
+			whiptail_management_interface_mask
+			whiptail_management_interface_gateway
+			whiptail_management_interface_dns
+			whiptail_management_interface_dns_search
+		fi
+
+		# Init networking so rest of install works
+		set_hostname_iso
+		set_management_interface
+
+		collect_adminuser_inputs
+		add_admin_user
+		disable_onion_user
+		;;
+	'network')
+		whiptail_network_notice
+		whiptail_set_hostname
+		whiptail_management_nic
+		;;
+esac
+
+minion_type=$(get_minion_type)
 
 # Set any constants needed
 if [[ $is_helix ]]; then
@@ -226,7 +222,7 @@ if [[ $is_node && ! $is_eval ]]; then
 	else
 		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-		LSPIPELINEWORKERS=$cpu_cores
+		LSPIPELINEWORKERS=$num_cpu_cores
 		LSPIPELINEBATCH=125
 		LSINPUTTHREADS=1
 		LSINPUTBATCHCOUNT=125
@@ -238,10 +234,13 @@ set_hostname
 set_version
 clear_master
 
-if [[ $is_master && ! $is_eval ]]; then
+if [[ $is_master ]]; then
 	generate_passwords
 	secrets_pillar
 	add_socore_user_master
+fi
+
+if [[ $is_master && ! $is_eval ]]; then
 	add_soremote_user_master
 fi
 
@@ -255,14 +254,13 @@ fi
 
 # Begin install
 {
-	progress_str_printer &
 
 	if [[ $is_sensor || $is_helix ]]; then
 		set_progress_str 1 'Creating bond interface'
-		create_sensor_bond
+		create_sensor_bond >> "$setup_log" 2>&1
 		
 		set_progress_str 2 'Generating the sensor pillar'
-		sensor_pillar
+		sensor_pillar >> "$setup_log" 2>&1
 	fi
 
 	set_progress_str 2 'Installing Salt and dependencies'
