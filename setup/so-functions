@@ -751,7 +751,7 @@ master_pillar() {
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  lsaccessip: 127.0.0.1"\
 		"  elastalert: 1"\
-		"  ls_pipeline_workers: $CPUCORES"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
 		"  nids_rules: $RULESETUP"\
 		"  oinkcode: $OINKCODE"\
 		"  es_port: $node_es_port"\
@@ -1222,7 +1222,7 @@ set_initial_firewall_policy() {
 	case "$install_type" in
 		'MASTER')
 			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls /opt/so/saltstack/pillar/firewall/masterfw.sls
-			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
+			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 			;;
 		'EVAL' | 'MASTERSEARCH')
 			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
@@ -1231,10 +1231,10 @@ set_initial_firewall_policy() {
 				/opt/so/saltstack/pillar/firewall/search_nodes.sls
 			case "$install_type" in 
 				'EVAL')
-					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
+					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
 					;;
 				'MASTERSEARCH')
-					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
+					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 			esac
 			;;
@@ -1248,17 +1248,17 @@ set_initial_firewall_policy() {
 			case "$INSTALLERTYPE" in
 				'SENSOR')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
 					;;
 				'SEARCHNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$CPUCORES" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 					;;
 			esac
 			;;
