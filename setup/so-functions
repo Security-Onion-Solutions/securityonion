@@ -283,7 +283,9 @@ collect_webuser_inputs() {
 	local valid_user=no
 	while [ $valid_user != yes ]; do
 		whiptail_create_web_user
-		if so-user valemail "$WEBUSER"; then
+		local val_email
+		val_email=$(so-user valemail "$WEBUSER" >> "$setup_log" 2>&1)
+		if $val_email; then
 			valid_user=yes
 		else
 			whiptail_invalid_user_warning
@@ -293,7 +295,9 @@ collect_webuser_inputs() {
 	WPMATCH=no
 	while [ $WPMATCH != yes ]; do
 		whiptail_create_web_user_password1
-		if echo "$WEBPASSWD1" | so-user valpass; then
+		local val_pass
+		val_pass=$(echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1)
+		if $val_pass; then
 			whiptail_create_web_user_password2
 			check_web_pass
 		else
