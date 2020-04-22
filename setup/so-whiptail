@@ -45,9 +45,13 @@ whiptail_basic_suri() {
 whiptail_bro_pins() {
 
 	[ -n "$QUIET" ] && return
-	
-	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list[@]}" 3>&1 1>&2 2>&3 )
 
+	local cpu_core_list_whiptail=()
+	for item in "${cpu_core_list[@]}"; do
+		cpu_core_list_whiptail+=("$item" "OFF")
+	done
+
+	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -545,7 +549,7 @@ whiptail_master_adv_service_brologs() {
 
 	[ -n "$QUIET" ] && return
 
-	BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please Select Logs to Send:" 24 75 12 \
+	BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please select Logs to Send:" 24 75 12 \
 	"conn" "Connection Logging" ON \
 	"dce_rpc" "RPC Logs" ON \
 	"dhcp" "DHCP Logs" ON \
@@ -971,10 +975,15 @@ whiptail_suricata_pins() {
 
 	[ -n "$QUIET" ] && return
 
-	local filtered_cores
-	filtered_cores=$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
-	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_cores[@]}" 3>&1 1>&2 2>&3 )
+	local filtered_core_list
+	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
 
+	local filtered_core_str=()
+    for item in "${filtered_core_list[@]}"; do
+        filtered_core_str+=("$item" "")
+    done
+
+	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
