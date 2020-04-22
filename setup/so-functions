@@ -467,7 +467,10 @@ detect_os() {
 		fi
 
 		# Install bind-utils so the host command exists
-		yum -y install bind-utils  >> "$setup_log" 2>&1
+		if ! command -v host > /dev/null 2>&1; then
+			echo "Installing required packages to run installer"
+			yum -y install bind-utils  >> "$setup_log" 2>&1
+		fi
 
 
 	elif [ -f /etc/os-release ]; then
@@ -481,11 +484,14 @@ detect_os() {
 			exit 1
 		fi
 		# Install network manager so we can do interface stuff
-		{
-			apt-get install -y network-manager;
-			systemctl enable NetworkManager;
-			systemctl start NetworkManager;
-		} >> "$setup_log" 2<&1
+		if ! command -v nmcli > /dev/null 2>&1; then
+			echo "Installing required packages to run installer"
+			{
+				apt-get install -y network-manager;
+				systemctl enable NetworkManager;
+				systemctl start NetworkManager;
+			} >> "$setup_log" 2<&1
+		fi
 
 	else
 		echo "We were unable to determine if you are using a supported OS."
