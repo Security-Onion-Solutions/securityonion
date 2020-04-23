@@ -40,13 +40,14 @@ calculate_useable_cores() {
 }
 
 set_defaul_log_size() {
+    local percentage
 
 	case $INSTALLTYPE in
 		EVAL | HEAVYNODE)
-			PERCENTAGE=50
+			percentage=50
 			;;
 		*)
-			PERCENTAGE=80
+            percentage=80
 			;;
 		esac
 
@@ -54,13 +55,14 @@ set_defaul_log_size() {
 	if [ -d /nsm ]; then
 		disk_dir="/nsm"
 	fi
-	local disk_size_kb
-	disk_size_kb=$(df $disk_dir |grep -v "^Filesystem" | awk '{print $2}')
-	local percentage=85
-	local disk_size
-	disk_size=$(( disk_size_kb * 1000 ))
-	local percentage_disk_space
-	percentage_disk_space=$(( disk_size * (percentage / 100) ))
+	local disk_size_1k
+	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
 
-	export log_size_limit=$(( percentage_disk_space / 1000000000 ))
+    local ratio="4.7683715820313e-7"
+
+    local disk_size_gb
+    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1*$2)}' )
+
+	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
+	export log_size_limit
 }
