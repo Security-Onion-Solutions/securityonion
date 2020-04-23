@@ -1,7 +1,7 @@
 {% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
 {% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
 {% set MASTER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 # Drop the correct nginx config based on role
 nginxconfdir:
@@ -37,7 +37,6 @@ so-nginx:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
     - hostname: so-nginx
-    - user: socore
     - binds:
       - /opt/so:/opt/so:rw
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro

@@ -1,5 +1,5 @@
 {% set MASTER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 # Add Telegraf to monitor all the things.
 tgraflogdir:
