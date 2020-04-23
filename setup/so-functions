@@ -946,16 +946,15 @@ saltify() {
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
 		set_progress_str 6 'Installing various dependencies'
+		{
+			yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm;
+			cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-2019-2.repo;
+			sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo;
+		} >> "$setup_log" 2>&1
 		case "$install_type" in
-			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET') # FIXME: should this be separate?
-				yum instal -y mariadb-devel >> "$setup_log" 2>&1
-				;&
-			'HELIXSENSOR')
+			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
 				reserve_group_ids >> "$setup_log" 2>&1
 				yum -y install epel-release >> "$setup_log" 2>&1
-				yum -y install wget https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm >> "$setup_log" 2>&1
-				cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-py3-2019-2.repo >> "$setup_log" 2>&1
-				sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-py3-2019-2.repo >> "$setup_log" 2>&1
 				yum -y install sqlite3 argon2 curl jq openssl mariadb-devel >> "$setup_log" 2>&1
 				# Download Ubuntu Keys in case master updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
@@ -979,12 +978,6 @@ saltify() {
 						# Copy repo files over
 						cp "./yum_repos/salt-latest.repo" /etc/yum.repos.d/salt-latest.repo;
 						cp "./yum_repos/salt-2019-2.repo" /etc/yum.repos.d/salt-2019-2.repo;
-					} >> "$setup_log" 2>&1
-				else
-					{
-						yum -y install https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm;
-						cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-2019-2.repo;
-						sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo;
 					} >> "$setup_log" 2>&1
 				fi
 				;;
