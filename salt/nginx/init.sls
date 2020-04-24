@@ -45,7 +45,6 @@ so-nginx:
     - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
     - hostname: so-nginx
     - binds:
-      - /opt/so/conf/nginx/html:/opt/socore/html:ro
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
