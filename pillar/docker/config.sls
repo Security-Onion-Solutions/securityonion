@@ -10,7 +10,7 @@
 
 eval:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     {% if  GRAFANA == '1' %}
     - so-influxdb
@@ -54,7 +54,7 @@ eval:
     {% endif %}
 heavy_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-redis
     - so-logstash
@@ -69,7 +69,7 @@ heavy_node:
     {% endif %}
 helix:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-idstools
     - so-steno
@@ -79,14 +79,14 @@ helix:
     - so-filebeat
 hot_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
     - so-elasticsearch
     - so-curator
 master_search:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-soc
     - so-kratos
@@ -127,7 +127,7 @@ master_search:
 master:
   containers:
     - so-dockerregistry
-    - so-core
+    - so-nginx
     - so-telegraf
     {% if  GRAFANA == '1' %}
     - so-influxdb
@@ -169,12 +169,12 @@ master:
     {% endif %}
 parser_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
 search_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
     - so-elasticsearch
@@ -185,7 +185,7 @@ search_node:
     {% endif %}
 sensor:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-steno
     - so-suricata
@@ -196,7 +196,7 @@ sensor:
     - so-filebeat
 warm_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-elasticsearch
 fleet:
@@ -206,6 +206,6 @@ fleet:
     - so-fleet
     - so-redis
     - so-filebeat
-    - so-core
+    - so-nginx
     - so-telegraf
     {% endif %}

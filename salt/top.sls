@@ -11,15 +11,18 @@
 
 base:
   '*':
+    - salt
+    - docker
     - patch.os.schedule
     - motd
-    - salt
 
   '*_helix':
     - ca
     - ssl
     - registry
     - common
+    - nginx
+    - telegraf
     - firewall
     - idstools
     - pcap
@@ -34,6 +37,8 @@ base:
     - ca
     - ssl
     - common
+    - nginx
+    - telegraf
     - firewall
     - pcap
     - suricata
@@ -57,6 +62,10 @@ base:
     - registry
     - master
     - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
     - soc
     - firewall
     - idstools
@@ -105,6 +114,10 @@ base:
     - ssl
     - registry
     - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
     - soc
     - firewall
     - master
@@ -179,6 +192,8 @@ base:
     - ca
     - ssl
     - common
+    - nginx
+    - telegraf
     - firewall
     {%- if WAZUH != 0 %}
     - wazuh
@@ -194,6 +209,10 @@ base:
 
   '*_mastersensor':
     - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
     - firewall
     - sensor
     - master
@@ -207,6 +226,10 @@ base:
     - ssl
     - registry
     - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
     - soc
     - firewall
     - master
@@ -248,6 +271,8 @@ base:
     - ca
     - ssl
     - common
+    - nginx
+    - telegraf
     - firewall
     - redis
     {%- if WAZUH != 0 %}
@@ -272,6 +297,8 @@ base:
     - ca
     - ssl
     - common
+    - nginx
+    - telegraf
     - firewall
     - mysql
     - redis
