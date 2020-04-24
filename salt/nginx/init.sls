@@ -6,10 +6,17 @@
 # Drop the correct nginx config based on role
 nginxconfdir:
   file.directory:
-    - name: /opt/so/conf/nginx
+    - name: /opt/so/conf/nginx/html
     - user: 939
     - group: 939
     - makedirs: True
+
+nginxhtml:
+  file.recurse:
+    - name: /opt/so/conf/nginx/html
+    - source: salt://nginx/html/
+    - user: 939
+    - group: 939
 
 nginxconf:
   file.managed:
@@ -38,7 +45,7 @@ so-nginx:
     - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
     - hostname: so-nginx
     - binds:
-      - /opt/so:/opt/so:rw
+      - /opt/so/conf/nginx/html:/opt/socore/html:ro
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
@@ -55,3 +62,4 @@ so-nginx:
     {%- endif %}
     - watch:
       - file: nginxconf
+      - file: nginxconfdir
