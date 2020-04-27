@@ -252,6 +252,7 @@ fi
 
 if [[ $is_minion ]]; then
 	set_updates
+	copy_ssh_key
 fi
 
 # Begin install
@@ -265,14 +266,23 @@ fi
 		sensor_pillar >> "$setup_log" 2>&1
 	fi
 
-	set_progress_str 2 'Installing Salt and dependencies'
+	set_progress_str 3 'Installing Salt and dependencies'
 	saltify
 	
-	set_progress_str 10 'Installing Docker and dependencies'
+	set_progress_str 8 'Installing Docker and dependencies'
 	docker_install
+
+	set_progress_str 9 'Configuring firewall'
+	set_initial_firewall_policy
+
+	set_progress_str 10 "$(print_salt_state_apply 'firewall')"
+	salt-call state.apply -l info firewall >> $setup_log 2>&1
 	
-	set_progress_str 12 'Initializing Salt minion'
+	set_progress_str 11 'Initializing Salt minion'
 	configure_minion "$minion_type"
+
+	set_progress_str 12 'Generating CA'
+	gen_ca
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 13 'Configuring Salt master'
@@ -287,7 +297,7 @@ fi
 		
 		set_progress_str 17 'Generating master pillar'
 		master_pillar
-
+		
 		set_progress_str 18 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
@@ -307,12 +317,6 @@ fi
 
 	set_progress_str 21 'Running intial Salt highstate'
 	salt-call state.highstate -l info >> "$setup_log" 2>&1
-
-	set_progress_str 23 'Configuring firewall'
-	set_initial_firewall_policy
-
-	set_progress_str 25 'Generating CA'
-	gen_ca
 
 	if [[ $is_node ]]; then
 		set_progress_str 25 'Setting node type'
@@ -344,7 +348,7 @@ fi
 
 	set_progress_str 65 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
-
+	
 	if [[ "$OSQUERY" = 1 ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'fleet')"
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
@@ -384,7 +388,7 @@ fi
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
 
-	if [[ $is_helix || $is_master || $is_node ]]; then
+	if [[ ( $is_helix || $is_master || $is_node ) && ! $is_eval ]]; then
 		set_progress_str 75 "$(print_salt_state_apply 'logstash')"
 		salt-call state.apply -l info logstash >> $setup_log 2>&1
 

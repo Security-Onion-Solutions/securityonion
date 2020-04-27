@@ -40,9 +40,12 @@ accept_salt_key_remote() {
 
 add_admin_user() {
 	# Add an admin user with full sudo rights if this is an ISO install. 
-	useradd "$ADMINUSER"
-	echo "$ADMINUSER":"$ADMINPASS1" | chpasswd --crypt-method=SHA512
-	usermod -aG wheel "$ADMINUSER"
+	{
+		useradd "$ADMINUSER";
+		echo "$ADMINUSER":"$ADMINPASS1" | chpasswd --crypt-method=SHA512;
+		usermod -aG wheel "$ADMINUSER";
+	} >> "$setup_log" 2>&1
+	
 }
 
 add_master_hostfile() {
@@ -74,11 +77,11 @@ so_add_user() {
 }
 
 add_socore_user_master() {
-	so_add_user "socore" "939" "939" "/opt/so"
+	so_add_user "socore" "939" "939" "/opt/so" >> "$setup_log" 2>&1
 }
 
 add_soremote_user_master() {
-	so_add_user "soremote" "947" "947" "/home/soremote" "$SOREMOTEPASS1"
+	so_add_user "soremote" "947" "947" "/home/soremote" "$SOREMOTEPASS1" >> "$setup_log" 2>&1
 }
 
 wait_for_file() {
@@ -250,9 +253,11 @@ clear_master() {
 	# Clear out the old master public key in case this is a re-install.
 	# This only happens if you re-install the master.
 	if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
-		echo "Clearing old master key" >> "$setup_log" 2>&1
-		rm -f /etc/salt/pki/minion/minion_master.pub
-		sytemctl -q restart salt-minion
+		{
+			echo "Clearing old master key";
+			rm -f /etc/salt/pki/minion/minion_master.pub;
+			sytemctl -q restart salt-minion;
+		} >> "$setup_log" 2>&1
 	fi
 
 }
@@ -342,7 +347,7 @@ configure_minion() {
 		"  - module.run"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
-	service salt-minion restart
+	systemctl restart salt-minion >> "$setup_log" 2>&1
 
 	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
 	echo "startup_states: highstate" >> "$minion_config"
@@ -352,13 +357,13 @@ copy_master_config() {
 
 	# Copy the master config template to the proper directory
 	if [ "$INSTALLMETHOD" = 'iso' ]; then
-		cp /root/SecurityOnion/files/master /etc/salt/master
+		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
 	else
-		cp "../files/master" /etc/salt/master
+		cp "../files/master" /etc/salt/master >> "$setup_log" 2>&1
 	fi
 
 	# Restart the service so it picks up the changes
-	systemctl restart salt-master
+	systemctl restart salt-master >> "$setup_log" 2>&1
 }
 
 copy_minion_tmp_files() {
@@ -617,22 +622,25 @@ docker_seed_registry() {
 				"so-strelka-filestream:$VERSION" 
 			)
 		fi
-		local initial_percent=26
+		local initial_percent=30
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
 			if [ "$install_type" != 'HELIXSENSOR' ]; then ((intial_percent++)); else ((initial_percent+=6)); fi
 			# Pull down the trusted docker image
 			set_progress_str "$initial_percent" "Downloading $i"
-			docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
-			# Tag it with the new registry destination
-			docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
-			docker push "$HOSTNAME":5000/soshybridhunter/"$i"
+			{
+				docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+				# Tag it with the new registry destination
+				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
+				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
+			} >> "$setup_log" 2>&1
+			
 		done
 
 		# Prune any images that aren't used by containers
-		docker image prune -af
+		docker image prune -af >> "$setup_log" 2>&1
 	else
-		tar xvf /nsm/docker-registry/dockerso-dockers-$VERSION.tar
-		rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
+		tar xvf /nsm/docker-registry/dockerso-dockers-$VERSION.tar >> "$setup_log" 2>&1
+		rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar >> "$setup_log" 2>&1
 	fi
 
 }
@@ -851,7 +859,7 @@ network_setup() {
 		fi
 
         echo "... Copying 99-so-checksum-offload-disable";
-        cp "$SCRIPTDIR"/install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+        cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
@@ -1143,6 +1151,7 @@ set_progress_str() {
 
 	percentage_str="XXX\n${percentage}\n${progress_bar_text}\nXXX"
 	echo -e "$percentage_str"
+	sleep 5
 }
 
 sensor_pillar() {
@@ -1217,6 +1226,9 @@ set_hostname_iso() {
 set_initial_firewall_policy() {
 
   set_main_ip
+
+  mkdir -p /opt/so/saltstack/pillar/firewall
+  mkdir -p /opt/so/saltstack/pillar/data
 
 	case "$install_type" in
 		'MASTER')
