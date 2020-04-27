@@ -17,7 +17,7 @@
 
 SCRIPTDIR=$(dirname "$0")
 source $SCRIPTDIR/so-whiptail
-SOVERSION=1.2.1
+SOVERSION=1.2.2
 
 accept_salt_key_local() {
 	echo "Accept the key locally on the master" >> $SETUPLOG 2>&1
@@ -579,7 +579,7 @@ docker_seed_registry() {
   if [ $INSTALLTYPE != 'HELIXSENSOR' ]; then
     TRUSTED_CONTAINERS=( \
     "so-acng:$VERSION" \
-    "so-core:$VERSION" \
+    "so-nginx:$VERSION" \
     "so-thehive-cortex:$VERSION" \
     "so-curator:$VERSION" \
     "so-domainstats:$VERSION" \
@@ -614,7 +614,7 @@ docker_seed_registry() {
     "so-zeek:$VERSION" )
   else
     TRUSTED_CONTAINERS=( \
-    "so-core:$VERSION" \
+    "so-nginx:$VERSION" \
     "so-filebeat:$VERSION" \
     "so-idstools:$VERSION" \
     "so-logstash:$VERSION" \
@@ -626,7 +626,7 @@ docker_seed_registry() {
     "so-zeek:$VERSION" )
   fi
 
-  if [ ! -f /nsm/docker-registry/docker/so-dockers-$VERSION.tar ]; then
+  if [ ! -f /nsm/docker-registry/docker/registry.tar ]; then
     # Download the container from the interwebs
     for i in "${TRUSTED_CONTAINERS[@]}"
     do
@@ -646,8 +646,8 @@ docker_seed_registry() {
   else
     # We already have the goods son
     cd /nsm/docker-registry/docker
-    tar xvf so-dockers-$VERSION.tar
-    rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar
+	tar xvf registry.tar  
+    rm /nsm/docker-registry/docker/registry.tar
   fi
 
 }
