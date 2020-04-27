@@ -534,10 +534,13 @@ disable_misc_network_features() {
 docker_install() {
 
 	if [ $OS = 'centos' ]; then
-		yum clean expire-cache >> "$setup_log" 2>&1
-		yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo >> "$setup_log" 2>&1
-		yum -y update >> "$setup_log" 2>&1
-		yum -y install docker-ce >> "$setup_log" 2>&1
+		{
+			yum clean expire-cache;
+			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
+			yum -y update;
+			yum -y install docker-ce;
+		} >> "$setup_log" 2>&1
+		
 	else
 		case "$install_type" in
 			'MASTER' | 'EVAL')
@@ -962,8 +965,7 @@ saltify() {
 		case "$install_type" in
 			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
 				reserve_group_ids >> "$setup_log" 2>&1
-				yum -y install epel-release >> "$setup_log" 2>&1
-				yum -y install sqlite3 argon2 curl jq openssl mariadb-devel >> "$setup_log" 2>&1
+				yum -y install epel-release sqlite3 argon2 curl mariadb-devel >> "$setup_log" 2>&1
 				# Download Ubuntu Keys in case master updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
@@ -1058,7 +1060,7 @@ saltify() {
 				apt-get update >> "$setup_log" 2>&1
 				# FIXME: Install salt-master on Ubuntu?
 				set_progress_str 6 'Installing various dependencies'
-				apt-get -y install sqlite3 argon2 openssl libssl-dev >> "$setup_log" 2>&1
+				apt-get -y install sqlite3 argon2 libssl-dev >> "$setup_log" 2>&1
 				set_progress_str 7 'Installing salt-master'
 				apt-get -y salt-master=2019.2.3+ds-1 >> "$setup_log" 2>&1
 				apt-mark hold salt-master >> "$setup_log" 2>&1
