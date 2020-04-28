@@ -16,7 +16,7 @@ zeek:
     CfgDir: /opt/zeek/etc
     CompressLogs: 1
   local:
-    load:
+    '@load':
       - misc/loaded-scripts
       - tuning/defaults
       - misc/capture-loss
@@ -48,7 +48,7 @@ zeek:
       - securityonion/bpfconf
       - securityonion/communityid
       - securityonion/file-extraction
-    load-sigs:
+    '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
       - LogAscii::use_json = T;
