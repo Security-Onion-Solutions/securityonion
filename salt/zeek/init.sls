@@ -4,8 +4,7 @@
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 
-{% import_yaml 'zeek/defaults.yml' as ZEEKDEFAULTS %}
-{% set ZEEK = salt['pillar.get']('zeek', default=ZEEKDEFAULTS.zeek, merge=True) %}
+{% set ZEEK = salt['pillar.get']('zeek', {} %}
 
 # Zeek Salt State
 
@@ -144,13 +143,16 @@ zeekbpf:
       - "ip or not ip"
 {% endif %}
 
+
 localzeeksync:
   file.managed:
     - name: /opt/so/conf/zeek/local.zeek
-    - source: salt://zeek/files/local.zeek
+    - source: salt://zeek/files/local.zeek.jinja
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        LOCAL: {{ ZEEK.local | tojson }}
 
 so-zeek:
   docker_container.running:
