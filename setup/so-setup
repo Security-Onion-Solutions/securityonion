@@ -257,6 +257,9 @@ if [[ $is_minion ]]; then
 fi
 
 # Begin install
+
+# Set initial percentage to 0
+export percentage=0
 {
 
 	if [[ $is_sensor || $is_helix ]]; then
@@ -321,8 +324,8 @@ fi
 		node_pillar 2>> "$setup_log"
 	fi
 
-	set_progress_str 20 'Generating CA'
-	gen_ca 2>> "$setup_log"
+	set_progress_str 20 'Generating CA and checking in'
+	salt_checkin 2>> "$setup_log"
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Downloading containers from the internet'
@@ -428,7 +431,13 @@ fi
 	filter_unused_nics 2>> "$setup_log"
 	network_setup 2>> "$setup_log"
 
-	set_progress_str 91 'Verifying setup'
+	set_progress_str 91 'Enabling checkin at boot'
+	checkin_at_boot 2>> "$setup_log"
+
+	set_progress_str 92 'Updating packages'
+	update_packages 2>> "$setup_log"
+
+	set_progress_str 93 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
 
 } | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0

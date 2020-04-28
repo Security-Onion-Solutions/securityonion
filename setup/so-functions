@@ -339,13 +339,20 @@ configure_minion() {
 		"  - module.run"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
-	systemctl restart salt-minion >> "$setup_log" 2>&1
+	{
+		systemctl restart salt-minion;
+		printf '%s\n'  '----';
+		cat "$minion_config";
+	} >> "$setup_log" 2>&1
+	
+	
+}
+
+checkin_at_boot() {
+	local minion_config=/etc/salt/minion
 
 	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
 	echo "startup_states: highstate" >> "$minion_config"
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$minion_config" >> "$setup_log" 2>&1
 }
 
 copy_master_config() {
@@ -534,7 +541,6 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			yum -y update;
 			yum -y install docker-ce;
 		} >> "$setup_log" 2>&1
 		
@@ -684,12 +690,6 @@ set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 }
 
-gen_ca() {
-	salt_checkin
-	salt-call state.apply -l info ca >> $setup_log 2>&1
-	salt-call state.apply -l info ssl >> $setup_log 2>&1
-}
-
 get_redirect() {
 	whiptail_set_redirect_info
 	whiptail_set_redirect
@@ -830,6 +830,9 @@ master_static() {
 		"  masterupdate: $MASTERUPDATES" > "$static_pillar"
 	echo "elastic:" >> /opt/so/saltstack/pillar/static.sls
 	echo "  features: False" >> /opt/so/saltstack/pillar/static.sls
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$static_pillar" >> "$setup_log" 2>&1
 }
 
 minio_generate_keys() {
@@ -1112,8 +1115,11 @@ salt_checkin() {
 			} >> "$setup_log" 2>&1
 			;;
 		*)
-			salt-call state.apply ca >> "$setup_log" 2>&1
-			salt-call state.apply ssl >> "$setup_log" 2>&1
+			{
+				salt-call state.apply ca;
+				salt-call state.apply ssl;
+			} >> "$setup_log" 2>&1
+			
 			;;
 	esac
 }
@@ -1361,6 +1367,15 @@ update_sudoers() {
 		echo "soremote ALL=(ALL) NOPASSWD:/opt/so/saltstack/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else
 		echo "User soremote already granted sudo privileges" >> "$setup_log" 2>&1
+	fi
+}
+
+update_packages() {
+	if [ "$OS" = 'centos' ]; then
+		yum -y update >> "$setup_log"
+	else
+		apt-get -y update >> "$setup_log"
+		apt-get -y upgrade >> "$setup_log"
 	fi
 }
 
