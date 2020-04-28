@@ -4,7 +4,7 @@
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 
-{% set ZEEK = salt['pillar.get']('zeek', {} %}
+{% set ZEEK = salt['pillar.get']('zeek', {}) %}
 
 # Zeek Salt State
 
