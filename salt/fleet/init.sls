@@ -21,6 +21,9 @@
 #        hostname: {{ grains.host }}
 #{% endif %}
 
+include:
+  - mysql
+
 # Fleet Setup
 fleetcdir:
   file.directory:
@@ -86,6 +89,8 @@ fleetdb:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
+    - require:
+      - sls: mysql
 
 fleetdbuser:
   mysql_user.present:
@@ -95,6 +100,8 @@ fleetdbuser:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
+    - require:
+      - fleetdb
 
 fleetdbpriv:
   mysql_grants.present:
@@ -106,8 +113,9 @@ fleetdbpriv:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-
-
+    - require:
+      - fleetdb
+    
 {% if FLEETPASS == None or FLEETJWT == None %}
 
 fleet_password_none:
