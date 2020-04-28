@@ -22,6 +22,7 @@ source ./so-whiptail
 source ./so-variables
 
 setup_type=$1
+export setup_type
 
 case "$setup_type" in
 	iso | network) # Accepted values
@@ -232,27 +233,27 @@ if [[ $is_node && ! $is_eval ]]; then
 fi
 
 whiptail_make_changes
-set_hostname
-set_version
-clear_master
+set_hostname 2>> "$setup_log"
+set_version 2>> "$setup_log"
+clear_master 2>> "$setup_log"
 
 if [[ $is_master ]]; then
-	generate_passwords
-	secrets_pillar
-	add_socore_user_master
+	generate_passwords 2>> "$setup_log"
+	secrets_pillar 2>> "$setup_log"
+	add_socore_user_master 2>> "$setup_log"
 fi
 
 if [[ $is_master && ! $is_eval ]]; then
-	add_soremote_user_master
+	add_soremote_user_master 2>> "$setup_log"
 fi
 
 if [[ $is_helix || $is_master ]]; then
-	set_main_ip
+	set_main_ip 2>> "$setup_log"
 fi
 
 if [[ $is_minion ]]; then
-	set_updates
-	copy_ssh_key
+	set_updates 2>> "$setup_log"
+	copy_ssh_key 2>> "$setup_log"
 fi
 
 # Begin install
@@ -262,92 +263,97 @@ fi
 		set_progress_str 1 'Creating bond interface'
 		create_sensor_bond >> "$setup_log" 2>&1
 		
-		set_progress_str 2 'Generating the sensor pillar'
+		set_progress_str 2 'Generating sensor pillar'
 		sensor_pillar >> "$setup_log" 2>&1
 	fi
 
 	set_progress_str 3 'Installing Salt and dependencies'
-	saltify
+	saltify 2>> "$setup_log"
+
+	set_progress_str 7 'Installing Docker and dependencies'
+	docker_install 2>> "$setup_log"
 	
-	set_progress_str 8 'Installing Docker and dependencies'
-	docker_install
+	set_progress_str 8 'Generating patch pillar'
+	patch_pillar 2>> "$setup_log"
 
-	set_progress_str 9 'Configuring firewall'
-	set_initial_firewall_policy
+	set_progress_str 9 'Initializing Salt minion'
+	configure_minion "$minion_type" 2>> "$setup_log"
 
-	set_progress_str 10 "$(print_salt_state_apply 'firewall')"
-	salt-call state.apply -l info firewall >> $setup_log 2>&1
-	
-	set_progress_str 11 'Initializing Salt minion'
-	configure_minion "$minion_type"
-
-	set_progress_str 12 'Generating CA'
-	gen_ca
 
 	if [[ $is_master || $is_helix ]]; then
-		set_progress_str 13 'Configuring Salt master'
-		copy_master_config
-		setup_salt_master_dirs
+		set_progress_str 10 'Configuring Salt master'
+		copy_master_config 2>> "$setup_log"
+		setup_salt_master_dirs 2>> "$setup_log"
 		
-		set_progress_str 15 'Updating sudoers file for soremote user'
-		update_sudoers
+		set_progress_str 11 'Updating sudoers file for soremote user'
+		update_sudoers 2>> "$setup_log"
 		
-		set_progress_str 16 'Generating master static pillar'
-		master_static
+		set_progress_str 12 'Generating master static pillar'
+		master_static 2>> "$setup_log"
 		
-		set_progress_str 17 'Generating master pillar'
-		master_pillar
-		
-		set_progress_str 18 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
+		set_progress_str 13 'Generating master pillar'
+		master_pillar 2>> "$setup_log"
 	fi
 
 	if [[ $is_helix ]]; then
-		set_progress_str 19 'Generating the FireEye pillar'
-		fireeye_pillar
+		set_progress_str 15 'Generating the FireEye pillar'
+		fireeye_pillar 2>> "$setup_log"
 	fi
+
+	set_progress_str 16 'Copying minion pillars to master'
+	copy_minion_tmp_files 2>> "$setup_log"
 
 	if [[ $is_minion ]]; then
-		set_progress_str 20 'Accepting salt key on master'
-		accept_salt_key_remote
+		set_progress_str 17 'Accepting Salt key on master'
+		accept_salt_key_remote 2>> "$setup_log"
 	fi
 
-	set_progress_str 20 'Copying minion pillars to master'
-	copy_minion_tmp_files
-
-	set_progress_str 21 'Running intial Salt highstate'
-	salt-call state.highstate -l info >> "$setup_log" 2>&1
+	if [[ $is_master ]]; then
+		set_progress_str 17 'Accepting Salt key'
+		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
+	fi
 
 	if [[ $is_node ]]; then
-		set_progress_str 25 'Setting node type'
-		set_node_type
+		set_progress_str 18 'Setting node type'
+		set_node_type 2>> "$setup_log"
 
-		set_progress_str 26 'Generating search node pillar'
-		node_pillar
-
-		set_progress_str 27 "$(print_salt_state_apply 'curator')"
-		salt-call state.apply -l info curator >> $setup_log 2>&1
+		set_progress_str 19 'Generating search node pillar'
+		node_pillar 2>> "$setup_log"
 	fi
 
-	if [[ $is_sensor ]]; then
-		set_progress_str 28 "$(print_salt_state_apply 'pcap')"
+	set_progress_str 20 'Generating CA'
+	gen_ca 2>> "$setup_log"
+
+	if [[ $is_master || $is_helix ]]; then
+		set_progress_str 25 'Downloading containers from the internet'
+		salt-call state.apply -l info registry >> "$setup_log" 2>&1
+		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
+	fi
+	
+	set_progress_str 59 'Configuring firewall'
+	set_initial_firewall_policy 2>> "$setup_log"
+
+	set_progress_str 60 "$(print_salt_state_apply 'firewall')"
+	salt-call state.apply -l info firewall >> $setup_log 2>&1
+
+	set_progress_str 61 "$(print_salt_state_apply 'common')"
+	salt-call state.apply -l info common >> $setup_log 2>&1
+
+		if [[ $is_sensor ]]; then
+		set_progress_str 62 "$(print_salt_state_apply 'pcap')"
 		salt-call state.apply -l info pcap >> $setup_log 2>&1
 
-		set_progress_str 29 "$(print_salt_state_apply 'suricata')"
+		set_progress_str 63 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		set_progress_str 30 "$(print_salt_state_apply 'zeek')"
+		set_progress_str 64 "$(print_salt_state_apply 'zeek')"
 		salt-call state.apply -l info zeek >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master || $is_helix ]]; then
-		set_progress_str 30 'Downloading containers from the internet'
-		salt-call state.apply -l info registry >> "$setup_log" 2>&1
-		docker_seed_registry # ~ 65% when finished
+	if [[ $is_node ]]; then
+		set_progress_str 65 "$(print_salt_state_apply 'curator')"
+		salt-call state.apply -l info curator >> $setup_log 2>&1
 	fi
-
-	set_progress_str 65 "$(print_salt_state_apply 'common')"
-	salt-call state.apply -l info common >> $setup_log 2>&1
 	
 	if [[ "$OSQUERY" = 1 ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'fleet')"
@@ -419,8 +425,8 @@ fi
 	salt-call state.apply -l info schedule >> $setup_log 2>&1
 
 	set_progress_str 90 'Applying finishing touches'
-	filter_unused_nics
-	network_setup
+	filter_unused_nics 2>> "$setup_log"
+	network_setup 2>> "$setup_log"
 
 	set_progress_str 91 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
@@ -430,7 +436,7 @@ fi
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
 	whiptail_setup_complete
-	if [[ $THEHIVE == '1' ]]; then
+	if [[ $THEHIVE == 1 ]]; then
 		check_hive_init_then_reboot
 	else
 		shutdown -r now

@@ -21,14 +21,9 @@ source ./so-common-functions
 so_version=1.2.1
 
 
-accept_salt_key_local() {
-	echo "Accept the key locally on the master" >> "$setup_log" 2>&1
-	# Accept the key locally on the master
-	salt-key -ya "$MINION_ID"
-
-}
-
 accept_salt_key_remote() {
+	systemctl restart salt-minion
+	
 	echo "Accept the key remotely on the master" >> "$setup_log" 2>&1
 	# Delete the key just in case.
 	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
@@ -185,6 +180,9 @@ bro_logs_enabled() {
 			"    - socks"\
 			"    - x509" >> "$brologs_pillar"
 	fi
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$brologs_pillar" >> "$setup_log" 2>&1
 }
 
 check_admin_pass() {
@@ -351,12 +349,15 @@ configure_minion() {
 
 	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
 	echo "startup_states: highstate" >> "$minion_config"
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$minion_config" >> "$setup_log" 2>&1
 }
 
 copy_master_config() {
 
 	# Copy the master config template to the proper directory
-	if [ "$INSTALLMETHOD" = 'iso' ]; then
+	if [ "$setup_type" = 'iso' ]; then
 		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
 	else
 		cp "../files/master" /etc/salt/master >> "$setup_log" 2>&1
@@ -625,11 +626,11 @@ docker_seed_registry() {
 				"so-strelka-filestream:$VERSION" 
 			)
 		fi
-		local initial_percent=30
+		local percent=25
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
-			if [ "$install_type" != 'HELIXSENSOR' ]; then ((intial_percent++)); else ((initial_percent+=6)); fi
+			if [ "$install_type" != 'HELIXSENSOR' ]; then ((percent=percent+1)); else ((percent=percent+6)); fi
 			# Pull down the trusted docker image
-			set_progress_str "$initial_percent" "Downloading $i"
+			set_progress_str "$percent" "Downloading $i"
 			{
 				docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
 				# Tag it with the new registry destination
@@ -800,7 +801,8 @@ master_pillar() {
 		"  redirect: $REDIRECTIT"\
 		"" >> "$pillar_file"
 
-
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$pillar_file" >> "$setup_log" 2>&1
   }
 
 master_static() {
@@ -892,6 +894,8 @@ node_pillar() {
 		"  cur_close_days: $CURCLOSEDAYS"\
 		"" >> "$pillar_file"
 
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 patch_pillar() {
@@ -899,13 +903,15 @@ patch_pillar() {
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
 	printf '%s\n'\
-		""\
 		"patch:"\
 		"  os:"\
 		"    schedule_name: $PATCHSCHEDULENAME"\
 		"    enabled: True"\
 		"    splay: 300"\
 		"" >> "$pillar_file"
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$pillar_file" >> "$setup_log" 2>&1
 
 }
 
@@ -929,6 +935,8 @@ patch_schedule_os_new() {
 		done
 	done
 
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$OSPATCHSCHEDULE" >> "$setup_log" 2>&1
 }
 
 print_salt_state_apply() {
@@ -980,10 +988,10 @@ saltify() {
 				if [ "$MASTERUPDATES" = '1' ]; then
 					{
 						# Create the GPG Public Key for the Salt Repo
-						cp "./public_keys/salt.pem" /etc/pki/rpm-gpg/saltstack-signing-key;
+						cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
 										
 						# Add the Wazuh Key
-						cp "./public_keys/wazuh.pem" /etc/pki/rpm-gpg/GPG-KEY-WAZUH;
+						cp ./public_keys/wazuh.pem /etc/pki/rpm-gpg/GPG-KEY-WAZUH;
 
 						# Copy repo files over
 						cp "./yum_repos/salt-latest.repo" /etc/yum.repos.d/salt-latest.repo;
@@ -1099,9 +1107,9 @@ salt_checkin() {
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
 				echo " *** Restarting Salt to fix any SSL errors. ***";
-				service salt-master restart;
+				systemctl restart salt-master;
 				sleep 5;
-				service salt-minion restart;
+				systemctl restart salt-minion;
 				sleep 15;
 				echo " Applyng a mine hack";
 				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
@@ -1129,7 +1137,7 @@ setup_salt_master_dirs() {
 	mkdir -p /opt/so/saltstack/pillar
 
 	# Copy over the salt code and templates
-	if [ "$INSTALLMETHOD" = 'iso' ]; then
+	if [ "$setup_type" = 'iso' ]; then
 		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* /opt/so/saltstack/pillar/ >> "$setup_log" 2>&1
 		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* /opt/so/saltstack/salt/ >> "$setup_log" 2>&1
 	else
@@ -1152,7 +1160,11 @@ set_progress_str() {
 	fi
 
 	percentage_str="XXX\n${percentage}\n${progress_bar_text}\nXXX"
+
 	echo -e "$percentage_str"
+
+	printf '%s\n' '----' "${progress_bar_text^^}" "----" >> "$setup_log" 2>&1
+	
 	sleep 5
 }
 
@@ -1162,19 +1174,19 @@ sensor_pillar() {
 
 	# Create the sensor pillar
 	printf '%s\n'\
-		"sensor"\
+		"sensor:"\
 		"  interface: bond0"\
 		"  mainip: $MAINIP"\
-		"  mainint: $MNIC" > "$pillar_file"
+		"  mainint: $MNIC" >> "$pillar_file"
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  bro_pins:" >> "$pillar_file"
-		for PIN in $BROPINS; do
+		for PIN in "${BROPINS[@]}"; do
 			PIN=$(echo "$PIN" |  cut -d\" -f2)
 		echo "    - $PIN" >> "$pillar_file"
 		done
 		echo "  suripins:" >> "$pillar_file"
-		for SPIN in $SURIPINS; do
+		for SPIN in "${SURIPINS[@]}"; do
 			SPIN=$(echo "$SPIN" |  cut -d\" -f2)
 		echo "    - $SPIN" >> "$pillar_file"
 		done
@@ -1199,6 +1211,9 @@ sensor_pillar() {
 		"  access_key: $ACCESS_KEY"\
 		"  access_secret: $ACCESS_SECRET"\
 		"" >> "$pillar_file"
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 set_hostname() {
@@ -1223,22 +1238,20 @@ set_hostname_iso() {
 	echo "::1   $HOSTNAME $HOSTNAME localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
 	echo "$HOSTNAME" > /etc/hostname
 
+
 }
 
 set_initial_firewall_policy() {
 
   set_main_ip
 
-  mkdir -p /opt/so/saltstack/pillar/firewall
-  mkdir -p /opt/so/saltstack/pillar/data
-
 	case "$install_type" in
 		'MASTER')
-			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls /opt/so/saltstack/pillar/firewall/masterfw.sls
+			printf "  - %s\n" "$MAINIP" | tee -a /opt/so/saltstack/pillar/firewall/minions.sls /opt/so/saltstack/pillar/firewall/masterfw.sls
 			/opt/so/saltstack/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$FSROOT" "$FSNSM"
 			;;
 		'EVAL' | 'MASTERSEARCH')
-			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
+			printf "  - %s\n" "$MAINIP" | tee -a /opt/so/saltstack/pillar/firewall/minions.sls\
 				/opt/so/saltstack/pillar/firewall/masterfw.sls\
 				/opt/so/saltstack/pillar/firewall/forward_nodes.sls\
 				/opt/so/saltstack/pillar/firewall/search_nodes.sls
@@ -1252,7 +1265,7 @@ set_initial_firewall_policy() {
 			esac
 			;;
 		'HELIXSENSOR')
-			printf "  - %s\n" "$MAINIP" | tee /opt/so/saltstack/pillar/firewall/minions.sls\
+			printf "  - %s\n" "$MAINIP" | tee -a /opt/so/saltstack/pillar/firewall/minions.sls\
 				/opt/so/saltstack/pillar/firewall/masterfw.sls\
 				/opt/so/saltstack/pillar/firewall/forward_nodes.sls
 			;;
