@@ -588,7 +588,7 @@ docker_registry() {
 docker_seed_registry() {
 	local VERSION="HH$so_version"
 
-	if [ ! -f /nsm/docker-registry/docker/so-dockers-"$VERSION".tar ]; then
+	if ! [ -f /nsm/docker-registry/docker/so-dockers-"$VERSION".tar ]; then
 		local TRUSTED_CONTAINERS=(\
 			"so-core:$VERSION" \
 			"so-filebeat:$VERSION" \
@@ -644,7 +644,7 @@ docker_seed_registry() {
 			} >> "$setup_log" 2>&1
 		done
 	else
-		tar xvf /nsm/docker-registry/dockerso-dockers-$VERSION.tar >> "$setup_log" 2>&1
+		tar xvf /nsm/docker-registry/docker/so-dockers-$VERSION.tar >> "$setup_log" 2>&1
 		rm /nsm/docker-registry/docker/so-dockers-$VERSION.tar >> "$setup_log" 2>&1
 	fi
 
@@ -1246,6 +1246,9 @@ set_hostname_iso() {
 set_initial_firewall_policy() {
 
   set_main_ip
+
+  chmod +x /opt/so/saltstack/pillar/data/addtotab.sh
+  chmod +x /opt/so/saltstack/pillar/firewall/addfirewall.sh
 
 	case "$install_type" in
 		'MASTER')
