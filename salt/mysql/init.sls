@@ -85,8 +85,8 @@ so-mysql:
     - watch:
       - /opt/so/conf/mysql/etc
   cmd.run:
-    - name: until nc -z localhost 3036; do sleep 1; done
-    - timeout: 120
+    - name: until nc -z {{ MASTERIP }} 3036; do sleep 1; done
+    - timeout: 360
     - onchanges:
       - docker_container: so-mysql
 {% endif %}
