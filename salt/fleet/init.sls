@@ -91,6 +91,7 @@ fleetdb:
     - connection_pass: {{ MYSQLPASS }}
     - require:
       - sls: mysql
+      - cmd: so-mysql
 
 fleetdbuser:
   mysql_user.present:
