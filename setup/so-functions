@@ -514,16 +514,18 @@ disable_onion_user() {
 }
 
 disable_misc_network_features() {
-	for unused_nic in "${filtered_nics[@]}"; do
-		# Disable DHCPv4/v6 and autoconnect
-		nmcli con mod "$unused_nic" \
-			ipv4.method disabled \
-			ipv6.method ignore \
-			connection.autoconnect "no" >> "$setup_log" 2>&1
+	if [ ${#filtered_nics[@]} -ne 0 ]; then
+		for unused_nic in "${filtered_nics[@]}"; do
+			# Disable DHCPv4/v6 and autoconnect
+			nmcli con mod "$unused_nic" \
+				ipv4.method disabled \
+				ipv6.method ignore \
+				connection.autoconnect "no" >> "$setup_log" 2>&1
 
-		# Flush any existing IPs
-		ip addr flush "$unused_nic" >> "$setup_log" 2>&1
-	done
+			# Flush any existing IPs
+			ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+		done
+	fi
 	# Disable IPv6
 	{ 
 		echo "net.ipv6.conf.all.disable_ipv6 = 1"
