@@ -636,7 +636,11 @@ docker_seed_registry() {
 			# Pull down the trusted docker image
 			set_progress_str "$percent" "Downloading $i"
 			{
-				docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+				
+				if ! docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"; then
+					sleep 5
+					docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+				fi
 				# Tag it with the new registry destination
 				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
 				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
