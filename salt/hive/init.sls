@@ -55,10 +55,6 @@ hiveesdata:
     - user: 939
     - group: 939
 
-vm.max_map_count:
-  sysctl.present:
-    - value: 262144
-
 so-thehive-es:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:{{ VERSION }}
