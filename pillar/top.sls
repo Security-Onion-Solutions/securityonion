@@ -1,8 +1,4 @@
 base:
-  '*':
-    - patch.needs_restarting
-    - docker.config
-
   '*_mastersearch or *_heavynode':
     - match: compound
     - logstash
@@ -70,3 +66,7 @@ base:
     - logstash
     - logstash.search
     - minions.{{ grains.id }}
+
+  '*':
+    - patch.needs_restarting
+    - docker.config
