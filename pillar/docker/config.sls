@@ -26,7 +26,6 @@ eval:
     - so-redis
     {% endif %}
     - so-elasticsearch
-    - so-logstash
     - so-kibana
     - so-steno
     - so-suricata
