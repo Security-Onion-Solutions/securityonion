@@ -127,7 +127,7 @@ secrets_pillar(){
 bro_logs_enabled() {
 	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local brologs_pillar="./pillar/brologs.sls"
+	local brologs_pillar=./pillar/brologs.sls
 
 	printf '%s\n'\
 		"brologs:"\
@@ -361,7 +361,7 @@ copy_master_config() {
 	if [ "$setup_type" = 'iso' ]; then
 		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
 	else
-		cp "../files/master" /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
 	fi
 
 	# Restart the service so it picks up the changes
@@ -967,12 +967,13 @@ saltify() {
 
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
-		set_progress_str 6 'Installing various dependencies'
+		set_progress_str 5 'Installing Salt repo'
 		{
-			yum -y install wget nmap https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest-2.el7.noarch.rpm;
-			cp /etc/yum.repos.d/salt-py3-latest.repo /etc/yum.repos.d/salt-2019-2.repo;
-			sed -i 's/latest/2019.2/g' /etc/yum.repos.d/salt-2019-2.repo;
+			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/2019.2/SALTSTACK-GPG-KEY.pub;
+			cp ./yum_repos/salt-2019-2.repo /etc/yum.repos.d/salt-2019-2.repo;
 		} >> "$setup_log" 2>&1
+		set_progress_str 6 'Installing various dependencies'
+		yum -y install wget nmap >> "$setup_log" 2>&1
 		case "$install_type" in
 			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
 				reserve_group_ids >> "$setup_log" 2>&1
@@ -982,9 +983,9 @@ saltify() {
 				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				cp "./yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
+				cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
 				set_progress_str 7 'Installing salt-master'
-				yum -y install salt-master-2019.2.3 >> "$setup_log" 2>&1
+				yum -y install salt-master-2019.2.4 >> "$setup_log" 2>&1
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
 			*)
@@ -992,23 +993,20 @@ saltify() {
 					{
 						# Create the GPG Public Key for the Salt Repo
 						cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
-										
-						# Add the Wazuh Key
-						cp ./public_keys/wazuh.pem /etc/pki/rpm-gpg/GPG-KEY-WAZUH;
 
 						# Copy repo files over
-						cp "./yum_repos/salt-latest.repo" /etc/yum.repos.d/salt-latest.repo;
-						cp "./yum_repos/salt-2019-2.repo" /etc/yum.repos.d/salt-2019-2.repo;
+						cp ./yum_repos/salt-latest.repo /etc/yum.repos.d/salt-latest.repo;
+						cp ./yum_repos/salt-2019-2.repo /etc/yum.repos.d/salt-2019-2.repo;
 					} >> "$setup_log" 2>&1
 				fi
 				;;
 		esac
-		cp "./yum_repos/wazuh.repo" /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
+		cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
 		yum clean expire-cache >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
 			yum -y install epel-release\
-				salt-minion-2019.2.3\
+				salt-minion-2019.2.4\
 				python3\
 				python36-docker\
 				python36-dateutil\
@@ -1074,7 +1072,7 @@ saltify() {
 				set_progress_str 6 'Installing various dependencies'
 				apt-get -y install sqlite3 argon2 libssl-dev >> "$setup_log" 2>&1
 				set_progress_str 7 'Installing salt-master'
-				apt-get -y salt-master=2019.2.3+ds-1 >> "$setup_log" 2>&1
+				apt-get -y salt-master=2019.2.4+ds-1 >> "$setup_log" 2>&1
 				apt-mark hold salt-master >> "$setup_log" 2>&1
 				;;
 			*)
@@ -1091,8 +1089,8 @@ saltify() {
 		esac
 		apt-get update >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		apt-get -y install salt-minion=2019.2.3+ds-1\
-					salt-common=2019.2.3+ds-1 >> "$setup_log" 2>&1
+		apt-get -y install salt-minion=2019.2.4+ds-1\
+					salt-common=2019.2.4+ds-1 >> "$setup_log" 2>&1
 		apt-mark hold salt-minion salt-common >> "$setup_log" 2>&1
 		if [ "$OSVER" != 'xenial' ]; then 
 			apt-get -y install python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
