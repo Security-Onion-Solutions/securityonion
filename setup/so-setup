@@ -307,26 +307,26 @@ export percentage=0
 	set_progress_str 16 'Copying minion pillars to master'
 	copy_minion_tmp_files 2>> "$setup_log"
 
+	if [[ $is_node ]]; then
+		set_progress_str 17 'Setting node type'
+		set_node_type 2>> "$setup_log"
+
+		set_progress_str 18 'Generating search node pillar'
+		node_pillar 2>> "$setup_log"
+	fi
+
+	set_progress_str 19 'Generating CA and checking in'
+	salt_checkin 2>> "$setup_log"
+
 	if [[ $is_minion ]]; then
-		set_progress_str 17 'Accepting Salt key on master'
+		set_progress_str 20 'Accepting Salt key on master'
 		accept_salt_key_remote 2>> "$setup_log"
 	fi
 
 	if [[ $is_master ]]; then
-		set_progress_str 17 'Accepting Salt key'
+		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
-
-	if [[ $is_node ]]; then
-		set_progress_str 18 'Setting node type'
-		set_node_type 2>> "$setup_log"
-
-		set_progress_str 19 'Generating search node pillar'
-		node_pillar 2>> "$setup_log"
-	fi
-
-	set_progress_str 20 'Generating CA and checking in'
-	salt_checkin 2>> "$setup_log"
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Downloading containers from the internet'
