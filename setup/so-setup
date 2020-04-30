@@ -299,6 +299,9 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
+	set_progress_str 14 'Running first Salt checkin'
+	salt_firstcheckin 2>> "$setup_log"
+
 	if [[ $is_helix ]]; then
 		set_progress_str 15 'Generating the FireEye pillar'
 		fireeye_pillar 2>> "$setup_log"
@@ -315,18 +318,18 @@ export percentage=0
 		node_pillar 2>> "$setup_log"
 	fi
 
-	set_progress_str 19 'Generating CA and checking in'
-	salt_checkin 2>> "$setup_log"
-
 	if [[ $is_minion ]]; then
-		set_progress_str 20 'Accepting Salt key on master'
+		set_progress_str 19 'Accepting Salt key on master'
 		accept_salt_key_remote 2>> "$setup_log"
 	fi
 
 	if [[ $is_master ]]; then
-		set_progress_str 20 'Accepting Salt key'
+		set_progress_str 19 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
+
+	set_progress_str 20 'Generating CA and checking in'
+	salt_checkin 2>> "$setup_log"
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Downloading containers from the internet'
