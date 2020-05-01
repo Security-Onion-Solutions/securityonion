@@ -1,7 +1,6 @@
 base:
   '*':
     - patch.needs_restarting
-    - docker.config
 
   '*_eval or *_helix or *_heavynode or *_sensor':
     - match: compound
