@@ -1,3 +1,13 @@
+## Hybrid Hunter Beta 1.2.2 - Beta 1
+
+### Changes:  
+
+- Updated Saltstack to 2019.2.4 to address [CVE-2020-11651](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-11651)
+- Updated Suricata to 4.1.8 to address some possible security issues. Details [here](https://suricata-ids.org/2020/04/28/suricata-4-1-8-released/).
+- Fixed an issue that was preventing Strelka to function properly.
+- ISO installs should now use the built in docker containers instead of re-downloading them.
+
+
 ## Hybrid Hunter Beta 1.2.1 - Beta 1
 
 ### Changes:
