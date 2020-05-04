@@ -1,19 +1,18 @@
+{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{% set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
+{% set THEHIVE = salt['pillar.get']('master:thehive', '0') %}
+{% set PLAYBOOK = salt['pillar.get']('master:playbook', '0') %}
+{% set FREQSERVER = salt['pillar.get']('master:freq', '0') %}
+{% set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{% set WAZUH = salt['pillar.get']('static:wazuh', False) %}
-{% set THEHIVE = salt['pillar.get']('master:thehive', False) %}
-{% set PLAYBOOK = salt['pillar.get']('master:playbook', False) %}
-{% set FREQSERVER = salt['pillar.get']('master:freq', False) %}
-{% set DOMAINSTATS = salt['pillar.get']('master:domainstats', False) %}
-{% set STRELKA = salt['pillar.get']('static:strelka', False) %}
-{% set GRAFANA = salt['pillar.get']('master:grafana', False) %}
-{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
-{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
+{% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
 
 eval:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
-    {% if  GRAFANA %}
+    {% if  GRAFANA == '1' %}
     - so-influxdb
     - so-grafana
     {% endif %}
@@ -27,34 +26,35 @@ eval:
     - so-redis
     {% endif %}
     - so-elasticsearch
+    - so-logstash
     - so-kibana
     - so-steno
     - so-suricata
     - so-zeek
     - so-curator
     - so-elastalert
-    {% if WAZUH %}
+    {% if WAZUH != '0' %}
     - so-wazuh
     {% endif %}
     - so-soctopus
-    {% if THEHIVE %}
+    {% if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {% endif %}
-    {% if PLAYBOOK %}
+    {% if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {% endif %}
-    {% if FREQSERVER %}
+    {% if FREQSERVER != '0' %}
     - so-freqserver
     {% endif %}
-    {% if DOMAINSTATS %}
+    {% if DOMAINSTATS != '0' %}
     - so-domainstats
     {% endif %}
 heavy_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-redis
     - so-logstash
@@ -69,7 +69,7 @@ heavy_node:
     {% endif %}
 helix:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-idstools
     - so-steno
@@ -79,14 +79,14 @@ helix:
     - so-filebeat
 hot_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
     - so-elasticsearch
     - so-curator
 master_search:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-soc
     - so-kratos
@@ -99,36 +99,37 @@ master_search:
     - so-kibana
     - so-elastalert
     - so-filebeat
+    - so-soctopus
     {% if FLEETMASTER %}
     - so-mysql
     - so-fleet
     - so-redis
     {% endif %}
-    {% if WAZUH %}
+    {% if WAZUH != '0' %}
     - so-wazuh
     {% endif %}
     - so-soctopus
-    {% if THEHIVE %}
+    {% if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {% endif %}
-    {% if PLAYBOOK %}
+    {% if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {% endif %}
-    {% if FREQSERVER %}
+    {% if FREQSERVER != '0' %}
     - so-freqserver
     {% endif %}
-    {% if DOMAINSTATS %}
+    {% if DOMAINSTATS != '0' %}
     - so-domainstats
     {% endif %}
 master:
   containers:
     - so-dockerregistry
-    - so-core
+    - so-nginx
     - so-telegraf
-    {% if  GRAFANA %}
+    {% if  GRAFANA == '1' %}
     - so-influxdb
     - so-grafana
     {% endif %}
@@ -136,6 +137,7 @@ master:
     - so-kratos
     - so-acng
     - so-idstools
+    - so-redis
     - so-elasticsearch
     - so-logstash
     - so-kibana
@@ -146,44 +148,44 @@ master:
     - so-fleet
     - so-redis
     {% endif %}
-    {% if WAZUH %}
+    {% if WAZUH != '0' %}
     - so-wazuh
     {% endif %}
     - so-soctopus
-    {% if THEHIVE %}
+    {% if THEHIVE != '0' %}
     - so-thehive
     - so-thehive-es
     - so-cortex
     {% endif %}
-    {% if PLAYBOOK %}
+    {% if PLAYBOOK != '0' %}
     - so-playbook
     - so-navigator
     {% endif %}
-    {% if FREQSERVER %}
+    {% if FREQSERVER != '0' %}
     - so-freqserver
     {% endif %}
-    {% if DOMAINSTATS %}
+    {% if DOMAINSTATS != '0' %}
     - so-domainstats
     {% endif %}
 parser_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
 search_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-logstash
     - so-elasticsearch
     - so-curator
     - so-filebeat
-    {% if WAZUH %}
+    {% if WAZUH != '0' %}
     - so-wazuh
     {% endif %}
 sensor:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-steno
     - so-suricata
@@ -194,7 +196,7 @@ sensor:
     - so-filebeat
 warm_node:
   containers:
-    - so-core
+    - so-nginx
     - so-telegraf
     - so-elasticsearch
 fleet:
@@ -204,6 +206,6 @@ fleet:
     - so-fleet
     - so-redis
     - so-filebeat
-    - so-core
+    - so-nginx
     - so-telegraf
     {% endif %}
