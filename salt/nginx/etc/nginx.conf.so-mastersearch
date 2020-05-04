@@ -146,6 +146,20 @@ http {
 
         }
 
+        location /cyberchef/ {
+          auth_request          /auth/sessions/whoami;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+        }
+
+        location /cyberchef {
+          rewrite               ^ /cyberchef/ permanent;
+        }
+
         location /packages/ {
           try_files $uri =206;
           auth_request          /auth/sessions/whoami;
