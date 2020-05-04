@@ -15,798 +15,1024 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+source ./so-variables
+source ./so-common-functions
+
+
 whiptail_basic_bro() {
 
-  BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the number of bro processes:" 10 75 $LBPROCS 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the number of bro processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
 
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_basic_suri() {
 
-  BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the number of Suricata Processes:" 10 75 $LBPROCS 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the number of Suricata processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_bro_pins() {
 
-  BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please Select $LBPROCS cores to pin Bro to:" 20 75 12 ${LISTCORES[@]} 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	local cpu_core_list_whiptail=()
+	for item in "${cpu_core_list[@]}"; do
+		cpu_core_list_whiptail+=("$item" "OFF")
+	done
 
+	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	BROPINS=$(echo "$BROPINS" | tr -d '"')
+
+	IFS=' ' read -ra BROPINS <<< "$BROPINS"
 }
 
 whiptail_bro_version() {
 
-  BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
-  "SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
+	"SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_bond_nics() {
 
-  local nic_list=()
-  for FNIC in ${FNICS[@]}; do
-    nic_list+=($FNIC "Interface" "OFF")
-  done
+	[ -n "$QUIET" ] && return
 
-  BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	filter_unused_nics
 
-  while [ -z "$BNICS" ]
-  do
-    BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 ${nic_list[@]} 3>&1 1>&2 2>&3 )
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  done
+	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
+	while [ -z "$BNICS" ]
+	do
+		BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
+
+	BNICS=$(echo "$BNICS" | tr -d '"')
+
+	IFS=' ' read -ra BNICS <<< "$BNICS"
 }
 
 whiptail_bond_nics_mtu() {
 
-  # Set the MTU on the monitor interface
-  MTU=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the MTU for the monitor NICs" 10 75 1500 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	# Set the MTU on the monitor interface
+	MTU=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the MTU for the monitor NICs" 10 75 1500 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_cancel() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
-  if [ -d "/root/installtmp" ]; then
-    echo "/root/installtmp exists" >> $SETUPLOG 2>&1
-    install_cleanup >> $SETUPLOG 2>&1
-    echo "/root/installtmp removed" >> $SETUPLOG 2>&1
-  fi
-  exit
+	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
+	if [ -d "/root/installtmp" ]; then
+		{
+			echo "/root/installtmp exists";
+			install_cleanup;
+			echo "/root/installtmp removed";
+		} >> $setup_log 2>&1
+	fi
+	exit
 
 }
 
 whiptail_check_exitstatus() {
-
-  if [ $1 == '1' ]; then
-    echo "They hit cancel"
-    whiptail_cancel
-  fi
-
+	case $1 in
+		1)
+			whiptail_cancel
+			;;
+		255)
+			whiptail --title "Security Onion Setup" --msgbox "Whiptail error occured, exiting. Check log for details." 8 75
+			exit
+			;;
+	esac
 }
 
 whiptail_create_admin_user() {
 
-  ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
-  "Please enter a username for your new admin user. The onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
+	"Please enter a username for your new admin user. The onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_create_admin_user_password1() {
 
-  ADMINPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	ADMINPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_create_admin_user_password2() {
 
-  ADMINPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Re-enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	ADMINPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Re-enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_create_soremote_user() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Set a password for the soremote user. This account is used for adding sensors remotely." 8 75
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "Set a password for the soremote user. This account is used for adding sensors remotely." 8 75
 
 }
 
 whiptail_create_soremote_user_password1() {
 
-  SOREMOTEPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	SOREMOTEPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_create_soremote_user_password2() {
 
-  SOREMOTEPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Re-enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return	
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	SOREMOTEPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Re-enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_create_web_user() {
 
-  WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
-  "Please enter an email address to create an administrator account for the web interface." 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
+	"Please enter an email address to create an administrator account for the web interface." 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_invalid_user_warning() {
-  whiptail --title "Security Onion Setup" --msgbox "Please enter a valid email address." 8 75
+
+	[ -n "$QUIET" ] && return
+	
+	whiptail --title "Security Onion Setup" --msgbox "Please enter a valid email address." 8 75
 }
 
 whiptail_create_web_user_password1() {
 
-  WEBPASSWD1=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	WEBPASSWD1=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_create_web_user_password2() {
 
-  WEBPASSWD2=$(whiptail --title "Security Onion Install" --passwordbox \
-  "Re-enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	WEBPASSWD2=$(whiptail --title "Security Onion Install" --passwordbox \
+	"Re-enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_invalid_pass_warning() {
-  whiptail --title "Security Onion Setup" --msgbox "Please choose a more secure password." 8 75
+
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "Please choose a more secure password." 8 75
 }
 
 whiptail_cur_close_days() {
 
-  CURCLOSEDAYS=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Please specify the threshold (in days) at which Elasticsearch indices will be closed" 10 75 $CURCLOSEDAYS 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	CURCLOSEDAYS=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Please specify the threshold (in days) at which Elasticsearch indices will be closed" 10 75 $CURCLOSEDAYS 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_dhcp_or_static() {
 
-  ADDRESSTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose how to set up your management interface:" 20 78 4 \
-  "STATIC" "Set a static IPv4 address" ON  \
-  "DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	address_type=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose how to set up your management interface:" 20 78 4 \
+	"STATIC" "Set a static IPv4 address" ON  \
+	"DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	export address_type
+
 }
 
 whiptail_enable_components() {
-  COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
-  "Select Components to install" 20 75 8 \
-  "GRAFANA" "Enable Grafana for system monitoring" ON \
-  "OSQUERY" "Enable Fleet with osquery" ON \
-  "WAZUH" "Enable Wazuh" ON \
-  "THEHIVE" "Enable TheHive" ON \
-  "PLAYBOOK" "Enable Playbook" ON \
-  "STRELKA" "Enable Strelka" ON 3>&1 1>&2 2>&3 )
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	[ -n "$QUIET" ] && return
 
+	COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
+	"Select Components to install" 20 75 8 \
+	GRAFANA "Enable Grafana for system monitoring" ON \
+	OSQUERY "Enable Fleet with osquery" ON \
+	WAZUH "Enable Wazuh" ON \
+	THEHIVE "Enable TheHive" ON \
+	PLAYBOOK "Enable Playbook" ON \
+	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	COMPONENTS=$(echo "$COMPONENTS" | tr -d '"')
+
+	IFS=' ' read -ra COMPONENTS <<< "$COMPONENTS"
+
+	# Set any variables to 1 if they exist in COMPONENTS
+	for component in "${COMPONENTS[@]}"; do
+    	export "$component=1"
+	done
 }
 
 whiptail_eval_adv() {
-  EVALADVANCED=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose your eval install:" 20 75 4 \
-  "BASIC" "Install basic components for evaluation" ON  \
-  "ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	[ -n "$QUIET" ] && return
+
+	EVALADVANCED=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose your eval install:" 20 75 4 \
+	"BASIC" "Install basic components for evaluation" ON  \
+	"ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_eval_adv_warning() {
-  whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
+whiptail_components_adv_warning() {
+
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
 }
 
 whiptail_helix_apikey() {
-  HELIXAPIKEY=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Helix API Key: \n \nThis can be set later using so-helix-apikey" 10 75 3>&1 1>&2 2>&3)
 
-  local exitstatus=$?
-  whiptail_check_exitstatus
+	[ -n "$QUIET" ] && return
+
+	HELIXAPIKEY=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your Helix API Key: \n \nThis can be set later using so-helix-apikey" 10 75 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus
 
 }
 
 whiptail_homenet_master() {
 
-  # Ask for the HOME_NET on the master
-  HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
+	export HNMASTER
 }
 
 whiptail_homenet_sensor() {
 
-  # Ask to inherit from master
-  whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 75
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  if [ $exitstatus == 0 ]; then
-    HNSENSOR=inherit
-  else
-    HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
-    "Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  fi
+	# Ask to inherit from master
+	whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 75
+
+	local exitstatus=$?
+
+	if [ $exitstatus == 0 ]; then
+		export HNSENSOR=inherit
+	else
+		HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+
+		export HNSENSOR
+
+	fi
 
 }
 
 whiptail_install_type() {
 
-  # What kind of install are we doing?
-  INSTALLTYPE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose Install Type:" 20 75 13 \
-  "SENSOR" "Create a forward only sensor" ON \
-  "SEARCHNODE" "Add a Search Node with parsing" OFF \
-  "MASTER" "Start a new grid" OFF \
-  "EVAL" "Evaluate all the things" OFF \
-  "MASTERSEARCH" "Master + Search Node" OFF \
-  "HEAVYNODE" "Sensor + Search Node" OFF \
-  "HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
-  "FLEET" "Dedicated Fleet Osquery Node" OFF \
-  "HOTNODE" "TODO Add Hot Node (Search Node without Parsing)" OFF \
-  "WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
-  "WAZUH" "TODO Stand Alone Wazuh Node" OFF \
-  "STRELKA" "TODO Stand Alone Strelka Node" OFF \
-  "PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	# What kind of install are we doing?
+	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose Install Type:" 20 75 13 \
+	"SENSOR" "Create a forward only sensor" ON \
+	"SEARCHNODE" "Add a Search Node with parsing" OFF \
+	"MASTER" "Start a new grid" OFF \
+	"EVAL" "Evaluate all the things" OFF \
+	"MASTERSEARCH" "Master + Search Node" OFF \
+	"HEAVYNODE" "Sensor + Search Node" OFF \
+	"HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
+	"FLEET" "Dedicated Fleet Osquery Node" OFF \
+	"HOTNODE" "TODO Add Hot Node (Search Node without Parsing)" OFF \
+	"WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
+	"WAZUH" "TODO Stand Alone Wazuh Node" OFF \
+	"STRELKA" "TODO Stand Alone Strelka Node" OFF \
+	"PARSINGNODE" "TODO Add a dedicated Parsing Node" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	export install_type
+
 
 }
 
 whiptail_log_size_limit() {
 
-   LOG_SIZE_LIMIT=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
-  By default, this is set to 80% of the disk space allotted for /nsm." 10 75 $LOG_SIZE_LIMIT 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+	
+	set_defaul_log_size
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
+	By default, this is set to 80% of the disk space allotted for /nsm." 10 75 "$log_size_limit" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_management_interface_dns() {
 
-  MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your DNS server using space between multiple" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your DNS server using space between multiple" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_management_interface_dns_search() {
 
-  MSEARCH=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your DNS search domain" 10 60 searchdomain.local 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	MSEARCH=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your DNS search domain" 10 60 searchdomain.local 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_management_interface_gateway() {
 
-  MGATEWAY=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your gateway" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	MGATEWAY=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your gateway" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_management_interface_ip() {
 
-  MIP=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your IP address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	MIP=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your IP address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_management_interface_mask() {
 
-  MMASK=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the bit mask for your subnet" 10 60 24 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
+
+	MMASK=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the bit mask for your subnet" 10 60 24 3>&1 1>&2 2>&3)
 
 }
 
 whiptail_management_nic() {
 
-  MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	[ -n "$QUIET" ] && return
 
-  while [ -z "$MNIC" ]
-  do
-    MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 ${NICS[@]} 3>&1 1>&2 2>&3 )
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  done
+	filter_unused_nics
+
+	MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )	
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	while [ -z "$MNIC" ]
+	do
+		MNIC=$(whiptail --title "NIC Setup" --radiolist "Please select your management NIC" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )	
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
 
 }
 
 whiptail_nids() {
 
-  NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose which IDS to run:" 20 75 4 \
-  "Suricata" "Suricata 4.X" ON  \
-  "Snort" "Snort 3.0 Beta" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose which IDS to run:" 20 75 4 \
+	"Suricata" "Suricata 4.X" ON  \
+	"Snort" "Snort 3.0 Beta" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_oinkcode() {
 
-  OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your oinkcode" 10 75 XXXXXXX 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your oinkcode" 10 75 XXXXXXX 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_make_changes() {
 
-  whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $INSTALLTYPE. Please hit YES to make changes or NO to cancel." 8 75
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $install_type. Please hit YES to make changes or NO to cancel." 8 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_management_server() {
 
-  MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter your Master Server HOSTNAME. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter your Master Server hostname. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
 
-  # See if it resolves. Otherwise prompt to add to host file
-  TESTHOST=$(host $MSRV)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
-  if [[ $TESTHOST = *"not found"* ]] || [ -z $TESTHOST ] || [[ $TESTHOST = *"connection timed out"* ]]; then
-    add_master_hostfile
-  fi
+	if ! getent hosts "$MSRV"; then
+		add_master_hostfile
+	fi
 
 }
 
 # Ask if you want to do advanced setup of the Master
 whiptail_master_adv() {
 
-  MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose what type of master install:" 20 75 4 \
-  "BASIC" "Install master with recommended settings" ON  \
-  "ADVANCED" "Do additional configuration to the master" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose what type of master install:" 20 75 4 \
+	"BASIC" "Install master with recommended settings" ON  \
+	"ADVANCED" "Do additional configuration to the master" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 # Ask which additional components to install
 whiptail_master_adv_service_brologs() {
 
-  BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please Select Logs to Send:" 24 75 12 \
-  "conn" "Connection Logging" ON \
-  "dce_rpc" "RPC Logs" ON \
-  "dhcp" "DHCP Logs" ON \
-  "dhcpv6" "DHCP IPv6 Logs" ON \
-  "dnp3" "DNP3 Logs" ON \
-  "dns" "DNS Logs" ON \
-  "dpd" "DPD Logs" ON \
-  "files" "Files Logs" ON \
-  "ftp" "FTP Logs" ON \
-  "http" "HTTP Logs" ON \
-  "intel" "Intel Hits Logs" ON \
-  "irc" "IRC Chat Logs" ON \
-  "kerberos" "Kerberos Logs" ON \
-  "modbus" "MODBUS Logs" ON \
-  "mqtt" "MQTT Logs" ON \
-  "notice" "Zeek Notice Logs" ON \
-  "ntlm" "NTLM Logs" ON \
-  "openvpn" "OPENVPN Logs" ON \
-  "pe" "PE Logs" ON \
-  "radius" "Radius Logs" ON \
-  "rfb" "RFB Logs" ON \
-  "rdp" "RDP Logs" ON \
-  "signatures" "Signatures Logs" ON \
-  "sip" "SIP Logs" ON \
-  "smb_files" "SMB Files Logs" ON \
-  "smb_mapping" "SMB Mapping Logs" ON \
-  "smtp" "SMTP Logs" ON \
-  "snmp" "SNMP Logs" ON \
-  "software" "Software Logs" ON \
-  "ssh" "SSH Logs" ON \
-  "ssl" "SSL Logs" ON \
-  "syslog" "Syslog Logs" ON \
-  "telnet" "Telnet Logs" ON \
-  "tunnel" "Tunnel Logs" ON \
-  "weird" "Zeek Weird Logs" ON \
-  "mysql" "MySQL Logs" ON \
-  "socks" "SOCKS Logs" ON \
-  "x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please select Logs to Send:" 24 75 12 \
+	"conn" "Connection Logging" ON \
+	"dce_rpc" "RPC Logs" ON \
+	"dhcp" "DHCP Logs" ON \
+	"dhcpv6" "DHCP IPv6 Logs" ON \
+	"dnp3" "DNP3 Logs" ON \
+	"dns" "DNS Logs" ON \
+	"dpd" "DPD Logs" ON \
+	"files" "Files Logs" ON \
+	"ftp" "FTP Logs" ON \
+	"http" "HTTP Logs" ON \
+	"intel" "Intel Hits Logs" ON \
+	"irc" "IRC Chat Logs" ON \
+	"kerberos" "Kerberos Logs" ON \
+	"modbus" "MODBUS Logs" ON \
+	"mqtt" "MQTT Logs" ON \
+	"notice" "Zeek Notice Logs" ON \
+	"ntlm" "NTLM Logs" ON \
+	"openvpn" "OPENVPN Logs" ON \
+	"pe" "PE Logs" ON \
+	"radius" "Radius Logs" ON \
+	"rfb" "RFB Logs" ON \
+	"rdp" "RDP Logs" ON \
+	"signatures" "Signatures Logs" ON \
+	"sip" "SIP Logs" ON \
+	"smb_files" "SMB Files Logs" ON \
+	"smb_mapping" "SMB Mapping Logs" ON \
+	"smtp" "SMTP Logs" ON \
+	"snmp" "SNMP Logs" ON \
+	"software" "Software Logs" ON \
+	"ssh" "SSH Logs" ON \
+	"ssl" "SSL Logs" ON \
+	"syslog" "Syslog Logs" ON \
+	"telnet" "Telnet Logs" ON \
+	"tunnel" "Tunnel Logs" ON \
+	"weird" "Zeek Weird Logs" ON \
+	"mysql" "MySQL Logs" ON \
+	"socks" "SOCKS Logs" ON \
+	"x509" "x.509 Logs" ON 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	BLOGS=$(echo "$BLOGS" | tr -d '"')
+
+	IFS=' ' read -ra BLOGS <<< "$BLOGS"
 
 }
 
 whiptail_network_notice() {
 
-  whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Hit YES to continue." 8 75
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Hit YES to continue." 8 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_advanced() {
 
-  NODESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "What type of config would you like to use?:" 20 75 4 \
-  "NODEBASIC" "Install Search Node with recommended settings" ON \
-  "NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NODESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+	"What type of config would you like to use?:" 20 75 4 \
+	"NODEBASIC" "Install Search Node with recommended settings" ON \
+	"NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_es_heap() {
 
-  es_heapsize
-  NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_ls_heap() {
 
-  ls_heapsize
-  NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_ls_pipeline_worker() {
 
-  LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 $CPUCORES 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 "$num_cpu_cores" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_ls_pipline_batchsize() {
 
-  LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_ls_input_threads() {
 
-  LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
-    "\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 75 1 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
+	LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
+		"\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 75 1 3>&1 1>&2 2>&3)
+
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_node_ls_input_batch_count() {
 
-  LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
+
+#TODO: helper function to display error message or exit if batch mode
+# exit_if_batch <"Error string"> <Error code (int)>
+
 whiptail_passwords_dont_match() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Passwords don't match. Please re-enter." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Passwords don't match. Please re-enter." 8 75
 
 }
 
 whiptail_patch_name_new_schedule() {
 
-  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+	"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 
-  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
-    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 75
-    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-    "What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  done
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+		whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 75
+		PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+		"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
 
 
 }
 
 whiptail_patch_schedule() {
 
-  # What kind of patch schedule are we doing?
-  PATCHSCHEDULE=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
-  "Automatic" "Updates installed every 8 hours if available" ON \
-  "Manual" "Updates will be installed manually" OFF \
-  "Import Schedule" "Import named schedule on following screen" OFF \
-  "New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	local patch_schedule
+	patch_schedule=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose OS patch schedule. This will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
+	"Automatic" "Updates installed every 8 hours if available" ON \
+	"Manual" "Updates will be installed manually" OFF \
+	"Import Schedule" "Import named schedule on following screen" OFF \
+	"New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+
+	case $patch_schedule in
+	'New Schedule')
+		whiptail_patch_schedule_select_days
+		whiptail_patch_schedule_select_hours
+		whiptail_patch_name_new_schedule
+		patch_schedule_os_new
+		;;
+	'Import Schedule')
+		whiptail_patch_schedule_import
+		;;
+	'Automatic')
+		PATCHSCHEDULENAME='auto'
+		;;
+	'Manual')
+		PATCHSCHEDULENAME='manual'
+		;;
+	esac
+
 
 }
 
 whiptail_patch_schedule_import() {
 
-  unset PATCHSCHEDULENAME
-  PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	unset PATCHSCHEDULENAME
+	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 
-  while [[ -z "$PATCHSCHEDULENAME"  ]]; do
-    whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 75
-    PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-    "Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  done
+	while [[ -z "$PATCHSCHEDULENAME"  ]]; do
+		whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 75
+		PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
 
 }
 
 whiptail_patch_schedule_select_days() {
-   # Select the days to patch
-  PATCHSCHEDULEDAYS=($(whiptail --title "Security Onion Setup" --checklist \
-  "Which days do you want to apply OS patches?" 15 75 8 \
-  "Monday" "" OFF \
-  "Tuesday" "" ON \
-  "Wednesday" "" OFF \
-  "Thursday" "" OFF \
-  "Friday" "" OFF \
-  "Saturday" "" OFF \
-  "Sunday" "" OFF 3>&1 1>&2 2>&3 ))
+	
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	 # Select the days to patch
+	PATCHSCHEDULEDAYS=$(whiptail --title "Security Onion Setup" --checklist \
+	"Which days do you want to apply OS patches?" 15 75 8 \
+	Monday "" OFF \
+	Tuesday "" ON \
+	Wednesday "" OFF \
+	Thursday "" OFF \
+	Friday "" OFF \
+	Saturday "" OFF \
+	Sunday "" OFF 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	PATCHSCHEDULEDAYS=$(echo "$PATCHSCHEDULEDAYS" | tr -d '"')
+
+	IFS=' ' read -ra PATCHSCHEDULEDAYS <<< "$PATCHSCHEDULEDAYS"
+
 }
 
 whiptail_patch_schedule_select_hours() {
-  # Select the hours to patch
-  PATCHSCHEDULEHOURS=($(whiptail --title "Security Onion Setup" --checklist \
-  "At which time, UTC, do you want to apply OS patches on the selected days? Hours 12 through 23 can be selected on the next screen." 22 75 13 \
-  "00:00" "" OFF \
-  "01:00" "" OFF \
-  "02:00" "" OFF \
-  "03:00" "" OFF \
-  "04:00" "" OFF \
-  "05:00" "" OFF \
-  "06:00" "" OFF \
-  "07:00" "" OFF \
-  "08:00" "" OFF \
-  "09:00" "" OFF \
-  "10:00" "" OFF \
-  "11:00" "" OFF 3>&1 1>&2 2>&3 ))
+	
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	# Select the hours to patch
+	PATCHSCHEDULEHOURS=$(whiptail --title "Security Onion Setup" --checklist \
+	"At which time, UTC, do you want to apply OS patches on the selected days? Hours 12 through 23 can be selected on the next screen." 22 75 13 \
+	00:00 "" OFF \
+	01:00 "" OFF \
+	02:00 "" OFF \
+	03:00 "" OFF \
+	04:00 "" OFF \
+	05:00 "" OFF \
+	06:00 "" OFF \
+	07:00 "" OFF \
+	08:00 "" OFF \
+	09:00 "" OFF \
+	10:00 "" OFF \
+	11:00 "" OFF 3>&1 1>&2 2>&3 )
 
-  # Select the hours to patch
-  PATCHSCHEDULEHOURS+=($(whiptail --title "Security Onion Setup" --checklist \
-  "At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
-  "12:00" "" OFF \
-  "13:00" "" OFF \
-  "14:00" "" OFF \
-  "15:00" "" ON \
-  "16:00" "" OFF \
-  "17:00" "" OFF \
-  "18:00" "" OFF \
-  "19:00" "" OFF \
-  "20:00" "" OFF \
-  "21:00" "" OFF \
-  "22:00" "" OFF \
-  "23:00" "" OFF 3>&1 1>&2 2>&3 ))
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	# Select the hours to patch
+	PATCHSCHEDULEHOURS+=$(whiptail --title "Security Onion Setup" --checklist \
+	"At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
+	12:00 "" OFF \
+	13:00 "" OFF \
+	14:00 "" OFF \
+	15:00 "" ON \
+	16:00 "" OFF \
+	17:00 "" OFF \
+	18:00 "" OFF \
+	19:00 "" OFF \
+	20:00 "" OFF \
+	21:00 "" OFF \
+	22:00 "" OFF \
+	23:00 "" OFF 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
+
+	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
+
 }
 
 whiptail_rule_setup() {
 
-  # Get pulled pork info
-  RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Which IDS ruleset would you like to use?\n\nThis master server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the master server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
-  "ETOPEN" "Emerging Threats Open" ON \
-  "ETPRO" "Emerging Threats PRO" OFF \
-  "TALOSET" "Snort Subscriber (Talos) and ET NoGPL rulesets" OFF \
-  "TALOS" "Snort Subscriber (Talos) ruleset and set a policy" OFF \
-  3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	# Get pulled pork info
+	RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Which IDS ruleset would you like to use?\n\nThis master server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the master server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
+	"ETOPEN" "Emerging Threats Open" ON \
+	"ETPRO" "Emerging Threats PRO" OFF \
+	"TALOSET" "Snort Subscriber (Talos) and ET NoGPL rulesets" OFF \
+	"TALOS" "Snort Subscriber (Talos) ruleset and set a policy" OFF \
+	3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_sensor_config() {
 
-  NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-  "What type of configuration would you like to use?:" 20 75 4 \
-  "BASIC" "Install NSM components with recommended settings" ON \
-  "ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
+	"What type of configuration would you like to use?:" 20 75 4 \
+	"BASIC" "Install NSM components with recommended settings" ON \
+	"ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_set_hostname() {
 
-  HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-  "Enter the Hostname you would like to set." 10 75 $HOSTNAME 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 
-  while [[ "$HOSTNAME" == *'localhost'* ]] ; do
-    whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that doesn't contain localhost." 8 75
-    HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-    "Enter the Hostname you would like to set." 10 75 $HOSTNAME 3>&1 1>&2 2>&3)
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-  done
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	while [[ "$HOSTNAME" == *'localhost'* ]] ; do
+		whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that doesn't contain localhost." 8 75
+		HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
 
 }
 
 whiptail_set_redirect() {
-  REDIRECTINFO=$(whiptail --title "Security Onion Setup" --radiolist \
-  "Choose the access method for the web interface:" 20 75 4 \
-  "IP" "Use IP to access the web interface" ON  \
-  "HOSTNAME" "Use Hostname ($HOSTNAME) to access the web interface" OFF \
-  "OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+
+	[ -n "$QUIET" ] && return
+
+	REDIRECTINFO=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose the access method for the web interface:" 20 75 4 \
+	"IP" "Use IP to access the web interface" ON  \
+	"HOSTNAME" "Use hostname to access the web interface" OFF \
+	"OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_set_redirect_host() {
-  REDIRECTHOST=$(whiptail --title "Security Onion Setup" --inputbox \
-    "Enter the Hostname or IP you would like to use for the web interface." 10 75 $HOSTNAME 3>&1 1>&2 2>&3)
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
+
+	[ -n "$QUIET" ] && return
+
+	REDIRECTHOST=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Enter the Hostname or IP you would like to use for the web interface." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_set_redirect_info() {
-  whiptail --title "Security Onion Setup" --msgbox "The following selection refers to accessing the web interface. \n
+
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "The following selection refers to accessing the web interface. \n
 For security reasons, we use strict cookie enforcement." 10 75
 }
 
 whiptail_setup_complete() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $INSTALLTYPE. Press Enter to reboot." 8 75
-  install_cleanup >> $SETUPLOG 2>&1
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $install_type. Press Enter to reboot." 8 75
+	install_cleanup >> $setup_log 2>&1
 
 }
 
 whiptail_setup_failed() {
 
-  whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $SETUPLOG for details. Press Enter to reboot." 8 75
-  install_cleanup >> $SETUPLOG 2>&1
+	[ -n "$QUIET" ] && return
+
+	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Enter to reboot." 8 75
+	install_cleanup >> $setup_log 2>&1
 
 }
 
 whiptail_shard_count() {
 
-  SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
-  "\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_suricata_pins() {
 
-  FILTEREDCORES=$(echo ${LISTCORES[@]} ${BROPINS[@]} | tr -d '"' | tr ' ' '\n' | sort | uniq -u | awk '{print $1 " \"" "core" "\""}')
-  SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please Select $LBPROCS cores to pin Suricata to:" 20 75 12 ${FILTEREDCORES[@]} 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	local filtered_core_list
+	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
+
+	local filtered_core_str=()
+    for item in "${filtered_core_list[@]}"; do
+        filtered_core_str+=("$item" "")
+    done
+
+	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	SURIPINS=$(echo "$SURIPINS" | tr -d '"')
+
+	IFS=' ' read -ra SURIPINS <<< "$SURIPINS"
 
 }
 
 whiptail_master_updates() {
 
-  MASTERUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
-  "How would you like to download updates for your grid?:" 20 75 4 \
-  "MASTER" "Master node is proxy for OS/Docker updates." ON \
-  "OPEN" "Each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	local update_string
+	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
+	"How would you like to download updates for your grid?:" 20 75 4 \
+	"MASTER" "Master node is proxy for OS/Docker updates." ON \
+	"OPEN" "Each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	case "$update_string" in
+		'MASTER')
+			MASTERUPDATES='1'
+			;;
+		*)
+			MASTERUPDATES='0'
+			;;
+	esac
+
 
 }
 
 whiptail_node_updates() {
 
-  NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
-  "How would you like to download updates for this node?:" 20 75 4 \
-  "MASTER" "Download OS/Docker updates from the Master." ON \
-  "OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  whiptail_check_exitstatus $exitstatus
+	NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
+	"How would you like to download updates for this node?:" 20 75 4 \
+	"MASTER" "Download OS/Docker updates from the Master." ON \
+	"OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
 }
 
 whiptail_you_sure() {
 
-  echo "whiptail_you_sure called" >> $SETUPLOG 2>&1
-  whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
+	[ -n "$QUIET" ] && return
 
-  local exitstatus=$?
-  echo "whiptail_you_sure returning $exitstatus" >> $SETUPLOG 2>&1
-  return $exitstatus
+	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
+
+	local exitstatus=$?
+	return $exitstatus
 
 }
