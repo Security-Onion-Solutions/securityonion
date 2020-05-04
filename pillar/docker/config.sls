@@ -1,12 +1,13 @@
-{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
-{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
-{% set WAZUH = salt['pillar.get']('master:wazuh', False) %}
+{% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{% set WAZUH = salt['pillar.get']('static:wazuh', False) %}
 {% set THEHIVE = salt['pillar.get']('master:thehive', False) %}
 {% set PLAYBOOK = salt['pillar.get']('master:playbook', False) %}
 {% set FREQSERVER = salt['pillar.get']('master:freq', False) %}
 {% set DOMAINSTATS = salt['pillar.get']('master:domainstats', False) %}
-{% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{% set STRELKA = salt['pillar.get']('static:strelka', False) %}
 {% set GRAFANA = salt['pillar.get']('master:grafana', False) %}
+{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
+{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
 
 eval:
   containers:
@@ -98,7 +99,6 @@ master_search:
     - so-kibana
     - so-elastalert
     - so-filebeat
-    - so-soctopus
     {% if FLEETMASTER %}
     - so-mysql
     - so-fleet
@@ -136,7 +136,6 @@ master:
     - so-kratos
     - so-acng
     - so-idstools
-    - so-redis
     - so-elasticsearch
     - so-logstash
     - so-kibana
