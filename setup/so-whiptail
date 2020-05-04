@@ -519,10 +519,7 @@ whiptail_management_server() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
-	# See if it resolves. Otherwise prompt to add to host file
-	TESTHOST=$(host "$MSRV")
-
-	if [[ $TESTHOST = *"not found"* ]] || [ -z "$TESTHOST" ] || [[ $TESTHOST = *"connection timed out"* ]] || [[ "$TESTHOST" = '' ]]; then
+	if ! getent hosts "$MSRV"; then
 		add_master_hostfile
 	fi
 
