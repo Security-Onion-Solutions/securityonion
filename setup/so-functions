@@ -357,6 +357,39 @@ checkin_at_boot() {
 	echo "startup_states: highstate" >> "$minion_config"
 }
 
+
+check_requirements() {
+	local eval_or_dist=$1
+	local node_type=$2 # optional
+	local req_mem
+	local req_cores
+	local nic_list
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	local num_nics=${#nic_list[@]}
+
+	if [[ "$eval_or_dist" == 'eval' ]]; then
+		req_mem=12
+		req_cores=4
+		req_nics=2
+	elif [[ "$eval_or_dist" == 'dist' ]]; then
+		req_mem=8
+		req_cores=4
+		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
+	fi
+
+	if [[ $num_nics -lt $req_nics ]]; then
+		whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+	fi
+
+	if [[ $num_cpu_cores -lt $req_cores ]]; then
+		whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+	fi
+	
+	if [[ $total_mem_hr -lt $req_mem ]]; then
+		whiptail_requirements_error "memory" "${total_mem_hr}GB" "${req_mem}GB"
+	fi
+}
+
 copy_master_config() {
 
 	# Copy the master config template to the proper directory
