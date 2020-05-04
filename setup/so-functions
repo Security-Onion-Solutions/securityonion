@@ -19,6 +19,8 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
+SOVERSION=1.2.2
+
 accept_salt_key_remote() {
 	systemctl restart salt-minion
 	
@@ -586,7 +588,7 @@ docker_registry() {
 }
 
 docker_seed_registry() {
-	local VERSION="HH$so_version"
+	local VERSION="HH$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/so-dockers-"$VERSION".tar ]; then
 		local TRUSTED_CONTAINERS=(\
@@ -816,7 +818,7 @@ master_static() {
 	# Create a static file for global values
 	printf '%s\n'\
 		"static:"\
-		"  soversion: HH$so_version"\
+		"  soversion: HH$SOVERSION"\
 		"  hnmaster: $HNMASTER"\
 		"  ntpserver: $NTPSERVER"\
 		"  proxy: $PROXY"\
@@ -1370,7 +1372,7 @@ set_updates() {
 # FIXME: should this be a function?
 set_version() {
 	# Drop a file with the current version
-	echo "$so_version" > /etc/soversion
+	echo "$SOVERSION" > /etc/soversion
 }
 
 update_sudoers() {
