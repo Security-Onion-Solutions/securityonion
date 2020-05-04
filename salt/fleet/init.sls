@@ -100,7 +100,8 @@ fleetdbuser:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-    - require: fleetdb
+    - require: 
+      - fleetdb
 
 fleetdbpriv:
   mysql_grants.present:
@@ -112,7 +113,8 @@ fleetdbpriv:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-    - require: fleetdb
+    - require: 
+      - fleetdb
 
 
 {% if FLEETPASS == None or FLEETJWT == None %}
