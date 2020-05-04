@@ -302,9 +302,6 @@ export percentage=0
 	set_progress_str 14 'Configuring firewall'
 	set_initial_firewall_policy 2>> "$setup_log"
 
-	set_progress_str 15 "$(print_salt_state_apply 'firewall')"
-	salt-call state.apply -l info firewall >> $setup_log 2>&1
-
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
 
@@ -313,38 +310,41 @@ export percentage=0
 		fireeye_pillar 2>> "$setup_log"
 	fi
 	
-	set_progress_str 18 "$(print_salt_state_apply 'schedule')"
-	salt-call state.apply -l info schedule >> $setup_log 2>&1
-
-	set_progress_str 19 'Copying minion pillars to master'
-	copy_minion_tmp_files 2>> "$setup_log"
-
 	if [[ $is_node ]]; then
-		set_progress_str 20 'Setting node type'
+		set_progress_str 18 'Setting node type'
 		set_node_type 2>> "$setup_log"
 
-		set_progress_str 21 'Generating search node pillar'
+		set_progress_str 19 'Generating search node pillar'
 		node_pillar 2>> "$setup_log"
 	fi
 
 	if [[ $is_minion ]]; then
-		set_progress_str 22 'Accepting Salt key on master'
+		set_progress_str 20 'Accepting Salt key on master'
 		accept_salt_key_remote 2>> "$setup_log"
 	fi
 
 	if [[ $is_master ]]; then
-		set_progress_str 23 'Accepting Salt key'
+		set_progress_str 21 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
 
-	set_progress_str 24 'Generating CA and checking in'
+	set_progress_str 22 'Generating CA and checking in'
 	salt_checkin 2>> "$setup_log"
+
+	set_progress_str 23 "$(print_salt_state_apply 'schedule')"
+	salt-call state.apply -l info schedule >> $setup_log 2>&1
+
+	set_progress_str 24 'Copying minion pillars to master'
+	copy_minion_tmp_files 2>> "$setup_log"
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Downloading containers from the internet'
 		salt-call state.apply -l info registry >> "$setup_log" 2>&1
 		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
 	fi
+
+	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
+	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
