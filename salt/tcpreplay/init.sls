@@ -1,5 +1,5 @@
 {% if grains['role'] == 'so-sensor' or grains['role'] == 'so-eval' %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 so-tcpreplay:

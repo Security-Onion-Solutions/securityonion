@@ -1,6 +1,6 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
@@ -57,6 +57,7 @@ mysqldatadir:
     - user: 939
     - group: 939
     - makedirs: True
+
 {% if MYSQLPASS == None %}
 
 mysql_password_none:
@@ -84,9 +85,4 @@ so-mysql:
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
       - /opt/so/conf/mysql/etc
-  cmd.run:
-    - name: until nc -z {{ MASTERIP }} 3306; do sleep 1; done
-    - timeout: 360
-    - onchanges:
-      - docker_container: so-mysql
 {% endif %}

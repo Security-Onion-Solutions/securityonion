@@ -1,7 +1,7 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set FLEETPASS = salt['pillar.get']('secrets:fleet', None) -%}
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
@@ -20,9 +20,6 @@
 #        action: 'enablefleet'
 #        hostname: {{ grains.host }}
 #{% endif %}
-
-include:
-  - mysql
 
 # Fleet Setup
 fleetcdir:
@@ -89,9 +86,6 @@ fleetdb:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-    - require:
-      - sls: mysql
-      - cmd: so-mysql
 
 fleetdbuser:
   mysql_user.present:
@@ -101,8 +95,6 @@ fleetdbuser:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-    - require:
-      - fleetdb
 
 fleetdbpriv:
   mysql_grants.present:
@@ -114,9 +106,8 @@ fleetdbpriv:
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
-    - require:
-      - fleetdb
-    
+
+
 {% if FLEETPASS == None or FLEETJWT == None %}
 
 fleet_password_none:

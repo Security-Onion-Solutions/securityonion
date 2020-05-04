@@ -1,4 +1,11 @@
 base:
+  '*':
+    - patch.needs_restarting
+
+  '*_eval or *_helix or *_heavynode or *_sensor':
+    - match: compound
+    - zeek
+
   '*_mastersearch or *_heavynode':
     - match: compound
     - logstash
@@ -66,7 +73,3 @@ base:
     - logstash
     - logstash.search
     - minions.{{ grains.id }}
-
-  '*':
-    - patch.needs_restarting
-    - docker.config
