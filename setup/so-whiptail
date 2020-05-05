@@ -21,7 +21,7 @@ source ./so-common-functions
 
 whiptail_basic_bro() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the number of bro processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
@@ -32,7 +32,7 @@ whiptail_basic_bro() {
 
 whiptail_basic_suri() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the number of Suricata processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
@@ -44,7 +44,7 @@ whiptail_basic_suri() {
 
 whiptail_bro_pins() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	local cpu_core_list_whiptail=()
 	for item in "${cpu_core_list[@]}"; do
@@ -62,7 +62,7 @@ whiptail_bro_pins() {
 
 whiptail_bro_version() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
 	"SURICATA" "SUPER EXPERIMENTAL" OFF 3>&1 1>&2 2>&3)
@@ -74,7 +74,7 @@ whiptail_bro_version() {
 
 whiptail_bond_nics() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	filter_unused_nics
 
@@ -96,7 +96,7 @@ whiptail_bond_nics() {
 
 whiptail_bond_nics_mtu() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	# Set the MTU on the monitor interface
 	MTU=$(whiptail --title "Security Onion Setup" --inputbox \
@@ -135,7 +135,7 @@ whiptail_check_exitstatus() {
 
 whiptail_create_admin_user() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
 	"Please enter a username for your new admin user. The onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
@@ -144,7 +144,7 @@ whiptail_create_admin_user() {
 
 whiptail_create_admin_user_password1() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	ADMINPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
@@ -155,7 +155,7 @@ whiptail_create_admin_user_password1() {
 
 whiptail_create_admin_user_password2() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	ADMINPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Re-enter a password for $ADMINUSER" 10 60 3>&1 1>&2 2>&3)
@@ -167,7 +167,7 @@ whiptail_create_admin_user_password2() {
 
 whiptail_create_soremote_user() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "Set a password for the soremote user. This account is used for adding sensors remotely." 8 75
 
@@ -175,7 +175,7 @@ whiptail_create_soremote_user() {
 
 whiptail_create_soremote_user_password1() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	SOREMOTEPASS1=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
@@ -187,7 +187,7 @@ whiptail_create_soremote_user_password1() {
 
 whiptail_create_soremote_user_password2() {
 
-	[ -n "$QUIET" ] && return	
+	[ -n "$TESTING" ] && return	
 
 	SOREMOTEPASS2=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Re-enter a password for user soremote" 10 75 3>&1 1>&2 2>&3)
@@ -199,7 +199,7 @@ whiptail_create_soremote_user_password2() {
 
 whiptail_create_web_user() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
 	"Please enter an email address to create an administrator account for the web interface." 10 60 3>&1 1>&2 2>&3)
@@ -210,14 +210,14 @@ whiptail_create_web_user() {
 
 whiptail_invalid_user_warning() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 	
 	whiptail --title "Security Onion Setup" --msgbox "Please enter a valid email address." 8 75
 }
 
 whiptail_create_web_user_password1() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	WEBPASSWD1=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
@@ -228,7 +228,7 @@ whiptail_create_web_user_password1() {
 
 whiptail_create_web_user_password2() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	WEBPASSWD2=$(whiptail --title "Security Onion Install" --passwordbox \
 	"Re-enter a password for $WEBUSER" 10 60 3>&1 1>&2 2>&3)
@@ -238,16 +238,31 @@ whiptail_create_web_user_password2() {
 
 }
 
+whiptail_requirements_error() {
+
+	local requirement_needed=$1
+	local current_val=$2
+	local needed_val=$3
+
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" \
+	--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  8 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_invalid_pass_warning() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "Please choose a more secure password." 8 75
 }
 
 whiptail_cur_close_days() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	CURCLOSEDAYS=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Please specify the threshold (in days) at which Elasticsearch indices will be closed" 10 75 $CURCLOSEDAYS 3>&1 1>&2 2>&3)
@@ -259,7 +274,7 @@ whiptail_cur_close_days() {
 
 whiptail_dhcp_or_static() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	address_type=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose how to set up your management interface:" 20 78 4 \
@@ -274,7 +289,7 @@ whiptail_dhcp_or_static() {
 
 whiptail_enable_components() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
 	"Select Components to install" 20 75 8 \
@@ -299,7 +314,7 @@ whiptail_enable_components() {
 
 whiptail_eval_adv() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	EVALADVANCED=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose your eval install:" 20 75 4 \
@@ -312,14 +327,14 @@ whiptail_eval_adv() {
 
 whiptail_components_adv_warning() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
 }
 
 whiptail_helix_apikey() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	HELIXAPIKEY=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your Helix API Key: \n \nThis can be set later using so-helix-apikey" 10 75 3>&1 1>&2 2>&3)
@@ -331,7 +346,7 @@ whiptail_helix_apikey() {
 
 whiptail_homenet_master() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
@@ -343,7 +358,7 @@ whiptail_homenet_master() {
 
 whiptail_homenet_sensor() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	# Ask to inherit from master
 	whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 75
@@ -366,7 +381,7 @@ whiptail_homenet_sensor() {
 
 whiptail_install_type() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -395,7 +410,7 @@ whiptail_install_type() {
 
 whiptail_log_size_limit() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 	
 	set_defaul_log_size
 
@@ -410,7 +425,7 @@ whiptail_log_size_limit() {
 
 whiptail_management_interface_dns() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your DNS server using space between multiple" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
@@ -419,7 +434,7 @@ whiptail_management_interface_dns() {
 
 whiptail_management_interface_dns_search() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MSEARCH=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your DNS search domain" 10 60 searchdomain.local 3>&1 1>&2 2>&3)
@@ -428,7 +443,7 @@ whiptail_management_interface_dns_search() {
 
 whiptail_management_interface_gateway() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MGATEWAY=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your gateway" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
@@ -437,7 +452,7 @@ whiptail_management_interface_gateway() {
 
 whiptail_management_interface_ip() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MIP=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your IP address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
@@ -446,7 +461,7 @@ whiptail_management_interface_ip() {
 
 whiptail_management_interface_mask() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MMASK=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the bit mask for your subnet" 10 60 24 3>&1 1>&2 2>&3)
@@ -455,7 +470,7 @@ whiptail_management_interface_mask() {
 
 whiptail_management_nic() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	filter_unused_nics
 
@@ -474,7 +489,7 @@ whiptail_management_nic() {
 
 whiptail_nids() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NIDS=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose which IDS to run:" 20 75 4 \
@@ -488,7 +503,7 @@ whiptail_nids() {
 
 whiptail_oinkcode() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	OINKCODE=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your oinkcode" 10 75 XXXXXXX 3>&1 1>&2 2>&3)
@@ -500,9 +515,9 @@ whiptail_oinkcode() {
 
 whiptail_make_changes() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $install_type. Please hit YES to make changes or NO to cancel." 8 75
+	whiptail --title "Security Onion Setup" --yesno "We are going to set this machine up as a $install_type. Please press YES to make changes or NO to cancel." 8 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -511,7 +526,7 @@ whiptail_make_changes() {
 
 whiptail_management_server() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your Master Server hostname. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
@@ -528,7 +543,7 @@ whiptail_management_server() {
 # Ask if you want to do advanced setup of the Master
 whiptail_master_adv() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose what type of master install:" 20 75 4 \
@@ -543,7 +558,7 @@ whiptail_master_adv() {
 # Ask which additional components to install
 whiptail_master_adv_service_brologs() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please select Logs to Send:" 24 75 12 \
 	"conn" "Connection Logging" ON \
@@ -596,9 +611,9 @@ whiptail_master_adv_service_brologs() {
 
 whiptail_network_notice() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Hit YES to continue." 8 75
+	whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Press YES to continue." 8 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -607,7 +622,7 @@ whiptail_network_notice() {
 
 whiptail_node_advanced() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NODESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
 	"What type of config would you like to use?:" 20 75 4 \
@@ -621,7 +636,7 @@ whiptail_node_advanced() {
 
 whiptail_node_es_heap() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
@@ -633,7 +648,7 @@ whiptail_node_es_heap() {
 
 whiptail_node_ls_heap() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
@@ -645,7 +660,7 @@ whiptail_node_ls_heap() {
 
 whiptail_node_ls_pipeline_worker() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 "$num_cpu_cores" 3>&1 1>&2 2>&3)
@@ -657,7 +672,7 @@ whiptail_node_ls_pipeline_worker() {
 
 whiptail_node_ls_pipline_batchsize() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
@@ -669,7 +684,7 @@ whiptail_node_ls_pipline_batchsize() {
 
 whiptail_node_ls_input_threads() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
 		"\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 75 1 3>&1 1>&2 2>&3)
@@ -681,7 +696,7 @@ whiptail_node_ls_input_threads() {
 
 whiptail_node_ls_input_batch_count() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	LSINPUTBATCHCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter LogStash Input Batch Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
@@ -703,7 +718,7 @@ whiptail_passwords_dont_match() {
 
 whiptail_patch_name_new_schedule() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
 	"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
@@ -724,7 +739,7 @@ whiptail_patch_name_new_schedule() {
 
 whiptail_patch_schedule() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	local patch_schedule
 	patch_schedule=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -761,7 +776,7 @@ whiptail_patch_schedule() {
 
 whiptail_patch_schedule_import() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	unset PATCHSCHEDULENAME
 	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
@@ -783,7 +798,7 @@ whiptail_patch_schedule_import() {
 
 whiptail_patch_schedule_select_days() {
 	
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	 # Select the days to patch
 	PATCHSCHEDULEDAYS=$(whiptail --title "Security Onion Setup" --checklist \
@@ -807,7 +822,7 @@ whiptail_patch_schedule_select_days() {
 
 whiptail_patch_schedule_select_hours() {
 	
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	# Select the hours to patch
 	PATCHSCHEDULEHOURS=$(whiptail --title "Security Onion Setup" --checklist \
@@ -855,7 +870,7 @@ whiptail_patch_schedule_select_hours() {
 
 whiptail_rule_setup() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	# Get pulled pork info
 	RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -873,7 +888,7 @@ whiptail_rule_setup() {
 
 whiptail_sensor_config() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NSMSETUP=$(whiptail --title "Security Onion Setup" --radiolist \
 	"What type of configuration would you like to use?:" 20 75 4 \
@@ -887,7 +902,7 @@ whiptail_sensor_config() {
 
 whiptail_set_hostname() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
@@ -907,7 +922,7 @@ whiptail_set_hostname() {
 
 whiptail_set_redirect() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	REDIRECTINFO=$(whiptail --title "Security Onion Setup" --radiolist \
 	"Choose the access method for the web interface:" 20 75 4 \
@@ -920,7 +935,7 @@ whiptail_set_redirect() {
 
 whiptail_set_redirect_host() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	REDIRECTHOST=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the Hostname or IP you would like to use for the web interface." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
@@ -930,7 +945,7 @@ whiptail_set_redirect_host() {
 
 whiptail_set_redirect_info() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "The following selection refers to accessing the web interface. \n
 For security reasons, we use strict cookie enforcement." 10 75
@@ -938,7 +953,7 @@ For security reasons, we use strict cookie enforcement." 10 75
 
 whiptail_setup_complete() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $install_type. Press Enter to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
@@ -947,7 +962,7 @@ whiptail_setup_complete() {
 
 whiptail_setup_failed() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Enter to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
@@ -956,7 +971,7 @@ whiptail_setup_failed() {
 
 whiptail_shard_count() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
 	"\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
@@ -968,7 +983,7 @@ whiptail_shard_count() {
 
 whiptail_suricata_pins() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	local filtered_core_list
 	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
@@ -990,7 +1005,7 @@ whiptail_suricata_pins() {
 
 whiptail_master_updates() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	local update_string
 	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
@@ -1014,7 +1029,7 @@ whiptail_master_updates() {
 
 whiptail_node_updates() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
 	"How would you like to download updates for this node?:" 20 75 4 \
@@ -1028,7 +1043,7 @@ whiptail_node_updates() {
 
 whiptail_you_sure() {
 
-	[ -n "$QUIET" ] && return
+	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
 

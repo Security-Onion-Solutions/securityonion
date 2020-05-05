@@ -57,8 +57,6 @@ fi
 
 whiptail_install_type
 
-whiptail_patch_schedule
-
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
 	is_master=true
@@ -88,6 +86,16 @@ elif [ "$install_type" = 'FLEET' ]; then
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 fi
+
+if [[ $is_eval ]]; then
+	check_requirements "eval"
+elif [[ $is_distmaster || $is_minion ]]; then
+	check_requirements "dist"
+elif [[ $is_sensor && ! $is_eval ]]; then
+	check_requirements "dist" "sensor"
+fi
+
+whiptail_patch_schedule
 
 case "$setup_type" in
 	'iso')
@@ -297,8 +305,10 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
-	set_progress_str 14 'Configuring firewall'
-	set_initial_firewall_policy 2>> "$setup_log"
+	if [[ $is_minion ]]; then
+		set_progress_str 14 'Configuring firewall'
+		set_initial_firewall_policy 2>> "$setup_log"
+	fi
 
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
@@ -322,9 +332,12 @@ export percentage=0
 	fi
 
 	if [[ $is_master ]]; then
-		set_progress_str 21 'Accepting Salt key'
+		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
 	fi
+
+	set_progress_str 21 'Copying minion pillars to master'
+	copy_minion_tmp_files 2>> "$setup_log"
 
 	set_progress_str 22 'Generating CA and checking in'
 	salt_checkin 2>> "$setup_log"
@@ -332,16 +345,17 @@ export percentage=0
 	set_progress_str 23 "$(print_salt_state_apply 'schedule')"
 	salt-call state.apply -l info schedule >> $setup_log 2>&1
 
-	set_progress_str 24 'Copying minion pillars to master'
-	copy_minion_tmp_files 2>> "$setup_log"
-
+	
 	if [[ $is_master || $is_helix ]]; then
-		set_progress_str 25 'Downloading containers from the internet'
+		set_progress_str 25 'Configuring firewall'
+		set_initial_firewall_policy 2>> "$setup_log"
+		
+		set_progress_str 26 'Downloading containers from the internet'
 		salt-call state.apply -l info registry >> "$setup_log" 2>&1
 		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
 	fi
 
-	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
+	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
 	set_progress_str 63 "$(print_salt_state_apply 'common')"

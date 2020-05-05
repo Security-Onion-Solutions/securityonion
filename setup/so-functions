@@ -44,6 +44,9 @@ add_admin_user() {
 }
 
 add_master_hostfile() {
+
+	[ -n "$TESTING" ] && return
+
 	echo "Checking if I can resolve master. If not add to hosts file" >> "$setup_log" 2>&1
 	# Pop up an input to get the IP address
 	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
@@ -355,6 +358,39 @@ checkin_at_boot() {
 
 	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
 	echo "startup_states: highstate" >> "$minion_config"
+}
+
+
+check_requirements() {
+	local eval_or_dist=$1
+	local node_type=$2 # optional
+	local req_mem
+	local req_cores
+	local nic_list
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	local num_nics=${#nic_list[@]}
+
+	if [[ "$eval_or_dist" == 'eval' ]]; then
+		req_mem=12
+		req_cores=4
+		req_nics=2
+	elif [[ "$eval_or_dist" == 'dist' ]]; then
+		req_mem=8
+		req_cores=4
+		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
+	fi
+
+	if [[ $num_nics -lt $req_nics ]]; then
+		whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+	fi
+
+	if [[ $num_cpu_cores -lt $req_cores ]]; then
+		whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+	fi
+	
+	if [[ $total_mem_hr -lt $req_mem ]]; then
+		whiptail_requirements_error "memory" "${total_mem_hr}GB" "${req_mem}GB"
+	fi
 }
 
 copy_master_config() {
@@ -671,8 +707,7 @@ fireeye_pillar() {
 
 # Run a salt command to generate the minion key
 salt_firstcheckin() {
-	echo "Next line will show [ERROR], this is expected" >> "$setup_log" 2>&1
-	salt-call state.show_top >> "$setup_log" 2>&1
+	salt-call state.show_top >> /dev/null # send output to /dev/null because we don't actually care about the ouput
 }
 
 fleet_pillar() {
@@ -1136,12 +1171,6 @@ salt_checkin() {
 		salt-call state.apply ca;
 		salt-call state.apply ssl;
 	} >> "$setup_log" 2>&1
-}
-
-salt_firstcheckin() {
-	#First Checkin
-	salt-call state.highstate >> "$setup_log" 2>&1
-
 }
 
 setup_salt_master_dirs() {
