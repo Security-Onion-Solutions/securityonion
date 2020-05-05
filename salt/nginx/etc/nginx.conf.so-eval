@@ -146,6 +146,20 @@ http {
 
         }
 
+        location /cyberchef/ {
+          auth_request          /auth/sessions/whoami;
+          proxy_read_timeout    90;
+          proxy_connect_timeout 90;
+          proxy_set_header      Host $host;
+          proxy_set_header      X-Real-IP $remote_addr;
+          proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header      Proxy "";
+        }
+
+        location /cyberchef {
+          rewrite               ^ /cyberchef/ permanent;
+        }
+
         location /packages/ {
           try_files $uri =206;
           auth_request          /auth/sessions/whoami;
@@ -299,12 +313,12 @@ http {
           return        302 /auth/self-service/browser/flows/login;
         }
 
-        error_page 404 /404.html;
-            location = /40x.html {
-        }
+        #error_page 404 /404.html;
+        #    location = /usr/share/nginx/html/40x.html {
+        #}
 
         error_page 500 502 503 504 /50x.html;
-            location = /50x.html {
+            location = /usr/share/nginx/html/50x.html {
         }
     }
 
