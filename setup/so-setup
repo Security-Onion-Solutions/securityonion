@@ -62,6 +62,11 @@ if [ "$install_type" = 'EVAL' ]; then
 	is_master=true
 	is_sensor=true
 	is_eval=true
+elif [ "$install_type" = 'PROD' ]; then
+	is_master=true
+	is_distmaster=true
+	is_node=true
+	is_sensor=true
 elif [ "$install_type" = 'MASTERSEARCH' ]; then
 	is_master=true
 	is_distmaster=true
@@ -73,7 +78,7 @@ elif [ "$install_type" = 'SENSOR' ]; then
 	is_sensor=true
 	is_minion=true
 	STRELKA=1
-elif [[ "$install_type" =~ ^('SEARCHNODE'|'PARSINGNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
+elif [[ "$install_type" =~ ^('SEARCHNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
 	is_node=true
 	is_minion=true
 elif [ "$install_type" = 'HEAVYNODE' ]; then
@@ -294,6 +299,7 @@ export percentage=0
 		set_progress_str 10 'Configuring Salt master'
 		copy_master_config 2>> "$setup_log"
 		setup_salt_master_dirs 2>> "$setup_log"
+		firewall_generate_templates 2>> "$setup_log"
 		
 		set_progress_str 11 'Updating sudoers file for soremote user'
 		update_sudoers 2>> "$setup_log"
