@@ -66,13 +66,6 @@ kibanabin:
     - mode: 755
     - template: jinja
 
-kibanadashtemplate:
-  file.managed:
-    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
-    - source: salt://kibana/files/saved_objects.ndjson
-    - user: 932
-    - group: 939
-
 # Start the kibana docker
 so-kibana:
   docker_container.running:
@@ -91,12 +84,27 @@ so-kibana:
     - port_bindings:
       - 0.0.0.0:5601:5601
 
+kibanadashtemplate:
+  file.managed:
+    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
+    - source: salt://kibana/files/saved_objects.ndjson
+    - user: 932
+    - group: 939
+
+wait_for_kibana:
+  module.run:
+    - http.wait_for_successful_query:
+      - url: "http://{{MASTER}}:5601/api/saved_objects/_find?type=config"
+      - wait_for: 180
+    - onchanges:
+      - file: kibanadashtemplate
+
 so-kibana-config-load:
   cmd.run:
     - name: /usr/sbin/so-kibana-config-load
     - cwd: /opt/so
     - onchanges:
-      - file: kibanadashtemplate
+      - wait_for_kibana
 
 
 # Keep the setting correct
