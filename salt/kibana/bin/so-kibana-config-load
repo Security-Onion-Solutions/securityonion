@@ -5,23 +5,7 @@
 {%- set FLEET = salt['pillar.get']('static:fleet_ip', '') %}
 {%- set KRATOS = salt['pillar.get']('kratos:redirect', '') %}
 
-
 KIBANA_VERSION="7.6.1"
-MAX_WAIT=120
-
-# Check to see if Kibana is available
-until curl "{{ MASTER }}:5601/nonexistenturl" 2>&1 |grep -q "Not Found" ; do
-                wait_step=$(( ${wait_step} + 1 ))
-                echo "Waiting on Kibana ({{ MASTER }}:5601)...Attempt #$wait_step"
-                if [ ${wait_step} -gt ${MAX_WAIT} ]; then
-                                echo "ERROR: Kibana not available for more than ${MAX_WAIT} seconds."
-                                exit 5
-                fi
-                sleep 1s;
-done
-
-# Sleep additional JIC server is not ready
-sleep 30s
 
 # Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
