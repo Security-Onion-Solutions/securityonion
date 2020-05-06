@@ -21,7 +21,6 @@ base:
     - ssl
     - registry
     - common
-    - nginx
     - telegraf
     - firewall
     - idstools
@@ -37,7 +36,6 @@ base:
     - ca
     - ssl
     - common
-    - nginx
     - telegraf
     - firewall
     - pcap
@@ -192,7 +190,6 @@ base:
     - ca
     - ssl
     - common
-    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
@@ -271,7 +268,6 @@ base:
     - ca
     - ssl
     - common
-    - nginx
     - telegraf
     - firewall
     - redis

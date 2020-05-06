@@ -14,35 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-{%- set pillar_suffix = ':containers' -%}
-{%- if (salt['grains.get']('role') == 'so-mastersearch') -%}
-    {%- set pillar_val = 'master_search' -%}
-{%- elif (salt['grains.get']('role') == 'so-master') -%}
-    {%- set pillar_val = 'master' -%}
-{%- elif (salt['grains.get']('role') == 'so-heavynode') -%}
-    {%- set pillar_val = 'heavy_node' -%}
-{%- elif (salt['grains.get']('role') == 'so-sensor') -%}
-    {%- set pillar_val = 'sensor' -%}
-{%- elif (salt['grains.get']('role') == 'so-eval') -%}
-    {%- set pillar_val = 'eval' -%}
-{%- elif (salt['grains.get']('role') == 'so-fleet') -%}
-    {%- set pillar_val = 'fleet' -%}
-{%- elif (salt['grains.get']('role') == 'so-helix') -%}
-    {%- set pillar_val = 'helix' -%}
-{%- elif (salt['grains.get']('role') == 'so-node') -%}
-    {%- if (salt['pillar.get']('node:node_type') == 'parser') -%}
-        {%- set pillar_val = 'parser_node' -%}
-    {%- elif (salt['pillar.get']('node:node_type') == 'hot') -%}
-        {%- set pillar_val = 'hot_node' -%}
-    {%- elif (salt['pillar.get']('node:node_type') == 'warm') -%}
-        {%- set pillar_val = 'warm_node' -%}
-    {%- elif (salt['pillar.get']('node:node_type') == 'search') -%}
-        {%- set pillar_val = 'search_node' -%}
-    {%- endif -%}
-{%- endif -%}
-{%- set pillar_name = pillar_val ~ pillar_suffix -%}
-{%- set container_list = salt['pillar.get'](pillar_name) %}
+{%- from 'common/maps/so-status.map.jinja' import docker with context %}
+{%- set container_list = docker['containers'] %}
 
 if ! [ "$(id -u)" = 0 ]; then
    echo "This command must be run as root"
