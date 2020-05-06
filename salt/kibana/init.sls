@@ -105,8 +105,6 @@ so-kibana-config-load:
     - cwd: /opt/so
     - onchanges:
       - wait_for_kibana
-    - require:
-      - wait_for_kibana
 
 
 # Keep the setting correct
