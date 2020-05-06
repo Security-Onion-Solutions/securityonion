@@ -705,9 +705,20 @@ fireeye_pillar() {
 
 }
 
-# Run a salt command to generate the minion key
-salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null # send output to /dev/null because we don't actually care about the ouput
+# Generate Firewall Templates
+firewall_generate_templates() {
+
+	local firewall_pillar_path=/opt/so/saltstack/pillar/firewall
+	mkdir -p "$firewall_pillar_path"
+
+	for i in analyst beats_endpoint forward_nodes masterfw minions osquery_endpoints search_nodes wazuh_endpoint
+	do
+	  printf '%s\n'\
+	  "$i:"\
+	  "  - 127.0.0.1"\
+	  "" > "$firewall_pillar_path"/$i.sls
+	  echo "Added $i Template"
+	done
 }
 
 fleet_pillar() {
@@ -734,10 +745,6 @@ generate_passwords(){
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
 
-set_main_ip() {
-	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
-}
-
 get_redirect() {
 	whiptail_set_redirect_info
 	whiptail_set_redirect
@@ -753,15 +760,6 @@ got_root() {
 		echo "This script must be run using sudo!"
 		exit 1
 	fi
-}
-
-install_cleanup() {
-	echo "Installer removing the following files:"
-	ls -lR "$temp_install_dir"
-
-	# Clean up after ourselves
-	rm -rf "$temp_install_dir"
-
 }
 
 get_minion_type() {
@@ -780,9 +778,13 @@ get_minion_type() {
 	echo "$minion_type"
 }
 
-set_base_heapsizes() {
-	es_heapsize
-	ls_heapsize
+install_cleanup() {
+	echo "Installer removing the following files:"
+	ls -lR "$temp_install_dir"
+
+	# Clean up after ourselves
+	rm -rf "$temp_install_dir"
+
 }
 
 master_pillar() {
@@ -1171,6 +1173,20 @@ salt_checkin() {
 		salt-call state.apply ca;
 		salt-call state.apply ssl;
 	} >> "$setup_log" 2>&1
+}
+
+# Run a salt command to generate the minion key
+salt_firstcheckin() {
+	salt-call state.show_top >> /dev/null # send output to /dev/null because we don't actually care about the ouput
+}
+
+set_base_heapsizes() {
+	es_heapsize
+	ls_heapsize
+}
+
+set_main_ip() {
+	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 }
 
 setup_salt_master_dirs() {
