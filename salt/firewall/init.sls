@@ -112,29 +112,6 @@ enable_docker_user_established:
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
 
-# Add rule(s) for Wazuh manager
-enable_wazuh_manager_1514_tcp_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 1514
-    - position: 1
-    - save: True
-
-enable_wazuh_manager_1514_udp_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: udp
-    - source: {{ ip }}
-    - dport: 1514
-    - position: 1
-    - save: True
-
 # Rules if you are a Master
 {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
 #This should be more granular
@@ -147,16 +124,16 @@ iptables_allow_master_docker:
     - position: 1
     - save: True
 
-{% for ip in pillar.get('masterfw')  %}
+{% for ip in pillar.get('firewall:master:ips')  %}
 # Allow Redis
-enable_maternode_redis_6379_{{ip}}:
+enable_masternode_{{ip}}_{{port}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
     - proto: tcp
     - source: {{ ip }}
-    - dport: 6379
+    - dport: {{ port }}
     - position: 1
     - save: True
 
@@ -292,13 +269,49 @@ enable_master_cyberchef_9080_{{ip}}:
     - position: 1
     - save: True
 
+# Add rule(s) for Wazuh manager
+enable_wazuh_manager_1514_tcp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+enable_wazuh_manager_1514_udp_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: udp
+    - source: {{ ip }}
+    - dport: 1514
+    - position: 1
+    - save: True
+
+{% endfor %}
+
+{% for k in pillar.get('masterfw-custom', {}) %}
+enable_custom_masterfw_{{ k }}:
+  iptables.insert:
+    - table: filter
+    - chain: {{ k.chain }}
+    - jump: ACCEPT
+    - proto: {{ k.proto }}
+    - source: {{ k.source }}
+    - dport: {{ k.dport }}
+    - position: 1
+    - save: True
 
 {% endfor %}
 
 # Make it so all the minions can talk to salt and update etc.
-{% for ip in pillar.get('minions')  %}
+{% for ip in pillar.get('firewall:minions')  %}
 
-enable_salt_minions_4505_{{ip}}:
+enable_salt_minions_salt_4505_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: INPUT
@@ -309,7 +322,7 @@ enable_salt_minions_4505_{{ip}}:
     - position: 1
     - save: True
 
-enable_salt_minions_4506_{{ip}}:
+enable_salt_minions_salt_4506_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: INPUT
@@ -320,7 +333,7 @@ enable_salt_minions_4506_{{ip}}:
     - position: 1
     - save: True
 
-enable_salt_minions_5000_{{ip}}:
+enable_salt_minions_registry_5000_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -331,7 +344,7 @@ enable_salt_minions_5000_{{ip}}:
     - position: 1
     - save: True
 
-enable_salt_minions_3142_{{ip}}:
+enable_salt_minions_acng_3142_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -378,7 +391,7 @@ enable_minion_wazuh_55000_{{ip}}:
 {% endfor %}
 
 # Allow Forward Nodes to send their beats traffic
-{% for ip in pillar.get('forward_nodes')  %}
+{% for ip in pillar.get('firewall:forward_nodes')  %}
 
 enable_forwardnode_beats_5044_{{ip}}:
   iptables.insert:
@@ -442,7 +455,7 @@ enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
 
 {% endif %}
 
-{% for ip in pillar.get('search_nodes')  %}
+{% for ip in pillar.get('firewall:search_nodes')  %}
 
 enable_searchnode_redis_6379_{{ip}}:
   iptables.insert:
@@ -469,7 +482,7 @@ enable_searchnode_ES_9300_{{ip}}:
 {% endfor %}
 
 # Allow Beats Endpoints to send their beats traffic
-{% for ip in pillar.get('beats_endpoint')  %}
+{% for ip in pillar.get('firewall:beats_endpoint')  %}
 
 enable_standard_beats_5044_{{ip}}:
   iptables.insert:
@@ -485,7 +498,7 @@ enable_standard_beats_5044_{{ip}}:
 {% endfor %}
 
 # Allow OSQuery Endpoints to send their traffic
-{% for ip in pillar.get('osquery_endpoint')  %}
+{% for ip in pillar.get('firewall:osquery_endpoint')  %}
 
 enable_standard_osquery_8090_{{ip}}:
   iptables.insert:
@@ -501,7 +514,7 @@ enable_standard_osquery_8090_{{ip}}:
 {% endfor %}
 
 # Allow Wazuh Endpoints to send their traffic
-{% for ip in pillar.get('wazuh_endpoint')  %}
+{% for ip in pillar.get('firewall:wazuh_endpoint')  %}
 
 enable_wazuh_endpoint_tcp_1514_{{ip}}:
   iptables.insert:
@@ -527,8 +540,8 @@ enable_wazuh_endpoint_udp_1514_{{ip}}:
 
 {% endfor %}
 
-# Allow Analysts
-{% for ip in pillar.get('analyst')  %}
+# All Analysts get the following access to the master:
+{% for ip in pillar.get('firewall:analyst')  %}
 
 enable_standard_analyst_80_{{ip}}:
   iptables.insert:
@@ -552,73 +565,12 @@ enable_standard_analyst_443_{{ip}}:
     - position: 1
     - save: True
 
-#enable_standard_analyst_3000_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 3000
-#    - position: 1
-#    - save: True
-
-#enable_standard_analyst_7000_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 7000
-#    - position: 1
-#    - save: True
-
-#enable_standard_analyst_9000_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 9000
-#    - position: 1
-#    - save: True
-
-#enable_standard_analyst_9001_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 9001
-#    - position: 1
-#    - save: True
-
-# This is temporary for sensoroni testing
-#enable_standard_analyst_9822_{{ip}}:
-#  iptables.insert:
-#    - table: filter
-#    - chain: DOCKER-USER
-#    - jump: ACCEPT
-#    - proto: tcp
-#    - source: {{ ip }}
-#    - dport: 9822
-#    - position: 1
-#    - save: True
-
 {% endfor %}
-
-# Rules for search nodes connecting to master
-
-
 {% endif %}
 
-# Rules if you are a Node
+# All Nodes get the below rules:
 {% if 'node' in grains['role'] %}
 
-#This should be more granular
 iptables_allow_docker:
   iptables.insert:
     - table: filter
@@ -652,7 +604,7 @@ enable_docker_ES_9300:
     - save: True
 
 
-{% for ip in pillar.get('masterfw')  %}
+{% for ip in pillar.get('firewall:masterfw')  %}
 
 enable_cluster_ES_9300_{{ip}}:
   iptables.insert:
@@ -669,7 +621,7 @@ enable_cluster_ES_9300_{{ip}}:
 {% endfor %}
 {% endif %}
 
-# Rules if you are a Sensor
+# All Sensors get the below rules:
 {% if grains['role'] == 'so-sensor' %}
 
 {% endif %}
@@ -678,16 +630,7 @@ enable_cluster_ES_9300_{{ip}}:
 
 # Rules if you are a Warm Node
 
-# Some Fixer upper type rules
-# Drop it like it's hot
-# Make the input policy send stuff that doesn't match to be logged and dropped
-iptables_drop_all_the_things:
-  iptables.append:
-    - table: filter
-    - chain: LOGGING
-    - jump: DROP
-    - save: True
-
+# All heavy nodes get the below rules:
 {% if grains['role'] == 'so-heavynode' %}
 # Allow Redis
 enable_heavynode_redis_6379_{{ip}}:
@@ -796,7 +739,7 @@ enable_fleettemp_osquery_8080_{{ip}}:
 
 
 # Allow Analysts to access Fleet WebUI
-{% for ip in pillar.get('analyst')  %}
+{% for ip in pillar.get('firewall:analyst')  %}
 
 enable_fleetnode_fleet_443_{{ip}}:
   iptables.insert:
@@ -812,7 +755,7 @@ enable_fleetnode_fleet_443_{{ip}}:
 {% endfor %}
 
 # Needed for osquery endpoints to checkin to Fleet API for mgt
-{% for ip in pillar.get('osquery_endpoint')  %}
+{% for ip in pillar.get('firewall:osquery_endpoint')  %}
 
 enable_fleetnode_8090_{{ip}}:
   iptables.insert:
@@ -828,3 +771,10 @@ enable_fleetnode_8090_{{ip}}:
 {% endfor %}
 
 {% endif %}
+# Make the input policy send stuff that doesn't match to be logged and dropped
+iptables_drop_all_the_things:
+  iptables.append:
+    - table: filter
+    - chain: LOGGING
+    - jump: DROP
+    - save: True
