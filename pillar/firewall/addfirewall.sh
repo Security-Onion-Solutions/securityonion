@@ -8,6 +8,6 @@ IPADDRESS=$2
 if grep -q $2 "/opt/so/saltstack/pillar/firewall/$1.sls"; then
   echo "Firewall Rule Already There"
 else
-  echo "      - $2" >> /opt/so/saltstack/pillar/firewall/$1.sls
+  echo "        - $2" >> /opt/so/saltstack/pillar/firewall/$1.sls
   salt-call state.apply firewall queue=True
 fi
