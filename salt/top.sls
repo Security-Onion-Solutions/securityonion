@@ -2,6 +2,7 @@
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
+{%- set NAVIGATOR = salt['pillar.get']('master:navigator', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
@@ -68,7 +69,9 @@ base:
     - firewall
     - idstools
     - healthcheck
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
+    {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
@@ -97,6 +100,9 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
+    {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
     {%- endif %}
@@ -119,7 +125,7 @@ base:
     - master
     - idstools
     - redis
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -230,7 +236,7 @@ base:
     - master
     - idstools
     - redis
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
