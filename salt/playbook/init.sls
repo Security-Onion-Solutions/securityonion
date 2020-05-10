@@ -52,6 +52,26 @@ query_updatepluginurls:
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
 
+playbookdbuser:
+  mysql_user.present:
+    - host: 172.17.0.0/255.255.0.0
+    - password: {{ PLAYBOOKPASS }}
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
+
+playbookdbdbpriv:
+  mysql_grants.present:
+    - grant: all privileges
+    - database: playbook.*
+    - user: playbookdbuser
+    - host: 172.17.0.0/255.255.0.0
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
+
 {% if PLAYBOOKPASS == None %}
 
 playbook_password_none:
