@@ -68,9 +68,7 @@ base:
     - firewall
     - idstools
     - healthcheck
-    {%- if FLEETMASTER or FLEETNODE %}
     - mysql
-    {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
