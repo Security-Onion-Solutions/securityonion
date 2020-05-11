@@ -122,6 +122,7 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  mysql: $MYSQLPASS"\
+		"  playbook: $PLAYBOOKPASS"\
 		"  fleet: $FLEETPASS"\
 		"  fleet_jwt: $FLEETJWT"\
 		"  fleet_enroll-secret: False" > /opt/so/saltstack/pillar/secrets.sls
@@ -686,6 +687,7 @@ docker_seed_registry() {
 			} >> "$setup_log" 2>&1
 		done
 	else
+		cd /nsm/docker-registry/docker
 		tar xvf /nsm/docker-registry/docker/registry.tar >> "$setup_log" 2>&1
 		rm /nsm/docker-registry/docker/registry.tar >> "$setup_log" 2>&1
 	fi
@@ -736,6 +738,7 @@ fleet_pillar() {
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
+  PLAYBOOKPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
   FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
@@ -824,6 +827,7 @@ master_pillar() {
 		"  wazuh: $WAZUH"\
 		"  thehive: $THEHIVE"\
 		"  playbook: $PLAYBOOK"\
+		"  navigator: $NAVIGATOR"\
 		"  strelka: $STRELKA"\
 		""\
 		"kratos:" >> "$pillar_file"

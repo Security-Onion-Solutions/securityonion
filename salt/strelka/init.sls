@@ -72,7 +72,7 @@ strelka_gatekeeper:
 
 strelka_frontend:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-frontend:HH1.2.2
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-frontend:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /nsm/strelka/log/:/var/log/strelka/:rw
@@ -84,7 +84,7 @@ strelka_frontend:
 
 strelka_backend:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-backend:HH1.2.2
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-backend:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
@@ -94,7 +94,7 @@ strelka_backend:
 
 strelka_manager:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-manager:HH1.2.2
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-manager:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
@@ -102,7 +102,7 @@ strelka_manager:
 
 strelka_filestream:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-filestream:HH1.2.2
+    - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-filestream:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
