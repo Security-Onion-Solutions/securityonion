@@ -6,51 +6,16 @@
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
 
 {% if salt['mysql.db_exists']('playbook') %}
-  #Playbook database exists - Do nothing
+   #Playbook database exists - Do nothing
 {% else  %}
+salt://playbook/files/playbook_db_init.sh:
+  cmd.script:
+    - cwd: /root
+    - template: jinja
 
-{% set PLAYBOOK_DB_COPY = salt['docker.copy_to']('so-mysql','salt://playbook/files/playbook_db_init.sql','/tmp/playbook_db_init.sql',overwrite=True) %}
-{% set PLAYBOOK_DB_CREATE = salt['docker.run']('so-mysql','/bin/bash -c "/usr/bin/mysql -uroot -p' + MYSQLPASS + '  < /tmp/playbook_db_init.sql"') %}
-
-{% if PLAYBOOK_DB_COPY and PLAYBOOK_DB_CREATE  %}
-PLAYBOOK_DB_INIT_SUCCESS:
-  test.configurable_test_state:
-    - changes: False
-    - result: True
-    - comment: "Playbook database initialization was successful"
-{% else  %}
-PLAYBOOK_DB_INIT_FAILURE:
-  test.configurable_test_state:
-    - changes: False
-    - result: False
-    - comment: "Playbook database initialization was not successful"
+'sleep 5':
+  cmd.run
 {% endif %}
-{% endif %}
-
-query_updatwebhooks:
-  mysql_query.run:
-    - database: playbook
-    - query:    "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
-    - connection_host: {{ MAINIP }}
-    - connection_port: 3306
-    - connection_user: root
-    - connection_pass: {{ MYSQLPASS }}
-
-
-query_updatepluginurls:
-  mysql_query.run:
-    - database: playbook
-    - query: |- 
-        update settings set value = 
-        "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
-        project: '1'
-        convert_url: http://{{MASTERIP}}:7000/playbook/sigmac
-        create_url: http://{{MASTERIP}}:7000/playbook/play"
-        where id  = 43
-    - connection_host: {{ MAINIP }}
-    - connection_port: 3306
-    - connection_user: root
-    - connection_pass: {{ MYSQLPASS }}
 
 playbookdbuser:
   mysql_user.present:
@@ -67,6 +32,30 @@ playbookdbdbpriv:
     - database: playbook.*
     - user: playbookdbuser
     - host: 172.17.0.0/255.255.0.0
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
+
+query_updatwebhooks:
+  mysql_query.run:
+    - database: playbook
+    - query:    "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
+
+query_updatepluginurls:
+  mysql_query.run:
+    - database: playbook
+    - query: |- 
+        update settings set value = 
+        "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
+        project: '1'
+        convert_url: http://{{MASTERIP}}:7000/playbook/sigmac
+        create_url: http://{{MASTERIP}}:7000/playbook/play"
+        where id  = 43
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root
@@ -92,8 +81,6 @@ so-playbook:
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
-    - binds:
-      - /opt/so/conf/playbook/redmine.db:/usr/src/redmine/sqlite/redmine.db:rw
     - port_bindings:
       - 0.0.0.0:3200:3000
 
