@@ -94,7 +94,7 @@ wait_for_file() {
 	while [[ $cur_attempts < $max_attempts ]]; do
 		if [ -f "$filename" ]; then
 			echo "File $filename already exists at $date" >> "$setup_log" 2>&1
-			return
+			return 0
 		else
 			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
 			((cur_attempts++))
@@ -198,7 +198,7 @@ check_hive_init_then_reboot() {
 	local return_val
 	return_val="$(wait_for_file /opt/so/state/thehive.txt 20 5)"
 
-	if [[ $return_val != 0 ]]; then
+	if [[ "$return_val" != 0 ]]; then
 		return "$return_val"
 	fi
 
