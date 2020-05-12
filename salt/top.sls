@@ -97,6 +97,9 @@ base:
     {%- if THEHIVE != 0 %}
     - hive
     {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
     {%- endif %}
