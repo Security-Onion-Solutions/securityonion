@@ -13,6 +13,20 @@ socore:
     - createhome: True
     - shell: /bin/bash
 
+# Create a state directory
+statedir:
+  file.directory:
+    - name: /opt/so/state
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+salttmp:
+  file.directory:
+    - name: /opt/so/tmp
+    - user: 939
+    - group: 939
+    - makedirs: True
 
 # Install packages needed for the sensor
 sensorpkgs:
