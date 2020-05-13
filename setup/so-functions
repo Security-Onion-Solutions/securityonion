@@ -1024,7 +1024,8 @@ saltify() {
 		case "$install_type" in
 			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
 				reserve_group_ids >> "$setup_log" 2>&1
-				yum -y install epel-release sqlite3 argon2 curl mariadb-devel >> "$setup_log" 2>&1
+				yum -y install epel-release >> "$setup_log" 2>&1
+				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
 				# Download Ubuntu Keys in case master updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
@@ -1052,8 +1053,8 @@ saltify() {
 		yum clean expire-cache >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
-			yum -y install epel-release\
-				salt-minion-2019.2.4\
+			yum -y install epel-release
+			yum -y install salt-minion-2019.2.4\
 				python3\
 				python36-docker\
 				python36-dateutil\
@@ -1097,7 +1098,7 @@ saltify() {
 
 				# Add saltstack repo(s)
 				wget --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/$py_ver_url_path/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list >> "$setup_log" 2>&1
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
