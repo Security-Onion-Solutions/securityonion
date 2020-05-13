@@ -33,6 +33,13 @@ grafanadashmdir:
     - group: 939
     - makedirs: True
 
+grafanadashmsdir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 grafanadashevaldir:
   file.directory:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval
@@ -73,6 +80,29 @@ dashboard-master:
     - group: 939
     - template: jinja
     - source: salt://grafana/dashboards/master/master.json
+    - defaults:
+      SERVERNAME: {{ SN }}
+      MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
+
+{% endfor %}
+{% endif %}
+
+{% if salt['pillar.get']('mastersearchtab', False) %}
+{% for SN, SNDATA in salt['pillar.get']('mastersearchtab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
+dashboard-master:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch/{{ SN }}-MasterSearch.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/dashboards/mastersearch/mastersearch.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
