@@ -282,7 +282,12 @@ export percentage=0
 		sensor_pillar >> "$setup_log" 2>&1
 	fi
 
-	set_progress_str 3 'Installing Salt and dependencies'
+	if [[ $is_minion ]]; then
+		set_progress_str 3 'Configuring firewall'
+		set_initial_firewall_policy 2>> "$setup_log"
+	fi
+
+	set_progress_str 4 'Installing Salt and dependencies'
 	saltify 2>> "$setup_log"
 
 	set_progress_str 7 'Installing Docker and dependencies'
@@ -311,10 +316,7 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
-	if [[ $is_minion ]]; then
-		set_progress_str 14 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
-	fi
+	
 
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
@@ -356,6 +358,13 @@ export percentage=0
 		set_progress_str 26 'Downloading containers from the internet'
 		salt-call state.apply -l info registry >> "$setup_log" 2>&1
 		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
+		
+		set_progress_str 61 "$(print_salt_state_apply 'master')"
+		salt-call state.apply -l info master >> $setup_log 2>&1
+
+		set_progress_str 62 "$(print_salt_state_apply 'idstools')"
+		salt-call state.apply -l info idstools >> $setup_log 2>&1
+
 	fi
 
 	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
@@ -432,13 +441,7 @@ export percentage=0
 		salt-call state.apply -l info navigator >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master || $is_helix ]]; then
-		set_progress_str 79 "$(print_salt_state_apply 'master')"
-		salt-call state.apply -l info master >> $setup_log 2>&1
-
-		set_progress_str 80 "$(print_salt_state_apply 'idstools')"
-		salt-call state.apply -l info idstools >> $setup_log 2>&1
-
+	if [[ $is_master || $is_helix ]]; then		
 		set_progress_str 81 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
@@ -457,6 +460,9 @@ export percentage=0
 
 	set_progress_str 86 'Updating packages'
 	update_packages 2>> "$setup_log"
+
+	set_progress_str 87 'Adding user to SOC'
+	add_web_user 2>> "$setup_log"
 
 	set_progress_str 90 'Enabling checkin at boot'
 	checkin_at_boot 2>> "$setup_log"

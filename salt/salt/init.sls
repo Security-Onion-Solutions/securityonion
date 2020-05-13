@@ -1,18 +1,4 @@
-# Create a state directory
 
-statedir:
-  file.directory:
-    - name: /opt/so/state
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-salttmp:
-  file.directory:
-    - name: /opt/so/tmp
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 {% if grains['os'] != 'CentOS' %}    
 saltpymodules:

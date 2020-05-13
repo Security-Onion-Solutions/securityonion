@@ -91,13 +91,13 @@ wait_for_file() {
 	local date
 	date=$(date)
 
-	while [[ $cur_attempts < $max_attempts ]]; do
+	while [[ $cur_attempts -lt $max_attempts ]]; do
 		if [ -f "$filename" ]; then
-			echo "File $filename already exists at $date" >> "$setup_log" 2>&1
+			echo "File $filename found at $date" >> "$setup_log" 2>&1
 			return 0
 		else
-			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
 			((cur_attempts++))
+			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
 			sleep "$wait_interval"
 		fi
 	done
@@ -195,11 +195,10 @@ check_admin_pass() {
 
 check_hive_init_then_reboot() {
 
-	local return_val
-	return_val="$(wait_for_file /opt/so/state/thehive.txt 20 5)"
-
-	if [[ "$return_val" != 0 ]]; then
-		return "$return_val"
+	wait_for_file /opt/so/state/thehive.txt 20 5
+	local return_val=$?
+	if [[ $return_val -ne 0 ]]; then
+		return $return_val
 	fi
 
 	docker stop so-thehive
@@ -1025,7 +1024,8 @@ saltify() {
 		case "$install_type" in
 			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
 				reserve_group_ids >> "$setup_log" 2>&1
-				yum -y install epel-release sqlite3 argon2 curl mariadb-devel >> "$setup_log" 2>&1
+				yum -y install epel-release >> "$setup_log" 2>&1
+				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
 				# Download Ubuntu Keys in case master updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				wget --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/16.04/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
@@ -1053,8 +1053,8 @@ saltify() {
 		yum clean expire-cache >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
-			yum -y install epel-release\
-				salt-minion-2019.2.4\
+			yum -y install epel-release
+			yum -y install salt-minion-2019.2.4\
 				python3\
 				python36-docker\
 				python36-dateutil\
@@ -1098,7 +1098,7 @@ saltify() {
 
 				# Add saltstack repo(s)
 				wget --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/2019.2/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -1130,7 +1130,7 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/apt/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/2019.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list >> "$setup_log" 2>&1
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list >> "$setup_log" 2>&1
 				;;
 		esac
@@ -1325,7 +1325,7 @@ set_initial_firewall_policy() {
 					/opt/so/saltstack/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					;;
 				'MASTERSEARCH')
-					/opt/so/saltstack/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					/opt/so/saltstack/pillar/data/addtotab.sh mastersearchtab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 			esac
 			;;
@@ -1336,7 +1336,7 @@ set_initial_firewall_policy() {
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
 			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh minions "$MAINIP"
-			case "$INSTALLERTYPE" in
+			case "$install_type" in
 				'SENSOR')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo /opt/so/saltstack/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
