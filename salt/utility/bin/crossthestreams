@@ -38,3 +38,9 @@ echo "Applying cross cluster search config..."
 curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNDATA.ip }}:9300"]}}}}}'
   {%- endfor %}
 {%- endif %}
+
+{%- if salt['pillar.get']('mastersearchtab', {}) %}
+  {%- for SN, SNDATA in salt['pillar.get']('mastersearchtab', {}).items() %}
+curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNDATA.ip }}:9300"]}}}}}'
+  {%- endfor %}
+{%- endif %}
