@@ -118,7 +118,7 @@ so-elastalert:
     - user: elastalert
     - detach: True
     - binds:
-      - /opt/so/rules/elastalert:/opt/rules/:ro
+      - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/config/elastalert_config.yaml:ro

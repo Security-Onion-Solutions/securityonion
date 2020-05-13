@@ -1282,12 +1282,9 @@ set_hostname() {
 
 	set_hostname_iso
 
-	HOSTNAME=$(cat /etc/hostname)
 	if [[ ! $install_type =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH)$ ]]; then
-		if [[ $TESTHOST = *"not found"* ]] || [ -z "$TESTHOST" ] || [[ $TESTHOST = *"connection timed out"* ]]; then
-			if ! grep -q "$MSRVIP" /etc/hosts; then
-				echo "$MSRVIP   $MSRV" >> /etc/hosts
-			fi
+		if ! getent hosts "$MSRV"; then
+			echo "$MSRVIP   $MSRV" >> /etc/hosts
 		fi
 	fi
 
@@ -1297,9 +1294,10 @@ set_hostname_iso() {
 
 	hostnamectl set-hostname --static "$HOSTNAME"
 	echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
-	echo "::1   $HOSTNAME $HOSTNAME localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
+	echo "::1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
 	echo "$HOSTNAME" > /etc/hostname
 
+	hostname -F /etc/hostname
 
 }
 
