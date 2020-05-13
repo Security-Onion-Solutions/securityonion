@@ -282,7 +282,12 @@ export percentage=0
 		sensor_pillar >> "$setup_log" 2>&1
 	fi
 
-	set_progress_str 3 'Installing Salt and dependencies'
+	if [[ $is_minion ]]; then
+		set_progress_str 3 'Configuring firewall'
+		set_initial_firewall_policy 2>> "$setup_log"
+	fi
+
+	set_progress_str 4 'Installing Salt and dependencies'
 	saltify 2>> "$setup_log"
 
 	set_progress_str 7 'Installing Docker and dependencies'
@@ -311,10 +316,7 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
-	if [[ $is_minion ]]; then
-		set_progress_str 14 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
-	fi
+	
 
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
