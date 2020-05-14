@@ -144,6 +144,10 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
+   - onchanges:
+      - file: esingestconf
+      - file: esyml
+      - file: so-elasticsearch-pipelines-file
 
 {% if grains['role'] == 'so-master' or grains['role'] == "so-eval" or grains['role'] == "so-mastersearch" %}
 so-elasticsearch-templates:
