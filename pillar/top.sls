@@ -40,6 +40,18 @@ base:
     - healthcheck.eval
     - minions.{{ grains.id }}
 
+    '*_standalone':
+    - logstash
+    - logstash.master
+    - logstash.search
+    - firewall.*
+    - data.*
+    - brologs
+    - secrets
+    - healthcheck.standalone
+    - static
+    - minions.{{ grains.id }}
+
   '*_node':
     - static
     - firewall.*
