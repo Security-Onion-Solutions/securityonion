@@ -55,7 +55,7 @@ def run():
 
       # Run Docker container that will build the packages
       gen_packages = subprocess.run(["docker", "run","--rm", "--mount", "type=bind,source=/opt/so/saltstack/salt/fleet/packages,target=/output", \
-         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:HH1.2.2", \
+         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:HH1.3.0", \
          f"{ESECRET}", f"{HOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
