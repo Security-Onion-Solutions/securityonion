@@ -40,7 +40,7 @@ base:
     - healthcheck.eval
     - minions.{{ grains.id }}
 
-    '*_standalone':
+  '*_standalone':
     - logstash
     - logstash.master
     - logstash.search
