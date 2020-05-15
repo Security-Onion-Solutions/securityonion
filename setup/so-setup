@@ -116,13 +116,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		# Init networking so rest of install works
-		set_hostname_iso
-		set_management_interface
-
 		collect_adminuser_inputs
-		add_admin_user
-		disable_onion_user
 		;;
 	'network')
 		whiptail_network_notice
@@ -246,6 +240,15 @@ if [[ $is_node && ! $is_eval ]]; then
 fi
 
 whiptail_make_changes
+
+if [[ "$setup_type" == 'iso' ]]; then
+	# Init networking so rest of install works
+	set_hostname_iso
+	set_management_interface
+
+	add_admin_user
+	disable_onion_user
+fi
 
 set_hostname 2>> "$setup_log"
 set_version 2>> "$setup_log"
