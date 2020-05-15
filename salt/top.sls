@@ -170,6 +170,7 @@ base:
     - firewall
     - idstools
     - healthcheck
+    - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
