@@ -142,7 +142,7 @@ fbcrtlink:
         backup: True
 
 {% endif %}
-{% if grains['role'] == in ['so-sensor', 'so-master', 'so-node', 'so-eval', 'so-helix', 'so-mastersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
+{% if grains['role'] in ['so-sensor', 'so-master', 'so-node', 'so-eval', 'so-helix', 'so-mastersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
 
 fbcertdir:
   file.directory:

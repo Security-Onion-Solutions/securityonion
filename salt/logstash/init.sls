@@ -29,7 +29,7 @@
 {% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
   {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
   {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
-{% elif grains['role'] == ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+{% elif grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
   {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
   {% set freq = salt['pillar.get']('master:freq', '0') %}
   {% set dstats = salt['pillar.get']('master:domainstats', '0') %}

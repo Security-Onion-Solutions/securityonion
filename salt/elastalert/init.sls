@@ -15,7 +15,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 
-{% if grains['role'] == ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
   {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
   {% set esip = salt['pillar.get']('master:mainip', '') %}
   {% set esport = salt['pillar.get']('master:es_port', '') %}
