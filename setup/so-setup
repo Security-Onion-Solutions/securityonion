@@ -319,7 +319,6 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
-	
 
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
@@ -358,7 +357,12 @@ export percentage=0
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy 2>> "$setup_log"
 		
-		set_progress_str 26 'Downloading containers from the internet'
+		if [[ "$setup_type" == 'iso' ]]; then
+			set_progress_str 26 'Copying containers from iso'
+		else
+			set_progress_str 26 'Downloading containers from the internet'
+		fi
+
 		salt-call state.apply -l info registry >> "$setup_log" 2>&1
 		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
 		
