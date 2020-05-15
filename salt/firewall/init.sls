@@ -364,6 +364,17 @@ enable_minion_osquery_8080_{{ip}}:
     - position: 1
     - save: True
 
+enable_minion_osquery_8090_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8090
+    - position: 1
+    - save: True
+
 enable_minion_wazuh_55000_{{ip}}:
   iptables.insert:
     - table: filter
