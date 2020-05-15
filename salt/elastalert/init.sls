@@ -14,24 +14,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% if grains['role'] == 'so-master' %}
 
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
-{% set esip = salt['pillar.get']('master:mainip', '') %}
-{% set esport = salt['pillar.get']('master:es_port', '') %}
-
-
-{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
-
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
-{% set esip = salt['pillar.get']('master:mainip', '') %}
-{% set esport = salt['pillar.get']('master:es_port', '') %}
-
-
+{% if grains['role'] == ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+  {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
+  {% set esip = salt['pillar.get']('master:mainip', '') %}
+  {% set esport = salt['pillar.get']('master:es_port', '') %}
 {% elif grains['role'] == 'so-node' %}
-
-{% set esalert = salt['pillar.get']('node:elastalert', '0') %}
-
+  {% set esalert = salt['pillar.get']('node:elastalert', '0') %}
 {% endif %}
 
 # Elastalert
