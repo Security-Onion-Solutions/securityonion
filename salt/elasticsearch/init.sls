@@ -25,7 +25,7 @@
 {% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
   {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
   {% set esheap = salt['pillar.get']('master:esheap', '') %}
-{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
+{% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
   {% set esheap = salt['pillar.get']('node:esheap', '') %}
 {% endif %}
