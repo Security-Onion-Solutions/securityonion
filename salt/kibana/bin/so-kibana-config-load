@@ -2,7 +2,7 @@
 
 # {%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
 # {%- set FLEET = salt['pillar.get']('static:fleet_ip', '') %}
-# {%- set KRATOS = salt['pillar.get']('kratos:redirect', '') %}
+# {%- set MASTER = salt['pillar.get']('kratos:redirect', '') %}
 
 KIBANA_VERSION="7.6.1"
 
@@ -15,10 +15,10 @@ sed -i "s/FLEETPLACEHOLDER/{{ FLEET }}/g" /opt/so/conf/kibana/saved_objects.ndjs
 # {% endif %}
 
 # Kratos redirect
-sed -i "s/PCAPPLACEHOLDER/{{ KRATOS }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+#sed -i "s/PCAPPLACEHOLDER/{{ KRATOS }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 # SOCtopus and Master
-sed -i "s/PLACEHOLDER/{{ KRATOS }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+sed -i "s/PLACEHOLDER/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 # Load saved objects
 curl -X POST "localhost:5601/api/saved_objects/_import" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
