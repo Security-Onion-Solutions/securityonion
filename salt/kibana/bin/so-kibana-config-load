@@ -1,7 +1,7 @@
 #!/bin/bash
-
-# {%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
-# {%- set FLEET = salt['pillar.get']('static:fleet_ip', '') %}
+# {%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master', False) -%}
+# {%- set FLEET_NODE = salt['pillar.get']('static:fleet_node', False) -%}
+# {%- set FLEET_IP = salt['pillar.get']('static:fleet_ip', '') %}
 # {%- set MASTER = salt['pillar.get']('kratos:redirect', '') %}
 
 KIBANA_VERSION="7.6.1"
@@ -9,9 +9,9 @@ KIBANA_VERSION="7.6.1"
 # Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
 
-# {% if FLEET_NODE %}
+# {% if FLEET_NODE or FLEET_MASTER %}
 # Fleet IP
-sed -i "s/FLEETPLACEHOLDER/{{ FLEET }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+sed -i "s/FLEETPLACEHOLDER/{{ FLEET_IP }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 # {% endif %}
 
 # Kratos redirect
