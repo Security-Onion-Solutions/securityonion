@@ -810,6 +810,18 @@ master_pillar() {
 			"  mtu: $MTU" >> "$pillar_file"
 	fi
 
+	case $REDIRECTINFO in
+		'IP')
+			REDIRECTIT="$MAINIP"
+			;;
+		'HOSTNAME')
+			REDIRECTIT=$HOSTNAME
+			;;
+		*)
+			REDIRECTIT="$REDIRECTHOST"
+			;;
+	esac
+
 	printf '%s\n'\
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  lsaccessip: 127.0.0.1"\
@@ -825,24 +837,12 @@ master_pillar() {
 		"  thehive: $THEHIVE"\
 		"  playbook: $PLAYBOOK"\
 		"  navigator: $NAVIGATOR"\
+		"  url_base: $REDIRECTIT"\
 		""\
 		"kratos:" >> "$pillar_file"
 
-	case $REDIRECTINFO in
-		'IP')
-			REDIRECTIT="$MAINIP"
-			;;
-		'HOSTNAME')
-			REDIRECTIT=$HOSTNAME
-			;;
-		*)
-			REDIRECTIT="$REDIRECTHOST"
-			;;
-	esac
-
 	printf '%s\n'\
 		"  kratoskey: $KRATOSKEY"\
-		"  redirect: $REDIRECTIT"\
 		"" >> "$pillar_file"
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
