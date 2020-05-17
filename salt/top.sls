@@ -156,6 +156,63 @@ base:
     - domainstats
     {%- endif %}
 
+  '*_standalone':
+    - ca
+    - ssl
+    - registry
+    - master
+    - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
+    - soc
+    - firewall
+    - idstools
+    - healthcheck
+    - redis
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    - mysql
+    {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    - elasticsearch
+    - logstash
+    - kibana
+    - pcap
+    - suricata
+    - zeek
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
+    - filebeat
+    - curator
+    - elastalert
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet
+    - redis
+    - fleet.install_package
+    {%- endif %}
+    - utility
+    - schedule
+    - soctopus
+    {%- if THEHIVE != 0 %}
+    - hive
+    {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
+    {%- endif %}
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
+
   # Search node logic
 
   '*_node and I@node:node_type:parser':

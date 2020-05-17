@@ -321,7 +321,7 @@ configure_minion() {
 		'helix')
 			echo "master: $HOSTNAME" >> "$minion_config"
 			;;
-		'master' | 'eval' | 'mastersearch')
+		'master' | 'eval' | 'mastersearch' | 'standalone')
 			printf '%s\n'\
 				"master: $HOSTNAME"\
 				"mysql.host: '$MAINIP'"\
@@ -408,7 +408,7 @@ copy_master_config() {
 
 copy_minion_tmp_files() {
 	case "$install_type" in
-		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH')
+		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH' | 'STANDALONE')
 			echo "Copying pillar and salt files in $temp_install_dir to /opt/so/saltstack"
 			cp -Rv "$temp_install_dir"/pillar/ /opt/so/saltstack/ >> "$setup_log" 2>&1
 			if [ -d "$temp_install_dir"/salt ] ; then
@@ -766,7 +766,7 @@ got_root() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MASTERSEARCH' | 'MASTER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET')
+		'EVAL' | 'MASTERSEARCH' | 'MASTER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -802,7 +802,7 @@ master_pillar() {
 		"  freq: 0"\
 		"  domainstats: 0" >> "$pillar_file"
 
-	if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'HELIXSENSOR' ] || [ "$install_type" = 'MASTERSEARCH' ]; then
+	if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'HELIXSENSOR' ] || [ "$install_type" = 'MASTERSEARCH' ] || [ "$install_type" = 'STANDALONE' ]; then
 		printf '%s\n'\
 			"  ls_pipeline_batch_size: 125"\
 			"  ls_input_threads: 1"\
@@ -1021,7 +1021,7 @@ saltify() {
 		set_progress_str 6 'Installing various dependencies'
 		yum -y install wget nmap-ncat >> "$setup_log" 2>&1
 		case "$install_type" in
-			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR')
+			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE')
 				reserve_group_ids >> "$setup_log" 2>&1
 				yum -y install epel-release >> "$setup_log" 2>&1
 				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
@@ -1092,7 +1092,7 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MASTER' | 'EVAL' | 'MASTERSEARCH') # TODO: should this also be HELIXSENSOR?
+			'MASTER' | 'EVAL' | 'MASTERSEARCH' | 'STANDALONE') # TODO: should this also be HELIXSENSOR?
 				if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 				# Add saltstack repo(s)
@@ -1150,7 +1150,7 @@ saltify() {
 salt_checkin() {
 
 	case "$install_type" in
-		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH') # Fix Mine usage
+		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH' | 'STANDALONE') # Fix Mine usage
 			{
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
@@ -1281,7 +1281,7 @@ set_hostname() {
 
 	set_hostname_iso
 
-	if [[ ! $install_type =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH)$ ]]; then
+	if [[ ! $install_type =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH|STANDALONE)$ ]]; then
 		if ! getent hosts "$MSRV"; then
 			echo "$MSRVIP   $MSRV" >> /etc/hosts
 		fi
@@ -1383,7 +1383,7 @@ set_management_interface() {
 set_node_type() {
 
 	case "$install_type" in
-		'SEARCHNODE' | 'EVAL' | 'MASTERSEARCH' | 'HEAVYNODE')
+		'SEARCHNODE' | 'EVAL' | 'MASTERSEARCH' | 'HEAVYNODE' | 'STANDALONE')
 			NODETYPE='search'
 			;;
 		'PARSINGNODE')
@@ -1449,7 +1449,7 @@ ls_heapsize() {
 	fi
 
 	case "$install_type" in
-		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR')
+		'MASTERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR' | 'STANDALONE')
 			LS_HEAP_SIZE='1000m'
 			;;
 		'EVAL')
@@ -1461,7 +1461,7 @@ ls_heapsize() {
 	esac
 	export LS_HEAP_SIZE
 
-	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH)$ ]]; then
+	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH|STANDALONE)$ ]]; then
 		NODE_LS_HEAP_SIZE=LS_HEAP_SIZE
 		export NODE_LS_HEAP_SIZE
 	fi
@@ -1483,7 +1483,7 @@ es_heapsize() {
 	fi
 	export ES_HEAP_SIZE
 
-	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH)$ ]]; then
+	if [[ "$install_type" =~ ^(EVAL|MASTERSEARCH|STANDALONE)$ ]]; then
 		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
 		export NODE_ES_HEAP_SIZE
 	fi

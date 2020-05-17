@@ -2,7 +2,7 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
-{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval'] and GRAFANA == 1 %}
+{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
 # Grafana all the things
 grafanadir:
