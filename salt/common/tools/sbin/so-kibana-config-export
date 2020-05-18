@@ -1,5 +1,9 @@
-{%- set MASTER = salt['pillar.get']('static:masterip', '') %}
 #!/bin/bash
+#
+# {%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master', False) -%}
+# {%- set FLEET_NODE = salt['pillar.get']('static:fleet_node', False) -%}
+# {%- set FLEET_IP = salt['pillar.get']('static:fleet_ip', '') %}
+# {%- set MASTER = salt['pillar.get']('master:url_base', '') %}
 #
 # Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 #
@@ -20,3 +24,12 @@ KIBANA_HOST={{ MASTER }}
 KSO_PORT=5601
 OUTFILE="saved_objects.ndjson"
 curl -s -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST $KIBANA_HOST:$KSO_PORT/api/saved_objects/_export -d '{ "type": [ "index-pattern", "config", "visualization", "dashboard", "search" ], "excludeExportDetails": false }' > $OUTFILE
+
+# Clean up using PLACEHOLDER
+sed -i "s/$KIBANA_HOST/PLACEHOLDER/g" $OUTFILE
+
+# Clean up for Fleet, if applicable
+# {% if FLEET_NODE or FLEET_MASTER %}
+# Fleet IP
+sed -i "s/{{ FLEET_IP }}/FLEETPLACEHOLDER/g" $OUTFILE
+# {% endif %}
