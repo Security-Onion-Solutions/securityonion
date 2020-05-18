@@ -1,5 +1,5 @@
 # This state is for checking things
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-mastersearch' %}
+{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-standalone'] %}
 # Make sure Cross Cluster is good. Will need some logic once we have hot/warm
 crossclusterson:
   cmd.script:
