@@ -1,6 +1,8 @@
 {% set es = salt['pillar.get']('static:masterip', '') %}
-{% set hivehost = salt['pillar.get']('master:url_base', '') %}
+{% set hivehost = salt['pillar.get']('static:masterip', '') %}
 {% set hivekey = salt['pillar.get']('static:hivekey', '') %}
+{% set MASTER = salt['pillar.get']('master:url_base', '') %}
+
 # hive.yaml
 # Elastalert rule to forward IDS alerts from Security Onion to a specified TheHive instance.
 #
@@ -38,7 +40,7 @@ hive_alert_config:
   title: '{match[rule][name]}'
   type: 'NIDS'
   source: 'SecurityOnion'
-  description: "`Hunting Pivot:` \n\n <https://{{es}}/#/hunt?q=event.module%3A%20suricata%20AND%20rule.uuid%3A{match[rule][uuid]}%20%7C%20groupby%20source.ip%20destination.ip%20rule.name>  \n\n `Kibana Dashboard:` \n\n <https://{{es}}/kibana/app/kibana#/dashboard/ed6f7e20-e060-11e9-8f0c-2ddbf5ed9290?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),index:'*:logstash-*',interval:auto,query:(query_string:(analyze_wildcard:!t,query:'sid:')),sort:!('@timestamp',desc))> \n\n `IPs: `{match[source][ip]}:{match[source][port]} --> {match[destination][ip]}:{match[destination][port]} \n\n `Signature:`{match[rule][rule]}"
+  description: "`Hunting Pivot:` \n\n <https://{{MASTER}}/#/hunt?q=event.module%3A%20suricata%20AND%20rule.uuid%3A{match[rule][uuid]}%20%7C%20groupby%20source.ip%20destination.ip%20rule.name>  \n\n `Kibana Dashboard:` \n\n <https://{{MASTER}}/kibana/app/kibana#/dashboard/ed6f7e20-e060-11e9-8f0c-2ddbf5ed9290?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),index:'*:logstash-*',interval:auto,query:(query_string:(analyze_wildcard:!t,query:'sid:')),sort:!('@timestamp',desc))> \n\n `IPs: `{match[source][ip]}:{match[source][port]} --> {match[destination][ip]}:{match[destination][port]} \n\n `Signature:`{match[rule][rule]}"
   severity: 2
   tags: ['{match[rule][uuid]}','{match[source][ip]}','{match[destination][ip]}']
   tlp: 3
