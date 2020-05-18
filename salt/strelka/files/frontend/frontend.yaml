@@ -1,4 +1,9 @@
-{%- set ip = salt['pillar.get']('static:masterip', '') %}
+{%- if grains.role == 'so-sensor' -%}
+  {%- set mainint = salt['pillar.get']('sensor:mainint') %}
+  {%- set ip = salt['grains.get']('ip_interfaces:' ~ mainint, salt['pillar.get']('sensor:mainip')) %}
+{%- else %}
+  {%- set ip = salt['pillar.get']('static:masterip') %}
+{%- endif -%}
 server: ":57314"
 coordinator:
   addr: '{{ ip }}:6380'
