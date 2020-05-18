@@ -1,0 +1,13 @@
+{
+  "description" : "zeek.dns.tld",
+  "processors" : [
+    { "script":         { "lang": "painless", "source": "ctx.dns.top_level_domain = ctx.dns.query.name.substring(ctx.dns.query.name.lastIndexOf('.') + 1)",         "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.query_without_tld = ctx.dns.query.name.substring(0, (ctx.dns.query.name.lastIndexOf('.')))",       "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.parent_domain = ctx.dns.query_without_tld.substring(ctx.dns.query_without_tld.lastIndexOf('.') + 1)",      "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.subdomain = ctx.dns.query_without_tld.substring(0, (ctx.dns.query_without_tld.lastIndexOf('.')))",         "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.highest_registered_domain = ctx.dns.parent_domain + '.' + ctx.dns.top_level_domain",                       "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.subdomain_length = ctx.dns.subdomain.length()",                                                        "ignore_failure": true  } },
+    { "script":         { "lang": "painless", "source": "ctx.dns.parent_domain_length = ctx.dns.parent_domain.length()",                                                "ignore_failure": true  } },
+    { "remove":         { "field": "dns.query_without_tld",                                                                                                         "ignore_failure": true  } }
+  ]
+}

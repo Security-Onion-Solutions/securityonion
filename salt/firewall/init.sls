@@ -1,15 +1,16 @@
 # Firewall Magic for the grid
-{%- if grains['role'] in ['so-eval','so-master','so-helix','so-mastersearch'] %}
-{%- set ip = salt['pillar.get']('static:masterip', '') %}
-{%- elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
-{%- set ip = salt['pillar.get']('node:mainip', '') %}
-{%- elif grains['role'] == 'so-sensor' %}
-{%- set ip = salt['pillar.get']('sensor:mainip', '') %}
-{%- elif grains['role'] == 'so-fleet' %}
-{%- set ip = salt['pillar.get']('node:mainip', '') %}
-{%- endif %}
-{%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
-{%- set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
+{% if grains['role'] in ['so-eval','so-master','so-helix','so-mastersearch', 'so-standalone'] %}
+  {% set ip = salt['pillar.get']('static:masterip', '') %}
+{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
+  {% set ip = salt['pillar.get']('node:mainip', '') %}
+{% elif grains['role'] == 'so-sensor' %}
+  {% set ip = salt['pillar.get']('sensor:mainip', '') %}
+{% elif grains['role'] == 'so-fleet' %}
+  {% set ip = salt['pillar.get']('node:mainip', '') %}
+{% endif %}
+
+{% set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
+{% set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
 
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
@@ -136,7 +137,7 @@ enable_wazuh_manager_1514_udp_{{ip}}:
     - save: True
 
 # Rules if you are a Master
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
+{% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
 #This should be more granular
 iptables_allow_master_docker:
   iptables.insert:
@@ -361,6 +362,17 @@ enable_minion_osquery_8080_{{ip}}:
     - proto: tcp
     - source: {{ ip }}
     - dport: 8080
+    - position: 1
+    - save: True
+
+enable_minion_osquery_8090_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8090
     - position: 1
     - save: True
 

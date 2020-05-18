@@ -116,13 +116,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		# Init networking so rest of install works
-		set_hostname_iso
-		set_management_interface
-
 		collect_adminuser_inputs
-		add_admin_user
-		disable_onion_user
 		;;
 	'network')
 		whiptail_network_notice
@@ -247,6 +241,15 @@ fi
 
 whiptail_make_changes
 
+if [[ "$setup_type" == 'iso' ]]; then
+	# Init networking so rest of install works
+	set_hostname_iso
+	set_management_interface
+
+	add_admin_user
+	disable_onion_user
+fi
+
 set_hostname 2>> "$setup_log"
 set_version 2>> "$setup_log"
 clear_master 2>> "$setup_log"
@@ -316,7 +319,6 @@ export percentage=0
 		master_pillar 2>> "$setup_log"
 	fi
 
-	
 
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin 2>> "$setup_log"
@@ -355,7 +357,12 @@ export percentage=0
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy 2>> "$setup_log"
 		
-		set_progress_str 26 'Downloading containers from the internet'
+		if [[ "$setup_type" == 'iso' ]]; then
+			set_progress_str 26 'Copying containers from iso'
+		else
+			set_progress_str 26 'Downloading containers from the internet'
+		fi
+
 		salt-call state.apply -l info registry >> "$setup_log" 2>&1
 		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
 		
@@ -461,8 +468,10 @@ export percentage=0
 	set_progress_str 86 'Updating packages'
 	update_packages 2>> "$setup_log"
 
-	set_progress_str 87 'Adding user to SOC'
-	add_web_user 2>> "$setup_log"
+	if [[ $is_master ]]; then
+		set_progress_str 87 'Adding user to SOC'
+		add_web_user 2>> "$setup_log"
+	fi
 
 	set_progress_str 90 'Enabling checkin at boot'
 	checkin_at_boot 2>> "$setup_log"
