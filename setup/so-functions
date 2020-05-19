@@ -1065,7 +1065,7 @@ saltify() {
 				openssl\
 				jq;
 			yum -y update exclude=salt*;
-			systemctl enable salt-minion
+			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
 		echo "exclude=salt*" >> /etc/yum.conf
 	else
@@ -1212,12 +1212,10 @@ setup_salt_master_dirs() {
 }
 
 set_progress_str() {
-	local percentage_input
-	percentage_input=$1
-	local progress_bar_text
-	progress_bar_text=$2
+	local percentage_input=$1
+	local progress_bar_text=$2
 
-	if [ "$percentage_input" -gt "$percentage" ]; then
+	if (( "$percentage_input" >= "$percentage" )); then
 		percentage="$percentage_input"
 	fi
 
@@ -1225,7 +1223,10 @@ set_progress_str() {
 
 	echo -e "$percentage_str"
 
-	printf '%s\n' '----' "${progress_bar_text^^}" "----" >> "$setup_log" 2>&1
+	printf '%s\n' \
+	'----'\
+	"$percentage% - ${progress_bar_text^^}"\
+	"----" >> "$setup_log" 2>&1
 	
 	sleep 5
 }
