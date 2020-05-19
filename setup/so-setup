@@ -276,20 +276,23 @@ fi
 	# Set initial percentage to 0
 	export percentage=0
 
+	set_progress_str 1 'Updating packages'
+	update_packages >> $setup_log 2>&1
+
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 1 'Creating bond interface'
+		set_progress_str 2 'Creating bond interface'
 		create_sensor_bond >> $setup_log 2>&1
 		
-		set_progress_str 2 'Generating sensor pillar'
+		set_progress_str 3 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
-		set_progress_str 3 'Configuring firewall'
+		set_progress_str 4 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 	fi
 
-	set_progress_str 4 'Installing Salt and dependencies'
+	set_progress_str 5 'Installing Salt and dependencies'
 	saltify 2>> $setup_log
 
 	set_progress_str 7 'Installing Docker and dependencies'
@@ -463,9 +466,6 @@ fi
 	set_progress_str 85 'Applying finishing touches'
 	filter_unused_nics >> $setup_log 2>&1
 	network_setup >> $setup_log 2>&1
-
-	set_progress_str 86 'Updating packages'
-	update_packages >> $setup_log 2>&1
 
 	if [[ $is_master ]]; then
 		set_progress_str 87 'Adding user to SOC'
