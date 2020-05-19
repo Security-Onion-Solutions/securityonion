@@ -73,6 +73,14 @@ m2cryptopkgs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
 
+chownilogstashfilebeatp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/filebeat.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+    
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -173,6 +181,14 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
 
+chownfilebeatp8:
+  file.managed:
+    - replace: False
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+    
 {% endif %}
 
 {% if grains['role'] == 'so-fleet' %}
