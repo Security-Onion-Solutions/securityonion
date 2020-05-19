@@ -1212,20 +1212,18 @@ setup_salt_master_dirs() {
 }
 
 set_progress_str() {
-	local percentage_input
-	percentage_input=$1
-	local progress_bar_text
-	progress_bar_text=$2
+	local percentage_input=$1
+	local progress_bar_text=$2
 
-	if [ "$percentage_input" -gt "$percentage" ]; then
-		percentage="$percentage_input"
+	if [[ $percentage_input -ge $percentage ]]; then
+		export percentage="$percentage_input"
 	fi
 
-	percentage_str="XXX\n${percentage}\n${progress_bar_text}\nXXX"
+	percentage_str="XXX\n${percentage}\n${progress_bar_text}\nXXX\n"
 
 	echo -e "$percentage_str"
 
-	printf '%s\n' '----' "${progress_bar_text^^}" "----" >> "$setup_log" 2>&1
+	printf '%s\n' '----' "$percentage\% - ${progress_bar_text^^}" "----" >> "$setup_log" 2>&1
 	
 	sleep 5
 }
