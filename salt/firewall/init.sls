@@ -683,7 +683,14 @@ enable_cluster_ES_9300_{{ip}}:
 
 # Rules if you are a Sensor
 {% if grains['role'] == 'so-sensor' %}
-
+iptables_allow_sensor_docker:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - source: 172.17.0.0/24
+    - position: 1
+    - save: True
 {% endif %}
 
 # Rules if you are a Hot Node
