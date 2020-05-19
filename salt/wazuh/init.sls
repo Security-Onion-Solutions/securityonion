@@ -43,14 +43,6 @@ ossec:
 #    - user: 945
 #    - group: 945
 
-# Add wazuh agent
-wazuhpkgs:
-  pkg.installed:
-    - skip_suggestions: False
-    - pkgs:
-      - wazuh-agent: 3.10.2-1
-    - update_holds: True
-
 # Add Wazuh agent conf
 wazuhagentconf:
   file.managed:

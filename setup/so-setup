@@ -426,6 +426,13 @@ fi
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
+		if [ $OS = 'centos' ]; then
+			yum -y install wazuh-agent-3.10.2-1 >> "$setup_log" 2>&1
+			echo "exclude=wazuh-agent" >> /etc/yum.repos.d/wazuh.repo
+		else
+			apt-get -y install wazuh-agent=3.10.2-1 >> "$setup_log" 2>&1
+			apt-mark hold wazuh-agent >> "$setup_log" 2>&1
+		fi
 		set_progress_str 75 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
