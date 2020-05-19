@@ -553,6 +553,7 @@ disable_onion_user() {
 }
 
 disable_misc_network_features() {
+	filter_unused_nics
 	if [ ${#filtered_nics[@]} -ne 0 ]; then
 		for unused_nic in "${filtered_nics[@]}"; do
 			# Disable DHCPv4/v6 and autoconnect
@@ -1065,7 +1066,7 @@ saltify() {
 				openssl\
 				jq;
 			yum -y update exclude=salt*;
-			systemctl enable salt-minion
+			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
 		echo "exclude=salt*" >> /etc/yum.conf
 	else
@@ -1131,8 +1132,7 @@ saltify() {
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/2019.2.5/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list >> "$setup_log" 2>&1
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list >> "$setup_log" 2>&1
-                apt-mark hold wazuh-agent >> "$setup_log" 2>&1
-				;;
+                ;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
@@ -1212,12 +1212,10 @@ setup_salt_master_dirs() {
 }
 
 set_progress_str() {
-	local percentage_input
-	percentage_input=$1
-	local progress_bar_text
-	progress_bar_text=$2
+	local percentage_input=$1
+	local progress_bar_text=$2
 
-	if [ "$percentage_input" -gt "$percentage" ]; then
+	if (( "$percentage_input" >= "$percentage" )); then
 		percentage="$percentage_input"
 	fi
 
@@ -1225,7 +1223,10 @@ set_progress_str() {
 
 	echo -e "$percentage_str"
 
-	printf '%s\n' '----' "${progress_bar_text^^}" "----" >> "$setup_log" 2>&1
+	printf '%s\n' \
+	'----'\
+	"$percentage% - ${progress_bar_text^^}"\
+	"----" >> "$setup_log" 2>&1
 	
 	sleep 5
 }

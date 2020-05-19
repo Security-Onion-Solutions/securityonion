@@ -250,112 +250,114 @@ if [[ "$setup_type" == 'iso' ]]; then
 	disable_onion_user
 fi
 
-set_hostname 2>> "$setup_log"
-set_version 2>> "$setup_log"
-clear_master 2>> "$setup_log"
+set_hostname >> $setup_log 2>&1
+set_version >> $setup_log 2>&1
+clear_master >> $setup_log 2>&1
 
 if [[ $is_master ]]; then
-	generate_passwords 2>> "$setup_log"
-	secrets_pillar 2>> "$setup_log"
-	add_socore_user_master 2>> "$setup_log"
+	generate_passwords >> $setup_log 2>&1
+	secrets_pillar >> $setup_log 2>&1
+	add_socore_user_master >> $setup_log 2>&1
 fi
 
 if [[ $is_master && ! $is_eval ]]; then
-	add_soremote_user_master 2>> "$setup_log"
+	add_soremote_user_master >> $setup_log 2>&1
 fi
 
-set_main_ip 2>> "$setup_log"
+set_main_ip >> $setup_log 2>&1
 
 if [[ $is_minion ]]; then
-	set_updates 2>> "$setup_log"
-	copy_ssh_key 2>> "$setup_log"
+	set_updates >> $setup_log 2>&1
+	copy_ssh_key >> $setup_log 2>&1
 fi
 
 # Begin install
-
-# Set initial percentage to 0
-export percentage=0
 {
+	# Set initial percentage to 0
+	export percentage=0
+
+	set_progress_str 1 'Updating packages'
+	update_packages >> $setup_log 2>&1
 
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 1 'Creating bond interface'
-		create_sensor_bond >> "$setup_log" 2>&1
+		set_progress_str 2 'Creating bond interface'
+		create_sensor_bond >> $setup_log 2>&1
 		
-		set_progress_str 2 'Generating sensor pillar'
-		sensor_pillar >> "$setup_log" 2>&1
+		set_progress_str 3 'Generating sensor pillar'
+		sensor_pillar >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
-		set_progress_str 3 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
+		set_progress_str 4 'Configuring firewall'
+		set_initial_firewall_policy >> $setup_log 2>&1
 	fi
 
-	set_progress_str 4 'Installing Salt and dependencies'
-	saltify 2>> "$setup_log"
+	set_progress_str 5 'Installing Salt and dependencies'
+	saltify 2>> $setup_log
 
 	set_progress_str 7 'Installing Docker and dependencies'
-	docker_install 2>> "$setup_log"
+	docker_install >> $setup_log 2>&1
 	
 	set_progress_str 8 'Generating patch pillar'
-	patch_pillar 2>> "$setup_log"
+	patch_pillar >> $setup_log 2>&1
 
 	set_progress_str 9 'Initializing Salt minion'
-	configure_minion "$minion_type" 2>> "$setup_log"
+	configure_minion "$minion_type" >> $setup_log 2>&1
 
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
-		copy_master_config 2>> "$setup_log"
-		setup_salt_master_dirs 2>> "$setup_log"
-		firewall_generate_templates 2>> "$setup_log"
+		copy_master_config >> $setup_log 2>&1
+		setup_salt_master_dirs >> $setup_log 2>&1
+		firewall_generate_templates >> $setup_log 2>&1
 		
 		set_progress_str 11 'Updating sudoers file for soremote user'
-		update_sudoers 2>> "$setup_log"
+		update_sudoers >> $setup_log 2>&1
 		
 		set_progress_str 12 'Generating master static pillar'
-		master_static 2>> "$setup_log"
+		master_static >> $setup_log 2>&1
 		
 		set_progress_str 13 'Generating master pillar'
-		master_pillar 2>> "$setup_log"
+		master_pillar >> $setup_log 2>&1
 	fi
 
 
 	set_progress_str 16 'Running first Salt checkin'
-	salt_firstcheckin 2>> "$setup_log"
+	salt_firstcheckin >> $setup_log 2>&1
 
 	if [[ $is_helix ]]; then
 		set_progress_str 17 'Generating the FireEye pillar'
-		fireeye_pillar 2>> "$setup_log"
+		fireeye_pillar >> $setup_log 2>&1
 	fi
 	
 	if [[ $is_node ]]; then
 		set_progress_str 18 'Setting node type'
-		set_node_type 2>> "$setup_log"
+		set_node_type >> $setup_log 2>&1
 
 		set_progress_str 19 'Generating search node pillar'
-		node_pillar 2>> "$setup_log"
+		node_pillar >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on master'
-		accept_salt_key_remote 2>> "$setup_log"
+		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
 	if [[ $is_master ]]; then
 		set_progress_str 20 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
+		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
 
 	set_progress_str 21 'Copying minion pillars to master'
-	copy_minion_tmp_files 2>> "$setup_log"
+	copy_minion_tmp_files >> $setup_log 2>&1
 
 	set_progress_str 22 'Generating CA and checking in'
-	salt_checkin 2>> "$setup_log"
+	salt_checkin >> $setup_log 2>&1
 
 	
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
+		set_initial_firewall_policy >> $setup_log 2>&1
 		
 		if [[ "$setup_type" == 'iso' ]]; then
 			set_progress_str 26 'Copying containers from iso'
@@ -363,8 +365,8 @@ export percentage=0
 			set_progress_str 26 'Downloading containers from the internet'
 		fi
 
-		salt-call state.apply -l info registry >> "$setup_log" 2>&1
-		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
+		salt-call state.apply -l info registry >> $setup_log 2>&1
+		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
 		
 		set_progress_str 61 "$(print_salt_state_apply 'master')"
 		salt-call state.apply -l info master >> $setup_log 2>&1
@@ -379,6 +381,9 @@ export percentage=0
 
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
+
+	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+	salt-call state.apply -l info nginx >> $setup_log 2>&1
 
 	if [[ $is_master || $is_node ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
@@ -403,7 +408,7 @@ export percentage=0
 
 	if [[ $is_master ]]; then
 		set_progress_str 69 "$(print_salt_state_apply 'soc')"
-		salt-call state.apply -l info soc >> "$setup_log" 2>&1
+		salt-call state.apply -l info soc >> $setup_log 2>&1
 
 		set_progress_str 70 "$(print_salt_state_apply 'kibana')"
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
@@ -424,6 +429,13 @@ export percentage=0
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
+		if [ $OS = 'centos' ]; then
+			yum -y install wazuh-agent-3.10.2-1 >> "$setup_log" 2>&1
+			echo "exclude=wazuh-agent" >> /etc/yum.repos.d/wazuh.repo
+		else
+			apt-get -y install wazuh-agent=3.10.2-1 >> "$setup_log" 2>&1
+			apt-mark hold wazuh-agent >> "$setup_log" 2>&1
+		fi
 		set_progress_str 75 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
@@ -462,19 +474,16 @@ export percentage=0
 	fi
 
 	set_progress_str 85 'Applying finishing touches'
-	filter_unused_nics 2>> "$setup_log"
-	network_setup 2>> "$setup_log"
-
-	set_progress_str 86 'Updating packages'
-	update_packages 2>> "$setup_log"
+	filter_unused_nics >> $setup_log 2>&1
+	network_setup >> $setup_log 2>&1
 
 	if [[ $is_master ]]; then
 		set_progress_str 87 'Adding user to SOC'
-		add_web_user 2>> "$setup_log"
+		add_web_user >> $setup_log 2>&1
 	fi
 
 	set_progress_str 90 'Enabling checkin at boot'
-	checkin_at_boot 2>> "$setup_log"
+	checkin_at_boot >> $setup_log 2>&1
 
 	set_progress_str 95 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
