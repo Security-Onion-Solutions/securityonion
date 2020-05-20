@@ -1,4 +1,4 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 
 soctopusdir:
@@ -49,8 +49,8 @@ playbookrulessync:
 
 navigatordefaultlayer:
   file.managed:
-    - name: /opt/so/conf/playbook/nav_layer_playbook.json
-    - source: salt://playbook/files/nav_layer_playbook.json
+    - name: /opt/so/conf/navigator/nav_layer_playbook.json
+    - source: salt://navigator/files/nav_layer_playbook.json
     - user: 939
     - group: 939
     - makedirs: True
@@ -66,6 +66,6 @@ so-soctopus:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
-      - /opt/so/conf/playbook/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
+      - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
     - port_bindings:
       - 0.0.0.0:7000:7000

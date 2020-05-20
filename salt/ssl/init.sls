@@ -5,7 +5,7 @@
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
 
-{% if 'master' in grains.id.split('_')|last or 'eval' in grains.id.split('_')|last %}
+{% if grains.id.split('_')|last in ['master', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
@@ -50,7 +50,7 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' %}
+{% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -73,6 +73,14 @@ m2cryptopkgs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
 
+chownilogstashfilebeatp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/filebeat.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+    
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -142,7 +150,7 @@ fbcrtlink:
         backup: True
 
 {% endif %}
-{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-master' or grains['role'] == 'so-node' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' or grains['role'] == 'so-heavynode' or grains['role'] == 'so-fleet' %}
+{% if grains['role'] in ['so-sensor', 'so-master', 'so-node', 'so-eval', 'so-helix', 'so-mastersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
 
 fbcertdir:
   file.directory:
@@ -173,6 +181,14 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
 
+chownfilebeatp8:
+  file.managed:
+    - replace: False
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+    
 {% endif %}
 
 {% if grains['role'] == 'so-fleet' %}

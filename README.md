@@ -1,42 +1,34 @@
-## Hybrid Hunter Beta 1.2.2 - Beta 1
-
-### Changes:  
-
-- Updated Saltstack to 2019.2.4 to address [CVE-2020-11651](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-11651)
-- Updated Suricata to 4.1.8 to address some possible security issues. Details [here](https://suricata-ids.org/2020/04/28/suricata-4-1-8-released/).
-- Fixed an issue that was preventing Strelka to function properly.
-- ISO installs should now use the built in docker containers instead of re-downloading them.
-
-
-## Hybrid Hunter Beta 1.2.1 - Beta 1
+## Hybrid Hunter Beta 1.3.0 - Beta 2
 
 ### Changes:
 
-- Full support for Ubuntu 18.04. 16.04 is no longer supported for Hybrid Hunter.
-- Introduction of the Security Onion Console. Once logged in you are directly taken to the SOC.
-- New authentication using Kratos.
-- During install you must specify how you would like to access the SOC ui. This is for strict cookie security.
-- Ability to list and delete web users from the SOC ui.
-- The soremote account is now used to add nodes to the grid vs using socore. 
-- Community ID support for Zeek, osquery, and Suricata. You can now tie host events to connection logs!
-- Elastic 7.6.1 with ECS support.
-- New set of Kibana dashboards that align with ECS.
-- Eval mode no longer uses Logstash for parsing (Filebeat -> ES Ingest)
-- Ingest node parsing for osquery-shipped logs (osquery, WEL, Sysmon).
-- Fleet standalone mode with improved Web UI & API access control.
-- Improved Fleet integration support.
-- Playbook now has full Windows Sigma community ruleset builtin.
-- Automatic Sigma community rule updates.
-- Playbook stability enhancements.
-- Zeek health check. Zeek will now auto restart if a worker crashes.
-- zeekctl is now managed by salt.
-- Grafana dashboard improvements and cleanup.
-- Moved logstash configs to pillars.
-- Salt logs moved to /opt/so/log/salt.
-- Strelka integrated for file-oriented detection/analysis at scale
+- New Feature: Codename: "Onion Hunt". Select Hunt from the menu and start hunting down your adversaries! 
+- Improved ECS support.
+- Complete refactor of the setup to make it easier to follow.
+- Improved setup script logging to better assist on any issues.
+- Setup now checks for minimal requirements during install.
+- Updated Cyberchef to version 9.20.3.
+- Updated Elastalert to version 0.2.4 and switched to alpine to reduce container size.
+- Updated Redis to 5.0.9 and switched to alpine to reduce container size.
+- Updated Salt to 2019.2.5
+- Updated Grafana to 6.7.3.
+- Zeek 3.0.6
+- Suricata 4.1.8
+- Fixes so-status to now display correct containers and status.
+- local.zeek is now controlled by a pillar instead of modifying the file directly.
+- Renamed so-core to so-nginx and switched to alpine to reduce container size.
+- Playbook now uses MySQL instead of SQLite.
+- Sigma rules have all been updated.
+- Kibana dashboard improvements for ECS.
+- Fixed an issue where geoip was not properly parsed.
+- ATT&CK Navigator is now it's own state.
+- Standlone mode is now supported.
+- Mastersearch previously used the same Grafana dashboard as a Search node. It now has its own dashboard that incorporates panels from the Master node and Search node dashboards.
+ 
+### Known Issues:
 
-### Known issues:
-
+- The Hunt feature is currently considered "Preview" and although very useful in its current state, not everything works. We wanted to get this out as soon as possible to get the feedback from you! Let us know what you want to see! Let us know what you think we should call it!
+- You cannot pivot to PCAP from Suricata alerts in Kibana or Hunt.
 - Updating users via the SOC ui is known to fail. To change a user, delete the user and re-add them. 
 - Due to the move to ECS, the current Playbook plays may not alert correctly at this time.
 - The osquery MacOS package does not install correctly.

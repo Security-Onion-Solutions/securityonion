@@ -61,7 +61,7 @@ noderedlog:
 
 so-nodered:
   docker_container.running:
-    - image: soshybridhunter/so-nodered:HH1.2.1
+    - image: soshybridhunter/so-nodered:HH1.2.2
     - interactive: True
     - binds:
       - /opt/so/conf/nodered/:/data:rw

@@ -1,7 +1,10 @@
 base:
   '*':
     - patch.needs_restarting
-    - docker.config
+
+  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone':
+    - match: compound
+    - zeek
 
   '*_mastersearch or *_heavynode':
     - match: compound
@@ -35,6 +38,18 @@ base:
     - brologs
     - secrets
     - healthcheck.eval
+    - minions.{{ grains.id }}
+
+  '*_standalone':
+    - logstash
+    - logstash.master
+    - logstash.search
+    - firewall.*
+    - data.*
+    - brologs
+    - secrets
+    - healthcheck.standalone
+    - static
     - minions.{{ grains.id }}
 
   '*_node':

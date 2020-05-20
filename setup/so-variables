@@ -1,0 +1,36 @@
+#!/bin/bash
+
+total_mem=$(grep MemTotal /proc/meminfo | awk '{print $2}' | sed -r 's/.{3}$//')
+export total_mem
+
+total_mem_hr=$(grep MemTotal /proc/meminfo | awk '{ printf("%.0f", $2/1024/1024); }')
+export total_mem_hr
+
+num_cpu_cores=$(nproc)
+export num_cpu_cores
+
+readarray -t cpu_core_list <<< "$(grep "processor" /proc/cpuinfo | grep -v "KVM" | awk '{print $3}')"
+export cpu_core_list
+
+random_uid=$(</dev/urandom tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+export random_uid
+
+node_es_port=9200
+export node_es_port
+
+setup_log="/root/sosetup.log"
+export setup_log
+
+filesystem_root=$(df / | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
+export filesystem_root
+
+mkdir -p /nsm
+filesystem_nsm=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
+export filesystem_nsm
+
+mkdir -p /root/installtmp/pillar/minions
+export temp_install_dir=/root/installtmp
+
+export percentage_str='Getting started'
+
+export DEBIAN_FRONTEND=noninteractive

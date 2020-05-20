@@ -1,5 +1,5 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.1') %}
+{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
@@ -43,12 +43,13 @@ ossec:
 #    - user: 945
 #    - group: 945
 
-# Add wazuh agent
 wazuhpkgs:
- pkg.installed:
-   - skip_suggestions: False
-   - pkgs:
-     - wazuh-agent: 3.10.2-1
+  pkg.installed:
+    - skip_suggestions: False
+    - pkgs:
+      - wazuh-agent: 3.10.2-1
+    - hold: True
+    - update_holds: True
 
 # Add Wazuh agent conf
 wazuhagentconf:
@@ -78,6 +79,11 @@ wazuhmgrwhitelist:
     - group: 0
     - mode: 755
     - template: jinja
+
+wazuhagentservice:
+  service.running:
+    - name: wazuh-agent
+    - enable: True
 
 so-wazuh:
   docker_container.running:
