@@ -354,7 +354,6 @@ fi
 	set_progress_str 22 'Generating CA and checking in'
 	salt_checkin >> $setup_log 2>&1
 
-	
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
@@ -378,6 +377,11 @@ fi
 
 	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
+
+	if [ $OS = 'centos' ]; then
+		set_progress_str 63 'Installing Yum utilities'
+		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
+	fi
 
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
@@ -429,13 +433,6 @@ fi
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
-		if [ $OS = 'centos' ]; then
-			yum -y install wazuh-agent-3.10.2-1 >> "$setup_log" 2>&1
-			echo "exclude=wazuh-agent" >> /etc/yum.repos.d/wazuh.repo
-		else
-			apt-get -y install wazuh-agent=3.10.2-1 >> "$setup_log" 2>&1
-			apt-mark hold wazuh-agent >> "$setup_log" 2>&1
-		fi
 		set_progress_str 75 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
