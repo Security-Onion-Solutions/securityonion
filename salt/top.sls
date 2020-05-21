@@ -11,6 +11,11 @@
 
 
 base:
+
+  'os:CentOS':
+    - match: grain
+    - yum.packages
+
   '*':
     - salt
     - docker

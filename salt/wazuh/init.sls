@@ -43,6 +43,14 @@ ossec:
 #    - user: 945
 #    - group: 945
 
+wazuhpkgs:
+  pkg.installed:
+    - skip_suggestions: False
+    - pkgs:
+      - wazuh-agent: 3.10.2-1
+    - hold: True
+    - update_holds: True
+
 # Add Wazuh agent conf
 wazuhagentconf:
   file.managed:
@@ -71,6 +79,11 @@ wazuhmgrwhitelist:
     - group: 0
     - mode: 755
     - template: jinja
+
+wazuhagentservice:
+  service.running:
+    - name: wazuh-agent
+    - enable: True
 
 so-wazuh:
   docker_container.running:
