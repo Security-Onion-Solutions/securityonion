@@ -13,11 +13,12 @@ def run():
   ROLE = data['data']['role']
   ESECRET = data['data']['enroll-secret']
   MAINIP = data['data']['mainip']
-
-  STATICFILE = '/opt/so/saltstack/pillar/static.sls'
-  SECRETSFILE = '/opt/so/saltstack/pillar/secrets.sls'
+  default_salt_dir = /opt/so/saltstack/default
+  STATICFILE = default_salt_dir + '/pillar/static.sls'
+  SECRETSFILE = default_salt_dir + '/pillar/secrets.sls'
 
   if MINIONID.split('_')[-1] in ['master','eval','fleet','mastersearch']:
+    
     if ACTION == 'enablefleet':
       logging.info('so/fleet enablefleet reactor')
 
@@ -54,7 +55,7 @@ def run():
       PACKAGEVERSION += 1
 
       # Run Docker container that will build the packages
-      gen_packages = subprocess.run(["docker", "run","--rm", "--mount", "type=bind,source=/opt/so/saltstack/salt/fleet/packages,target=/output", \
+      gen_packages = subprocess.run(["docker", "run","--rm", "--mount", "type=bind,source=" + default_salt_dir + "/salt/fleet/packages,target=/output", \
          "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:HH1.3.0", \
          f"{ESECRET}", f"{HOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
       

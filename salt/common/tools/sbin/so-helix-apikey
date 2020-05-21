@@ -1,4 +1,7 @@
 #!/bin/bash
+
+default_salt_dir=/opt/so/saltstack/default
+
 got_root() {
 
   # Make sure you are root
@@ -10,13 +13,13 @@ got_root() {
 }
 
 got_root
-if [ ! -f /opt/so/saltstack/pillar/fireeye/init.sls ]; then
+if [ ! -f $default_salt_dir/pillar/fireeye/init.sls ]; then
   echo "This is nto configured for Helix Mode. Please re-install."
   exit
 else
   echo "Enter your Helix API Key: "
   read APIKEY
-  sed -i "s/^    api_key.*/    api_key: $APIKEY/g" /opt/so/saltstack/pillar/fireeye/init.sls
+  sed -i "s/^    api_key.*/    api_key: $APIKEY/g" $default_salt_dir/pillar/fireeye/init.sls
   docker stop so-logstash
   docker rm so-logstash
   echo "Restarting Logstash for updated key"

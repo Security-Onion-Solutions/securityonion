@@ -60,7 +60,7 @@ synclocalnidsrules:
 
 ruleslink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/suricata/rules
+    - name: /opt/so/saltstack/default/salt/suricata/rules
     - target: /opt/so/rules/nids
 
 so-idstools:

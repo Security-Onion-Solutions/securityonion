@@ -2,6 +2,7 @@
 {% set MAIN_HOSTNAME = salt['grains.get']('host') %}
 {% set MAIN_IP = salt['pillar.get']('node:mainip') %}
 
+default_salt_dir=/opt/so/saltstack/default
 
 #so-fleet-packages $FleetHostname/IP 
 
@@ -26,8 +27,8 @@ docker run \
   --mount type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt \
   docker.io/soshybridhunter/so-fleet-launcher:HH1.1.0 "$esecret" "$1":8090
 
-cp /opt/so/conf/fleet/packages/launcher.* /opt/so/saltstack/salt/launcher/packages/
+cp /opt/so/conf/fleet/packages/launcher.* $default_salt_dir/salt/launcher/packages/
 
 #Update timestamp on packages webpage
 sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/conf/fleet/packages/index.html
-sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" /opt/so/saltstack/salt/fleet/files/dedicated-index.html
+sed -i "s@.*Generated.*@Generated: $(date '+%m%d%Y')@g" $default_salt_dir/salt/fleet/files/dedicated-index.html

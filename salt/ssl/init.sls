@@ -84,17 +84,17 @@ chownilogstashfilebeatp8:
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
-    - name: /opt/so/saltstack/salt/filebeat/files
+    - name: /opt/so/saltstack/default/salt/filebeat/files
     - mkdirs: True
 
 fbkeylink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.p8
+    - name: /opt/so/saltstack/default/salt/filebeat/files/filebeat.p8
     - target: /etc/pki/filebeat.p8
 
 fbcrtlink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.crt
+    - name: /opt/so/saltstack/default/salt/filebeat/files/filebeat.crt
     - target: /etc/pki/filebeat.crt
 
 # Create a cert for the docker registry
