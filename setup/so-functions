@@ -948,6 +948,35 @@ node_pillar() {
 	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
+parse_options() {
+	case "$1" in
+		--turbo=*)
+			local proxy
+			proxy=$(echo "$1" | awk -F'--turbo=' '{print $2}')
+			use_proxy "http://$proxy"
+			;;
+		--proxy=*)
+			echo "Unimplimented"
+			return
+
+			if [[ $2 != --proxy-user=* ]] || [[ $3 != --proxy-pass=* ]]; then
+				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
+			else
+				local proxy
+				local user
+				local password
+				proxy=$(echo "$1" | awk -F'--proxy=' '{print $2}')
+				user=$(echo "$2" | awk -F'--proxy-user=' '{print $2}')
+				password=$(echo "$3" | awk -F'--proxy-pass=' '{print $2}')
+				
+				use_proxy "$proxy" "$user" "$password"
+			fi
+			;;
+		*)
+			echo "Invalid option"
+	esac
+}
+
 patch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
@@ -1441,6 +1470,26 @@ update_packages() {
 		apt-get -y update >> "$setup_log"
 		apt-get -y upgrade >> "$setup_log"
 	fi
+}
+
+use_proxy() {
+	local proxy_addr=$1
+	#TODO: add options for username + pass
+
+	if [[ $OS == 'centos' ]]; then
+		printf '%s\n'\
+			"proxy=\"$proxy_addr\"" >> /etc/yum.conf
+	else
+		printf '%s\n'\
+			"Acquire {"\
+			"HTTP::proxy \"$proxy_addr\";"\
+			"HTTPS::proxy \"$proxy_addr\";"\
+			"}" > /etc/apt/apt.conf.d/proxy.conf
+	fi
+	mkdir -p /etc/systemd/system/docker.service.d
+	printf '%s\n'\
+		"[Service]"\
+		"ExecStart=/usr/bin/dockerd /usr/bin/dockerd -H fd:// --registry-mirror \"$proxy_addr\"" > /etc/systemd/system/docker.service.d/docker.conf
 }
 
 ls_heapsize() {

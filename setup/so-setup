@@ -48,7 +48,7 @@ fi
 
 setterm -blank 0
 
-if (whiptail_you_sure); then
+if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
 else
 	echo "User cancelled setup." >> $setup_log 2>&1
@@ -240,6 +240,11 @@ if [[ $is_node && ! $is_eval ]]; then
 fi
 
 whiptail_make_changes
+
+if [[ $# -gt 1 ]]; then
+	set -- "${@:2}"
+	parse_options "$@"
+fi
 
 if [[ "$setup_type" == 'iso' ]]; then
 	# Init networking so rest of install works
