@@ -616,9 +616,10 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# Make the host use the master docker registry
+	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [\"https://$MSRV:5000\"]"\
+		"  \"registry-mirrors\": [\"https://$proxy:5000\"]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -951,9 +952,15 @@ node_pillar() {
 parse_options() {
 	case "$1" in
 		--turbo=*)
-			local proxy
-			proxy=$(echo "$1" | awk -F'--turbo=' '{print $2}')
-			use_proxy "http://$proxy"
+			if [[ $is_master || $is_helix ]]; then
+				local proxy
+				proxy=$(echo "$1" | awk -F'--turbo=' '{print $2}')
+				proxy_addr="http://$proxy"
+				use_proxy "$proxy_addr"
+				TURBO="$proxy_addr"
+			else
+				echo "turbo is not supported on this install type" >> $setup_log 2>&1
+			fi
 			;;
 		--proxy=*)
 			echo "Unimplimented"
@@ -963,13 +970,13 @@ parse_options() {
 				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
 			else
 				local proxy
-				local user
-				local password
+				local proxy_user
+				local proxy_password
 				proxy=$(echo "$1" | awk -F'--proxy=' '{print $2}')
-				user=$(echo "$2" | awk -F'--proxy-user=' '{print $2}')
-				password=$(echo "$3" | awk -F'--proxy-pass=' '{print $2}')
+				proxy_user=$(echo "$2" | awk -F'--proxy-user=' '{print $2}')
+				proxy_password=$(echo "$3" | awk -F'--proxy-pass=' '{print $2}')
 				
-				use_proxy "$proxy" "$user" "$password"
+				use_proxy "$proxy" "$proxy_user" "$proxy_password"
 			fi
 			;;
 		*)
@@ -1478,18 +1485,14 @@ use_proxy() {
 
 	if [[ $OS == 'centos' ]]; then
 		printf '%s\n'\
-			"proxy=$proxy_addr:3142" >> /etc/yum.conf
+			"proxy=${proxy_addr}:3142" >> /etc/yum.conf
 	else
 		printf '%s\n'\
 			"Acquire {"\
-			"HTTP::proxy \"$proxy_addr:3142\";"\
-			"HTTPS::proxy \"$proxy_addr:3142\";"\
+			"HTTP::proxy \"${proxy_addr}:3142\";"\
+			"HTTPS::proxy \"${proxy_addr}:3142\";"\
 			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
-	printf '%s\n'\
-		"{"\
-		"  \"registry-mirrors\": [\"$proxy_addr:5000\"]"\
-		"}" > /etc/docker/daemon.json
 }
 
 ls_heapsize() {
