@@ -1478,18 +1478,18 @@ use_proxy() {
 
 	if [[ $OS == 'centos' ]]; then
 		printf '%s\n'\
-			"proxy=$proxy_addr" >> /etc/yum.conf
+			"proxy=$proxy_addr:3412" >> /etc/yum.conf
 	else
 		printf '%s\n'\
 			"Acquire {"\
-			"HTTP::proxy \"$proxy_addr\";"\
-			"HTTPS::proxy \"$proxy_addr\";"\
+			"HTTP::proxy \"$proxy_addr:3412\";"\
+			"HTTPS::proxy \"$proxy_addr:3412\";"\
 			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
-	mkdir -p /etc/systemd/system/docker.service.d
 	printf '%s\n'\
-		"[Service]"\
-		"ExecStart=/usr/bin/dockerd /usr/bin/dockerd -H fd:// --registry-mirror \"$proxy_addr\"" > /etc/systemd/system/docker.service.d/docker.conf
+		"{"\
+		"  \"registry-mirrors\": [\"$proxy_addr:5000\"]"\
+		"}" > /etc/docker/daemon.json
 }
 
 ls_heapsize() {
