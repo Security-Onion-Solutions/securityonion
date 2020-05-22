@@ -619,9 +619,10 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# Make the host use the master docker registry
+	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [\"https://$MSRV:5000\"]"\
+		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -949,6 +950,41 @@ node_pillar() {
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1
+}
+
+parse_options() {
+	case "$1" in
+		--turbo=*)
+			if [[ $is_master || $is_helix ]]; then
+				local proxy
+				proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
+				proxy_addr="http://$proxy"
+				use_proxy "$proxy_addr"
+				TURBO="$proxy_addr"
+			else
+				echo "turbo is not supported on this install type" >> $setup_log 2>&1
+			fi
+			;;
+		--proxy=*)
+			echo "Unimplimented"
+			return
+
+			if [[ $2 != --proxy-user=* ]] || [[ $3 != --proxy-pass=* ]]; then
+				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
+			else
+				local proxy
+				local proxy_user
+				local proxy_password
+				proxy=$(echo "$1" | tr -d '"' | awk -F'--proxy=' '{print $2}')
+				proxy_user=$(echo "$2" | tr -d '"' | awk -F'--proxy-user=' '{print $2}')
+				proxy_password=$(echo "$3" | tr -d '"' | awk -F'--proxy-pass=' '{print $2}')
+				
+				use_proxy "$proxy" "$proxy_user" "$proxy_password"
+			fi
+			;;
+		*)
+			echo "Invalid option"
+	esac
 }
 
 patch_pillar() {
@@ -1443,6 +1479,22 @@ update_packages() {
 	else
 		apt-get -y update >> "$setup_log"
 		apt-get -y upgrade >> "$setup_log"
+	fi
+}
+
+use_proxy() {
+	local proxy_addr=$1
+	#TODO: add options for username + pass
+
+	if [[ $OS == 'centos' ]]; then
+		printf '%s\n'\
+			"proxy=${proxy_addr}:3142" >> /etc/yum.conf
+	else
+		printf '%s\n'\
+			"Acquire {"\
+			"HTTP::proxy \"${proxy_addr}:3142\";"\
+			"HTTPS::proxy \"${proxy_addr}:3142\";"\
+			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
 }
 
