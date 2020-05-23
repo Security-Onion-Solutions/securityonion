@@ -19,7 +19,7 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
-SOVERSION=1.3.0
+SOVERSION=1.4.0
 
 accept_salt_key_remote() {
 	systemctl restart salt-minion
@@ -514,7 +514,7 @@ detect_os() {
 		# Install bind-utils so the host command exists
 		if ! command -v host > /dev/null 2>&1; then
 			echo "Installing required packages to run installer"
-			yum -y install bind-utils  >> "$setup_log" 2>&1
+			yum -y install bind-utils yum-plugin-versionlock >> "$setup_log" 2>&1
 		fi
 
 
@@ -583,7 +583,9 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			yum -y install docker-ce;
+			yum -y install docker-ce-19.03.9-3 containerd.io-1.2.6-3;
+			yum versionlock docker-ce;
+			yum versionlock containerd.io
 		} >> "$setup_log" 2>&1
 		
 	else
@@ -687,7 +689,7 @@ docker_seed_registry() {
 				# Tag it with the new registry destination
 				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
 				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
-				docker rmi soshybridhunter/"$i"
+				#docker rmi soshybridhunter/"$i"
 			} >> "$setup_log" 2>&1
 		done
 	else
@@ -1107,7 +1109,7 @@ saltify() {
 			yum -y update exclude=salt*;
 			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
-		echo "exclude=salt*" >> /etc/yum.conf
+		yum versionlock salt*
 	else
 		DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade >> "$setup_log" 2>&1
 
