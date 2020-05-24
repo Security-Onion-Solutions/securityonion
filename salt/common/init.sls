@@ -98,18 +98,18 @@ commonpkgs:
 			-	device-mapper-persistent-data
 			-	lvm2
 			-	openssl
-      - salt-minion: 2019.2.5
+      - salt-minion: 2019.2.5.el7
         - hold: True
         - update_holds: True
       {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-helix' or grains['role'] == 'so-mastersearch' or grains['role'] == 'so-standalone' %}
-      - salt-master: 2019.2.5
+      - salt-master: 2019.2.5.el7
         - hold: True
         - update_holds: True
       {% endif %}
-      - containerd.io: 1.2.6-3
+      - containerd.io: 1.2.6-3.el7
         - hold: True
         - update_holds: True
-      - docker-ce: 19.03.9-3
+      - docker-ce: 19.03.9-3.el7
         - hold: True
         - update_holds: True
       {% endif %}%}
