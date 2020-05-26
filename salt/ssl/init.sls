@@ -85,7 +85,7 @@ chownilogstashfilebeatp8:
 filebeatdir:
   file.directory:
     - name: /opt/so/saltstack/local/salt/filebeat/files
-    - mkdirs: True
+    - makedirs: True
 
 fbkeylink:
   file.symlink:
