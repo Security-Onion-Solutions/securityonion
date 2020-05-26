@@ -45,7 +45,7 @@ commonpkgs:
     - pkgs:
       - apache2-utils
       - wget
-      - ntp
+      - ntpdate
       - jq
       - python3-docker
       - docker-ce
