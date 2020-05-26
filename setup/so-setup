@@ -70,6 +70,12 @@ export PATH=$PATH:../salt/common/tools/sbin
 date -u > $setup_log 2>&1
 
 got_root
+
+if [[ $# -gt 1 ]]; then
+	set -- "${@:2}"
+	parse_options "$@" >> $setup_log 2>&1
+fi
+
 detect_os
 
 if [ "$OS" == ubuntu ]; then
@@ -271,9 +277,8 @@ fi
 
 whiptail_make_changes
 
-if [[ $# -gt 1 ]]; then
-	set -- "${@:2}"
-	parse_options "$@" >> $setup_log 2>&1
+if [[ -n "$TURBO" ]]; then
+	use_turbo_proxy
 fi
 
 if [[ "$setup_type" == 'iso' ]]; then
