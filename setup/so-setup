@@ -25,11 +25,33 @@ setup_type=$1
 export setup_type
 
 automation=$2
+
+automated=no
+
+function progress() {
+	if [ $automated == no ]; then
+		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	fi
+}
+
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation"
-	exit 1
 	source automation/$automation
-	sleep 30 # Re-implement with network availability probe
+	automated=yes
+
+	attempt=1
+	attempts=60
+	ip a | grep "$MNIC:" | grep "state UP"
+	while [ $? -ne 0 ]; do
+		if [ $attempt -gt $attempts ]; then
+			echo "Network unavailable - setup cannot continue"
+			exit 1
+		fi
+		echo "Waiting for network to come up (attempt $attempt of $attempts)"
+		attempt=$((attempt + 1))
+		sleep 10;
+		ip a | grep "$MNIC:" | grep "state UP"
+	done
 fi
 
 case "$setup_type" in
@@ -498,7 +520,7 @@ fi
 	set_progress_str 95 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
 
-} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+} | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
