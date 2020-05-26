@@ -58,6 +58,13 @@ synclocalnidsrules:
     - user: 939
     - group: 939
 
+suricatarulesdir:
+  file.directory:
+    - name: /opt/so/saltstack/local/salt/suricata/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 ruleslink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/suricata/rules
