@@ -960,7 +960,6 @@ parse_options() {
 				proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
 				proxy_url="http://$proxy"
 				TURBO="$proxy_url"
-				use_turbo_proxy "$TURBO"
 			else
 				echo "turbo is not supported on this install type" >> $setup_log 2>&1
 			fi
@@ -1501,16 +1500,13 @@ update_packages() {
 }
 
 use_turbo_proxy() {
-	local proxy_url=$1
-	#TODO: add options for username + pass
-
 	if [[ $OS == 'centos' ]]; then
-		printf '%s\n' "proxy=${proxy_url}:3142" >> /etc/yum.conf
+		printf '%s\n' "proxy=${TURBO}:3142" >> /etc/yum.conf
 	else
 		printf '%s\n'\
 			"Acquire {"\
-			"  HTTP::proxy \"${proxy_url}:3142\";"\
-			"  HTTPS::proxy \"${proxy_url}:3142\";"\
+			"  HTTP::proxy \"${TURBO}:3142\";"\
+			"  HTTPS::proxy \"${TURBO}:3142\";"\
 			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
 }
