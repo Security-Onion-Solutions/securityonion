@@ -116,16 +116,16 @@ add_web_user() {
 
 # Create an secrets pillar so that passwords survive re-install
 secrets_pillar(){
-  if [ ! -f $default_salt_dir/pillar/secrets.sls ]; then
+  if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
 	echo "Creating Secrets Pillar" >> "$setup_log" 2>&1
-	mkdir -p $default_salt_dir/pillar
+	mkdir -p $local_salt_dir/pillar
 	printf '%s\n'\
 		"secrets:"\
 		"  mysql: $MYSQLPASS"\
 		"  playbook: $PLAYBOOKPASS"\
 		"  fleet: $FLEETPASS"\
 		"  fleet_jwt: $FLEETJWT"\
-		"  fleet_enroll-secret: False" > $default_salt_dir/pillar/secrets.sls
+		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 
@@ -327,10 +327,10 @@ configure_minion() {
 				"mysql.host: '$MAINIP'"\
 				"mysql.port: 3306"\
 				"mysql.user: 'root'" >> "$minion_config"
-			if [ ! -f $default_salt_dir/pillar/secrets.sls ]; then
+			if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
 				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
 			else
-				OLDPASS=$(grep "mysql" $default_salt_dir/pillar/secrets.sls | awk '{print $2}')
+				OLDPASS=$(grep "mysql" $local_salt_dir/pillar/secrets.sls | awk '{print $2}')
 				echo "mysql.pass: '$OLDPASS'" >> "$minion_config"
 			fi
 			;;
@@ -409,15 +409,15 @@ copy_master_config() {
 copy_minion_tmp_files() {
 	case "$install_type" in
 		'MASTER' | 'EVAL' | 'HELIXSENSOR' | 'MASTERSEARCH' | 'STANDALONE')
-			echo "Copying pillar and salt files in $temp_install_dir to $default_salt_dir"
-			cp -Rv "$temp_install_dir"/pillar/ $default_salt_dir/ >> "$setup_log" 2>&1
+			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
+			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
 			if [ -d "$temp_install_dir"/salt ] ; then
-				cp -Rv "$temp_install_dir"/salt/ $default_salt_dir/ >> "$setup_log" 2>&1
+				cp -Rv "$temp_install_dir"/salt/ $local_salt_dir/ >> "$setup_log" 2>&1
 			fi
 			;;
 		*)
 			{
-				echo "scp pillar and salt files in $temp_install_dir to master $default_salt_dir";
+				echo "scp pillar and salt files in $temp_install_dir to master $local_salt_dir";
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
 				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
@@ -695,7 +695,7 @@ docker_seed_registry() {
 
 fireeye_pillar() {
 
-	local fireeye_pillar_path=$default_salt_dir/pillar/fireeye
+	local fireeye_pillar_path=$local_salt_dir/pillar/fireeye
 	mkdir -p "$fireeye_pillar_path"
 
 	printf '%s\n'\
@@ -709,7 +709,7 @@ fireeye_pillar() {
 # Generate Firewall Templates
 firewall_generate_templates() {
 
-	local firewall_pillar_path=$default_salt_dir/pillar/firewall
+	local firewall_pillar_path=$local_salt_dir/pillar/firewall
 	mkdir -p "$firewall_pillar_path"
 
 	for i in analyst beats_endpoint forward_nodes masterfw minions osquery_endpoint search_nodes wazuh_endpoint
@@ -851,7 +851,7 @@ master_pillar() {
   }
 
 master_static() {
-	local static_pillar="$default_salt_dir/pillar/static.sls"
+	local static_pillar="$local_salt_dir/pillar/static.sls"
 
 	# Create a static file for global values
 	printf '%s\n'\
@@ -1197,8 +1197,8 @@ setup_salt_master_dirs() {
 	# Create salt paster directories
 	mkdir -p $default_salt_dir/pillar
 	mkdir -p $default_salt_dir/salt
-	mkdir -p $custom_salt_dir/pillar
-	mkdir -p $custom_salt_dir/salt
+	mkdir -p $local_salt_dir/pillar
+	mkdir -p $local_salt_dir/salt
 
 	# Copy over the salt code and templates
 	if [ "$setup_type" = 'iso' ]; then
@@ -1313,14 +1313,14 @@ set_initial_firewall_policy() {
 
 	case "$install_type" in
 		'MASTER')
-			printf "  - %s\n" "$MAINIP" | tee -a $default_salt_dir/pillar/firewall/minions.sls $default_salt_dir/pillar/firewall/masterfw.sls
+			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls $local_salt_dir/pillar/firewall/masterfw.sls
 			$default_salt_dir/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
 		'EVAL' | 'MASTERSEARCH')
-			printf "  - %s\n" "$MAINIP" | tee -a $default_salt_dir/pillar/firewall/minions.sls\
-				$default_salt_dir/pillar/firewall/masterfw.sls\
-				$default_salt_dir/pillar/firewall/forward_nodes.sls\
-				$default_salt_dir/pillar/firewall/search_nodes.sls
+			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
+				$local_salt_dir/pillar/firewall/masterfw.sls\
+				$local_salt_dir/pillar/firewall/forward_nodes.sls\
+				$local_salt_dir/pillar/firewall/search_nodes.sls
 			case "$install_type" in 
 				'EVAL')
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
@@ -1331,9 +1331,9 @@ set_initial_firewall_policy() {
 			esac
 			;;
 		'HELIXSENSOR')
-			printf "  - %s\n" "$MAINIP" | tee -a $default_salt_dir/pillar/firewall/minions.sls\
-				$default_salt_dir/pillar/firewall/masterfw.sls\
-				$default_salt_dir/pillar/firewall/forward_nodes.sls
+			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
+				$local_salt_dir/pillar/firewall/masterfw.sls\
+				$local_salt_dir/pillar/firewall/forward_nodes.sls
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
 			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh minions "$MAINIP"
