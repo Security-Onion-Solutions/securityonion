@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # This script adds sensors/nodes/etc to the nodes tab
+default_salt_dir=/opt/so/saltstack/default
 local_salt_dir=/opt/so/saltstack/local
 TYPE=$1
 NAME=$2
@@ -13,6 +14,14 @@ NSM=$8
 MONINT=$9
 #NODETYPE=$10
 #HOTNAME=$11
+
+if [ ! -d $local_salt_dir/pillar/data/ ]; then
+  mkdir -p $local_salt_dir/pillar/data/
+fi
+
+if [ ! -f $local_salt_dir/pillar/data/$TYPE.sls ]; then
+  cp $default_salt_dir/pillar/data/$TYPE.sls $local_salt_dir/pillar/data/$TYPE.sls
+fi
 
 echo "Seeing if this host is already in here. If so delete it"
 if grep -q $NAME "$local_salt_dir/pillar/data/$TYPE.sls"; then
