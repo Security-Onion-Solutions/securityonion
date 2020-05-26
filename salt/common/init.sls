@@ -45,6 +45,7 @@ commonpkgs:
     - pkgs:
       - apache2-utils
       - wget
+      - ntp
       - jq
       - python3-docker
       - docker-ce
@@ -75,6 +76,7 @@ commonpkgs:
     - skip_suggestions: True
     - pkgs:
       - wget
+      - ntpdate
       - bind-utils
       - jq
       - tcpdump
