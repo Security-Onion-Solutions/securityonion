@@ -955,14 +955,10 @@ node_pillar() {
 parse_options() {
 	case "$1" in
 		--turbo=*)
-			if [[ $is_master || $is_helix ]]; then
-				local proxy
-				proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
-				proxy_url="http://$proxy"
-				export TURBO="$proxy_url"
-			else
-				echo "turbo is not supported on this install type" >> $setup_log 2>&1
-			fi
+			local proxy
+			proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
+			proxy_url="http://$proxy"
+			TURBO="$proxy_url"
 			;;
 		--proxy=*)
 			local proxy
@@ -971,7 +967,7 @@ parse_options() {
 			local proxy_protocol
 			proxy_protocol=$(echo "$proxy" |tr -d '"' | awk 'match($0, /http|https/) { print substr($0, RSTART, RLENGTH) }')
 
-			if [[ ! $proxy_protocol =~ ^(http|https) ]]; then
+			if [[ ! $proxy_protocol =~ ^(http|https)$ ]]; then
 				echo "Invalid proxy protocol"
 				echo "Ignoring proxy"
 				return
@@ -1500,6 +1496,11 @@ update_packages() {
 }
 
 use_turbo_proxy() {
+	if [[ ! $install_type =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH|STANDALONE)$ ]]; then
+		echo "turbo is not supported on this install type" >> $setup_log 2>&1
+		return
+	fi
+
 	if [[ $OS == 'centos' ]]; then
 		printf '%s\n' "proxy=${TURBO}:3142" >> /etc/yum.conf
 	else
