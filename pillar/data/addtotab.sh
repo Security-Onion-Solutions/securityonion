@@ -53,11 +53,11 @@ echo "    rootfs: $ROOTFS" >> $local_salt_dir/pillar/data/$TYPE.sls
 echo "    nsmfs: $NSM" >> $local_salt_dir/pillar/data/$TYPE.sls
 if [ $TYPE == 'sensorstab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
-  salt-call state.apply common queue=True
+  salt-call state.apply grafana queue=True
 fi
 if [ $TYPE == 'evaltab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
-  salt-call state.apply common queue=True
+  salt-call state.apply grafana queue=True
   salt-call state.apply utility queue=True
 fi
 #if [ $TYPE == 'nodestab' ]; then
