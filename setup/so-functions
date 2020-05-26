@@ -550,6 +550,9 @@ detect_os() {
 disable_onion_user() {
 	# Disable the default account cause security.
 	usermod -L onion
+
+	# Remove the automated setup script from crontab, if it exists
+	crontab -u onion -r
 }
 
 disable_misc_network_features() {
@@ -955,29 +958,47 @@ parse_options() {
 			if [[ $is_master || $is_helix ]]; then
 				local proxy
 				proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
-				proxy_addr="http://$proxy"
-				use_proxy "$proxy_addr"
-				TURBO="$proxy_addr"
+				proxy_url="http://$proxy"
+				TURBO="$proxy_url"
+				use_turbo_proxy "$TURBO"
 			else
 				echo "turbo is not supported on this install type" >> $setup_log 2>&1
 			fi
 			;;
 		--proxy=*)
-			echo "Unimplimented"
-			return
+			local proxy
+			proxy=$(echo "$1" | tr -d '"' | awk -F'--proxy=' '{print $2}')
 
-			if [[ $2 != --proxy-user=* ]] || [[ $3 != --proxy-pass=* ]]; then
-				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
-			else
-				local proxy
+			local proxy_protocol
+			proxy_protocol=$(echo "$proxy" |tr -d '"' | awk 'match($0, /http|https/) { print substr($0, RSTART, RLENGTH) }')
+
+			if [[ ! $proxy_protocol =~ ^(http|https) ]]; then
+				echo "Invalid proxy protocol"
+				echo "Ignoring proxy"
+				return
+			fi
+
+			if [[ $2 == --proxy-user=* && $3 == --proxy-pass=* ]]; then
 				local proxy_user
 				local proxy_password
-				proxy=$(echo "$1" | tr -d '"' | awk -F'--proxy=' '{print $2}')
 				proxy_user=$(echo "$2" | tr -d '"' | awk -F'--proxy-user=' '{print $2}')
 				proxy_password=$(echo "$3" | tr -d '"' | awk -F'--proxy-pass=' '{print $2}')
-				
-				use_proxy "$proxy" "$proxy_user" "$proxy_password"
+
+				local proxy_addr
+				proxy_addr=$(echo "$proxy" | tr -d '"' | awk -F'http\:\/\/|https\:\/\/' '{print $2}')
+
+				export http_proxy="${proxy_protocol}://${proxy_user}:${proxy_password}@${proxy_addr}"
+
+			elif [[ (-z $2 || -z $3) && (-n $2 || -n $3) || ($2 != --proxy-user=* || $3 != --proxy-pass=*) ]]; then
+				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
+				echo "Ignoring proxy"
+				return
+
+			else
+				export http_proxy="$proxy"
 			fi
+
+			export {https,ftp,rsync,all}_proxy="$http_proxy"
 			;;
 		*)
 			echo "Invalid option"
@@ -1479,18 +1500,17 @@ update_packages() {
 	fi
 }
 
-use_proxy() {
-	local proxy_addr=$1
+use_turbo_proxy() {
+	local proxy_url=$1
 	#TODO: add options for username + pass
 
 	if [[ $OS == 'centos' ]]; then
-		printf '%s\n'\
-			"proxy=${proxy_addr}:3142" >> /etc/yum.conf
+		printf '%s\n' "proxy=${proxy_url}:3142" >> /etc/yum.conf
 	else
 		printf '%s\n'\
 			"Acquire {"\
-			"HTTP::proxy \"${proxy_addr}:3142\";"\
-			"HTTPS::proxy \"${proxy_addr}:3142\";"\
+			"  HTTP::proxy \"${proxy_url}:3142\";"\
+			"  HTTPS::proxy \"${proxy_url}:3142\";"\
 			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
 }
