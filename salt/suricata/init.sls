@@ -125,7 +125,7 @@ so-suricata:
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
-      - /nsm/suricata/:/nsm/suricata/:rw
+      - /nsm/suricata/:/nsm/:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
