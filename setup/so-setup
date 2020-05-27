@@ -21,15 +21,31 @@ source ./so-common-functions
 source ./so-whiptail
 source ./so-variables
 
+# Parse command line arguments
 setup_type=$1
-export setup_type
-
 automation=$2
 
-automated=no
+while [[ $# -gt 0 ]]; do
+	arg="$1"
+	shift
+	case "$arg" in
+		"--turbo="* ) 
+			export TURBO="http://${arg#*=}";;
+		"--proxy="* ) 
+			export {http,https,ftp,rsync,all}_proxy="${arg#*=}";;
+		"--allow="* )
+			export allow="${arg#*=}";;
+		* )
+			if [[ "$arg" == "--"* ]]; then
+				echo "Invalid option"
+			fi
+	esac
+done
 
+# Begin Installation pre-processing
 echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
+automated=no
 function progress() {
 	if [ $automated == no ]; then
 		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
@@ -43,7 +59,7 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 	source automation/$automation
 	automated=yes
 
-	echo "Checking network configuration" >> $setup_log 2>&1g
+	echo "Checking network configuration" >> $setup_log 2>&1
 	ip a >> $setup_log 2>&1
 
 	attempt=1
@@ -77,11 +93,6 @@ esac
 export PATH=$PATH:../salt/common/tools/sbin
 
 got_root
-
-if [[ $# -gt 1 ]]; then
-	set -- "${@:2}"
-	parse_options "$@" >> $setup_log 2>&1
-fi
 
 detect_os
 

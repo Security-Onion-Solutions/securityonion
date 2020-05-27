@@ -954,59 +954,6 @@ node_pillar() {
 	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
-parse_options() {
-	case "$1" in
-		--turbo=*)
-			local proxy
-			proxy=$(echo "$1" | tr -d '"' | awk -F'--turbo=' '{print $2}')
-			proxy_url="http://$proxy"
-			TURBO="$proxy_url"
-			;;
-		--proxy=*)
-			local proxy
-			proxy=$(echo "$1" | tr -d '"' | awk -F'--proxy=' '{print $2}')
-
-			local proxy_protocol
-			proxy_protocol=$(echo "$proxy" | awk 'match($0, /http|https/) { print substr($0, RSTART, RLENGTH) }')
-
-			if [[ ! $proxy_protocol =~ ^(http|https)$ ]]; then
-				echo "Invalid proxy protocol"
-				echo "Ignoring proxy"
-				return
-			fi
-
-			if [[ $2 == --proxy-user=* && $3 == --proxy-pass=* ]]; then
-				local proxy_user
-				local proxy_password
-				proxy_user=$(echo "$2" | tr -d '"' | awk -F'--proxy-user=' '{print $2}')
-				proxy_password=$(echo "$3" | tr -d '"' | awk -F'--proxy-pass=' '{print $2}')
-
-				local proxy_addr
-				proxy_addr=$(echo "$proxy" | awk -F'http\:\/\/|https\:\/\/' '{print $2}')
-
-				export http_proxy="${proxy_protocol}://${proxy_user}:${proxy_password}@${proxy_addr}"
-
-			elif [[ (-z $2 || -z $3) && (-n $2 || -n $3) || ( -n $2 && -n $3 && ($2 != --proxy-user=* || $3 != --proxy-pass=*) ) ]]; then
-				echo "Invalid options passed for proxy. Order is --proxy-user=<user> --proxy-pass=<password>"
-				echo "Ignoring proxy"
-				return
-
-			else
-				export http_proxy="$proxy"
-			fi
-
-			export {https,ftp,rsync,all}_proxy="$http_proxy"
-			;;
-		"--allow-analyst"|"--allow=a")
-			export allow='a'
-			;;
-		*)
-			if  [[ $1 = --* ]]; then
-				echo "Invalid option"
-			fi
-	esac
-}
-
 patch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
