@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+RETURN_CODE=0
 ELASTICSEARCH_HOST=$1
 ELASTICSEARCH_PORT=9200
 
@@ -46,7 +47,9 @@ fi
 cd ${ELASTICSEARCH_INGEST_PIPELINES}
 
 echo "Loading pipelines..."
-for i in *; do echo $i; curl ${ELASTICSEARCH_AUTH} -XPUT http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+for i in *; do echo $i; RESPONSE=$(curl ${ELASTICSEARCH_AUTH} -XPUT http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
 echo
 
 cd - >/dev/null
+
+exit $RETURN_CODE

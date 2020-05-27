@@ -24,12 +24,49 @@ source ./so-variables
 setup_type=$1
 export setup_type
 
+automation=$2
+
+automated=no
+
+echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
+
+function progress() {
+	if [ $automated == no ]; then
+		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	fi
+}
+
+if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
+	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
+	source automation/$automation
+	automated=yes
+
+	echo "Checking network configuration" >> $setup_log 2>&1g
+	ip a >> $setup_log 2>&1
+
+	attempt=1
+	attempts=60
+	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	while [ $? -ne 0 ]; do
+		ip a >> $setup_log 2>&1
+		if [ $attempt -gt $attempts ]; then
+			echo "Network unavailable - setup cannot continue" >> $setup_log 2>&1
+			exit 1
+		fi
+		echo "Waiting for network to come up (attempt $attempt of $attempts)" >> $setup_log 2>&1
+		attempt=$((attempt + 1))
+		sleep 10;
+		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	done
+	echo "Network is up on $MNIC" >> $setup_log 2>&1
+fi
+
 case "$setup_type" in
 	iso | network) # Accepted values
-		echo "Beginning Security Onion $setup_type install"
+		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'"
+		echo "Invalid install type, must be 'iso' or 'network'" | tee $setup_log
 		exit 1
 		;;
 esac
@@ -37,9 +74,13 @@ esac
 # Allow execution of SO tools during setup
 export PATH=$PATH:../salt/common/tools/sbin
 
-date -u > $setup_log 2>&1
-
 got_root
+
+if [[ $# -gt 1 ]]; then
+	set -- "${@:2}"
+	parse_options "$@" >> $setup_log 2>&1
+fi
+
 detect_os
 
 if [ "$OS" == ubuntu ]; then
@@ -48,10 +89,10 @@ fi
 
 setterm -blank 0
 
-if (whiptail_you_sure); then
+if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
 else
-	echo "User cancelled setup." >> $setup_log 2>&1
+	echo "User cancelled setup." | tee $setup_log
 	whiptail_cancel
 fi
 
@@ -240,6 +281,10 @@ if [[ $is_node && ! $is_eval ]]; then
 fi
 
 whiptail_make_changes
+
+if [[ -n "$TURBO" ]]; then
+	use_turbo_proxy
+fi
 
 if [[ "$setup_type" == 'iso' ]]; then
 	# Init networking so rest of install works
@@ -485,7 +530,7 @@ fi
 	set_progress_str 95 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
 
-} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+} | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
