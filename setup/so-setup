@@ -59,21 +59,6 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
 	echo "Network is up on $MNIC" >> $setup_log 2>&1
-
-	attempt=1
-	attempts=60
-	ping -c google.com >> $setup_log 2>&1
-	while [ $? -ne 0 ]; do
-		if [ $attempt -gt $attempts ]; then
-			echo "DNS unavailable - setup cannot continue" >> $setup_log 2>&1
-			exit 1
-		fi
-		echo "Waiting for DNS to become available (attempt $attempt of $attempts)" >> $setup_log 2>&1
-		attempt=$((attempt + 1))
-		sleep 10;
-		ping -c google.com >> $setup_log 2>&1
-	done
-	echo "DNS is available" >> $setup_log 2>&1
 fi
 
 case "$setup_type" in
