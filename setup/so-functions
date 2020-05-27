@@ -1366,6 +1366,7 @@ set_initial_firewall_policy() {
 	case "$install_type" in
 		'MASTER')
 			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls $local_salt_dir/pillar/firewall/masterfw.sls
+			salt-call state.apply firewall queue=True
 			$default_salt_dir/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
 		'EVAL' | 'MASTERSEARCH')
@@ -1373,8 +1374,10 @@ set_initial_firewall_policy() {
 				$local_salt_dir/pillar/firewall/masterfw.sls\
 				$local_salt_dir/pillar/firewall/forward_nodes.sls\
 				$local_salt_dir/pillar/firewall/search_nodes.sls
+			salt-call state.apply firewall queue=True
 			case "$install_type" in 
 				'EVAL')
+				    
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					;;
 				'MASTERSEARCH')
