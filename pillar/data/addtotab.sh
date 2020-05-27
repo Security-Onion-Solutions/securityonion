@@ -15,18 +15,6 @@ MONINT=$9
 #NODETYPE=$10
 #HOTNAME=$11
 
-if [ ! -d $local_salt_dir/pillar/data/ ]; then
-  mkdir -p $local_salt_dir/pillar/data/
-fi
-
-# Create the template
-if [ ! -f $local_salt_dir/pillar/data/$TYPE.sls ]; then
-	  printf '%s\n'\
-	  "$TYPE:"\
-	  "" > "$local_salt_dir/pillar/data"/$TYPE.sls
-	  echo "Added $TYPE Template"
-fi
-
 echo "Seeing if this host is already in here. If so delete it"
 if grep -q $NAME "$local_salt_dir/pillar/data/$TYPE.sls"; then
   echo "Node Already Present - Let's re-add it"
