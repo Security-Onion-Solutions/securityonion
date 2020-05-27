@@ -59,14 +59,12 @@ add_master_hostfile() {
 addtotab_generate_templates() {
 
 	local addtotab_path=$local_salt_dir/pillar/data
-	mkdir -p "$addtotab_path"
 
-	for i in evaltab mastersearchtab mastertab nodestab sensorstab
-	do
-	  printf '%s\n'\
-	  "$i:"\
-	  "" > "$addtotab_path"/$i.sls
-	  echo "Added $i Template"
+	for i in evaltab mastersearchtab mastertab nodestab sensorstab; do
+		printf '%s\n'\
+		"$i:"\
+		"" > "$addtotab_path"/$i.sls
+		echo "Added $i Template"
 	done
 
 }
@@ -455,6 +453,17 @@ copy_ssh_key() {
 	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
 }
 
+create_local_directories() {
+	echo "Creating local pillar and salt directories"
+
+	for i in "pillar" "salt"; do
+		for d in `find ./$i/ -type d`; do
+    		mkdir -p $local_salt_dir/$d
+      	done
+		chown -R socore:socore $local_salt_dir/$i
+    done
+
+}
 
 create_sensor_bond() {
 	echo "Setting up sensor bond" >> "$setup_log" 2>&1
