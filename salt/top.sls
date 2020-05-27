@@ -100,7 +100,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -149,7 +149,7 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -203,7 +203,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -318,7 +318,7 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
