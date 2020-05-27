@@ -2,24 +2,24 @@
 {% set MAIN_HOSTNAME = salt['grains.get']('host') %}
 {% set MAIN_IP = salt['pillar.get']('node:mainip') %}
 
-#so-fleet-setup.sh $FleetEmail
+#so-fleet-setup.sh $FleetEmail $FleetPassword 
 
-# Enable Fleet
-echo "Starting Docker Containers..."
-salt-call state.apply mysql queue=True >> /root/fleet-setup.log
-salt-call state.apply fleet queue=True >> /root/fleet-setup.log
-salt-call state.apply redis queue=True >> /root/fleet-setup.log
-
-if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
-        echo "so-fleet container not running... Exiting..."
-        exit 1
+if [[ $# -ne 2 ]] ; then
+      echo "Username or Password was not set - exiting now."
+      exit 1
 fi
 
-initpw=$(date +%s | sha256sum | base64 | head -c 16 ; echo)
+# Checking to see if required containers are started...
+if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
+        echo "Starting Docker Containers..."
+        salt-call state.apply mysql queue=True >> /root/fleet-setup.log
+        salt-call state.apply fleet queue=True >> /root/fleet-setup.log
+        salt-call state.apply redis queue=True >> /root/fleet-setup.log
+fi
 
 docker exec so-fleet /bin/ash -c "echo {{ MAIN_IP }} {{ MAIN_HOSTNAME }} >>  /etc/hosts"
 docker exec so-fleet fleetctl config set --address https://{{ MAIN_HOSTNAME }}:443 --tls-skip-verify --url-prefix /fleet
-docker exec so-fleet fleetctl setup --email $1 --password $initpw
+docker exec so-fleet fleetctl setup --email $1 --password $2
 
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
@@ -45,4 +45,4 @@ docker stop so-nginx
 salt-call state.apply nginx queue=True >> /root/fleet-setup.log
 
 echo "Fleet Setup Complete - Login here: https://{{ MAIN_HOSTNAME }}"
-echo "Your username is $2 and your password is $initpw"
+echo "Your username is $1 and your password is $2"

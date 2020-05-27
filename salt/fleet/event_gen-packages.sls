@@ -1,6 +1,7 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set ENROLLSECRET = salt['pillar.get']('secrets:fleet_enroll-secret') %}
 {% set CURRENTPACKAGEVERSION = salt['pillar.get']('static:fleet_packages-version') %}
+{% set VERSION = salt['pillar.get']('static:soversion') %}
 
 so/fleet:
   event.send:
@@ -12,4 +13,5 @@ so/fleet:
         enroll-secret: {{ ENROLLSECRET }}
         current-package-version: {{ CURRENTPACKAGEVERSION }}
         master: {{ MASTER }}
+        version: {{ VERSION }}
         

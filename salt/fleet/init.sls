@@ -16,14 +16,6 @@
 include:
   - mysql
 
-#{% if grains.id.split('_')|last in ['master', 'eval', 'fleet'] %}
-#so/fleet:
-#  event.send:
-#    - data:
-#        action: 'enablefleet'
-#        hostname: {{ grains.host }}
-#{% endif %}
-
 # Fleet Setup
 fleetcdir:
   file.directory:
@@ -66,15 +58,6 @@ fleetlogdir:
     - user: 939
     - group: 939
     - makedirs: True
-
-fleetsetupscripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: 0
-    - group: 0
-    - file_mode: 755
-    - template: jinja
-    - source: salt://fleet/files/scripts
 
 osquerypackageswebpage:
   file.managed:

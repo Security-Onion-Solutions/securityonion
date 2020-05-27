@@ -473,11 +473,17 @@ fi
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
+		set_progress_str 73 "$(print_salt_state_apply 'mysql')"
+		salt-call state.apply -l info mysql >> $setup_log 2>&1
+
 		set_progress_str 73 "$(print_salt_state_apply 'fleet')"
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
 
-		set_progress_str 74 "$(print_salt_state_apply 'redis')"
+		set_progress_str 73 "$(print_salt_state_apply 'redis')"
 		salt-call state.apply -l info redis >> $setup_log 2>&1
+
+		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"		
+		so-fleet-setup $WEBUSER $WEBPASSWD1 >> $setup_log 2>&1
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
