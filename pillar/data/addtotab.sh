@@ -12,6 +12,7 @@ MANINT=$6
 ROOTFS=$7
 NSM=$8
 MONINT=$9
+INITIALSETUP=$10
 #NODETYPE=$10
 #HOTNAME=$11
 
@@ -49,8 +50,10 @@ if [ $TYPE == 'sensorstab' ]; then
 fi
 if [ $TYPE == 'evaltab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
-  salt-call state.apply grafana queue=True
-  salt-call state.apply utility queue=True
+  if [ ! $10 ]; then
+    salt-call state.apply grafana queue=True
+    salt-call state.apply utility queue=True
+  fi
 fi
 #if [ $TYPE == 'nodestab' ]; then
 #  echo "    nodetype: $NODETYPE" >> $local_salt_dir/pillar/data/$TYPE.sls
