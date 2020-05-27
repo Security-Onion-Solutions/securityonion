@@ -1,0 +1,64 @@
+#!/bin/bash
+{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{%- set THEHIVEUSER = salt['pillar.get']('static:hiveuser', '') %}
+{%- set THEHIVEPASSWORD = salt['pillar.get']('static:hivepassword', '') %}
+{%- set THEHIVEKEY = salt['pillar.get']('static:hivekey', '') %}
+
+thehive_init(){
+    sleep 120
+    THEHIVE_IP="{{MASTERIP}}"
+    THEHIVE_USER="{{THEHIVEUSER}}"
+    THEHIVE_PASSWORD="{{THEHIVEPASSWORD}}"
+    THEHIVE_KEY="{{THEHIVEKEY}}"
+    SOCTOPUS_CONFIG="/opt/so/saltstack/salt/soctopus/files/SOCtopus.conf"
+
+    echo -n "Waiting for TheHive..."
+    COUNT=0
+    THEHIVE_CONNECTED="no"
+    while [[ "$COUNT" -le 240 ]]; do
+        curl --output /dev/null --silent --head --fail -k "https://$THEHIVE_IP/thehive"
+            if [ $? -eq 0 ]; then
+                THEHIVE_CONNECTED="yes"
+                echo "connected!"
+                break
+            else
+                ((COUNT+=1))
+                sleep 1
+                echo -n "."
+            fi
+    done
+    
+    if [ "$THEHIVE_CONNECTED" == "yes" ]; then
+    
+        # Migrate DB
+        curl -v -k -XPOST "https://$THEHIVE_IP:/thehive/api/maintenance/migrate"
+
+        # Create intial TheHive user
+        curl -v -k "https://$THEHIVE_IP/thehive/api/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
+   
+        # Pre-load custom fields
+        #
+        # reputation
+        curl -v -k "https://$THEHIVE_IP/thehive/api/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
+
+   
+        touch /opt/so/state/thehive.txt
+    else
+        echo "We experienced an issue connecting to TheHive!"
+    fi
+}
+
+if [ -f /opt/so/state/thehive.txt ]; then
+    exit 0
+else
+    rm -f garbage_file
+    while ! wget -O garbage_file {{MASTERIP}}:9400 2>/dev/null
+    do
+      echo "Waiting for Elasticsearch..."
+      rm -f garbage_file
+      sleep 1
+    done
+    rm -f garbage_file
+    sleep 5
+    thehive_init
+fi
