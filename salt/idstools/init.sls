@@ -58,11 +58,6 @@ synclocalnidsrules:
     - user: 939
     - group: 939
 
-ruleslink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/suricata/rules
-    - target: /opt/so/rules/nids
-
 so-idstools:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-idstools:{{ VERSION }}
