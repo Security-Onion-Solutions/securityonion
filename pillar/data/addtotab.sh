@@ -49,10 +49,8 @@ if [ $TYPE == 'sensorstab' ]; then
 fi
 if [ $TYPE == 'evaltab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
-  if [ -f $local_salt_dir/pillar/firewall/masterfw.sls ] ; then
-    salt-call state.apply grafana queue=True
-    salt-call state.apply utility queue=True
-  fi
+  salt-call state.apply grafana queue=True
+  salt-call state.apply utility queue=True
 fi
 #if [ $TYPE == 'nodestab' ]; then
 #  echo "    nodetype: $NODETYPE" >> $local_salt_dir/pillar/data/$TYPE.sls
