@@ -19,8 +19,12 @@ if [ ! -d $local_salt_dir/pillar/data/ ]; then
   mkdir -p $local_salt_dir/pillar/data/
 fi
 
+# Create the template
 if [ ! -f $local_salt_dir/pillar/data/$TYPE.sls ]; then
-  cp $default_salt_dir/pillar/data/$TYPE.sls $local_salt_dir/pillar/data/$TYPE.sls
+	  printf '%s\n'\
+	  "$TYPE:"\
+	  "" > "$local_salt_dir/pillar/data"/$TYPE.sls
+	  echo "Added $TYPE Template"
 fi
 
 echo "Seeing if this host is already in here. If so delete it"

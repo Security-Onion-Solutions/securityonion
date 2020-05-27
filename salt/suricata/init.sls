@@ -55,6 +55,11 @@ surilogdir:
     - user: 940
     - group: 939
 
+ruleslink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/suricata/rules
+    - target: /opt/so/rules/nids
+
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules/
