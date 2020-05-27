@@ -28,6 +28,8 @@ automation=$2
 
 automated=no
 
+echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
+
 function progress() {
 	if [ $automated == no ]; then
 		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
@@ -35,39 +37,42 @@ function progress() {
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
-	echo "Preselecting variable values based on automated setup: $automation"
+	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
 	source automation/$automation
 	automated=yes
 
+	echo "Checking network configuration" >> $setup_log 2>&1g
+	ip a >> $setup_log 2>&1
+
 	attempt=1
 	attempts=60
-	ip a | grep "$MNIC:" | grep "state UP"
+	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	while [ $? -ne 0 ]; do
+		ip a >> $setup_log 2>&1
 		if [ $attempt -gt $attempts ]; then
-			echo "Network unavailable - setup cannot continue"
+			echo "Network unavailable - setup cannot continue" >> $setup_log 2>&1
 			exit 1
 		fi
-		echo "Waiting for network to come up (attempt $attempt of $attempts)"
+		echo "Waiting for network to come up (attempt $attempt of $attempts)" >> $setup_log 2>&1
 		attempt=$((attempt + 1))
 		sleep 10;
-		ip a | grep "$MNIC:" | grep "state UP"
+		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
+	echo "Network is up on $MNIC" >> $setup_log 2>&1
 fi
 
 case "$setup_type" in
 	iso | network) # Accepted values
-		echo "Beginning Security Onion $setup_type install"
+		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'"
+		echo "Invalid install type, must be 'iso' or 'network'" | tee $setup_log
 		exit 1
 		;;
 esac
 
 # Allow execution of SO tools during setup
 export PATH=$PATH:../salt/common/tools/sbin
-
-date -u > $setup_log 2>&1
 
 got_root
 
@@ -87,7 +92,7 @@ setterm -blank 0
 if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
 else
-	echo "User cancelled setup." >> $setup_log 2>&1
+	echo "User cancelled setup." | tee $setup_log
 	whiptail_cancel
 fi
 
