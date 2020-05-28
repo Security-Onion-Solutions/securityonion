@@ -21,23 +21,72 @@ source ./so-common-functions
 source ./so-whiptail
 source ./so-variables
 
+# Parse command line arguments
 setup_type=$1
-export setup_type
-
 automation=$2
+
+while [[ $# -gt 0 ]]; do
+	arg="$1"
+	shift
+	case "$arg" in
+		"--turbo="* ) 
+			export TURBO="http://${arg#*=}";;
+		"--proxy="* ) 
+			export {http,https,ftp,rsync,all}_proxy="${arg#*=}";;
+		"--allow-role="* )
+			export ALLOW_ROLE="${arg#*=}";;
+		"--allow-cidr="* )
+			export ALLOW_CIDR="${arg#*=}";;
+		* )
+			if [[ "$arg" == "--"* ]]; then
+				echo "Invalid option"
+			fi
+	esac
+done
+
+# Begin Installation pre-processing
+echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
+
+automated=no
+function progress() {
+	if [ $automated == no ]; then
+		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	else
+		cat >> $setup_log 2>&1
+	fi
+}
+
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
-	echo "Preselecting variable values based on automated setup: $automation"
-	exit 1
+	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
 	source automation/$automation
-	sleep 30 # Re-implement with network availability probe
+	automated=yes
+
+	echo "Checking network configuration" >> $setup_log 2>&1
+	ip a >> $setup_log 2>&1
+
+	attempt=1
+	attempts=60
+	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	while [ $? -ne 0 ]; do
+		ip a >> $setup_log 2>&1
+		if [ $attempt -gt $attempts ]; then
+			echo "Network unavailable - setup cannot continue" >> $setup_log 2>&1
+			exit 1
+		fi
+		echo "Waiting for network to come up (attempt $attempt of $attempts)" >> $setup_log 2>&1
+		attempt=$((attempt + 1))
+		sleep 10;
+		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	done
+	echo "Network is up on $MNIC" >> $setup_log 2>&1
 fi
 
 case "$setup_type" in
 	iso | network) # Accepted values
-		echo "Beginning Security Onion $setup_type install"
+		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'"
+		echo "Invalid install type, must be 'iso' or 'network'" | tee $setup_log
 		exit 1
 		;;
 esac
@@ -45,9 +94,8 @@ esac
 # Allow execution of SO tools during setup
 export PATH=$PATH:../salt/common/tools/sbin
 
-date -u > $setup_log 2>&1
-
 got_root
+
 detect_os
 
 if [ "$OS" == ubuntu ]; then
@@ -59,7 +107,7 @@ setterm -blank 0
 if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
 else
-	echo "User cancelled setup." >> $setup_log 2>&1
+	echo "User cancelled setup." | tee $setup_log
 	whiptail_cancel
 fi
 
@@ -142,17 +190,21 @@ echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
 
 minion_type=$(get_minion_type)
 
-# Set any constants needed
+# Set any variables needed
+set_default_log_size >> $setup_log 2>&1
+
 if [[ $is_helix ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 	HNSENSOR=inherit
 	MASTERUPDATES=0
 fi
+
 if [[ $is_helix || ( $is_master && $is_node ) ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 fi
+
 if [[ $is_master && $is_node ]]; then
 	LSPIPELINEWORKERS=1
 	LSPIPELINEBATCH=125
@@ -161,6 +213,7 @@ if [[ $is_master && $is_node ]]; then
 	NIDS=Suricata
 	BROVERSION=ZEEK
 fi
+
 if [[ $is_node ]]; then
 	CURCLOSEDAYS=30
 fi
@@ -203,6 +256,9 @@ fi
 
 if [[ $is_distmaster || ( $is_sensor || $is_node ) && ! $is_eval ]]; then
 	whiptail_master_updates
+	if [[ $setup_type == 'network' && $MASTERUPDATES == 1 ]]; then
+		whiptail_master_updates_warning
+	fi
 fi
 
 if [[ $is_minion ]]; then
@@ -249,9 +305,8 @@ fi
 
 whiptail_make_changes
 
-if [[ $# -gt 1 ]]; then
-	set -- "${@:2}"
-	parse_options "$@" >> $setup_log 2>&1
+if [[ -n "$TURBO" ]]; then
+	use_turbo_proxy
 fi
 
 if [[ "$setup_type" == 'iso' ]]; then
@@ -498,11 +553,15 @@ fi
 	set_progress_str 95 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
 
-} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+} | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
 	whiptail_setup_complete
+	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+		export IP=$ALLOW_CIDR
+		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+	fi
 	if [[ $THEHIVE == 1 ]]; then
 		check_hive_init_then_reboot
 	else
