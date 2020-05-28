@@ -283,6 +283,13 @@ if [[ $is_node && ! $is_eval ]]; then
 	fi
 fi
 
+if [ "$install_type" = 'FLEET' ]; then
+	collect_fleetuser_inputs
+else
+	FLEETNODEUSER=$WEBUSER
+	FLEETNODEPASSWD1=$WEBPASSWD1
+fi
+
 whiptail_make_changes
 
 if [[ -n "$TURBO" ]]; then
@@ -482,14 +489,8 @@ fi
 		set_progress_str 73 "$(print_salt_state_apply 'redis')"
 		salt-call state.apply -l info redis >> $setup_log 2>&1
 	
-		if [ "$install_type" = 'FLEET' ]; then
-			collect_fleetuser_inputs
-			set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
-			so-fleet-setup $FLEETNODEUSER $FLEETNODEPASSWD1 >> $setup_log 2>&1
-		else
-			set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
-			so-fleet-setup $WEBUSER $WEBPASSWD1 >> $setup_log 2>&1
-		fi
+		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
+		so-fleet-setup $FLEETNODEUSER $FLEETNODEPASSWD1 >> $setup_log 2>&1
 
 	fi
 
