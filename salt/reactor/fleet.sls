@@ -13,7 +13,6 @@ def run():
   ROLE = data['data']['role']
   ESECRET = data['data']['enroll-secret']
   MAINIP = data['data']['mainip']
-  VERSION = data['data']['version']
 
   STATICFILE = '/opt/so/saltstack/pillar/static.sls'
   SECRETSFILE = '/opt/so/saltstack/pillar/secrets.sls'
@@ -50,6 +49,7 @@ def run():
 
       PACKAGEVERSION = data['data']['current-package-version']
       MASTER = data['data']['master']
+      VERSION = data['data']['version']
       
       # Increment the package version by 1
       PACKAGEVERSION += 1
