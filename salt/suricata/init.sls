@@ -55,18 +55,6 @@ surilogdir:
     - user: 940
     - group: 939
 
-surilocaldir:
-  file.directory:
-    - name: /opt/so/saltstack/local/salt/suricata
-    - user: 940
-    - group: 940
-    - makedirs: True
-
-ruleslink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/suricata/rules
-    - target: /opt/so/rules/nids
-
 suridatadir:
   file.directory:
     - name: /nsm/suricata
