@@ -1,17 +1,19 @@
-include:
-  - salt.master.refresh_fileserver
-
 surilocaldir:
   file.directory:
     - name: /opt/so/saltstack/local/salt/suricata
-    - user: 940
-    - group: 940
+    - user: socore
+    - group: socore
     - makedirs: True
 
 ruleslink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/suricata/rules
+    - user: socore
+    - group: socore
     - target: /opt/so/rules/nids
-    - watch_in: 
-      - saltmod: refresh_salt_master_fileserver
-    
+
+refresh_salt_master_fileserver_suricata_ruleslink:
+  salt.runner:
+    - name: fileserver.update
+    - onchanges:
+      - file: ruleslink
