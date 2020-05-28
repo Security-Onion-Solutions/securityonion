@@ -64,7 +64,7 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
-      - port_bindings:
+    - port_bindings:
         - 0.0.0.0:514:514/udp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
