@@ -37,6 +37,8 @@ while [[ $# -gt 0 ]]; do
 			export ALLOW_ROLE="${arg#*=}";;
 		"--allow-cidr="* )
 			export ALLOW_CIDR="${arg#*=}";;
+		"--skip-reboot" )
+			export SKIP_REBOOT=1
 		* )
 			if [[ "$arg" == "--"* ]]; then
 				echo "Invalid option"
@@ -563,11 +565,12 @@ if [[ "$success" = 0 ]]; then
 		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 	fi
 	if [[ $THEHIVE == 1 ]]; then
-		check_hive_init_then_reboot
-	else
-		shutdown -r now
+		check_hive_init
 	fi
 else
 	whiptail_setup_failed
+fi
+
+if [[ -z $SKIP_REBOOT ]]; then
 	shutdown -r now
 fi
