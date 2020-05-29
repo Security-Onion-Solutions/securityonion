@@ -136,6 +136,18 @@ enable_wazuh_manager_1514_udp_{{ip}}:
     - position: 1
     - save: True
 
+# Allow syslog
+enable_syslog_514_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 514
+    - position: 1
+    - save: True
+
 # Rules if you are a Master
 {% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
 #This should be more granular
