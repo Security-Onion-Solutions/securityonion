@@ -304,6 +304,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
