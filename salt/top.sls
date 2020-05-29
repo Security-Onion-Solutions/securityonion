@@ -154,6 +154,9 @@ base:
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
+    {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
     {%- endif %}
