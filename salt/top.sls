@@ -263,6 +263,7 @@ base:
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}

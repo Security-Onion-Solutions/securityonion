@@ -1,4 +1,5 @@
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{%- set WAZUH_ENABLED = salt['pillar.get']('static:wazuh', '0') %}
 #!/bin/bash
 local_salt_dir=/opt/so/saltstack/local
 
@@ -18,7 +19,7 @@ local_salt_dir=/opt/so/saltstack/local
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Check if Wazuh enabled
-if grep -q -R "wazuh: 1" $local_salt_dir/pillar/*; then
+if [ {{ WAZUH_ENABLED }} ]; then
       WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
       if ! grep -q "<white_list>{{ MASTERIP }}</white_list>" $WAZUH_MGR_CFG ; then
               DATE=`date`
