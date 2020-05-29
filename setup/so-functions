@@ -19,7 +19,7 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
-SOVERSION=1.3.0
+SOVERSION=1.4.0
 
 accept_salt_key_remote() {
 	systemctl restart salt-minion
@@ -193,7 +193,7 @@ check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
 }
 
-check_hive_init_then_reboot() {
+check_hive_init() {
 
 	wait_for_file /opt/so/state/thehive.txt 20 5
 	local return_val=$?
@@ -203,7 +203,6 @@ check_hive_init_then_reboot() {
 
 	docker stop so-thehive
 	docker rm so-thehive
-	shutdown -r now
 }
 
 check_network_manager_conf() {
@@ -514,7 +513,7 @@ detect_os() {
 		# Install bind-utils so the host command exists
 		if ! command -v host > /dev/null 2>&1; then
 			echo "Installing required packages to run installer"
-			yum -y install bind-utils  >> "$setup_log" 2>&1
+			yum -y install bind-utils yum-plugin-versionlock >> "$setup_log" 2>&1
 		fi
 
 
@@ -550,6 +549,9 @@ detect_os() {
 disable_onion_user() {
 	# Disable the default account cause security.
 	usermod -L onion
+
+	# Remove the automated setup script from crontab, if it exists
+	crontab -u onion -r
 }
 
 disable_misc_network_features() {
@@ -580,7 +582,9 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			yum -y install docker-ce;
+			yum -y install docker-ce-19.03.9-3.el7 containerd.io-1.2.6-3.el7;
+			yum versionlock docker-ce-19.03.9-3.el7;
+			yum versionlock containerd.io-1.2.6-3.el7
 		} >> "$setup_log" 2>&1
 		
 	else
@@ -616,9 +620,10 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# Make the host use the master docker registry
+	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [\"https://$MSRV:5000\"]"\
+		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -683,7 +688,7 @@ docker_seed_registry() {
 				# Tag it with the new registry destination
 				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
 				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
-				docker rmi soshybridhunter/"$i"
+				#docker rmi soshybridhunter/"$i"
 			} >> "$setup_log" 2>&1
 		done
 	else
@@ -1068,7 +1073,7 @@ saltify() {
 			yum -y update exclude=salt*;
 			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
-		echo "exclude=salt*" >> /etc/yum.conf
+		yum versionlock salt*
 	else
 		DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade >> "$setup_log" 2>&1
 
@@ -1227,8 +1232,6 @@ set_progress_str() {
 	'----'\
 	"$percentage% - ${progress_bar_text^^}"\
 	"----" >> "$setup_log" 2>&1
-	
-	sleep 5
 }
 
 sensor_pillar() {
@@ -1277,6 +1280,33 @@ sensor_pillar() {
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1
+}
+
+set_default_log_size() {
+    local percentage
+
+	case $INSTALLTYPE in
+		EVAL | HEAVYNODE)
+			percentage=50
+			;;
+		*)
+            percentage=80
+			;;
+		esac
+
+	local disk_dir="/"
+	if [ -d /nsm ]; then
+		disk_dir="/nsm"
+	fi
+	local disk_size_1k
+	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
+
+    local ratio="1048576"
+
+    local disk_size_gb
+    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+
+	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }
 
 set_hostname() {
@@ -1440,6 +1470,23 @@ update_packages() {
 	else
 		apt-get -y update >> "$setup_log"
 		apt-get -y upgrade >> "$setup_log"
+	fi
+}
+
+use_turbo_proxy() {
+	if [[ ! $install_type =~ ^(MASTER|EVAL|HELIXSENSOR|MASTERSEARCH|STANDALONE)$ ]]; then
+		echo "turbo is not supported on this install type" >> $setup_log 2>&1
+		return
+	fi
+
+	if [[ $OS == 'centos' ]]; then
+		printf '%s\n' "proxy=${TURBO}:3142" >> /etc/yum.conf
+	else
+		printf '%s\n'\
+			"Acquire {"\
+			"  HTTP::proxy \"${TURBO}:3142\";"\
+			"  HTTPS::proxy \"${TURBO}:3142\";"\
+			"}" > /etc/apt/apt.conf.d/proxy.conf
 	fi
 }
 

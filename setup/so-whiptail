@@ -413,7 +413,6 @@ whiptail_log_size_limit() {
 
 	[ -n "$TESTING" ] && return
 	
-	set_defaul_log_size
 
 	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
@@ -958,7 +957,7 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Finished $install_type install. Press ENTER to reboot." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Finished $install_type install. Press Ok to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
 
 }
@@ -967,7 +966,7 @@ whiptail_setup_failed() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press ENTER to reboot." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Ok to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
 
 }
@@ -1027,7 +1026,17 @@ whiptail_master_updates() {
 			;;
 	esac
 
+}
 
+whiptail_master_updates_warning() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup"\
+	--msgbox "Updating through the master node requires the master to have internet access, press ENTER to continue"\
+	8 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_node_updates() {
@@ -1048,7 +1057,7 @@ whiptail_you_sure() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
+	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to continue a network install of Security Onion?" 8 75
 
 	local exitstatus=$?
 	return $exitstatus
