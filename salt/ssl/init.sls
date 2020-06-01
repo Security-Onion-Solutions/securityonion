@@ -1,9 +1,10 @@
 {% set master = salt['grains.get']('master') %}
 {% set masterip = salt['pillar.get']('static:masterip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
-{% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 
 {% if grains.id.split('_')|last in ['master', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
