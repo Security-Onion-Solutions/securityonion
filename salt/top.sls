@@ -30,6 +30,7 @@ base:
     - telegraf
     - firewall
     - idstools
+    - suricata.master
     - pcap
     - suricata
     - zeek
@@ -73,6 +74,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master
     - healthcheck
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -129,6 +131,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -177,6 +180,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master    
     - healthcheck
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
@@ -301,6 +305,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
