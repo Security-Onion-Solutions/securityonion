@@ -6,7 +6,8 @@
 {% elif grains['role'] == 'so-sensor' %}
   {% set ip = salt['pillar.get']('sensor:mainip', '') %}
 {% elif grains['role'] == 'so-fleet' %}
-  {% set ip = salt['pillar.get']('node:mainip', '') %}
+  {% set MAININT = salt['pillar.get']('host:mainint') %}
+  {% set ip = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% endif %}
 
 {% set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
