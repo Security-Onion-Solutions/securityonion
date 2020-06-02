@@ -1,6 +1,7 @@
 {
   "description" : "suricata.common",
   "processors" : [
+    { "json":           { "field": "message",                   "target_field": "message2",             "ignore_failure": true  } },
     { "rename":{ "field": "message2.proto",		"target_field": "network.transport",		"ignore_failure": true 	} },
     { "rename":{ "field": "message2.flow_id",		"target_field": "event.id",		"ignore_failure": true 	} },
     { "rename":{ "field": "message2.src_ip",       "target_field": "source.ip",  "ignore_failure": true  } },
@@ -8,8 +9,10 @@
     { "rename":{ "field": "message2.dest_ip",       "target_field": "destination.ip",  "ignore_failure": true  } },
     { "rename":{ "field": "message2.dest_port",       "target_field": "destination.port",  "ignore_failure": true  } },
     { "rename":         { "field": "message2.community_id",        "target_field": "network.community_id",     "ignore_missing": true  } },
+    { "remove":{ "field": "dataset", 						"ignore_failure": true	} },
+    { "rename":{ "field": "message2.event_type",		"target_field": "dataset",		"ignore_failure": true 	} },
     { "set":         { "field": "observer.name",        "value": "{{agent.name}}"  } },
-    { "remove":         { "field": ["agent"],     "ignore_failure": true                                                                  } },
+    { "remove":{ "field": "agent", 						"ignore_failure": true	} },                                                                  } },
     { "pipeline": { "name": "common" } }
   ]
 }
