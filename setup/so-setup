@@ -128,7 +128,6 @@ elif [ "$install_type" = 'HEAVYNODE' ]; then
 	is_sensor=true
 elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
-	is_fleet_standalone=true
 	OSQUERY=1
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
@@ -136,10 +135,10 @@ fi
 
 if [[ $is_eval ]]; then
 	check_requirements "eval"
+elif [[ "$is_minon" && "$OSQUERY" == 1 ]]; then
+	check_requirements "dist" "fleet"
 elif [[ $is_distmaster || $is_minion ]]; then
 	check_requirements "dist"
-elif [[ $is_fleet_standalone ]]; then
-	check_requirements "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
 	check_requirements "dist" "sensor"
 fi
@@ -237,7 +236,7 @@ if [[ $is_master ]]; then
 	get_redirect
 fi
 
-if [[ $is_distmaster || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
+if [[ $is_distmaster || ( $is_sensor || $is_node || [[ "$is_minon" && "$OSQUERY" == 1 ]] ) && ! $is_eval ]]; then
 	whiptail_master_updates
 	if [[ $setup_type == 'network' && $MASTERUPDATES == 1 ]]; then
 		whiptail_master_updates_warning
@@ -329,7 +328,7 @@ if [[ $is_minion ]]; then
 	copy_ssh_key >> $setup_log 2>&1
 fi
 
-if [[ $is_fleet_standalone ]]; then
+if [[ "$is_minon" && "$OSQUERY" == 1 ]]; then
 	host_pillar >> $setup_log 2>&1
 fi
 
