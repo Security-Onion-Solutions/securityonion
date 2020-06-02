@@ -101,7 +101,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.9-3.el7
+      - docker-ce: 3:19.03.11-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
