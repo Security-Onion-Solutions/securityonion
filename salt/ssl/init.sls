@@ -5,6 +5,7 @@
 {% set global_ca_server = [] %}
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
+{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
 {% if grains.id.split('_')|last in ['master', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
@@ -201,6 +202,7 @@ chownfilebeatp8:
     - signing_policy: masterssl
     - public_key: /etc/pki/masterssl.key
     - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -223,7 +225,7 @@ chownfilebeatp8:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
