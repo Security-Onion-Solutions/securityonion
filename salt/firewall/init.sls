@@ -355,17 +355,6 @@ enable_minions_influxdb_8086_{{ip}}:
     - position: 1
     - save: True
 
-enable_minion_osquery_8080_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 8080
-    - position: 1
-    - save: True
-
 enable_minion_osquery_8090_{{ip}}:
   iptables.insert:
     - table: filter
@@ -792,7 +781,7 @@ enable_fleet_osquery_8080_{{ip}}:
     - save: True
 
     
-enable_fleetnodetemp_mysql_3306_{{ip}}:
+enable_fleetnode_mysql_3306_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -803,7 +792,7 @@ enable_fleetnodetemp_mysql_3306_{{ip}}:
     - position: 1
     - save: True
 
-enable_fleettemp_osquery_8080_{{ip}}:
+enable_fleet_osquery_8080_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER
@@ -835,6 +824,22 @@ enable_fleetnode_fleet_443_{{ip}}:
 {% for ip in pillar.get('osquery_endpoint')  %}
 
 enable_fleetnode_8090_{{ip}}:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - proto: tcp
+    - source: {{ ip }}
+    - dport: 8090
+    - position: 1
+    - save: True
+
+{% endfor %}
+
+# Make it so all the minions can talk to fleet standalone node
+{% for ip in pillar.get('minions')  %}
+
+enable_minion_fleet_standalone_8090_{{ip}}:
   iptables.insert:
     - table: filter
     - chain: DOCKER-USER

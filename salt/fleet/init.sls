@@ -5,7 +5,6 @@
 {% set MASTER = salt['grains.get']('master') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
-
 {% if FLEETARCH == "so-fleet" %}
   {% set MAININT = salt['pillar.get']('host:mainint') %}
   {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
@@ -58,12 +57,6 @@ fleetlogdir:
     - user: 939
     - group: 939
     - makedirs: True
-
-osquerypackageswebpage:
-  file.managed:
-    - name: /opt/so/conf/fleet/packages/index.html
-    - source: salt://fleet/files/dedicated-index.html
-    - template: jinja
 
 fleetdb:
   mysql_database.present:
