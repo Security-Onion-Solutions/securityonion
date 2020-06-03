@@ -39,7 +39,7 @@ idstoolsetcsync:
 
 so-ruleupdatecron:
   cron.present:
-    - name: /usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log
+    - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1
     - user: root
     - minute: '1'
     - hour: '7'

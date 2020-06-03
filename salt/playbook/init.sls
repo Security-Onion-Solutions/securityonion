@@ -86,15 +86,22 @@ so-playbook:
 
 {% endif %}
 
+playbooklogdir:
+  file.directory:
+    - name: /opt/so/log/playbook
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-playbooksynccron:
   cron.present:
-    - name: /usr/sbin/so-playbook-sync
+    - name: /usr/sbin/so-playbook-sync > /opt/so/log/playbook/sync.log 2>&1
     - user: root
     - minute: '*/5'
 
 so-playbookruleupdatecron:
   cron.present:
-    - name: /usr/sbin/so-playbook-ruleupdate
+    - name: /usr/sbin/so-playbook-ruleupdate > /opt/so/log/playbook/update.log 2>&1
     - user: root
     - minute: '1'
     - hour: '6'
