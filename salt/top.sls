@@ -86,7 +86,9 @@ base:
     - kibana
     - pcap
     - suricata
+    {%- if BROVER != 'SURICATA' %}
     - zeek
+    {- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -194,7 +196,9 @@ base:
     - kibana
     - pcap
     - suricata
+    {%- if BROVER != 'SURICATA' %}
     - zeek
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
