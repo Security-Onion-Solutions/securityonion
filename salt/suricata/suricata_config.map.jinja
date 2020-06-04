@@ -1,0 +1,36 @@
+{% import_yaml 'suricata/files/defaults3.yaml' as suricata_defaults with context %}
+{% import_yaml 'suricata/suricata_meta.yaml' as suricata_meta with context %}
+{% set evelog_index = [] %}
+
+{% set hardware_header = 15 %}
+{% set default_packet_size = salt['grains.filter_by']({
+    '*_eval': {
+      'default-packet-size': 1500 + hardware_header,
+    },
+    '*_helix': {
+      'default-packet-size': 9000 + hardware_header,
+    },
+    '*': {
+      'default-packet-size': 1500 + hardware_header,
+    },
+},grain='id', merge=salt['pillar.get']('suricata')) %}
+
+{% set meta_data = salt['pillar.filter_by']({
+    'SURICATA': suricata_meta.suricata.lookup.outputs[0],
+    'default': suricata_defaults.suricata.lookup.outputs[1]
+},pillar='static:broversion', merge=salt['pillar.get']('suricata'), default='default') %}
+
+{% do suricata_defaults.suricata.lookup.update(default_packet_size) %}
+{% for li in suricata_defaults.suricata.lookup.outputs %}
+  {% for k, v in li.items() %}
+    {% if k == 'eve-log' %}
+      {% do evelog_index.append(li) %}
+      {# do suricata_defaults.suricata.lookup.outputs[loop.index].update(meta_data) #}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
+
+{# do suricata_defaults.suricata.lookup.outputs[0].update(meta_data) #}
+
+{% set suricata_yaml = salt['pillar.get']('suricata', suricata_defaults, merge=True) %}
