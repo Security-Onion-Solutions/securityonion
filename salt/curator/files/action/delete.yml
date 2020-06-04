@@ -1,11 +1,7 @@
-{% if grains['role'] == 'so-node' %}
-
-{%- set log_size_limit = salt['pillar.get']('node:log_size_limit', '') -%}
-
-{% elif grains['role'] == 'so-eval' %}
-
-{%- set log_size_limit = salt['pillar.get']('master:log_size_limit', '') -%}
-
+{%- if grains['role'] in ['so-node', 'so-searchnode', 'so-heavynode'] %}
+  {%- set log_size_limit = salt['pillar.get']('node:log_size_limit', '') -%}
+{%- elif grains['role'] in ['so-eval', 'so-mastersearch', 'so-standalone'] %}
+  {%- set log_size_limit = salt['pillar.get']('master:log_size_limit', '') -%}
 {%- endif %}
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
@@ -24,8 +20,8 @@ actions:
       disable_action: False
     filters:
     - filtertype: pattern
-      kind: prefix
-      value: logstash-
+      kind: regex
+      value: '^(logstash-.*|so-.*)$'
     - filtertype: space
       source: creation_date
       use_age: True

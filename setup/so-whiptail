@@ -24,7 +24,7 @@ whiptail_basic_bro() {
 	[ -n "$TESTING" ] && return
 
 	BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the number of bro processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
+	"Enter the number of zeek processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -51,7 +51,7 @@ whiptail_bro_pins() {
 		cpu_core_list_whiptail+=("$item" "OFF")
 	done
 
-	BROPINS=$(whiptail --noitem --title "Pin Bro CPUS" --checklist "Please select $lb_procs cores to pin Bro to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
+	BROPINS=$(whiptail --noitem --title "Pin Zeek CPUS" --checklist "Please select $lb_procs cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -138,7 +138,7 @@ whiptail_create_admin_user() {
 	[ -n "$TESTING" ] && return
 
 	ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
-	"Please enter a username for your new admin user. The onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
+	"Please enter a username for a new system admin user. The local onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
 
 }
 
@@ -298,6 +298,7 @@ whiptail_enable_components() {
 	WAZUH "Enable Wazuh" ON \
 	THEHIVE "Enable TheHive" ON \
 	PLAYBOOK "Enable Playbook" ON \
+	NAVIGATOR "Enable ATT&CK Navigator" ON \
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -390,7 +391,7 @@ whiptail_install_type() {
 	"SEARCHNODE" "Add a Search Node with parsing" OFF \
 	"MASTER" "Start a new grid" OFF \
 	"EVAL" "Evaluate all the things" OFF \
-	"PROD" "Standalone full install of everything" OFF \
+	"STANDALONE" "Standalone full install of everything" OFF \
 	"MASTERSEARCH" "Master + Search Node" OFF \
 	"HEAVYNODE" "Sensor + Search Node" OFF \
 	"HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
@@ -412,7 +413,6 @@ whiptail_log_size_limit() {
 
 	[ -n "$TESTING" ] && return
 	
-	set_defaul_log_size
 
 	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage. \
@@ -428,7 +428,7 @@ whiptail_management_interface_dns() {
 	[ -n "$TESTING" ] && return
 
 	MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your DNS server using space between multiple" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
+	"Enter your DNS servers separated by a space" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
 
 }
 
@@ -904,6 +904,8 @@ whiptail_set_hostname() {
 
 	[ -n "$TESTING" ] && return
 
+	HOSTNAME=$(cat /etc/hostname)
+
 	HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 
@@ -955,7 +957,7 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Finished installing this as an $install_type. Press Enter to reboot." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Finished $install_type install. Press Ok to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
 
 }
@@ -964,7 +966,7 @@ whiptail_setup_failed() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Enter to reboot." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Ok to reboot." 8 75
 	install_cleanup >> $setup_log 2>&1
 
 }
@@ -1009,9 +1011,9 @@ whiptail_master_updates() {
 
 	local update_string
 	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
-	"How would you like to download updates for your grid?:" 20 75 4 \
-	"MASTER" "Master node is proxy for OS/Docker updates." ON \
-	"OPEN" "Each node connect to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+	"How would you like to download OS package updates for your grid?:" 20 75 4 \
+	"MASTER" "Master node is proxy for updates." ON \
+	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -1024,7 +1026,17 @@ whiptail_master_updates() {
 			;;
 	esac
 
+}
 
+whiptail_master_updates_warning() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup"\
+	--msgbox "Updating through the master node requires the master to have internet access, press ENTER to continue"\
+	8 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_node_updates() {
@@ -1032,9 +1044,9 @@ whiptail_node_updates() {
 	[ -n "$TESTING" ] && return
 
 	NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
-	"How would you like to download updates for this node?:" 20 75 4 \
-	"MASTER" "Download OS/Docker updates from the Master." ON \
-	"OPEN" "Download updates directly from the Internet" OFF 3>&1 1>&2 2>&3 )
+	"How would you like to download OS package updates for your grid?:" 20 75 4 \
+	"MASTER" "Master node is proxy for updates." ON \
+	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1045,7 +1057,7 @@ whiptail_you_sure() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to install Security Onion over the internet?" 8 75
+	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to continue a network install of Security Onion?" 8 75
 
 	local exitstatus=$?
 	return $exitstatus

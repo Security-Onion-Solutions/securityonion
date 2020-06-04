@@ -1,12 +1,8 @@
-{% if grains['role'] == 'so-node' %}
-
-{%- set cur_close_days = salt['pillar.get']('node:cur_close_days', '') -%}
-
-{% elif grains['role'] == 'so-eval' %}
-
-{%- set cur_close_days = salt['pillar.get']('master:cur_close_days', '') -%}
-
-{%- endif %}
+{%- if grains['role'] in ['so-node', 'so-searchnode', 'so-heavynode'] %}
+  {%- set cur_close_days = salt['pillar.get']('node:cur_close_days', '') -%}
+{%- elif grains['role'] in ['so-eval', 'so-mastersearch', 'so-standalone'] %}
+  {%- set cur_close_days = salt['pillar.get']('master:cur_close_days', '') -%}
+{%- endif -%}
 
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
@@ -28,9 +24,8 @@ actions:
       disable_action: False
     filters:
     - filtertype: pattern
-      kind: prefix
-      value: logstash-
-      exclude:
+      kind: regex 
+      value: '^(logstash-.*|so-.*)$'
     - filtertype: age
       source: name
       direction: older

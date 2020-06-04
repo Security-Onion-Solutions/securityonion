@@ -15,6 +15,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
 {% else %}
@@ -23,35 +24,21 @@
 
 # Logstash Section - Decide which pillar to use
 {% if grains['role'] == 'so-sensor' %}
-
-{% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
-{% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
-
+  {% set lsheap = salt['pillar.get']('sensor:lsheap', '') %}
+  {% set lsaccessip = salt['pillar.get']('sensor:lsaccessip', '') %}
 {% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
-{% set lsheap = salt['pillar.get']('node:lsheap', '') %}
-{% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
-
-{% elif grains['role'] == 'so-master' %}
-
-{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
-{% set nodetype = salt['grains.get']('role', '')  %}
-
+  {% set lsheap = salt['pillar.get']('node:lsheap', '') %}
+  {% set nodetype = salt['pillar.get']('node:node_type', 'storage') %}
+{% elif grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+  {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+  {% set freq = salt['pillar.get']('master:freq', '0') %}
+  {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+  {% set nodetype = salt['grains.get']('role', '')  %}
 {% elif grains['role'] == 'so-helix' %}
-
-{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
-{% set nodetype = salt['grains.get']('role', '')  %}
-
-{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
-
-{% set lsheap = salt['pillar.get']('master:lsheap', '') %}
-{% set freq = salt['pillar.get']('master:freq', '0') %}
-{% set dstats = salt['pillar.get']('master:domainstats', '0') %}
-{% set nodetype = salt['grains.get']('role', '')  %}
-
+  {% set lsheap = salt['pillar.get']('master:lsheap', '') %}
+  {% set freq = salt['pillar.get']('master:freq', '0') %}
+  {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+  {% set nodetype = salt['grains.get']('role', '')  %}
 {% endif %}
 
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
@@ -211,7 +198,7 @@ so-logstash:
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
-      - /opt/so/log/suricata:/suricata:ro
+      - /nsm/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro

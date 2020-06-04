@@ -1,6 +1,6 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% if grains['role'] == 'so-node' or grains['role'] == 'so-eval' %}
+{% if grains['role'] in ['so-searchnode', 'so-eval', 'so-node', 'so-mastersearch', 'so-heavynode', 'so-standalone'] %}
 # Curator
 # Create the group
 curatorgroup:
@@ -89,7 +89,7 @@ curdel:
 
 so-curatorcloseddeletecron:
  cron.present:
-   - name: /usr/sbin/so-curator-closed-delete
+   - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'
@@ -99,7 +99,7 @@ so-curatorcloseddeletecron:
 
 so-curatorclosecron:
  cron.present:
-   - name: /usr/sbin/so-curator-close
+   - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'
@@ -109,7 +109,7 @@ so-curatorclosecron:
 
 so-curatordeletecron:
  cron.present:
-   - name: /usr/sbin/so-curator-delete
+   - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'

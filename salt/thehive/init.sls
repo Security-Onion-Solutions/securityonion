@@ -1,24 +1,24 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-hiveconfdir:
+thehiveconfdir:
   file.directory:
-    - name: /opt/so/conf/hive/etc
+    - name: /opt/so/conf/thehive/etc
     - makedirs: True
     - user: 939
     - group: 939
 
-hivelogdir:
+thehivelogdir:
   file.directory:
-    - name: /opt/so/log/hive
+    - name: /opt/so/log/thehive
     - makedirs: True
     - user: 939
     - group: 939
 
-hiveconf:
+thehiveconf:
   file.recurse:
-    - name: /opt/so/conf/hive/etc
-    - source: salt://hive/thehive/etc
+    - name: /opt/so/conf/thehive/etc
+    - source: salt://thehive/etc
     - user: 939
     - group: 939
     - template: jinja
@@ -40,7 +40,7 @@ cortexlogdir:
 cortexconf:
   file.recurse:
     - name: /opt/so/conf/cortex
-    - source: salt://hive/thehive/etc
+    - source: salt://thehive/etc
     - user: 939
     - group: 939
     - template: jinja
@@ -48,9 +48,9 @@ cortexconf:
 # Install Elasticsearch
 
 # Made directory for ES data to live in
-hiveesdata:
+thehiveesdata:
   file.directory:
-    - name: /nsm/hive/esdata
+    - name: /nsm/thehive/esdata
     - makedirs: True
     - user: 939
     - group: 939
@@ -64,16 +64,16 @@ so-thehive-es:
     - interactive: True
     - tty: True
     - binds:
-      - /nsm/hive/esdata:/usr/share/elasticsearch/data:rw
-      - /opt/so/conf/hive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-      - /opt/so/conf/hive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
-      - /opt/so/log/hive:/var/log/elasticsearch:rw
+      - /nsm/thehive/esdata:/usr/share/elasticsearch/data:rw
+      - /opt/so/conf/thehive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /opt/so/conf/thehive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
+      - /opt/so/log/thehive:/var/log/elasticsearch:rw
     - environment:
       - http.host=0.0.0.0
       - http.port=9400
       - transport.tcp.port=9500
       - transport.host=0.0.0.0
-      - cluster.name=hive
+      - cluster.name=thehive
       - thread_pool.index.queue_size=100000
       - thread_pool.search.queue_size=100000
       - thread_pool.bulk.queue_size=100000
@@ -90,13 +90,13 @@ so-cortex:
     - name: so-cortex
     - user: 939
     - binds:
-      - /opt/so/conf/hive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
+      - /opt/so/conf/thehive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
 
 cortexscript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/cortex_init
+    - source: salt://thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
 
@@ -109,12 +109,12 @@ so-thehive:
     - name: so-thehive
     - user: 939
     - binds:
-      - /opt/so/conf/hive/etc/application.conf:/opt/thehive/conf/application.conf:ro
+      - /opt/so/conf/thehive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
 
-hivescript:
+thehivescript:
   cmd.script:
-    - source: salt://hive/thehive/scripts/hive_init
+    - source: salt://thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja

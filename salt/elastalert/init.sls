@@ -14,24 +14,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% if grains['role'] == 'so-master' %}
 
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
-{% set esip = salt['pillar.get']('master:mainip', '') %}
-{% set esport = salt['pillar.get']('master:es_port', '') %}
-
-
-{% elif grains['role'] in ['so-eval','so-mastersearch'] %}
-
-{% set esalert = salt['pillar.get']('master:elastalert', '1') %}
-{% set esip = salt['pillar.get']('master:mainip', '') %}
-{% set esport = salt['pillar.get']('master:es_port', '') %}
-
-
+{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+  {% set esalert = salt['pillar.get']('master:elastalert', '1') %}
+  {% set esip = salt['pillar.get']('master:mainip', '') %}
+  {% set esport = salt['pillar.get']('master:es_port', '') %}
 {% elif grains['role'] == 'so-node' %}
-
-{% set esalert = salt['pillar.get']('node:elastalert', '0') %}
-
+  {% set esalert = salt['pillar.get']('node:elastalert', '0') %}
 {% endif %}
 
 # Elastalert
@@ -55,35 +44,35 @@ elastalogdir:
   file.directory:
     - name: /opt/so/log/elastalert
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastarules:
   file.directory:
     - name: /opt/so/rules/elastalert
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastaconfdir:
   file.directory:
     - name: /opt/so/conf/elastalert
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastasomodulesdir:
   file.directory:
     - name: /opt/so/conf/elastalert/modules/so
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastacustmodulesdir:
   file.directory:
     - name: /opt/so/conf/elastalert/modules/custom
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastasomodulesync:
@@ -91,7 +80,7 @@ elastasomodulesync:
     - name: /opt/so/conf/elastalert/modules/so
     - source: salt://elastalert/files/modules/so
     - user: 933
-    - group: 939
+    - group: 933
     - makedirs: True
 
 elastarulesync:
@@ -99,7 +88,7 @@ elastarulesync:
     - name: /opt/so/rules/elastalert
     - source: salt://elastalert/files/rules/so
     - user: 933
-    - group: 939
+    - group: 933
     - template: jinja
 
 elastaconf:
@@ -107,7 +96,7 @@ elastaconf:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
     - source: salt://elastalert/files/elastalert_config.yaml
     - user: 933
-    - group: 939
+    - group: 933
     - template: jinja
 
 so-elastalert:
@@ -118,16 +107,9 @@ so-elastalert:
     - user: elastalert
     - detach: True
     - binds:
-      - /opt/so/rules/elastalert:/etc/elastalert/rules/:ro
+      - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
-      - /opt/so/conf/elastalert/elastalert_config.yaml:/etc/elastalert/conf/elastalert_config.yaml:ro
-    - environment:
-      - ELASTICSEARCH_HOST: {{ esip }}
-      - ELASTICSEARCH_PORT: {{ esport }}
-      - ELASTALERT_CONFIG: /etc/elastalert/conf/elastalert_config.yaml
-      - ELASTALERT_SUPERVISOR_CONF: /etc/elastalert/conf/elastalert_supervisord.conf
-      - RULES_DIRECTORY: /etc/elastalert/rules/
-      - LOG_DIR: /var/log/elastalert
+      - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/config/elastalert_config.yaml:ro
 
 {% endif %}

@@ -21,15 +21,74 @@ source ./so-common-functions
 source ./so-whiptail
 source ./so-variables
 
+# Parse command line arguments
 setup_type=$1
-export setup_type
+automation=$2
+
+while [[ $# -gt 0 ]]; do
+	arg="$1"
+	shift
+	case "$arg" in
+		"--turbo="* ) 
+			export TURBO="http://${arg#*=}";;
+		"--proxy="* ) 
+			export {http,https,ftp,rsync,all}_proxy="${arg#*=}";;
+		"--allow-role="* )
+			export ALLOW_ROLE="${arg#*=}";;
+		"--allow-cidr="* )
+			export ALLOW_CIDR="${arg#*=}";;
+		"--skip-reboot" )
+			export SKIP_REBOOT=1;;
+		* )
+			if [[ "$arg" == "--"* ]]; then
+				echo "Invalid option"
+			fi
+	esac
+done
+
+# Begin Installation pre-processing
+echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
+
+automated=no
+function progress() {
+	if [ $automated == no ]; then
+		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	else
+		cat >> $setup_log 2>&1
+	fi
+}
+
+if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
+	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
+	source automation/$automation
+	automated=yes
+
+	echo "Checking network configuration" >> $setup_log 2>&1
+	ip a >> $setup_log 2>&1
+
+	attempt=1
+	attempts=60
+	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	while [ $? -ne 0 ]; do
+		ip a >> $setup_log 2>&1
+		if [ $attempt -gt $attempts ]; then
+			echo "Network unavailable - setup cannot continue" >> $setup_log 2>&1
+			exit 1
+		fi
+		echo "Waiting for network to come up (attempt $attempt of $attempts)" >> $setup_log 2>&1
+		attempt=$((attempt + 1))
+		sleep 10;
+		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+	done
+	echo "Network is up on $MNIC" >> $setup_log 2>&1
+fi
 
 case "$setup_type" in
 	iso | network) # Accepted values
-		echo "Beginning Security Onion $setup_type install"
+		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'"
+		echo "Invalid install type, must be 'iso' or 'network'" | tee $setup_log
 		exit 1
 		;;
 esac
@@ -37,9 +96,8 @@ esac
 # Allow execution of SO tools during setup
 export PATH=$PATH:../salt/common/tools/sbin
 
-date -u > $setup_log 2>&1
-
 got_root
+
 detect_os
 
 if [ "$OS" == ubuntu ]; then
@@ -48,10 +106,10 @@ fi
 
 setterm -blank 0
 
-if (whiptail_you_sure); then
+if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
 else
-	echo "User cancelled setup." >> $setup_log 2>&1
+	echo "User cancelled setup." | tee $setup_log
 	whiptail_cancel
 fi
 
@@ -62,7 +120,7 @@ if [ "$install_type" = 'EVAL' ]; then
 	is_master=true
 	is_sensor=true
 	is_eval=true
-elif [ "$install_type" = 'PROD' ]; then
+elif [ "$install_type" = 'STANDALONE' ]; then
 	is_master=true
 	is_distmaster=true
 	is_node=true
@@ -116,13 +174,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		# Init networking so rest of install works
-		set_hostname_iso
-		set_management_interface
-
 		collect_adminuser_inputs
-		add_admin_user
-		disable_onion_user
 		;;
 	'network')
 		whiptail_network_notice
@@ -140,17 +192,21 @@ echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
 
 minion_type=$(get_minion_type)
 
-# Set any constants needed
+# Set any variables needed
+set_default_log_size >> $setup_log 2>&1
+
 if [[ $is_helix ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 	HNSENSOR=inherit
 	MASTERUPDATES=0
 fi
+
 if [[ $is_helix || ( $is_master && $is_node ) ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 fi
+
 if [[ $is_master && $is_node ]]; then
 	LSPIPELINEWORKERS=1
 	LSPIPELINEBATCH=125
@@ -159,6 +215,7 @@ if [[ $is_master && $is_node ]]; then
 	NIDS=Suricata
 	BROVERSION=ZEEK
 fi
+
 if [[ $is_node ]]; then
 	CURCLOSEDAYS=30
 fi
@@ -201,6 +258,9 @@ fi
 
 if [[ $is_distmaster || ( $is_sensor || $is_node ) && ! $is_eval ]]; then
 	whiptail_master_updates
+	if [[ $setup_type == 'network' && $MASTERUPDATES == 1 ]]; then
+		whiptail_master_updates_warning
+	fi
 fi
 
 if [[ $is_minion ]]; then
@@ -247,122 +307,162 @@ fi
 
 whiptail_make_changes
 
-set_hostname 2>> "$setup_log"
-set_version 2>> "$setup_log"
-clear_master 2>> "$setup_log"
+if [[ -n "$TURBO" ]]; then
+	use_turbo_proxy
+fi
+
+if [[ "$setup_type" == 'iso' ]]; then
+	# Init networking so rest of install works
+	set_hostname_iso
+	set_management_interface
+
+	add_admin_user
+	disable_onion_user
+fi
+
+set_hostname >> $setup_log 2>&1
+set_version >> $setup_log 2>&1
+clear_master >> $setup_log 2>&1
 
 if [[ $is_master ]]; then
-	generate_passwords 2>> "$setup_log"
-	secrets_pillar 2>> "$setup_log"
-	add_socore_user_master 2>> "$setup_log"
+	generate_passwords >> $setup_log 2>&1
+	secrets_pillar >> $setup_log 2>&1
+	add_socore_user_master >> $setup_log 2>&1
 fi
 
 if [[ $is_master && ! $is_eval ]]; then
-	add_soremote_user_master 2>> "$setup_log"
+	add_soremote_user_master >> $setup_log 2>&1
 fi
 
-set_main_ip 2>> "$setup_log"
+set_main_ip >> $setup_log 2>&1
 
 if [[ $is_minion ]]; then
-	set_updates 2>> "$setup_log"
-	copy_ssh_key 2>> "$setup_log"
+	set_updates >> $setup_log 2>&1
+	copy_ssh_key >> $setup_log 2>&1
 fi
 
 # Begin install
-
-# Set initial percentage to 0
-export percentage=0
 {
+	# Set initial percentage to 0
+	export percentage=0
+
+        if [[ $is_minion ]]; then
+                set_progress_str 1 'Configuring firewall'
+                set_initial_firewall_policy >> $setup_log 2>&1
+        fi
+
+	set_progress_str 2 'Updating packages'
+	update_packages >> $setup_log 2>&1
 
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 1 'Creating bond interface'
-		create_sensor_bond >> "$setup_log" 2>&1
+		set_progress_str 3 'Creating bond interface'
+		create_sensor_bond >> $setup_log 2>&1
 		
-		set_progress_str 2 'Generating sensor pillar'
-		sensor_pillar >> "$setup_log" 2>&1
+		set_progress_str 4 'Generating sensor pillar'
+		sensor_pillar >> $setup_log 2>&1
 	fi
 
-	set_progress_str 3 'Installing Salt and dependencies'
-	saltify 2>> "$setup_log"
+	set_progress_str 5 'Installing Salt and dependencies'
+	saltify 2>> $setup_log
 
 	set_progress_str 7 'Installing Docker and dependencies'
-	docker_install 2>> "$setup_log"
+	docker_install >> $setup_log 2>&1
 	
 	set_progress_str 8 'Generating patch pillar'
-	patch_pillar 2>> "$setup_log"
+	patch_pillar >> $setup_log 2>&1
 
 	set_progress_str 9 'Initializing Salt minion'
-	configure_minion "$minion_type" 2>> "$setup_log"
+	configure_minion "$minion_type" >> $setup_log 2>&1
 
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
-		copy_master_config 2>> "$setup_log"
-		setup_salt_master_dirs 2>> "$setup_log"
-		firewall_generate_templates 2>> "$setup_log"
+		create_local_directories >> $setup_log 2>&1
+		addtotab_generate_templates >> $setup_log 2>&1
+		copy_master_config >> $setup_log 2>&1
+		setup_salt_master_dirs >> $setup_log 2>&1
+		firewall_generate_templates >> $setup_log 2>&1
 		
 		set_progress_str 11 'Updating sudoers file for soremote user'
-		update_sudoers 2>> "$setup_log"
+		update_sudoers >> $setup_log 2>&1
 		
 		set_progress_str 12 'Generating master static pillar'
-		master_static 2>> "$setup_log"
+		master_static >> $setup_log 2>&1
 		
 		set_progress_str 13 'Generating master pillar'
-		master_pillar 2>> "$setup_log"
+		master_pillar >> $setup_log 2>&1
 	fi
 
-	if [[ $is_minion ]]; then
-		set_progress_str 14 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
-	fi
 
 	set_progress_str 16 'Running first Salt checkin'
-	salt_firstcheckin 2>> "$setup_log"
+	salt_firstcheckin >> $setup_log 2>&1
 
 	if [[ $is_helix ]]; then
 		set_progress_str 17 'Generating the FireEye pillar'
-		fireeye_pillar 2>> "$setup_log"
+		fireeye_pillar >> $setup_log 2>&1
 	fi
 	
 	if [[ $is_node ]]; then
 		set_progress_str 18 'Setting node type'
-		set_node_type 2>> "$setup_log"
+		set_node_type >> $setup_log 2>&1
 
 		set_progress_str 19 'Generating search node pillar'
-		node_pillar 2>> "$setup_log"
+		node_pillar >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on master'
-		accept_salt_key_remote 2>> "$setup_log"
+		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
 	if [[ $is_master ]]; then
 		set_progress_str 20 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> "$setup_log" 2>&1
+		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
 
 	set_progress_str 21 'Copying minion pillars to master'
-	copy_minion_tmp_files 2>> "$setup_log"
+	copy_minion_tmp_files >> $setup_log 2>&1
 
 	set_progress_str 22 'Generating CA and checking in'
-	salt_checkin 2>> "$setup_log"
+	salt_checkin >> $setup_log 2>&1
 
-	
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 25 'Configuring firewall'
-		set_initial_firewall_policy 2>> "$setup_log"
+		set_initial_firewall_policy >> $setup_log 2>&1
 		
-		set_progress_str 26 'Downloading containers from the internet'
-		salt-call state.apply -l info registry >> "$setup_log" 2>&1
-		docker_seed_registry 2>> "$setup_log" # ~ 60% when finished
+		if [[ "$setup_type" == 'iso' ]]; then
+			set_progress_str 26 'Copying containers from iso'
+		else
+			set_progress_str 26 'Downloading containers from the internet'
+		fi
+
+		salt-call state.apply -l info registry >> $setup_log 2>&1
+		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
+		
+		set_progress_str 60 "$(print_salt_state_apply 'master')"
+		salt-call state.apply -l info master >> $setup_log 2>&1
+
+		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
+		salt-call state.apply -l info idstools >> $setup_log 2>&1
+
+		set_progress_str 61 "$(print_salt_state_apply 'suricata.master')"
+		salt-call state.apply -l info suricata.master >> $setup_log 2>&1
+
 	fi
 
 	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
+	if [ $OS = 'centos' ]; then
+		set_progress_str 63 'Installing Yum utilities'
+		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
+	fi
+
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
+
+	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+	salt-call state.apply -l info nginx >> $setup_log 2>&1
 
 	if [[ $is_master || $is_node ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
@@ -387,7 +487,7 @@ export percentage=0
 
 	if [[ $is_master ]]; then
 		set_progress_str 69 "$(print_salt_state_apply 'soc')"
-		salt-call state.apply -l info soc >> "$setup_log" 2>&1
+		salt-call state.apply -l info soc >> $setup_log 2>&1
 
 		set_progress_str 70 "$(print_salt_state_apply 'kibana')"
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
@@ -427,13 +527,12 @@ export percentage=0
 		salt-call state.apply -l info playbook >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master || $is_helix ]]; then
-		set_progress_str 79 "$(print_salt_state_apply 'master')"
-		salt-call state.apply -l info master >> $setup_log 2>&1
+	if [[ "$NAVIGATOR" = 1 ]]; then
+		set_progress_str 78 "$(print_salt_state_apply 'navigator')"
+		salt-call state.apply -l info navigator >> $setup_log 2>&1
+	fi
 
-		set_progress_str 80 "$(print_salt_state_apply 'idstools')"
-		salt-call state.apply -l info idstools >> $setup_log 2>&1
-
+	if [[ $is_master || $is_helix ]]; then		
 		set_progress_str 81 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
@@ -447,29 +546,36 @@ export percentage=0
 	fi
 
 	set_progress_str 85 'Applying finishing touches'
-	filter_unused_nics 2>> "$setup_log"
-	network_setup 2>> "$setup_log"
+	filter_unused_nics >> $setup_log 2>&1
+	network_setup >> $setup_log 2>&1
 
-	set_progress_str 86 'Updating packages'
-	update_packages 2>> "$setup_log"
+	if [[ $is_master ]]; then
+		set_progress_str 87 'Adding user to SOC'
+		add_web_user >> $setup_log 2>&1
+	fi
 
 	set_progress_str 90 'Enabling checkin at boot'
-	checkin_at_boot 2>> "$setup_log"
+	checkin_at_boot >> $setup_log 2>&1
 
 	set_progress_str 95 'Verifying setup'
 	salt-call -l info  state.highstate >> $setup_log 2>&1
 
-} | whiptail --title "Hybrid Hunter Install" --gauge "Please wait while installing" 6 60 0
+} | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
 	whiptail_setup_complete
+	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+		export IP=$ALLOW_CIDR
+		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+	fi
 	if [[ $THEHIVE == 1 ]]; then
-		check_hive_init_then_reboot
-	else
-		shutdown -r now
+		check_hive_init
 	fi
 else
 	whiptail_setup_failed
+fi
+
+if [[ -z $SKIP_REBOOT ]]; then
 	shutdown -r now
 fi

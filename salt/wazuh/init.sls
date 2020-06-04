@@ -43,12 +43,13 @@ ossec:
 #    - user: 945
 #    - group: 945
 
-# Add wazuh agent
 wazuhpkgs:
- pkg.installed:
-   - skip_suggestions: False
-   - pkgs:
-     - wazuh-agent: 3.10.2-1
+  pkg.installed:
+    - skip_suggestions: False
+    - pkgs:
+      - wazuh-agent: 3.10.2-1
+    - hold: True
+    - update_holds: True
 
 # Add Wazuh agent conf
 wazuhagentconf:
@@ -104,3 +105,8 @@ whitelistmanager:
   cmd.run:
     - name: /usr/sbin/wazuh-manager-whitelist
     - cwd: /
+
+wazuhagentservice:
+  service.running:
+    - name: wazuh-agent
+    - enable: True

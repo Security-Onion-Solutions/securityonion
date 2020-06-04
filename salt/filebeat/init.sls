@@ -57,12 +57,14 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/strelka/log:/nsm/strelka/log:ro
-      - /opt/so/log/suricata:/suricata:ro
+      - /nsm/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
       - /nsm/osquery/fleet/:/nsm/osquery/fleet:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
+    - port_bindings:
+        - 0.0.0.0:514:514/udp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml

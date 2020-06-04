@@ -39,7 +39,7 @@ idstoolsetcsync:
 
 so-ruleupdatecron:
   cron.present:
-    - name: /usr/sbin/so-rule-update.sh > /opt/so/log/idstools/download.log
+    - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1
     - user: root
     - minute: '1'
     - hour: '7'
@@ -57,11 +57,6 @@ synclocalnidsrules:
     - source: salt://idstools/localrules/local.rules
     - user: 939
     - group: 939
-
-ruleslink:
-  file.symlink:
-    - name: /opt/so/saltstack/salt/suricata/rules
-    - target: /opt/so/rules/nids
 
 so-idstools:
   docker_container.running:

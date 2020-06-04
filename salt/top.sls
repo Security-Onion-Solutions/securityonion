@@ -2,6 +2,7 @@
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
+{%- set NAVIGATOR = salt['pillar.get']('master:navigator', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
 {%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
@@ -10,6 +11,11 @@
 
 
 base:
+
+  'os:CentOS':
+    - match: grain
+    - yum.packages
+
   '*':
     - salt
     - docker
@@ -24,6 +30,7 @@ base:
     - telegraf
     - firewall
     - idstools
+    - suricata.master
     - pcap
     - suricata
     - zeek
@@ -67,8 +74,9 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master
     - healthcheck
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -94,10 +102,13 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
@@ -120,8 +131,9 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -140,10 +152,71 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
+    {%- endif %}
+    {%- if FREQSERVER != 0 %}
+    - freqserver
+    {%- endif %}
+    {%- if DOMAINSTATS != 0 %}
+    - domainstats
+    {%- endif %}
+
+  '*_standalone':
+    - ca
+    - ssl
+    - registry
+    - master
+    - common
+    - nginx
+    - telegraf
+    - influxdb
+    - grafana
+    - soc
+    - firewall
+    - idstools
+    - suricata.master    
+    - healthcheck
+    - redis
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    - mysql
+    {%- endif %}
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    - elasticsearch
+    - logstash
+    - kibana
+    - pcap
+    - suricata
+    - zeek
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
+    - filebeat
+    - curator
+    - elastalert
+    {%- if FLEETMASTER or FLEETNODE %}
+    - fleet
+    - redis
+    - fleet.install_package
+    {%- endif %}
+    - utility
+    - schedule
+    - soctopus
+    {%- if THEHIVE != 0 %}
+    - thehive
+    {%- endif %}
+    {%- if PLAYBOOK != 0 %}
+    - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
@@ -190,6 +263,7 @@ base:
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
@@ -231,8 +305,9 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -252,10 +327,13 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver

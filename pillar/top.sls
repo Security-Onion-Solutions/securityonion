@@ -2,7 +2,7 @@ base:
   '*':
     - patch.needs_restarting
 
-  '*_eval or *_helix or *_heavynode or *_sensor':
+  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone':
     - match: compound
     - zeek
 
@@ -38,6 +38,18 @@ base:
     - brologs
     - secrets
     - healthcheck.eval
+    - minions.{{ grains.id }}
+
+  '*_standalone':
+    - logstash
+    - logstash.master
+    - logstash.search
+    - firewall.*
+    - data.*
+    - brologs
+    - secrets
+    - healthcheck.standalone
+    - static
     - minions.{{ grains.id }}
 
   '*_node':
