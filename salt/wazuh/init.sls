@@ -80,11 +80,6 @@ wazuhmgrwhitelist:
     - mode: 755
     - template: jinja
 
-wazuhagentservice:
-  service.running:
-    - name: wazuh-agent
-    - enable: True
-
 so-wazuh:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:{{ VERSION }}
@@ -110,3 +105,8 @@ whitelistmanager:
   cmd.run:
     - name: /usr/sbin/wazuh-manager-whitelist
     - cwd: /
+
+wazuhagentservice:
+  service.running:
+    - name: wazuh-agent
+    - enable: True

@@ -62,6 +62,7 @@ commonpkgs:
       - python3-dateutil
       - python3-m2crypto
       - python3-mysqldb
+      - git
 heldpackages:
   pkg.installed:
     - pkgs:
@@ -96,6 +97,7 @@ commonpkgs:
       - device-mapper-persistent-data
       - lvm2
       - openssl
+      - git
 
 heldpackages:
   pkg.installed:
