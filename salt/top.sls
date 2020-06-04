@@ -88,7 +88,7 @@ base:
     - suricata
     {%- if BROVER != 'SURICATA' %}
     - zeek
-    {- endif %}
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
