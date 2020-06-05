@@ -12,6 +12,5 @@ logstash:
         - so/9600_output_ossec.conf.jinja
         - so/9700_output_strelka.conf.jinja
   templates:
-    - so/so-beats-template.json
     - so/so-common-template.json
     - so/so-zeek-template.json
