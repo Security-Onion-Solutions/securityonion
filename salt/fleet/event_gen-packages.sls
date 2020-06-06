@@ -5,9 +5,9 @@
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
 {% if CUSTOM_FLEET_HOSTNAME != None %}
-   {% set HOSTNAME = {{ CUSTOM_FLEET_HOSTNAME }}  %}
+   {% set HOSTNAME =  CUSTOM_FLEET_HOSTNAME  %}
 {% else %}
-   {% set HOSTNAME = {{ grains.host }}  %}
+   {% set HOSTNAME = grains.host  %}
 {% endif %}
 
 so/fleet:
