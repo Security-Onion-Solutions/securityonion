@@ -1,5 +1,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
+{%- set MASTER_URL = salt['pillar.get']('master:url_base', '') %}
+{%- set MASTER_IP = salt['pillar.get']('static:masterip', '') %}
 
 soctopusdir:
   file.directory:
@@ -69,3 +71,5 @@ so-soctopus:
       - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
     - port_bindings:
       - 0.0.0.0:7000:7000
+    - extra_hosts:
+      - {{MASTER_URL}}:{{MASTER_IP}}

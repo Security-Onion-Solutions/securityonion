@@ -1,16 +1,18 @@
 %YAML 1.1
 ---
-{%- set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{%- if grains['role'] == 'so-eval' %}
-{%- set MTU = 1500 %}
-{%- else %}
-{%- set MTU = salt['pillar.get']('sensor:mtu', '1500') %}
-{%- endif %}
-{%- if salt['pillar.get']('sensor:homenet') %}
-  {%- set homenet = salt['pillar.get']('sensor:hnsensor', '') %}
-{%- else %}
-  {%- set homenet = salt['pillar.get']('static:hnmaster', '') %}
-{%- endif %}
+    {%- set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
+    {%- if grains['role'] == 'so-eval' %}
+    {%- set MTU = 1500 %}
+    {%- elif grains['role'] == 'so-helix' %}
+    {%- set MTU = 9000 %}
+    {%- else %}
+    {%- set MTU = salt['pillar.get']('sensor:mtu', '1500') %}
+    {%- endif %}
+    {%- if salt['pillar.get']('sensor:homenet') %}
+      {%- set homenet = salt['pillar.get']('sensor:hnsensor', '') %}
+    {%- else %}
+      {%- set homenet = salt['pillar.get']('static:hnmaster', '') %}
+    {%- endif %}
 # Suricata configuration file. In addition to the comments describing all
 # options in this file, full documentation can be found at:
 # https://suricata.readthedocs.io/en/latest/configuration/suricata-yaml.html
@@ -23,6 +25,11 @@ vars:
   # more specific is better for alert accuracy and performance
   address-groups:
     HOME_NET: "[{{ homenet }}]"
+    #HOME_NET: "[192.168.0.0/16]"
+    #HOME_NET: "[10.0.0.0/8]"
+    #HOME_NET: "[172.16.0.0/12]"
+    #HOME_NET: "any"
+
     EXTERNAL_NET: "!$HOME_NET"
     #EXTERNAL_NET: "any"
 
@@ -49,6 +56,8 @@ vars:
     MODBUS_PORTS: 502
     FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
     FTP_PORTS: 21
+    VXLAN_PORTS: 4789
+    TEREDO_PORTS: 3544
 
 ##
 ## Step 2: select outputs to enable
@@ -64,9 +73,12 @@ stats:
   enabled: yes
   # The interval field (in seconds) controls at what interval
   # the loggers are invoked.
-  interval: 8
+  interval: 30
   # Add decode events as stats.
   #decoder-events: true
+  # Decoder event prefix in stats. Has been 'decoder' before, but that leads
+  # to missing events in the eve.stats records. See issue #2225.
+  #decoder-events-prefix: "decoder.event"
   # Add stream events as stats.
   #stream-events: false
 
@@ -83,18 +95,35 @@ outputs:
   - eve-log:
       enabled: yes
       filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
-      filename: eve.json
+      filename: /nsm/eve.json
       rotate-interval: hour
+      
       #prefix: "@cee: " # prefix to prepend to each log entry
       # the following are valid when type: syslog above
       #identity: "suricata"
       #facility: local5
       #level: Info ## possible levels: Emergency, Alert, Critical,
                    ## Error, Warning, Notice, Info, Debug
+      #redis:
+      #  server: 127.0.0.1
+      #  port: 6379
+      #  async: true ## if redis replies are read asynchronously
+      #  mode: list ## possible values: list|lpush (default), rpush, channel|publish
+      #             ## lpush and rpush are using a Redis list. "list" is an alias for lpush
+      #             ## publish is using a Redis channel. "channel" is an alias for publish
+      #  key: suricata ## key or channel to use (default to suricata)
+      # Redis pipelining set up. This will enable to only do a query every
+      # 'batch-size' events. This should lower the latency induced by network
+      # connection at the cost of some memory. There is no flushing implemented
+      # so this setting as to be reserved to high traffic suricata.
+      #  pipelining:
+      #    enabled: yes ## set enable to yes to enable query pipelining
+      #    batch-size: 10 ## number of entry to keep in buffer
 
       # Include top level metadata. Default yes.
       #metadata: no
 
+      # include the name of the input pcap file in pcap file processing mode
       pcap-file: false
 
       # Community Flow ID
@@ -106,7 +135,7 @@ outputs:
       # to make the id less predictable.
 
       # enable/disable the community id feature.
-      community-id: false
+      community-id: true
       # Seed value for the ID output. Valid values are 0-65535.
       community-id-seed: 0
 
@@ -130,36 +159,76 @@ outputs:
 
       types:
         - alert:
-            # payload: yes             # enable dumping payload in Base64
-            # payload-buffer-size: 4kb # max size of payload buffer to output in eve-log
-            # payload-printable: yes   # enable dumping payload in printable (lossy) format
-            # packet: yes              # enable dumping of packet (without stream segments)
-            # http-body: yes           # enable dumping of http body in Base64
-            # http-body-printable: yes # enable dumping of http body in printable format
-            # metadata: no             # enable inclusion of app layer metadata with alert. Default yes
+            payload: no             # enable dumping payload in Base64
+            payload-buffer-size: 4kb # max size of payload buffer to output in eve-log
+            payload-printable: yes   # enable dumping payload in printable (lossy) format
+            packet: yes              # enable dumping of packet (without stream segments)
+            metadata: 
+                app-layer: false
+                flow: false
+                rule:
+                  metadata: true
+                  raw: true
+            
+            # http-body: yes           # Requires metadata; enable dumping of http body in Base64
+            # http-body-printable: yes # Requires metadata; enable dumping of http body in printable format
 
             # Enable the logging of tagged packets for rules using the
             # "tag" keyword.
             tagged-packets: no
+        - anomaly:
+            # Anomaly log records describe unexpected conditions such
+            # as truncated packets, packets with invalid IP/UDP/TCP
+            # length values, and other events that render the packet
+            # invalid for further processing or describe unexpected
+            # behavior on an established stream. Networks which
+            # experience high occurrences of anomalies may experience
+            # packet processing degradation.
+            #
+            # Anomalies are reported for the following:
+            # 1. Decode: Values and conditions that are detected while
+            # decoding individual packets. This includes invalid or
+            # unexpected values for low-level protocol lengths as well
+            # as stream related events (TCP 3-way handshake issues,
+            # unexpected sequence number, etc).
+            # 2. Stream: This includes stream related events (TCP
+            # 3-way handshake issues, unexpected sequence number,
+            # etc).
+            # 3. Application layer: These denote application layer
+            # specific conditions that are unexpected, invalid or are
+            # unexpected given the application monitoring state.
+            #
+            # By default, anomaly logging is disabled. When anomaly
+            # logging is enabled, applayer anomaly reporting is
+            # enabled.
+            enabled: no
+            #
+            # Choose one or more types of anomaly logging and whether to enable
+            # logging of the packet header for packet anomalies.
+            types:
+               decode: no
+               stream: no
+               applayer: yes
+            packethdr: no
         - http:
             extended: yes     # enable this for extended logging information
             # custom allows additional http fields to be included in eve-log
             # the example below adds three additional fields when uncommented
             #custom: [Accept-Encoding, Accept-Language, Authorization]
+            # set this value to one and only one among {both, request, response}
+            # to dump all http headers for every http request and/or response
+            # dump-all-headers: none
         - dns:
             # This configuration uses the new DNS logging format,
             # the old configuration is still available:
-            # http://suricata.readthedocs.io/en/latest/configuration/suricata-yaml.html#eve-extensible-event-format
-            # Use version 2 logging with the new format:
-            # DNS answers will be logged in one single event
-            # rather than an event for each of it.
-            # Without setting a version the version
-            # will fallback to 1 for backwards compatibility.
-            # Note: version 1 is not available with rust enabled
+            # https://suricata.readthedocs.io/en/latest/output/eve/eve-json-output.html#dns-v1-format
+
+            # As of Suricata 5.0, version 2 of the eve dns output
+            # format is the default.
             version: 2
 
             # Enable/disable this logger. Default: enabled.
-            #enabled: no
+            enabled: yes
 
             # Control logging of requests and responses:
             # - requests: enable logging of DNS queries
@@ -174,8 +243,8 @@ outputs:
             # Default: all
             #formats: [detailed, grouped]
 
-            # Answer types to log.
-            # Default: all
+            # Types to log, based on the query type.
+            # Default: all.
             #types: [a, aaaa, cname, mx, ns, ptr, txt]
         - tls:
             extended: yes     # enable this for extended logging information
@@ -184,7 +253,7 @@ outputs:
             #session-resumption: no
             # custom allows to control which tls fields that are included
             # in eve-log
-            #custom: [subject, issuer, session_resumed, serial, fingerprint, sni, version, not_before, not_after, certificate, chain, ja3]
+            #custom: [subject, issuer, session_resumed, serial, fingerprint, sni, version, not_before, not_after, certificate, chain, ja3, ja3s]
         - files:
             force-magic: no   # force logging magic on all logged files
             # force logging of checksums, available hash functions are md5,
@@ -207,20 +276,23 @@ outputs:
             # to yes
             #md5: [body, subject]
 
-        #- dnp3
+        - dnp3
+        - ftp
+        - rdp
         - nfs
         - smb
         - tftp
         - ikev2
         - krb5
+        - snmp
+        - sip
         - dhcp:
-            # DHCP logging requires Rust.
             enabled: yes
             # When extended mode is on, all DHCP messages are logged
             # with full detail. When extended mode is off (the
             # default), just enough information to map a MAC address
             # to an IP address is logged.
-            extended: no
+        #    extended: no
         - ssh
         #- stats:
         #    totals: yes       # stats for all threads merged together
@@ -236,47 +308,11 @@ outputs:
         # flowints.
         #- metadata
 
-  # alert output for use with Barnyard2
+  # deprecated - unified2 alert format for use with Barnyard2
   - unified2-alert:
       enabled: no
-      filename: unified2.alert
-
-      # File size limit.  Can be specified in kb, mb, gb.  Just a number
-      # is parsed as bytes.
-      #limit: 32mb
-
-      # By default unified2 log files have the file creation time (in
-      # unix epoch format) appended to the filename. Set this to yes to
-      # disable this behaviour.
-      #nostamp: no
-
-      # Sensor ID field of unified2 alerts.
-      #sensor-id: 0
-
-      # Include payload of packets related to alerts. Defaults to true, set to
-      # false if payload is not required.
-      #payload: yes
-
-      # HTTP X-Forwarded-For support by adding the unified2 extra header or
-      # overwriting the source or destination IP address (depending on flow
-      # direction) with the one reported in the X-Forwarded-For HTTP header.
-      # This is helpful when reviewing alerts for traffic that is being reverse
-      # or forward proxied.
-      xff:
-        enabled: no
-        # Two operation modes are available, "extra-data" and "overwrite". Note
-        # that in the "overwrite" mode, if the reported IP address in the HTTP
-        # X-Forwarded-For header is of a different version of the packet
-        # received, it will fall-back to "extra-data" mode.
-        mode: extra-data
-        # Two proxy deployments are supported, "reverse" and "forward". In
-        # a "reverse" deployment the IP address used is the last one, in a
-        # "forward" deployment the first IP address is used.
-        deployment: reverse
-        # Header name where the actual IP address will be reported, if more
-        # than one IP address is present, the last IP address will be the
-        # one taken into consideration.
-        header: X-Forwarded-For
+      # for further options see:
+      # https://suricata.readthedocs.io/en/suricata-5.0.0/configuration/suricata-yaml.html#alert-output-for-use-with-barnyard2-unified2-alert
 
   # a line based log of HTTP requests (no alerts)
   - http-log:
@@ -285,6 +321,7 @@ outputs:
       append: yes
       #extended: yes     # enable this for extended logging information
       #custom: yes       # enabled the custom logging format (defined by customformat)
+      #customformat: ""
       #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
 
   # a line based log of TLS handshake parameters (no alerts)
@@ -294,6 +331,7 @@ outputs:
       append: yes
       #extended: yes     # Log extended information like fingerprint
       #custom: yes       # enabled the custom logging format (defined by customformat)
+      #customformat: ""
       #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
       # output TLS transaction where the session is resumed using a
       # session id
@@ -303,14 +341,6 @@ outputs:
   - tls-store:
       enabled: no
       #certs-log-dir: certs # directory to store the certificates files
-
-  # a line based log of DNS requests and/or replies (no alerts)
-  # Note: not available when Rust is enabled (--enable-rust).
-  - dns-log:
-      enabled: no
-      filename: dns.log
-      append: yes
-      #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
 
   # Packet log... log packets in pcap format. 3 modes of operation: "normal"
   # "multi" and "sguil".
@@ -382,7 +412,7 @@ outputs:
       append: yes
       #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
 
-  # alert output to prelude (http://www.prelude-technologies.com/) only
+  # alert output to prelude (https://www.prelude-siem.org/) only
   # available if Suricata has been compiled with --enable-prelude
   - alert-prelude:
       enabled: no
@@ -397,7 +427,7 @@ outputs:
       append: yes       # append to file (yes) or overwrite it (no)
       totals: yes       # stats for all threads merged together
       threads: no       # per thread stats
-      #null-values: yes  # print counters that have value 0
+      null-values: yes  # print counters that have value 0
 
   # a line based alerts log similar to fast.log into syslog
   - syslog:
@@ -409,12 +439,11 @@ outputs:
       #level: Info ## possible levels: Emergency, Alert, Critical,
                    ## Error, Warning, Notice, Info, Debug
 
-  # a line based information for dropped packets in IPS mode
+  # deprecated a line based information for dropped packets in IPS mode
   - drop:
       enabled: no
-      filename: drop.log
-      append: yes
-      #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
+      # further options documented at:
+      # https://suricata.readthedocs.io/en/suricata-5.0.0/configuration/suricata-yaml.html#drop-log-a-line-based-information-for-dropped-packets
 
   # Output module for storing files on disk. Files are stored in a
   # directory names consisting of the first 2 characters of the
@@ -481,58 +510,18 @@ outputs:
         # one taken into consideration.
         header: X-Forwarded-For
 
-  # output module to store extracted files to disk (old style, deprecated)
-  #
-  # The files are stored to the log-dir in a format "file.<id>" where <id> is
-  # an incrementing number starting at 1. For each file "file.<id>" a meta
-  # file "file.<id>.meta" is created. Before they are finalized, they will
-  # have a ".tmp" suffix to indicate that they are still being processed.
-  #
-  # If include-pid is yes, then the files are instead "file.<pid>.<id>", with
-  # meta files named as "file.<pid>.<id>.meta"
-  #
-  # File extraction depends on a lot of things to be fully done:
-  # - file-store stream-depth. For optimal results, set this to 0 (unlimited)
-  # - http request / response body sizes. Again set to 0 for optimal results.
-  # - rules that contain the "filestore" keyword.
+  # deprecated - file-store v1
   - file-store:
-      enabled: no       # set to yes to enable
-      log-dir: files    # directory to store the files
-      force-magic: no   # force logging magic on all stored files
-      # force logging of checksums, available hash functions are md5,
-      # sha1 and sha256
-      #force-hash: [md5]
-      force-filestore: no # force storing of all files
-      # override global stream-depth for sessions in which we want to
-      # perform file extraction. Set to 0 for unlimited.
-      #stream-depth: 0
-      #waldo: file.waldo # waldo file to store the file_id across runs
-      # uncomment to disable meta file writing
-      #write-meta: no
-      # uncomment the following variable to define how many files can
-      # remain open for filestore by Suricata. Default value is 0 which
-      # means files get closed after each write
-      #max-open-files: 1000
-      include-pid: no # set to yes to include pid in file names
-
-  # output module to log files tracked in a easily parsable JSON format
-  - file-log:
       enabled: no
-      filename: files-json.log
-      append: yes
-      #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
-
-      force-magic: no   # force logging magic on all logged files
-      # force logging of checksums, available hash functions are md5,
-      # sha1 and sha256
-      #force-hash: [md5]
+      # further options documented at:
+      # https://suricata.readthedocs.io/en/suricata-5.0.0/file-extraction/file-extraction.html#file-store-version-1
 
   # Log TCP data after stream normalization
   # 2 types: file or dir. File logs into a single logfile. Dir creates
   # 2 files per TCP session and stores the raw TCP data into them.
   # Using 'both' will enable both file and dir modes.
   #
-  # Note: limited by stream.depth
+  # Note: limited by stream.reassembly.depth
   - tcp-data:
       enabled: no
       type: file
@@ -591,10 +580,14 @@ logging:
   - file:
       enabled: yes
       level: info
-      filename: /var/log/suricata/suricata.log
+      filename: suricata.log
       # type: json
   - syslog:
       enabled: no
+      facility: local5
+      format: "[%i] <%d> -- "
+      # type: json
+
 
 ##
 ## Step 4: configure common capture settings
@@ -613,16 +606,11 @@ af-packet:
     # Default AF_PACKET cluster type. AF_PACKET can load balance per flow or per hash.
     # This is only supported for Linux kernel > 3.1
     # possible value are:
-    #  * cluster_round_robin: round robin load balancing
     #  * cluster_flow: all packets of a given flow are send to the same socket
     #  * cluster_cpu: all packets treated in kernel by a CPU are send to the same socket
     #  * cluster_qm: all packets linked by network card to a RSS queue are sent to the same
     #  socket. Requires at least Linux 3.14.
-    #  * cluster_random: packets are sent randomly to sockets but with an equipartition.
-    #  Requires at least Linux 3.14.
-    #  * cluster_rollover: kernel rotates between sockets filling each socket before moving
-    #  to the next. Requires at least Linux 3.10.
-    #  * cluster_ebpf: eBPF file load balancing. See doc/userguide/capture/ebpf-xdt.rst for
+    #  * cluster_ebpf: eBPF file load balancing. See doc/userguide/capture-hardware/ebpf-xdp.rst for
     #  more info.
     # Recommended modes are cluster_flow on most boxes and cluster_cpu or cluster_qm on system
     # with capture card using RSS (require cpu affinity tuning and system irq tuning)
@@ -630,12 +618,8 @@ af-packet:
     # In some fragmentation case, the hash can not be computed. If "defrag" is set
     # to yes, the kernel will do the needed defragmentation before sending the packets.
     defrag: yes
-    # After Linux kernel 3.10 it is possible to activate the rollover option: if a socket is
-    # full then kernel will send the packet on the next socket with room available. This option
-    # can minimize packet drop and increase the treated bandwidth on single intensive flow.
-    #rollover: yes
     # To use the ring feature of AF_PACKET, set 'use-mmap' to yes
-    #use-mmap: yes
+    use-mmap: yes
     # Lock memory map to avoid it goes to swap. Be careful that over subscribing could lock
     # your system
     #mmap-locked: yes
@@ -683,14 +667,13 @@ af-packet:
     #copy-mode: ips
     #copy-iface: eth1
     #  For eBPF and XDP setup including bypass, filter and load balancing, please
-    #  see doc/userguide/capture/ebpf-xdt.rst for more info.
+    #  see doc/userguide/capture-hardware/ebpf-xdp.rst for more info.
 
   # Put default values here. These will be used for an interface that is not
   # in the list above.
   - interface: default
     #threads: auto
     #use-mmap: no
-    #rollover: yes
     #tpacket-v3: yes
 
 # Cross platform libpcap capture support
@@ -753,6 +736,8 @@ app-layer:
   protocols:
     krb5:
       enabled: yes
+    snmp:
+      enabled: yes
     ikev2:
       enabled: yes
     tls:
@@ -760,8 +745,9 @@ app-layer:
       detection-ports:
         dp: 443
 
-      # Generate JA3 fingerprint from client hello
-      ja3-fingerprints: yes
+      # Generate JA3 fingerprint from client hello. If not specified it
+      # will be disabled by default, but enabled if rules require it.
+      #ja3-fingerprints: auto
 
       # What to do when the encrypted communications start:
       # - default: keep tracking TLS session, check for protocol anomalies,
@@ -775,17 +761,21 @@ app-layer:
       #
       # For best performance, select 'bypass'.
       #
-      #encrypt-handling: default
+      #encryption-handling: default
 
     dcerpc:
       enabled: yes
     ftp:
       enabled: yes
       # memcap: 64mb
+    # RDP, disabled by default.
+    rdp:
+      #enabled: no
     ssh:
       enabled: yes
     smtp:
       enabled: yes
+      raw-extraction: no
       # Configure SMTP-MIME Decoder
       mime:
         # Decode MIME messages from SMTP transactions
@@ -814,10 +804,6 @@ app-layer:
         content-inspect-window: 4096
     imap:
       enabled: detection-only
-    msn:
-      enabled: detection-only
-    # Note: --enable-rust is required for full SMB1/2 support. W/o rust
-    # only minimal SMB1 support is available.
     smb:
       enabled: yes
       detection-ports:
@@ -826,8 +812,6 @@ app-layer:
       # Stream reassembly size for SMB streams. By default track it completely.
       #stream-depth: 0
 
-    # Note: NFS parser depends on Rust support: pass --enable-rust
-    # to configure.
     nfs:
       enabled: yes
     tftp:
@@ -851,7 +835,8 @@ app-layer:
           dp: 53
     http:
       enabled: yes
-      # memcap: 64mb
+      # memcap:                   Maximum memory capacity for http
+      #                           Default is unlimited, value can be such as 64mb
 
       # default-config:           Used when no server-config matches
       #   personality:            List of personalities used by default
@@ -859,37 +844,15 @@ app-layer:
       #                           by http_client_body & pcre /P option.
       #   response-body-limit:    Limit reassembly of response body for inspection
       #                           by file_data, http_server_body & pcre /Q option.
-      #   double-decode-path:     Double decode path section of the URI
-      #   double-decode-query:    Double decode query section of the URI
-      #   response-body-decompress-layer-limit:
-      #                           Limit to how many layers of compression will be
-      #                           decompressed. Defaults to 2.
       #
+      #   For advanced options, see the user guide
+
+
       # server-config:            List of server configurations to use if address matches
       #   address:                List of IP addresses or networks for this block
       #   personalitiy:           List of personalities used by this block
-      #   request-body-limit:     Limit reassembly of request body for inspection
-      #                           by http_client_body & pcre /P option.
-      #   response-body-limit:    Limit reassembly of response body for inspection
-      #                           by file_data, http_server_body & pcre /Q option.
-      #   double-decode-path:     Double decode path section of the URI
-      #   double-decode-query:    Double decode query section of the URI
       #
-      #   uri-include-all:        Include all parts of the URI. By default the
-      #                           'scheme', username/password, hostname and port
-      #                           are excluded. Setting this option to true adds
-      #                           all of them to the normalized uri as inspected
-      #                           by http_uri, urilen, pcre with /U and the other
-      #                           keywords that inspect the normalized uri.
-      #                           Note that this does not affect http_raw_uri.
-      #                           Also, note that including all was the default in
-      #                           1.4 and 2.0beta1.
-      #
-      #   meta-field-limit:       Hard size limit for request and response size
-      #                           limits. Applies to request line and headers,
-      #                           response line and headers. Does not apply to
-      #                           request or response bodies. Default is 18k.
-      #                           If this limit is reached an event is raised.
+      #                           Then, all the fields from default-config can be overloaded
       #
       # Currently Available Personalities:
       #   Minimal, Generic, IDS (default), IIS_4_0, IIS_5_0, IIS_5_1, IIS_6_0,
@@ -942,6 +905,15 @@ app-layer:
            # decoding
            double-decode-path: no
            double-decode-query: no
+
+           # Can disable LZMA decompression
+           #lzma-enabled: yes
+           # Memory limit usage for LZMA decompression dictionary
+           # Data is decompressed until dictionary reaches this size
+           #lzma-memlimit: 1mb
+           # Maximum decompressed size with a compression ratio
+           # above 2048 (only LZMA can reach this ratio, deflate cannot)
+           #compression-bomb-limit: 1mb
 
          server-config:
 
@@ -1002,12 +974,15 @@ app-layer:
         dp: 44818
         sp: 44818
 
-    # Note: parser depends on Rust support
     ntp:
       enabled: yes
 
     dhcp:
       enabled: yes
+
+    # SIP, disabled by default.
+    sip:
+      #enabled: no
 
 # Limit for the maximum number of asn1 frames to decode (default 256)
 asn1-max-frames: 256
@@ -1024,9 +999,9 @@ asn1-max-frames: 256
 ##
 
 # Run suricata as user and group.
-#run-as:
-#  user: suri
-#  group: suri
+run-as:
+  user: suricata
+  group: suricata
 
 # Some logging module will use that name in event as identifier. The default
 # value is the hostname
@@ -1069,29 +1044,26 @@ host-mode: auto
 # Number of packets preallocated per thread. The default is 1024. A higher number
 # will make sure each CPU will be more easily kept busy, but may negatively
 # impact caching.
-#max-pending-packets: 1024
+max-pending-packets: 5000
 
 # Runmode the engine should use. Please check --list-runmodes to get the available
-# runmodes for each packet acquisition method. Defaults to "autofp" (auto flow pinned
-# load balancing).
+# runmodes for each packet acquisition method. Default depends on selected capture
+# method. 'workers' generally gives best performance.
 runmode: workers
 
 # Specifies the kind of flow load balancer used by the flow pinned autofp mode.
 #
 # Supported schedulers are:
 #
-# round-robin       - Flows assigned to threads in a round robin fashion.
-# active-packets    - Flows assigned to threads that have the lowest number of
-#                     unprocessed packets (default).
-# hash              - Flow allocated using the address hash. More of a random
-#                     technique. Was the default in Suricata 1.2.1 and older.
+# hash     - Flow assigned to threads using the 5-7 tuple hash.
+# ippair   - Flow assigned to threads using addresses only.
 #
-#autofp-scheduler: active-packets
+#autofp-scheduler: hash
 
 # Preallocated size for packet. Default is 1514 which is the classical
 # size for pcap on ethernet. You should adjust this value to the highest
 # packet size (MTU + hardware header) on your system.
-#default-packet-size: 1514
+default-packet-size: {{ MTU + 15 }}
 
 # Unix command socket can be used to pass commands to Suricata.
 # An external tool can then connect to get information from Suricata
@@ -1106,6 +1078,10 @@ unix-command:
 # Magic file. The extension .mgc is added to the value here.
 #magic-file: /usr/share/file/magic
 #magic-file:
+
+# GeoIP2 database file. Specify path and filename of GeoIP2 database
+# if using rules with "geoip" rule option.
+#geoip-database: /usr/local/share/GeoLite2/GeoLite2-Country.mmdb
 
 legacy:
   uricontent: enabled
@@ -1300,7 +1276,9 @@ flow-timeouts:
 #   inline: no                  # stream inline mode
 #   drop-invalid: yes           # in inline mode, drop packets that are invalid with regards to streaming engine
 #   max-synack-queued: 5        # Max different SYN/ACKs to queue
-#   bypass: no                  # Bypass packets when stream.depth is reached
+#   bypass: no                  # Bypass packets when stream.reassembly.depth is reached.
+#                               # Warning: first side to reach this triggers
+#                               # the bypass.
 #
 #   reassembly:
 #     memcap: 64mb              # Can be specified in kb, mb, gb.  Just a number
@@ -1373,9 +1351,22 @@ host:
 
 decoder:
   # Teredo decoder is known to not be completely accurate
-  # it will sometimes detect non-teredo as teredo.
+  # as it will sometimes detect non-teredo as teredo.
   teredo:
     enabled: true
+    # ports to look for Teredo. Max 4 ports. If no ports are given, or
+    # the value is set to 'any', Teredo detection runs on _all_ UDP packets.
+    ports: $TEREDO_PORTS # syntax: '[3544, 1234]' or '3533' or 'any'.
+
+  # VXLAN decoder is assigned to up to 4 UDP ports. By default only the
+  # IANA assigned port 4789 is enabled.
+  vxlan:
+    enabled: true
+    ports: $VXLAN_PORTS # syntax: '8472, 4789'
+  # ERSPAN Type I decode support
+  erspan:
+    typeI:
+      enabled: false
 
 
 ##
@@ -1484,19 +1475,26 @@ threading:
   {%- if salt['pillar.get']('sensor:suriprocs') %}
   cpu-affinity:
     - management-cpu-set:
-        cpu: [ all ]  # include only these cpus in affinity settings
+        cpu: [ all ]  # include only these CPUs in affinity settings
     - receive-cpu-set:
-        cpu: [ all ]  # include only these cpus in affinity settings
+        cpu: [ all ]  # include only these CPUs in affinity settings
     - worker-cpu-set:
         cpu: [ "all" ]
         mode: "exclusive"
         # Use explicitely 3 threads and don't compute number by using
         # detect-thread-ratio variable:
+        # threads: 3
         threads: {{ salt['pillar.get']('sensor:suriprocs') }}
         prio:
-          default: "medium"
-  {% endif %}
-
+          low: [ 0 ]
+          medium: [ "1-2" ]
+          high: [ 3 ]
+          default: "high"
+    #- verdict-cpu-set:
+    #    cpu: [ 0 ]
+    #    prio:
+    #      default: "high"
+  {%- endif -%}
   {%- if salt['pillar.get']('sensor:suripins') %}
   cpu-affinity:
     - management-cpu-set:
@@ -1512,6 +1510,8 @@ threading:
         prio:
           default: "high"
   {% endif %}
+
+  #
   # By default Suricata creates one "detect" thread per available CPU/CPU core.
   # This setting allows controlling this behaviour. A ratio setting of 2 will
   # create 2 detect threads for each CPU/CPU core. So for a dual core CPU this
@@ -1545,7 +1545,7 @@ profiling:
 
     # Profiling can be disabled here, but it will still have a
     # performance impact if compiled in.
-    enabled: no
+    enabled: yes
     filename: rule_perf.log
     append: yes
 
@@ -1668,7 +1668,7 @@ capture:
 
 # Netmap support
 #
-# Netmap operates with NIC directly in driver, so you need FreeBSD which have
+# Netmap operates with NIC directly in driver, so you need FreeBSD 11+ which have
 # built-in netmap support or compile and install netmap module and appropriate
 # NIC driver on your Linux system.
 # To reach maximum throughput disable all receive-, segmentation-,
@@ -1680,7 +1680,9 @@ capture:
 netmap:
    # To specify OS endpoint add plus sign at the end (e.g. "eth0+")
  - interface: eth2
-   # Number of receive threads. "auto" uses number of RSS queues on interface.
+   # Number of capture threads. "auto" uses number of RSS queues on interface.
+   # Warning: unless the RSS hashing is symmetrical, this will lead to
+   # accuracy issues.
    #threads: auto
    # You can use the following variables to activate netmap tap or IPS mode.
    # If copy-mode is set to ips or tap, the traffic coming to the current
@@ -1793,45 +1795,63 @@ napatech:
     # (-1 = OFF, 1 - 100 = percentage of the host buffer that can be held back)
     # This may be enabled when sharing streams with another application.
     # Otherwise, it should be turned off.
-    hba: -1
+    #hba: -1
 
-    # use_all_streams set to "yes" will query the Napatech service for all configured
-    # streams and listen on all of them. When set to "no" the streams config array
-    # will be used.
-    use-all-streams: yes
+    # When use_all_streams is set to "yes" the initialization code will query
+    # the Napatech service for all configured streams and listen on all of them.
+    # When set to "no" the streams config array will be used.
+    #
+    # This option necessitates running the appropriate NTPL commands to create
+    # the desired streams prior to running suricata.
+    #use-all-streams: no
 
-    # The streams to listen on.  This can be either:
-    #   a list of individual streams (e.g. streams: [0,1,2,3])
+    # The streams to listen on when auto-config is disabled or when and threading
+    # cpu-affinity is disabled.  This can be either:
+    #   an individual stream (e.g. streams: [0])
     # or
     #   a range of streams (e.g. streams: ["0-3"])
+    #
     streams: ["0-3"]
 
-# Tilera mpipe configuration. for use on Tilera TILE-Gx.
-mpipe:
+    # When auto-config is enabled the streams will be created and assigned
+    # automatically to the NUMA node where the thread resides.  If cpu-affinity
+    # is enabled in the threading section.  Then the streams will be created
+    # according to the number of worker threads specified in the worker cpu set.
+    # Otherwise, the streams array is used to define the streams.
+    #
+    # This option cannot be used simultaneous with "use-all-streams".
+    #
+    auto-config: yes
 
-  # Load balancing modes: "static", "dynamic", "sticky", or "round-robin".
-  load-balance: dynamic
+    # Ports indicates which napatech ports are to be used in auto-config mode.
+    # these are the port ID's of the ports that will be merged prior to the
+    # traffic being distributed to the streams.
+    #
+    # This can be specified in any of the following ways:
+    #
+    #   a list of individual ports (e.g. ports: [0,1,2,3])
+    #
+    #   a range of ports (e.g. ports: [0-3])
+    #
+    #   "all" to indicate that all ports are to be merged together
+    #   (e.g. ports: [all])
+    #
+    # This has no effect if auto-config is disabled.
+    #
+    ports: [all]
 
-  # Number of Packets in each ingress packet queue. Must be 128, 512, 2028 or 65536
-  iqueue-packets: 2048
-
-  # List of interfaces we will listen on.
-  inputs:
-  - interface: xgbe2
-  - interface: xgbe3
-  - interface: xgbe4
-
-
-  # Relative weight of memory for packets of each mPipe buffer size.
-  stack:
-    size128: 0
-    size256: 9
-    size512: 0
-    size1024: 0
-    size1664: 7
-    size4096: 0
-    size10386: 0
-    size16384: 0
+    # When auto-config is enabled the hashmode specifies the algorithm for
+    # determining to which stream a given packet is to be delivered.
+    # This can be any valid Napatech NTPL hashmode command.
+    #
+    # The most common hashmode commands are:  hash2tuple, hash2tuplesorted,
+    # hash5tuple, hash5tuplesorted and roundrobin.
+    #
+    # See Napatech NTPL documentation other hashmodes and details on their use.
+    #
+    # This has no effect if auto-config is disabled.
+    #
+    hashmode: hash5tuplesorted
 
 ##
 ## Configure Suricata to load Suricata-Update managed rules.
@@ -1841,77 +1861,9 @@ mpipe:
 ##
 
 default-rule-path: /etc/suricata/rules
+
 rule-files:
- - all.rules
-
-##
-## Advanced rule file configuration.
-##
-## If this section is completely commented out then your configuration
-## is setup for suricata-update as it was most likely bundled and
-## installed with Suricata.
-##
-
-#default-rule-path: /var/lib/suricata/rules
-
-#rule-files:
-# - botcc.rules
-# # - botcc.portgrouped.rules
-# - ciarmy.rules
-# - compromised.rules
-# - drop.rules
-# - dshield.rules
-## - emerging-activex.rules
-# - emerging-attack_response.rules
-# - emerging-chat.rules
-# - emerging-current_events.rules
-# - emerging-dns.rules
-# - emerging-dos.rules
-# - emerging-exploit.rules
-# - emerging-ftp.rules
-## - emerging-games.rules
-## - emerging-icmp_info.rules
-## - emerging-icmp.rules
-# - emerging-imap.rules
-## - emerging-inappropriate.rules
-## - emerging-info.rules
-# - emerging-malware.rules
-# - emerging-misc.rules
-# - emerging-mobile_malware.rules
-# - emerging-netbios.rules
-# - emerging-p2p.rules
-# - emerging-policy.rules
-# - emerging-pop3.rules
-# - emerging-rpc.rules
-## - emerging-scada.rules
-## - emerging-scada_special.rules
-# - emerging-scan.rules
-## - emerging-shellcode.rules
-# - emerging-smtp.rules
-# - emerging-snmp.rules
-# - emerging-sql.rules
-# - emerging-telnet.rules
-# - emerging-tftp.rules
-# - emerging-trojan.rules
-# - emerging-user_agents.rules
-# - emerging-voip.rules
-# - emerging-web_client.rules
-# - emerging-web_server.rules
-## - emerging-web_specific_apps.rules
-# - emerging-worm.rules
-# - tor.rules
-## - decoder-events.rules # available in suricata sources under rules dir
-## - stream-events.rules  # available in suricata sources under rules dir
-# - http-events.rules    # available in suricata sources under rules dir
-# - smtp-events.rules    # available in suricata sources under rules dir
-# - dns-events.rules     # available in suricata sources under rules dir
-# - tls-events.rules     # available in suricata sources under rules dir
-## - modbus-events.rules  # available in suricata sources under rules dir
-## - app-layer-events.rules  # available in suricata sources under rules dir
-## - dnp3-events.rules       # available in suricata sources under rules dir
-## - ntp-events.rules       # available in suricata sources under rules dir
-## - ipsec-events.rules       # available in suricata sources under rules dir
-## - kerberos-events.rules       # available in suricata sources under rules dir
+  - all.rules
 
 ##
 ## Auxiliary configuration files.

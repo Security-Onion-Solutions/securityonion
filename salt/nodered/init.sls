@@ -36,7 +36,7 @@ nodered:
 
 noderedflows:
   file.recurse:
-    - name: /opt/so/saltstack/salt/nodered/
+    - name: /opt/so/saltstack/default/salt/nodered/
     - source: salt://nodered/files
     - user: 947
     - group: 939

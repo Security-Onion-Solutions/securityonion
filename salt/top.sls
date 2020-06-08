@@ -30,6 +30,7 @@ base:
     - telegraf
     - firewall
     - idstools
+    - suricata.master
     - pcap
     - suricata
     - zeek
@@ -73,6 +74,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master
     - healthcheck
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -100,7 +102,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -129,6 +131,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -149,10 +152,13 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
@@ -174,6 +180,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master    
     - healthcheck
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
@@ -203,7 +210,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -256,6 +263,7 @@ base:
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
@@ -297,6 +305,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -318,7 +327,7 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
