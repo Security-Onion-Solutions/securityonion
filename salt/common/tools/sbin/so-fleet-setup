@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#so-fleet-setup $FleetEmail $FleetPassword 
+
+if [[ $# -ne 2 ]] ; then
+      echo "Username or Password was not set - exiting now."
+      exit 1
+fi
+
+# Checking to see if required containers are started...
+if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
+        echo "Starting Docker Containers..."
+        salt-call state.apply mysql queue=True >> /root/fleet-setup.log
+        salt-call state.apply fleet queue=True >> /root/fleet-setup.log
+        salt-call state.apply redis queue=True >> /root/fleet-setup.log
+fi
+
+docker exec so-fleet fleetctl config set --address https://localhost:8080 --tls-skip-verify --url-prefix /fleet
+docker exec so-fleet fleetctl setup --email $1 --password $2
+
+docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
+docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
+docker exec so-fleet fleetctl apply -f /packs/so/so-default.yml
+docker exec so-fleet /bin/sh -c 'for pack in /packs/palantir/Fleet/Endpoints/packs/*.yaml; do fleetctl apply -f "$pack"; done'
+docker exec so-fleet fleetctl apply -f /packs/osquery-config.conf
+
+
+# Enable Fleet
+echo "Enabling Fleet..."
+salt-call state.apply fleet.event_enable-fleet queue=True >> /root/fleet-setup.log
+salt-call state.apply nginx queue=True >> /root/fleet-setup.log
+
+# Generate osquery install packages
+echo "Generating osquery install packages - this will take some time..."
+salt-call state.apply fleet.event_gen-packages queue=True >> /root/fleet-setup.log
+sleep 120
+
+echo "Installing launcher via salt..."
+salt-call state.apply fleet.install_package queue=True >> /root/fleet-setup.log
+salt-call state.apply filebeat queue=True >> /root/fleet-setup.log
+docker stop so-nginx
+salt-call state.apply nginx queue=True >> /root/fleet-setup.log
+
+echo "Fleet Setup Complete - Login with the username and password you ran the script with."
