@@ -4,7 +4,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion') %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
-{% if CUSTOM_FLEET_HOSTNAME != None %}
+{% if CUSTOM_FLEET_HOSTNAME != None && CUSTOM_FLEET_HOSTNAME != '' %}
    {% set HOSTNAME =  CUSTOM_FLEET_HOSTNAME  %}
 {% else %}
    {% set HOSTNAME = grains.host  %}
