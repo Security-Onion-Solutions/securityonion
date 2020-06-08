@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+default_salt_dir=/opt/so/saltstack/default
+clone_to_tmp() {
+
+  # TODO Need to add a air gap option
+  # Make a temp location for the files
+  mkdir /tmp/sogh
+  cd /tmp/sogh
+  #git clone -b dev https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+  git clone https://github.com/Security-Onion-Solutions/securityonion-saltstack.git
+  cd /tmp
+
+}
+
+copy_new_files() {
+
+  # Copy new files over to the salt dir
+  cd /tmp/sogh/securityonion-saltstack
+  git checkout $BRANCH
+  rsync -a --exclude-from 'exclude-list.txt' salt $default_salt_dir/
+  rsync -a --exclude-from 'exclude-list.txt' pillar $default_salt_dir/
+  chown -R socore:socore $default_salt_dir/salt
+  chown -R socore:socore $default_salt_dir/pillar
+  chmod 755 $default_salt_dir/pillar/firewall/addfirewall.sh
+  rm -rf /tmp/sogh
+}
+
+got_root(){
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "This script must be run using sudo!"
+        exit 1
+    fi
+}
+
+got_root
+if [ $# -ne 1 ] ; then
+  BRANCH=master
+else
+  BRANCH=$1
+fi
+clone_to_tmp
+copy_new_files

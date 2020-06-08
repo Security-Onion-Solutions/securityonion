@@ -89,7 +89,7 @@ curdel:
 
 so-curatorcloseddeletecron:
  cron.present:
-   - name: /usr/sbin/so-curator-closed-delete
+   - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'
@@ -99,7 +99,7 @@ so-curatorcloseddeletecron:
 
 so-curatorclosecron:
  cron.present:
-   - name: /usr/sbin/so-curator-close
+   - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'
@@ -109,7 +109,7 @@ so-curatorclosecron:
 
 so-curatordeletecron:
  cron.present:
-   - name: /usr/sbin/so-curator-delete
+   - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
    - user: root
    - minute: '*'
    - hour: '*'

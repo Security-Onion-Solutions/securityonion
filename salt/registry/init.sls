@@ -42,6 +42,7 @@ so-dockerregistry:
   docker_container.running:
     - image: registry:2
     - hostname: so-registry
+    - restart_policy: always
     - port_bindings:
       - 0.0.0.0:5000:5000
     - binds:

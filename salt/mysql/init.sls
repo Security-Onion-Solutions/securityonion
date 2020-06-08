@@ -6,7 +6,8 @@
 {% set FLEETARCH = salt['grains.get']('role') %}
 
 {% if FLEETARCH == "so-fleet" %}
-  {% set MAINIP = salt['pillar.get']('node:mainip') %}
+  {% set MAININT = salt['pillar.get']('host:mainint') %}
+  {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% else %}
   {% set MAINIP = salt['pillar.get']('static:masterip') %}
 {% endif %}
