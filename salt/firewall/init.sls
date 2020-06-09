@@ -12,8 +12,9 @@
 {% set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
 {% set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
 
-{% import_yaml 'firewall/ports.yml' as firewall_ports %}
-{% set firewall_aliases = salt['pillar.get']('firewall:aliases', firewall_ports.firewall.aliases, merge=True) %}
+{% from 'firewall/map.jinja' import hostgroups with context %}
+{% from 'firewall/map.jinja' import assigned_hostgroups with context %}
+{% set role = grains.id.split('_') | last %}
 
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
@@ -118,36 +119,6 @@ enable_docker_user_established:
 
 # Rules if you are a Master
 {% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
-#This should be more granular
-iptables_allow_master_docker:
-  iptables.insert:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - source: 172.17.0.0/24
-    - position: 1
-    - save: True
-
-{% for alias in ['master', 'minions', 'forward_nodes', 'search_nodes', 'beats_endpoint', 'osquery_endpoint', 'wazuh_endpoint', 'analyst'] %}
-  {% for ip in firewall_aliases[alias].ips %}
-    {% for servicename, services in firewall_aliases[alias].ports.items() %}
-      {% for proto, ports in services.items() %}
-        {% for port in ports %}
-{{alias}}_{{ip}}_{{servicename}}_{{port}}_{{proto}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: {{ proto }}
-    - source: {{ ip }}
-    - dport: {{ port }}
-    - position: 1
-    - save: True
-        {% endfor %}
-      {% endfor %}
-    {% endfor %}
-  {% endfor %}
-{% endfor %}
 
 # Allow Fleet Node to send its beats traffic
 {% if FLEET_NODE %}
@@ -163,218 +134,35 @@ enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
     - save: True
 {% endif %}
 
-{% endif %}
+{% endif %} 
 
-# All Nodes get the below rules:
-{% if 'node' in grains['role'] %}
+{% for hostgroup, portgroups in assigned_hostgroups.role[role].hostgroups.items() %}
+  {% for action in ['insert', 'delete' ] %}
+    {% if hostgroups[hostgroup].ips[action] %}
+      {% for ip in hostgroups[hostgroup].ips[action] %}
+        {% for portgroup in portgroups.portgroups %}
+          {% for proto, ports in portgroup.items() %}
+            {% for port in ports %}
 
-iptables_allow_docker:
-  iptables.insert:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - source: 172.17.0.0/24
-    - position: 1
-    - save: True
-
-enable_docker_ES_9200:
-  iptables.insert:
+{{action}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}:
+  iptables.{{action}}:
     - table: filter
     - chain: DOCKER-USER
     - jump: ACCEPT
-    - proto: tcp
-    - source: 172.17.0.0/24
-    - dport: 9200
-    - position: 1
-    - save: True
-
-
-enable_docker_ES_9300:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: 172.17.0.0/24
-    - dport: 9300
-    - position: 1
-    - save: True
-
-
-{% for ip in pillar.get('firewall:masterfw')  %}
-
-enable_cluster_ES_9300_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
+    - proto: {{ proto }}
     - source: {{ ip }}
-    - dport: 9300
+    - dport: {{ port }}
     - position: 1
     - save: True
 
-
-{% endfor %}
-{% endif %}
-
-# All Sensors get the below rules:
-{% if grains['role'] == 'so-sensor' %}
-iptables_allow_sensor_docker:
-  iptables.insert:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - source: 172.17.0.0/24
-    - position: 1
-    - save: True
-{% endif %}
-
-# Rules if you are a Hot Node
-
-# Rules if you are a Warm Node
-
-# All heavy nodes get the below rules:
-{% if grains['role'] == 'so-heavynode' %}
-# Allow Redis
-enable_heavynode_redis_6379_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 6379
-    - position: 1
-    - save: True
-
-enable_forwardnode_beats_5044_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 5044
-    - position: 1
-    - save: True
-
-enable_forwardnode_beats_5644_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 5644
-    - position: 1
-    - save: True
-{% endif %}
-
-
-# Rules if you are a Standalone Fleet node
-{% if grains['role'] == 'so-fleet' %}
-#This should be more granular
-iptables_allow_fleetnode_docker:
-  iptables.insert:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - source: 172.17.0.0/24
-    - position: 1
-    - save: True
-
-# Allow Redis
-enable_fleetnode_redis_6379_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 6379
-    - position: 1
-    - save: True
-
-enable_fleetnode_mysql_3306_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 3306
-    - position: 1
-    - save: True
-
-enable_fleet_osquery_8080_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 8080
-    - position: 1
-    - save: True
-
-    
-enable_fleetnodetemp_mysql_3306_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: 127.0.0.1
-    - dport: 3306
-    - position: 1
-    - save: True
-
-enable_fleettemp_osquery_8080_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: 127.0.0.1
-    - dport: 8080
-    - position: 1
-    - save: True
-
-
-# Allow Analysts to access Fleet WebUI
-{% for ip in pillar.get('firewall:analyst')  %}
-
-enable_fleetnode_fleet_443_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 443
-    - position: 1
-    - save: True
-
+            {% endfor %}
+          {% endfor %}
+        {% endfor %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
 {% endfor %}
 
-# Needed for osquery endpoints to checkin to Fleet API for mgt
-{% for ip in pillar.get('firewall:osquery_endpoint')  %}
-
-enable_fleetnode_8090_{{ip}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ ip }}
-    - dport: 8090
-    - position: 1
-    - save: True
-
-{% endfor %}
-
-{% endif %}
 # Make the input policy send stuff that doesn't match to be logged and dropped
 iptables_drop_all_the_things:
   iptables.append:
