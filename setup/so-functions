@@ -258,6 +258,10 @@ check_soremote_pass() {
 	check_pass_match "$SOREMOTEPASS1" "$SOREMOTEPASS2" "SCMATCH"
 }
 
+check_fleet_node_pass() {
+	check_pass_match "$FLEETNODEPASSWD1" "$FLEETNODEPASSWD2" "FPMATCH"
+}
+
 check_web_pass() {
 	check_pass_match "$WEBPASSWD1" "$WEBPASSWD2" "WPMATCH"
 }
@@ -292,6 +296,30 @@ collect_adminuser_inputs() {
 		whiptail_create_admin_user_password1
 		whiptail_create_admin_user_password2
 		check_admin_pass
+	done
+}
+
+collect_fleet_custom_hostname_inputs() {
+	whiptail_fleet_custom_hostname
+}
+
+collect_fleetuser_inputs() {
+	# Get a username & password for the Fleet admin user
+	local valid_user=no
+	while [[ $valid_user != yes ]]; do
+		whiptail_create_fleet_node_user		
+		if so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; then
+			valid_user=yes
+		else
+			whiptail_invalid_user_warning
+		fi
+	done
+
+	FPMATCH=no
+	while [[ $FPMATCH != yes ]]; do
+		whiptail_create_fleet_node_user_password1
+		whiptail_create_fleet_node_user_password2
+		check_fleet_node_pass
 	done
 }
 
@@ -390,6 +418,7 @@ check_requirements() {
 		req_mem=8
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
+		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
 
 	if [[ $num_nics -lt $req_nics ]]; then
@@ -816,6 +845,17 @@ get_minion_type() {
 	echo "$minion_type"
 }
 
+host_pillar() {
+
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	# Create the host pillar
+	printf '%s\n'\
+		"host:"\
+		"  mainint: $MNIC"\
+		"" > "$pillar_file"
+}
+
 install_cleanup() {
 	echo "Installer removing the following files:"
 	ls -lR "$temp_install_dir"
@@ -908,6 +948,7 @@ master_static() {
 		"  cortexorgname: SecurityOnion"\
 		"  cortexorguser: soadmin"\
 		"  cortexorguserkey: $CORTEXORGUSERKEY"\
+		"  fleet_custom_hostname: "\
 		"  fleet_master: False"\
 		"  fleet_node: False"\
 		"  fleet_packages-timestamp: N/A"\
@@ -1200,6 +1241,8 @@ salt_checkin() {
 				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
+				echo " Confirming mine contents"
+				salt \* mine.get \* x509.get_pem_entries
 			} >> "$setup_log" 2>&1
 			;;
 		*)

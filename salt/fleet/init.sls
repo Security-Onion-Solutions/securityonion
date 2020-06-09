@@ -3,26 +3,17 @@
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
-
 {% if FLEETARCH == "so-fleet" %}
-  {% set MAINIP = salt['pillar.get']('node:mainip') %}
+  {% set MAININT = salt['pillar.get']('host:mainint') %}
+  {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% else %}
   {% set MAINIP = salt['pillar.get']('static:masterip') %}
 {% endif %}
 
 include:
   - mysql
-
-#{% if grains.id.split('_')|last in ['master', 'eval', 'fleet'] %}
-#so/fleet:
-#  event.send:
-#    - data:
-#        action: 'enablefleet'
-#        hostname: {{ grains.host }}
-#{% endif %}
 
 # Fleet Setup
 fleetcdir:
@@ -66,21 +57,6 @@ fleetlogdir:
     - user: 939
     - group: 939
     - makedirs: True
-
-fleetsetupscripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: 0
-    - group: 0
-    - file_mode: 755
-    - template: jinja
-    - source: salt://fleet/files/scripts
-
-osquerypackageswebpage:
-  file.managed:
-    - name: /opt/so/conf/fleet/packages/index.html
-    - source: salt://fleet/files/dedicated-index.html
-    - template: jinja
 
 fleetdb:
   mysql_database.present:
