@@ -136,30 +136,34 @@ enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
 
 {% endif %} 
 
-{% for hostgroup, portgroups in assigned_hostgroups.role[role].hostgroups.items() %}
-  {% for action in ['insert', 'delete' ] %}
-    {% if hostgroups[hostgroup].ips[action] %}
-      {% for ip in hostgroups[hostgroup].ips[action] %}
-        {% for portgroup in portgroups.portgroups %}
-          {% for proto, ports in portgroup.items() %}
-            {% for port in ports %}
+{% for chain, hg in assigned_hostgroups.role[role].chain.items() %}
+  {% for hostgroup, portgroups in assigned_hostgroups.role[role].chain[chain].hostgroups.items() %}
+    {% for action in ['insert', 'delete' ] %}
+      {% if hostgroups[hostgroup].ips[action] %}
+        {% for ip in hostgroups[hostgroup].ips[action] %}
+          {% for portgroup in portgroups.portgroups %}
+            {% for proto, ports in portgroup.items() %}
+              {% for port in ports %}
 
-{{action}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}:
+{{action}}_{{chain}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}:
   iptables.{{action}}:
     - table: filter
-    - chain: DOCKER-USER
+    - chain: {{ chain }}
     - jump: ACCEPT
     - proto: {{ proto }}
     - source: {{ ip }}
     - dport: {{ port }}
+              {% if action == 'insert' %}
     - position: 1
+              {% endif %}
     - save: True
 
+              {% endfor %}
             {% endfor %}
           {% endfor %}
         {% endfor %}
-      {% endfor %}
-    {% endif %}
+      {% endif %}
+    {% endfor %}
   {% endfor %}
 {% endfor %}
 
