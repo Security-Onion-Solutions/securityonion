@@ -1,17 +1,4 @@
 # Firewall Magic for the grid
-{% if grains['role'] in ['so-eval','so-master','so-helix','so-mastersearch', 'so-standalone'] %}
-  {% set ip = salt['pillar.get']('static:masterip', '') %}
-{% elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
-  {% set ip = salt['pillar.get']('node:mainip', '') %}
-{% elif grains['role'] == 'so-sensor' %}
-  {% set ip = salt['pillar.get']('sensor:mainip', '') %}
-{% elif grains['role'] == 'so-fleet' %}
-  {% set ip = salt['pillar.get']('node:mainip', '') %}
-{% endif %}
-
-{% set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
-{% set FLEET_NODE_IP = salt['pillar.get']('static:fleet_ip') %}
-
 {% from 'firewall/map.jinja' import hostgroups with context %}
 {% from 'firewall/map.jinja' import assigned_hostgroups with context %}
 {% set role = grains.id.split('_') | last %}
@@ -31,15 +18,6 @@ iptables_fix_fwd:
     - position: 1
     - target: DOCKER-USER
 
-# Keep localhost in the game
-iptables_allow_localhost:
-  iptables.append:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - source: 127.0.0.1
-    - save: True
-
 # Allow related/established sessions
 iptables_allow_established:
   iptables.append:
@@ -48,16 +26,6 @@ iptables_allow_established:
     - jump: ACCEPT
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
-    - save: True
-
-# Always allow SSH so we can like log in
-iptables_allow_ssh:
-  iptables.append:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - dport: 22
-    - proto: tcp
     - save: True
 
 # I like pings
@@ -116,25 +84,6 @@ enable_docker_user_established:
     - save: True
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
-
-# Rules if you are a Master
-{% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
-
-# Allow Fleet Node to send its beats traffic
-{% if FLEET_NODE %}
-enable_fleetnode_beats_5644_{{FLEET_NODE_IP}}:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - proto: tcp
-    - source: {{ FLEET_NODE_IP }}
-    - dport: 5644
-    - position: 1
-    - save: True
-{% endif %}
-
-{% endif %} 
 
 {% for chain, hg in assigned_hostgroups.role[role].chain.items() %}
   {% for hostgroup, portgroups in assigned_hostgroups.role[role].chain[chain].hostgroups.items() %}
