@@ -51,18 +51,17 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
-	if [ $automated == no ]; then
-		if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
-			whiptail_setup_failed
-		fi
-		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
+		if [[ $automated == no ]]; then whiptail_setup_failed; else exit 1; fi
+
+		if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; fi
 	else
-		if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
-			exit 1
+		if [ $automated == no ]; then
+			whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+		else
+			cat >> $setup_log 2>&1
 		fi
-		cat >> $setup_log 2>&1
 	fi
-	
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
@@ -368,10 +367,10 @@ fi
 	# Set initial percentage to 0
 	export percentage=0
 
-        if [[ $is_minion ]]; then
-                set_progress_str 1 'Configuring firewall'
-                set_initial_firewall_policy >> $setup_log 2>&1
-        fi
+	if [[ $is_minion ]]; then
+		set_progress_str 1 'Configuring firewall'
+		set_initial_firewall_policy >> $setup_log 2>&1
+	fi
 
 	set_progress_str 2 'Updating packages'
 	update_packages >> $setup_log 2>&1
@@ -599,10 +598,12 @@ fi
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
 	whiptail_setup_complete
+
 	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
 		export IP=$ALLOW_CIDR
 		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 	fi
+
 	if [[ $THEHIVE == 1 ]]; then
 		check_hive_init
 	fi
