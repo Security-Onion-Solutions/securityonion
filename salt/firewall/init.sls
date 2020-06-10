@@ -2,6 +2,11 @@
 {% from 'firewall/map.jinja' import hostgroups with context %}
 {% from 'firewall/map.jinja' import assigned_hostgroups with context %}
 
+create_sysconfig_iptables:
+  file.touch:
+    - name: /etc/sysconfig/iptables
+    - unless: 'ls /etc/sysconfig/iptables'
+
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
   iptables.chain_present:
