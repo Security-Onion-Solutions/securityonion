@@ -1,7 +1,6 @@
 # Firewall Magic for the grid
 {% from 'firewall/map.jinja' import hostgroups with context %}
 {% from 'firewall/map.jinja' import assigned_hostgroups with context %}
-{% set role = grains.id.split('_') | last %}
 
 # Quick Fix for Docker being difficult
 iptables_fix_docker:
@@ -85,8 +84,8 @@ enable_docker_user_established:
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
 
-{% for chain, hg in assigned_hostgroups.role[role].chain.items() %}
-  {% for hostgroup, portgroups in assigned_hostgroups.role[role].chain[chain].hostgroups.items() %}
+{% for chain, hg in assigned_hostgroups.chain.items() %}
+  {% for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
     {% for action in ['insert', 'delete' ] %}
       {% if hostgroups[hostgroup].ips[action] %}
         {% for ip in hostgroups[hostgroup].ips[action] %}
