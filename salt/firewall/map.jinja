@@ -1,9 +1,14 @@
 {% set role = grains.id.split('_') | last %}
+{% set translated_pillar_assigned_hostgroups = {} %}
 
 {% import_yaml 'firewall/portgroups.yaml' as default_portgroups %}
 {% set default_portgroups = default_portgroups.firewall.aliases.ports %}
 {% import_yaml 'firewall/portgroups.local.yaml' as local_portgroups %}
-{% set local_portgroups = local_portgroups.firewall.aliases.ports %}
+{% if local_portgroups.firewall.aliases.ports %}
+  {% set local_portgroups = local_portgroups.firewall.aliases.ports %}
+{% else %}
+  {% set local_portgroups = {} %}
+{% endif %}
 {% set portgroups = salt['defaults.merge'](default_portgroups, local_portgroups, in_place=False) %}
 {% set defined_portgroups = portgroups %}
 
@@ -13,13 +18,14 @@
 
 {# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}
 {% if salt['pillar.get']('firewall:assigned_hostgroups:chain') %}
-  {% set translated_pillar_assigned_hostgroups = {} %}
+
   {% for chain, hg in salt['pillar.get']('firewall:assigned_hostgroups:chain').items() %}
     {% for pillar_hostgroup, pillar_portgroups in salt['pillar.get']('firewall:assigned_hostgroups:chain')[chain].hostgroups.items() %}
       {% do translated_pillar_assigned_hostgroups.update({"chain": {chain: {"hostgroups": {pillar_hostgroup: {"portgroups": []}}}}}) %}
       {% for pillar_portgroup in pillar_portgroups.portgroups %}
         {% set pillar_portgroup = pillar_portgroup.split('.') | last %}
         {% do translated_pillar_assigned_hostgroups.chain[chain].hostgroups[pillar_hostgroup].portgroups.append(defined_portgroups[pillar_portgroup]) %}
+
       {% endfor %}
     {% endfor %}
   {% endfor %}
@@ -27,5 +33,13 @@
 
 {% import_yaml 'firewall/assigned_hostgroups.map.yaml' as default_assigned_hostgroups %}
 {% import_yaml 'firewall/assigned_hostgroups.local.map.yaml' as local_assigned_hostgroups %}
-{% set assigned_hostgroups = salt['defaults.merge'](local_assigned_hostgroups.role[role], default_assigned_hostgroups.role[role], merge_lists=True, in_place=False) %}
-{% do salt['defaults.merge'](assigned_hostgroups, translated_pillar_assigned_hostgroups, merge_lists=True, in_place=True) %}
+{% if local_assigned_hostgroups.role[role] %}
+  {% set assigned_hostgroups = salt['defaults.merge'](local_assigned_hostgroups.role[role], default_assigned_hostgroups.role[role], merge_lists=False, in_place=False) %}
+{% else %}
+  {% set assigned_hostgroups = default_assigned_hostgroups.role[role] %}
+{% endif %}
+
+
+{% if translated_pillar_assigned_hostgroups %}
+  {% do salt['defaults.merge'](assigned_hostgroups, translated_pillar_assigned_hostgroups, merge_lists=True, in_place=True) %}
+{% endif %}
