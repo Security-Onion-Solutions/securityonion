@@ -1382,11 +1382,16 @@ set_initial_firewall_policy() {
 			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls $local_salt_dir/pillar/firewall/masterfw.sls
 			$default_salt_dir/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
-		'EVAL' | 'MASTERSEARCH')
+		'EVAL' | 'MASTERSEARCH' | 'STANDALONE')
 			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
 				$local_salt_dir/pillar/firewall/masterfw.sls\
 				$local_salt_dir/pillar/firewall/forward_nodes.sls\
 				$local_salt_dir/pillar/firewall/search_nodes.sls
+				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+                $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+                $default_salt_dir/salt/common/tools/sbin/so-firewall includehost search_node "$MAINIP"
+				salt-call -l info  state.apply firewall >> $setup_log 2>&1
+			
 			case "$install_type" in 
 				'EVAL')
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0 True

@@ -44,7 +44,6 @@ base:
     - logstash
     - logstash.master
     - logstash.search
-    - firewall.*
     - data.*
     - brologs
     - secrets
