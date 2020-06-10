@@ -52,10 +52,14 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 automated=no
 function progress() {
 	if [ $automated == no ]; then
+		if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
+			whiptail_setup_failed
+		fi
 		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
 	else
 		cat >> $setup_log 2>&1
 	fi
+	
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
@@ -388,7 +392,6 @@ fi
 
 	set_progress_str 9 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
-
 
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
