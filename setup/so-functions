@@ -1237,12 +1237,14 @@ salt_checkin() {
 				sleep 5;
 				systemctl restart salt-minion;
 				sleep 15;
+				echo " Confirming existence of the CA certificate"
+				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
 				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
+				echo " Confirming salt mine now contain the certificate"
+				salt \* mine.get \* x509.get_pem_entries
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
-				echo " Confirming mine contents"
-				salt \* mine.get \* x509.get_pem_entries
 			} >> "$setup_log" 2>&1
 			;;
 		*)
