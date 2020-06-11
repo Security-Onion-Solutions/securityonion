@@ -40,7 +40,7 @@ grafanadashmsdir:
     - group: 939
     - makedirs: True
 
-grafanadashmsdir:
+grafanadashsadir:
   file.directory:
     - name: /opt/so/conf/grafana/grafana_dashboards/standalone
     - user: 939
@@ -103,7 +103,7 @@ dashboard-master:
 {% for SN, SNDATA in salt['pillar.get']('mastersearchtab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-master:
+dashboard-mastersearch:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch/{{ SN }}-MasterSearch.json
     - user: 939
@@ -126,7 +126,7 @@ dashboard-master:
 {% for SN, SNDATA in salt['pillar.get']('standalonetab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-master:
+dashboard-standalone:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/standalone/{{ SN }}-Standalone.json
     - user: 939
