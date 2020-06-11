@@ -52,8 +52,9 @@ wazuhdir:
    - group: 945
    - recurse:
      - group
+     - user
 
-wazuhdir:
+wazuhdirfirewall:
  file.directory:
    - name: /opt/so/wazuh/logs/firewall
    - user: 945
