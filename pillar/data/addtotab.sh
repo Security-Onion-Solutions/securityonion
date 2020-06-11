@@ -47,7 +47,7 @@ if [ $TYPE == 'sensorstab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
   salt-call state.apply grafana queue=True
 fi
-if [ $TYPE == 'evaltab' ]; then
+if [ $TYPE == 'evaltab' ] || [ $TYPE == 'standalonetab' ]; then
   echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
   if [ ! $10 ]; then
     salt-call state.apply grafana queue=True
