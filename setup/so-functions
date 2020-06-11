@@ -1368,19 +1368,20 @@ set_initial_firewall_policy() {
   set_main_ip
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
-  if [ -f $default_salt_dir/pillar/firewall/addfirewall.sh ]; then chmod +x $default_salt_dir/pillar/firewall/addfirewall.sh; fi
+  if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
 
 	case "$install_type" in
 		'MASTER')
-			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls $local_salt_dir/pillar/firewall/masterfw.sls
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			$default_salt_dir/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
 		'EVAL' | 'MASTERSEARCH' | 'STANDALONE')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
-                $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-                $default_salt_dir/salt/common/tools/sbin/so-firewall includehost search_node "$MAINIP"
-				salt-call -l info  state.apply firewall >> $setup_log 2>&1
-			
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall includehost search_node "$MAINIP"
+		
 			case "$install_type" in 
 				'EVAL')
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0 True
@@ -1391,24 +1392,24 @@ set_initial_firewall_policy() {
 			esac
 			;;
 		'HELIXSENSOR')
-			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
-				$local_salt_dir/pillar/firewall/masterfw.sls\
-				$local_salt_dir/pillar/firewall/forward_nodes.sls
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh minions "$MAINIP"
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					;;
 				'SEARCHNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost search_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'HEAVYNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost search_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
@@ -1488,7 +1489,7 @@ update_sudoers() {
 	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
 		# Update Sudoers so that soremote can accept keys without a password
 		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
+		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/common/tools/sbin/so-firewall" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else

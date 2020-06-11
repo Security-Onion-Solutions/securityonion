@@ -14,7 +14,6 @@ base:
 
   '*_sensor':
     - static
-    - firewall.*
     - brologs
     - healthcheck.sensor
     - minions.{{ grains.id }}
@@ -22,7 +21,6 @@ base:
   '*_master or *_mastersearch':
     - match: compound
     - static
-    - firewall.*
     - data.*
     - secrets
     - minions.{{ grains.id }}
@@ -33,7 +31,6 @@ base:
 
   '*_eval':
     - static
-    - firewall.*
     - data.*
     - brologs
     - secrets
@@ -53,18 +50,15 @@ base:
 
   '*_node':
     - static
-    - firewall.*
     - minions.{{ grains.id }}
 
   '*_heavynode':
     - static
-    - firewall.*
     - brologs
     - minions.{{ grains.id }}
 
   '*_helix':
     - static
-    - firewall.*
     - fireeye
     - brologs
     - logstash
@@ -73,14 +67,12 @@ base:
 
   '*_fleet':
     - static
-    - firewall.*
     - data.*
     - secrets
     - minions.{{ grains.id }}
 
   '*_searchnode':
     - static
-    - firewall.*
     - logstash
     - logstash.search
     - minions.{{ grains.id }}
