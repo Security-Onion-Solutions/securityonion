@@ -9,18 +9,18 @@ import subprocess
 def run():
   MINIONID = data['id']
   ACTION = data['data']['action']
-  HOSTNAME = data['data']['hostname']
-  ROLE = data['data']['role']
-  ESECRET = data['data']['enroll-secret']
-  MAINIP = data['data']['mainip']
-  local_salt_dir = /opt/so/saltstack/local
-  STATICFILE = local_salt_dir + '/pillar/static.sls'
-  SECRETSFILE = local_salt_dir + '/pillar/secrets.sls'
+  LOCAL_SALT_DIR = "/opt/so/saltstack/local"
+  STATICFILE = f"{LOCAL_SALT_DIR}/pillar/static.sls"  
+  SECRETSFILE = f"{LOCAL_SALT_DIR}/pillar/secrets.sls"
 
-  if MINIONID.split('_')[-1] in ['master','eval','fleet','mastersearch']:
-    
+  if MINIONID.split('_')[-1] in ['master','eval','fleet','mastersearch','standalone']:
     if ACTION == 'enablefleet':
       logging.info('so/fleet enablefleet reactor')
+
+      ESECRET = data['data']['enroll-secret']
+      MAINIP = data['data']['mainip']
+      ROLE = data['data']['role']
+      HOSTNAME = data['data']['hostname']
 
       # Enable Fleet
       for line in fileinput.input(STATICFILE, inplace=True):
@@ -49,15 +49,18 @@ def run():
       logging.info('so/fleet genpackages reactor')
 
       PACKAGEVERSION = data['data']['current-package-version']
+      PACKAGEHOSTNAME = data['data']['package-hostname']
       MASTER = data['data']['master']
+      VERSION = data['data']['version']
+      ESECRET = data['data']['enroll-secret']
       
       # Increment the package version by 1
       PACKAGEVERSION += 1
 
       # Run Docker container that will build the packages
-      gen_packages = subprocess.run(["docker", "run","--rm", "--mount", "type=bind,source=" + local_salt_dir + "/salt/fleet/packages,target=/output", \
-         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:HH1.3.0", \
-         f"{ESECRET}", f"{HOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
+      gen_packages = subprocess.run(["docker", "run","--rm", "--mount", f"type=bind,source={LOCAL_SALT_DIR}/salt/fleet/packages,target=/output", \
+         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:{ VERSION }", \
+         f"{ESECRET}", f"{PACKAGEHOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
       for line in fileinput.input(STATICFILE, inplace=True):
@@ -70,6 +73,16 @@ def run():
         print(line)
 
       # Copy over newly-built packages
-      copy_packages = subprocess.run(["salt-call", "state.apply","fleet"], stdout=subprocess.PIPE, encoding='ascii')      
+      copy_packages = subprocess.run(["salt-call", "state.apply","fleet"], stdout=subprocess.PIPE, encoding='ascii')    
+
+    if ACTION == 'update_custom_hostname':
+      logging.info('so/fleet update_custom_hostname reactor')
+
+      CUSTOMHOSTNAME = data['data']['custom_hostname']
+      
+        # Update the Fleet host in the static pillar
+      for line in fileinput.input(STATICFILE, inplace=True):
+        line = re.sub(r'fleet_custom_hostname: \S*', f"fleet_custom_hostname: {CUSTOMHOSTNAME}", line.rstrip())
+        print(line)  
 
   return {}
