@@ -5,6 +5,7 @@
 create_sysconfig_iptables:
   file.touch:
     - name: /etc/sysconfig/iptables
+    - makedirs: True
     - unless: 'ls /etc/sysconfig/iptables'
 
 # Quick Fix for Docker being difficult
