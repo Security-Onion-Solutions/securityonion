@@ -1,4 +1,4 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
+{%- set BROVER = salt['pillar.get']('static:broversion', '') -%}
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
