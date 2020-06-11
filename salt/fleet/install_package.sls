@@ -4,7 +4,7 @@
 {%- set FLEETIP = salt['pillar.get']('static:fleet_ip', False) -%}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
-{% if CUSTOM_FLEET_HOSTNAME != None or CUSTOM_FLEET_HOSTNAME != '' %}
+{% if CUSTOM_FLEET_HOSTNAME != (None and '') %}
 
 {{ CUSTOM_FLEET_HOSTNAME }}:
   host.present:
