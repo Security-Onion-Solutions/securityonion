@@ -37,12 +37,6 @@ ossec:
     - allow_uid_change: True
     - allow_gid_change: True
 
-#wazuhdir:
-#  file.directory:
-#    - name: /opt/so/conf/wazuh
-#    - user: 945
-#    - group: 945
-
 wazuhpkgs:
   pkg.installed:
     - skip_suggestions: False
@@ -50,6 +44,13 @@ wazuhpkgs:
       - wazuh-agent: 3.10.2-1
     - hold: True
     - update_holds: True
+
+wazuhdir:
+ file.directory:
+   - name: /opt/so/wazuh
+   - group: 945
+   - recurse:
+     - group
 
 # Add Wazuh agent conf
 wazuhagentconf:
