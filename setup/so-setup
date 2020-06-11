@@ -52,6 +52,10 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 automated=no
 function progress() {
 	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
+		if [[ -s /var/spool/mail/root ]]; then 
+			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
+		fi
+
 		if [[ $automated == no ]]; then whiptail_setup_failed; else exit 1; fi
 
 		if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit 1; fi
