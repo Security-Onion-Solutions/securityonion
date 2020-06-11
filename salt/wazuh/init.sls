@@ -48,9 +48,16 @@ wazuhpkgs:
 wazuhdir:
  file.directory:
    - name: /opt/so/wazuh
+   - user: 945
    - group: 945
    - recurse:
      - group
+
+wazuhdir:
+ file.directory:
+   - name: /opt/so/wazuh/logs/firewall
+   - user: 945
+   - group: 945
 
 # Add Wazuh agent conf
 wazuhagentconf:
