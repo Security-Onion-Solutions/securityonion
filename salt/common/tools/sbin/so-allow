@@ -45,9 +45,22 @@ do
             SKIP=1
             ;;
         w)
-            FULLROLE="wazuh_endpoint"
+            FULLROLE="wazuh_agent"
             SKIP=1
             ;;
+        s)
+            FULLROLE="syslog"
+            SKIP=1
+            ;;
+        p)
+            FULLROLE="wazuh_api"
+            SKIP=1
+            ;;
+        r)
+            FULLROLE="wazuh_authd"
+            SKIP=1
+            ;;
+
     esac
 done
 
@@ -60,8 +73,10 @@ if [ "$SKIP" -eq 0 ]; then
     echo "[a] - Analyst - ports 80/tcp and 443/tcp"
     echo "[b] - Logstash Beat - port 5044/tcp"
     echo "[o] - Osquery endpoint - port 8090/tcp"
-    echo "[w] - Wazuh endpoint - port 1514"
-    echo ""
+    echo "[s] - Syslog device - 514/tcp/udp"
+    echo "[w] - Wazuh agent - port 1514/tcp/udp"
+    echo "[p] - Wazuh API - port 55000/tcp"
+    echo "[r] - Wazuh registration service - 1515/tcp"
     echo "Please enter your selection (a - analyst, b - beats, o - osquery, w - wazuh):"
     read ROLE
     echo "Enter a single ip address or range to allow (example: 10.10.10.10 or 10.10.0.0/16):"
@@ -74,7 +89,13 @@ if [ "$SKIP" -eq 0 ]; then
     elif [ "$ROLE" == "o" ]; then
         FULLROLE=osquery_endpoint
     elif [ "$ROLE" == "w" ]; then
-        FULLROLE=wazuh_endpoint
+        FULLROLE=wazuh_agent
+    elif [ "$ROLE" == "s" ]; then
+        FULLROLE=syslog
+    elif [ "$ROLE" == "p" ]; then
+        FULLROLE=wazuh_api
+    elif [ "$ROLE" == "r" ]; then
+        FULLROLE=wazuh_authd
     else
         echo "I don't recognize that role"
         exit 1
