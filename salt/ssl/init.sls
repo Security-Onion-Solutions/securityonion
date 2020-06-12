@@ -13,7 +13,7 @@
 {% else %}
     {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
-      {% if 'master' in host.split('_')|last %}
+      {% if 'master' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
         {% do global_ca_server.append(host) %}
       {% endif %}
