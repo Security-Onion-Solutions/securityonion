@@ -50,15 +50,81 @@ wazuhdir:
    - name: /opt/so/wazuh
    - user: 945
    - group: 945
+   - makedirs: True
+
+wazuhdirlogs:
+ file.directory:
+   - name: /opt/so/wazuh/logs
+   - user: 945
+   - group: 945
+   - makedirs: True
    - recurse:
      - group
      - user
 
-wazuhdirfirewall:
+wazuhdiretc:
+ file.directory:
+   - name: /opt/so/wazuh/etc
+   - user: 945
+   - group: 945
+   - makedirs: True
+   - recurse:
+     - group
+     - user
+
+wazuhdirqueue:
+ file.directory:
+   - name: /opt/so/wazuh/queue
+   - user: 945
+   - group: 945
+   - makedirs: True
+   - recurse:
+     - group
+     - user
+
+wazuhdirruleset:
+ file.directory:
+   - name: /opt/so/wazuh/ruleset
+   - user: 945
+   - group: 945
+   - makedirs: True
+   - recurse:
+     - group
+     - user
+
+wazuhdirstats:
+ file.directory:
+   - name: /opt/so/wazuh/stats
+   - user: 945
+   - group: 945
+   - makedirs: True
+   - recurse:
+     - group
+     - user
+
+wazuhdirvar:
+ file.directory:
+   - name: /opt/so/wazuh/var
+   - user: 945
+   - group: 945
+   - makedirs: True
+   - recurse:
+     - group
+     - user
+
+wazuhdirlogsfirewall:
  file.directory:
    - name: /opt/so/wazuh/logs/firewall
    - user: 945
    - group: 945
+   - makedirs: True
+
+wazuhdirlogsossec:
+ file.directory:
+   - name: /opt/so/wazuh/logs/ossec
+   - user: 945
+   - group: 945
+   - makedirs: True
 
 # Add Wazuh agent conf
 wazuhagentconf:
