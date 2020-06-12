@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import subprocess
 import sys
 import yaml
 
@@ -23,7 +24,10 @@ portgroupsFilename = "/opt/so/saltstack/local/salt/firewall/portgroups.local.yam
 supportedProtocols = ['tcp', 'udp']
 
 def showUsage(args):
-  print('Usage: {} <COMMAND> [ARGS...]'.format(sys.argv[0]))
+  print('Usage: {} [OPTIONS] <COMMAND> [ARGS...]'.format(sys.argv[0]))
+  print('  Options:')
+  print('   --apply       - After updating the firewall configuration files, apply the new firewall state')
+  print('')
   print('  Available commands:')
   print('   help          - Prints this usage information.')
   print('   includedhosts - Lists the IPs included in the given group. Args: <GROUP_NAME>')
@@ -259,8 +263,18 @@ def removehost(args):
     showUsage(args)
   return removeIp(args[0], args[1], 'delete')
 
+def apply():
+  proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
+  return proc.returncode
+
 def main():
+  options = []
   args = sys.argv[1:]
+  for option in args:
+    if option.startswith("--"):
+      options.append(option)
+      args.remove(option)
+
   if len(args) == 0:
     showUsage(None)
 
@@ -280,6 +294,11 @@ def main():
   
   cmd = commands.get(args[0], showUsage)
   code = cmd(args[1:])
+
+
+  if code == 0 and "--apply" in options:
+    code = apply()
+
   sys.exit(code)
 
 if __name__ == "__main__":
