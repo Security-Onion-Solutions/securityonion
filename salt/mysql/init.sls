@@ -20,7 +20,7 @@ mysqlpkgs:
       {% if grains['os'] != 'CentOS' %}
       - python-mysqldb
       {% else %}
-      - MySQL-python
+      - mysql-python
       {% endif %}
 
 mysqletcdir:
