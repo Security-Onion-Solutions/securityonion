@@ -223,18 +223,17 @@ check_network_manager_conf() {
 	local nmconf="/etc/NetworkManager/NetworkManager.conf"
 	local preupdir="/etc/NetworkManager/dispatcher.d/pre-up.d"
 
-	if test -f "$gmdconf"; then
-		if ! test -f "${gmdconf}.bak"; then
-			{
-				mv "$gmdconf" "${gmdconf}.bak"
-				touch "$gmdconf"
-				systemctl restart NetworkManager
-			} >> "$setup_log" 2>&1
-		fi
+	if test -f "$gmdconf" && ! test -f "${gmdconf}.bak"; then
+		{
+			mv "$gmdconf" "${gmdconf}.bak"
+			touch "$gmdconf"
+			systemctl restart NetworkManager
+		} >> "$setup_log" 2>&1
 	fi
 	
 	if test -f "$nmconf"; then
 		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
+		systemctl restart NetworkManager >> "$setup_log" 2>&1
 	fi
 
 	if [[ ! -d "$preupdir" ]]; then
@@ -1239,8 +1238,9 @@ salt_checkin() {
 				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
 				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
-				echo " Confirming salt mine now contain the certificate"
-				salt \* mine.get \* x509.get_pem_entries
+				salt '*' mine.update;
+				echo " Confirming salt mine now contain the certificate";
+				salt '*' mine.get '*' x509.get_pem_entries;
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
