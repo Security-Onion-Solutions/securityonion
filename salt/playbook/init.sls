@@ -1,7 +1,7 @@
 {% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 {% set MASTER = salt['grains.get']('master') %}
-{% set MAINIP = salt['pillar.get']('node:mainip') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('master:mainint', salt['pillar.get']('node:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
 
@@ -86,15 +86,22 @@ so-playbook:
 
 {% endif %}
 
+playbooklogdir:
+  file.directory:
+    - name: /opt/so/log/playbook
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-playbooksynccron:
   cron.present:
-    - name: /usr/sbin/so-playbook-sync
+    - name: /usr/sbin/so-playbook-sync > /opt/so/log/playbook/sync.log 2>&1
     - user: root
     - minute: '*/5'
 
 so-playbookruleupdatecron:
   cron.present:
-    - name: /usr/sbin/so-playbook-ruleupdate
+    - name: /usr/sbin/so-playbook-ruleupdate > /opt/so/log/playbook/update.log 2>&1
     - user: root
     - minute: '1'
     - hour: '6'

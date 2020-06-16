@@ -1,4 +1,4 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') -%}
+{%- set BROVER = salt['pillar.get']('static:broversion', '') -%}
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
@@ -30,6 +30,7 @@ base:
     - telegraf
     - firewall
     - idstools
+    - suricata.master
     - pcap
     - suricata
     - zeek
@@ -73,6 +74,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master
     - healthcheck
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -84,7 +86,9 @@ base:
     - kibana
     - pcap
     - suricata
+    {%- if BROVER != 'SURICATA' %}
     - zeek
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -100,7 +104,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -129,6 +133,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -149,10 +154,13 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- endif %}
+    {%- if NAVIGATOR != 0 %}
+    - navigator
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
@@ -174,6 +182,7 @@ base:
     - soc
     - firewall
     - idstools
+    - suricata.master    
     - healthcheck
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
@@ -187,7 +196,9 @@ base:
     - kibana
     - pcap
     - suricata
+    {%- if BROVER != 'SURICATA' %}
     - zeek
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -203,7 +214,7 @@ base:
     - schedule
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -256,6 +267,7 @@ base:
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
@@ -297,6 +309,7 @@ base:
     - firewall
     - master
     - idstools
+    - suricata.master
     - redis
     {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
@@ -318,7 +331,7 @@ base:
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
-    - hive
+    - thehive
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook

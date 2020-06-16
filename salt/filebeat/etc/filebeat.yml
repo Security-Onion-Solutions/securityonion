@@ -75,6 +75,32 @@ filebeat.modules:
 filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
 {%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" or grains['role'] == "so-heavynode" or grains['role'] == "so-standalone" %}
+
+  - type: udp
+    enabled: true
+    host: "0.0.0.0:514"
+    fields:
+      module: syslog
+      dataset: syslog
+    pipeline: "syslog"
+    index: "so-syslog-%{+yyyy.MM.dd}"
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+    fields_under_root: true
+
+  - type: tcp
+    enabled: true
+    host: "0.0.0.0:514"
+    fields:
+      module: syslog
+      dataset: syslog
+    pipeline: "syslog"
+    index: "so-syslog-%{+yyyy.MM.dd}"
+    processors:
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+    fields_under_root: true
 {%- if BROVER != 'SURICATA' %}
 {%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
   - type: log
@@ -97,10 +123,10 @@ filebeat.inputs:
 
   - type: log
     paths:
-      - /suricata/eve.json
+      - /suricata/eve*.json
     fields:
       module: suricata
-      dataset: alert
+      dataset: common
       category: network
 
     processors:

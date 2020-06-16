@@ -40,6 +40,13 @@ grafanadashmsdir:
     - group: 939
     - makedirs: True
 
+grafanadashsadir:
+  file.directory:
+    - name: /opt/so/conf/grafana/grafana_dashboards/standalone
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 grafanadashevaldir:
   file.directory:
     - name: /opt/so/conf/grafana/grafana_dashboards/eval
@@ -96,13 +103,36 @@ dashboard-master:
 {% for SN, SNDATA in salt['pillar.get']('mastersearchtab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-master:
+dashboard-mastersearch:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch/{{ SN }}-MasterSearch.json
     - user: 939
     - group: 939
     - template: jinja
     - source: salt://grafana/dashboards/mastersearch/mastersearch.json
+    - defaults:
+      SERVERNAME: {{ SN }}
+      MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.manint }}
+      CPUS: {{ SNDATA.totalcpus }}
+      UID: {{ SNDATA.guid }}
+      ROOTFS: {{ SNDATA.rootfs }}
+      NSMFS: {{ SNDATA.nsmfs }}
+
+{% endfor %}
+{% endif %}
+
+{% if salt['pillar.get']('standalonetab', False) %}
+{% for SN, SNDATA in salt['pillar.get']('standalonetab', {}).items() %}
+{% set NODETYPE = SN.split('_')|last %}
+{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
+dashboard-standalone:
+  file.managed:
+    - name: /opt/so/conf/grafana/grafana_dashboards/standalone/{{ SN }}-Standalone.json
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/dashboards/standalone/standalone.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}

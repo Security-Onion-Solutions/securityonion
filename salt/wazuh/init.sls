@@ -37,12 +37,6 @@ ossec:
     - allow_uid_change: True
     - allow_gid_change: True
 
-#wazuhdir:
-#  file.directory:
-#    - name: /opt/so/conf/wazuh
-#    - user: 945
-#    - group: 945
-
 wazuhpkgs:
   pkg.installed:
     - skip_suggestions: False
@@ -50,6 +44,13 @@ wazuhpkgs:
       - wazuh-agent: 3.10.2-1
     - hold: True
     - update_holds: True
+
+wazuhdir:
+ file.directory:
+   - name: /opt/so/wazuh
+   - user: 945
+   - group: 945
+   - makedirs: True
 
 # Add Wazuh agent conf
 wazuhagentconf:
@@ -80,11 +81,6 @@ wazuhmgrwhitelist:
     - mode: 755
     - template: jinja
 
-wazuhagentservice:
-  service.running:
-    - name: wazuh-agent
-    - enable: True
-
 so-wazuh:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:{{ VERSION }}
@@ -110,3 +106,8 @@ whitelistmanager:
   cmd.run:
     - name: /usr/sbin/wazuh-manager-whitelist
     - cwd: /
+
+wazuhagentservice:
+  service.running:
+    - name: wazuh-agent
+    - enable: True

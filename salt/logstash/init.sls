@@ -198,7 +198,7 @@ so-logstash:
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
-      - /opt/so/log/suricata:/suricata:ro
+      - /nsm/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro

@@ -1,9 +1,11 @@
 {% set master = salt['grains.get']('master') %}
 {% set masterip = salt['pillar.get']('static:masterip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
-{% set MAINIP = salt['pillar.get']('node:mainip') %}
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
+{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
 {% if grains.id.split('_')|last in ['master', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
@@ -11,7 +13,7 @@
 {% else %}
     {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
-      {% if 'master' in host.split('_')|last %}
+      {% if 'master' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
         {% do global_ca_server.append(host) %}
       {% endif %}
@@ -84,17 +86,17 @@ chownilogstashfilebeatp8:
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
-    - name: /opt/so/saltstack/salt/filebeat/files
-    - mkdirs: True
+    - name: /opt/so/saltstack/local/salt/filebeat/files
+    - makedirs: True
 
 fbkeylink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.p8
+    - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.p8
     - target: /etc/pki/filebeat.p8
 
 fbcrtlink:
   file.symlink:
-    - name: /opt/so/saltstack/salt/filebeat/files/filebeat.crt
+    - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.crt
     - target: /etc/pki/filebeat.crt
 
 # Create a cert for the docker registry
@@ -200,6 +202,7 @@ chownfilebeatp8:
     - signing_policy: masterssl
     - public_key: /etc/pki/masterssl.key
     - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -222,7 +225,7 @@ chownfilebeatp8:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True

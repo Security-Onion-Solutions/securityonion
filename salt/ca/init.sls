@@ -44,5 +44,3 @@ send_x509_pem_entries_to_mine:
     - mine.send:
       - func: x509.get_pem_entries
       - glob_path: /etc/pki/ca.crt
-    - onchanges:
-      - x509: /etc/pki/ca.crt
