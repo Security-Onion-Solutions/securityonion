@@ -44,6 +44,20 @@ cortexconf:
     - user: 939
     - group: 939
     - template: jinja
+i
+cortexanalyzers:
+  file.directory:
+    - name: /opt/so/conf/cortex/custom-analyzers
+    - user: 939
+    - group: 939
+    - template: jinja
+
+cortexresponders:
+  file.directory:
+    - name: /opt/so/conf/cortex/custom-responders
+    - user: 939
+    - group: 939
+    - template: jinja
 
 # Install Elasticsearch
 
@@ -91,7 +105,9 @@ so-cortex:
     - user: 939
     - binds:
       - /opt/so/conf/thehive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
-    - port_bindings:
+      - /opt/so/conf/cortex/custom-analyzers:/custom-analyzers:ro
+      - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
+   - port_bindings:
       - 0.0.0.0:9001:9001
 
 cortexscript:
