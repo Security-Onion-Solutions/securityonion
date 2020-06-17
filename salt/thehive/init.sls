@@ -107,7 +107,7 @@ so-cortex:
       - /opt/so/conf/thehive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
       - /opt/so/conf/cortex/custom-analyzers:/custom-analyzers:ro
       - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
-   - port_bindings:
+    - port_bindings:
       - 0.0.0.0:9001:9001
 
 cortexscript:
