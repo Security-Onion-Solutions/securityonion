@@ -44,7 +44,7 @@ cortexconf:
     - user: 939
     - group: 939
     - template: jinja
-i
+
 cortexanalyzers:
   file.directory:
     - name: /opt/so/conf/cortex/custom-analyzers
