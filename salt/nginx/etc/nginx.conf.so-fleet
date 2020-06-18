@@ -1,4 +1,6 @@
-{%- set MAINIP = salt['pillar.get']('node:mainip', '') %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
+
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -83,7 +85,7 @@ http {
           proxy_set_header      X-Real-IP $remote_addr;
           proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header      Proxy "";
-
+          proxy_set_header      X-Forwarded-Proto $scheme;
         }
 
         #error_page 404 /404.html;

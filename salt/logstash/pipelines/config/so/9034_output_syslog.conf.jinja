@@ -3,24 +3,21 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('node:mainip', '') -%}
 {%- endif %}
-# Author: Justin Henderson
-#         SANS Instructor and author of SANS SEC555: SIEM and Tactical Analytics
-# Updated by: Doug Burks
-# Last Update: 5/15/2017
 
 filter {
-  if "syslog" in [tags] and "test_data" not in [tags] {
+  if [module] =~ "syslog" {
     mutate {
-	  ##add_tag => [ "conf_file_9034"]
-	}
+          ##add_tag => [ "conf_file_9000"]
+        }
   }
 }
 output {
-  if "syslog" in [tags] and "test_data" not in [tags] {
+  if [module] =~ "syslog" {
     elasticsearch {
+      pipeline => "%{module}"
       hosts => "{{ ES }}"
       index => "so-syslog-%{+YYYY.MM.dd}"
-      template_name => "logstash"
+      template_name => "so-common"
       template => "/so-common-template.json"
       template_overwrite => true
     }

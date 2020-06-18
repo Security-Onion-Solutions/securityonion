@@ -19,7 +19,7 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
-SOVERSION=1.4.0
+SOVERSION=$(cat ../VERSION)
 
 accept_salt_key_remote() {
 	systemctl restart salt-minion
@@ -60,7 +60,7 @@ addtotab_generate_templates() {
 
 	local addtotab_path=$local_salt_dir/pillar/data
 
-	for i in evaltab mastersearchtab mastertab nodestab sensorstab; do
+	for i in evaltab mastersearchtab mastertab nodestab sensorstab standalonetab; do
 		printf '%s\n'\
 		"$i:"\
 		"" > "$addtotab_path"/$i.sls
@@ -223,18 +223,17 @@ check_network_manager_conf() {
 	local nmconf="/etc/NetworkManager/NetworkManager.conf"
 	local preupdir="/etc/NetworkManager/dispatcher.d/pre-up.d"
 
-	if test -f "$gmdconf"; then
-		if ! test -f "${gmdconf}.bak"; then
-			{
-				mv "$gmdconf" "${gmdconf}.bak"
-				touch "$gmdconf"
-				systemctl restart NetworkManager
-			} >> "$setup_log" 2>&1
-		fi
+	if test -f "$gmdconf" && ! test -f "${gmdconf}.bak"; then
+		{
+			mv "$gmdconf" "${gmdconf}.bak"
+			touch "$gmdconf"
+			systemctl restart NetworkManager
+		} >> "$setup_log" 2>&1
 	fi
 	
 	if test -f "$nmconf"; then
 		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
+		systemctl restart NetworkManager >> "$setup_log" 2>&1
 	fi
 
 	if [[ ! -d "$preupdir" ]]; then
@@ -256,6 +255,10 @@ check_pass_match() {
 
 check_soremote_pass() {
 	check_pass_match "$SOREMOTEPASS1" "$SOREMOTEPASS2" "SCMATCH"
+}
+
+check_fleet_node_pass() {
+	check_pass_match "$FLEETNODEPASSWD1" "$FLEETNODEPASSWD2" "FPMATCH"
 }
 
 check_web_pass() {
@@ -292,6 +295,30 @@ collect_adminuser_inputs() {
 		whiptail_create_admin_user_password1
 		whiptail_create_admin_user_password2
 		check_admin_pass
+	done
+}
+
+collect_fleet_custom_hostname_inputs() {
+	whiptail_fleet_custom_hostname
+}
+
+collect_fleetuser_inputs() {
+	# Get a username & password for the Fleet admin user
+	local valid_user=no
+	while [[ $valid_user != yes ]]; do
+		whiptail_create_fleet_node_user		
+		if so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; then
+			valid_user=yes
+		else
+			whiptail_invalid_user_warning
+		fi
+	done
+
+	FPMATCH=no
+	while [[ $FPMATCH != yes ]]; do
+		whiptail_create_fleet_node_user_password1
+		whiptail_create_fleet_node_user_password2
+		check_fleet_node_pass
 	done
 }
 
@@ -390,6 +417,7 @@ check_requirements() {
 		req_mem=8
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
+		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
 
 	if [[ $num_nics -lt $req_nics ]]; then
@@ -585,14 +613,18 @@ disable_misc_network_features() {
 	filter_unused_nics
 	if [ ${#filtered_nics[@]} -ne 0 ]; then
 		for unused_nic in "${filtered_nics[@]}"; do
-			# Disable DHCPv4/v6 and autoconnect
-			nmcli con mod "$unused_nic" \
-				ipv4.method disabled \
-				ipv6.method ignore \
-				connection.autoconnect "no" >> "$setup_log" 2>&1
+			if [ -n "$unused_nic" ]; then
+				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
 
-			# Flush any existing IPs
-			ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+				# Disable DHCPv4/v6 and autoconnect
+				nmcli con mod "$unused_nic" \
+					ipv4.method disabled \
+					ipv6.method ignore \
+					connection.autoconnect "no" >> "$setup_log" 2>&1
+
+				# Flush any existing IPs
+				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+			fi
 		done
 	fi
 	# Disable IPv6
@@ -609,9 +641,9 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			yum -y install docker-ce-19.03.9-3.el7 containerd.io-1.2.6-3.el7;
-			yum versionlock docker-ce-19.03.9-3.el7;
-			yum versionlock containerd.io-1.2.6-3.el7
+			yum -y install docker-ce-19.03.11-3.el7 containerd.io-1.2.13-3.2.el7;
+			yum versionlock docker-ce-19.03.11-3.el7;
+			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
 		
 	else
@@ -657,7 +689,7 @@ docker_registry() {
 }
 
 docker_seed_registry() {
-	local VERSION="HH$SOVERSION"
+	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
 		local TRUSTED_CONTAINERS=(\
@@ -741,17 +773,15 @@ fireeye_pillar() {
 # Generate Firewall Templates
 firewall_generate_templates() {
 
-	local firewall_pillar_path=$local_salt_dir/pillar/firewall
+	local firewall_pillar_path=$local_salt_dir/salt/firewall
 	mkdir -p "$firewall_pillar_path"
+   
+    cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-	for i in analyst beats_endpoint forward_nodes masterfw minions osquery_endpoint search_nodes wazuh_endpoint
-	do
-	  printf '%s\n'\
-	  "$i:"\
-	  "  - 127.0.0.1"\
-	  "" > "$firewall_pillar_path"/$i.sls
-	  echo "Added $i Template"
+    for i in analyst beats_endpoint sensor master minion osquery_endpoint search_node wazuh_endpoint; do
+	  $default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
+
 }
 
 fleet_pillar() {
@@ -810,6 +840,17 @@ get_minion_type() {
 			;;
 	esac
 	echo "$minion_type"
+}
+
+host_pillar() {
+
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	# Create the host pillar
+	printf '%s\n'\
+		"host:"\
+		"  mainint: $MNIC"\
+		"" > "$pillar_file"
 }
 
 install_cleanup() {
@@ -888,7 +929,7 @@ master_static() {
 	# Create a static file for global values
 	printf '%s\n'\
 		"static:"\
-		"  soversion: HH$SOVERSION"\
+		"  soversion: $SOVERSION"\
 		"  hnmaster: $HNMASTER"\
 		"  ntpserver: $NTPSERVER"\
 		"  proxy: $PROXY"\
@@ -904,6 +945,7 @@ master_static() {
 		"  cortexorgname: SecurityOnion"\
 		"  cortexorguser: soadmin"\
 		"  cortexorguserkey: $CORTEXORGUSERKEY"\
+		"  fleet_custom_hostname: "\
 		"  fleet_master: False"\
 		"  fleet_node: False"\
 		"  fleet_packages-timestamp: N/A"\
@@ -1192,8 +1234,13 @@ salt_checkin() {
 				sleep 5;
 				systemctl restart salt-minion;
 				sleep 15;
+				echo " Confirming existence of the CA certificate"
+				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
 				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
+				salt '*' mine.update;
+				echo " Confirming salt mine now contain the certificate";
+				salt '*' mine.get '*' x509.get_pem_entries;
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
@@ -1213,7 +1260,7 @@ salt_checkin() {
 
 # Run a salt command to generate the minion key
 salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null # send output to /dev/null because we don't actually care about the ouput
+	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
 }
 
 set_base_heapsizes() {
@@ -1366,18 +1413,19 @@ set_initial_firewall_policy() {
   set_main_ip
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
-  if [ -f $default_salt_dir/pillar/firewall/addfirewall.sh ]; then chmod +x $default_salt_dir/pillar/firewall/addfirewall.sh; fi
+  if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
 
 	case "$install_type" in
 		'MASTER')
-			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls $local_salt_dir/pillar/firewall/masterfw.sls
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost minion "$MAINIP"
 			$default_salt_dir/pillar/data/addtotab.sh mastertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
-		'EVAL' | 'MASTERSEARCH')
-			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
-				$local_salt_dir/pillar/firewall/masterfw.sls\
-				$local_salt_dir/pillar/firewall/forward_nodes.sls\
-				$local_salt_dir/pillar/firewall/search_nodes.sls
+		'EVAL' | 'MASTERSEARCH' | 'STANDALONE')
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
 			case "$install_type" in 
 				'EVAL')
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0 True
@@ -1385,29 +1433,35 @@ set_initial_firewall_policy() {
 				'MASTERSEARCH')
 					$default_salt_dir/pillar/data/addtotab.sh mastersearchtab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
+				'STANDALONE')
+					$default_salt_dir/pillar/data/addtotab.sh standalonetab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
+					;;
 			esac
 			;;
 		'HELIXSENSOR')
-			printf "  - %s\n" "$MAINIP" | tee -a $local_salt_dir/pillar/firewall/minions.sls\
-				$local_salt_dir/pillar/firewall/masterfw.sls\
-				$local_salt_dir/pillar/firewall/forward_nodes.sls
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost master "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+            $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh minions "$MAINIP"
+			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					;;
 				'SEARCHNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'HEAVYNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh forward_nodes "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/firewall/addfirewall.sh search_nodes "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					;;
+				'FLEET')
+				    ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
 			esac
 			;;
@@ -1485,7 +1539,7 @@ update_sudoers() {
 	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
 		# Update Sudoers so that soremote can accept keys without a password
 		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/firewall/addfirewall.sh" | tee -a /etc/sudoers
+		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/common/tools/sbin/so-firewall" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/master/files/add_minion.sh" | tee -a /etc/sudoers
 	else

@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+got_root(){
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "This script must be run using sudo!"
+        exit 1
+    fi
+}
+
+master_check() {
+  # Check to see if this is a master
+  MASTERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [ $MASTERCHECK == 'so-eval' ] || [ $MASTERCHECK == 'so-master' ] || [ $MASTERCHECK == 'so-mastersearch' ] || [ $MASTERCHECK == 'so-standalone' ] || [ $MASTERCHECK == 'so-helix' ]; then
+    echo "This is a master. We can proceed"
+  else
+    echo "Please run soup on the master. The master controls all updates."
+    exit 1
+  fi
+}
+
+update_docker_containers() {
+  
+  # Download the containers from the interwebs
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    # Pull down the trusted docker image
+    echo "Downloading $i"
+    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    # Tag it with the new registry destination
+    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
+    docker push $HOSTNAME:5000/soshybridhunter/$i
+  done
+  
+}
+
+version_check() {
+  if [ -f /etc/soversion ]; then
+    VERSION=$(cat /etc/soversion)
+  else
+    echo "Unable to detect version. I will now terminate."
+    exit 1
+  fi
+}
+got_root
+master_check
+version_check
+
+# Use the hostname
+HOSTNAME=$(hostname)
+# List all the containers
+if [ $MASTERCHECK != 'so-helix' ]; then
+    TRUSTED_CONTAINERS=( \
+    "so-acng:$VERSION" \
+    "so-thehive-cortex:$VERSION" \
+    "so-curator:$VERSION" \
+    "so-domainstats:$VERSION" \
+    "so-elastalert$VERSION" \
+    "so-elasticsearch:$VERSION" \
+    "so-filebeat:$VERSION" \
+    "so-fleet:$VERSION" \
+    "so-fleet-launcher:$VERSION" \
+    "so-freqserver:$VERSION" \
+    "so-grafana:$VERSION" \
+    "so-idstools:$VERSION" \
+    "so-influxdb:$VERSION" \
+    "so-kibana:$VERSION" \
+    "so-kratos:$VERSION" \
+    "so-logstash:$VERSION" \
+    "so-mysql:$VERSION" \
+    "so-navigator:$VERSION" \
+    "so-nginx:$VERSION" \
+    "so-playbook:$VERSION" \
+    "so-redis:$VERSION" \
+    "so-soc:$VERSION" \
+    "so-soctopus:$VERSION" \
+    "so-steno:$VERSION" \
+    "so-strelka:$VERSION" \
+    "so-suricata:$VERSION" \
+    "so-telegraf:$VERSION" \
+    "so-thehive:$VERSION" \
+    "so-thehive-es:$VERSION" \
+    "so-wazuh:$VERSION" \
+    "so-zeek:$VERSION" )
+  else
+    TRUSTED_CONTAINERS=( \
+    "so-filebeat:$VERSION" \
+    "so-idstools:$VERSION" \
+    "so-logstash:$VERSION" \
+    "so-nginx:$VERSION" \
+    "so-redis:$VERSION" \
+    "so-steno:$VERSION" \
+    "so-suricata:$VERSION" \
+    "so-telegraf:$VERSION" \
+    "so-zeek:$VERSION" )
+  fi
+
+update_docker_containers
