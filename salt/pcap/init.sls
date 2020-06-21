@@ -31,21 +31,17 @@ stenographer:
     - gid: 941
     - home: /opt/so/conf/steno
 
-sensoronigroup:
-  group.present:
-    - name: sensoroni
-    - gid: 948
-
-sensoroni:
-  user.present:
-    - uid: 948
-    - gid: 948
-    - home: /opt/so/conf/steno
-
 stenoconfdir:
   file.directory:
     - name: /opt/so/conf/steno
     - user: 941
+    - group: 939
+    - makedirs: True
+
+sensoroniconfdir:
+  file.directory:
+    - name: /opt/so/conf/sensoroni
+    - user: 939
     - group: 939
     - makedirs: True
 
@@ -78,8 +74,8 @@ sensoroniagentconf:
   file.managed:
     - name: /opt/so/conf/sensoroni/sensoroni.json
     - source: salt://pcap/files/sensoroni.json
-    - user: sensoroni
-    - group: sensoroni
+    - user: 939
+    - group: 939
     - mode: 600
     - template: jinja
 
@@ -106,8 +102,8 @@ pcaptmpdir:
 pcapoutdir:
   file.directory:
     - name: /nsm/pcapout
-    - user: sensoroni
-    - group: sensoroni
+    - user: 939
+    - group: 939
     - makedirs: True
 
 pcapindexdir:
@@ -124,20 +120,20 @@ stenolog:
     - group: 941
     - makedirs: True
 
-pcap_network:
-  docker_network.present
+sensoronilog:
+  file.directory:
+    - name: /opt/so/log/sensoroni
+    - user: 939
+    - group: 939
+    - makedirs: True
 
 so-steno:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
     - network_mode: host
     - privileged: True
-    - networks:
-      - pcap_network:
-        - aliases:
-          - steno
-    - require:
-      - docker_network: pcap_network
+    - port_bindings:
+      - 127.0.0.1:1234:1234
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
@@ -151,12 +147,7 @@ so-steno:
 so-sensoroni:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-soc:{{ VERSION }}
-    - networks:
-      - pcap_network:
-        - aliases:
-          - sensoroni
-    - require:
-      - docker_network: pcap_network
+    - network_mode: host
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /nsm/pcapout:/nsm/pcapout:rw
