@@ -83,7 +83,7 @@ stenoca:
   file.directory:
     - name: /opt/so/conf/steno/certs
     - user: 941
-    - group: 941
+    - group: 939
 
 pcapdir:
   file.directory:
