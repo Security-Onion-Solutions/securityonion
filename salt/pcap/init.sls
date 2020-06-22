@@ -20,13 +20,11 @@
 
 # PCAP Section
 
-# Create the logstash group
 stenographergroup:
   group.present:
     - name: stenographer
     - gid: 941
 
-# Add the logstash user for the jog4j settings
 stenographer:
   user.present:
     - uid: 941
@@ -37,6 +35,13 @@ stenoconfdir:
   file.directory:
     - name: /opt/so/conf/steno
     - user: 941
+    - group: 939
+    - makedirs: True
+
+sensoroniconfdir:
+  file.directory:
+    - name: /opt/so/conf/sensoroni
+    - user: 939
     - group: 939
     - makedirs: True
 
@@ -58,8 +63,8 @@ stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
     - source: salt://pcap/files/config
-    - user: root
-    - group: root
+    - user: stenographer
+    - group: stenographer
     - mode: 644
     - template: jinja
     - defaults:
@@ -67,10 +72,10 @@ stenoconf:
 
 sensoroniagentconf:
   file.managed:
-    - name: /opt/so/conf/steno/sensoroni.json
+    - name: /opt/so/conf/sensoroni/sensoroni.json
     - source: salt://pcap/files/sensoroni.json
-    - user: stenographer
-    - group: stenographer
+    - user: 939
+    - group: 939
     - mode: 600
     - template: jinja
 
@@ -78,7 +83,7 @@ stenoca:
   file.directory:
     - name: /opt/so/conf/steno/certs
     - user: 941
-    - group: 941
+    - group: 939
 
 pcapdir:
   file.directory:
@@ -97,8 +102,8 @@ pcaptmpdir:
 pcapoutdir:
   file.directory:
     - name: /nsm/pcapout
-    - user: 941
-    - group: 941
+    - user: 939
+    - group: 939
     - makedirs: True
 
 pcapindexdir:
@@ -115,6 +120,13 @@ stenolog:
     - group: 941
     - makedirs: True
 
+sensoronilog:
+  file.directory:
+    - name: /opt/so/log/sensoroni
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-steno:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
@@ -128,10 +140,19 @@ so-steno:
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/pcapindex:/nsm/pcapindex:rw
       - /nsm/pcaptmp:/tmp:rw
-      - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
-      - /opt/so/conf/steno/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/stenographer:/opt/sensoroni/logs:rw
     - watch:
       - file: /opt/so/conf/steno/config
-      - file: /opt/so/conf/steno/sensoroni.json
+
+so-sensoroni:
+  docker_container.running:
+    - image: {{ MASTER }}:5000/soshybridhunter/so-soc:{{ VERSION }}
+    - network_mode: host
+    - binds:
+      - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
+      - /nsm/pcap:/nsm/pcap:rw
+      - /nsm/pcapout:/nsm/pcapout:rw
+      - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
+    - watch:
+      - file: /opt/so/conf/sensoroni/sensoroni.json
