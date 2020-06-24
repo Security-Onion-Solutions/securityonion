@@ -13,9 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
-. /usr/sbin/so-common
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.. /usr/sbin/so-common
 
 SKIP=0
 #########################################
@@ -50,7 +48,7 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        curl {{ MASTERIP }}:9200/_cat/indices?v&pretty
+        curl {{ MASTERIP }}:9200/_cat/indices?v
         echo
         # Inform user we are about to delete all data
         echo
@@ -63,18 +61,34 @@ if [ $SKIP -ne 1 ]; then
         if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
 fi
 
-/usr/sbin/so-filebeat-stop
-/usr/sbin/so-logstash-stop
+# Check to see if Logstash/Filebeat are running
+LS_ENABLED=$(so-status | grep logstash)
+FB_ENABLED=$(so-status | grep filebeat)
+
+if [ ! -z "$FB_ENABLED" ]; then
+        /usr/sbin/so-filebeat-stop
+
+elif [ ! -z "$LS_ENABLED" ]; then
+
+        /usr/sbin/so-logstash-stop
+fi
 
 # Delete data
 echo "Deleting data..."
 
-INDXS=$(curl -s -XGET {{ MASTERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert' | awk '{ print $3 }')
+INDXS=$(curl -s -XGET {{ MASTERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 for INDX in ${INDXS}
 do
     curl -XDELETE "{{ MASTERIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
-/usr/sbin/so-logstash-start
-/usr/sbin/so-filebeat-start
+#Start Logstash/Filebeat
+if [ ! -z "$FB_ENABLED" ]; then
+
+        /usr/sbin/so-filebeat-start
+
+elif [ ! -z "$LS_ENABLED" ]; then
+
+        /usr/sbin/so-logstash-start
+fi
 
