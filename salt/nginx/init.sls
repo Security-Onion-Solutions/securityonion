@@ -40,6 +40,15 @@ nginxtmp:
     - group: 939
     - makedirs: True
 
+navigatorconfig:
+  file.managed:
+    - name: /opt/so/conf/navigator/navigator_config.json
+    - source: salt://nginx/files/navigator_config.json
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - template: jinja
+
 so-nginx:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
@@ -52,6 +61,9 @@ so-nginx:
       - /etc/pki/masterssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/masterssl.key:/etc/pki/nginx/server.key:ro
       - /opt/so/conf/fleet/packages:/opt/socore/html/packages
+      # ATT&CK Navigator binds
+      - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
+      - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
