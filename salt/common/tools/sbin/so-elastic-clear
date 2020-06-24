@@ -14,6 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.. /usr/sbin/so-common
+{%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
+. /usr/sbin/so-common
 
 SKIP=0
 #########################################
@@ -64,13 +66,24 @@ fi
 # Check to see if Logstash/Filebeat are running
 LS_ENABLED=$(so-status | grep logstash)
 FB_ENABLED=$(so-status | grep filebeat)
+EA_ENABLED=$(so-status | grep elastalert)
 
 if [ ! -z "$FB_ENABLED" ]; then
+
         /usr/sbin/so-filebeat-stop
 
-elif [ ! -z "$LS_ENABLED" ]; then
+fi
+
+if [ ! -z "$LS_ENABLED" ]; then
 
         /usr/sbin/so-logstash-stop
+
+fi
+
+if [ ! -z "$EA_ENABLED" ]; then
+
+        /usr/sbin/so-elastalert-stop
+
 fi
 
 # Delete data
@@ -87,8 +100,17 @@ if [ ! -z "$FB_ENABLED" ]; then
 
         /usr/sbin/so-filebeat-start
 
-elif [ ! -z "$LS_ENABLED" ]; then
+fi
+
+if [ ! -z "$LS_ENABLED" ]; then
 
         /usr/sbin/so-logstash-start
+
+fi
+
+if [ ! -z "$EA_ENABLED" ]; then
+
+        /usr/sbin/so-elastalert-start
+
 fi
 
