@@ -15,6 +15,7 @@
 {%- set MASTER = grains['master'] %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{%- set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') -%}
 
 # Strelka config
 strelkaconfdir:
@@ -32,6 +33,9 @@ strelkasync:
     - user: 939
     - group: 939
     - template: jinja
+    {%- if STRELKA_RULES != 1 %}
+    - exclude_pat: rules/
+    {%- endif %}
 
 strelkadatadir:
    file.directory:
@@ -87,7 +91,7 @@ strelka_backend:
     - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-backend:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
-      - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
+      - /opt/so/conf/strelka/rules/:/etc/yara/:ro
     - name: so-strelka-backend
     - command: strelka-backend
     - restart_policy: on-failure
