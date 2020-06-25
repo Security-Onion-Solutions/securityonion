@@ -25,6 +25,13 @@ strelkaconfdir:
     - group: 939
     - makedirs: True
 
+strelkarulesdir:
+  file.directory:
+    - name: /opt/so/conf/strelka/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 # Sync dynamic config to conf dir
 strelkasync:
   file.recurse:
@@ -33,9 +40,21 @@ strelkasync:
     - user: 939
     - group: 939
     - template: jinja
-    {%- if STRELKA_RULES != 1 %}
-    - exclude_pat: rules/
-    {%- endif %}
+
+{%- if STRELKA_RULES == 1 %}
+strelka_yara_update:
+  cron.present:
+    - user: root
+    - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+
+strelkarules:
+  file.recurse:
+    - name: /opt/so/conf/strelka/rules
+    - source: salt://strelka/rules
+    - user: 939
+    - group: 939
+{%- endif %}
 
 strelkadatadir:
    file.directory:
