@@ -15,7 +15,7 @@ if [ $CHECKIT == 2 ]; then
   else
     CURRENTPACKETS=${RESULT[9]}
     PASTPACKETS=${RESULT[19]}
-    TOTAL=$(($CURRENTPACKETS - $PASTPACKETS))
+    TOTAL=$(($CURRENTPACKETS - $PASTPACKETS + $DROPPED))
 
     LOSS=$(echo $DROPPED $TOTAL / p | dc)
     echo "suridrop drop=$LOSS"
