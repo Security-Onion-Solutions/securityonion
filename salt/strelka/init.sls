@@ -15,11 +15,19 @@
 {%- set MASTER = grains['master'] %}
 {%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{%- set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') -%}
 
 # Strelka config
 strelkaconfdir:
   file.directory:
     - name: /opt/so/conf/strelka
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkarulesdir:
+  file.directory:
+    - name: /opt/so/conf/strelka/rules
     - user: 939
     - group: 939
     - makedirs: True
@@ -32,6 +40,21 @@ strelkasync:
     - user: 939
     - group: 939
     - template: jinja
+
+{%- if STRELKA_RULES == 1 %}
+strelka_yara_update:
+  cron.present:
+    - user: root
+    - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+
+strelkarules:
+  file.recurse:
+    - name: /opt/so/conf/strelka/rules
+    - source: salt://strelka/rules
+    - user: 939
+    - group: 939
+{%- endif %}
 
 strelkadatadir:
    file.directory:
@@ -87,7 +110,7 @@ strelka_backend:
     - image: {{ MASTER }}:5000/soshybridhunter/so-strelka-backend:{{ VERSION }}
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
-      - /opt/so/conf/strelka/backend/yara:/etc/yara/:ro
+      - /opt/so/conf/strelka/rules/:/etc/yara/:ro
     - name: so-strelka-backend
     - command: strelka-backend
     - restart_policy: on-failure

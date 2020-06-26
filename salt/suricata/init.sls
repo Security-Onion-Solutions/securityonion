@@ -71,6 +71,21 @@ surirulesync:
     - user: 940
     - group: 940
 
+surilogscript:
+  file.managed:
+    - name: /usr/local/bin/surilogcompress
+    - source: salt://suricata/cron/surilogcompress
+    - mode: 755
+
+/usr/local/bin/surilogcompress:
+  cron.present:
+    - user: suricata
+    - minute: '17'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 suriconfigsync:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
