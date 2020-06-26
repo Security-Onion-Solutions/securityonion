@@ -20,6 +20,9 @@
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
 
+{# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
+{% from 'suricata/suricata_config.map.jinja' import suricata_defaults as suricata_config with context %}
+
 # Suricata
 
 # Add Suricata Group
@@ -86,11 +89,9 @@ surilogscript:
 suriconfigsync:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
-    {%- if BROVER != 'SURICATA' %}
-    - source: salt://suricata/files/suricata.yaml
-    {%- else %}
-    - source: salt://suricata/files/suricataMETA.yaml
-    {%- endif %}
+    - source: salt://suricata/files/suricata.yaml.jinja
+    - context:
+        suricata_config: {{ suricata_config.suricata.config }}
     - user: 940
     - group: 940
     - template: jinja
