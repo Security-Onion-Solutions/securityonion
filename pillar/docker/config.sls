@@ -44,7 +44,6 @@ eval:
     {% endif %}
     {% if PLAYBOOK != '0' %}
     - so-playbook
-    - so-navigator
     {% endif %}
     {% if FREQSERVER != '0' %}
     - so-freqserver
@@ -116,7 +115,6 @@ master_search:
     {% endif %}
     {% if PLAYBOOK != '0' %}
     - so-playbook
-    - so-navigator
     {% endif %}
     {% if FREQSERVER != '0' %}
     - so-freqserver
@@ -159,7 +157,6 @@ master:
     {% endif %}
     {% if PLAYBOOK != '0' %}
     - so-playbook
-    - so-navigator
     {% endif %}
     {% if FREQSERVER != '0' %}
     - so-freqserver
