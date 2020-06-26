@@ -1,36 +1,57 @@
-{% import_yaml 'suricata/defaults3.yaml' as suricata_defaults with context %}
+{% import_yaml 'suricata/defaults.yaml' as suricata_defaults with context %}
 {% import_yaml 'suricata/suricata_meta.yaml' as suricata_meta with context %}
+{% from 'suricata/threading.map.jinja' import cpu_affinity with context %}
+{% from 'suricata/afpacket.map.jinja' import afpacket %}
+{% set suricata_pillar = salt['pillar.get']('suricata:config', {}) %}
 {% set default_evelog_index = [] %}
+{% set surimeta_evelog_index = [] %}
+
+{% if salt['pillar.get']('sensor:homenet') %}
+  {% load_yaml as homenet %}
+HOME_NET: "[{{salt['pillar.get']('sensor:hnsensor', '')}}]"
+  {% endload %}
+{% else %}
+  {% load_yaml as homenet %}
+HOME_NET: "[{{salt['pillar.get']('static:hnmaster', '')}}]"
+  {% endload %}
+{% endif %}
 
 {% set hardware_header = 15 %}
 {% set default_packet_size = salt['grains.filter_by']({
     '*_eval': {
-      'default-packet-size': 1500 + hardware_header,
+      'default-packet-size': salt['pillar.get']('sensor:mtu', 1500) + hardware_header,
     },
     '*_helix': {
-      'default-packet-size': 9000 + hardware_header,
+      'default-packet-size': salt['pillar.get']('sensor:mtu', 9000) + hardware_header,
     },
     '*': {
-      'default-packet-size': 1500 + hardware_header,
+      'default-packet-size': salt['pillar.get']('sensor:mtu', 1500) + hardware_header,
     },
-},grain='id', merge=salt['pillar.get']('suricata')) %}
+},grain='id') %}
 
 {# Find the index of eve-log so it can be updated later #}
-{% for li in suricata_defaults.suricata.lookup.outputs %}
-  {% for k, v in li.items() %}
-    {% if k == 'eve-log' %}
-      {% do default_evelog_index.append(loop.index) %}
-    {% endif %}
-  {% endfor %}
+{% for li in suricata_defaults.suricata.config.outputs %}
+  {% if 'eve-log' in li.keys() %}
+    {% do default_evelog_index.append(loop.index0) %}
+  {% endif %}
 {% endfor %}
-{% set default_evelog_index = default_evelog_index[0] %}
+{% set default_evelog_index = default_evelog_index[0]  %}
 
-{% set meta_data = salt['pillar.filter_by']({
-    'SURICATA': suricata_meta.suricata.lookup.outputs[0],
-    'default': suricata_defaults.suricata.lookup.outputs[default_evelog_index]
-},pillar='static:broversion', merge=salt['pillar.get']('suricata'), default='default') %}
+{# Find the index of eve-log so it can be grabbed later #}
+{% for li in suricata_meta.suricata.config.outputs %}
+  {% if 'eve-log' in li.keys() %}
+    {% do surimeta_evelog_index.append(loop.index0) %}
+  {% endif %}
+{% endfor %}
+{% set surimeta_evelog_index = surimeta_evelog_index[0] %}
 
-{% do suricata_defaults.suricata.lookup.update(default_packet_size) %}
-{% do suricata_defaults.suricata.lookup.outputs[default_evelog_index].update(meta_data) %}
+{% if salt['pillar.get']('static:broversion', 'ZEEK') == 'SURICATA' %}
+  {% do suricata_defaults.suricata.config.outputs[default_evelog_index]['eve-log'].types.extend(suricata_meta.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
+{% endif %}
 
-{% set suricata_yaml = salt['pillar.get']('suricata', suricata_defaults, merge=True) %}
+{% do suricata_defaults.suricata.config.update(default_packet_size) %}
+{% do suricata_defaults.suricata.config.threading.update(cpu_affinity) %}
+{% do suricata_defaults.suricata.config.update(afpacket) %}
+{% do suricata_defaults.suricata.config.vars['address-groups'].update(homenet) %}
+
+{% do salt['defaults.merge'](suricata_defaults.suricata.config, suricata_pillar, in_place=True) %}
