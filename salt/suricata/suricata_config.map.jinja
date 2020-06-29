@@ -1,6 +1,5 @@
 {% import_yaml 'suricata/defaults.yaml' as suricata_defaults with context %}
 {% import_yaml 'suricata/suricata_meta.yaml' as suricata_meta with context %}
-{% from 'suricata/threading.map.jinja' import cpu_affinity with context %}
 {% from 'suricata/afpacket.map.jinja' import afpacket %}
 {% set suricata_pillar = salt['pillar.get']('suricata:config', {}) %}
 {% set default_evelog_index = [] %}
@@ -50,8 +49,11 @@ HOME_NET: "[{{salt['pillar.get']('static:hnmaster', '')}}]"
 {% endif %}
 
 {% do suricata_defaults.suricata.config.update(default_packet_size) %}
-{% do suricata_defaults.suricata.config.threading.update(cpu_affinity) %}
 {% do suricata_defaults.suricata.config.update(afpacket) %}
 {% do suricata_defaults.suricata.config.vars['address-groups'].update(homenet) %}
+{% if salt['pillar.get']('sensor:suriprocs', salt['pillar.get']('sensor:suripins', {})) %}
+  {% from 'suricata/threading.map.jinja' import cpu_affinity with context %}
+  {% do suricata_defaults.suricata.config.threading.update(cpu_affinity) %}
+{% endif %}
 
 {% do salt['defaults.merge'](suricata_defaults.suricata.config, suricata_pillar, in_place=True) %}
