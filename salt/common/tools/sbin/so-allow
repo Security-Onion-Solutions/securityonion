@@ -15,17 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. /usr/sbin/so-common
+source ./so-common
 
-default_salt_dir=/opt/so/saltstack/default
 local_salt_dir=/opt/so/saltstack/local
 
 SKIP=0
 
-while getopts "abowi:" OPTION
+while getopts "ahfsprbowi:" OPTION
 do
     case $OPTION in
-
         h)
             usage
             exit 0
@@ -38,11 +36,10 @@ do
             FULLROLE="beats_endpoint"
             SKIP=1
             ;;
-	f)
+	    f)
 	    FULLROLE="strelka_frontend"
             SKIP=1
             ;;
-
         i)  IP=$OPTARG
             ;;
         o)
@@ -65,7 +62,10 @@ do
             FULLROLE="wazuh_authd"
             SKIP=1
             ;;
-
+        *)
+            usage
+            exit 0
+            ;;
     esac
 done
 
@@ -84,9 +84,9 @@ if [ "$SKIP" -eq 0 ]; then
     echo "[p] - Wazuh API - port 55000/tcp"
     echo "[r] - Wazuh registration service - 1515/tcp"
     echo "Please enter your selection (a - analyst, b - beats, o - osquery, w - wazuh):"
-    read ROLE
+    read -r ROLE
     echo "Enter a single ip address or range to allow (example: 10.10.10.10 or 10.10.0.0/16):"
-    read IP
+    read -r IP
 
     if [ "$ROLE" == "a" ]; then
         FULLROLE=analyst
@@ -121,10 +121,10 @@ if grep -q -R "wazuh: 1" $local_salt_dir/pillar/*; then
     if [ "$FULLROLE" == "analyst" ]; then
           WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
           if ! grep -q "<white_list>$IP</white_list>" $WAZUH_MGR_CFG ; then
-                  DATE=`date`
+                  DATE=$(date)
                   sed -i 's/<\/ossec_config>//' $WAZUH_MGR_CFG
                   sed -i '/^$/N;/^\n$/D' $WAZUH_MGR_CFG
-                  echo -e "<!--Address $IP added by /usr/sbin/so-allow on "$DATE"-->\n  <global>\n    <white_list>$IP</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
+                  echo -e "<!--Address $IP added by /usr/sbin/so-allow on \"$DATE\"-->\n  <global>\n    <white_list>$IP</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
                   echo "Added whitelist entry for $IP in $WAZUH_MGR_CFG."
 		  echo
                   echo "Restarting OSSEC Server..."
