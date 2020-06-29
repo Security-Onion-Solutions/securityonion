@@ -951,16 +951,23 @@ whiptail_set_hostname() {
 
 	HOSTNAME=$(cat /etc/hostname)
 
+	if [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+
 	HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+	"Enter the hostname (not FQDN) you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
-	while [[ "$HOSTNAME" == *'localhost'* ]] ; do
-		whiptail --title "Security Onion Setup" --msgbox "Please choose a hostname that doesn't contain localhost." 8 75
+	while [[ $HOSTNAME == *'localhost'* || ! ( $HOSTNAME =~ ^[a-zA-Z0-9\-]*$ ) ]] ; do
+		local error_message
+		error_message=$(echo "Please choose a valid hostname. It cannot contain localhost; and must contain only \
+			the ASCII letters 'a' through 'z' (case-insensitive), the digits '0' through '9', \
+			and hyphen ('-')" | tr -d '\t')
+		whiptail --title "Security Onion Setup" \
+		--msgbox "$error_message" 10 75
 		HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-		"Enter the Hostname you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+		"Enter the hostname (not FQDN) you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
