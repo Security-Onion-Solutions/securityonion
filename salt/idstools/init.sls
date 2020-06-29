@@ -66,3 +66,5 @@ so-idstools:
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
+    - watch:
+      - file: idstoolsetcsync
