@@ -52,7 +52,7 @@ playbookrulessync:
 navigatordefaultlayer:
   file.managed:
     - name: /opt/so/conf/navigator/nav_layer_playbook.json
-    - source: salt://navigator/files/nav_layer_playbook.json
+    - source: salt://nginx/files/nav_layer_playbook.json
     - user: 939
     - group: 939
     - makedirs: True
