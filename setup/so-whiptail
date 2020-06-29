@@ -430,27 +430,37 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose Install Type:" 20 75 13 \
-	"SENSOR" "Create a forward only sensor" ON \
-	"SEARCHNODE" "Add a Search Node with parsing" OFF \
-	"MASTER" "Start a new grid" OFF \
-	"EVAL" "Evaluate all the things" OFF \
-	"STANDALONE" "Standalone full install of everything" OFF \
-	"MASTERSEARCH" "Master + Search Node" OFF \
-	"HEAVYNODE" "Sensor + Search Node" OFF \
-	"HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
-	"FLEET" "Dedicated Fleet Osquery Node" OFF \
-	"HOTNODE" "TODO Add Hot Node (Uses Elastic Clustering)" OFF \
-	"WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
-	"WAZUH" "TODO Stand Alone Wazuh Server" OFF \
-	"STRELKA" "TODO Stand Alone Strelka Node" OFF 3>&1 1>&2 2>&3 )
+	"Choose install type:" 10 65 3 \
+		"EVAL" "Evaluation mode (not for production) " ON \
+		"STANDALONE" "Standalone production install " OFF \
+		"DISTRIBUTED" "Distributed install submenu " OFF \
+		3>&1 1>&2 2>&3
+	)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	if [[ $install_type == "DISTRIBUTED" ]]; then
+		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+		"Choose distributed node type:" 13 60 6 \
+			"MASTER" "Start a new grid " ON \
+			"SENSOR" "Create a forward only sensor " OFF \
+			"SEARCHNODE" "Add a search node with parsing " OFF \
+			"MASTERSEARCH" "Master + search node " OFF \
+			"FLEET" "Dedicated Fleet Osquery Node " OFF \
+			"HEAVYNODE" "Sensor + Search Node " OFF \
+			3>&1 1>&2 2>&3
+			# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
+			# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
+			# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
+			# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
+		)
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	export install_type
-
-
 }
 
 whiptail_log_size_limit() {
