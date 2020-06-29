@@ -43,8 +43,6 @@ so-telegraf:
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
     - network_mode: host
-    - port_bindings:
-      - 127.0.0.1:8094:8094
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
