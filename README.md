@@ -1,3 +1,8 @@
+## Hybrid Hunter Beta 1.4.1 - Beta 3
+
+- Fix install script to handle hostnames properly.
+
+
 ## Hybrid Hunter Beta 1.4.0 - Beta 3
 
 - Complete overhaul of the way we handle custom and default settings and data. You will now see a default and local directory under the saltstack directory. All customizations are stored in local.
