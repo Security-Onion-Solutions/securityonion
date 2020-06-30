@@ -118,12 +118,31 @@ filebeat.inputs:
     clean_removed: false
     close_removed: false
 
+  - type: log
+    paths:
+      - /nsm/import/*/zeek/logs/{{ LOGNAME }}.log
+    fields:
+        module: zeek 
+        dataset: {{ LOGNAME }}
+        category: network
+        imported: true
+    processors:
+      - dissect:
+        tokenizer: "/nsm/import/%{import_id}/zeek/logs/%{import_source}"
+        field: "source"
+        target_prefix: ""
+      - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
+ 
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
 {%- endfor %}
 {%- endif %}
 
   - type: log
     paths:
-      - /suricata/eve*.json
+      - /nsm/suricata/eve*.json
     fields:
       module: suricata
       dataset: common
@@ -137,8 +156,27 @@ filebeat.inputs:
     clean_removed: false
     close_removed: false
 
-  {%- if STRELKAENABLED == 1 %}
+  - type: log
+    paths:
+      - /nsm/import/*/suricata/eve*.json
+    fields:
+      module: suricata
+      dataset: common
+      category: network
+      imported: true 
+    processors:
+    - dissect:
+      tokenizer: "/nsm/import/%{import_id}/suricata/%{import_source}"
+      field: "source"
+      target_prefix: ""
+    - drop_fields:
+        fields: ["source", "prospector", "input", "offset", "beat"]
 
+    fields_under_root: true
+    clean_removed: false
+    close_removed: false
+
+  {%- if STRELKAENABLED == 1 %}
   - type: log
     paths:
       - /nsm/strelka/log/strelka.log
@@ -229,7 +267,7 @@ output.elasticsearch:
     - index: "so-strelka-%{+yyyy.MM.dd}"
       when.contains:
         module: "strelka"
-
+  
 setup.template.enabled: false
 {%- else %}
 
