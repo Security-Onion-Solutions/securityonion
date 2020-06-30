@@ -49,16 +49,6 @@ playbookrulessync:
     - group: 939
     - template: jinja
 
-navigatordefaultlayer:
-  file.managed:
-    - name: /opt/so/conf/navigator/nav_layer_playbook.json
-    - source: salt://nginx/files/nav_layer_playbook.json
-    - user: 939
-    - group: 939
-    - makedirs: True
-    - replace: False
-    - template: jinja
-
 so-soctopus:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
