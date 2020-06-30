@@ -388,8 +388,6 @@ configure_minion() {
 		printf '%s\n'  '----';
 		cat "$minion_config";
 	} >> "$setup_log" 2>&1
-	
-	
 }
 
 checkin_at_boot() {
@@ -399,25 +397,31 @@ checkin_at_boot() {
 	echo "startup_states: highstate" >> "$minion_config"
 }
 
-
 check_requirements() {
 	local eval_or_dist=$1
 	local node_type=$2 # optional
 	local req_mem
 	local req_cores
+	local req_storage
 	local nic_list
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
 	local num_nics=${#nic_list[@]}
-
+	
 	if [[ "$eval_or_dist" == 'eval' ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
+		req_storage=100
 	elif [[ "$eval_or_dist" == 'dist' ]]; then
 		req_mem=8
 		req_cores=4
+		req_storage=40
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+	fi
+
+	if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+		whiptail_requirements_error "disk space" "${free_space_root} GB" "${req_storage} GB"
 	fi
 
 	if [[ $num_nics -lt $req_nics ]]; then
@@ -429,7 +433,7 @@ check_requirements() {
 	fi
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
-		whiptail_requirements_error "memory" "${total_mem_hr}GB" "${req_mem}GB"
+		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
 	fi
 }
 
@@ -565,11 +569,19 @@ detect_os() {
 			exit 1
 		fi
 
+		echo "Installing required packages to run installer"
 		# Install bind-utils so the host command exists
 		if ! command -v host > /dev/null 2>&1; then
-			echo "Installing required packages to run installer"
-			yum -y install bind-utils yum-plugin-versionlock >> "$setup_log" 2>&1
+			yum -y install bind-utils >> "$setup_log" 2>&1
 		fi
+		if ! command -v nmcli > /dev/null 2>&1; then
+			{
+				yum -y install NetworkManager;
+				systemctl enable NetworkManager;
+				systemctl start NetworkManager;
+			} >> "$setup_log" 2<&1
+		fi
+		yum -y install yum-plugin-versionlock bc >> "$setup_log" 2>&1
 
 
 	elif [ -f /etc/os-release ]; then
@@ -582,15 +594,17 @@ detect_os() {
 			echo "We do not support your current version of Ubuntu."
 			exit 1
 		fi
+
+		echo "Installing required packages to run installer"
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
-			echo "Installing required packages to run installer"
 			{
 				apt-get install -y network-manager;
 				systemctl enable NetworkManager;
 				systemctl start NetworkManager;
 			} >> "$setup_log" 2<&1
 		fi
+		apt-get install -y bc >> "$setup_log" 2>&1
 
 	else
 		echo "We were unable to determine if you are using a supported OS."
