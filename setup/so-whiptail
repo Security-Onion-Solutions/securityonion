@@ -107,6 +107,28 @@ whiptail_bond_nics_mtu() {
 
 }
 
+whiptail_ec2_nic() {
+
+        [ -n "$TESTING" ] && return
+
+        filter_unused_nics
+
+        BNICS=$(whiptail --title "NIC Setup" --radiolist "Please select NIC for the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+        local exitstatus=$?
+        whiptail_check_exitstatus $exitstatus
+
+        while [ -z "$BNICS" ]
+        do
+                BNICS=$(whiptail --title "NIC Setup" --radiolist "Please select NIC for the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
+                local exitstatus=$?
+                whiptail_check_exitstatus $exitstatus
+        done
+
+        BNICS=$(echo "$BNICS" | tr -d '"')
+
+        IFS=' ' read -ra BNICS <<< "$BNICS"
+}
+
 whiptail_cancel() {
 
 	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
