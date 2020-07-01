@@ -78,13 +78,21 @@ whiptail_bond_nics() {
 
 	filter_unused_nics
 
-	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+	if [[ $is_ec2 ]]; then
+		local menu_text="Please select NIC for the Monitor Interface"
+		local list_type="radiolist"
+	else
+		local menu_text="Please add NICs to the Monitor Interface"
+		local list_type="checklist"
+	fi
+
+	BNICS=$(whiptail --title "NIC Setup" --$list_type "$menu_text" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$BNICS" ]
 	do
-		BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
+		BNICS=$(whiptail --title "NIC Setup" --$list_type "$menu_text" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
