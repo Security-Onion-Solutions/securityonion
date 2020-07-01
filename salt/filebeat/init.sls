@@ -55,9 +55,7 @@ so-filebeat:
     - binds:
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /nsm/zeek:/nsm/zeek:ro
-      - /nsm/strelka/log:/nsm/strelka/log:ro
-      - /nsm/suricata:/suricata:ro
+      - /nsm:/nsm:ro
       - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
       - /nsm/osquery/fleet/:/nsm/osquery/fleet:ro
