@@ -92,6 +92,20 @@ whiptail_bond_nics() {
 	BNICS=$(echo "$BNICS" | tr -d '"')
 
 	IFS=' ' read -ra BNICS <<< "$BNICS"
+
+	local unmanaged_bond=0
+	for bond_nic in "${BNICS[@]}"; do
+		if [[ ! "${nmcli_dev_status_list}" =~ $bond_nic\:unmanaged ]]; then
+			unmanaged_bond=1
+		fi
+		if [[ "$unmanaged_bond" == 1 ]]; then
+			whiptail \
+				--title "Security Onion Setup" \
+				--msgbox "$bond_nic is unmanaged by Network Manager. Please remove it from other network management tools then re-run setup." \
+				8 75
+			exit
+		fi
+	done
 }
 
 whiptail_bond_nics_mtu() {
