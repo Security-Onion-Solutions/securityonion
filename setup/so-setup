@@ -516,49 +516,50 @@ fi
 		set_progress_str 72 "$(print_salt_state_apply 'soctopus')"
 		salt-call state.apply -l info soctopus >> $setup_log 2>&1
 	fi
+
+	if [[ "$PLAYBOOK" = 1 ]]; then
+		set_progress_str 73 "$(print_salt_state_apply 'playbook')"
+		salt-call state.apply -l info playbook >> $setup_log 2>&1
+		so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
+	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
-		set_progress_str 73 "$(print_salt_state_apply 'mysql')"
+		set_progress_str 74 "$(print_salt_state_apply 'mysql')"
 		salt-call state.apply -l info mysql >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'fleet')"
+		set_progress_str 75 "$(print_salt_state_apply 'fleet')"
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'redis')"
+		set_progress_str 76 "$(print_salt_state_apply 'redis')"
 		salt-call state.apply -l info redis >> $setup_log 2>&1
 
 		if [[ $is_fleet_standalone && $FLEETCUSTOMHOSTNAME != '' ]]; then
-			set_progress_str 73 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
+			set_progress_str 77 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
 			pillar_override="{\"static\":{\"fleet_custom_hostname\": \"$FLEETCUSTOMHOSTNAME\"}}"
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
-		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
+		set_progress_str 77 "$(print_salt_state_apply 'so-fleet-setup')"	
 		so-fleet-setup $FLEETNODEUSER $FLEETNODEPASSWD1 >> $setup_log 2>&1
 
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
-		set_progress_str 75 "$(print_salt_state_apply 'wazuh')"
+		set_progress_str 78 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
 
 	if [[ "$THEHIVE" = 1 ]]; then
-		set_progress_str 76 "$(print_salt_state_apply 'thehive')"
+		set_progress_str 79 "$(print_salt_state_apply 'thehive')"
 		salt-call state.apply -l info thehive >> $setup_log 2>&1
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
-		set_progress_str 77 "$(print_salt_state_apply 'strelka')"
+		set_progress_str 80 "$(print_salt_state_apply 'strelka')"
 		salt-call state.apply -l info strelka >> $setup_log 2>&1
 		if [[ $STRELKARULES == 1 ]]; then
 			/usr/sbin/so-yara-update >> $setup_log 2>&1	
 		fi
-	fi
-
-	if [[ "$PLAYBOOK" = 1 ]]; then
-		set_progress_str 78 "$(print_salt_state_apply 'playbook')"
-		salt-call state.apply -l info playbook >> $setup_log 2>&1
 	fi
 
 	if [[ $is_master || $is_helix ]]; then		
