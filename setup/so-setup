@@ -98,9 +98,7 @@ export PATH=$PATH:../salt/common/tools/sbin
 
 got_root
 
-detect_os
-
-is_ec2
+detect_os && detect_ec2
 
 if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
@@ -227,11 +225,7 @@ fi
 
 # Start user prompts
 if [[ $is_helix || $is_sensor ]]; then
-	if [ $is_ec2 -eq 1 ]; then
-             whiptail_ec2_nic
-        else
-             whiptail_bond_nics
-        fi
+	whiptail_sensor_nics
 	calculate_useable_cores
 fi
 
@@ -370,21 +364,17 @@ fi
 	# Set initial percentage to 0
 	export percentage=0
 
-        if [[ $is_minion ]]; then
-                set_progress_str 1 'Configuring firewall'
-                set_initial_firewall_policy >> $setup_log 2>&1
-        fi
+	if [[ $is_minion ]]; then
+		set_progress_str 1 'Configuring firewall'
+		set_initial_firewall_policy >> $setup_log 2>&1
+	fi
 
 	set_progress_str 2 'Updating packages'
 	update_packages >> $setup_log 2>&1
 
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 3 'Creating bond/sniffing interface'
-		if [ $is_ec2 -eq 1 ]; then
-                        create_ec2_sniffing >> $setup_log 2>&1
-                else
-                        create_sensor_bond >> $setup_log 2>&1
-                fi
+		set_progress_str 3 'Configuring sensor interface'
+		configure_network_sensor >> $setup_log 2>&1
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
 	fi
