@@ -498,6 +498,7 @@ create_local_directories() {
 create_sensor_bond() {
 	echo "Setting up sensor bond" >> "$setup_log" 2>&1
 
+	INTERFACE="bond0"
 	local nic_error=0
 
 	check_network_manager_conf >> "$setup_log" 2>&1
@@ -1317,7 +1318,7 @@ sensor_pillar() {
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
-		"  interface: bond0"\
+		"  interface: $INTERFACE"\
 		"  mainip: $MAINIP"\
 		"  mainint: $MNIC" >> "$pillar_file"
 	
@@ -1428,13 +1429,13 @@ set_initial_firewall_policy() {
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
 			case "$install_type" in 
 				'EVAL')
-					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0 True
+					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" $INTERFACE True
 					;;
 				'MASTERSEARCH')
 					$default_salt_dir/pillar/data/addtotab.sh mastersearchtab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'STANDALONE')
-					$default_salt_dir/pillar/data/addtotab.sh standalonetab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
+					$default_salt_dir/pillar/data/addtotab.sh standalonetab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" $INTERFACE
 					;;
 			esac
 			;;
@@ -1448,7 +1449,7 @@ set_initial_firewall_policy() {
 			case "$install_type" in
 				'SENSOR')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" $INTERFACE
 					;;
 				'SEARCHNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
@@ -1457,7 +1458,7 @@ set_initial_firewall_policy() {
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" bond0
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" $INTERFACE
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'FLEET')
@@ -1619,4 +1620,48 @@ es_heapsize() {
 		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
 		export NODE_ES_HEAP_SIZE
 	fi
+}
+
+is_ec2() {
+  # Check if EC2
+  if curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null;then
+    is_ec2=1
+  else
+    is_ec2=0
+  fi
+}
+
+create_ec2_sniffing() {
+        echo "Setting up sensor sniffing interface" >> "$setup_log" 2>&1
+
+        local nic_error=0
+
+        check_network_manager_conf >> "$setup_log" 2>&1
+
+        # Set the MTU
+        if [[ $NSMSETUP != 'ADVANCED' ]]; then
+                MTU=1575
+        fi
+
+        for BNIC in "${BNICS[@]}"; do
+                # Check if specific offload features are able to be disabled
+                for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
+                        if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
+                                echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
+                                nic_error=1
+                                break
+                        fi
+                done
+
+                # Turn off various offloading settings for the interface
+                for i in rx tx sg tso ufo gso gro lro; do
+                        ethtool -K "$BNIC" $i off >> "$setup_log" 2>&1
+                done
+        done
+
+        INTERFACE=$BNIC
+
+        if [ $nic_error != 0 ]; then
+                return 1
+        fi
 }
