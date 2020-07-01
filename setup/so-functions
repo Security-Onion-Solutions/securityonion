@@ -521,7 +521,7 @@ configure_network_sensor() {
 	nmcli -f name,uuid -p con | grep -q "$INTERFACE"
 	local found_int=$?
 
-	if [[ ! $found_int ]]; then
+	if [[ $found_int != 0 ]]; then
 		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" $nmcli_con_arg -- \
 			ipv4.method disabled \
 			ipv6.method ignore \
@@ -560,7 +560,7 @@ configure_network_sensor() {
 			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
 			local found_int=$?
 			
-			if [[ ! $found_int ]]; then
+			if [[ $found_int != 0 ]]; then
 				# Create the slave interface and assign it to the bond
 				nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
 					ethernet.mtu $MTU \
@@ -1668,7 +1668,5 @@ es_heapsize() {
 
 detect_ec2() {
   # Check if EC2
-  curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null
-  is_ec2=$?
-  export is_ec2
+  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ); then export is_ec2="true"; fi
 }
