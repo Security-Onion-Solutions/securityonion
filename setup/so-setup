@@ -51,10 +51,20 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
-	if [ $automated == no ]; then
-		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
+		if [[ -s /var/spool/mail/root ]]; then 
+			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
+		fi
+
+		if [[ $automated == no ]]; then whiptail_setup_failed; else exit 1; fi
+
+		if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit 1; fi
 	else
-		cat >> $setup_log 2>&1
+		if [ $automated == no ]; then
+			whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+		else
+			cat >> $setup_log 2>&1
+		fi
 	fi
 }
 
@@ -98,7 +108,7 @@ export PATH=$PATH:../salt/common/tools/sbin
 
 got_root
 
-detect_os
+detect_os && detect_ec2
 
 if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
@@ -225,7 +235,7 @@ fi
 
 # Start user prompts
 if [[ $is_helix || $is_sensor ]]; then
-	whiptail_bond_nics
+	whiptail_sensor_nics
 	calculate_useable_cores
 fi
 
@@ -334,14 +344,19 @@ if [[ "$setup_type" == 'iso' ]]; then
 	disable_onion_user
 fi
 
-set_hostname >> $setup_log 2>&1
-set_version >> $setup_log 2>&1
-clear_master >> $setup_log 2>&1
+{
+	set_hostname;
+	set_version;
+	clear_master;
+} >> $setup_log 2>&1
+
 
 if [[ $is_master ]]; then
-	generate_passwords >> $setup_log 2>&1
-	secrets_pillar >> $setup_log 2>&1
-	add_socore_user_master >> $setup_log 2>&1
+	{
+		generate_passwords;
+		secrets_pillar;
+		add_socore_user_master;
+	} >> $setup_log 2>&1	
 fi
 
 if [[ $is_master && ! $is_eval ]]; then
@@ -364,18 +379,17 @@ fi
 	# Set initial percentage to 0
 	export percentage=0
 
-        if [[ $is_minion ]]; then
-                set_progress_str 1 'Configuring firewall'
-                set_initial_firewall_policy >> $setup_log 2>&1
-        fi
+	if [[ $is_minion ]]; then
+		set_progress_str 1 'Configuring firewall'
+		set_initial_firewall_policy >> $setup_log 2>&1
+	fi
 
 	set_progress_str 2 'Updating packages'
 	update_packages >> $setup_log 2>&1
 
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 3 'Creating bond interface'
-		create_sensor_bond >> $setup_log 2>&1
-		
+		set_progress_str 3 'Configuring sensor interface'
+		configure_network_sensor >> $setup_log 2>&1
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
 	fi
@@ -392,14 +406,15 @@ fi
 	set_progress_str 9 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
-
 	if [[ $is_master || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
-		create_local_directories >> $setup_log 2>&1
-		addtotab_generate_templates >> $setup_log 2>&1
-		copy_master_config >> $setup_log 2>&1
-		setup_salt_master_dirs >> $setup_log 2>&1
-		firewall_generate_templates >> $setup_log 2>&1
+		{
+			create_local_directories;
+			addtotab_generate_templates;
+			copy_master_config;
+			setup_salt_master_dirs;
+			firewall_generate_templates;
+		} >> $setup_log 2>&1
 		
 		set_progress_str 11 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
@@ -544,8 +559,8 @@ fi
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
-		set_progress_str 77 "$(print_salt_state_apply 'so-fleet-setup')"	
-		so-fleet-setup $FLEETNODEUSER $FLEETNODEPASSWD1 >> $setup_log 2>&1
+		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
+		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
 
 	fi
 
@@ -600,10 +615,12 @@ fi
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ "$success" = 0 ]]; then
 	whiptail_setup_complete
+
 	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
 		export IP=$ALLOW_CIDR
 		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 	fi
+
 	if [[ $THEHIVE == 1 ]]; then
 		check_hive_init
 	fi

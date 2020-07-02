@@ -28,6 +28,9 @@ mkdir -p /nsm
 filesystem_nsm=$(df /nsm | awk '$3 ~ /[0-9]+/ { print $2 * 1000 }')
 export filesystem_nsm
 
+free_space_root=$(df -Pk / | sed 1d | grep -v used | awk '{ print $4 / 1048576 }' | awk '{ printf("%.0f", $1) }')
+export free_space_root
+
 mkdir -p /root/installtmp/pillar/minions
 export temp_install_dir=/root/installtmp
 
@@ -36,6 +39,11 @@ export percentage_str='Getting started'
 export DEBIAN_FRONTEND=noninteractive
 
 export default_salt_dir=/opt/so/saltstack/default
+
 export local_salt_dir=/opt/so/saltstack/local
 
-export SCRIPTDIR=$(cd `dirname $0` && pwd)
+SCRIPTDIR=$(cd "$(dirname "$0")" && pwd)
+export SCRIPTDIR
+
+readarray -t nmcli_dev_status_list <<< "$(nmcli -t -f DEVICE,STATE -c no dev status)"
+export nmcli_dev_status_list
