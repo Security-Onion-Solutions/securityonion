@@ -21,18 +21,9 @@
 
 function usage {
   cat << EOF
-Usage:
-Please supply at least one pcap file.
+Usage: $0 <pcap-file-1> [pcap-file-2] [pcap-file-N]
 
-For example, to import a single pcap named import.pcap:
-so-import-pcap import.pcap
-
-To import multiple pcaps:
-so-import-pcap import1.pcap import2.pcap
-
-** IMPORTANT **
-Security Onion installations contain processes that automatically discard old data. Therefore, imports of old network traffic might immediately be erased, unless those processes are first disabled. 
-
+Imports one or more PCAP files for analysis. If available, curator will be automatically stopped.
 EOF
 }
 
@@ -76,11 +67,13 @@ function zeek() {
 
   NSM_PATH=/nsm/import/${HASH}/zeek
   mkdir -p $NSM_PATH/logs
-  mkdir -p $NSM_PATH/spool
   mkdir -p $NSM_PATH/extracted
+  mkdir -p $NSM_PATH/spool
   chown -R zeek:socore $NSM_PATH
   docker run --rm \
-    -v $NSM_PATH:/nsm:rw \
+    -v $NSM_PATH/logs:/nsm/zeek/logs:rw \
+    -v $NSM_PATH/spool:/nsm/zeek/spool:rw \
+    -v $NSM_PATH/extracted:/nsm/zeek/extracted:rw \
     -v $PCAP:/input.pcap:ro \
     -v /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro \
     -v /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro \
@@ -99,13 +92,13 @@ function zeek() {
 # if no parameters supplied, display usage
 if [ $# -eq 0 ]; then
   usage
-  exit
+  exit 1
 fi
 
-# ensure this is a manager node
-if [ ! -d /opt/so/conf/soc ]; then
-  echo "This procedure must be run on a manager node."
-  exit
+# ensure this is a sensor node
+if [ ! -d /opt/so/conf/suricata ]; then
+  echo "This command must be run on a sensor node."
+  exit 3
 fi
 
 # verify that all parameters are files
@@ -113,9 +106,17 @@ for i in "$@"; do
   if ! [ -f "$i" ]; then
     usage
     echo "\"$i\" is not a valid file!"
-    exit
+    exit 2
   fi
 done
+
+if ! [ -d /opt/so/conf/curator ]; then
+  echo "Curator is not installed on this node and cannot be stopped automatically."
+else
+  echo -n "Stopping curator..."
+  so-curator-stop > /dev/null 2>&1
+  echo "Done"
+fi
 
 # track if we have any valid or invalid pcaps
 INVALID_PCAPS="no"
