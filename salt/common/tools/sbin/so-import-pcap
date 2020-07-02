@@ -21,9 +21,18 @@
 
 function usage {
   cat << EOF
-Usage: $0 <pcap-file-1> [pcap-file-2] [pcap-file-3]
+Usage: $0 [options] <pcap-file-1> [pcap-file-2] [pcap-file-N]
 
-Imports the given file(s) into the Security Onion system. Be aware that importing PCAP files with traffic dated older than the curator threshold will result in missing data. Use the included "so-curator-stop" command to avoid this scenario.
+Imports one or more PCAP files for analysis.
+
+Options:
+  --stop-curator   Use this option when importing PCAPs with older traffic, 
+                   otherwise the data will not be available for analysis. 
+                   CAUTION: Curator will remain disabled! If this is a 
+                            production installation then curator should be
+                            re-enabled once analysis of the imported PCAP 
+                            data is completed. Use the 'so-curator-start' 
+                            command to re-enable curator.
 EOF
 }
 
@@ -89,16 +98,35 @@ function zeek() {
     -C -r /input.pcap local > $NSM_PATH/logs/console.log 2>&1
 }
 
+MORE_OPTIONS=1
+while [[ $# -gt 0 && $MORE_OPTIONS -eq 1 ]]; do
+  arg="$1"
+  case "$arg" in
+    "--stop-curator" )
+      STOP_CURATOR=1
+      shift
+      ;;
+    * )
+      if [[ "$arg" == "--"* ]]; then
+        echo "Invalid option"
+        usage
+        exit 1
+      else
+        MORE_OPTIONS=0
+      fi
+  esac
+done
+
 # if no parameters supplied, display usage
 if [ $# -eq 0 ]; then
   usage
-  exit
+  exit 1
 fi
 
 # ensure this is a manager node
 if [ ! -d /opt/so/conf/soc ]; then
   echo "This procedure must be run on a manager node."
-  exit
+  exit 2
 fi
 
 # verify that all parameters are files
@@ -106,9 +134,15 @@ for i in "$@"; do
   if ! [ -f "$i" ]; then
     usage
     echo "\"$i\" is not a valid file!"
-    exit
+    exit 3
   fi
 done
+
+if [[ $STOP_CURATOR -eq 1 ]]; then
+  echo -n "Stopping curator..."
+  so-curator-stop > /dev/null 2>&1
+  echo "Done"
+fi
 
 # track if we have any valid or invalid pcaps
 INVALID_PCAPS="no"
@@ -211,4 +245,9 @@ From: $START_OLDEST    To: $END_NEWEST
 
 Please note that it may take 30 seconds or more for events to appear in Kibana.
 EOF
+fi
+
+if [[ $STOP_CURATOR -eq 1 ]]; then
+  echo ""
+  echo "CAUTION: Curator has been stopped and must be manually re-enabled via so-curator-start, once analysis is completed."
 fi
