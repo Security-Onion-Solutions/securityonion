@@ -21,18 +21,9 @@
 
 function usage {
   cat << EOF
-Usage: $0 [options] <pcap-file-1> [pcap-file-2] [pcap-file-N]
+Usage: $0 <pcap-file-1> [pcap-file-2] [pcap-file-N]
 
-Imports one or more PCAP files for analysis.
-
-Options:
-  --stop-curator   Use this option when importing PCAPs with older traffic, 
-                   otherwise the data will not be available for analysis. 
-                   CAUTION: Curator will remain disabled! If this is a 
-                            production installation then curator should be
-                            re-enabled once analysis of the imported PCAP 
-                            data is completed. Use the 'so-curator-start' 
-                            command to re-enable curator.
+Imports one or more PCAP files for analysis. If available, curator will be automatically stopped.
 EOF
 }
 
@@ -98,35 +89,16 @@ function zeek() {
     -C -r /input.pcap local > $NSM_PATH/logs/console.log 2>&1
 }
 
-MORE_OPTIONS=1
-while [[ $# -gt 0 && $MORE_OPTIONS -eq 1 ]]; do
-  arg="$1"
-  case "$arg" in
-    "--stop-curator" )
-      STOP_CURATOR=1
-      shift
-      ;;
-    * )
-      if [[ "$arg" == "--"* ]]; then
-        echo "Invalid option"
-        usage
-        exit 1
-      else
-        MORE_OPTIONS=0
-      fi
-  esac
-done
-
 # if no parameters supplied, display usage
 if [ $# -eq 0 ]; then
   usage
   exit 1
 fi
 
-# ensure this is a manager node
-if [ ! -d /opt/so/conf/soc ]; then
-  echo "This procedure must be run on a manager node."
-  exit 2
+# ensure this is a sensor node
+if [ ! -d /opt/so/conf/suricata ]; then
+  echo "This command must be run on a sensor node."
+  exit 3
 fi
 
 # verify that all parameters are files
@@ -134,11 +106,13 @@ for i in "$@"; do
   if ! [ -f "$i" ]; then
     usage
     echo "\"$i\" is not a valid file!"
-    exit 3
+    exit 2
   fi
 done
 
-if [[ $STOP_CURATOR -eq 1 ]]; then
+if ! [ -d /opt/so/conf/curator ]; then
+  echo "Curator is not installed on this node and cannot be stopped automatically."
+else
   echo -n "Stopping curator..."
   so-curator-stop > /dev/null 2>&1
   echo "Done"
@@ -245,9 +219,4 @@ From: $START_OLDEST    To: $END_NEWEST
 
 Please note that it may take 30 seconds or more for events to appear in Kibana.
 EOF
-fi
-
-if [[ $STOP_CURATOR -eq 1 ]]; then
-  echo ""
-  echo "CAUTION: Curator has been stopped. Use `so-curator-start` to start curator once the imported PCAP data is no longer needed.
 fi
