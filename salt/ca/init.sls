@@ -44,3 +44,10 @@ send_x509_pem_entries_to_mine:
     - mine.send:
       - func: x509.get_pem_entries
       - glob_path: /etc/pki/ca.crt
+
+cakeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/ca.key
+    - mode: 640
+    - group: 939
