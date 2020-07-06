@@ -24,7 +24,7 @@
 
 # Logstash Section - Decide which pillar to use
 {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
-{% elif grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
   {% set freq = salt['pillar.get']('master:freq', '0') %}
   {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
   {% set nodetype = salt['grains.get']('role', '')  %}
