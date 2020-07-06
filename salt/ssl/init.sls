@@ -82,7 +82,7 @@ influxkeyperms:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
 
-filebeatkeyperms:
+fbperms:
   file.managed:
     - replace: False
     - name: /etc/pki/filebeat.key
