@@ -72,19 +72,27 @@ whiptail_bro_version() {
 
 }
 
-whiptail_bond_nics() {
+whiptail_sensor_nics() {
 
 	[ -n "$TESTING" ] && return
 
 	filter_unused_nics
 
-	BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+	if [[ $is_ec2 ]]; then
+		local menu_text="Please select NIC for the Monitor Interface"
+		local list_type="radiolist"
+	else
+		local menu_text="Please add NICs to the Monitor Interface"
+		local list_type="checklist"
+	fi
+
+	BNICS=$(whiptail --title "NIC Setup" --$list_type "$menu_text" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$BNICS" ]
 	do
-		BNICS=$(whiptail --title "NIC Setup" --checklist "Please add NICs to the Monitor Interface" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
+		BNICS=$(whiptail --title "NIC Setup" --$list_type "$menu_text" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
@@ -92,6 +100,16 @@ whiptail_bond_nics() {
 	BNICS=$(echo "$BNICS" | tr -d '"')
 
 	IFS=' ' read -ra BNICS <<< "$BNICS"
+
+	for bond_nic in "${BNICS[@]}"; do
+		if [[ "${nmcli_dev_status_list}" =~ $bond_nic\:unmanaged ]]; then
+			whiptail \
+				--title "Security Onion Setup" \
+				--msgbox "$bond_nic is unmanaged by Network Manager. Please remove it from other network management tools then re-run setup." \
+				8 75
+			exit
+		fi
+	done
 }
 
 whiptail_bond_nics_mtu() {
@@ -281,8 +299,6 @@ whiptail_fleet_custom_hostname() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-
-
 whiptail_requirements_error() {
 
 	local requirement_needed=$1
@@ -292,7 +308,7 @@ whiptail_requirements_error() {
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" \
-	--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  8 75
+	--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  10 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -430,27 +446,37 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose Install Type:" 20 75 13 \
-	"SENSOR" "Create a forward only sensor" ON \
-	"SEARCHNODE" "Add a Search Node with parsing" OFF \
-	"MASTER" "Start a new grid" OFF \
-	"EVAL" "Evaluate all the things" OFF \
-	"STANDALONE" "Standalone full install of everything" OFF \
-	"MASTERSEARCH" "Master + Search Node" OFF \
-	"HEAVYNODE" "Sensor + Search Node" OFF \
-	"HELIXSENSOR" "Connect this sensor to FireEye Helix" OFF \
-	"FLEET" "Dedicated Fleet Osquery Node" OFF \
-	"HOTNODE" "TODO Add Hot Node (Uses Elastic Clustering)" OFF \
-	"WARMNODE" "TODO Add Warm Node to existing Hot or Search node" OFF \
-	"WAZUH" "TODO Stand Alone Wazuh Server" OFF \
-	"STRELKA" "TODO Stand Alone Strelka Node" OFF 3>&1 1>&2 2>&3 )
+	"Choose install type:" 10 65 3 \
+		"EVAL" "Evaluation mode (not for production) " ON \
+		"STANDALONE" "Standalone production install " OFF \
+		"DISTRIBUTED" "Distributed install submenu " OFF \
+		3>&1 1>&2 2>&3
+	)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	if [[ $install_type == "DISTRIBUTED" ]]; then
+		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+		"Choose distributed node type:" 13 60 6 \
+			"MASTER" "Start a new grid " ON \
+			"SENSOR" "Create a forward only sensor " OFF \
+			"SEARCHNODE" "Add a search node with parsing " OFF \
+			"MASTERSEARCH" "Master + search node " OFF \
+			"FLEET" "Dedicated Fleet Osquery Node " OFF \
+			"HEAVYNODE" "Sensor + Search Node " OFF \
+			3>&1 1>&2 2>&3
+			# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
+			# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
+			# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
+			# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
+		)
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	export install_type
-
-
 }
 
 whiptail_log_size_limit() {
@@ -1128,7 +1154,20 @@ whiptail_you_sure() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Are you sure you want to continue a network install of Security Onion?" 8 75
+	read -r -d '' you_sure_text <<- EOM
+		Welcome to Security Onion Setup!
+
+		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise.
+		
+		Setup uses keyboard navigation and you can use arrow keys to move around.  Certain screens may provide a list and ask you to select one or more items from that list.  You can use [SPACE] to select items and [ENTER] to proceed to the next screen.
+		
+		Would you like to continue?
+	EOM
+
+	whiptail \
+		--title "Security Onion Setup" \
+		--yesno "$you_sure_text" \
+		20 75
 
 	local exitstatus=$?
 	return $exitstatus

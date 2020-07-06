@@ -10,7 +10,7 @@ soctopusdir:
     - group: 939
     - makedirs: True
 
-soctopussync:
+soctopus-sync:
   file.recurse:
     - name: /opt/so/conf/soctopus/templates
     - source: salt://soctopus/files/templates
@@ -24,7 +24,6 @@ soctopusconf:
     - source: salt://soctopus/files/SOCtopus.conf
     - user: 939
     - group: 939
-    - replace: False
     - mode: 600
     - template: jinja
 
