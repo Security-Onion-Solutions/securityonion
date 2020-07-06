@@ -923,13 +923,11 @@ master_pillar() {
 		"  esheap: $ES_HEAP_SIZE"\
 		"  esclustername: {{ grains.host }}"\
 		"  freq: 0"\
-		"  domainstats: 0" >> "$pillar_file"
+		"  domainstats: 0" > "$pillar_file"
+		
 
 	if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'HELIXSENSOR' ] || [ "$install_type" = 'MASTERSEARCH' ] || [ "$install_type" = 'STANDALONE' ]; then
 		printf '%s\n'\
-			"  ls_pipeline_batch_size: 125"\
-			"  ls_input_threads: 1"\
-			"  ls_batch_count: 125"\
 			"  mtu: $MTU" >> "$pillar_file"
 	fi
 
@@ -946,10 +944,7 @@ master_pillar() {
 	esac
 
 	printf '%s\n'\
-		"  lsheap: $LS_HEAP_SIZE"\
-		"  lsaccessip: 127.0.0.1"\
 		"  elastalert: 1"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
 		"  nids_rules: $RULESETUP"\
 		"  oinkcode: $OINKCODE"\
 		"  es_port: $node_es_port"\
@@ -960,6 +955,13 @@ master_pillar() {
 		"  thehive: $THEHIVE"\
 		"  playbook: $PLAYBOOK"\
 		"  url_base: $REDIRECTIT"\
+		""\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: 125"\
+		"  ls_input_threads: 1"\
+		"  ls_batch_count: 125"\
+		"  lsheap: $LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
 		""\
 		"kratos:" >> "$pillar_file"
 
@@ -1056,17 +1058,22 @@ node_pillar() {
 		"  mainint: $MNIC"\
 		"  esheap: $NODE_ES_HEAP_SIZE"\
 		"  esclustername: {{ grains.host }}"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $LSPIPELINEWORKERS"\
-		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
-		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
 		"  es_shard_count: $SHARDCOUNT"\
 		"  node_type: $NODETYPE"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
 		"  cur_close_days: $CURCLOSEDAYS"\
 		"" >> "$pillar_file"
+
+	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MASTERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
+	printf '%s\n'\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
+		"  ls_input_threads: $LSINPUTTHREADS"\
+		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
+		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"" >> "$pillar_file"
+	fi
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1
