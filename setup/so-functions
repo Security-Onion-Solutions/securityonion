@@ -1004,7 +1004,7 @@ master_static() {
 		"  fleet_ip: N/A"\
 		"  sensoronikey: $SENSORONIKEY"\
 		"  wazuh: $WAZUH"\
-                "  masterupdate: $MASTERUPDATES"\
+        "  masterupdate: $MASTERUPDATES"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: $STRELKARULES"\
@@ -1047,22 +1047,26 @@ network_setup() {
 	} >> "$setup_log" 2>&1
 }
 
-node_pillar() {
+elasticsearch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
 	# Create the node pillar
 	printf '%s\n'\
-		"node:"\
+		"elasticsearch:"\
 		"  mainip: $MAINIP"\
 		"  mainint: $MNIC"\
 		"  esheap: $NODE_ES_HEAP_SIZE"\
 		"  esclustername: {{ grains.host }}"\
-		"  es_shard_count: $SHARDCOUNT"\
 		"  node_type: $NODETYPE"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
 		"  cur_close_days: $CURCLOSEDAYS"\
+		"  route_type: hot"\
+		"  index_settings:"\
+		"    so-zeek:"\
+		"      shards: 5"\
+		"      replicas: 0"\
 		"" >> "$pillar_file"
 
 	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MASTERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
@@ -1562,9 +1566,6 @@ set_node_type() {
 	case "$install_type" in
 		'SEARCHNODE' | 'EVAL' | 'MASTERSEARCH' | 'HEAVYNODE' | 'STANDALONE')
 			NODETYPE='search'
-			;;
-		'PARSINGNODE')
-			NODETYPE='parser'
 			;;
 		'HOTNODE')
 			NODETYPE='hot'
