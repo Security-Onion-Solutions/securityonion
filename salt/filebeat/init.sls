@@ -46,6 +46,9 @@ filebeatconfsync:
     - user: 0
     - group: 0
     - template: jinja
+    - defaults:
+        INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
+        OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 so-filebeat:
   docker_container.running:
     - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:{{ VERSION }}{{ FEATURES }}
