@@ -52,6 +52,13 @@ m2cryptopkgs:
         bits: 4096
         backup: True
 
+influxkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/influxdb.key
+    - mode: 640
+    - group: 939
+
 {% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
 
 # Request a cert and drop it where it needs to go to be distributed
@@ -74,6 +81,13 @@ m2cryptopkgs:
         backup: True
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
+
+fbperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/filebeat.key
+    - mode: 640
+    - group: 939
 
 chownilogstashfilebeatp8:
   file.managed:
@@ -114,6 +128,13 @@ fbcrtlink:
         bits: 4096
         backup: True
 
+regkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/registry.key
+    - mode: 640
+    - group: 939
+
 # Create a cert for the reverse proxy
 /etc/pki/masterssl.crt:
   x509.certificate_managed:
@@ -128,6 +149,13 @@ fbcrtlink:
         name: /etc/pki/masterssl.key
         bits: 4096
         backup: True
+
+msslkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/masterssl.key
+    - mode: 640
+    - group: 939
 
 # Create a private key and cert for OSQuery
 /etc/pki/fleet.key:
@@ -150,6 +178,13 @@ fbcrtlink:
         name: /etc/pki/fleet.key
         bits: 4096
         backup: True
+
+fleetkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/fleet.key
+    - mode: 640
+    - group: 939
 
 {% endif %}
 {% if grains['role'] in ['so-sensor', 'so-master', 'so-node', 'so-eval', 'so-helix', 'so-mastersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
@@ -183,6 +218,13 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
 
+filebeatkeyperms:
+  file.managed:
+    - replace: False
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - mode: 640
+    - group: 939
+
 chownfilebeatp8:
   file.managed:
     - replace: False
@@ -211,6 +253,12 @@ chownfilebeatp8:
         bits: 4096
         backup: True
 
+msslkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/masterssl.key
+    - mode: 640
+    - group: 939
 
 # Create a private key and cert for Fleet
 /etc/pki/fleet.key:
@@ -233,5 +281,12 @@ chownfilebeatp8:
         name: /etc/pki/fleet.key
         bits: 4096
         backup: True
+
+fleetkeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/fleet.key
+    - mode: 640
+    - group: 939
 
 {% endif %}
