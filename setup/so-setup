@@ -51,21 +51,22 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
+	local title='Security Onion Install'
 	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
 		if [[ -s /var/spool/mail/root ]]; then 
 			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
 		fi
 
-		if [[ $automated == no ]]; then whiptail_setup_failed; else exit 1; fi
-
-		if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit 1; fi
-	else
-		if [ $automated == no ]; then
-			whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
-		else
-			cat >> $setup_log 2>&1
-		fi
+		export SO_ERROR=1
+		export SKIP_REBOOT=1
+		title="Error found, please check $setup_log"
 	fi
+
+	if [ $automated == no ]; then
+		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
+	else
+		cat >> $setup_log 2>&1
+	fi		
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
