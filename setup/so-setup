@@ -51,21 +51,22 @@ echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
+	local title='Security Onion Install'
 	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
 		if [[ -s /var/spool/mail/root ]]; then 
 			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
 		fi
 
-		if [[ $automated == no ]]; then whiptail_setup_failed; else exit 1; fi
-
-		if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit 1; fi
-	else
-		if [ $automated == no ]; then
-			whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
-		else
-			cat >> $setup_log 2>&1
-		fi
+		export SO_ERROR=1
+		export SKIP_REBOOT=1
+		title="Error found, please check $setup_log"
 	fi
+
+	if [ $automated == no ]; then
+		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
+	else
+		cat >> $setup_log 2>&1
+	fi		
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
@@ -614,21 +615,17 @@ fi
 } | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-if [[ "$success" = 0 ]]; then
+
+if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+fi
+
+if [[ $success != 0 || -z $SO_ERROR ]]; then whiptail_setup_failed
+else 
 	whiptail_setup_complete
-
-	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-		export IP=$ALLOW_CIDR
-		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
-	fi
-
-	if [[ $THEHIVE == 1 ]]; then
-		check_hive_init
-	fi
-else
-	whiptail_setup_failed
+	if [[ $THEHIVE == 1 ]]; then check_hive_init; fi
 fi
 
-if [[ -z $SKIP_REBOOT ]]; then
-	shutdown -r now
-fi
+install_cleanup >> $setup_log 2>&1
+
+if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi
