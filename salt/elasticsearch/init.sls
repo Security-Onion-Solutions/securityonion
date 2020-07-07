@@ -26,8 +26,8 @@
   {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
   {% set esheap = salt['pillar.get']('master:esheap', '') %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
-  {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('node:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
+  {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
 {% endif %}
 
 vm.max_map_count:

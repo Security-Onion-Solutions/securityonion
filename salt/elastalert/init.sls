@@ -20,7 +20,7 @@
   {% set esip = salt['pillar.get']('master:mainip', '') %}
   {% set esport = salt['pillar.get']('master:es_port', '') %}
 {% elif grains['role'] == 'so-node' %}
-  {% set esalert = salt['pillar.get']('node:elastalert', '0') %}
+  {% set esalert = salt['pillar.get']('elasticsearch:elastalert', '0') %}
 {% endif %}
 
 # Elastalert
