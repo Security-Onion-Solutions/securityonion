@@ -617,7 +617,12 @@ detect_os() {
 				systemctl start NetworkManager;
 			} >> "$setup_log" 2<&1
 		fi
-		yum -y install yum-plugin-versionlock bc >> "$setup_log" 2>&1
+		if ! command -v bc > /dev/null 2>&1; then
+			yum -y install bc >> "$setup_log" 2>&1
+		fi
+		if ! yum versionlock > /dev/null 2>&1; then
+			yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
+		fi
 
 
 	elif [ -f /etc/os-release ]; then
