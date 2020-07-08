@@ -13,6 +13,7 @@ base:
 
   'os:CentOS':
     - match: grain
+    - yum
     - yum.packages
 
   '*':
