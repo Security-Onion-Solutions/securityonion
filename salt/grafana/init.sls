@@ -82,7 +82,7 @@ grafanaconf:
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-manager:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/manager/{{ SN }}-Master.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/manager/{{ SN }}-Manager.json
     - user: 939
     - group: 939
     - template: jinja
@@ -105,7 +105,7 @@ dashboard-manager:
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
 dashboard-managersearch:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch/{{ SN }}-MasterSearch.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch/{{ SN }}-ManagerSearch.json
     - user: 939
     - group: 939
     - template: jinja
