@@ -12,5 +12,13 @@ logstash:
         - so/9600_output_ossec.conf.jinja
         - so/9700_output_strelka.conf.jinja
   templates:
+    - so/so-beats-template.json
     - so/so-common-template.json
+    - so/so-firewall-template.json
+    - so/so-ids-template.json
+    - so/so-import-template.json
+    - so/so-osquery-template.json
+    - so/so-ossec-template.json
+    - so/so-strelka-template.json
+    - so/so-syslog-template.json
     - so/so-zeek-template.json
