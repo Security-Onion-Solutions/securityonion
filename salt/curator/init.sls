@@ -30,18 +30,10 @@ curlogdir:
     - user: 934
     - group: 939
 
-curcloseconf:
-  file.managed:
-    - name: /opt/so/conf/curator/action/close.yml
-    - source: salt://curator/files/action/close.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curdelconf:
-  file.managed:
-    - name: /opt/so/conf/curator/action/delete.yml
-    - source: salt://curator/files/action/delete.yml
+actionconfs:
+  file.recurse:
+    - name: /opt/so/conf/curator/action
+    - source: salt://curator/files/action
     - user: 934
     - group: 939
     - template: jinja
