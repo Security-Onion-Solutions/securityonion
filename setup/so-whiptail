@@ -435,9 +435,7 @@ whiptail_homenet_sensor() {
 		whiptail_check_exitstatus $exitstatus
 
 		export HNSENSOR
-
 	fi
-
 }
 
 whiptail_install_type() {
@@ -1057,6 +1055,29 @@ whiptail_shard_count() {
 
 }
 
+whiptail_so_allow() {
+
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" \
+	--yesno "Do you want to run so-allow to allow access to the web tools?" \
+	8 75
+
+	local exitstatus=$?
+
+	if [[ $exitstatus == 0 ]]; then
+		ALLOW_CIDR=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Enter a single ip address or range (in CIDR notation) to allow" \
+		10 75 125 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		
+		export ALLOW_ROLE='a'
+		export ALLOW_CIDR
+	fi
+
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_strelka_rules() {
 
         [ -n "$TESTING" ] && return
@@ -1073,7 +1094,6 @@ whiptail_strelka_rules() {
                 export STRELKARULES
 
         fi
-
 }
 
 whiptail_suricata_pins() {
