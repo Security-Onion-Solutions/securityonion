@@ -1,7 +1,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{%- set MASTER_URL = salt['pillar.get']('master:url_base', '') %}
-{%- set MASTER_IP = salt['pillar.get']('static:masterip', '') %}
+{% set MANAGER = salt['grains.get']('manager') %}
+{%- set MANAGER_URL = salt['pillar.get']('manager:url_base', '') %}
+{%- set MANAGER_IP = salt['pillar.get']('static:managerip', '') %}
 
 soctopusdir:
   file.directory:
@@ -50,7 +50,7 @@ playbookrulessync:
 
 so-soctopus:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
     - hostname: soctopus
     - name: so-soctopus
     - binds:
@@ -61,4 +61,4 @@ so-soctopus:
     - port_bindings:
       - 0.0.0.0:7000:7000
     - extra_hosts:
-      - {{MASTER_URL}}:{{MASTER_IP}}
+      - {{MANAGER_URL}}:{{MANAGER_IP}}

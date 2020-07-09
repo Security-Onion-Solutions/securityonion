@@ -1,12 +1,12 @@
 #!/bin/bash
-{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {%- set THEHIVEUSER = salt['pillar.get']('static:hiveuser', '') %}
 {%- set THEHIVEPASSWORD = salt['pillar.get']('static:hivepassword', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('static:hivekey', '') %}
 
 thehive_init(){
     sleep 120
-    THEHIVE_IP="{{MASTERIP}}"
+    THEHIVE_IP="{{MANAGERIP}}"
     THEHIVE_USER="{{THEHIVEUSER}}"
     THEHIVE_PASSWORD="{{THEHIVEPASSWORD}}"
     THEHIVE_KEY="{{THEHIVEKEY}}"
@@ -52,7 +52,7 @@ if [ -f /opt/so/state/thehive.txt ]; then
     exit 0
 else
     rm -f garbage_file
-    while ! wget -O garbage_file {{MASTERIP}}:9400 2>/dev/null
+    while ! wget -O garbage_file {{MANAGERIP}}:9400 2>/dev/null
     do
       echo "Waiting for Elasticsearch..."
       rm -f garbage_file

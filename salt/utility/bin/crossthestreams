@@ -1,6 +1,6 @@
 #!/bin/bash
-{% set ES = salt['pillar.get']('master:mainip', '') %}
-{%- set MASTER = grains['master'] %}
+{% set ES = salt['pillar.get']('manager:mainip', '') %}
+{%- set MANAGER = grains['manager'] %}
 
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
@@ -29,7 +29,7 @@ fi
 echo "Applying cross cluster search config..."
     curl -s -XPUT http://{{ ES }}:9200/_cluster/settings \
          -H 'Content-Type: application/json' \
-         -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MASTER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
+         -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MANAGER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
 
 # Add all the search nodes to cross cluster searching.
 

@@ -1,9 +1,9 @@
-{% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 
-{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
 # Influx DB
 influxconfdir:
@@ -26,7 +26,7 @@ influxdbconf:
 
 so-influxdb:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-influxdb:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-influxdb:{{ VERSION }}
     - hostname: influxdb
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false

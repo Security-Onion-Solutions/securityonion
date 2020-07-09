@@ -16,7 +16,7 @@
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
 
@@ -132,7 +132,7 @@ suribpf:
     
 so-suricata:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-suricata:{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}

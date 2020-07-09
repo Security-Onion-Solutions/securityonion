@@ -1,5 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
@@ -69,13 +69,13 @@ kibanabin:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-kibana:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-kibana:{{ VERSION }}{{ FEATURES }}
     - hostname: kibana
     - user: kibana
     - environment:
-      - ELASTICSEARCH_HOST={{ MASTER }}
+      - ELASTICSEARCH_HOST={{ MANAGER }}
       - ELASTICSEARCH_PORT=9200
-      - MASTER={{ MASTER }}
+      - MANAGER={{ MANAGER }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
@@ -94,7 +94,7 @@ kibanadashtemplate:
 wait_for_kibana:
   module.run:
     - http.wait_for_successful_query:
-      - url: "http://{{MASTER}}:5601/api/saved_objects/_find?type=config"
+      - url: "http://{{MANAGER}}:5601/api/saved_objects/_find?type=config"
       - wait_for: 180
     - onchanges:
       - file: kibanadashtemplate

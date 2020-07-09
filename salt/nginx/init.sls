@@ -1,6 +1,6 @@
-{% set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) %}
+{% set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) %}
 {% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 # Drop the correct nginx config based on role
@@ -61,15 +61,15 @@ navigatordefaultlayer:
 
 so-nginx:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
     - hostname: so-nginx
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /etc/pki/masterssl.crt:/etc/pki/nginx/server.crt:ro
-      - /etc/pki/masterssl.key:/etc/pki/nginx/server.key:ro
+      - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
+      - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       - /opt/so/conf/fleet/packages:/opt/socore/html/packages
       # ATT&CK Navigator binds
       - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
@@ -78,7 +78,7 @@ so-nginx:
     - port_bindings:
       - 80:80
       - 443:443
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
       - 8090:8090
     {%- endif %}
     - watch:

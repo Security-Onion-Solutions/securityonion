@@ -1,7 +1,7 @@
 {%- if grains.role == 'so-heavynode' %}
-{%- set MASTER = salt['pillar.get']('sensor:mainip' '') %}
+{%- set MANAGER = salt['pillar.get']('sensor:mainip' '') %}
 {%- else %}
-{%- set MASTER = grains['master'] %}
+{%- set MANAGER = grains['manager'] %}
 {%- endif %}
 
 
@@ -9,7 +9,7 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh', '0') %}
 {%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
-{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
 name: {{ HOSTNAME }}
@@ -214,7 +214,7 @@ filebeat.inputs:
 
 {%- endif %}
 
-{%- if FLEETMASTER or FLEETNODE %}
+{%- if FLEETMANAGER or FLEETNODE %}
 
 - type: log
   paths:
@@ -252,7 +252,7 @@ output.{{ type }}:
   {%- if grains['role'] == "so-eval" %}
 output.elasticsearch:
   enabled: true
-  hosts: ["{{ MASTER }}:9200"]
+  hosts: ["{{ MANAGER }}:9200"]
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"
   indices:
@@ -280,7 +280,7 @@ output.logstash:
   enabled: true
 
   # The Logstash hosts
-  hosts: ["{{ MASTER }}:5644"]
+  hosts: ["{{ MANAGER }}:5644"]
 
   # Number of workers per Logstash host.
   #worker: 1

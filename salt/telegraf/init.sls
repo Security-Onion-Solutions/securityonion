@@ -1,4 +1,4 @@
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 # Add Telegraf to monitor all the things.
@@ -36,7 +36,7 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-telegraf:{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
@@ -53,7 +53,7 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
-      {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-mastersearch' %}
+      {% if grains['role'] == 'so-manager' or grains['role'] == 'so-eval' or grains['role'] == 'so-managersearch' %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt:ro

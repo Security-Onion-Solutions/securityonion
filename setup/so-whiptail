@@ -405,23 +405,23 @@ whiptail_helix_apikey() {
 
 }
 
-whiptail_homenet_master() {
+whiptail_homenet_manager() {
 
 	[ -n "$TESTING" ] && return
 
-	HNMASTER=$(whiptail --title "Security Onion Setup" --inputbox \
+	HNMANAGER=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter your HOME_NET separated by ," 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
-	export HNMASTER
+	export HNMANAGER
 }
 
 whiptail_homenet_sensor() {
 
 	[ -n "$TESTING" ] && return
 
-	# Ask to inherit from master
+	# Ask to inherit from manager
 	whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Master?" 8 75
 
 	local exitstatus=$?
@@ -459,10 +459,10 @@ whiptail_install_type() {
 	if [[ $install_type == "DISTRIBUTED" ]]; then
 		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
 		"Choose distributed node type:" 13 60 6 \
-			"MASTER" "Start a new grid " ON \
+			"MANAGER" "Start a new grid " ON \
 			"SENSOR" "Create a forward only sensor " OFF \
 			"SEARCHNODE" "Add a search node with parsing " OFF \
-			"MASTERSEARCH" "Master + search node " OFF \
+			"MANAGERSEARCH" "Master + search node " OFF \
 			"FLEET" "Dedicated Fleet Osquery Node " OFF \
 			"HEAVYNODE" "Sensor + Search Node " OFF \
 			3>&1 1>&2 2>&3
@@ -606,20 +606,20 @@ whiptail_management_server() {
 	whiptail_check_exitstatus $exitstatus
 
 	if ! getent hosts "$MSRV"; then
-		add_master_hostfile
+		add_manager_hostfile
 	fi
 
 }
 
 # Ask if you want to do advanced setup of the Master
-whiptail_master_adv() {
+whiptail_manager_adv() {
 
 	[ -n "$TESTING" ] && return
 
-	MASTERADV=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose what type of master install:" 20 75 4 \
-	"BASIC" "Install master with recommended settings" ON  \
-	"ADVANCED" "Do additional configuration to the master" OFF 3>&1 1>&2 2>&3 )
+	MANAGERADV=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose what type of manager install:" 20 75 4 \
+	"BASIC" "Install manager with recommended settings" ON  \
+	"ADVANCED" "Do additional configuration to the manager" OFF 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -627,7 +627,7 @@ whiptail_master_adv() {
 }
 
 # Ask which additional components to install
-whiptail_master_adv_service_brologs() {
+whiptail_manager_adv_service_brologs() {
 
 	[ -n "$TESTING" ] && return
 
@@ -792,7 +792,7 @@ whiptail_patch_name_new_schedule() {
 	[ -n "$TESTING" ] && return
 
 	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-	"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+	"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -800,7 +800,7 @@ whiptail_patch_name_new_schedule() {
 	while [[ -z "$PATCHSCHEDULENAME"  ]]; do
 		whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 75
 		PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-		"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+		"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
@@ -851,7 +851,7 @@ whiptail_patch_schedule_import() {
 
 	unset PATCHSCHEDULENAME
 	PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+	"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -859,7 +859,7 @@ whiptail_patch_schedule_import() {
 	while [[ -z "$PATCHSCHEDULENAME"  ]]; do
 		whiptail --title "Security Onion Setup" --msgbox "Please enter a name for the OS patch schedule you want to inherit." 8 75
 		PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-		"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the master under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
+		"Enter the name of the OS patch schedule you want to inherit. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
 
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
@@ -945,7 +945,7 @@ whiptail_rule_setup() {
 
 	# Get pulled pork info
 	RULESETUP=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Which IDS ruleset would you like to use?\n\nThis master server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the master server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
+	"Which IDS ruleset would you like to use?\n\nThis manager server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the manager server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
 	"ETOPEN" "Emerging Threats Open" ON \
 	"ETPRO" "Emerging Threats PRO" OFF \
 	"TALOSET" "Snort Subscriber (Talos) and ET NoGPL rulesets" OFF \
@@ -1098,34 +1098,34 @@ whiptail_suricata_pins() {
 
 }
 
-whiptail_master_updates() {
+whiptail_manager_updates() {
 
 	[ -n "$TESTING" ] && return
 
 	local update_string
 	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
 	"How would you like to download OS package updates for your grid?:" 20 75 4 \
-	"MASTER" "Master node is proxy for updates." ON \
+	"MANAGER" "Master node is proxy for updates." ON \
 	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	case "$update_string" in
-		'MASTER')
-			MASTERUPDATES='1'
+		'MANAGER')
+			MANAGERUPDATES='1'
 			;;
 		*)
-			MASTERUPDATES='0'
+			MANAGERUPDATES='0'
 			;;
 	esac
 
 }
 
-whiptail_master_updates_warning() {
+whiptail_manager_updates_warning() {
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup"\
-	--msgbox "Updating through the master node requires the master to have internet access, press ENTER to continue"\
+	--msgbox "Updating through the manager node requires the manager to have internet access, press ENTER to continue"\
 	8 75
 
 	local exitstatus=$?
@@ -1138,7 +1138,7 @@ whiptail_node_updates() {
 
 	NODEUPDATES=$(whiptail --title "Security Onion Setup" --radiolist \
 	"How would you like to download OS package updates for your grid?:" 20 75 4 \
-	"MASTER" "Master node is proxy for updates." ON \
+	"MANAGER" "Master node is proxy for updates." ON \
 	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?

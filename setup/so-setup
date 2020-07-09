@@ -129,21 +129,21 @@ whiptail_install_type
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
-	is_master=true
+	is_manager=true
 	is_sensor=true
 	is_eval=true
 elif [ "$install_type" = 'STANDALONE' ]; then
-	is_master=true
-	is_distmaster=true
+	is_manager=true
+	is_distmanager=true
 	is_node=true
 	is_sensor=true
-elif [ "$install_type" = 'MASTERSEARCH' ]; then
-	is_master=true
-	is_distmaster=true
+elif [ "$install_type" = 'MANAGERSEARCH' ]; then
+	is_manager=true
+	is_distmanager=true
 	is_node=true
-elif [ "$install_type" = 'MASTER' ]; then
-	is_master=true
-	is_distmaster=true
+elif [ "$install_type" = 'MANAGER' ]; then
+	is_manager=true
+	is_distmanager=true
 elif [ "$install_type" = 'SENSOR' ]; then
 	is_sensor=true
 	is_minion=true
@@ -169,7 +169,7 @@ elif [[ $is_fleet_standalone ]]; then
 	check_requirements "dist" "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
 	check_requirements "dist" "sensor"
-elif [[ $is_distmaster || $is_minion ]]; then
+elif [[ $is_distmanager || $is_minion ]]; then
 	check_requirements "dist"
 fi
 
@@ -214,15 +214,15 @@ if [[ $is_helix ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 	HNSENSOR=inherit
-	MASTERUPDATES=0
+	MANAGERUPDATES=0
 fi
 
-if [[ $is_helix || ( $is_master && $is_node ) ]]; then
+if [[ $is_helix || ( $is_manager && $is_node ) ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 fi
 
-if [[ $is_master && $is_node ]]; then
+if [[ $is_manager && $is_node ]]; then
 	LSPIPELINEWORKERS=1
 	LSPIPELINEBATCH=125
 	LSINPUTTHREADS=1
@@ -241,16 +241,16 @@ if [[ $is_helix || $is_sensor ]]; then
 	calculate_useable_cores
 fi
 
-if [[ $is_helix ||  $is_master ]]; then
-	whiptail_homenet_master
+if [[ $is_helix ||  $is_manager ]]; then
+	whiptail_homenet_manager
 fi
 
-if [[ $is_helix || $is_master || $is_node ]]; then
+if [[ $is_helix || $is_manager || $is_node ]]; then
 	set_base_heapsizes
 fi
 
-if [[ $is_master && ! $is_eval ]]; then
-	whiptail_master_adv
+if [[ $is_manager && ! $is_eval ]]; then
+	whiptail_manager_adv
 	whiptail_bro_version
 	whiptail_nids
 	whiptail_rule_setup
@@ -259,12 +259,12 @@ if [[ $is_master && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [ "$MASTERADV" = 'ADVANCED' ] && [ "$BROVERSION" != 'SURICATA' ]; then
-		whiptail_master_adv_service_brologs
+	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$BROVERSION" != 'SURICATA' ]; then
+		whiptail_manager_adv_service_brologs
 	fi
 fi
 
-if [[ $is_master ]]; then
+if [[ $is_manager ]]; then
 	whiptail_components_adv_warning
 	whiptail_enable_components
 	if [[ $STRELKA == 1 ]]; then
@@ -274,10 +274,10 @@ if [[ $is_master ]]; then
 	get_redirect
 fi
 
-if [[ $is_distmaster || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
-	whiptail_master_updates
-	if [[ $setup_type == 'network' && $MASTERUPDATES == 1 ]]; then
-		whiptail_master_updates_warning
+if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
+	whiptail_manager_updates
+	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
+		whiptail_manager_updates_warning
 	fi
 fi
 
@@ -285,7 +285,7 @@ if [[ $is_minion ]]; then
 	whiptail_management_server
 fi
 
-if [[ $is_distmaster ]]; then
+if [[ $is_distmanager ]]; then
 	collect_soremote_inputs
 fi
 
@@ -349,20 +349,20 @@ fi
 {
 	set_hostname;
 	set_version;
-	clear_master;
+	clear_manager;
 } >> $setup_log 2>&1
 
 
-if [[ $is_master ]]; then
+if [[ $is_manager ]]; then
 	{
 		generate_passwords;
 		secrets_pillar;
-		add_socore_user_master;
+		add_socore_user_manager;
 	} >> $setup_log 2>&1	
 fi
 
-if [[ $is_master && ! $is_eval ]]; then
-	add_soremote_user_master >> $setup_log 2>&1
+if [[ $is_manager && ! $is_eval ]]; then
+	add_soremote_user_manager >> $setup_log 2>&1
 fi
 
 set_main_ip >> $setup_log 2>&1
@@ -408,12 +408,12 @@ fi
 	set_progress_str 9 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
-	if [[ $is_master || $is_helix ]]; then
+	if [[ $is_manager || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
 		{
 			create_local_directories;
 			addtotab_generate_templates;
-			copy_master_config;
+			copy_salt_master_config;
 			setup_salt_master_dirs;
 			firewall_generate_templates;
 		} >> $setup_log 2>&1
@@ -421,11 +421,11 @@ fi
 		set_progress_str 11 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
 		
-		set_progress_str 12 'Generating master static pillar'
-		master_static >> $setup_log 2>&1
+		set_progress_str 12 'Generating manager static pillar'
+		manager_static >> $setup_log 2>&1
 		
-		set_progress_str 13 'Generating master pillar'
-		master_pillar >> $setup_log 2>&1
+		set_progress_str 13 'Generating manager pillar'
+		manager_pillar >> $setup_log 2>&1
 	fi
 
 
@@ -446,22 +446,22 @@ fi
 	fi
 
 	if [[ $is_minion ]]; then
-		set_progress_str 20 'Accepting Salt key on master'
+		set_progress_str 20 'Accepting Salt key on manager'
 		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
 
-	set_progress_str 21 'Copying minion pillars to master'
+	set_progress_str 21 'Copying minion pillars to manager'
 	copy_minion_tmp_files >> $setup_log 2>&1
 
 	set_progress_str 22 'Generating CA and checking in'
 	salt_checkin >> $setup_log 2>&1
 
-	if [[ $is_master || $is_helix ]]; then
+	if [[ $is_manager || $is_helix ]]; then
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 		
@@ -474,14 +474,14 @@ fi
 		salt-call state.apply -l info registry >> $setup_log 2>&1
 		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
 		
-		set_progress_str 60 "$(print_salt_state_apply 'master')"
-		salt-call state.apply -l info master >> $setup_log 2>&1
+		set_progress_str 60 "$(print_salt_state_apply 'manager')"
+		salt-call state.apply -l info manager >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
 		salt-call state.apply -l info idstools >> $setup_log 2>&1
 
-		set_progress_str 61 "$(print_salt_state_apply 'suricata.master')"
-		salt-call state.apply -l info suricata.master >> $setup_log 2>&1
+		set_progress_str 61 "$(print_salt_state_apply 'suricata.manager')"
+		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
 
 	fi
 
@@ -499,7 +499,7 @@ fi
 	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
 	salt-call state.apply -l info nginx >> $setup_log 2>&1
 
-	if [[ $is_master || $is_node ]]; then
+	if [[ $is_manager || $is_node ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
 		salt-call state.apply -l info elasticsearch >> $setup_log 2>&1
 	fi
@@ -520,7 +520,7 @@ fi
 		salt-call state.apply -l info curator >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 69 "$(print_salt_state_apply 'soc')"
 		salt-call state.apply -l info soc >> $setup_log 2>&1
 
@@ -584,12 +584,12 @@ fi
 		fi
 	fi
 
-	if [[ $is_master || $is_helix ]]; then		
+	if [[ $is_manager || $is_helix ]]; then		
 		set_progress_str 81 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
 
-	if [[ ( $is_helix || $is_master || $is_node ) && ! $is_eval ]]; then
+	if [[ ( $is_helix || $is_manager || $is_node ) && ! $is_eval ]]; then
 		set_progress_str 82 "$(print_salt_state_apply 'logstash')"
 		salt-call state.apply -l info logstash >> $setup_log 2>&1
 
@@ -601,7 +601,7 @@ fi
 	filter_unused_nics >> $setup_log 2>&1
 	network_setup >> $setup_log 2>&1
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 87 'Adding user to SOC'
 		add_web_user >> $setup_log 2>&1
 	fi

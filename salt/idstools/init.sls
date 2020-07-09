@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('manager') %}
 # IDSTools Setup
 idstoolsdir:
   file.directory:
@@ -60,7 +60,7 @@ synclocalnidsrules:
 
 so-idstools:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-idstools:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-idstools:{{ VERSION }}
     - hostname: so-idstools
     - user: socore
     - binds:
