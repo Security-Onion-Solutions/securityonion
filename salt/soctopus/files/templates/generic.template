@@ -1,6 +1,6 @@
-{% set es = salt['pillar.get']('static:masterip', '') %}
-{% set hivehost = salt['pillar.get']('static:masterip', '') %}
-{% set hivekey = salt['pillar.get']('static:hivekey', '') %}
+{%- set es = salt['pillar.get']('static:masterip', '') %}
+{%- set hivehost = salt['pillar.get']('static:masterip', '') %}
+{%- set hivekey = salt['pillar.get']('static:hivekey', '') %}
 alert: hivealerter
 
 hive_connection:
@@ -23,3 +23,15 @@ hive_alert_config:
   status: 'New'
   follow: True
   caseTemplate: '5000'
+
+alert: modules.so.playbook-es.PlaybookESAlerter
+elasticsearch_host: "{{ es }}:9200"
+play_title: ""
+event.module: "playbook"
+event.dataset: "alert"
+event.severity:
+rule.category: 
+play_url: "https://{{ es }}/playbook/issues/6000"
+kibana_pivot: "https://{{es}}/kibana/app/kibana#/discover?_g=()&_a=(columns:!(_source),interval:auto,query:(language:lucene,query:'_id:{[_id]}'),sort:!('@timestamp',desc))"
+soc_pivot: "https://{{es}}/#/hunt"
+sigma_level: ""
