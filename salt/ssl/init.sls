@@ -1,4 +1,4 @@
-{% set manager = salt['grains.get']('manager') %}
+{% set manager = salt['grains.get']('master') %}
 {% set managerip = salt['pillar.get']('static:managerip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
 {% set global_ca_text = [] %}

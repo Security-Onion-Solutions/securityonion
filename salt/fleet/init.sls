@@ -2,7 +2,7 @@
 {%- set FLEETPASS = salt['pillar.get']('secrets:fleet', None) -%}
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
 {% if FLEETARCH == "so-fleet" %}

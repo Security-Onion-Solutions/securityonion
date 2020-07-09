@@ -1,4 +1,4 @@
-{% set manager = salt['grains.get']('manager') %}
+{% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
   file.managed:
     - source: salt://ca/files/signing_policies.conf

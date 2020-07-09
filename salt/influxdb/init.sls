@@ -1,5 +1,5 @@
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 

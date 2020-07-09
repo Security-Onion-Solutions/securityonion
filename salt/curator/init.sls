@@ -1,5 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
 # Curator
 # Create the group

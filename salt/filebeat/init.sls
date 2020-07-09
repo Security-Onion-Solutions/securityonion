@@ -12,7 +12,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}

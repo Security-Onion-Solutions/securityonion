@@ -1,6 +1,6 @@
 {% if grains['role'] == 'so-sensor' or grains['role'] == 'so-eval' %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 
 so-tcpreplay:
   docker_container.running:

@@ -1,6 +1,6 @@
 {% set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) %}
 {% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
 # Drop the correct nginx config based on role

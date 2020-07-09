@@ -1,4 +1,4 @@
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set ENROLLSECRET = salt['pillar.get']('secrets:fleet_enroll-secret') %}
 {% set CURRENTPACKAGEVERSION = salt['pillar.get']('static:fleet_packages-version') %}
 {% set VERSION = salt['pillar.get']('static:soversion') %}

@@ -1,6 +1,6 @@
 {% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MANAGER = salt['grains.get']('manager') %}
+{% set MANAGER = salt['grains.get']('master') %}
 thehiveconfdir:
   file.directory:
     - name: /opt/so/conf/thehive/etc
