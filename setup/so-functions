@@ -1018,55 +1018,60 @@ master_static() {
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
-		"  route_type: hot"\
 		"  replicas: 0"\
-		"  true_cluster: False"
-		"  true_cluster_name: so"
+		"  true_cluster: False"\
+		"  true_cluster_name: so"\
+		"  discovery_nodes: 1"\
+		"  hot_warm_enabled: False"\
+		"  cluster_routing_allocation_disk.threshold_enabled: true"\
+        "  cluster_routing_allocation_disk_watermark_low: 95%"\
+        "  cluster_routing_allocation_disk_watermark_high: 98%"\
+        "  cluster_routing_allocation_disk_watermark_flood_stage: 98%"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"
 		"    so-firewall:"\
+		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
-		"      shards: 1"\
+		"      delete: 365"\
 		"    so-ids:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"\
 		"    so-import:"\
+		"      shards: 1"\		
 		"      warm: 7"\
-		"      close: 7300"\
-		"      delete: 7301"
-		"      shards: 1"\
+		"      close: 73000"\
+		"      delete: 73001"
 		"    so-osquery:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"
 		"    so-ossec:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"\
 		"    so-strelka:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"\
 		"    so-syslog:"\
 		"      shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
-		"      delete: 45"
+		"      delete: 365"\
 		"    so-zeek:"\
 		"      shards: 5"\
 		"      warm: 7"\
-		"      close: 30"\
+		"      close: 365"\
 		"      delete: 45" > "$static_pillar"
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
@@ -1119,6 +1124,7 @@ elasticsearch_pillar() {
 		"  node_type: $NODETYPE"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
+		"  node_route_type: hot"\
 		"" >> "$pillar_file"
 
 	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MASTERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
