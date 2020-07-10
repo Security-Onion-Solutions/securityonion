@@ -1,10 +1,10 @@
 {%- set BROVER = salt['pillar.get']('static:broversion', '') -%}
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
-{%- set THEHIVE = salt['pillar.get']('master:thehive', '0') -%}
-{%- set PLAYBOOK = salt['pillar.get']('master:playbook', '0') -%}
-{%- set FREQSERVER = salt['pillar.get']('master:freq', '0') -%}
-{%- set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') -%}
-{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
+{%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
+{%- set FREQSERVER = salt['pillar.get']('manager:freq', '0') -%}
+{%- set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') -%}
+{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
 
@@ -13,6 +13,7 @@ base:
 
   'os:CentOS':
     - match: grain
+    - yum
     - yum.packages
 
   '*':
@@ -29,7 +30,7 @@ base:
     - telegraf
     - firewall
     - idstools
-    - suricata.master
+    - suricata.manager
     - pcap
     - suricata
     - zeek
@@ -55,7 +56,7 @@ base:
     - strelka
     {%- endif %}
     - filebeat
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
@@ -64,7 +65,7 @@ base:
     - ca
     - ssl
     - registry
-    - master
+    - manager
     - common
     - nginx
     - telegraf
@@ -73,9 +74,9 @@ base:
     - soc
     - firewall
     - idstools
-    - suricata.master
+    - suricata.manager
     - healthcheck
-    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -94,7 +95,7 @@ base:
     - filebeat
     - curator
     - elastalert
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - redis
     - fleet.install_package
@@ -116,7 +117,7 @@ base:
     {%- endif %}
 
 
-  '*_master':
+  '*_manager':
     - ca
     - ssl
     - registry
@@ -127,11 +128,11 @@ base:
     - grafana
     - soc
     - firewall
-    - master
+    - manager
     - idstools
-    - suricata.master
+    - suricata.manager
     - redis
-    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -144,7 +145,7 @@ base:
     - filebeat
     - utility
     - schedule
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
     {%- endif %}
@@ -166,7 +167,7 @@ base:
     - ca
     - ssl
     - registry
-    - master
+    - manager
     - common
     - nginx
     - telegraf
@@ -175,10 +176,10 @@ base:
     - soc
     - firewall
     - idstools
-    - suricata.master    
+    - suricata.manager    
     - healthcheck
     - redis
-    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -198,7 +199,7 @@ base:
     - filebeat
     - curator
     - elastalert
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - redis
     - fleet.install_package
@@ -226,7 +227,7 @@ base:
     - common
     - firewall
     - logstash
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
@@ -238,7 +239,7 @@ base:
     - logstash
     - elasticsearch
     - curator
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
@@ -248,7 +249,7 @@ base:
     - common
     - firewall
     - elasticsearch
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
@@ -267,12 +268,12 @@ base:
     - elasticsearch
     - curator
     - filebeat
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
 
-  '*_mastersensor':
+  '*_managersensor':
     - common
     - nginx
     - telegraf
@@ -280,13 +281,13 @@ base:
     - grafana
     - firewall
     - sensor
-    - master
-    {%- if FLEETMASTER or FLEETNODE %}
+    - manager
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - schedule
 
-  '*_mastersearch':
+  '*_managersearch':
     - ca
     - ssl
     - registry
@@ -297,11 +298,11 @@ base:
     - grafana
     - soc
     - firewall
-    - master
+    - manager
     - idstools
-    - suricata.master
+    - suricata.manager
     - redis
-    {%- if FLEETMASTER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -315,7 +316,7 @@ base:
     - filebeat
     - utility
     - schedule
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
     {%- endif %}
@@ -347,7 +348,7 @@ base:
     - elasticsearch
     - curator
     - filebeat
-    {%- if FLEETMASTER or FLEETNODE %}
+    {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
     - pcap

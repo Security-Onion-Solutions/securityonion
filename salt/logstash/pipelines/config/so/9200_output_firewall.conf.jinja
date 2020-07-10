@@ -1,28 +1,15 @@
 {%- if grains['role'] == 'so-eval' -%}
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-# Author: Justin Henderson
-#         SANS Instructor and author of SANS SEC555: SIEM and Tactical Analytics
-# Email: justin@hasecuritysolution.com
-# Last Update: 12/9/2016
-
-filter {
-  if "firewall" in [tags] and "test_data" not in [tags] {
-    mutate {
-	  ##add_tag => [ "conf_file_9200"]
-	}
-  }
-}
 output {
-  if "firewall" in [tags] and "test_data" not in [tags] {
-#    stdout { codec => rubydebug }
+  if "firewall" in [tags] {
     elasticsearch {
       hosts => "{{ ES }}"
       index => "so-firewall-%{+YYYY.MM.dd}"
-      template_name => "so-common"
-      template => "/so-common-template.json"
+      template_name => "so-firewall"
+      template => "/so-firewall-template.json"
       template_overwrite => true
     }
   }

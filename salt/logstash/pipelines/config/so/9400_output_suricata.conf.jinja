@@ -1,28 +1,16 @@
 {%- if grains['role'] == 'so-eval' -%}
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-# Author: Justin Henderson
-#         SANS Instructor and author of SANS SEC555: SIEM and Tactical Analytics
-# Email: justin@hasecuritysolution.com
-# Last Update: 12/9/2016
-
-filter {
-  if [module] == "suricata" {
-    mutate {
-	  ##add_tag => [ "conf_file_9400"]
-	}
-  }
-}
 output {
-  if [module] =~ "suricata" {
+  if [module] =~ "suricata" and "import" not in [tags] {
     elasticsearch {
       pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-ids-%{+YYYY.MM.dd}"
-      template_name => "so-common" 
-      template => "/so-common-template.json"
+      template_name => "so-ids" 
+      template => "/so-ids-template.json"
     }
   }
 }

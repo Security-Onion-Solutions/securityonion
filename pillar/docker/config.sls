@@ -1,12 +1,12 @@
-{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
-{% set WAZUH = salt['pillar.get']('master:wazuh', '0') %}
-{% set THEHIVE = salt['pillar.get']('master:thehive', '0') %}
-{% set PLAYBOOK = salt['pillar.get']('master:playbook', '0') %}
-{% set FREQSERVER = salt['pillar.get']('master:freq', '0') %}
-{% set DOMAINSTATS = salt['pillar.get']('master:domainstats', '0') %}
+{% set WAZUH = salt['pillar.get']('manager:wazuh', '0') %}
+{% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
+{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
+{% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
+{% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
 {% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
-{% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
+{% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
 eval:
   containers:
@@ -20,7 +20,7 @@ eval:
     - so-soc
     - so-kratos
     - so-idstools
-    {% if FLEETMASTER %}
+    {% if FLEETMANAGER %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -83,7 +83,7 @@ hot_node:
     - so-logstash
     - so-elasticsearch
     - so-curator
-master_search:
+manager_search:
   containers:
     - so-nginx
     - so-telegraf
@@ -99,7 +99,7 @@ master_search:
     - so-elastalert
     - so-filebeat
     - so-soctopus
-    {% if FLEETMASTER %}
+    {% if FLEETMANAGER %}
     - so-mysql
     - so-fleet
     - so-redis
@@ -122,7 +122,7 @@ master_search:
     {% if DOMAINSTATS != '0' %}
     - so-domainstats
     {% endif %}
-master:
+manager:
   containers:
     - so-dockerregistry
     - so-nginx
@@ -141,7 +141,7 @@ master:
     - so-kibana
     - so-elastalert
     - so-filebeat
-    {% if FLEETMASTER %}
+    {% if FLEETMANAGER %}
     - so-mysql
     - so-fleet
     - so-redis

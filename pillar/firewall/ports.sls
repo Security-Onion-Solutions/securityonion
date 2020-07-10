@@ -17,7 +17,7 @@ firewall:
         - 5644
         - 9822
       udp:
-  master:
+  manager:
     ports:
       tcp:
         - 1514

@@ -1,4 +1,4 @@
-{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 {%- set FLEETHOSTNAME = salt['pillar.get']('static:fleet_hostname', False) -%}
 {%- set FLEETIP = salt['pillar.get']('static:fleet_ip', False) -%}

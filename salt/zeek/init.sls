@@ -1,5 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
@@ -86,20 +86,20 @@ nodecfgsync:
     - group: 939
     - template: jinja
 
-zeekcleanscript:
-  file.managed:
-    - name: /usr/local/bin/zeek_clean
-    - source: salt://zeek/cron/zeek_clean
-    - mode: 755
+#zeekcleanscript:
+#  file.managed:
+#    - name: /usr/local/bin/zeek_clean
+#    - source: salt://zeek/cron/zeek_clean
+#    - mode: 755
 
-/usr/local/bin/zeek_clean:
-  cron.present:
-    - user: root
-    - minute: '*'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
+#/usr/local/bin/zeek_clean:
+#  cron.present:
+#    - user: root
+#    - minute: '*'
+#    - hour: '*'
+#    - daymonth: '*'
+#    - month: '*'
+#    - dayweek: '*'
 
 plcronscript:
   file.managed:
@@ -156,7 +156,7 @@ localzeeksync:
 
 so-zeek:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-zeek:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-zeek:{{ VERSION }}
     - privileged: True
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw

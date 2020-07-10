@@ -1,3 +1,5 @@
+{% set role = grains.id.split('_') | last %}
+
 # Add socore Group
 socoregroup:
   group.present:
@@ -131,3 +133,15 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
+
+{% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
+# Add sensor cleanup
+/usr/sbin/so-sensor-clean:
+  cron.present:
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+{% endif %}

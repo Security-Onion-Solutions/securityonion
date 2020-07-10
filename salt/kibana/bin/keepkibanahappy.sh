@@ -1,4 +1,4 @@
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
 COUNT=0

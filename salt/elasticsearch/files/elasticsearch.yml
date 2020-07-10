@@ -1,6 +1,11 @@
-{% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' %}
-{%- set esclustername = salt['pillar.get']('master:esclustername', '') %}
-cluster.name: "{{ esclustername }}"
+{%- set NODE_ROUTE_TYPE = salt['pillar.get']('elasticsearch:node_route_type', 'hot') %}
+{%- if salt['pillar.get']('elasticsearch:hot_warm_enabled') or salt['pillar.get']('elasticsearch:true_cluster') %}
+{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name', '') %}
+{%- else %}
+{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
+{%- endif %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
 # minimum_master_nodes need to be explicitly set when bound on a public IP
@@ -10,19 +15,13 @@ discovery.zen.minimum_master_nodes: 1
 # This is a test -- if this is here, then the volume is mounted correctly.
 path.logs: /var/log/elasticsearch
 action.destructive_requires_name: true
-{%- else %}
-{%- set esclustername = salt['grains.get']('host', '') %}
-{%- set nodeip = salt['pillar.get']('elasticsearch:mainip', '') -%}
-cluster.name: "{{ esclustername }}"
-network.host: 0.0.0.0
-discovery.zen.minimum_master_nodes: 1
-path.logs: /var/log/elasticsearch
-action.destructive_requires_name: true
 transport.bind_host: 0.0.0.0
-transport.publish_host: {{ nodeip }}
+transport.publish_host: {{ NODEIP }}
 transport.publish_port: 9300
-{%- endif %}
 cluster.routing.allocation.disk.threshold_enabled: true
 cluster.routing.allocation.disk.watermark.low: 95%
 cluster.routing.allocation.disk.watermark.high: 98%
 cluster.routing.allocation.disk.watermark.flood_stage: 98%
+node.attr.box_type: {{ NODE_ROUTE_TYPE }}
+node.name: {{ ESCLUSTERNAME }}
+script.max_compilations_rate: 1000/1m
