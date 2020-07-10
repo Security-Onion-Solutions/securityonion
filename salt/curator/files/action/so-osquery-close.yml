@@ -1,9 +1,4 @@
-{%- if grains['role'] in ['so-node', 'so-searchnode', 'so-heavynode'] %}
-  {%- set cur_close_days = salt['pillar.get']('elasticsearch:cur_close_days', '') -%}
-{%- elif grains['role'] in ['so-eval', 'so-managersearch', 'so-standalone'] %}
-  {%- set cur_close_days = salt['pillar.get']('manager:cur_close_days', '') -%}
-{%- endif -%}
-
+{%- set cur_close_days = salt['pillar.get']('elasticsearch:index_settins:so-osquery:close', 30) -%}
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
 # not a Python "NoneType"
@@ -15,8 +10,7 @@ actions:
   1:
     action: close
     description: >-
-      Close indices older than {{cur_close_days}} days (based on index name), for logstash-
-      prefixed indices.
+      Close osquery indices older than {{cur_close_days}} days.
     options:
       delete_aliases: False
       timeout_override:
@@ -25,7 +19,7 @@ actions:
     filters:
     - filtertype: pattern
       kind: regex 
-      value: '^(logstash-.*|so-.*)$'
+      value: '^(logstash-osquery.*|so-osquery.*)$'
     - filtertype: age
       source: name
       direction: older

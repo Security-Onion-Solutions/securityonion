@@ -1013,8 +1013,66 @@ manager_static() {
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: $STRELKARULES"\
+		"curator:"\
+		"  hot_warm: False"\
 		"elastic:"\
-		"  features: False" > "$static_pillar"
+		"  features: False"\
+		"elasticsearch:"\
+		"  replicas: 0"\
+		"  true_cluster: False"\
+		"  true_cluster_name: so"\
+		"  discovery_nodes: 1"\
+		"  hot_warm_enabled: False"\
+		"  cluster_routing_allocation_disk.threshold_enabled: true"\
+        "  cluster_routing_allocation_disk_watermark_low: 95%"\
+        "  cluster_routing_allocation_disk_watermark_high: 98%"\
+        "  cluster_routing_allocation_disk_watermark_flood_stage: 98%"\
+		"  index_settings:"\
+		"    so-beats:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-firewall:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-ids:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-import:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 73000"\
+		"      delete: 73001"\
+		"    so-osquery:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-ossec:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-strelka:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-syslog:"\
+		"      shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-zeek:"\
+		"      shards: 5"\
+		"      warm: 7"\
+		"      close: 365"\
+		"      delete: 45" > "$static_pillar"
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$static_pillar" >> "$setup_log" 2>&1
@@ -1066,12 +1124,7 @@ elasticsearch_pillar() {
 		"  node_type: $NODETYPE"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  cur_close_days: $CURCLOSEDAYS"\
-		"  route_type: hot"\
-		"  index_settings:"\
-		"    so-zeek:"\
-		"      shards: 5"\
-		"      replicas: 0"\
+		"  node_route_type: hot"\
 		"" >> "$pillar_file"
 
 	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MANAGERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
