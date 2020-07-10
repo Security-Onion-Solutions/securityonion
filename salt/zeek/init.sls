@@ -86,20 +86,20 @@ nodecfgsync:
     - group: 939
     - template: jinja
 
-zeekcleanscript:
-  file.managed:
-    - name: /usr/local/bin/zeek_clean
-    - source: salt://zeek/cron/zeek_clean
-    - mode: 755
+#zeekcleanscript:
+#  file.managed:
+#    - name: /usr/local/bin/zeek_clean
+#    - source: salt://zeek/cron/zeek_clean
+#    - mode: 755
 
-/usr/local/bin/zeek_clean:
-  cron.present:
-    - user: root
-    - minute: '*'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
+#/usr/local/bin/zeek_clean:
+#  cron.present:
+#    - user: root
+#    - minute: '*'
+#    - hour: '*'
+#    - daymonth: '*'
+#    - month: '*'
+#    - dayweek: '*'
 
 plcronscript:
   file.managed:
