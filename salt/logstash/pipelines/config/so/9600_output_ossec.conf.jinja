@@ -3,27 +3,14 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-# Author: Justin Henderson
-#         SANS Instructor and author of SANS SEC555: SIEM and Tactical Analytics
-# Updated by: Doug Burks
-# Last Update: 9/19/2018
-
-filter {
-  if [module] =~ "ossec" {
-    mutate {
-          ##add_tag => [ "conf_file_9600"]
-        }
-  }
-}
-
 output {
   if [module] =~ "ossec" {
     elasticsearch {
       pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-ossec-%{+YYYY.MM.dd}"
-      template_name => "so-common"
-      template => "/so-common-template.json"
+      template_name => "so-ossec"
+      template => "/so-ossec-template.json"
       template_overwrite => true
     }
   }
