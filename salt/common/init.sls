@@ -132,6 +132,7 @@ utilsyncscripts:
     - template: jinja
     - source: salt://common/tools/sbin
 
+{% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup
 /usr/sbin/so-sensor-clean:
   cron.present:
@@ -141,3 +142,4 @@ utilsyncscripts:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+{% endif %}
