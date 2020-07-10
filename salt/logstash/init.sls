@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 {% if FEATURES %}
@@ -24,13 +24,13 @@
 
 # Logstash Section - Decide which pillar to use
 {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
-{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
-  {% set freq = salt['pillar.get']('master:freq', '0') %}
-  {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+  {% set freq = salt['pillar.get']('manager:freq', '0') %}
+  {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
   {% set nodetype = salt['grains.get']('role', '')  %}
 {% elif grains['role'] == 'so-helix' %}
-  {% set freq = salt['pillar.get']('master:freq', '0') %}
-  {% set dstats = salt['pillar.get']('master:domainstats', '0') %}
+  {% set freq = salt['pillar.get']('manager:freq', '0') %}
+  {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
   {% set nodetype = salt['grains.get']('role', '')  %}
 {% endif %}
 
@@ -159,7 +159,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-logstash:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-logstash:{{ VERSION }}{{ FEATURES }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

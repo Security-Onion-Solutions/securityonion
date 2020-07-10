@@ -1,8 +1,8 @@
-{% set GRAFANA = salt['pillar.get']('master:grafana', '0') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
 
-{% if grains['role'] in ['so-master', 'so-mastersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
 # Grafana all the things
 grafanadir:
@@ -28,14 +28,14 @@ grafanadashdir:
 
 grafanadashmdir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/master
+    - name: /opt/so/conf/grafana/grafana_dashboards/manager
     - user: 939
     - group: 939
     - makedirs: True
 
 grafanadashmsdir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch
+    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch
     - user: 939
     - group: 939
     - makedirs: True
@@ -76,17 +76,17 @@ grafanaconf:
     - template: jinja
     - source: salt://grafana/etc
 
-{% if salt['pillar.get']('mastertab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('mastertab', {}).items() %}
+{% if salt['pillar.get']('managertab', False) %}
+{% for SN, SNDATA in salt['pillar.get']('managertab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-master:
+dashboard-manager:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/master/{{ SN }}-Master.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/manager/{{ SN }}-Manager.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/dashboards/master/master.json
+    - source: salt://grafana/dashboards/manager/manager.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
@@ -99,17 +99,17 @@ dashboard-master:
 {% endfor %}
 {% endif %}
 
-{% if salt['pillar.get']('mastersearchtab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('mastersearchtab', {}).items() %}
+{% if salt['pillar.get']('managersearchtab', False) %}
+{% for SN, SNDATA in salt['pillar.get']('managersearchtab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-mastersearch:
+dashboard-managersearch:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/mastersearch/{{ SN }}-MasterSearch.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch/{{ SN }}-ManagerSearch.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/dashboards/mastersearch/mastersearch.json
+    - source: salt://grafana/dashboards/managersearch/managersearch.json
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
@@ -216,7 +216,7 @@ dashboard-{{ SN }}:
 
 so-grafana:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-grafana:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-grafana:{{ VERSION }}
     - hostname: grafana
     - user: socore
     - binds:

@@ -57,7 +57,7 @@
 - Fixed an issue where geoip was not properly parsed.
 - ATT&CK Navigator is now it's own state.
 - Standlone mode is now supported.
-- Mastersearch previously used the same Grafana dashboard as a Search node. It now has its own dashboard that incorporates panels from the Master node and Search node dashboards.
+- Managersearch previously used the same Grafana dashboard as a Search node. It now has its own dashboard that incorporates panels from the Manager node and Search node dashboards.
  
 ### Known Issues:
 

@@ -15,11 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion') %}
-{% set MASTERIP = salt['pillar.get']('static:masterip') %}
-
-. /usr/sbin/so-common
+{%- set MANAGERIP = salt['pillar.get']('static:managerip') -%}
 
 function usage {
   cat << EOF
@@ -33,13 +31,13 @@ EOF
 function pcapinfo() {
   PCAP=$1
   ARGS=$2
-  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MASTER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
+  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
 }
 
 function pcapfix() {
   PCAP=$1
   PCAP_OUT=$2
-  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MASTER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
+  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
 }
 
 function suricata() {
@@ -60,7 +58,7 @@ function suricata() {
     -v ${NSM_PATH}/:/nsm/:rw \
     -v $PCAP:/input.pcap:ro \
     -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
-    {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }} \
+    {{ MANAGER }}:5000/soshybridhunter/so-suricata:{{ VERSION }} \
     --runmode single -k none -r /input.pcap > $LOG_PATH/console.log 2>&1
 }
 
@@ -88,7 +86,7 @@ function zeek() {
     -v /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro \
     --entrypoint /opt/zeek/bin/zeek \
     -w /nsm/zeek/logs \
-    {{ MASTER }}:5000/soshybridhunter/so-zeek:{{ VERSION }} \
+    {{ MANAGER }}:5000/soshybridhunter/so-zeek:{{ VERSION }} \
     -C -r /input.pcap local > $NSM_PATH/logs/console.log 2>&1
 }
 
@@ -210,7 +208,7 @@ cat << EOF
 Import complete!
 
 You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ MASTERIP }}/#/hunt?q=%2a%20%7C%20groupby%20event.module%20event.dataset&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20PM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20PM
+https://{{ MANAGERIP }}/kibana/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:'${START_OLDEST}T00:00:00.000Z',mode:absolute,to:'${END_NEWEST}T00:00:00.000Z'))
 
 or you can manually set your Time Range to be:
 From: $START_OLDEST    To: $END_NEWEST

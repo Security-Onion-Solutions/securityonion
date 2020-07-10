@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 {% if FEATURES %}
@@ -22,9 +22,9 @@
   {% set FEATURES = '' %}
 {% endif %}
 
-{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
-  {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('master:esheap', '') %}
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+  {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
+  {% set esheap = salt['pillar.get']('manager:esheap', '') %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
@@ -101,7 +101,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -141,7 +141,7 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-master', 'so-eval', 'so-mastersearch', 'so-standalone'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates

@@ -6,7 +6,7 @@ import socket
 
 def send(data):
 
-  mainint = __salt__['pillar.get']('sensor:mainint', __salt__['pillar.get']('master:mainint'))
+  mainint = __salt__['pillar.get']('sensor:mainint', __salt__['pillar.get']('manager:mainint'))
   mainip = __salt__['grains.get']('ip_interfaces').get(mainint)[0]
   dstport = 8094
 

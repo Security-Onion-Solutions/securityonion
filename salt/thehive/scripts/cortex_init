@@ -1,5 +1,5 @@
 #!/bin/bash
-{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {%- set CORTEXUSER = salt['pillar.get']('static:cortexuser', '') %}
 {%- set CORTEXPASSWORD = salt['pillar.get']('static:cortexpassword', '') %}
 {%- set CORTEXKEY = salt['pillar.get']('static:cortexkey', '') %}
@@ -11,7 +11,7 @@ default_salt_dir=/opt/so/saltstack/default
 
 cortex_init(){
     sleep 60
-    CORTEX_IP="{{MASTERIP}}"
+    CORTEX_IP="{{MANAGERIP}}"
     CORTEX_USER="{{CORTEXUSER}}"
     CORTEX_PASSWORD="{{CORTEXPASSWORD}}"
     CORTEX_KEY="{{CORTEXKEY}}"    
@@ -54,7 +54,7 @@ if [ -f /opt/so/state/cortex.txt ]; then
     exit 0
 else
     rm -f garbage_file
-    while ! wget -O garbage_file {{MASTERIP}}:9500 2>/dev/null
+    while ! wget -O garbage_file {{MANAGERIP}}:9500 2>/dev/null
     do
       echo "Waiting for Elasticsearch..."
       rm -f garbage_file

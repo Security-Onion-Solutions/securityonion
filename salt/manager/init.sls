@@ -13,8 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{% set masterproxy = salt['pillar.get']('static:masterupdate', '0') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set managerproxy = salt['pillar.get']('static:managerupdate', '0') %}
 
 socore_own_saltstack:
   file.directory:
@@ -25,7 +25,7 @@ socore_own_saltstack:
       - user
       - group
 
-{% if masterproxy == 1 %}
+{% if managerproxy == 1 %}
 
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
@@ -54,12 +54,12 @@ aptcacherlogdir:
 acngcopyconf:
   file.managed:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
-    - source: salt://master/files/acng/acng.conf
+    - source: salt://manager/files/acng/acng.conf
 
 # Install the apt-cacher-ng container
 so-aptcacherng:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-acng:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-acng:{{ VERSION }}
     - hostname: so-acng
     - restart_policy: always
     - port_bindings:

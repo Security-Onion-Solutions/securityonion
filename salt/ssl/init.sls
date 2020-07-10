@@ -1,5 +1,5 @@
-{% set master = salt['grains.get']('master') %}
-{% set masterip = salt['pillar.get']('static:masterip', '') %}
+{% set manager = salt['grains.get']('master') %}
+{% set managerip = salt['pillar.get']('static:managerip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
@@ -7,13 +7,13 @@
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 
-{% if grains.id.split('_')|last in ['master', 'eval', 'standalone'] %}
+{% if grains.id.split('_')|last in ['manager', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
     {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
-      {% if 'master' in host.split('_')|last or host.split('_')|last == 'standalone' %}
+      {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
         {% do global_ca_server.append(host) %}
       {% endif %}
@@ -43,7 +43,7 @@ m2cryptopkgs:
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
-    - CN: {{ master }}
+    - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -59,7 +59,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-master', 'so-eval', 'so-helix', 'so-mastersearch', 'so-standalone'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone'] %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -70,7 +70,7 @@ influxkeyperms:
 {% if grains.role == 'so-heavynode' %}
     - CN: {{grains.id}}
 {% else %}
-    - CN: {{master}}
+    - CN: {{manager}}
 {% endif %}
     - days_remaining: 0
     - days_valid: 820
@@ -119,7 +119,7 @@ fbcrtlink:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
-    - CN: {{ master }}
+    - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -136,31 +136,31 @@ regkeyperms:
     - group: 939
 
 # Create a cert for the reverse proxy
-/etc/pki/masterssl.crt:
+/etc/pki/managerssl.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
-    - signing_policy: masterssl
-    - public_key: /etc/pki/masterssl.key
-    - CN: {{ master }}
+    - signing_policy: managerssl
+    - public_key: /etc/pki/managerssl.key
+    - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
     - managed_private_key:
-        name: /etc/pki/masterssl.key
+        name: /etc/pki/managerssl.key
         bits: 4096
         backup: True
 
 msslkeyperms:
   file.managed:
     - replace: False
-    - name: /etc/pki/masterssl.key
+    - name: /etc/pki/managerssl.key
     - mode: 640
     - group: 939
 
 # Create a private key and cert for OSQuery
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ master }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -169,8 +169,8 @@ msslkeyperms:
 /etc/pki/fleet.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ master }}
-    - subjectAltName: DNS:{{ master }},IP:{{ masterip }}
+    - CN: {{ manager }}
+    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -187,7 +187,7 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-master', 'so-node', 'so-eval', 'so-helix', 'so-mastersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
 
 fbcertdir:
   file.directory:
@@ -203,7 +203,7 @@ fbcertdir:
 {% if grains.role == 'so-heavynode' %}
     - CN: {{grains.id}}
 {% else %}
-    - CN: {{master}}
+    - CN: {{manager}}
 {% endif %}
     - days_remaining: 0
     - days_valid: 820
@@ -238,25 +238,25 @@ chownfilebeatp8:
 {% if grains['role'] == 'so-fleet' %}
 
 # Create a cert for the reverse proxy
-/etc/pki/masterssl.crt:
+/etc/pki/managerssl.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
-    - signing_policy: masterssl
-    - public_key: /etc/pki/masterssl.key
+    - signing_policy: managerssl
+    - public_key: /etc/pki/managerssl.key
     - CN: {{ HOSTNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
     - managed_private_key:
-        name: /etc/pki/masterssl.key
+        name: /etc/pki/managerssl.key
         bits: 4096
         backup: True
 
 msslkeyperms:
   file.managed:
     - replace: False
-    - name: /etc/pki/masterssl.key
+    - name: /etc/pki/managerssl.key
     - mode: 640
     - group: 939
 
