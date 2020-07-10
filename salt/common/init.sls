@@ -1,3 +1,5 @@
+{% set role = grains.id.split('_') | last %}
+
 # Add socore Group
 socoregroup:
   group.present:
