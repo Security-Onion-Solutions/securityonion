@@ -1,5 +1,5 @@
-{% set esip = salt['pillar.get']('master:mainip', '') %}
-{% set esport = salt['pillar.get']('master:es_port', '') %}
+{% set esip = salt['pillar.get']('manager:mainip', '') %}
+{% set esport = salt['pillar.get']('manager:es_port', '') %}
 # This is the folder that contains the rule yaml files
 # Any .yaml file will be loaded as a rule
 rules_folder: /opt/elastalert/rules/
@@ -86,3 +86,25 @@ alert_time_limit:
 index_settings:
   shards: 1
   replicas: 0
+
+logging:
+  version: 1
+  incremental: false
+  disable_existing_loggers: false
+  formatters:
+    logline:
+      format: '%(asctime)s %(levelname)+8s %(name)+20s %(message)s'
+
+  handlers:
+    file:
+      class : logging.FileHandler
+      formatter: logline
+      level: INFO
+      filename: /var/log/elastalert/elastalert.log
+
+  loggers:
+    '':
+      level: INFO
+      handlers:
+        - file
+      propagate: false

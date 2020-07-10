@@ -15,28 +15,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion') %}
-{%- set MASTERIP = salt['pillar.get']('static:masterip') -%}
+{%- set MANAGERIP = salt['pillar.get']('static:managerip') -%}
 
 function usage {
   cat << EOF
 Usage: $0 <pcap-file-1> [pcap-file-2] [pcap-file-N]
 
-Imports one or more PCAP files for analysis. If available, curator will be automatically stopped.
+Imports one or more PCAP files onto a sensor node. The PCAP traffic will be analyzed and
+made available for review in the Security Onion toolset.
 EOF
 }
 
 function pcapinfo() {
   PCAP=$1
   ARGS=$2
-  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MASTER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
+  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
 }
 
 function pcapfix() {
   PCAP=$1
   PCAP_OUT=$2
-  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MASTER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
+  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
 }
 
 function suricata() {
@@ -57,7 +58,7 @@ function suricata() {
     -v ${NSM_PATH}/:/nsm/:rw \
     -v $PCAP:/input.pcap:ro \
     -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
-    {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }} \
+    {{ MANAGER }}:5000/soshybridhunter/so-suricata:{{ VERSION }} \
     --runmode single -k none -r /input.pcap > $LOG_PATH/console.log 2>&1
 }
 
@@ -85,7 +86,7 @@ function zeek() {
     -v /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro \
     --entrypoint /opt/zeek/bin/zeek \
     -w /nsm/zeek/logs \
-    {{ MASTER }}:5000/soshybridhunter/so-zeek:{{ VERSION }} \
+    {{ MANAGER }}:5000/soshybridhunter/so-zeek:{{ VERSION }} \
     -C -r /input.pcap local > $NSM_PATH/logs/console.log 2>&1
 }
 
@@ -109,14 +110,6 @@ for i in "$@"; do
     exit 2
   fi
 done
-
-if ! [ -d /opt/so/conf/curator ]; then
-  echo "Curator is not installed on this node and cannot be stopped automatically."
-else
-  echo -n "Stopping curator..."
-  so-curator-stop > /dev/null 2>&1
-  echo "Done"
-fi
 
 # track if we have any valid or invalid pcaps
 INVALID_PCAPS="no"
@@ -206,17 +199,20 @@ if [ "$INVALID_PCAPS" = "yes" ]; then
   echo "Please note!  One or more pcaps was invalid!  You can scroll up to see which ones were invalid."
 fi
 
+START_OLDEST_SLASH=$(echo $START_OLDEST | sed -e 's/-/%2F/g')
+END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
+
 if [ "$VALID_PCAPS" = "yes" ]; then
 cat << EOF
 
 Import complete!
 
 You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ MASTERIP }}/kibana/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:'${START_OLDEST}T00:00:00.000Z',mode:absolute,to:'${END_NEWEST}T00:00:00.000Z'))
+https://{{ MANAGERIP }}/kibana/app/kibana#/dashboard/a8411b30-6d03-11ea-b301-3d6c35840645?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:'${START_OLDEST}T00:00:00.000Z',mode:absolute,to:'${END_NEWEST}T00:00:00.000Z'))
 
 or you can manually set your Time Range to be:
 From: $START_OLDEST    To: $END_NEWEST
 
-Please note that it may take 30 seconds or more for events to appear in Kibana.
+Please note that it may take 30 seconds or more for events to appear in Onion Hunt.
 EOF
 fi

@@ -1,24 +1,16 @@
 {%- if grains['role'] == 'so-eval' -%}
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-
-filter {
-  if [module] =~ "syslog" {
-    mutate {
-          ##add_tag => [ "conf_file_9000"]
-        }
-  }
-}
 output {
   if [module] =~ "syslog" {
     elasticsearch {
       pipeline => "%{module}"
       hosts => "{{ ES }}"
       index => "so-syslog-%{+YYYY.MM.dd}"
-      template_name => "so-common"
-      template => "/so-common-template.json"
+      template_name => "so-syslog"
+      template => "/so-syslog-template.json"
       template_overwrite => true
     }
   }

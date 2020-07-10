@@ -13,8 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set access_key = salt['pillar.get']('master:access_key', '') %}
-{% set access_secret = salt['pillar.get']('master:access_secret', '') %}
+{% set access_key = salt['pillar.get']('manager:access_key', '') %}
+{% set access_secret = salt['pillar.get']('manager:access_secret', '') %}
 
 # Minio Setup
 minioconfdir:

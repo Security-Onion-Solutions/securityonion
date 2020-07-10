@@ -1,6 +1,6 @@
 logstash:
   pipelines:
-    master:
+    manager:
       config:
         - so/0009_input_beats.conf      
         - so/0010_input_hhbeats.conf

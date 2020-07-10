@@ -127,11 +127,11 @@
 @load policy/hassh
 
 # You can load your own intel into:
-# /opt/so/saltstack/bro/policy/intel/ on the master
+# /opt/so/saltstack/bro/policy/intel/ on the manager
 @load intel
 
 # Load a custom Bro policy
-# /opt/so/saltstack/bro/policy/custom/ on the master
+# /opt/so/saltstack/bro/policy/custom/ on the manager
 #@load custom/somebropolicy.bro
 
 # Write logs in JSON

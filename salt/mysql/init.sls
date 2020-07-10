@@ -1,7 +1,7 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{%- set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('elasticsearch:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
@@ -9,7 +9,7 @@
   {% set MAININT = salt['pillar.get']('host:mainint') %}
   {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% else %}
-  {% set MAINIP = salt['pillar.get']('static:masterip') %}
+  {% set MAINIP = salt['pillar.get']('static:managerip') %}
 {% endif %}
 
 # MySQL Setup
@@ -71,7 +71,7 @@ mysql_password_none:
 
 so-mysql:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
     - hostname: so-mysql
     - user: socore
     - port_bindings:
