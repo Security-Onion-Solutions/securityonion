@@ -58,7 +58,6 @@ function progress() {
 		fi
 
 		export SO_ERROR=1
-		export SKIP_REBOOT=1
 		title="Error found, please check $setup_log"
 	fi
 
@@ -612,7 +611,7 @@ fi
 	checkin_at_boot >> $setup_log 2>&1
 
 	set_progress_str 95 'Verifying setup'
-	salt-call -l info  state.highstate >> $setup_log 2>&1
+	salt-call -l info state.highstate >> $setup_log 2>&1
 
 } | progress
 
@@ -622,7 +621,9 @@ if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then
 	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 fi
 
-if [[ $success != 0 || -n $SO_ERROR ]]; then whiptail_setup_failed
+if [[ $success != 0 || $SO_ERROR == 1 ]]; then 
+	SKIP_REBOOT=1
+	whiptail_setup_failed
 else 
 	whiptail_setup_complete
 	if [[ $THEHIVE == 1 ]]; then check_hive_init; fi
