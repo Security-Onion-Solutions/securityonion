@@ -659,10 +659,10 @@ detect_os() {
 disable_auto_start() {
 	
 	# Remove the automated setup script from crontab, if it exists
-	crontab -u $USER -r
+	crontab -u $INSTALLUSERNAME -r
 
 	# Truncate last line of the bash profile
-	sed -i '$ d' /home/$USER/.bash_profile 
+	sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile 
 
 }
 
@@ -1156,6 +1156,11 @@ elasticsearch_pillar() {
 	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
+parse_install_username() {
+	# parse out the install username so things copy correctly
+    INSTALLUSERNAME=$(pwd | sed -E 's/\// /g'  | awk '{ print $2 }')
+}
+
 patch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
@@ -1420,8 +1425,8 @@ setup_salt_master_dirs() {
 
 	# Copy over the salt code and templates
 	if [ "$setup_type" = 'iso' ]; then
-		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
-		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
 	else
 		cp -R ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -R ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1

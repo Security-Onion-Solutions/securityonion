@@ -47,6 +47,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Begin Installation pre-processing
+parse_install_username
+echo "Installing as the $INSTALLUSERNAME user." >> $setup_log 2>&1
+
 echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
@@ -619,11 +622,13 @@ fi
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 
+if [[ $success != 0 ]]; then SO_ERROR=1; fi # evaluate success first so it doesn't check against the output of so-allow
+
 if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
 	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 fi
 
-if [[ $success != 0 || -n $SO_ERROR ]]; then 
+if [[ -n $SO_ERROR ]]; then 
 	SKIP_REBOOT=1
 	whiptail_setup_failed
 else 
