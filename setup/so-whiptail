@@ -892,50 +892,43 @@ whiptail_patch_schedule_select_days() {
 }
 
 whiptail_patch_schedule_select_hours() {
-	
-	[ -n "$TESTING" ] && return
 
-	# Select the hours to patch
-	PATCHSCHEDULEHOURS=$(whiptail --title "Security Onion Setup" --checklist \
-	"At which time, UTC, do you want to apply OS patches on the selected days? Hours 12 through 23 can be selected on the next screen." 22 75 13 \
-	00:00 "" OFF \
-	01:00 "" OFF \
-	02:00 "" OFF \
-	03:00 "" OFF \
-	04:00 "" OFF \
-	05:00 "" OFF \
-	06:00 "" OFF \
-	07:00 "" OFF \
-	08:00 "" OFF \
-	09:00 "" OFF \
-	10:00 "" OFF \
-	11:00 "" OFF 3>&1 1>&2 2>&3 )
+        [ -n "$TESTING" ] && return
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+        # Select the hours to patch
+        PATCHSCHEDULEHOURS=$(whiptail --title "Security Onion Setup" --checklist \
+        "At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
+        00:00 "" OFF \
+        01:00 "" OFF \
+        02:00 "" ON \
+        03:00 "" OFF \
+        04:00 "" OFF \
+        05:00 "" OFF \
+        06:00 "" OFF \
+        07:00 "" OFF \
+        08:00 "" OFF \
+        09:00 "" OFF \
+        10:00 "" OFF \
+        11:00 "" OFF \
+        12:00 "" OFF \
+        13:00 "" OFF \
+        14:00 "" OFF \
+        15:00 "" OFF \
+        16:00 "" OFF \
+        17:00 "" OFF \
+        18:00 "" OFF \
+        19:00 "" OFF \
+        20:00 "" OFF \
+        21:00 "" OFF \
+        22:00 "" OFF \
+        23:00 "" OFF 3>&1 1>&2 2>&3)
 
-	# Select the hours to patch
-	PATCHSCHEDULEHOURS+=$(whiptail --title "Security Onion Setup" --checklist \
-	"At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
-	12:00 "" OFF \
-	13:00 "" OFF \
-	14:00 "" OFF \
-	15:00 "" ON \
-	16:00 "" OFF \
-	17:00 "" OFF \
-	18:00 "" OFF \
-	19:00 "" OFF \
-	20:00 "" OFF \
-	21:00 "" OFF \
-	22:00 "" OFF \
-	23:00 "" OFF 3>&1 1>&2 2>&3)
+        local exitstatus=$?
+        whiptail_check_exitstatus $exitstatus
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+        PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
 
-	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
-
-	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
+        IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
 }
 
