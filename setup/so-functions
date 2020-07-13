@@ -420,7 +420,7 @@ check_requirements() {
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
 
-	if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+	if (( $(echo "$free_space_root < $req_storage" | bc -l) )) && [[ $setup_type == 'network' ]]; then
 		whiptail_requirements_error "disk space" "${free_space_root} GB" "${req_storage} GB"
 	fi
 
@@ -656,12 +656,14 @@ detect_os() {
 
 }
 
-disable_onion_user() {
-	# Disable the default account cause security.
-	usermod -L onion
-
+disable_auto_start() {
+	
 	# Remove the automated setup script from crontab, if it exists
-	crontab -u onion -r
+	crontab -u $USER -r
+
+	# Truncate last line of the bash profile
+	sed -i '$ d' /home/$USER/.bash_profile 
+
 }
 
 disable_misc_network_features() {
@@ -1141,8 +1143,7 @@ elasticsearch_pillar() {
 		"  log_size_limit: $log_size_limit"\
 		"  node_route_type: hot"\
 		"" >> "$pillar_file"
-
-	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MANAGERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
+	
 	printf '%s\n'\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
@@ -1150,7 +1151,6 @@ elasticsearch_pillar() {
 		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
 		"  lsheap: $NODE_LS_HEAP_SIZE"\
 		"" >> "$pillar_file"
-	fi
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1
@@ -1420,8 +1420,8 @@ setup_salt_master_dirs() {
 
 	# Copy over the salt code and templates
 	if [ "$setup_type" = 'iso' ]; then
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
 	else
 		cp -R ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -R ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1

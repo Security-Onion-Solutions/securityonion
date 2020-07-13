@@ -188,7 +188,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		collect_adminuser_inputs
+		#collect_adminuser_inputs
 		;;
 	'network')
 		whiptail_network_notice
@@ -343,8 +343,8 @@ if [[ "$setup_type" == 'iso' ]]; then
 	set_hostname_iso
 	set_management_interface
 
-	add_admin_user
-	disable_onion_user
+	#add_admin_user
+	disable_auto_start
 fi
 
 {
@@ -442,8 +442,10 @@ fi
 		set_progress_str 18 'Setting node type'
 		set_node_type >> $setup_log 2>&1
 
-		set_progress_str 19 'Generating search node pillar'
-		elasticsearch_pillar >> $setup_log 2>&1
+		if ! [[ $is_manager || $is_helix ]]; then
+			set_progress_str 19 'Generating search node pillar'
+			elasticsearch_pillar >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_minion ]]; then
