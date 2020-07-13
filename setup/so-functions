@@ -656,12 +656,14 @@ detect_os() {
 
 }
 
-disable_onion_user() {
-	# Disable the default account cause security.
-	usermod -L onion
-
+disable_auto_start() {
+	
 	# Remove the automated setup script from crontab, if it exists
-	crontab -u onion -r
+	crontab -u $USER -r
+
+	# Truncate last line of the bash profile
+	sed -i '$ d' /home/$USER/.bash_profile 
+
 }
 
 disable_misc_network_features() {
@@ -1418,8 +1420,8 @@ setup_salt_master_dirs() {
 
 	# Copy over the salt code and templates
 	if [ "$setup_type" = 'iso' ]; then
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$USER/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
 	else
 		cp -R ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -R ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
