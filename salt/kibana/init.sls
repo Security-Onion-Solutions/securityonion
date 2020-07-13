@@ -1,4 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
@@ -69,7 +70,7 @@ kibanabin:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-kibana:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}{{ FEATURES }}
     - hostname: kibana
     - user: kibana
     - environment:

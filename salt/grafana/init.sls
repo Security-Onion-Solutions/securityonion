@@ -1,6 +1,7 @@
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -216,7 +217,7 @@ dashboard-{{ SN }}:
 
 so-grafana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-grafana:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-grafana:{{ VERSION }}
     - hostname: grafana
     - user: socore
     - binds:

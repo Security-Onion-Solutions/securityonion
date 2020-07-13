@@ -17,6 +17,7 @@
 
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {%- set MANAGERIP = salt['pillar.get']('static:managerip') -%}
 
 function usage {
@@ -31,13 +32,13 @@ EOF
 function pcapinfo() {
   PCAP=$1
   ARGS=$2
-  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
+  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
 }
 
 function pcapfix() {
   PCAP=$1
   PCAP_OUT=$2
-  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/soshybridhunter/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
+  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
 }
 
 function suricata() {
@@ -58,7 +59,7 @@ function suricata() {
     -v ${NSM_PATH}/:/nsm/:rw \
     -v $PCAP:/input.pcap:ro \
     -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
-    {{ MANAGER }}:5000/soshybridhunter/so-suricata:{{ VERSION }} \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }} \
     --runmode single -k none -r /input.pcap > $LOG_PATH/console.log 2>&1
 }
 
@@ -86,7 +87,7 @@ function zeek() {
     -v /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro \
     --entrypoint /opt/zeek/bin/zeek \
     -w /nsm/zeek/logs \
-    {{ MANAGER }}:5000/soshybridhunter/so-zeek:{{ VERSION }} \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }} \
     -C -r /input.pcap local > $NSM_PATH/logs/console.log 2>&1
 }
 

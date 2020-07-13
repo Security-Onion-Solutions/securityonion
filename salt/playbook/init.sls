@@ -1,5 +1,6 @@
 {% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
@@ -73,7 +74,7 @@ playbook_password_none:
 
 so-playbook:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-playbook:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
     - hostname: playbook
     - name: so-playbook
     - environment:

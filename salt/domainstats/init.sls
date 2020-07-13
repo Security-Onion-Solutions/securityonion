@@ -13,6 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+
 # Create the group
 dstatsgroup:
   group.present:
@@ -37,13 +39,13 @@ dstatslogdir:
 
 so-domainstatsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-domainstats:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/{{ IMAGEREPO }}/so-domainstats:HH1.0.3
 
 so-domainstats:
   docker_container.running:
     - require:
       - so-domainstatsimage
-    - image: docker.io/soshybridhunter/so-domainstats:HH1.0.3
+    - image: docker.io/{{ IMAGEREPO }}/so-domainstats:HH1.0.3
     - hostname: domainstats
     - name: so-domainstats
     - user: domainstats

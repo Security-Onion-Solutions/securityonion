@@ -1,5 +1,6 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 
 # Add Telegraf to monitor all the things.
 tgraflogdir:
@@ -36,7 +37,7 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-telegraf:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc

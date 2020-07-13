@@ -1,5 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
@@ -83,7 +84,7 @@ wazuhmgrwhitelist:
 
 so-wazuh:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-wazuh:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-wazuh:{{ VERSION }}
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True

@@ -15,8 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Set the new SO Version
+. /usr/sbin/so-common
 
+# Set the new SO Version
 UPDATEVERSION=1.2.2
 BUILD=HH
 
@@ -184,16 +185,16 @@ update_docker_containers() {
   do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
     # Tag it with the new registry destination
-    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
-    docker push $HOSTNAME:5000/soshybridhunter/$i
+    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
+    docker push $HOSTNAME:5000/$IMAGEREPO/$i
   done
 
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
     echo "Removing $i locally"
-    docker rmi soshybridhunter/$i
+    docker rmi $IMAGEREPO/$i
   done
   
 }

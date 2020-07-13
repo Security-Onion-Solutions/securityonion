@@ -2,6 +2,7 @@
 {%- set FLEETPASS = salt['pillar.get']('secrets:fleet', None) -%}
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
 
@@ -105,7 +106,7 @@ fleet_password_none:
 
 so-fleet:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-fleet:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-fleet:{{ VERSION }}
     - hostname: so-fleet
     - port_bindings:
       - 0.0.0.0:8080:8080

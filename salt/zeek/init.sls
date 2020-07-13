@@ -1,4 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
@@ -156,7 +157,7 @@ localzeeksync:
 
 so-zeek:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-zeek:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
     - privileged: True
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw

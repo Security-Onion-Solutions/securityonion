@@ -14,12 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-got_root(){
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This script must be run using sudo!"
-        exit 1
-    fi
-}
+
+. /usr/sbin/so-common
 
 manager_check() {
   # Check to see if this is a manager
@@ -39,10 +35,10 @@ update_docker_containers() {
   do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
     # Tag it with the new registry destination
-    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
-    docker push $HOSTNAME:5000/soshybridhunter/$i
+    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
+    docker push $HOSTNAME:5000/$IMAGEREPO/$i
   done
   
 }
@@ -55,7 +51,7 @@ version_check() {
     exit 1
   fi
 }
-got_root
+
 manager_check
 version_check
 

@@ -797,14 +797,14 @@ docker_seed_registry() {
 			set_progress_str "$percent" "Downloading $i"
 			{
 				
-				if ! docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"; then
+				if ! docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"; then
 					sleep 5
-					docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+					docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"
 				fi
 				# Tag it with the new registry destination
-				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
-				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
-				#docker rmi soshybridhunter/"$i"
+				docker tag $IMAGEREPO/"$i" "$HOSTNAME":5000/$IMAGEREPO/"$i"
+				docker push "$HOSTNAME":5000/$IMAGEREPO/"$i"
+				#docker rmi $IMAGEREPO/"$i"
 			} >> "$setup_log" 2>&1
 		done
 	else
@@ -1023,6 +1023,7 @@ manager_static() {
 		"  sensoronikey: $SENSORONIKEY"\
 		"  wazuh: $WAZUH"\
         "  managerupdate: $MANAGERUPDATES"\
+		"  imagerepo: $IMAGEREPO"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: $STRELKARULES"\

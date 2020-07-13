@@ -13,6 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
@@ -129,7 +130,7 @@ sensoronilog:
 
 so-steno:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-steno:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
     - network_mode: host
     - privileged: True
     - port_bindings:
@@ -146,7 +147,7 @@ so-steno:
 
 so-sensoroni:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-soc:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
     - network_mode: host
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw

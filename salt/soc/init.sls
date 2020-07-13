@@ -1,4 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
 socdir:
@@ -33,7 +34,7 @@ socsync:
 
 so-soc:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-soc:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
     - hostname: soc
     - name: so-soc
     - binds:
@@ -84,7 +85,7 @@ kratossync:
 
 so-kratos:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-kratos:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kratos:{{ VERSION }}
     - hostname: kratos
     - name: so-kratos
     - binds:
