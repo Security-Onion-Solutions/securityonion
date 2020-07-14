@@ -31,6 +31,8 @@
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
 {% endif %}
 
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+
 vm.max_map_count:
   sysctl.present:
     - value: 262144
@@ -63,6 +65,13 @@ esingestdir:
     - group: 939
     - makedirs: True
 
+estemplatedir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates
+    - user: 930
+    - group: 939
+    - makedirs: True
+
 esingestconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -85,6 +94,36 @@ esyml:
     - user: 930
     - group: 939
     - template: jinja
+
+#sync templates to /opt/so/conf/elasticsearch/templates
+{% for TEMPLATE in TEMPLATES %}
+es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://elasticsearch/templates/{{TEMPLATE}}
+    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1]}}
+    {% endif %}
+    - user: 930
+    - group: 939
+{% endfor %}
+
+es_templates:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/templates
+    - source: salt://elasticsearch/templates
+    - user: 930
+    - group: 939
+    - template: jinja
+    - clean: True
+{% if TEMPLATES %}
+    - require:
+  {% for TEMPLATE in TEMPLATES %}
+      - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+  {% endfor %}
+{% endif %}
 
 nsmesdir:
   file.directory:

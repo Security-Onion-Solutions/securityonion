@@ -36,7 +36,6 @@
 {% endif %}
 
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
-{% set TEMPLATES = salt['pillar.get']('logstash:templates', {}) %}
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 
 # Create the logstash group
@@ -94,21 +93,6 @@ ls_pipeline_{{PL}}:
 
 {% endfor %}
 
-#sync templates to /opt/so/conf/logstash/etc
-{% for TEMPLATE in TEMPLATES %}
-ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
-  file.managed:
-    - source: salt://logstash/pipelines/templates/{{TEMPLATE}}
-    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
-    - template: jinja
-    {% else %}
-    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}
-    {% endif %}
-    - user: 931
-    - group: 939
-{% endfor %}
-
 lspipelinesyml:
   file.managed:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
@@ -126,12 +110,6 @@ lsetcsync:
     - group: 939
     - template: jinja
     - clean: True
-{% if TEMPLATES %}
-    - require:
-  {% for TEMPLATE in TEMPLATES %}
-      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-  {% endfor %}
-{% endif %}
     - exclude_pat: pipelines*
 
 # Create the import directory
@@ -171,13 +149,7 @@ so-logstash:
       - {{ BINDING }}
 {% endfor %}
     - binds:
-{% for TEMPLATE in TEMPLATES %}
-  {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:ro
-  {% else %}
-      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}:/{{TEMPLATE.split('/')[1]}}:ro
-  {% endif %}
-{% endfor %}
+      - /opt/so/conf/elasticsearch/templates/:/templates/:ro
       - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
@@ -206,7 +178,4 @@ so-logstash:
       - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
   {% endfor %}
 {% endfor %}
-{% for TEMPLATE in TEMPLATES %}
-      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-{% endfor %}
-#     - file: /opt/so/conf/logstash/rulesets
+      - file: /opt/so/conf/elasticsearch/templates/*
