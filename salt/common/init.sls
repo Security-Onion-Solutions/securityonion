@@ -15,6 +15,13 @@ socore:
     - createhome: True
     - shell: /bin/bash
 
+soperms:
+  file.directory:
+    - name: /opt/so
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+    
 # Create a state directory
 statedir:
   file.directory:
