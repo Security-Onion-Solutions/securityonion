@@ -110,21 +110,6 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     - group: 939
 {% endfor %}
 
-es_templates:
-  file.recurse:
-    - name: /opt/so/conf/elasticsearch/templates
-    - source: salt://elasticsearch/templates
-    - user: 930
-    - group: 939
-    - template: jinja
-    - clean: True
-{% if TEMPLATES %}
-    - require:
-  {% for TEMPLATE in TEMPLATES %}
-      - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-  {% endfor %}
-{% endif %}
-
 nsmesdir:
   file.directory:
     - name: /nsm/elasticsearch
