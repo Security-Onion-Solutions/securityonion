@@ -11,6 +11,7 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
+    - elasticsearch.search
 
   '*_sensor':
     - static
@@ -41,6 +42,7 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
+    - elasticsearch.search
     - data.*
     - brologs
     - secrets
@@ -75,4 +77,5 @@ base:
     - static
     - logstash
     - logstash.search
+    - elasticsearch.search
     - minions.{{ grains.id }}
