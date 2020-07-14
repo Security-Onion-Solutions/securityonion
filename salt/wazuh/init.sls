@@ -90,6 +90,7 @@ so-wazuh:
     - port_bindings:
       - 0.0.0.0:1514:1514/udp
       - 0.0.0.0:1514:1514/tcp
+      - 0.0.0.0:1515:1515/tcp
       - 0.0.0.0:55000:55000
     - binds:
       - /opt/so/wazuh:/var/ossec/data:rw
