@@ -6,18 +6,9 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
 
-{% if salt['mysql.db_exists']('playbook') %}
-   #Playbook database exists - Do nothing
-{% else  %}
-salt://playbook/files/playbook_db_init.sh:
-  cmd.script:
-    - cwd: /root
-    - template: jinja
-
-'sleep 5':
-  cmd.run
-{% endif %}
-
+include:
+  - mysql
+  
 create_playbookdbuser:
   module.run:
     - mysql.user_create:
