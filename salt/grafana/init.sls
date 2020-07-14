@@ -93,7 +93,7 @@ dashboard-manager:
       MANINT: {{ SNDATA.manint }}
       MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
+      UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
@@ -116,7 +116,7 @@ dashboard-managersearch:
       MANINT: {{ SNDATA.manint }}
       MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
+      UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
@@ -139,7 +139,7 @@ dashboard-standalone:
       MANINT: {{ SNDATA.manint }}
       MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
+      UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
@@ -208,7 +208,7 @@ dashboard-{{ SN }}:
       MANINT: {{ SNDATA.manint }}
       MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
+      UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
       NSMFS: {{ SNDATA.nsmfs }}
 
