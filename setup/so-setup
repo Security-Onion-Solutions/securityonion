@@ -165,8 +165,8 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 fi
 
-if [[ $is_eval ]]; then
-	check_requirements "eval"
+if [[ $is_manager && $is_sensor ]]; then
+	check_requirements "standalone"
 elif [[ $is_fleet_standalone ]]; then
 	check_requirements "dist" "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
@@ -333,6 +333,8 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
+if [[ $is_manager ]]; then whiptail_so_allow; fi
+
 whiptail_make_changes
 
 if [[ -n "$TURBO" ]]; then
@@ -367,7 +369,10 @@ if [[ $is_manager && ! $is_eval ]]; then
 	add_soremote_user_manager >> $setup_log 2>&1
 fi
 
-set_main_ip >> $setup_log 2>&1
+{
+	set_main_ip;
+	set_redirect;
+} >> $setup_log 2>&1
 
 host_pillar >> $setup_log 2>&1
 
@@ -375,8 +380,6 @@ if [[ $is_minion ]]; then
 	set_updates >> $setup_log 2>&1
 	copy_ssh_key >> $setup_log 2>&1
 fi
-
-
 
 # Begin install
 {
@@ -622,16 +625,17 @@ success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 
 if [[ $success != 0 ]]; then SO_ERROR=1; fi # evaluate success first so it doesn't check against the output of so-allow
 
-if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
-fi
-
 if [[ -n $SO_ERROR ]]; then 
 	SKIP_REBOOT=1
 	whiptail_setup_failed
 else 
 	whiptail_setup_complete
-	if [[ $THEHIVE == 1 ]]; then check_hive_init; fi
+	if [[ $THEHIVE == 1 ]]; then check_hive_init >> $setup_log 2>&1; fi
+fi
+
+if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+	echo "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 fi
 
 install_cleanup >> $setup_log 2>&1

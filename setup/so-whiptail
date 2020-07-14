@@ -252,7 +252,8 @@ whiptail_create_web_user() {
 	[ -n "$TESTING" ] && return
 
 	WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
-	"Please enter an email address to create an administrator account for the web interface." 10 60 3>&1 1>&2 2>&3)
+	"Please enter an email address to create an administrator account for the web interface. \
+	This will also be used for TheHive, Cortex, and Fleet" 10 60 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -435,9 +436,7 @@ whiptail_homenet_sensor() {
 		whiptail_check_exitstatus $exitstatus
 
 		export HNSENSOR
-
 	fi
-
 }
 
 whiptail_install_type() {
@@ -1028,7 +1027,21 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Finished $install_type install. Press Ok to reboot." 8 75
+	if [[ -n $ALLOW_CIDR ]]; then
+		local sentence_prefix="Access"
+	else
+		local sentence_prefix="Run so-allow after reboot to access"
+	fi
+
+	read -r -d '' message <<- EOM
+		Finished ${install_type} install
+
+		${sentence_prefix} the web interface at https://${REDIRECTIT}
+
+		Press ENTER to reboot
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 12 75
 }
 
 whiptail_setup_failed() {
@@ -1050,6 +1063,29 @@ whiptail_shard_count() {
 
 }
 
+whiptail_so_allow() {
+
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" \
+	--yesno "Do you want to run so-allow to allow access to the web tools?" \
+	8 75
+
+	local exitstatus=$?
+
+	if [[ $exitstatus == 0 ]]; then
+		ALLOW_CIDR=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Enter a single ip address or range (in CIDR notation) to allow" \
+		10 75 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		
+		export ALLOW_ROLE='a'
+		export ALLOW_CIDR
+	fi
+
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_strelka_rules() {
 
         [ -n "$TESTING" ] && return
@@ -1066,7 +1102,6 @@ whiptail_strelka_rules() {
                 export STRELKARULES
 
         fi
-
 }
 
 whiptail_suricata_pins() {
@@ -1098,17 +1133,17 @@ whiptail_manager_updates() {
 	local update_string
 	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
 	"How would you like to download OS package updates for your grid?:" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates." ON \
+	"MANAGER" "Manager node is proxy for updates" ON \
 	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	case "$update_string" in
 		'MANAGER')
-			MANAGERUPDATES='1'
+			export MANAGERUPDATES='1'
 			;;
 		*)
-			MANAGERUPDATES='0'
+			export MANAGERUPDATES='0'
 			;;
 	esac
 

@@ -89,7 +89,7 @@ if [ "$SKIP" -eq 0 ]; then
     echo "[p] - Wazuh API - port 55000/tcp"
     echo "[r] - Wazuh registration service - 1515/tcp"
     echo ""
-    echo "Please enter your selection (a - analyst, b - beats, o - osquery, w - wazuh):"
+    echo "Please enter your selection:"
     read -r ROLE
     echo "Enter a single ip address or range to allow (example: 10.10.10.10 or 10.10.0.0/16):"
     read -r IP
@@ -127,16 +127,16 @@ salt-call state.apply firewall queue=True
 if grep -q -R "wazuh: 1" $local_salt_dir/pillar/*; then
     # If analyst, add to Wazuh AR whitelist
     if [ "$FULLROLE" == "analyst" ]; then
-          WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
-          if ! grep -q "<white_list>$IP</white_list>" $WAZUH_MGR_CFG ; then
-                  DATE=$(date)
-                  sed -i 's/<\/ossec_config>//' $WAZUH_MGR_CFG
-                  sed -i '/^$/N;/^\n$/D' $WAZUH_MGR_CFG
-                  echo -e "<!--Address $IP added by /usr/sbin/so-allow on \"$DATE\"-->\n  <global>\n    <white_list>$IP</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
-                  echo "Added whitelist entry for $IP in $WAZUH_MGR_CFG."
-		  echo
-                  echo "Restarting OSSEC Server..."
-                  /usr/sbin/so-wazuh-restart
-          fi
-     fi
+        WAZUH_MGR_CFG="/opt/so/wazuh/etc/ossec.conf"
+        if ! grep -q "<white_list>$IP</white_list>" $WAZUH_MGR_CFG ; then
+            DATE=$(date)
+            sed -i 's/<\/ossec_config>//' $WAZUH_MGR_CFG
+            sed -i '/^$/N;/^\n$/D' $WAZUH_MGR_CFG
+            echo -e "<!--Address $IP added by /usr/sbin/so-allow on \"$DATE\"-->\n  <global>\n    <white_list>$IP</white_list>\n  </global>\n</ossec_config>" >> $WAZUH_MGR_CFG
+            echo "Added whitelist entry for $IP in $WAZUH_MGR_CFG."
+        echo
+            echo "Restarting OSSEC Server..."
+            /usr/sbin/so-wazuh-restart
+        fi
+    fi
 fi

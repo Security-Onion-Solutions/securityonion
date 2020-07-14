@@ -398,7 +398,7 @@ checkin_at_boot() {
 }
 
 check_requirements() {
-	local eval_or_dist=$1
+	local standalone_or_dist=$1
 	local node_type=$2 # optional
 	local req_mem
 	local req_cores
@@ -407,12 +407,12 @@ check_requirements() {
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
 	local num_nics=${#nic_list[@]}
 	
-	if [[ "$eval_or_dist" == 'eval' ]]; then
+	if [[ "$standalone_or_dist" == 'standalone' ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
 		req_storage=100
-	elif [[ "$eval_or_dist" == 'dist' ]]; then
+	elif [[ "$standalone_or_dist" == 'dist' ]]; then
 		req_mem=8
 		req_cores=4
 		req_storage=40
@@ -420,7 +420,7 @@ check_requirements() {
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
 
-	if (( $(echo "$free_space_root < $req_storage" | bc -l) )) && [[ $setup_type == 'network' ]]; then
+	if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 		whiptail_requirements_error "disk space" "${free_space_root} GB" "${req_storage} GB"
 	fi
 
@@ -939,18 +939,6 @@ manager_pillar() {
 			"  mtu: $MTU" >> "$pillar_file"
 	fi
 
-	case $REDIRECTINFO in
-		'IP')
-			REDIRECTIT="$MAINIP"
-			;;
-		'HOSTNAME')
-			REDIRECTIT=$HOSTNAME
-			;;
-		*)
-			REDIRECTIT="$REDIRECTHOST"
-			;;
-	esac
-
 	printf '%s\n'\
 		"  elastalert: 1"\
 		"  nids_rules: $RULESETUP"\
@@ -1004,14 +992,14 @@ manager_static() {
 		"  broversion: $BROVERSION"\
 		"  ids: $NIDS"\
 		"  managerip: $MAINIP"\
-		"  hiveuser: hiveadmin"\
-		"  hivepassword: hivechangeme"\
+		"  hiveuser: $WEBUSER"\
+		"  hivepassword: $WEBPASSWD1"\
 		"  hivekey: $HIVEKEY"\
-		"  cortexuser: cortexadmin"\
-		"  cortexpassword: cortexchangeme"\
+		"  cortexuser: $WEBUSER"\
+		"  cortexpassword: $WEBPASSWD1"\
 		"  cortexkey: $CORTEXKEY"\
 		"  cortexorgname: SecurityOnion"\
-		"  cortexorguser: soadmin"\
+		"  cortexorguser: $WEBUSER"\
 		"  cortexorguserkey: $CORTEXORGUSERKEY"\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
@@ -1652,6 +1640,20 @@ set_node_type() {
 			;;
 		'WARMNODE')
 			NODETYPE='warm'
+			;;
+	esac
+}
+
+set_redirect() {
+	case $REDIRECTINFO in
+		'IP')
+			REDIRECTIT="$MAINIP"
+			;;
+		'HOSTNAME')
+			REDIRECTIT="$HOSTNAME"
+			;;
+		*)
+			REDIRECTIT="$REDIRECTHOST"
 			;;
 	esac
 }
