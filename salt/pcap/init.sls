@@ -152,6 +152,7 @@ so-sensoroni:
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /nsm/pcap:/nsm/pcap:rw
+      - /nsm/import:/nsm/import:rw
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
