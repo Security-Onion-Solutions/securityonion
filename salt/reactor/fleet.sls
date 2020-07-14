@@ -1,5 +1,3 @@
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
-
 #!py
 
 from time import gmtime, strftime
@@ -55,13 +53,14 @@ def run():
       MANAGER = data['data']['manager']
       VERSION = data['data']['version']
       ESECRET = data['data']['enroll-secret']
+      IMAGEREPO = data['data']['imagerepo']
       
       # Increment the package version by 1
       PACKAGEVERSION += 1
 
       # Run Docker container that will build the packages
       gen_packages = subprocess.run(["docker", "run","--rm", "--mount", f"type=bind,source={LOCAL_SALT_DIR}/salt/fleet/packages,target=/output", \
-         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MANAGER }:5000/{{ IMAGEREPO }}/so-fleet-launcher:{ VERSION }", \
+         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MANAGER }:5000/{ IMAGEREPO }/so-fleet-launcher:{ VERSION }", \
          f"{ESECRET}", f"{PACKAGEHOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
