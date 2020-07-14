@@ -871,6 +871,17 @@ get_redirect() {
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
 		whiptail_set_redirect_host
 	fi
+	case $REDIRECTINFO in
+		'IP')
+			export REDIRECTIT="$MAINIP"
+			;;
+		'HOSTNAME')
+			export REDIRECTIT="$HOSTNAME"
+			;;
+		*)
+			export REDIRECTIT="$REDIRECTHOST"
+			;;
+	esac
 }
 
 got_root() {
@@ -937,18 +948,6 @@ manager_pillar() {
 		printf '%s\n'\
 			"  mtu: $MTU" >> "$pillar_file"
 	fi
-
-	case $REDIRECTINFO in
-		'IP')
-			export REDIRECTIT="$MAINIP"
-			;;
-		'HOSTNAME')
-			export REDIRECTIT=$HOSTNAME
-			;;
-		*)
-			export REDIRECTIT="$REDIRECTHOST"
-			;;
-	esac
 
 	printf '%s\n'\
 		"  elastalert: 1"\
