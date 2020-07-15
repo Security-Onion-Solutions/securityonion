@@ -22,7 +22,7 @@ Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is
   - 1-Low / 2-Medium / 3-High / 4-Critical
 - Initial implementation of alerting queues:
   - Low & Medium alerts are accessible through Kibana & SOC Hunt
-  - High & Critical alerts are accessible through Kibana, SOC Hunt and sent to TheHive for immediate viewing
+  - High & Critical alerts are accessible through Kibana, SOC Hunt and sent to TheHive for immediate analysis
 - ATT&CK Navigator is now a statically-hosted site in the nginx container
 - Playbook
   - All Sigma rules in the community repo are now imported & kept up to date (500+)
