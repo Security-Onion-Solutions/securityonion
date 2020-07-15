@@ -127,7 +127,7 @@ filebeat.inputs:
       imported: true
   processors:
   - add_tags:
-      tags: [import]
+      tags: ["import"]
   - dissect:
       tokenizer: "/nsm/import/%{import.id}/zeek/logs/%{import.file}"
       field: "log.file.path"
@@ -167,7 +167,7 @@ filebeat.inputs:
     imported: true 
   processors:
   - add_tags:
-      tags: [import]
+      tags: ["import"]
   - dissect:
       tokenizer: "/nsm/import/%{import.id}/suricata/%{import.file}"
       field: "log.file.path"
@@ -260,6 +260,9 @@ output.elasticsearch:
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"
   indices:
+    - index: "so-import-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "import"
     - index: "so-zeek-%{+yyyy.MM.dd}"
       when.contains:
         module: "zeek"
