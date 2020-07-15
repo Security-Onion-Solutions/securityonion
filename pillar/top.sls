@@ -31,11 +31,12 @@ base:
     - logstash.manager
 
   '*_eval':
-    - static
     - data.*
     - brologs
     - secrets
     - healthcheck.eval
+    - elasticsearch.eval
+    - static
     - minions.{{ grains.id }}
 
   '*_standalone':
