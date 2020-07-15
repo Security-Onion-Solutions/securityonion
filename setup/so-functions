@@ -923,6 +923,13 @@ manager_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
+		SENSOR_CHECKIN_INTERVAL_MS=10000
+		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ]; then
+			SENSOR_CHECKIN_INTERVAL_MS=1000
+		fi
+	fi
+
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
@@ -968,6 +975,9 @@ manager_pillar() {
 		"  ls_batch_count: 125"\
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  ls_pipeline_workers: $num_cpu_cores"\
+		""\
+		"pcap:">> "$pillar_file"\
+		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
 		""\
 		"kratos:" >> "$pillar_file"
 
