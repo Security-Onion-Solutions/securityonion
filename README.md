@@ -1,6 +1,6 @@
 ## Security Onion 2.0.0.rc1
 
-Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is good news: From here on out you will be able to use soup on the master to upgrade your environment to RC2 and beyond! The team here has been hard at work to bring you the following changes:
+Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is good news: From here on out you will be able to use soup on the manager to upgrade your environment to RC2 and beyond! The team here has been hard at work to bring you the following changes:
 
 - You will notice we have done a little re-branding to give 2.0 a fresh look.
 - We have removed all references to "master" in the code and now call it a "manager".
@@ -18,6 +18,18 @@ Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is
 - Elastic ingest parsing improvements.
 - Elastic nodes are now "hot" by default. This will allow adding a warm node easier.
 - so-allow will now run at the end of an install so you can enable access right away.
+- Alert severities across Wazuh, Suricata and Playbook (Sigma) have been standardised and copied to `event.severity` (1-Low/2-Medium/3-High/4-Critical)
+- Initial implementation of alerting queues:
+  - Low & Medium alerts are accessible through Kibana & SOC Hunt
+  - High & Critical alerts are accessible through Kibana, SOC Hunt and sent to TheHive for immediate viewing
+- ATT&CK Navigator is now a statically-hosted site in the nginx container
+- Playbook
+  - All Sigma rules in the community repo are now imported & kept up to date (500+)
+  - Initial implementation of automated testing when a Play's detection logic has been edited (ie Unit Testing)
+  - UI Theme has been updated
+  - Once authenticated through SOC, you can now access Playbook with analyst permissions without login
+- Ingest parsing updates for Windows Eventlogs & Sysmon logs shipped with WinLogbeat & Osquery (ECS)
+- Kolide Launcher update to include the ability to pass arbitrary flags - new functionality sponsored by SOS
 
 
 ## Hybrid Hunter Beta 1.4.1 - Beta 3
