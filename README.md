@@ -1,3 +1,30 @@
+## Security Onion 2.0.0.rc1
+
+Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is good news: From here on out you will be able to use soup on the master to upgrade your environment to RC2 and beyond! The team here has been hard at work to bring you the following changes:
+
+- You will notice we have done a little re-branding to give 2.0 a fresh look.
+- We have removed all references to "master" in the code and now call it a "manager".
+- All documentation has moved to our docs site.
+- soup is alive! This will only update the Security Onion components. Please use the build in OS update process to keep the OS up to date.
+- so-features-enable should now properly work. 
+- so-import-pcap! See the docs here.
+- You can now pivot to PCAP from Suricata alerts.
+- ISO install now prompts you to create an admin user instead of using onion. This user has full sudo rights.
+- The disk should now more reliably clean itself up.
+- Changed the default permissions for /opt/so to keep non-priviledged users from accessing salt and related files.
+- Locked down access to certain SSL keys.
+- Suricata logs will now compress after they roll over.
+- You can now customize shard counts per index.
+- Elastic ingest parsing improvements.
+- Elastic nodes are now "hot" by default. This will allow adding a warm node easier.
+- so-allow will now run at the end of an install so you can enable access right away.
+
+
+## Hybrid Hunter Beta 1.4.1 - Beta 3
+
+- Fix install script to handle hostnames properly.
+
+
 ## Hybrid Hunter Beta 1.4.0 - Beta 3
 
 - Complete overhaul of the way we handle custom and default settings and data. You will now see a default and local directory under the saltstack directory. All customizations are stored in local.
