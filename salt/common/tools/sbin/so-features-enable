@@ -17,6 +17,17 @@
 . /usr/sbin/so-common
 local_salt_dir=/opt/so/saltstack/local
 
+manager_check() {
+  # Check to see if this is a manager
+  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [ $MANAGERCHECK == 'so-eval' OR $MANAGERCHECK == 'so-manager' OR $MANAGERCHECK == 'so-managersearch' ]; then
+    echo "This is a manager. We can proceed."
+  else
+    echo "Please run so-features-enable on the manager."
+    exit 0
+}
+
+manager_check
 VERSION=$(grep soversion $local_salt_dir/pillar/static.sls | cut -d':' -f2|sed 's/ //g')
 # Modify static.sls to enable Features
 sed -i 's/features: False/features: True/' $local_salt_dir/pillar/static.sls
