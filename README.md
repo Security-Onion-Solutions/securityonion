@@ -18,7 +18,8 @@ Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is
 - Elastic ingest parsing improvements.
 - Elastic nodes are now "hot" by default. This will allow adding a warm node easier.
 - so-allow will now run at the end of an install so you can enable access right away.
-- Alert severities across Wazuh, Suricata and Playbook (Sigma) have been standardised and copied to `event.severity` (1-Low/2-Medium/3-High/4-Critical)
+- Alert severities across Wazuh, Suricata and Playbook (Sigma) have been standardised and copied to `event.severity`:
+  - 1-Low / 2-Medium / 3-High / 4-Critical
 - Initial implementation of alerting queues:
   - Low & Medium alerts are accessible through Kibana & SOC Hunt
   - High & Critical alerts are accessible through Kibana, SOC Hunt and sent to TheHive for immediate viewing
