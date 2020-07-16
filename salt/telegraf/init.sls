@@ -21,9 +21,9 @@ tgrafetsdir:
 tgrafsyncscripts:
   file.recurse:
     - name: /opt/so/conf/telegraf/scripts
-    - user: 939
+    - user: 0
     - group: 939
-    - file_mode: 755
+    - file_mode: 700
     - template: jinja
     - source: salt://telegraf/scripts
 

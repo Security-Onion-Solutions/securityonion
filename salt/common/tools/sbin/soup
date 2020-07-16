@@ -23,11 +23,12 @@ default_salt_dir=/opt/so/saltstack/default
 manager_check() {
   # Check to see if this is a manager
   MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [ $MANAGERCHECK == 'so-eval' OR $MANAGERCHECK == 'so-manager' OR $MANAGERCHECK == 'so-managersearch' ]; then
+  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-managersearch')$ ]]; then
     echo "This is a manager. We can proceed"
   else
     echo "Please run soup on the manager. The manager controls all updates."
     exit 0
+  fi
 }
 
 clean_dockers() {
@@ -143,7 +144,7 @@ update_version() {
 upgrade_check() {
     # Let's make sure we actually need to update.
     NEWVERSION=$(cat $UPDATE_DIR/VERSION)
-    if [ $INSTALLEDVERSION == $NEWVERSION ]; then
+    if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
       echo "You are already running the latest version of Security Onion."
       exit 0
     else
@@ -155,12 +156,13 @@ verify_latest_update_script() {
     # Check to see if the update scripts match. If not run the new one.
     CURRENTSOUP=$(md5sum /usr/sbin/soup)
     GITSOUP=$(md5sum /tmp/sogh/securityonion/salt/common/tools/sbin/soup)
-    if [ $CURRENTSOUP == $GITSOUP ]; then
-      echo "The scripts match"
+    if [ "$CURRENTSOUP" == "$GITSOUP" ]; then
+      echo "This version of the soup script is up to date. Verifying versions."
     else
-      echo "They don't match"
-      cp $UPDATE_DIR/salt/sommon/tools/sbin/soup /usr/sbin/soup
+      echo "You are not running the latest soup version. Updating soup."
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $default_salt_dir/salt/common/tools/sbin/
+      salt-call state.apply common queue=True
+      echo ""
       echo "soup has been updated. Please run soup again"
       exit 0
     fi
@@ -176,9 +178,3 @@ update_dockers
 copy_new_files
 highstate
 update_version
-
-
-
-
-
-
