@@ -37,6 +37,7 @@
 
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
 include:
   - elasticsearch
@@ -181,4 +182,6 @@ so-logstash:
       - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
   {% endfor %}
 {% endfor %}
-      - file: /opt/so/conf/elasticsearch/templates/*
+{% for TEMPLATE in TEMPLATES %}
+      - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+{% endfor %}
