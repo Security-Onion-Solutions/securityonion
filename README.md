@@ -37,6 +37,7 @@ Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is
 - Added default YARA rules for Strelka -- default rules are maintained by Florian Roth and pulled from https://github.com/Neo23x0/signature-base
 - Added the ability to use custom Zeek scripts
 - Improved unification of Zeek and Strelka file data
+- The web email & password set during setup is also used to create the initial accounts for TheHive, Cortex, and Fleet
 
 
 ## Hybrid Hunter Beta 1.4.1 - Beta 3
