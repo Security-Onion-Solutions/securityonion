@@ -26,6 +26,11 @@ socore_own_saltstack:
       - user
       - group
 
+/opt/so/saltstack/default/pillar/data/addtotab.sh:
+  file.managed:
+    - mode: 750
+    - replace: False
+
 {% if managerproxy == 1 %}
 
 # Create the directories for apt-cacher-ng
