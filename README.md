@@ -34,7 +34,7 @@ Security Onion 2.0.0 RC1 is here! This will require a fresh install but there is
 - Fixed issue with Wazuh authd registration service port not being correctly exposed
 - Added option for exposure of ES Rest API (port 9200) to so-allow for easier external querying/integration with other tools
 - Added option to so-allow for external Strelka file uploads (ex. via `strelka-fileshot`)
-- Added default YARA rules for Strelka -- default rules are fmaintained by Florian Roth and pulled from https://github.com/Neo23x0/signature-base
+- Added default YARA rules for Strelka -- default rules are maintained by Florian Roth and pulled from https://github.com/Neo23x0/signature-base
 - Added the ability to use custom Zeek scripts
 - Improved unification of Zeek and Strelka file data
 
