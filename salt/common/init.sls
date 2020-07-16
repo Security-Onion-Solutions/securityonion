@@ -15,13 +15,20 @@ socore:
     - createhome: True
     - shell: /bin/bash
 
-soperms:
+soconfperms:
   file.directory:
-    - name: /opt/so
+    - name: /opt/so/conf
     - uid: 939
     - gid: 939
     - dir_mode: 770
-    
+
+sosaltstackperms:
+  file.directory:
+    - name: /opt/so/saltstack
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+
 # Create a state directory
 statedir:
   file.directory:
