@@ -166,7 +166,7 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates
