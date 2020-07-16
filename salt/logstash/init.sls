@@ -38,6 +38,9 @@
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 
+include:
+  - elasticsearch
+
 # Create the logstash group
 logstashgroup:
   group.present:
