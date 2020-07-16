@@ -138,7 +138,6 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - elasticsearch
     - logstash
     - kibana
     - elastalert
@@ -185,7 +184,6 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - elasticsearch
     - logstash
     - kibana
     - pcap
@@ -237,7 +235,6 @@ base:
     - common
     - firewall
     - logstash
-    - elasticsearch
     - curator
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
@@ -265,7 +262,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -309,7 +305,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - kibana
     - elastalert
@@ -345,7 +340,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
