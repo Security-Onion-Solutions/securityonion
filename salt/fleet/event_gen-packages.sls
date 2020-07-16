@@ -4,11 +4,14 @@
 {% set VERSION = salt['pillar.get']('static:soversion') %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
 {% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node') -%}
 
 {% if CUSTOM_FLEET_HOSTNAME != None and CUSTOM_FLEET_HOSTNAME != '' %}
    {% set HOSTNAME =  CUSTOM_FLEET_HOSTNAME  %}
-{% else %}
+{% elif FLEETNODE %}
    {% set HOSTNAME = grains.host  %}
+{% else %}
+   {% set HOSTNAME = salt['pillar.get']('manager:url_base')  %}
 {% endif %}
 
 so/fleet:
