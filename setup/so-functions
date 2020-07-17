@@ -79,7 +79,7 @@ so_add_user() {
 
 	echo "Add $username user" >> "$setup_log" 2>&1
 	groupadd --gid "$gid" "$username"
-	useradd --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
+	useradd -m --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
 
 	# If a password has been passed in, set the password
 	if [ "$pass" ]; then
@@ -465,7 +465,11 @@ copy_minion_tmp_files() {
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
 				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
-				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
+				if [ -d "$temp_install_dir"/salt/patch/os/schedules/ ]; then
+					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
+						scp -prv -i /root/.ssh/so.key "$temp_install_dir"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
+					fi
+				fi
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
 			} >> "$setup_log" 2>&1
 			;;
