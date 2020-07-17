@@ -604,6 +604,22 @@ whiptail_management_server() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+	while [[ $MSRV == *'localhost'* || ! ( $MSRV =~ ^[a-zA-Z0-9\-]*$ ) ]] ; do
+		local error_message
+		error_message=$(echo "Please choose a valid hostname. It cannot contain localhost; and must contain only \
+			the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', \
+			and hyphen ('-')" | tr -d '\t')
+
+		whiptail --title "Security Onion Setup" \
+		--msgbox "$error_message" 10 75
+
+		MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter your Manager Server hostname. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
+
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
+
 	if ! getent hosts "$MSRV"; then
 		add_manager_hostfile
 	fi
@@ -982,10 +998,13 @@ whiptail_set_hostname() {
 		error_message=$(echo "Please choose a valid hostname. It cannot contain localhost; and must contain only \
 			the ASCII letters 'a' through 'z' (case-insensitive), the digits '0' through '9', \
 			and hyphen ('-')" | tr -d '\t')
+
 		whiptail --title "Security Onion Setup" \
 		--msgbox "$error_message" 10 75
+
 		HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
 		"Enter the hostname (not FQDN) you would like to set." 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
