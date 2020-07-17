@@ -15,7 +15,7 @@ base:
 
   '*_sensor':
     - static
-    - brologs
+    - zeeklogs
     - healthcheck.sensor
     - minions.{{ grains.id }}
 
@@ -32,7 +32,7 @@ base:
 
   '*_eval':
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.eval
     - elasticsearch.eval
@@ -45,7 +45,7 @@ base:
     - logstash.search
     - elasticsearch.search
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.standalone
     - static
@@ -57,13 +57,13 @@ base:
 
   '*_heavynode':
     - static
-    - brologs
+    - zeeklogs
     - minions.{{ grains.id }}
 
   '*_helix':
     - static
     - fireeye
-    - brologs
+    - zeeklogs
     - logstash
     - logstash.helix
     - minions.{{ grains.id }}

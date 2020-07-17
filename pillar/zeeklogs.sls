@@ -1,4 +1,4 @@
-brologs:
+zeeklogs:
   enabled:
     - conn
     - dce_rpc

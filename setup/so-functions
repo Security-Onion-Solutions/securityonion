@@ -143,18 +143,18 @@ secrets_pillar(){
 }
 
 # Enable Bro Logs
-bro_logs_enabled() {
+zeek_logs_enabled() {
 	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local brologs_pillar=./pillar/brologs.sls
+	local zeeklogs_pillar=./pillar/zeeklogs.sls
 
 	printf '%s\n'\
-		"brologs:"\
-		"  enabled:" > "$brologs_pillar"
+		"zeeklogs:"\
+		"  enabled:" > "$zeeklogs_pillar"
 
 	if [ "$MANAGERADV" = 'ADVANCED' ]; then
 		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> "$brologs_pillar"
+			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
 		done
 	else
 		printf '%s\n'\
@@ -195,11 +195,11 @@ bro_logs_enabled() {
 			"    - weird"\
 			"    - mysql"\
 			"    - socks"\
-			"    - x509" >> "$brologs_pillar"
+			"    - x509" >> "$zeeklogs_pillar"
 	fi
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$brologs_pillar" >> "$setup_log" 2>&1
+	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }
 
 check_admin_pass() {
@@ -1002,7 +1002,7 @@ manager_static() {
 		"  hnmanager: $HNMANAGER"\
 		"  ntpserver: $NTPSERVER"\
 		"  proxy: $PROXY"\
-		"  broversion: $BROVERSION"\
+		"  zeekversion: $ZEEKVERSION"\
 		"  ids: $NIDS"\
 		"  managerip: $MAINIP"\
 		"  hiveuser: $WEBUSER"\
@@ -1470,7 +1470,7 @@ sensor_pillar() {
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  zeek_pins:" >> "$pillar_file"
-		for PIN in "${BROPINS[@]}"; do
+		for PIN in "${ZEEKPINS[@]}"; do
 			PIN=$(echo "$PIN" |  cut -d\" -f2)
 		echo "    - $PIN" >> "$pillar_file"
 		done
@@ -1483,11 +1483,11 @@ sensor_pillar() {
 		echo "  zeek_lbprocs: $lb_procs" >> "$pillar_file"
 		echo "  suriprocs: $lb_procs" >> "$pillar_file"
 	else
-		echo "  zeek_lbprocs: $BASICBRO" >> "$pillar_file"
+		echo "  zeek_lbprocs: $BASICZEEK" >> "$pillar_file"
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  brobpf:"\
+		"  zeekbpf:"\
 		"  pcapbpf:"\
 		"  nidsbpf:"\
 		"  manager: $MSRV"\
