@@ -1,4 +1,4 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', '') -%}
+{%- set ZEEKVER = salt['pillar.get']('static:zeekversion', '') -%}
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
@@ -48,7 +48,7 @@ base:
     - pcap
     - suricata
     - healthcheck
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - wazuh
@@ -86,7 +86,7 @@ base:
     - kibana
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     {%- if STRELKA %}
@@ -188,7 +188,7 @@ base:
     - kibana
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     {%- if STRELKA %}
@@ -347,7 +347,7 @@ base:
     {%- endif %}
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - filebeat

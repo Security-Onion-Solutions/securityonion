@@ -19,11 +19,11 @@ source ./so-variables
 source ./so-common-functions
 
 
-whiptail_basic_bro() {
+whiptail_basic_zeek() {
 
 	[ -n "$TESTING" ] && return
 
-	BASICBRO=$(whiptail --title "Security Onion Setup" --inputbox \
+	BASICZEEK=$(whiptail --title "Security Onion Setup" --inputbox \
 	"Enter the number of zeek processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
@@ -42,7 +42,7 @@ whiptail_basic_suri() {
 
 }
 
-whiptail_bro_pins() {
+whiptail_zeek_pins() {
 
 	[ -n "$TESTING" ] && return
 
@@ -51,20 +51,20 @@ whiptail_bro_pins() {
 		cpu_core_list_whiptail+=("$item" "OFF")
 	done
 
-	BROPINS=$(whiptail --noitem --title "Pin Zeek CPUS" --checklist "Please select $lb_procs cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
+	ZEEKPINS=$(whiptail --noitem --title "Pin Zeek CPUS" --checklist "Please select $lb_procs cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
-	BROPINS=$(echo "$BROPINS" | tr -d '"')
+	ZEEKPINS=$(echo "$ZEEKPINS" | tr -d '"')
 
-	IFS=' ' read -ra BROPINS <<< "$BROPINS"
+	IFS=' ' read -ra ZEEKPINS <<< "$ZEEKPINS"
 }
 
-whiptail_bro_version() {
+whiptail_zeek_version() {
 
 	[ -n "$TESTING" ] && return
 
-	BROVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
+	ZEEKVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate meta data?" 20 75 4 "ZEEK" "Install Zeek (aka Bro)"  ON \
 	"SURICATA" "Use Suricata 5" OFF 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
@@ -642,7 +642,7 @@ whiptail_manager_adv() {
 }
 
 # Ask which additional components to install
-whiptail_manager_adv_service_brologs() {
+whiptail_manager_adv_service_zeeklogs() {
 
 	[ -n "$TESTING" ] && return
 
@@ -1122,7 +1122,7 @@ whiptail_suricata_pins() {
 	[ -n "$TESTING" ] && return
 
 	local filtered_core_list
-	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${BROPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
+	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${ZEEKPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
 
 	local filtered_core_str=()
     for item in "${filtered_core_list[@]}"; do
