@@ -68,6 +68,14 @@ zeekpolicysync:
     - group: 939
     - template: jinja
 
+# Sync Intel
+zeekintelloadsync:
+  file.managed:
+    - name: /opt/so/conf/policy/intel/__load__.zeek
+    - source: salt://zeek/policy/intel/__load__.zeek
+    - user: 937
+    - group: 939
+
 zeekctlcfg:
   file.managed:
     - name: /opt/so/conf/zeek/zeekctl.cfg
