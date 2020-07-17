@@ -622,24 +622,28 @@ fi
 } | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
+if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
-if [[ $success != 0 ]]; then SO_ERROR=1; fi # evaluate success first so it doesn't check against the output of so-allow
 
 if [[ -n $SO_ERROR ]]; then 
 	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
 	SKIP_REBOOT=1
 	whiptail_setup_failed
 else 
-	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-		echo "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}" >> $setup_log 2>&1
-		IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
-	fi
+	{
+		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+			set_progress_str 98 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+		fi
 
-	if [[ $THEHIVE == 1 ]]; then check_hive_init >> $setup_log 2>&1; fi
+		set_progress_str 99 'Waiting for TheHive to start up'
+		if [[ $THEHIVE == 1 ]]; then check_hive_init >> $setup_log 2>&1; fi
 
-	install_cleanup >> $setup_log 2>&1
+	} | whiptail_gauge_post_setup "Running post-installation steps..."
 
 	whiptail_setup_complete
 fi
+
+install_cleanup >> $setup_log 2>&1
 
 if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi
