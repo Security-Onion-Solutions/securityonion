@@ -130,7 +130,7 @@ update_dockers() {
       docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i:$NEWVERSION
       # Tag it with the new registry destination
       docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
+      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
     done
 
 }
@@ -139,6 +139,7 @@ update_version() {
   # Update the version to the latest
   echo "Updating the version file."
   echo $NEWVERSION > /etc/soversion
+  sed -i 's/$INSTALLEDVERSION/$NEWVERISON/g' /opt/so/saltstack/local/pillar/static.sls
 }
 
 upgrade_check() {
@@ -178,3 +179,5 @@ update_dockers
 copy_new_files
 highstate
 update_version
+echo ""
+echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
