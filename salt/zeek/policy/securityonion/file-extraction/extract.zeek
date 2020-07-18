@@ -1,4 +1,4 @@
-{%- from zeek/fileextraction_defaults.yaml import zeek %}
+{%- import_yaml "zeek/fileextraction_defaults.yaml" as zeek with context %}
 # Directory to stage Zeek extracted files before processing
 redef FileExtract::prefix = "/nsm/zeek/extracted/";
 # Set a limit to the file size
@@ -6,14 +6,16 @@ redef FileExtract::default_limit = 9000000;
 # These are the mimetypes we want to rip off the networks
 export {
     global _mime_whitelist: table[string] of string = {
-        {%- for li in zeek.policy.file_extraction %}
-          {%- for k,v in li %}
+        {%- for li in zeek.zeek.policy.file_extraction %}
           {%- if not loop.last %}
+          {%- for k,v in li.items() %}
         ["{{ k }}"] = "{{ v }}",
-          {%- else %}
-        ["{{ k }}"] = "{{ v }}"
-          {%- endif %}
           {%- endfor %}
+          {%- else %}
+          {%- for k,v in li.items() %}
+        ["{{ k }}"] = "{{ v }}"
+          {%- endfor %}
+          {%- endif %}
         {%- endfor %}
         };
 }
