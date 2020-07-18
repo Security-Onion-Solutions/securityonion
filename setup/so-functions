@@ -522,7 +522,7 @@ configure_network_sensor() {
 
 	# Create the bond interface only if it doesn't already exist
 	
-	nmcli -f name,uuid -p con | grep -q "$INTERFACE"
+	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
@@ -561,7 +561,7 @@ configure_network_sensor() {
 			nmcli con up "$BNIC" >> "$setup_log" 2>&1
 		else
 			# Check if the bond slave connection has already been created
-			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC" >> "$setup_log" 2>&1
 			local found_int=$?
 			
 			if [[ $found_int != 0 ]]; then
@@ -588,7 +588,7 @@ configure_network_sensor() {
 }
 
 detect_cloud() {
-  echo "Testing if setup is running on a cloud instance..."
+  echo "Testing if setup is running on a cloud instance..." >> "$setup_log" 2>&1
   if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null); then export is_cloud="true"; fi
 }
 
@@ -609,7 +609,7 @@ detect_os() {
 			exit 1
 		fi
 
-		echo "Installing required packages to run installer..."
+		echo "Installing required packages to run installer..." >> "$setup_log" 2>&1
 		# Install bind-utils so the host command exists
 		if ! command -v host > /dev/null 2>&1; then
 			yum -y install bind-utils >> "$setup_log" 2>&1
@@ -1634,8 +1634,8 @@ set_initial_firewall_policy() {
 set_management_interface() {
 
 	if [ "$address_type" = 'DHCP' ]; then
-		nmcli con mod "$MNIC" connection.autoconnect yes
-		nmcli con up "$MNIC"
+		nmcli con mod "$MNIC" connection.autoconnect yes >> "$setup_log" 2>&1
+		nmcli con up "$MNIC" >> "$setup_log" 2>&1
 	else
 		# Set Static IP
 		nmcli con mod "$MNIC" ipv4.addresses "$MIP"/"$MMASK"\
@@ -1643,8 +1643,8 @@ set_management_interface() {
 			ipv4.dns "$MDNS"\
 			ipv4.dns-search "$MSEARCH"\
 			connection.autoconnect yes\
-			ipv4.method manual
-		nmcli con up "$MNIC"
+			ipv4.method manual >> "$setup_log" 2>&1
+		nmcli con up "$MNIC" >> "$setup_log" 2>&1
 	fi
 }
 
