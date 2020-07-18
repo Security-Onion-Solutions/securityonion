@@ -43,7 +43,7 @@ zeekspooldir:
   file.directory:
     - name: /nsm/zeek/spool/manager
     - user: 937
-    - makedirs: true
+    - makedirs: True
 
 # Zeek extracted
 zeekextractdir:
@@ -57,7 +57,7 @@ zeekextractcompletedir:
   file.directory:
     - name: /nsm/zeek/extracted/complete
     - user: 937
-    - makedirs: true
+    - makedirs: True
 
 # Sync the policies
 zeekpolicysync:
@@ -67,6 +67,15 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+
+# Sync Intel
+zeekintelloadsync:
+  file.managed:
+    - name: /opt/so/conf/policy/intel/__load__.zeek
+    - source: salt://zeek/policy/intel/__load__.zeek
+    - user: 937
+    - group: 939
+    - makedirs: True
 
 zeekctlcfg:
   file.managed:
@@ -178,3 +187,4 @@ so-zeek:
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
+      
