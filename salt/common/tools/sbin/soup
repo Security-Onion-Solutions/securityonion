@@ -23,7 +23,7 @@ default_salt_dir=/opt/so/saltstack/default
 manager_check() {
   # Check to see if this is a manager
   MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-managersearch')$ ]]; then
+  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch')$ ]]; then
     echo "This is a manager. We can proceed"
   else
     echo "Please run soup on the manager. The manager controls all updates."
@@ -169,15 +169,25 @@ verify_latest_update_script() {
     fi
 }
 
+echo "Checking to see if this is a manager"
 manager_check
+echo "Cloning latest code to a temporary location"
 clone_to_tmp
+echo "Verifying we have the latest script"
 verify_latest_update_script
+echo "Let's see if we need to update"
 upgrade_check
+echo "Making pillar changes"
 pillar_changes
+echo "Cleaning up old docker"
 clean_dockers
+echo "Updating docker to $NEWVERSION"
 update_dockers
+echo "Copying new code"
 copy_new_files
+echo "Running a highstate to complete upgrade"
 highstate
+echo "Updating version"
 update_version
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
