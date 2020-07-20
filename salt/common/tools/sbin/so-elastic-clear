@@ -13,8 +13,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.. /usr/sbin/so-common
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{%- set MANAGERIP = salt['pillar.get']('static:managerip', '') -%}
 . /usr/sbin/so-common
 
 SKIP=0
@@ -50,7 +50,7 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        curl {{ MASTERIP }}:9200/_cat/indices?v&pretty
+        curl {{ MANAGERIP }}:9200/_cat/indices?v
         echo
         # Inform user we are about to delete all data
         echo
@@ -89,10 +89,10 @@ fi
 # Delete data
 echo "Deleting data..."
 
-INDXS=$(curl -s -XGET {{ MASTERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert' | awk '{ print $3 }')
+INDXS=$(curl -s -XGET {{ MANAGERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 for INDX in ${INDXS}
 do
-    curl -XDELETE "{{ MASTERIP }}:9200/${INDX}" > /dev/null 2>&1
+    curl -XDELETE "{{ MANAGERIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
 #Start Logstash/Filebeat

@@ -1,4 +1,4 @@
-{%- set MASTERIP = salt['pillar.get']('static:masterip', '') -%}
+{%- set MANAGERIP = salt['pillar.get']('static:managerip', '') -%}
 {%- set SENSORONIKEY = salt['pillar.get']('static:sensoronikey', '') -%}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
@@ -12,10 +12,10 @@
         "jobDir": "jobs"
       },
       "kratos": {
-        "hostUrl": "http://{{ MASTERIP }}:4434/"
+        "hostUrl": "http://{{ MANAGERIP }}:4434/"
       },
       "elastic": {
-        "hostUrl": "http://{{ MASTERIP }}:9200",
+        "hostUrl": "http://{{ MANAGERIP }}:9200",
         "username": "",
         "password": "",
         "verifyCert": false
@@ -78,12 +78,12 @@
           "su"	: ["soc_timestamp", "message" ],
           "sudo"	: ["soc_timestamp", "message" ],
           "systemd": ["soc_timestamp", "message" ],
-          "sysmon": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "computer_name", "event_id", "parent_image_path", "source_name", "task", "username" ],
-          "wineventlog": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "computer_name", "event_id", "log_name", "source_name", "task" ]
+          "sysmon": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "host.name", "event.dataset", "parent_image_path", "source_name", "task", "user.name" ],
+          "wineventlog": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "host.name", "event.code", "event.dataset", "source_name", "task" ]
         },
         "queries": [
           { "name": "Default Query", "description": "Show all events grouped by the origin host", "query": "* | groupby observer.name"},
-          { "name": "Log Type", "description": "Show all events grouped by type", "query": "* | groupby event.module"},
+          { "name": "Log Type", "description": "Show all events grouped by module and dataset", "query": "* | groupby event.module event.dataset"},
           { "name": "Elastalerts", "description": "", "query": "_type:elastalert | groupby rule.name"},
           { "name": "Alerts", "description": "Show all alerts grouped by alert source", "query": "event.dataset: alert | groupby event.module"},
           { "name": "NIDS Alerts", "description": "Show all NIDS alerts grouped by alert name", "query": "event.category: network AND event.dataset: alert | groupby rule.name"},
@@ -91,8 +91,8 @@
           { "name": "Wazuh/OSSEC Commands", "description": "Show all Wazuh alerts grouped by command line", "query": "event.module:ossec AND event.dataset:alert | groupby process.command_line"},
           { "name": "Wazuh/OSSEC Processes", "description": "Show all Wazuh alerts grouped by process name", "query": "event.module:ossec AND event.dataset:alert | groupby process.name"},
           { "name": "Wazuh/OSSEC Users", "description": "Show all Wazuh alerts grouped by username", "query": "event.module:ossec AND event.dataset:alert | groupby user.name"},
-          { "name": "Sysmon Events", "description": "Show all Sysmon logs grouped by event_id", "query": "event_type:sysmon | groupby event_id"},
-          { "name": "Sysmon Usernames", "description": "Show all Sysmon logs grouped by username", "query": "event_type:sysmon | groupby username"},
+          { "name": "Sysmon Events", "description": "Show all Sysmon logs grouped by event type", "query": "event.module:sysmon | groupby event.dataset"},
+          { "name": "Sysmon Usernames", "description": "Show all Sysmon logs grouped by username", "query": "event.module:sysmon | groupby event.dataset, user.name.keyword"},
           { "name": "Zeek Notice", "description": "Show notices from Zeek", "query": "event.dataset:notice | groupby notice.note notice.message"},
           { "name": "Connections", "description": "Connections grouped by IP and Port", "query": "event.dataset:conn | groupby source.ip destination.ip network.protocol destination.port"},
           { "name": "Connections", "description": "Connections grouped by Service", "query": "event.dataset:conn | groupby network.protocol destination.port"},
@@ -107,6 +107,7 @@
           { "name": "DNS", "description": "DNS queries grouped by response code", "query": "event.dataset:dns | groupby dns.response.code_name destination.port"},
           { "name": "DNS", "description": "DNS highest registered domain", "query": "event.dataset:dns | groupby dns.highest_registered_domain.keyword destination.port"},
           { "name": "DNS", "description": "DNS grouped by parent domain", "query": "event.dataset:dns | groupby dns.parent_domain.keyword destination.port"},
+          { "name": "DPD", "description": "Dynamic Protocol Detection errors", "query": "event.dataset:dpd | groupby error.reason"},
           { "name": "Files", "description": "Files grouped by mimetype", "query": "event.dataset:file | groupby file.mime_type source.ip"},
           { "name": "Files", "description": "Files grouped by source", "query": "event.dataset:file | groupby file.source source.ip"},
           { "name": "FTP", "description": "FTP grouped by argument", "query": "event.dataset:ftp | groupby ftp.argument"},

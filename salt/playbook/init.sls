@@ -1,22 +1,14 @@
-{% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
+{% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('master:mainint', salt['pillar.get']('node:mainint', salt['pillar.get']('host:mainint')))))[0] %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
 
-{% if salt['mysql.db_exists']('playbook') %}
-   #Playbook database exists - Do nothing
-{% else  %}
-salt://playbook/files/playbook_db_init.sh:
-  cmd.script:
-    - cwd: /root
-    - template: jinja
-
-'sleep 5':
-  cmd.run
-{% endif %}
-
+include:
+  - mysql
+  
 create_playbookdbuser:
   module.run:
     - mysql.user_create:
@@ -40,7 +32,7 @@ query_playbookdbuser_grants:
 query_updatwebhooks:
   mysql_query.run:
     - database: playbook
-    - query:    "update webhooks set url = 'http://{{MASTERIP}}:7000/playbook/webhook' where project_id = 1"
+    - query:    "update webhooks set url = 'http://{{MANAGERIP}}:7000/playbook/webhook' where project_id = 1"
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root
@@ -53,8 +45,8 @@ query_updatepluginurls:
         update settings set value = 
         "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
         project: '1'
-        convert_url: http://{{MASTERIP}}:7000/playbook/sigmac
-        create_url: http://{{MASTERIP}}:7000/playbook/play"
+        convert_url: http://{{MANAGERIP}}:7000/playbook/sigmac
+        create_url: http://{{MANAGERIP}}:7000/playbook/play"
         where id  = 43
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
@@ -73,11 +65,11 @@ playbook_password_none:
 
 so-playbook:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-playbook:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
     - hostname: playbook
     - name: so-playbook
     - environment:
-      - REDMINE_DB_MYSQL={{ MASTERIP }}
+      - REDMINE_DB_MYSQL={{ MANAGERIP }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}

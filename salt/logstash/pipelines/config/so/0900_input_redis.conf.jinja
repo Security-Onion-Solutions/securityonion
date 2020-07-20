@@ -1,14 +1,16 @@
 {%- if grains.role == 'so-heavynode' %}
-{%- set master = salt['pillar.get']('node:mainip', '') %}
+{%- set MANAGER = salt['pillar.get']('elasticsearch:mainip', '') %}
 {%- else %}
-{%- set master = salt['pillar.get']('static:masterip', '') %}
+{%- set MANAGER = salt['pillar.get']('static:managerip', '') %}
 {% endif -%}
+{%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
+
 input {
 	redis {
-		host => '{{ master }}'
+		host => '{{ MANAGER }}'
 		data_type => 'list'
 		key => 'logstash:unparsed'
 		type => 'redis-input'
-		# threads => 1
+		threads => {{ THREADS }}
 	}
 }

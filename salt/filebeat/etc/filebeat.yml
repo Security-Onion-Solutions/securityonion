@@ -1,15 +1,15 @@
 {%- if grains.role == 'so-heavynode' %}
-{%- set MASTER = salt['pillar.get']('sensor:mainip' '') %}
+{%- set MANAGER = salt['pillar.get']('sensor:mainip' '') %}
 {%- else %}
-{%- set MASTER = grains['master'] %}
+{%- set MANAGER = salt['grains.get']('master') %}
 {%- endif %}
 
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{%- set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{%- set ZEEKVER = salt['pillar.get']('static:zeekversion', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('static:wazuh', '0') %}
-{%- set STRELKAENABLED = salt['pillar.get']('static:strelka', '0') %}
-{%- set FLEETMASTER = salt['pillar.get']('static:fleet_master', False) -%}
+{%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
+{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 
 name: {{ HOSTNAME }}
@@ -75,145 +75,194 @@ filebeat.modules:
 filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
 {%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" or grains['role'] == "so-heavynode" or grains['role'] == "so-standalone" %}
+- type: udp
+  enabled: true
+  host: "0.0.0.0:514"
+  fields:
+    module: syslog
+    dataset: syslog
+  pipeline: "syslog"
+  index: "so-syslog-%{+yyyy.MM.dd}"
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
 
-  - type: udp
-    enabled: true
-    host: "0.0.0.0:514"
-    fields:
-      module: syslog
-      dataset: syslog
-    pipeline: "syslog"
-    index: "so-syslog-%{+yyyy.MM.dd}"
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
-    fields_under_root: true
-
-  - type: tcp
-    enabled: true
-    host: "0.0.0.0:514"
-    fields:
-      module: syslog
-      dataset: syslog
-    pipeline: "syslog"
-    index: "so-syslog-%{+yyyy.MM.dd}"
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
-    fields_under_root: true
-{%- if BROVER != 'SURICATA' %}
-{%- for LOGNAME in salt['pillar.get']('brologs:enabled', '')  %}
-  - type: log
-    paths:
-      - /nsm/zeek/logs/current/{{ LOGNAME }}.log
-    fields:
-        module: zeek 
-        dataset: {{ LOGNAME }}
-        category: network
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
- 
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
-
-{%- endfor %}
-{%- endif %}
-
-  - type: log
-    paths:
-      - /suricata/eve*.json
-    fields:
-      module: suricata
-      dataset: common
+- type: tcp
+  enabled: true
+  host: "0.0.0.0:514"
+  fields:
+    module: syslog
+    dataset: syslog
+  pipeline: "syslog"
+  index: "so-syslog-%{+yyyy.MM.dd}"
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  {%- if ZEEKVER != 'SURICATA' %}
+    {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
+- type: log
+  paths:
+    - /nsm/zeek/logs/current/{{ LOGNAME }}.log
+  fields:
+      module: zeek 
+      dataset: {{ LOGNAME }}
       category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+ 
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
+- type: log
+  paths:
+    - /nsm/import/*/zeek/logs/{{ LOGNAME }}.log
+  fields:
+      module: zeek 
+      dataset: {{ LOGNAME }}
+      category: network
+      imported: true
+  processors:
+  - add_tags:
+      tags: ["import"]
+  - dissect:
+      tokenizer: "/nsm/import/%{import.id}/zeek/logs/%{import.file}"
+      field: "log.file.path"
+      target_prefix: ""
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+ 
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+    {%- endfor %}
+  {%- endif %}
 
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
+- type: log
+  paths:
+    - /nsm/suricata/eve*.json
+  fields:
+    module: suricata
+    dataset: common
+    category: network
+
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+
+- type: log
+  paths:
+    - /nsm/import/*/suricata/eve*.json
+  fields:
+    module: suricata
+    dataset: common
+    category: network
+    imported: true 
+  processors:
+  - add_tags:
+      tags: ["import"]
+  - dissect:
+      tokenizer: "/nsm/import/%{import.id}/suricata/%{import.file}"
+      field: "log.file.path"
+      target_prefix: ""
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 
   {%- if STRELKAENABLED == 1 %}
+- type: log
+  paths:
+    - /nsm/strelka/log/strelka.log
+  fields:
+    module: strelka
+    category: file
+    dataset: file
 
-  - type: log
-    paths:
-      - /nsm/strelka/log/strelka.log
-    fields:
-      module: strelka
-      category: file
-      dataset: file
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]    
 
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]    
-
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 
   {%- endif %}
 {%- endif %}
 
 {%- if WAZUHENABLED == 1 %}
 
-  - type: log
-    paths:
-      - /wazuh/alerts/alerts.json
-    fields:
-      module: ossec
-      dataset: alert
-      category: host
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
+- type: log
+  paths:
+    - /wazuh/alerts/alerts.json
+  fields:
+    module: ossec
+    dataset: alert
+    category: host
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
 
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
-
-# - type: log
-#    paths:
-#      - /wazuh/archives/archives.json
-#    fields:
-#      type: ossec_archive
-#    fields_under_root: true
-#    clean_removed: false
-#    close_removed: false
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 
 {%- endif %}
 
-{%- if FLEETMASTER or FLEETNODE %}
+{%- if FLEETMANAGER or FLEETNODE %}
 
-  - type: log
-    paths:
-      - /nsm/osquery/fleet/result.log
-    fields:
-      module: osquery
-      dataset: query_result
-      category: host
+- type: log
+  paths:
+    - /nsm/osquery/fleet/result.log
+  fields:
+    module: osquery
+    dataset: query_result
+    category: host
 
-    processors:
-    - drop_fields:
-        fields: ["source", "prospector", "input", "offset", "beat"]
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
 
-    fields_under_root: true
-    clean_removed: false
-    close_removed: false
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 
 {%- endif %}
 
+{%- if INPUTS %}
+# USER PILLAR DEFINED INPUTS
+{{ INPUTS | yaml(False) }}
+{%- endif %}
+
+{% if OUTPUT -%}
+# USER PILLAR DEFINED OUTPUT
+{%- set types = OUTPUT.keys() | list %}
+{%- set type = types[0] %}
+output.{{ type }}:
+  {%- for i in OUTPUT[type].items() %}
+  {{ i[0] }}: {{ i[1]}}
+  {%- endfor %}
+{%- else %}
 #----------------------------- Elasticsearch/Logstash output ---------------------------------
-{%- if grains['role'] == "so-eval" %}
+  {%- if grains['role'] == "so-eval" %}
 output.elasticsearch:
   enabled: true
-  hosts: ["{{ MASTER }}:9200"]
+  hosts: ["{{ MANAGER }}:9200"]
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"
   indices:
+    - index: "so-import-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "import"
     - index: "so-zeek-%{+yyyy.MM.dd}"
       when.contains:
         module: "zeek"
@@ -229,16 +278,16 @@ output.elasticsearch:
     - index: "so-strelka-%{+yyyy.MM.dd}"
       when.contains:
         module: "strelka"
-
+  
 setup.template.enabled: false
-{%- else %}
+  {%- else %}
 
 output.logstash:
   # Boolean flag to enable or disable the output module.
   enabled: true
 
   # The Logstash hosts
-  hosts: ["{{ MASTER }}:5644"]
+  hosts: ["{{ MANAGER }}:5644"]
 
   # Number of workers per Logstash host.
   #worker: 1
@@ -282,7 +331,8 @@ setup.template.enabled: false
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
   #_source:
     #enabled: false
-{%- endif %}
+  {%- endif %}
+{% endif %}
 #============================== Kibana =====================================
 
 # Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.

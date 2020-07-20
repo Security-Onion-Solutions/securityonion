@@ -1,7 +1,8 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{%- set MASTER_URL = salt['pillar.get']('master:url_base', '') %}
-{%- set MASTER_IP = salt['pillar.get']('static:masterip', '') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{%- set MANAGER_URL = salt['pillar.get']('manager:url_base', '') %}
+{%- set MANAGER_IP = salt['pillar.get']('static:managerip', '') %}
 
 soctopusdir:
   file.directory:
@@ -10,7 +11,7 @@ soctopusdir:
     - group: 939
     - makedirs: True
 
-soctopussync:
+soctopus-sync:
   file.recurse:
     - name: /opt/so/conf/soctopus/templates
     - source: salt://soctopus/files/templates
@@ -24,7 +25,6 @@ soctopusconf:
     - source: salt://soctopus/files/SOCtopus.conf
     - user: 939
     - group: 939
-    - replace: False
     - mode: 600
     - template: jinja
 
@@ -49,19 +49,9 @@ playbookrulessync:
     - group: 939
     - template: jinja
 
-navigatordefaultlayer:
-  file.managed:
-    - name: /opt/so/conf/navigator/nav_layer_playbook.json
-    - source: salt://navigator/files/nav_layer_playbook.json
-    - user: 939
-    - group: 939
-    - makedirs: True
-    - replace: False
-    - template: jinja
-
 so-soctopus:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-soctopus:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soctopus:{{ VERSION }}
     - hostname: soctopus
     - name: so-soctopus
     - binds:
@@ -72,4 +62,4 @@ so-soctopus:
     - port_bindings:
       - 0.0.0.0:7000:7000
     - extra_hosts:
-      - {{MASTER_URL}}:{{MASTER_IP}}
+      - {{MANAGER_URL}}:{{MANAGER_IP}}

@@ -12,8 +12,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{% set MASTERIP = salt['pillar.get']('static:masterip', '') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% if FEATURES %}
   {% set FEATURES = "-features" %}
@@ -46,21 +47,21 @@ filebeatconfsync:
     - user: 0
     - group: 0
     - template: jinja
+    - defaults:
+        INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
+        OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 so-filebeat:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-filebeat:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ MASTER }}:{{ MASTERIP }}
+    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }}
     - binds:
+      - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /nsm/zeek:/nsm/zeek:ro
-      - /nsm/strelka/log:/nsm/strelka/log:ro
-      - /nsm/suricata:/suricata:ro
       - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
       - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
-      - /nsm/osquery/fleet/:/nsm/osquery/fleet:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro

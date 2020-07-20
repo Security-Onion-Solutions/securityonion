@@ -1,5 +1,6 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
@@ -42,7 +43,7 @@ zeekspooldir:
   file.directory:
     - name: /nsm/zeek/spool/manager
     - user: 937
-    - makedirs: true
+    - makedirs: True
 
 # Zeek extracted
 zeekextractdir:
@@ -56,7 +57,7 @@ zeekextractcompletedir:
   file.directory:
     - name: /nsm/zeek/extracted/complete
     - user: 937
-    - makedirs: true
+    - makedirs: True
 
 # Sync the policies
 zeekpolicysync:
@@ -66,6 +67,15 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+
+# Sync Intel
+zeekintelloadsync:
+  file.managed:
+    - name: /opt/so/conf/policy/intel/__load__.zeek
+    - source: salt://zeek/policy/intel/__load__.zeek
+    - user: 937
+    - group: 939
+    - makedirs: True
 
 zeekctlcfg:
   file.managed:
@@ -86,20 +96,20 @@ nodecfgsync:
     - group: 939
     - template: jinja
 
-zeekcleanscript:
-  file.managed:
-    - name: /usr/local/bin/zeek_clean
-    - source: salt://zeek/cron/zeek_clean
-    - mode: 755
+#zeekcleanscript:
+#  file.managed:
+#    - name: /usr/local/bin/zeek_clean
+#    - source: salt://zeek/cron/zeek_clean
+#    - mode: 755
 
-/usr/local/bin/zeek_clean:
-  cron.present:
-    - user: root
-    - minute: '*'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
+#/usr/local/bin/zeek_clean:
+#  cron.present:
+#    - user: root
+#    - minute: '*'
+#    - hour: '*'
+#    - daymonth: '*'
+#    - month: '*'
+#    - dayweek: '*'
 
 plcronscript:
   file.managed:
@@ -156,7 +166,7 @@ localzeeksync:
 
 so-zeek:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-zeek:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
     - privileged: True
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
@@ -177,3 +187,4 @@ so-zeek:
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
+      
