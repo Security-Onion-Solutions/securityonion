@@ -11,10 +11,11 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
+    - elasticsearch.search
 
   '*_sensor':
     - static
-    - brologs
+    - zeeklogs
     - healthcheck.sensor
     - minions.{{ grains.id }}
 
@@ -30,19 +31,21 @@ base:
     - logstash.manager
 
   '*_eval':
-    - static
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.eval
+    - elasticsearch.eval
+    - static
     - minions.{{ grains.id }}
 
   '*_standalone':
     - logstash
     - logstash.manager
     - logstash.search
+    - elasticsearch.search
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.standalone
     - static
@@ -54,13 +57,13 @@ base:
 
   '*_heavynode':
     - static
-    - brologs
+    - zeeklogs
     - minions.{{ grains.id }}
 
   '*_helix':
     - static
     - fireeye
-    - brologs
+    - zeeklogs
     - logstash
     - logstash.helix
     - minions.{{ grains.id }}
@@ -75,4 +78,5 @@ base:
     - static
     - logstash
     - logstash.search
+    - elasticsearch.search
     - minions.{{ grains.id }}

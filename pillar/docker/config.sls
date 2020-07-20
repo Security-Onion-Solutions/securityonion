@@ -5,7 +5,7 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
-{% set BROVER = salt['pillar.get']('static:broversion', 'COMMUNITY') %}
+{% set ZEEKVER = salt['pillar.get']('static:zeekversion', 'COMMUNITY') %}
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
 eval:
@@ -63,7 +63,7 @@ heavy_node:
     - so-suricata
     - so-wazuh
     - so-filebeat
-    {% if BROVER != 'SURICATA' %}
+    {% if ZEEKVER != 'SURICATA' %}
     - so-zeek
     {% endif %}
 helix:
@@ -186,7 +186,7 @@ sensor:
     - so-telegraf
     - so-steno
     - so-suricata
-    {% if BROVER != 'SURICATA' %}
+    {% if ZEEKVER != 'SURICATA' %}
     - so-zeek
     {% endif %}
     - so-wazuh

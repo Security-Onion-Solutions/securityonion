@@ -47,18 +47,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Begin Installation pre-processing
+parse_install_username
+echo "Installing as the $INSTALLUSERNAME user." >> $setup_log 2>&1
+
 echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
 	local title='Security Onion Install'
-	if grep -q "ERROR" $setup_log || [[ -s /var/spool/mail/root ]]; then
+	if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root ]]; then
 		if [[ -s /var/spool/mail/root ]]; then 
 			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
 		fi
 
 		export SO_ERROR=1
-		export SKIP_REBOOT=1
 		title="Error found, please check $setup_log"
 	fi
 
@@ -116,7 +118,9 @@ if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 fi
 
-setterm -blank 0
+if [ $automated == no ]; then
+	setterm -blank 0 >> $setup_log 2>&1
+fi
 
 if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
@@ -163,8 +167,8 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 fi
 
-if [[ $is_eval ]]; then
-	check_requirements "eval"
+if [[ $is_manager && $is_sensor ]]; then
+	check_requirements "standalone"
 elif [[ $is_fleet_standalone ]]; then
 	check_requirements "dist" "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
@@ -189,7 +193,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		collect_adminuser_inputs
+		#collect_adminuser_inputs
 		;;
 	'network')
 		whiptail_network_notice
@@ -228,7 +232,7 @@ if [[ $is_manager && $is_node ]]; then
 	LSINPUTTHREADS=1
 	LSINPUTBATCHCOUNT=125
 	NIDS=Suricata
-	BROVERSION=ZEEK
+	ZEEKVERSION=ZEEK
 fi
 
 if [[ $is_node ]]; then
@@ -251,7 +255,7 @@ fi
 
 if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
-	whiptail_bro_version
+	whiptail_zeek_version
 	whiptail_nids
 	whiptail_rule_setup
 
@@ -259,8 +263,8 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$BROVERSION" != 'SURICATA' ]; then
-		whiptail_manager_adv_service_brologs
+	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
+		whiptail_manager_adv_service_zeeklogs
 	fi
 fi
 
@@ -293,11 +297,11 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	whiptail_homenet_sensor
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
-		whiptail_bro_pins
+		whiptail_zeek_pins
 		whiptail_suricata_pins
 		whiptail_bond_nics_mtu
 	else
-		whiptail_basic_bro
+		whiptail_basic_zeek
 		whiptail_basic_suri
 	fi
 fi
@@ -331,6 +335,8 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
+if [[ $is_manager ]]; then whiptail_so_allow; fi
+
 whiptail_make_changes
 
 if [[ -n "$TURBO" ]]; then
@@ -342,8 +348,8 @@ if [[ "$setup_type" == 'iso' ]]; then
 	set_hostname_iso
 	set_management_interface
 
-	add_admin_user
-	disable_onion_user
+	#add_admin_user
+	disable_auto_start
 fi
 
 {
@@ -365,7 +371,10 @@ if [[ $is_manager && ! $is_eval ]]; then
 	add_soremote_user_manager >> $setup_log 2>&1
 fi
 
-set_main_ip >> $setup_log 2>&1
+{
+	set_main_ip;
+	set_redirect;
+} >> $setup_log 2>&1
 
 host_pillar >> $setup_log 2>&1
 
@@ -373,8 +382,6 @@ if [[ $is_minion ]]; then
 	set_updates >> $setup_log 2>&1
 	copy_ssh_key >> $setup_log 2>&1
 fi
-
-
 
 # Begin install
 {
@@ -441,8 +448,10 @@ fi
 		set_progress_str 18 'Setting node type'
 		set_node_type >> $setup_log 2>&1
 
-		set_progress_str 19 'Generating search node pillar'
-		elasticsearch_pillar >> $setup_log 2>&1
+		if ! [[ $is_manager || $is_helix ]]; then
+			set_progress_str 19 'Generating search node pillar'
+			elasticsearch_pillar >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_minion ]]; then
@@ -535,9 +544,9 @@ fi
 	fi
 
 	if [[ "$PLAYBOOK" = 1 ]]; then
-		set_progress_str 73 "$(print_salt_state_apply 'mysql')"
-		salt-call state.apply -l info mysql >> $setup_log 2>&1
-		
+		set_progress_str 73 "$(print_salt_state_apply 'playbook.db_init')"
+		salt-call state.apply -l info playbook.db_init >> $setup_log 2>&1
+
 		set_progress_str 73 "$(print_salt_state_apply 'playbook')"
 		salt-call state.apply -l info playbook >> $setup_log 2>&1
 		so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
@@ -610,20 +619,32 @@ fi
 	checkin_at_boot >> $setup_log 2>&1
 
 	set_progress_str 95 'Verifying setup'
-	salt-call -l info  state.highstate >> $setup_log 2>&1
+	salt-call -l info state.highstate >> $setup_log 2>&1
 
 } | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
+if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
-if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-	IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
-fi
 
-if [[ $success != 0 || $SO_ERROR == 1 ]]; then whiptail_setup_failed
+if [[ -n $SO_ERROR ]]; then 
+	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
+	SKIP_REBOOT=1
+	whiptail_setup_failed
 else 
+	{
+		export percentage=95 # set to last percentage used in previous subshell
+		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+			set_progress_str 98 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+		fi
+
+		set_progress_str 99 'Waiting for TheHive to start up'
+		if [[ $THEHIVE == 1 ]]; then check_hive_init >> $setup_log 2>&1; fi
+
+	} | whiptail_gauge_post_setup "Running post-installation steps..."
+
 	whiptail_setup_complete
-	if [[ $THEHIVE == 1 ]]; then check_hive_init; fi
 fi
 
 install_cleanup >> $setup_log 2>&1

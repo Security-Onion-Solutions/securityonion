@@ -17,6 +17,18 @@
 . /usr/sbin/so-common
 local_salt_dir=/opt/so/saltstack/local
 
+manager_check() {
+  # Check to see if this is a manager
+  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch')$ ]]; then
+    echo "This is a manager. We can proceed"
+  else
+    echo "Please run so-features-enable on the manager."
+    exit 0
+  fi
+}
+
+manager_check
 VERSION=$(grep soversion $local_salt_dir/pillar/static.sls | cut -d':' -f2|sed 's/ //g')
 # Modify static.sls to enable Features
 sed -i 's/features: False/features: True/' $local_salt_dir/pillar/static.sls
@@ -31,13 +43,8 @@ for i in "${TRUSTED_CONTAINERS[@]}"
 do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/soshybridhunter/$i
+    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
     # Tag it with the new registry destination
-    docker tag soshybridhunter/$i $HOSTNAME:5000/soshybridhunter/$i
-    docker push $HOSTNAME:5000/soshybridhunter/$i
-done
-for i in "${TRUSTED_CONTAINERS[@]}"
-do
-    echo "Removing $i locally"
-    docker rmi soshybridhunter/$i
+    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
+    docker push $HOSTNAME:5000/$IMAGEREPO/$i
 done

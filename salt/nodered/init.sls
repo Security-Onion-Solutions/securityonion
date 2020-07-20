@@ -13,6 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+
 # Create the nodered group
 noderedgroup:
   group.present:
@@ -61,7 +63,7 @@ noderedlog:
 
 so-nodered:
   docker_container.running:
-    - image: soshybridhunter/so-nodered:HH1.2.2
+    - image: {{ IMAGEREPO }}/so-nodered:HH1.2.2
     - interactive: True
     - binds:
       - /opt/so/conf/nodered/:/data:rw

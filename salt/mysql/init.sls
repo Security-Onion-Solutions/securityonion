@@ -1,6 +1,7 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
 {%- set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('elasticsearch:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
@@ -71,7 +72,7 @@ mysql_password_none:
 
 so-mysql:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-mysql:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-mysql:{{ VERSION }}
     - hostname: so-mysql
     - user: socore
     - port_bindings:

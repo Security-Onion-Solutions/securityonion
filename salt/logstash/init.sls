@@ -13,6 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
@@ -35,8 +36,11 @@
 {% endif %}
 
 {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
-{% set TEMPLATES = salt['pillar.get']('logstash:templates', {}) %}
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+
+include:
+  - elasticsearch
 
 # Create the logstash group
 logstashgroup:
@@ -93,21 +97,6 @@ ls_pipeline_{{PL}}:
 
 {% endfor %}
 
-#sync templates to /opt/so/conf/logstash/etc
-{% for TEMPLATE in TEMPLATES %}
-ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
-  file.managed:
-    - source: salt://logstash/pipelines/templates/{{TEMPLATE}}
-    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
-    - template: jinja
-    {% else %}
-    - name: /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}
-    {% endif %}
-    - user: 931
-    - group: 939
-{% endfor %}
-
 lspipelinesyml:
   file.managed:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
@@ -125,12 +114,6 @@ lsetcsync:
     - group: 939
     - template: jinja
     - clean: True
-{% if TEMPLATES %}
-    - require:
-  {% for TEMPLATE in TEMPLATES %}
-      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-  {% endfor %}
-{% endif %}
     - exclude_pat: pipelines*
 
 # Create the import directory
@@ -159,7 +142,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-logstash:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}{{ FEATURES }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -170,13 +153,7 @@ so-logstash:
       - {{ BINDING }}
 {% endfor %}
     - binds:
-{% for TEMPLATE in TEMPLATES %}
-  {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}:ro
-  {% else %}
-      - /opt/so/conf/logstash/etc/{{TEMPLATE.split('/')[1]}}:/{{TEMPLATE.split('/')[1]}}:ro
-  {% endif %}
-{% endfor %}
+      - /opt/so/conf/elasticsearch/templates/:/templates/:ro
       - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
       - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
@@ -206,6 +183,5 @@ so-logstash:
   {% endfor %}
 {% endfor %}
 {% for TEMPLATE in TEMPLATES %}
-      - file: ls_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
+      - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
-#     - file: /opt/so/conf/logstash/rulesets

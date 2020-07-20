@@ -79,7 +79,7 @@ so_add_user() {
 
 	echo "Add $username user" >> "$setup_log" 2>&1
 	groupadd --gid "$gid" "$username"
-	useradd --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
+	useradd -m --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
 
 	# If a password has been passed in, set the password
 	if [ "$pass" ]; then
@@ -143,18 +143,18 @@ secrets_pillar(){
 }
 
 # Enable Bro Logs
-bro_logs_enabled() {
+zeek_logs_enabled() {
 	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local brologs_pillar=./pillar/brologs.sls
+	local zeeklogs_pillar=./pillar/zeeklogs.sls
 
 	printf '%s\n'\
-		"brologs:"\
-		"  enabled:" > "$brologs_pillar"
+		"zeeklogs:"\
+		"  enabled:" > "$zeeklogs_pillar"
 
 	if [ "$MANAGERADV" = 'ADVANCED' ]; then
 		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> "$brologs_pillar"
+			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
 		done
 	else
 		printf '%s\n'\
@@ -195,11 +195,11 @@ bro_logs_enabled() {
 			"    - weird"\
 			"    - mysql"\
 			"    - socks"\
-			"    - x509" >> "$brologs_pillar"
+			"    - x509" >> "$zeeklogs_pillar"
 	fi
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$brologs_pillar" >> "$setup_log" 2>&1
+	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }
 
 check_admin_pass() {
@@ -398,7 +398,7 @@ checkin_at_boot() {
 }
 
 check_requirements() {
-	local eval_or_dist=$1
+	local standalone_or_dist=$1
 	local node_type=$2 # optional
 	local req_mem
 	local req_cores
@@ -407,12 +407,12 @@ check_requirements() {
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
 	local num_nics=${#nic_list[@]}
 	
-	if [[ "$eval_or_dist" == 'eval' ]]; then
+	if [[ "$standalone_or_dist" == 'standalone' ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
 		req_storage=100
-	elif [[ "$eval_or_dist" == 'dist' ]]; then
+	elif [[ "$standalone_or_dist" == 'dist' ]]; then
 		req_mem=8
 		req_cores=4
 		req_storage=40
@@ -465,7 +465,11 @@ copy_minion_tmp_files() {
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
 				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
-				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/salt/patch/os/schedules/* soremote@"$MSRV":/tmp/"$MINION_ID"/schedules;
+				if [ -d $temp_install_dir/salt/patch/os/schedules/ ]; then
+					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
+						scp -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
+					fi
+				fi
 				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
 			} >> "$setup_log" 2>&1
 			;;
@@ -518,7 +522,7 @@ configure_network_sensor() {
 
 	# Create the bond interface only if it doesn't already exist
 	
-	nmcli -f name,uuid -p con | grep -q "$INTERFACE"
+	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
@@ -557,7 +561,7 @@ configure_network_sensor() {
 			nmcli con up "$BNIC" >> "$setup_log" 2>&1
 		else
 			# Check if the bond slave connection has already been created
-			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC" >> "$setup_log" 2>&1
 			local found_int=$?
 			
 			if [[ $found_int != 0 ]]; then
@@ -584,7 +588,7 @@ configure_network_sensor() {
 }
 
 detect_cloud() {
-  echo "Testing if setup is running on a cloud instance"
+  echo "Testing if setup is running on a cloud instance..." >> "$setup_log" 2>&1
   if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null); then export is_cloud="true"; fi
 }
 
@@ -605,7 +609,7 @@ detect_os() {
 			exit 1
 		fi
 
-		echo "Installing required packages to run installer"
+		echo "Installing required packages to run installer..." >> "$setup_log" 2>&1
 		# Install bind-utils so the host command exists
 		if ! command -v host > /dev/null 2>&1; then
 			yum -y install bind-utils >> "$setup_log" 2>&1
@@ -636,7 +640,7 @@ detect_os() {
 			exit 1
 		fi
 
-		echo "Installing required packages to run installer"
+		echo "Installing required packages to run installer..."
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			{
@@ -656,12 +660,14 @@ detect_os() {
 
 }
 
-disable_onion_user() {
-	# Disable the default account cause security.
-	usermod -L onion
-
+disable_auto_start() {
+	
 	# Remove the automated setup script from crontab, if it exists
-	crontab -u onion -r
+	crontab -u $INSTALLUSERNAME -r
+
+	# Truncate last line of the bash profile
+	sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile 
+
 }
 
 disable_misc_network_features() {
@@ -773,6 +779,7 @@ docker_seed_registry() {
 				"so-influxdb:$VERSION" \
 				"so-kibana:$VERSION" \
 				"so-mysql:$VERSION" \
+				"so-pcaptools:$VERSION" \
 				"so-playbook:$VERSION" \
 				"so-soc:$VERSION" \
 				"so-kratos:$VERSION" \
@@ -794,14 +801,14 @@ docker_seed_registry() {
 			set_progress_str "$percent" "Downloading $i"
 			{
 				
-				if ! docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"; then
+				if ! docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"; then
 					sleep 5
-					docker pull --disable-content-trust=false docker.io/soshybridhunter/"$i"
+					docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"
 				fi
 				# Tag it with the new registry destination
-				docker tag soshybridhunter/"$i" "$HOSTNAME":5000/soshybridhunter/"$i"
-				docker push "$HOSTNAME":5000/soshybridhunter/"$i"
-				#docker rmi soshybridhunter/"$i"
+				docker tag $IMAGEREPO/"$i" "$HOSTNAME":5000/$IMAGEREPO/"$i"
+				docker push "$HOSTNAME":5000/$IMAGEREPO/"$i"
+				#docker rmi $IMAGEREPO/"$i"
 			} >> "$setup_log" 2>&1
 		done
 	else
@@ -864,7 +871,6 @@ generate_passwords(){
 }
 
 get_redirect() {
-	whiptail_set_redirect_info
 	whiptail_set_redirect
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
 		whiptail_set_redirect_host
@@ -920,6 +926,13 @@ manager_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
+		SENSOR_CHECKIN_INTERVAL_MS=10000
+		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ]; then
+			SENSOR_CHECKIN_INTERVAL_MS=1000
+		fi
+	fi
+
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
@@ -935,18 +948,6 @@ manager_pillar() {
 		printf '%s\n'\
 			"  mtu: $MTU" >> "$pillar_file"
 	fi
-
-	case $REDIRECTINFO in
-		'IP')
-			REDIRECTIT="$MAINIP"
-			;;
-		'HOSTNAME')
-			REDIRECTIT=$HOSTNAME
-			;;
-		*)
-			REDIRECTIT="$REDIRECTHOST"
-			;;
-	esac
 
 	printf '%s\n'\
 		"  elastalert: 1"\
@@ -978,7 +979,21 @@ manager_pillar() {
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  ls_pipeline_workers: $num_cpu_cores"\
 		""\
+		"pcap:">> "$pillar_file"\
+		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
+		""\
+		"idstools:"\
+		"  config:"\
+		"    ruleset: $RULESETUP"\
+		"    oinkcode: $OINKCODE"\
+		"    urls:"\
+		"  sids:"\
+		"    enabled:"\
+		"    disabled:"\
+		"    modify:"\
+		""\
 		"kratos:" >> "$pillar_file"
+		
 
 	printf '%s\n'\
 		"  kratoskey: $KRATOSKEY"\
@@ -998,17 +1013,17 @@ manager_static() {
 		"  hnmanager: $HNMANAGER"\
 		"  ntpserver: $NTPSERVER"\
 		"  proxy: $PROXY"\
-		"  broversion: $BROVERSION"\
+		"  zeekversion: $ZEEKVERSION"\
 		"  ids: $NIDS"\
 		"  managerip: $MAINIP"\
-		"  hiveuser: hiveadmin"\
-		"  hivepassword: hivechangeme"\
+		"  hiveuser: $WEBUSER"\
+		"  hivepassword: $WEBPASSWD1"\
 		"  hivekey: $HIVEKEY"\
-		"  cortexuser: cortexadmin"\
-		"  cortexpassword: cortexchangeme"\
+		"  cortexuser: $WEBUSER"\
+		"  cortexpassword: $WEBPASSWD1"\
 		"  cortexkey: $CORTEXKEY"\
 		"  cortexorgname: SecurityOnion"\
-		"  cortexorguser: soadmin"\
+		"  cortexorguser: $WEBUSER"\
 		"  cortexorguserkey: $CORTEXORGUSERKEY"\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
@@ -1020,6 +1035,7 @@ manager_static() {
 		"  sensoronikey: $SENSORONIKEY"\
 		"  wazuh: $WAZUH"\
         "  managerupdate: $MANAGERUPDATES"\
+		"  imagerepo: $IMAGEREPO"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: $STRELKARULES"\
@@ -1141,8 +1157,7 @@ elasticsearch_pillar() {
 		"  log_size_limit: $log_size_limit"\
 		"  node_route_type: hot"\
 		"" >> "$pillar_file"
-
-	if [ "$install_type" != 'EVAL' ] && [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'MANAGERSEARCH' ] && [ "$install_type" != 'STANDALONE' ]; then
+	
 	printf '%s\n'\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
@@ -1150,10 +1165,14 @@ elasticsearch_pillar() {
 		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
 		"  lsheap: $NODE_LS_HEAP_SIZE"\
 		"" >> "$pillar_file"
-	fi
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1
+}
+
+parse_install_username() {
+	# parse out the install username so things copy correctly
+    INSTALLUSERNAME=$(pwd | sed -E 's/\// /g'  | awk '{ print $2 }')
 }
 
 patch_pillar() {
@@ -1296,17 +1315,17 @@ saltify() {
 		# Grab the version from the os-release file
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
+		if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 		case "$install_type" in
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE') # TODO: should this also be HELIXSENSOR?
-				if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 				# Add saltstack repo(s)
 				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/2019.2.5/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/2019.2.5 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/2019.2.5 $OSVER main" > /etc/apt/sources.list.d/saltstack2019.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -1314,14 +1333,14 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/apt/ubuntu/"$ubuntu_version"/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/latest/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
 				# Get key and install wazuh
 				curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - >> "$setup_log" 2>&1
 				# Add repo
-				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list >> "$setup_log" 2>&1
+				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				# Initialize the new repos
 				apt-get update >> "$setup_log" 2>&1
 				set_progress_str 6 'Installing various dependencies'
@@ -1338,8 +1357,8 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/2019.2.5/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list >> "$setup_log" 2>&1
-				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/2019.2.5/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
                 ;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
@@ -1420,11 +1439,13 @@ setup_salt_master_dirs() {
 
 	# Copy over the salt code and templates
 	if [ "$setup_type" = 'iso' ]; then
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
-		rsync -avh --exclude 'TRANS.TBL' /home/onion/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
+		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		cp -Rv /home/$INSTALLUSERNAME/SecurityOnion/files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	else
-		cp -R ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
-		cp -R ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		cp -Rv ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
+		cp -Rv ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	fi
 
 	echo "Chown the salt dirs on the manager for socore" >> "$setup_log" 2>&1
@@ -1462,7 +1483,7 @@ sensor_pillar() {
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  zeek_pins:" >> "$pillar_file"
-		for PIN in "${BROPINS[@]}"; do
+		for PIN in "${ZEEKPINS[@]}"; do
 			PIN=$(echo "$PIN" |  cut -d\" -f2)
 		echo "    - $PIN" >> "$pillar_file"
 		done
@@ -1475,11 +1496,11 @@ sensor_pillar() {
 		echo "  zeek_lbprocs: $lb_procs" >> "$pillar_file"
 		echo "  suriprocs: $lb_procs" >> "$pillar_file"
 	else
-		echo "  zeek_lbprocs: $BASICBRO" >> "$pillar_file"
+		echo "  zeek_lbprocs: $BASICZEEK" >> "$pillar_file"
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  brobpf:"\
+		"  zeekbpf:"\
 		"  pcapbpf:"\
 		"  nidsbpf:"\
 		"  manager: $MSRV"\
@@ -1620,8 +1641,8 @@ set_initial_firewall_policy() {
 set_management_interface() {
 
 	if [ "$address_type" = 'DHCP' ]; then
-		nmcli con mod "$MNIC" connection.autoconnect yes
-		nmcli con up "$MNIC"
+		nmcli con mod "$MNIC" connection.autoconnect yes >> "$setup_log" 2>&1
+		nmcli con up "$MNIC" >> "$setup_log" 2>&1
 	else
 		# Set Static IP
 		nmcli con mod "$MNIC" ipv4.addresses "$MIP"/"$MMASK"\
@@ -1629,8 +1650,8 @@ set_management_interface() {
 			ipv4.dns "$MDNS"\
 			ipv4.dns-search "$MSEARCH"\
 			connection.autoconnect yes\
-			ipv4.method manual
-		nmcli con up "$MNIC"
+			ipv4.method manual >> "$setup_log" 2>&1
+		nmcli con up "$MNIC" >> "$setup_log" 2>&1
 	fi
 }
 
@@ -1645,6 +1666,20 @@ set_node_type() {
 			;;
 		'WARMNODE')
 			NODETYPE='warm'
+			;;
+	esac
+}
+
+set_redirect() {
+	case $REDIRECTINFO in
+		'IP')
+			REDIRECTIT="$MAINIP"
+			;;
+		'HOSTNAME')
+			REDIRECTIT="$HOSTNAME"
+			;;
+		*)
+			REDIRECTIT="$REDIRECTHOST"
 			;;
 	esac
 }

@@ -1,5 +1,5 @@
-package_update_reboot_required_motd:
+so_motd:
   file.managed:
     - name: /etc/motd
-    - source: salt://motd/files/package_update_reboot_required.jinja
+    - source: salt://motd/files/so_motd.jinja
     - template: jinja

@@ -13,6 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
 # Redis Setup
@@ -47,7 +48,7 @@ redisconfsync:
 
 so-redis:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-redis:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
     - hostname: so-redis
     - user: socore
     - port_bindings:

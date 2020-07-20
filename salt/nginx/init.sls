@@ -2,6 +2,7 @@
 {% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 
 # Drop the correct nginx config based on role
 nginxconfdir:
@@ -61,7 +62,7 @@ navigatordefaultlayer:
 
 so-nginx:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-nginx:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-nginx:{{ VERSION }}
     - hostname: so-nginx
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro

@@ -1,4 +1,5 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
 # Curator
@@ -111,7 +112,7 @@ so-curatordeletecron:
 
 so-curator:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/soshybridhunter/so-curator:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-curator:{{ VERSION }}
     - hostname: curator
     - name: so-curator
     - user: curator

@@ -1,4 +1,4 @@
-{%- set BROVER = salt['pillar.get']('static:broversion', '') -%}
+{%- set ZEEKVER = salt['pillar.get']('static:zeekversion', '') -%}
 {%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
@@ -48,7 +48,7 @@ base:
     - pcap
     - suricata
     - healthcheck
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - wazuh
@@ -86,7 +86,7 @@ base:
     - kibana
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     {%- if STRELKA %}
@@ -138,7 +138,6 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - elasticsearch
     - logstash
     - kibana
     - elastalert
@@ -185,12 +184,11 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
-    - elasticsearch
     - logstash
     - kibana
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     {%- if STRELKA %}
@@ -237,7 +235,6 @@ base:
     - common
     - firewall
     - logstash
-    - elasticsearch
     - curator
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
@@ -265,7 +262,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -309,7 +305,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - kibana
     - elastalert
@@ -345,7 +340,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - elasticsearch
     - curator
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -353,7 +347,7 @@ base:
     {%- endif %}
     - pcap
     - suricata
-    {%- if BROVER != 'SURICATA' %}
+    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
     - filebeat
