@@ -1,6 +1,7 @@
-{% set MASTERIP = salt['pillar.get']('master:mainip', '') %}
+{% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 thehiveconfdir:
   file.directory:
     - name: /opt/so/conf/thehive/etc
@@ -45,6 +46,20 @@ cortexconf:
     - group: 939
     - template: jinja
 
+cortexanalyzers:
+  file.directory:
+    - name: /opt/so/conf/cortex/custom-analyzers
+    - user: 939
+    - group: 939
+    - template: jinja
+
+cortexresponders:
+  file.directory:
+    - name: /opt/so/conf/cortex/custom-responders
+    - user: 939
+    - group: 939
+    - template: jinja
+
 # Install Elasticsearch
 
 # Made directory for ES data to live in
@@ -57,7 +72,7 @@ thehiveesdata:
 
 so-thehive-es:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-es:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-thehive-es:{{ VERSION }}
     - hostname: so-thehive-es
     - name: so-thehive-es
     - user: 939
@@ -85,12 +100,14 @@ so-thehive-es:
 # Install Cortex
 so-cortex:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive-cortex:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-thehive-cortex:{{ VERSION }}
     - hostname: so-cortex
     - name: so-cortex
     - user: 939
     - binds:
       - /opt/so/conf/thehive/etc/cortex-application.conf:/opt/cortex/conf/application.conf:ro
+      - /opt/so/conf/cortex/custom-analyzers:/custom-analyzers:ro
+      - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
 
@@ -99,12 +116,13 @@ cortexscript:
     - source: salt://thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
+    - hide_output: True
 
 so-thehive:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-thehive:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-thehive:{{ VERSION }}
     - environment:
-      - ELASTICSEARCH_HOST={{ MASTERIP }}
+      - ELASTICSEARCH_HOST={{ MANAGERIP }}
     - hostname: so-thehive
     - name: so-thehive
     - user: 939
@@ -118,3 +136,4 @@ thehivescript:
     - source: salt://thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja
+    - hide_output: True

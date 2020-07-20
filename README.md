@@ -1,3 +1,44 @@
+## Security Onion 2.0.0.rc1
+
+Security Onion 2.0.0 RC1 is here! This version requires a fresh install, but there is good news - we have brought back soup! From now on, you should be able to run soup on the manager to upgrade your environment to RC2 and beyond! 
+
+### Changes:
+- Re-branded 2.0 to give it a fresh look
+- All documentation has moved to our [docs site](https://docs.securityonion.net/en/2.0)
+- soup is alive! Note: This tool only updates Security Onion components. Please use the built-in OS update process to keep the OS and other components up to date.
+- so-import-pcap is back! See the docs [here](http://docs.securityonion.net/en/2.0/so-import-pcap).
+- Fixed issue with so-features-enable 
+- Users can now pivot to PCAP from Suricata alerts
+- ISO install now prompts users to create an admin/sudo user instead of using a default account name
+- The web email & password set during setup is now used to create the initial accounts for TheHive, Cortex, and Fleet
+- Fixed issue with disk cleanup
+- Changed the default permissions for /opt/so to keep non-priviledged users from accessing salt and related files
+- Locked down access to certain SSL keys
+- Suricata logs now compress after they roll over
+- Users can now easily customize shard counts per index
+- Improved Elastic ingest parsers including Windows event logs and Sysmon logs shipped with WinLogbeat and Osquery (ECS)
+- Elastic nodes are now "hot" by default, making it easier to add a warm node later
+- so-allow now runs at the end of an install so users can enable access right away
+- Alert severities across Wazuh, Suricata and Playbook (Sigma) have been standardized and copied to `event.severity`:
+  - 1-Low / 2-Medium / 3-High / 4-Critical
+- Initial implementation of alerting queues:
+  - Low & Medium alerts are accessible through Kibana & Hunt
+  - High & Critical alerts are accessible through Kibana, Hunt and sent to TheHive for immediate analysis
+- ATT&CK Navigator is now a statically-hosted site in the nginx container
+- Playbook
+  - All Sigma rules in the community repo (500+) are now imported and kept up to date
+  - Initial implementation of automated testing when a Play's detection logic has been edited (i.e., Unit Testing)
+  - Updated UI Theme
+  - Once authenticated through SOC, users can now access Playbook with analyst permissions without login
+- Kolide Launcher has been updated to include the ability to pass arbitrary flags - new functionality sponsored by SOS
+- Fixed issue with Wazuh authd registration service port not being correctly exposed
+- Added option for exposure of Elasticsearch REST API (port 9200) to so-allow for easier external querying/integration with other tools
+- Added option to so-allow for external Strelka file uploads (e.g., via `strelka-fileshot`)
+- Added default YARA rules for Strelka -- default rules are maintained by Florian Roth and pulled from https://github.com/Neo23x0/signature-base
+- Added the ability to use custom Zeek scripts
+- Renamed "master server" to "manager node"
+- Improved unification of Zeek and Strelka file data
+
 ## Hybrid Hunter Beta 1.4.1 - Beta 3
 
 - Fix install script to handle hostnames properly.
@@ -62,7 +103,7 @@
 - Fixed an issue where geoip was not properly parsed.
 - ATT&CK Navigator is now it's own state.
 - Standlone mode is now supported.
-- Mastersearch previously used the same Grafana dashboard as a Search node. It now has its own dashboard that incorporates panels from the Master node and Search node dashboards.
+- Managersearch previously used the same Grafana dashboard as a Search node. It now has its own dashboard that incorporates panels from the Manager node and Search node dashboards.
  
 ### Known Issues:
 

@@ -1,20 +1,17 @@
 {%- if grains['role'] == 'so-eval' -%}
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 {%- else %}
-{%- set ES = salt['pillar.get']('node:mainip', '') -%}
+{%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-# Author: Josh Brower
-# Last Update: 12/29/2018
-# Output to ES for osquery tagged logs
-
-
 output {
   if [module] =~ "osquery" {
     elasticsearch {
       pipeline => "%{module}.%{dataset}" 
       hosts => "{{ ES }}"
       index => "so-osquery-%{+YYYY.MM.dd}"
-      template => "/so-common-template.json"
+      template_name => "so-osquery"
+      template => "/templates/so-osquery-template.json"
+      template_overwrite => true
     }
   }
 }

@@ -1,6 +1,7 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
   group.present:
@@ -83,13 +84,14 @@ wazuhmgrwhitelist:
 
 so-wazuh:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-wazuh:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-wazuh:{{ VERSION }}
     - hostname: {{HOSTNAME}}-wazuh-manager
     - name: so-wazuh
     - detach: True
     - port_bindings:
       - 0.0.0.0:1514:1514/udp
       - 0.0.0.0:1514:1514/tcp
+      - 0.0.0.0:1515:1515/tcp
       - 0.0.0.0:55000:55000
     - binds:
       - /opt/so/wazuh:/var/ossec/data:rw

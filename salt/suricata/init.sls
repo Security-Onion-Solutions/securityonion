@@ -14,11 +14,15 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set BROVER = salt['pillar.get']('static:broversion', '') %}
+{% set ZEEKVER = salt['pillar.get']('static:zeekversion', '') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
+
+{# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
+{% from 'suricata/suricata_config.map.jinja' import suricata_defaults as suricata_config with context %}
 
 # Suricata
 
@@ -68,14 +72,27 @@ surirulesync:
     - user: 940
     - group: 940
 
+surilogscript:
+  file.managed:
+    - name: /usr/local/bin/surilogcompress
+    - source: salt://suricata/cron/surilogcompress
+    - mode: 755
+
+/usr/local/bin/surilogcompress:
+  cron.present:
+    - user: suricata
+    - minute: '17'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 suriconfigsync:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
-    {%- if BROVER != 'SURICATA' %}
-    - source: salt://suricata/files/suricata.yaml
-    {%- else %}
-    - source: salt://suricata/files/suricataMETA.yaml
-    {%- endif %}
+    - source: salt://suricata/files/suricata.yaml.jinja
+    - context:
+        suricata_config: {{ suricata_config.suricata.config }}
     - user: 940
     - group: 940
     - template: jinja
@@ -116,7 +133,7 @@ suribpf:
     
 so-suricata:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-suricata:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}

@@ -13,7 +13,7 @@ def run():
   STATICFILE = f"{LOCAL_SALT_DIR}/pillar/static.sls"  
   SECRETSFILE = f"{LOCAL_SALT_DIR}/pillar/secrets.sls"
 
-  if MINIONID.split('_')[-1] in ['master','eval','fleet','mastersearch','standalone']:
+  if MINIONID.split('_')[-1] in ['manager','eval','fleet','managersearch','standalone']:
     if ACTION == 'enablefleet':
       logging.info('so/fleet enablefleet reactor')
 
@@ -27,7 +27,7 @@ def run():
         if ROLE == 'so-fleet':
           line = re.sub(r'fleet_node: \S*', f"fleet_node: True", line.rstrip())
         else:
-          line = re.sub(r'fleet_master: \S*', f"fleet_master: True", line.rstrip())
+          line = re.sub(r'fleet_manager: \S*', f"fleet_manager: True", line.rstrip())
         print(line) 
 
       # Update the enroll secret in the secrets pillar
@@ -50,16 +50,17 @@ def run():
 
       PACKAGEVERSION = data['data']['current-package-version']
       PACKAGEHOSTNAME = data['data']['package-hostname']
-      MASTER = data['data']['master']
+      MANAGER = data['data']['manager']
       VERSION = data['data']['version']
       ESECRET = data['data']['enroll-secret']
+      IMAGEREPO = data['data']['imagerepo']
       
       # Increment the package version by 1
       PACKAGEVERSION += 1
 
       # Run Docker container that will build the packages
       gen_packages = subprocess.run(["docker", "run","--rm", "--mount", f"type=bind,source={LOCAL_SALT_DIR}/salt/fleet/packages,target=/output", \
-         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MASTER }:5000/soshybridhunter/so-fleet-launcher:{ VERSION }", \
+         "--mount", "type=bind,source=/etc/ssl/certs/intca.crt,target=/var/launcher/launcher.crt", f"{ MANAGER }:5000/{ IMAGEREPO }/so-fleet-launcher:{ VERSION }", \
          f"{ESECRET}", f"{PACKAGEHOSTNAME}:8090", f"{PACKAGEVERSION}.1.1"], stdout=subprocess.PIPE, encoding='ascii')  
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
@@ -82,7 +83,7 @@ def run():
       
         # Update the Fleet host in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_custom_hostname: \S*', f"fleet_custom_hostname: {CUSTOMHOSTNAME}", line.rstrip())
+        line = re.sub(r'fleet_custom_hostname:.*\n', f"fleet_custom_hostname: {CUSTOMHOSTNAME}", line.rstrip())
         print(line)  
 
   return {}

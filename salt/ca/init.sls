@@ -1,4 +1,4 @@
-{% set master = salt['grains.get']('master') %}
+{% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
   file.managed:
     - source: salt://ca/files/signing_policies.conf
@@ -20,7 +20,7 @@ pki_private_key:
 /etc/pki/ca.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/ca.key
-    - CN: {{ master }}
+    - CN: {{ manager }}
     - C: US
     - ST: Utah
     - L: Salt Lake City
@@ -44,3 +44,10 @@ send_x509_pem_entries_to_mine:
     - mine.send:
       - func: x509.get_pem_entries
       - glob_path: /etc/pki/ca.crt
+
+cakeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/ca.key
+    - mode: 640
+    - group: 939

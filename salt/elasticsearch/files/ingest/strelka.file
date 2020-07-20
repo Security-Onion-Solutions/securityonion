@@ -6,7 +6,21 @@
     { "rename":         { "field": "message2.scan",        "target_field": "scan",          "ignore_missing": true  } },
     { "rename":         { "field": "message2.request",        "target_field": "request",          "ignore_missing": true  } },
     { "rename":         { "field": "scan.hash",        "target_field": "hash",          "ignore_missing": true  } },
-    { "remove":         { "field": ["host", "path"],                                         "ignore_missing": true  } },
+    { "grok":           { "field": "request.attributes.filename",       "patterns": ["-%{WORD:log.id.fuid}-"] } },
+    { "foreach":
+      {
+        "if": "ctx.scan?.exiftool?.keys !=null",
+          "field": "scan.exiftool.keys",
+          "processor":{
+            "set": {
+              "field": "scan.exiftool.{{_ingest._value.key}}",
+              "value": "{{_ingest._value.value}}"
+            }
+          }
+      }
+    },
+    { "set":         { "field": "observer.name",        "value": "{{agent.name}}" }},
+    { "remove":         { "field": ["host", "path", "message", "scan.exiftool.keys"],                                         "ignore_missing": true  } },
     { "pipeline":       { "name": "common"                                                                                   } }
   ]
 }

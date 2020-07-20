@@ -1,13 +1,17 @@
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set ENROLLSECRET = salt['pillar.get']('secrets:fleet_enroll-secret') %}
 {% set CURRENTPACKAGEVERSION = salt['pillar.get']('static:fleet_packages-version') %}
 {% set VERSION = salt['pillar.get']('static:soversion') %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{%- set FLEETNODE = salt['pillar.get']('static:fleet_node') -%}
 
 {% if CUSTOM_FLEET_HOSTNAME != None and CUSTOM_FLEET_HOSTNAME != '' %}
    {% set HOSTNAME =  CUSTOM_FLEET_HOSTNAME  %}
-{% else %}
+{% elif FLEETNODE %}
    {% set HOSTNAME = grains.host  %}
+{% else %}
+   {% set HOSTNAME = salt['pillar.get']('manager:url_base')  %}
 {% endif %}
 
 so/fleet:
@@ -19,6 +23,6 @@ so/fleet:
         mainip: {{ grains.host }}
         enroll-secret: {{ ENROLLSECRET }}
         current-package-version: {{ CURRENTPACKAGEVERSION }}
-        master: {{ MASTER }}
+        manager: {{ MANAGER }}
         version: {{ VERSION }}
-        
+        imagerepo: {{ IMAGEREPO }}

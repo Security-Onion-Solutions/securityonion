@@ -1,17 +1,20 @@
-{%- set MASTER = grains['master'] -%}
+{%- set MANAGER = salt['grains.get']('master') -%}
 {%- set SENSORONIKEY = salt['pillar.get']('static:sensoronikey', '') -%}
+{%- set CHECKININTERVALMS = salt['pillar.get']('pcap:sensor_checkin_interval_ms') -%}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"debug",
   "agent": {
-    "pollIntervalMs": 10000,
-    "serverUrl": "https://{{ MASTER }}/sensoroniagents",
+    "pollIntervalMs": {{ CHECKININTERVALMS }},
+    "serverUrl": "https://{{ MANAGER }}/sensoroniagents",
     "verifyCert": false,
     "modules": {
+      "importer": {},
       "statickeyauth": {
         "apiKey": "{{ SENSORONIKEY }}"
       },
       "stenoquery": {
+        "executablePath": "/opt/sensoroni/scripts/stenoquery.sh",
         "pcapInputPath": "/nsm/pcap",
         "pcapOutputPath": "/nsm/pcapout"
       }

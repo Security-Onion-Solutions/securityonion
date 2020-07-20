@@ -1,6 +1,7 @@
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
-{% if grains['role'] in ['so-eval', 'so-node', 'so-mastersearch', 'so-heavynode', 'so-standalone'] %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
 # Curator
 # Create the group
 curatorgroup:
@@ -30,18 +31,10 @@ curlogdir:
     - user: 934
     - group: 939
 
-curcloseconf:
-  file.managed:
-    - name: /opt/so/conf/curator/action/close.yml
-    - source: salt://curator/files/action/close.yml
-    - user: 934
-    - group: 939
-    - template: jinja
-
-curdelconf:
-  file.managed:
-    - name: /opt/so/conf/curator/action/delete.yml
-    - source: salt://curator/files/action/delete.yml
+actionconfs:
+  file.recurse:
+    - name: /opt/so/conf/curator/action
+    - source: salt://curator/files/action
     - user: 934
     - group: 939
     - template: jinja
@@ -119,7 +112,7 @@ so-curatordeletecron:
 
 so-curator:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-curator:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-curator:{{ VERSION }}
     - hostname: curator
     - name: so-curator
     - user: curator

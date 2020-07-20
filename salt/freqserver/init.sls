@@ -13,6 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+
 # Create the user
 fservergroup:
   group.present:
@@ -37,13 +39,13 @@ freqlogdir:
 
 so-freqimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/soshybridhunter/so-freqserver:HH1.0.3
+   - name: docker pull --disable-content-trust=false docker.io/{{ IMAGEREPO }}/so-freqserver:HH1.0.3
 
 so-freq:
   docker_container.running:
     - require:
       - so-freqimage
-    - image: docker.io/soshybridhunter/so-freqserver:HH1.0.3
+    - image: docker.io/{{ IMAGEREPO }}/so-freqserver:HH1.0.3
     - hostname: freqserver
     - name: so-freqserver
     - user: freqserver

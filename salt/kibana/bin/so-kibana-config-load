@@ -1,20 +1,20 @@
 #!/bin/bash
-# {%- set FLEET_MASTER = salt['pillar.get']('static:fleet_master', False) -%}
+# {%- set FLEET_MANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 # {%- set FLEET_NODE = salt['pillar.get']('static:fleet_node', False) -%}
-# {%- set MASTER = salt['pillar.get']('master:url_base', '') %}
+# {%- set MANAGER = salt['pillar.get']('manager:url_base', '') %}
 
 KIBANA_VERSION="7.6.1"
 
 # Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
 
-# {% if FLEET_NODE or FLEET_MASTER %}
+# {% if FLEET_NODE or FLEET_MANAGER %}
 # Fleet IP
-sed -i "s/FLEETPLACEHOLDER/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+#sed -i "s/FLEETPLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 # {% endif %}
 
-# SOCtopus and Master
-sed -i "s/PLACEHOLDER/{{ MASTER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+# SOCtopus and Manager
+sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 # Load saved objects
 curl -X POST "localhost:5601/api/saved_objects/_import" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1

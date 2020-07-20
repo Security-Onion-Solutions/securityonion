@@ -1,5 +1,6 @@
-{% set MASTER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
 
 # Add Telegraf to monitor all the things.
 tgraflogdir:
@@ -20,9 +21,9 @@ tgrafetsdir:
 tgrafsyncscripts:
   file.recurse:
     - name: /opt/so/conf/telegraf/scripts
-    - user: 939
+    - user: 0
     - group: 939
-    - file_mode: 755
+    - file_mode: 700
     - template: jinja
     - source: salt://telegraf/scripts
 
@@ -36,15 +37,13 @@ tgrafconf:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-telegraf:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
     - network_mode: host
-    - port_bindings:
-      - 127.0.0.1:8094:8094
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
@@ -55,7 +54,7 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
-      {% if grains['role'] == 'so-master' or grains['role'] == 'so-eval' or grains['role'] == 'so-mastersearch' %}
+      {% if grains['role'] == 'so-manager' or grains['role'] == 'so-eval' or grains['role'] == 'so-managersearch' %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt:ro

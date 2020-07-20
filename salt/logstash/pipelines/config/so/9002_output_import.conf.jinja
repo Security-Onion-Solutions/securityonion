@@ -1,26 +1,16 @@
 {%- if grains['role'] == 'so-eval' -%}
-{%- set ES = salt['pillar.get']('master:mainip', '') -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
 {%- else %}
-{%- set ES = salt['pillar.get']('node:mainip', '') -%}
+{%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-# Updated by: Doug Burks
-# Last Update: 5/16/2017
-
-filter {
-  if "import" in [tags] and "test_data" not in [tags] {
-    mutate {
-	  ##add_tag => [ "conf_file_9002"]
-	}
-  }
-}
 output {
-  if "import" in [tags] and "test_data" not in [tags] {
-#    stdout { codec => rubydebug }
+  if "import" in [tags] {
     elasticsearch {
+      pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
       index => "so-import-%{+YYYY.MM.dd}"
-      template_name => "so-common"
-      template => "/so-common-template.json"
+      template_name => "so-import"
+      template => "/templates/so-import-template.json"
       template_overwrite => true
     }
   }

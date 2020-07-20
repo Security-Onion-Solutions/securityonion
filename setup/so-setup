@@ -47,15 +47,28 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Begin Installation pre-processing
+parse_install_username
+echo "Installing as the $INSTALLUSERNAME user." >> $setup_log 2>&1
+
 echo "---- Starting setup at $(date -u) ----" >> $setup_log 2>&1
 
 automated=no
 function progress() {
+	local title='Security Onion Install'
+	if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root ]]; then
+		if [[ -s /var/spool/mail/root ]]; then 
+			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
+		fi
+
+		export SO_ERROR=1
+		title="Error found, please check $setup_log"
+	fi
+
 	if [ $automated == no ]; then
-		whiptail --title "Security Onion Install" --gauge 'Please wait while installing' 6 60 0
+		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
 	else
 		cat >> $setup_log 2>&1
-	fi
+	fi		
 }
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
@@ -98,13 +111,16 @@ export PATH=$PATH:../salt/common/tools/sbin
 
 got_root
 
-detect_os
+detect_os && detect_cloud
+set_network_dev_status_list
 
 if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 fi
 
-setterm -blank 0
+if [ $automated == no ]; then
+	setterm -blank 0 >> $setup_log 2>&1
+fi
 
 if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true
@@ -117,21 +133,21 @@ whiptail_install_type
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
-	is_master=true
+	is_manager=true
 	is_sensor=true
 	is_eval=true
 elif [ "$install_type" = 'STANDALONE' ]; then
-	is_master=true
-	is_distmaster=true
+	is_manager=true
+	is_distmanager=true
 	is_node=true
 	is_sensor=true
-elif [ "$install_type" = 'MASTERSEARCH' ]; then
-	is_master=true
-	is_distmaster=true
+elif [ "$install_type" = 'MANAGERSEARCH' ]; then
+	is_manager=true
+	is_distmanager=true
 	is_node=true
-elif [ "$install_type" = 'MASTER' ]; then
-	is_master=true
-	is_distmaster=true
+elif [ "$install_type" = 'MANAGER' ]; then
+	is_manager=true
+	is_distmanager=true
 elif [ "$install_type" = 'SENSOR' ]; then
 	is_sensor=true
 	is_minion=true
@@ -151,13 +167,13 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 fi
 
-if [[ $is_eval ]]; then
-	check_requirements "eval"
+if [[ $is_manager && $is_sensor ]]; then
+	check_requirements "standalone"
 elif [[ $is_fleet_standalone ]]; then
 	check_requirements "dist" "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
 	check_requirements "dist" "sensor"
-elif [[ $is_distmaster || $is_minion ]]; then
+elif [[ $is_distmanager || $is_minion ]]; then
 	check_requirements "dist"
 fi
 
@@ -177,7 +193,7 @@ case "$setup_type" in
 			whiptail_management_interface_dns_search
 		fi
 
-		collect_adminuser_inputs
+		#collect_adminuser_inputs
 		;;
 	'network')
 		whiptail_network_notice
@@ -202,21 +218,21 @@ if [[ $is_helix ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 	HNSENSOR=inherit
-	MASTERUPDATES=0
+	MANAGERUPDATES=0
 fi
 
-if [[ $is_helix || ( $is_master && $is_node ) ]]; then
+if [[ $is_helix || ( $is_manager && $is_node ) ]]; then
 	RULESETUP=ETOPEN
 	NSMSETUP=BASIC
 fi
 
-if [[ $is_master && $is_node ]]; then
+if [[ $is_manager && $is_node ]]; then
 	LSPIPELINEWORKERS=1
 	LSPIPELINEBATCH=125
 	LSINPUTTHREADS=1
 	LSINPUTBATCHCOUNT=125
 	NIDS=Suricata
-	BROVERSION=ZEEK
+	ZEEKVERSION=ZEEK
 fi
 
 if [[ $is_node ]]; then
@@ -225,21 +241,21 @@ fi
 
 # Start user prompts
 if [[ $is_helix || $is_sensor ]]; then
-	whiptail_bond_nics
+	whiptail_sensor_nics
 	calculate_useable_cores
 fi
 
-if [[ $is_helix ||  $is_master ]]; then
-	whiptail_homenet_master
+if [[ $is_helix ||  $is_manager ]]; then
+	whiptail_homenet_manager
 fi
 
-if [[ $is_helix || $is_master || $is_node ]]; then
+if [[ $is_helix || $is_manager || $is_node ]]; then
 	set_base_heapsizes
 fi
 
-if [[ $is_master && ! $is_eval ]]; then
-	whiptail_master_adv
-	whiptail_bro_version
+if [[ $is_manager && ! $is_eval ]]; then
+	whiptail_manager_adv
+	whiptail_zeek_version
 	whiptail_nids
 	whiptail_rule_setup
 
@@ -247,22 +263,25 @@ if [[ $is_master && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [ "$MASTERADV" = 'ADVANCED' ] && [ "$BROVERSION" != 'SURICATA' ]; then
-		whiptail_master_adv_service_brologs
+	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
+		whiptail_manager_adv_service_zeeklogs
 	fi
 fi
 
-if [[ $is_master ]]; then
+if [[ $is_manager ]]; then
 	whiptail_components_adv_warning
 	whiptail_enable_components
+	if [[ $STRELKA == 1 ]]; then
+	    whiptail_strelka_rules
+	fi
 	collect_webuser_inputs
 	get_redirect
 fi
 
-if [[ $is_distmaster || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
-	whiptail_master_updates
-	if [[ $setup_type == 'network' && $MASTERUPDATES == 1 ]]; then
-		whiptail_master_updates_warning
+if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
+	whiptail_manager_updates
+	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
+		whiptail_manager_updates_warning
 	fi
 fi
 
@@ -270,7 +289,7 @@ if [[ $is_minion ]]; then
 	whiptail_management_server
 fi
 
-if [[ $is_distmaster ]]; then
+if [[ $is_distmanager ]]; then
 	collect_soremote_inputs
 fi
 
@@ -278,11 +297,11 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	whiptail_homenet_sensor
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
-		whiptail_bro_pins
+		whiptail_zeek_pins
 		whiptail_suricata_pins
 		whiptail_bond_nics_mtu
 	else
-		whiptail_basic_bro
+		whiptail_basic_zeek
 		whiptail_basic_suri
 	fi
 fi
@@ -316,6 +335,8 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
+if [[ $is_manager ]]; then whiptail_so_allow; fi
+
 whiptail_make_changes
 
 if [[ -n "$TURBO" ]]; then
@@ -327,33 +348,39 @@ if [[ "$setup_type" == 'iso' ]]; then
 	set_hostname_iso
 	set_management_interface
 
-	add_admin_user
-	disable_onion_user
+	#add_admin_user
+	disable_auto_start
 fi
 
-set_hostname >> $setup_log 2>&1
-set_version >> $setup_log 2>&1
-clear_master >> $setup_log 2>&1
+{
+	set_hostname;
+	set_version;
+	clear_manager;
+} >> $setup_log 2>&1
 
-if [[ $is_master ]]; then
-	generate_passwords >> $setup_log 2>&1
-	secrets_pillar >> $setup_log 2>&1
-	add_socore_user_master >> $setup_log 2>&1
+
+if [[ $is_manager ]]; then
+	{
+		generate_passwords;
+		secrets_pillar;
+		add_socore_user_manager;
+	} >> $setup_log 2>&1	
 fi
 
-if [[ $is_master && ! $is_eval ]]; then
-	add_soremote_user_master >> $setup_log 2>&1
+if [[ $is_manager && ! $is_eval ]]; then
+	add_soremote_user_manager >> $setup_log 2>&1
 fi
 
-set_main_ip >> $setup_log 2>&1
+{
+	set_main_ip;
+	set_redirect;
+} >> $setup_log 2>&1
+
+host_pillar >> $setup_log 2>&1
 
 if [[ $is_minion ]]; then
 	set_updates >> $setup_log 2>&1
 	copy_ssh_key >> $setup_log 2>&1
-fi
-
-if [[ "$OSQUERY" = 1 ]]; then
-	host_pillar >> $setup_log 2>&1
 fi
 
 # Begin install
@@ -361,18 +388,17 @@ fi
 	# Set initial percentage to 0
 	export percentage=0
 
-        if [[ $is_minion ]]; then
-                set_progress_str 1 'Configuring firewall'
-                set_initial_firewall_policy >> $setup_log 2>&1
-        fi
+	if [[ $is_minion ]]; then
+		set_progress_str 1 'Configuring firewall'
+		set_initial_firewall_policy >> $setup_log 2>&1
+	fi
 
 	set_progress_str 2 'Updating packages'
 	update_packages >> $setup_log 2>&1
 
 	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 3 'Creating bond interface'
-		create_sensor_bond >> $setup_log 2>&1
-		
+		set_progress_str 3 'Configuring sensor interface'
+		configure_network_sensor >> $setup_log 2>&1
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
 	fi
@@ -389,23 +415,24 @@ fi
 	set_progress_str 9 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
-
-	if [[ $is_master || $is_helix ]]; then
+	if [[ $is_manager || $is_helix ]]; then
 		set_progress_str 10 'Configuring Salt master'
-		create_local_directories >> $setup_log 2>&1
-		addtotab_generate_templates >> $setup_log 2>&1
-		copy_master_config >> $setup_log 2>&1
-		setup_salt_master_dirs >> $setup_log 2>&1
-		firewall_generate_templates >> $setup_log 2>&1
+		{
+			create_local_directories;
+			addtotab_generate_templates;
+			copy_salt_master_config;
+			setup_salt_master_dirs;
+			firewall_generate_templates;
+		} >> $setup_log 2>&1
 		
 		set_progress_str 11 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
 		
-		set_progress_str 12 'Generating master static pillar'
-		master_static >> $setup_log 2>&1
+		set_progress_str 12 'Generating manager static pillar'
+		manager_static >> $setup_log 2>&1
 		
-		set_progress_str 13 'Generating master pillar'
-		master_pillar >> $setup_log 2>&1
+		set_progress_str 13 'Generating manager pillar'
+		manager_pillar >> $setup_log 2>&1
 	fi
 
 
@@ -421,27 +448,29 @@ fi
 		set_progress_str 18 'Setting node type'
 		set_node_type >> $setup_log 2>&1
 
-		set_progress_str 19 'Generating search node pillar'
-		node_pillar >> $setup_log 2>&1
+		if ! [[ $is_manager || $is_helix ]]; then
+			set_progress_str 19 'Generating search node pillar'
+			elasticsearch_pillar >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_minion ]]; then
-		set_progress_str 20 'Accepting Salt key on master'
+		set_progress_str 20 'Accepting Salt key on manager'
 		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
 
-	set_progress_str 21 'Copying minion pillars to master'
+	set_progress_str 21 'Copying minion pillars to manager'
 	copy_minion_tmp_files >> $setup_log 2>&1
 
 	set_progress_str 22 'Generating CA and checking in'
 	salt_checkin >> $setup_log 2>&1
 
-	if [[ $is_master || $is_helix ]]; then
+	if [[ $is_manager || $is_helix ]]; then
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 		
@@ -454,14 +483,14 @@ fi
 		salt-call state.apply -l info registry >> $setup_log 2>&1
 		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
 		
-		set_progress_str 60 "$(print_salt_state_apply 'master')"
-		salt-call state.apply -l info master >> $setup_log 2>&1
+		set_progress_str 60 "$(print_salt_state_apply 'manager')"
+		salt-call state.apply -l info manager >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
 		salt-call state.apply -l info idstools >> $setup_log 2>&1
 
-		set_progress_str 61 "$(print_salt_state_apply 'suricata.master')"
-		salt-call state.apply -l info suricata.master >> $setup_log 2>&1
+		set_progress_str 61 "$(print_salt_state_apply 'suricata.manager')"
+		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
 
 	fi
 
@@ -479,7 +508,7 @@ fi
 	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
 	salt-call state.apply -l info nginx >> $setup_log 2>&1
 
-	if [[ $is_master || $is_node ]]; then
+	if [[ $is_manager || $is_node ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
 		salt-call state.apply -l info elasticsearch >> $setup_log 2>&1
 	fi
@@ -500,7 +529,7 @@ fi
 		salt-call state.apply -l info curator >> $setup_log 2>&1
 	fi
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 69 "$(print_salt_state_apply 'soc')"
 		salt-call state.apply -l info soc >> $setup_log 2>&1
 
@@ -513,59 +542,63 @@ fi
 		set_progress_str 72 "$(print_salt_state_apply 'soctopus')"
 		salt-call state.apply -l info soctopus >> $setup_log 2>&1
 	fi
+
+	if [[ "$PLAYBOOK" = 1 ]]; then
+		set_progress_str 73 "$(print_salt_state_apply 'playbook.db_init')"
+		salt-call state.apply -l info playbook.db_init >> $setup_log 2>&1
+
+		set_progress_str 73 "$(print_salt_state_apply 'playbook')"
+		salt-call state.apply -l info playbook >> $setup_log 2>&1
+		so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
+	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
-		set_progress_str 73 "$(print_salt_state_apply 'mysql')"
+		if [[ "$PLAYBOOK" != 1 ]]; then
+		set_progress_str 74 "$(print_salt_state_apply 'mysql')"
 		salt-call state.apply -l info mysql >> $setup_log 2>&1
+		fi
 
-		set_progress_str 73 "$(print_salt_state_apply 'fleet')"
+		set_progress_str 75 "$(print_salt_state_apply 'fleet')"
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'redis')"
+		set_progress_str 76 "$(print_salt_state_apply 'redis')"
 		salt-call state.apply -l info redis >> $setup_log 2>&1
 
 		if [[ $is_fleet_standalone && $FLEETCUSTOMHOSTNAME != '' ]]; then
-			set_progress_str 73 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
+			set_progress_str 77 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
 			pillar_override="{\"static\":{\"fleet_custom_hostname\": \"$FLEETCUSTOMHOSTNAME\"}}"
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
 		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
-		so-fleet-setup $FLEETNODEUSER $FLEETNODEPASSWD1 >> $setup_log 2>&1
+		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
 
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
-		set_progress_str 75 "$(print_salt_state_apply 'wazuh')"
+		set_progress_str 78 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
 
 	if [[ "$THEHIVE" = 1 ]]; then
-		set_progress_str 76 "$(print_salt_state_apply 'thehive')"
+		set_progress_str 79 "$(print_salt_state_apply 'thehive')"
 		salt-call state.apply -l info thehive >> $setup_log 2>&1
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
-		set_progress_str 77 "$(print_salt_state_apply 'strelka')"
+		set_progress_str 80 "$(print_salt_state_apply 'strelka')"
 		salt-call state.apply -l info strelka >> $setup_log 2>&1
+		if [[ $STRELKARULES == 1 ]]; then
+			/usr/sbin/so-yara-update >> $setup_log 2>&1	
+		fi
 	fi
 
-	if [[ "$PLAYBOOK" = 1 ]]; then
-		set_progress_str 78 "$(print_salt_state_apply 'playbook')"
-		salt-call state.apply -l info playbook >> $setup_log 2>&1
-	fi
-
-	if [[ "$NAVIGATOR" = 1 ]]; then
-		set_progress_str 78 "$(print_salt_state_apply 'navigator')"
-		salt-call state.apply -l info navigator >> $setup_log 2>&1
-	fi
-
-	if [[ $is_master || $is_helix ]]; then		
+	if [[ $is_manager || $is_helix ]]; then		
 		set_progress_str 81 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
 
-	if [[ ( $is_helix || $is_master || $is_node ) && ! $is_eval ]]; then
+	if [[ ( $is_helix || $is_manager || $is_node ) && ! $is_eval ]]; then
 		set_progress_str 82 "$(print_salt_state_apply 'logstash')"
 		salt-call state.apply -l info logstash >> $setup_log 2>&1
 
@@ -577,7 +610,7 @@ fi
 	filter_unused_nics >> $setup_log 2>&1
 	network_setup >> $setup_log 2>&1
 
-	if [[ $is_master ]]; then
+	if [[ $is_manager ]]; then
 		set_progress_str 87 'Adding user to SOC'
 		add_web_user >> $setup_log 2>&1
 	fi
@@ -586,24 +619,34 @@ fi
 	checkin_at_boot >> $setup_log 2>&1
 
 	set_progress_str 95 'Verifying setup'
-	salt-call -l info  state.highstate >> $setup_log 2>&1
+	salt-call -l info state.highstate >> $setup_log 2>&1
 
 } | progress
 
 success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
-if [[ "$success" = 0 ]]; then
-	whiptail_setup_complete
-	if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-		export IP=$ALLOW_CIDR
-		so-allow -$ALLOW_ROLE >> $setup_log 2>&1
-	fi
-	if [[ $THEHIVE == 1 ]]; then
-		check_hive_init
-	fi
-else
+if [[ $success != 0 ]]; then SO_ERROR=1; fi
+
+
+if [[ -n $SO_ERROR ]]; then 
+	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
+	SKIP_REBOOT=1
 	whiptail_setup_failed
+else 
+	{
+		export percentage=95 # set to last percentage used in previous subshell
+		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+			set_progress_str 98 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+		fi
+
+		set_progress_str 99 'Waiting for TheHive to start up'
+		if [[ $THEHIVE == 1 ]]; then check_hive_init >> $setup_log 2>&1; fi
+
+	} | whiptail_gauge_post_setup "Running post-installation steps..."
+
+	whiptail_setup_complete
 fi
 
-if [[ -z $SKIP_REBOOT ]]; then
-	shutdown -r now
-fi
+install_cleanup >> $setup_log 2>&1
+
+if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi

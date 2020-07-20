@@ -13,7 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set MASTER = salt['grains.get']('master') %}
+{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 {% if FEATURES %}
@@ -22,13 +23,15 @@
   {% set FEATURES = '' %}
 {% endif %}
 
-{% if grains['role'] in ['so-eval','so-mastersearch', 'so-master', 'so-standalone'] %}
-  {% set esclustername = salt['pillar.get']('master:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('master:esheap', '') %}
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+  {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
+  {% set esheap = salt['pillar.get']('manager:esheap', '') %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
-  {% set esclustername = salt['pillar.get']('node:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('node:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
+  {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
 {% endif %}
+
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
 vm.max_map_count:
   sysctl.present:
@@ -62,6 +65,13 @@ esingestdir:
     - group: 939
     - makedirs: True
 
+estemplatedir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates
+    - user: 930
+    - group: 939
+    - makedirs: True
+
 esingestconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -85,6 +95,21 @@ esyml:
     - group: 939
     - template: jinja
 
+#sync templates to /opt/so/conf/elasticsearch/templates
+{% for TEMPLATE in TEMPLATES %}
+es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://elasticsearch/templates/{{TEMPLATE}}
+    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1]}}
+    {% endif %}
+    - user: 930
+    - group: 939
+{% endfor %}
+
 nsmesdir:
   file.directory:
     - name: /nsm/elasticsearch
@@ -101,7 +126,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MASTER }}:5000/soshybridhunter/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -141,7 +166,7 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-master', 'so-eval', 'so-mastersearch', 'so-standalone'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates

@@ -6,43 +6,46 @@ base:
     - match: compound
     - zeek
 
-  '*_mastersearch or *_heavynode':
+  '*_managersearch or *_heavynode':
     - match: compound
     - logstash
-    - logstash.master
+    - logstash.manager
     - logstash.search
+    - elasticsearch.search
 
   '*_sensor':
     - static
-    - brologs
+    - zeeklogs
     - healthcheck.sensor
     - minions.{{ grains.id }}
 
-  '*_master or *_mastersearch':
+  '*_manager or *_managersearch':
     - match: compound
     - static
     - data.*
     - secrets
     - minions.{{ grains.id }}
 
-  '*_master':
+  '*_manager':
     - logstash
-    - logstash.master
+    - logstash.manager
 
   '*_eval':
-    - static
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.eval
+    - elasticsearch.eval
+    - static
     - minions.{{ grains.id }}
 
   '*_standalone':
     - logstash
-    - logstash.master
+    - logstash.manager
     - logstash.search
+    - elasticsearch.search
     - data.*
-    - brologs
+    - zeeklogs
     - secrets
     - healthcheck.standalone
     - static
@@ -54,13 +57,13 @@ base:
 
   '*_heavynode':
     - static
-    - brologs
+    - zeeklogs
     - minions.{{ grains.id }}
 
   '*_helix':
     - static
     - fireeye
-    - brologs
+    - zeeklogs
     - logstash
     - logstash.helix
     - minions.{{ grains.id }}
@@ -75,4 +78,5 @@ base:
     - static
     - logstash
     - logstash.search
+    - elasticsearch.search
     - minions.{{ grains.id }}

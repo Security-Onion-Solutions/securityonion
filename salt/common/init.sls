@@ -1,3 +1,5 @@
+{% set role = grains.id.split('_') | last %}
+
 # Add socore Group
 socoregroup:
   group.present:
@@ -12,6 +14,20 @@ socore:
     - home: /opt/so
     - createhome: True
     - shell: /bin/bash
+
+soconfperms:
+  file.directory:
+    - name: /opt/so/conf
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+
+sosaltstackperms:
+  file.directory:
+    - name: /opt/so/saltstack
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
 
 # Create a state directory
 statedir:
@@ -131,3 +147,15 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
+
+{% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
+# Add sensor cleanup
+/usr/sbin/so-sensor-clean:
+  cron.present:
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+{% endif %}
