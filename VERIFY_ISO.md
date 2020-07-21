@@ -24,7 +24,7 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.0.0-rc1.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.0.0-rc1.iso.sig
 ```
 
 Download the ISO image:  
