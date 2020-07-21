@@ -315,6 +315,27 @@ whiptail_requirements_error() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+whiptail_storage_requirements() {
+	local mount=$1
+	local current_val=$2
+	local needed_val=$3
+
+	read -r -d '' message <<- EOM
+		Free space on mount point '${mount}' is currently ${current_val}.
+
+		You need ${needed_val} to meet minimum requirements.
+
+		Visit https://docs.securityonion.net/en/2.0/hardware.html for more information.
+
+		Press YES to continue anyway, or press NO to cancel.
+	EOM
+
+	whiptail \
+		--title "Security Onion Setup" \
+		--yesno "$message" \
+		14 75
+}
+
 whiptail_invalid_pass_warning() {
 
 	[ -n "$TESTING" ] && return
@@ -1109,13 +1130,13 @@ whiptail_gauge_post_setup() {
 
 whiptail_strelka_rules() {
 
-        [ -n "$TESTING" ] && return
+	[ -n "$TESTING" ] && return
 
-        whiptail --title "Security Onion Setup" --yesno "Do you want to enable the default YARA rules for Strelka?" 8 75
+	whiptail --title "Security Onion Setup" --yesno "Do you want to enable the default YARA rules for Strelka?" 8 75
 
-        local exitstatus=$?
+	local exitstatus=$?
 
-        if [[ $exitstatus == 0 ]]; then export STRELKARULES=1; fi
+	if [[ $exitstatus == 0 ]]; then export STRELKARULES=1; fi
 }
 
 whiptail_suricata_pins() {

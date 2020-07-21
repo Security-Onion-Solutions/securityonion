@@ -411,14 +411,27 @@ check_requirements() {
 		req_mem=12
 		req_cores=4
 		req_nics=2
-		req_storage=100
 	elif [[ "$standalone_or_dist" == 'dist' ]]; then
 		req_mem=8
 		req_cores=4
-		req_storage=40
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
+
+	if [[ -n $nsm_mount ]]; then
+		req_storage=100
+		if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
+		fi
+		if (( $(echo "$free_space_nsm < $req_storage" | bc -l) )); then
+			whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
+		fi
+	else
+		req_storage=200
+		if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
+		fi
+	fi	
 
 	if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 		whiptail_requirements_error "disk space" "${free_space_root} GB" "${req_storage} GB"
