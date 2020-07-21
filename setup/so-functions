@@ -418,20 +418,22 @@ check_requirements() {
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	fi
 
-	if [[ -n $nsm_mount ]]; then
-		req_storage=100
-		if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
-			whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
-		fi
-		if (( $(echo "$free_space_nsm < $req_storage" | bc -l) )); then
-			whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
-		fi
-	else
-		req_storage=200
-		if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
-			whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
-		fi
-	fi	
+	if [[ $setup_type == 'network' ]]; then
+		if [[ -n $nsm_mount ]]; then
+			req_storage=100
+			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
+			fi
+			if (( $(echo "$free_space_nsm < $req_storage" | bc -l) )); then
+				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
+			fi
+		else
+			req_storage=200
+			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
+			fi
+		fi	
+	fi
 
 	if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 		whiptail_requirements_error "disk space" "${free_space_root} GB" "${req_storage} GB"
