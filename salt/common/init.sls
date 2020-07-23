@@ -1,5 +1,10 @@
 {% set role = grains.id.split('_') | last %}
 
+# Remove variables.txt from /tmp - This is temp
+rmvariablesfile:
+  file.absent:
+    - name: /tmp/variables.txt
+
 # Add socore Group
 socoregroup:
   group.present:
