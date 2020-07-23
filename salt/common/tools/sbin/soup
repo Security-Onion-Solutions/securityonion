@@ -43,8 +43,11 @@ clone_to_tmp() {
   # Make a temp location for the files
   mkdir -p /tmp/sogh
   cd /tmp/sogh
-  #git clone -b dev https://github.com/Security-Onion-Solutions/securityonion.git
-  git clone https://github.com/Security-Onion-Solutions/securityonion.git
+  SOUP_BRANCH=""
+  if [ -n "$BRANCH" ]; then
+    SOUP_BRANCH="-b $BRANCH"
+  fi
+  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
@@ -102,7 +105,10 @@ update_dockers() {
       "so-soc" \
       "so-soctopus" \
       "so-steno" \
-      "so-strelka" \
+      "so-strelka-frontend" \
+      "so-strelka-manager" \
+      "so-strelka-backend" \
+      "so-strelka-filestream" \
       "so-suricata" \
       "so-telegraf" \
       "so-thehive" \
@@ -139,7 +145,7 @@ update_version() {
   # Update the version to the latest
   echo "Updating the version file."
   echo $NEWVERSION > /etc/soversion
-  sed -i 's/$INSTALLEDVERSION/$NEWVERISON/g' /opt/so/saltstack/local/pillar/static.sls
+  sed -i "s/$INSTALLEDVERSION/$NEWVERSION/g" /opt/so/saltstack/local/pillar/static.sls
 }
 
 upgrade_check() {
@@ -192,10 +198,10 @@ echo ""
 echo "Copying new code"
 copy_new_files
 echo ""
-echo "Running a highstate to complete upgrade"
-highstate
-echo ""
 echo "Updating version"
 update_version
+echo ""
+echo "Running a highstate to complete upgrade"
+highstate
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
