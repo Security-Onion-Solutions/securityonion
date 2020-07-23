@@ -9,6 +9,12 @@
 
 default_salt_dir=/opt/so/saltstack/default
 
+cortex_clean(){
+    sed -i '/^  cortexuser:/d' /opt/so/saltstack/local/pillar/static.sls
+    sed -i '/^  cortexpassword:/d' /opt/so/saltstack/local/pillar/static.sls
+    sed -i '/^  cortexorguser:/d' /opt/so/saltstack/local/pillar/static.sls
+}
+
 cortex_init(){
     sleep 60
     CORTEX_IP="{{MANAGERIP}}"
@@ -51,6 +57,7 @@ cortex_init(){
 }
 
 if [ -f /opt/so/state/cortex.txt ]; then
+    cortex_clean
     exit 0
 else
     rm -f garbage_file
@@ -63,4 +70,5 @@ else
     rm -f garbage_file
     sleep 5
     cortex_init
+    cortex_clean
 fi

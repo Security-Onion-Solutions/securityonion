@@ -4,6 +4,11 @@
 # {%- set THEHIVEPASSWORD = salt['pillar.get']('static:hivepassword', 'hivechangeme') %}
 # {%- set THEHIVEKEY = salt['pillar.get']('static:hivekey', '') %}
 
+thehive_clean(){
+    sed -i '/^  hiveuser:/d' /opt/so/saltstack/local/pillar/static.sls
+    sed -i '/^  hivepassword:/d' /opt/so/saltstack/local/pillar/static.sls 
+}
+
 thehive_init(){
     sleep 120
     THEHIVE_IP="{{MANAGERIP}}"
@@ -49,6 +54,7 @@ thehive_init(){
 }
 
 if [ -f /opt/so/state/thehive.txt ]; then
+    thehive_clean
     exit 0
 else
     rm -f garbage_file
@@ -61,4 +67,5 @@ else
     rm -f garbage_file
     sleep 5
     thehive_init
+    thehive_clean
 fi
