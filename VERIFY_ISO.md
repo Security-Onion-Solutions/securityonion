@@ -34,7 +34,7 @@ wget https://download.securityonion.net/file/securityonion/securityonion-2.0.1-r
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.0.0-rc1.iso.sig securityonion-2.0.1-rc1.iso
+gpg --verify securityonion-2.0.1-rc1.iso.sig securityonion-2.0.1-rc1.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
