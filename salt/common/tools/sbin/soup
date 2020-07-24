@@ -18,6 +18,7 @@
 . /usr/sbin/so-common
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
+INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 default_salt_dir=/opt/so/saltstack/default
 
 manager_check() {
@@ -154,8 +155,27 @@ upgrade_check() {
     if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
       echo "You are already running the latest version of Security Onion."
       exit 0
+    fi 
+}
+
+upgrade_check_salt() {
+    NEWSALTVERSION=$(grep version: $UPDATE_DIR/pillar/salt/master.sls | awk {'print $2'})
+    if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
+      echo "You are already running the correct version of Salt for Security Onion."
     else
-      echo "Performing Upgrade from $INSTALLEDVERSION to $NEWVERSION"
+      echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
+      echo ""
+      # If CentOS
+      echo "Removing yum versionlock for Salt"
+      echo ""
+      yum versionlock delete "salt-*"
+      echo "Updating Salt packages and restarting services"
+      echo ""
+      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+      echo "Applying yum versionlock for Salt"
+      echo ""
+      yum versionlock add "salt-*"
+      # Else do Ubuntu things
     fi 
 }
 
@@ -185,7 +205,21 @@ verify_latest_update_script
 echo ""
 echo "Let's see if we need to update"
 upgrade_check
+
+
 echo ""
+echo "Performing Upgrade from $INSTALLEDVERSION to $NEWVERSION"
+echo ""
+echo "Stopping Salt Master service"
+systemctl stop salt-master
+echo ""
+echo "Stopping Salt Minion service"
+systemctl stop salt-minion
+echo ""
+echo "Checking for Salt updates"
+upgrade_check_salt
+
+
 echo "Making pillar changes"
 pillar_changes
 echo ""
@@ -200,6 +234,17 @@ copy_new_files
 echo ""
 echo "Updating version"
 update_version
+
+
+echo ""
+echo "Starting Salt Master service"
+systemctl start salt-master
+echo ""
+echo "Starting Salt Minion service"
+systemctl start salt-minion
+echo ""
+
+
 echo ""
 echo "Running a highstate to complete upgrade"
 highstate
