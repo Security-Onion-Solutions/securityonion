@@ -926,13 +926,6 @@ manager_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
-	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
-		SENSOR_CHECKIN_INTERVAL_MS=10000
-		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ]; then
-			SENSOR_CHECKIN_INTERVAL_MS=1000
-		fi
-	fi
-
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
@@ -1002,6 +995,13 @@ manager_pillar() {
 
 manager_static() {
 	local static_pillar="$local_salt_dir/pillar/static.sls"
+
+	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
+		SENSOR_CHECKIN_INTERVAL_MS=10000
+		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ]; then
+			SENSOR_CHECKIN_INTERVAL_MS=1000
+		fi
+	fi
 
 	# Create a static file for global values
 	printf '%s\n'\
