@@ -42,7 +42,7 @@ wazuhpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      - wazuh-agent: 3.10.2-1
+      - wazuh-agent: 3.13.1-1
     - hold: True
     - update_holds: True
 
