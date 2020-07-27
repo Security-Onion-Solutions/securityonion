@@ -37,6 +37,19 @@ m2cryptopkgs:
       - python-m2crypto
 {% endif %}
 
+/etc/pki/influxdb.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/influxdb.key') -%}
+    - prereq:
+      - x509: /etc/pki/influxdb.crt
+    {%- endif %}
+
 # Create a cert for the talking to influxdb
 /etc/pki/influxdb.crt:
   x509.certificate_managed:
@@ -47,10 +60,10 @@ m2cryptopkgs:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/influxdb.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 influxkeyperms:
   file.managed:
@@ -60,6 +73,19 @@ influxkeyperms:
     - group: 939
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone'] %}
+
+/etc/pki/filebeat.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
+    - prereq:
+      - x509: /etc/pki/filebeat.crt
+    {%- endif %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -75,12 +101,13 @@ influxkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/filebeat.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
+
 
 fbperms:
   file.managed:
@@ -113,6 +140,19 @@ fbcrtlink:
     - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.crt
     - target: /etc/pki/filebeat.crt
 
+/etc/pki/registry.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/registry.key') -%}
+    - prereq:
+      - x509: /etc/pki/registry.crt
+    {%- endif %}
+
 # Create a cert for the docker registry
 /etc/pki/registry.crt:
   x509.certificate_managed:
@@ -123,10 +163,10 @@ fbcrtlink:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/registry.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/registry.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 regkeyperms:
   file.managed:
@@ -134,6 +174,19 @@ regkeyperms:
     - name: /etc/pki/registry.key
     - mode: 640
     - group: 939
+
+/etc/pki/managerssl.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
+    - prereq:
+      - x509: /etc/pki/managerssl.crt
+    {%- endif %}
 
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
@@ -146,10 +199,10 @@ regkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/managerssl.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 msslkeyperms:
   file.managed:
@@ -166,6 +219,11 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
+    - prereq:
+      - x509: /etc/pki/fleet.crt
+    {%- endif %}
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -175,10 +233,10 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/fleet.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
@@ -195,6 +253,19 @@ fbcertdir:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
 
+/etc/pki/filebeat.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
+    - prereq:
+      - x509: /etc/pki/filebeat.crt
+    {%- endif %}
+
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
   x509.certificate_managed:
@@ -209,10 +280,10 @@ fbcertdir:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 # Convert the key to pkcs#8 so logstash will work correctly.
 filebeatpkcs:
@@ -238,6 +309,19 @@ chownfilebeatp8:
 
 {% if grains['role'] == 'so-fleet' %}
 
+/etc/pki/managerssl.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
+    - prereq:
+      - x509: /etc/pki/managerssl.crt
+    {%- endif %}
+
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
   x509.certificate_managed:
@@ -249,10 +333,10 @@ chownfilebeatp8:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/managerssl.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 msslkeyperms:
   file.managed:
@@ -264,11 +348,16 @@ msslkeyperms:
 # Create a private key and cert for Fleet
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ HOSTNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
+    - prereq:
+      - x509: /etc/pki/fleet.crt
+    {%- endif %}
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -278,10 +367,10 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/fleet.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
