@@ -152,13 +152,8 @@ update_version() {
 
 upgrade_check() {
     # Let's make sure we actually need to update.
-    if [ -n "$SOUP_BRANCH" ]; then
-      NEWVERSION="$SOUP_BRANCH"
-    else
-      NEWVERSION=$(cat $UPDATE_DIR/VERSION)
-    fi
-    
-    if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+    NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+    if [ "$INSTALLEDVERSION" == "$NEWVERSION" ] &&  [ -z "$SOUP_BRANCH" ]; then
       echo "You are already running the latest version of Security Onion."
       exit 0
     fi 
@@ -209,6 +204,7 @@ echo ""
 echo "Verifying we have the latest script"
 verify_latest_update_script
 echo ""
+
 echo "Let's see if we need to update"
 upgrade_check
 
