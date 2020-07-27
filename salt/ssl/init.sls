@@ -253,7 +253,7 @@ fbcertdir:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
 
-/etc/pki/filebeat.key:
+/opt/so/conf/filebeat/etc/pki/filebeat.key:
   x509.private_key_managed:
     - CN: {{ manager }}
     - bits: 4096
@@ -261,9 +261,9 @@ fbcertdir:
     - days_valid: 820
     - backup: True
     - new: True
-    {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
+    {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: /etc/pki/filebeat.crt
+      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     {%- endif %}
 
 # Request a cert and drop it where it needs to go to be distributed

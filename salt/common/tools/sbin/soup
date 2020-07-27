@@ -20,6 +20,7 @@ UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 default_salt_dir=/opt/so/saltstack/default
+SOUP_BRANCH=$1
 
 manager_check() {
   # Check to see if this is a manager
@@ -44,11 +45,11 @@ clone_to_tmp() {
   # Make a temp location for the files
   mkdir -p /tmp/sogh
   cd /tmp/sogh
-  SOUP_BRANCH=""
-  if [ -n "$BRANCH" ]; then
-    SOUP_BRANCH="-b $BRANCH"
+  if [ -n "$SOUP_BRANCH" ]; then
+    git clone -b $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
+  else
+    git clone https://github.com/Security-Onion-Solutions/securityonion.git
   fi
-  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
@@ -151,7 +152,12 @@ update_version() {
 
 upgrade_check() {
     # Let's make sure we actually need to update.
-    NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+    if [ -n "$SOUP_BRANCH" ]; then
+      NEWVERSION="$SOUP_BRANCH"
+    else
+      NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+    fi
+    
     if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
       echo "You are already running the latest version of Security Onion."
       exit 0
