@@ -113,3 +113,22 @@ wazuhagentservice:
   service.running:
     - name: wazuh-agent
     - enable: True
+
+/opt/so/conf/wazuh:
+  file.symlink:
+    - target: /nsm/wazuh/etc
+
+hidsruledir:
+ file.directory:
+   - name: /opt/so/rules/hids
+   - user: 939
+   - group: 939
+   - makedirs: True
+
+/opt/so/rules/hids/local_rules.xml:
+  file.symlink:
+    - target: /nsm/wazuh/etc/rules/local_rules.xml
+
+/opt/so/rules/hids/ruleset:
+  file.symlink:
+    - target: /nsm/wazuh/ruleset
