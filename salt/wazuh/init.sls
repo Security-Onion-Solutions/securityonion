@@ -13,7 +13,7 @@ ossecm:
   user.present:
     - uid: 943
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -23,7 +23,7 @@ ossecr:
   user.present:
     - uid: 944
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -33,7 +33,7 @@ ossec:
   user.present:
     - uid: 945
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -42,13 +42,13 @@ wazuhpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      - wazuh-agent: 3.10.2-1
+      - wazuh-agent: 3.13.1-1
     - hold: True
     - update_holds: True
 
 wazuhdir:
  file.directory:
-   - name: /opt/so/wazuh
+   - name: /nsm/wazuh
    - user: 945
    - group: 945
    - makedirs: True
@@ -94,7 +94,7 @@ so-wazuh:
       - 0.0.0.0:1515:1515/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/wazuh:/var/ossec/data:rw
+      - /nsm/wazuh:/var/ossec/data:rw
 
 # Register the agent
 registertheagent:
@@ -113,3 +113,22 @@ wazuhagentservice:
   service.running:
     - name: wazuh-agent
     - enable: True
+
+/opt/so/conf/wazuh:
+  file.symlink:
+    - target: /nsm/wazuh/etc
+
+hidsruledir:
+ file.directory:
+   - name: /opt/so/rules/hids
+   - user: 939
+   - group: 939
+   - makedirs: True
+
+/opt/so/rules/hids/local_rules.xml:
+  file.symlink:
+    - target: /nsm/wazuh/etc/rules/local_rules.xml
+
+/opt/so/rules/hids/ruleset:
+  file.symlink:
+    - target: /nsm/wazuh/ruleset
