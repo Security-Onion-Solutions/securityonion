@@ -8,6 +8,11 @@ saltpymodules:
       - python-m2crypto
   {% endif %}
 
+salt_bootstrap:
+  file.managed:
+    - name: /usr/sbin/bootstrap-salt.sh
+    - source: salt://salt/scripts/bootstrap-salt.sh
+    - mode: 755
 
 salt_minion_service:
   service.running:
