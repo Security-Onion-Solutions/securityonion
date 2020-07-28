@@ -15,6 +15,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+exec 3>&1 4>&2
+trap 'exec 2>&4 1>&3' 0 1 2 3
+exec 1>/opt/so/logs/soup.log 2>&1
+
 . /usr/sbin/so-common
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
@@ -70,7 +74,7 @@ copy_new_files() {
 highstate() {
   # Run a highstate but first cancel a running one.
   salt-call saltutil.kill_all_jobs
-  salt-call state.highstate
+  salt-call state.highstate -l info
 }
 
 pillar_changes() {
@@ -147,7 +151,7 @@ update_version() {
   # Update the version to the latest
   echo "Updating the version file."
   echo $NEWVERSION > /etc/soversion
-  sed -i "s|$INSTALLEDVERSION|$NEWVERSION|g" /opt/so/saltstack/local/pillar/static.sls
+  sed -i "s/$INSTALLEDVERSION/$NEWVERSION/g" /opt/so/saltstack/local/pillar/static.sls
 }
 
 upgrade_check() {
