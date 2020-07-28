@@ -1,5 +1,7 @@
 #Future state for Salt minions
-{% set saltversion = salt['pillar.get']('salt:minion:version') %}
+{% from 'salt/minion.defaults.yaml' import salt %}
+{% set saltversion = salt.salt.minion.version %}
+
 
 install_salt_minion:
   cmd.run:
