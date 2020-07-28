@@ -42,8 +42,8 @@ pki_private_key:
 x509_pem_entries:
   module.run:
     - mine.send:
-      name: x509.get_pem_entries
-      glob_path: /etc/pki/ca.crt
+       - name: x509.get_pem_entries
+       - glob_path: /etc/pki/ca.crt
 
 cakeyperms:
   file.managed:
