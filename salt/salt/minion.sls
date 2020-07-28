@@ -1,5 +1,5 @@
 #Future state for Salt minions
-{% from 'salt/minion.defaults.yaml' import salt %}
+{% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set saltversion = salt.salt.minion.version %}
 
 
