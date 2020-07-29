@@ -165,6 +165,7 @@ upgrade_check_salt() {
     if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
       echo "You are already running the correct version of Salt for Security Onion."
     else
+      SALTUPGRADED = True
       echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
       echo ""
       # If CentOS
@@ -269,7 +270,10 @@ echo "Running a highstate to complete upgrade"
 highstate
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
-echo ""
-echo "Upgrading the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
-salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
-echo ""
+
+if [ SALTUPGRADED ]; then
+  echo ""
+  echo "Upgrading the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
+  salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
+  echo ""
+fi
