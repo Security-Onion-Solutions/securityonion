@@ -7,22 +7,30 @@
 {%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
+{% import_yaml 'salt/minion.defaults.yaml' as salt %}
+{% set saltversion = salt.salt.minion.version %}
 
 
 base:
 
-  'os:CentOS':
-    - match: grain
+  'not G@saltversion:{{saltversion}}':
+    - match: compound
+    - salt.minion
+
+  'G@os:CentOS and G@saltversion:{{saltversion}}':
+    - match: compound
     - yum
     - yum.packages
 
-  '*':
+  '* and G@saltversion:{{saltversion}}':
+    - match: compound
     - salt
     - docker
     - patch.os.schedule
     - motd
 
-  '*_helix':
+  '*_helix and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -39,7 +47,8 @@ base:
     - filebeat
     - schedule
 
-  '*_sensor':
+  '*_sensor and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -61,7 +70,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_eval':
+  '*_eval and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -117,7 +127,8 @@ base:
     {%- endif %}
 
 
-  '*_manager':
+  '*_manager and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -162,7 +173,8 @@ base:
     - domainstats
     {%- endif %}
 
-  '*_standalone':
+  '*_standalone and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -220,7 +232,7 @@ base:
 
   # Search node logic
 
-  '*_node and I@node:node_type:parser':
+  '*_node and I@node:node_type:parser and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -230,7 +242,7 @@ base:
     {%- endif %}
     - schedule
 
-  '*_node and I@node:node_type:hot':
+  '*_node and I@node:node_type:hot and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -241,7 +253,7 @@ base:
     {%- endif %}
     - schedule
 
-  '*_node and I@node:node_type:warm':
+  '*_node and I@node:node_type:warm and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -251,7 +263,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_searchnode':
+  '*_searchnode and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -269,7 +282,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_managersensor':
+  '*_managersensor and G@saltversion:{{saltversion}}':
+    - match: compound
     - common
     - nginx
     - telegraf
@@ -283,7 +297,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_managersearch':
+  '*_managersearch and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -329,7 +344,8 @@ base:
     - domainstats
     {%- endif %}
 
-  '*_heavynode':
+  '*_heavynode and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -353,7 +369,8 @@ base:
     - filebeat
     - schedule
   
-  '*_fleet':
+  '*_fleet and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
