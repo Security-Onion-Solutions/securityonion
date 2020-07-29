@@ -20,7 +20,6 @@ UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 default_salt_dir=/opt/so/saltstack/default
-SOUP_BRANCH=$1
 BATCHSIZE=5
 
 manager_check() {
@@ -46,11 +45,11 @@ clone_to_tmp() {
   # Make a temp location for the files
   mkdir -p /tmp/sogh
   cd /tmp/sogh
-  if [ -n "$SOUP_BRANCH" ]; then
-    git clone -b $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
-  else
-    git clone https://github.com/Security-Onion-Solutions/securityonion.git
+  SOUP_BRANCH=""
+  if [ -n "$BRANCH" ]; then
+    SOUP_BRANCH="-b $BRANCH"
   fi
+  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
