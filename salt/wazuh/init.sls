@@ -46,13 +46,6 @@ wazuhpkgs:
     - hold: True
     - update_holds: True
 
-wazuhdir:
- file.directory:
-   - name: /nsm/wazuh
-   - user: 945
-   - group: 945
-   - makedirs: True
-
 # Add Wazuh agent conf
 wazuhagentconf:
   file.managed:
@@ -61,6 +54,13 @@ wazuhagentconf:
     - user: 0
     - group: 945
     - template: jinja
+
+wazuhdir:
+ file.directory:
+   - name: /nsm/wazuh
+   - user: 945
+   - group: 945
+   - makedirs: True
 
 # Wazuh agent registration script
 wazuhagentregister:
