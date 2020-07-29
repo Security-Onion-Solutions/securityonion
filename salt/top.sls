@@ -24,7 +24,7 @@ base:
 
   '* and G@saltversion:{{saltversion}}':
     - match: compound
-    - salt
+    - salt.minion
     - docker
     - patch.os.schedule
     - motd

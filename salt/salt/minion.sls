@@ -1,4 +1,6 @@
-#Future state for Salt minions
+include:
+  - salt
+  
 {% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set saltversion = salt.salt.minion.version %}
 
@@ -10,3 +12,8 @@ install_salt_minion:
     {% else %}
     - name: echo 'Already running Salt Minon version {{ saltversion }}'
     {% endif %}
+
+salt_minion_service:
+  service.running:
+    - name: salt-minion
+    - enable: True
