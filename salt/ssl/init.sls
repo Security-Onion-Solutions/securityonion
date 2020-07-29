@@ -136,11 +136,15 @@ fbkeylink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.p8
     - target: /etc/pki/filebeat.p8
+    - user: socore
+    - group: socore
 
 fbcrtlink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.crt
     - target: /etc/pki/filebeat.crt
+    - user: socore
+    - group: socore
 
 /etc/pki/registry.key:
   x509.private_key_managed:
