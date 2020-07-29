@@ -21,6 +21,7 @@ INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 default_salt_dir=/opt/so/saltstack/default
 SOUP_BRANCH=$1
+BATCHSIZE = 5
 
 manager_check() {
   # Check to see if this is a manager
@@ -196,6 +197,20 @@ verify_latest_update_script() {
     fi
 }
 
+while getopts ":b" opt; do
+  case ${opt} in
+    b ) # process option b
+      if [[ $OPTARG =~ ^?[0-9]+$ ]] && [[ $OPTARG -gt 0 ]]; then
+        BATCHSIZE = $OPTARG
+      else
+        echo "Batch size must be a number greater than 0"
+      fi
+      ;;
+    \? ) echo "Usage: cmd [-b]"
+      ;;
+  esac
+done
+
 echo "Checking to see if this is a manager"
 manager_check
 echo "Cloning latest code to a temporary location"
@@ -254,3 +269,7 @@ echo "Running a highstate to complete upgrade"
 highstate
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
+echo ""
+echo "Upgrading the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
+salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
+echo ""
