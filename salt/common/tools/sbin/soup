@@ -192,20 +192,20 @@ verify_latest_update_script() {
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $default_salt_dir/salt/common/tools/sbin/
       salt-call state.apply common queue=True
       echo ""
-      echo "soup has been updated. Please run soup again"
+      echo "soup has been updated. Please run soup again."
       exit 0
     fi
 }
 
 while getopts ":b" opt; do
-  case ${opt} in
+  case "$opt" in
     b ) # process option b
-      if [[ "$OPTARG" =~ ^[0-9]+$ ]]; then
-        BATCHSIZE=$OPTARG
-      else
-        echo "Batch size must be a number greater than 0"
-        exit 1
-      fi
+       shift
+       BATCHSIZE=$1
+       if ! [[ "$BATCHSIZE" =~ ^[0-9]+$ ]]; then
+         echo "Batch size must be a number greater than 0"
+         exit 1
+       fi
       ;;
     \? ) echo "Usage: cmd [-b]"
       ;;
