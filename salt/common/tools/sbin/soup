@@ -22,6 +22,7 @@ INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+exec 3>&1 1>>${SOUP_LOG} 2>&1
 
 manager_check() {
   # Check to see if this is a manager
@@ -224,6 +225,7 @@ verify_latest_update_script() {
     fi
 }
 
+main () {
 while getopts ":b" opt; do
   case "$opt" in
     b ) # process option b
@@ -302,3 +304,7 @@ if [[ "$SALTUPGRADED" == "True" ]]; then
   salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
   echo ""
 fi
+
+}
+
+main "$@" | tee /dev/fd/3
