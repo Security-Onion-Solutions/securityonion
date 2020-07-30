@@ -19,8 +19,9 @@
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
-default_salt_dir=/opt/so/saltstack/default
+DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
+SOUP_LOG=/root/soup.log
 
 manager_check() {
   # Check to see if this is a manager
@@ -60,11 +61,22 @@ clone_to_tmp() {
 copy_new_files() {
   # Copy new files over to the salt dir
   cd /tmp/sogh/securityonion
-  rsync -a salt $default_salt_dir/
-  rsync -a pillar $default_salt_dir/
-  chown -R socore:socore $default_salt_dir/
-  chmod 755 $default_salt_dir/pillar/firewall/addfirewall.sh
+  rsync -a salt $DEFAULT_SALT_DIR/
+  rsync -a pillar $DEFAULT_SALT_DIR/
+  chown -R socore:socore $DEFAULT_SALT_DIR/
+  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
+}
+
+detect_os() {
+	# Detect Base OS
+	echo "Detecting Base OS" >> "$SOUP_LOG" 2>&1
+	if [ -f /etc/redhat-release ]; then
+		OS="centos"
+	elif [ -f /etc/os-release ]; then
+		OS="ubuntu"
+	fi
+	echo "Found OS: $OS" >> "$SOUP_LOG" 2>&1
 }
 
 highstate() {
@@ -76,7 +88,6 @@ highstate() {
 pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
-
 }
 
 update_dockers() {
@@ -168,16 +179,32 @@ upgrade_check_salt() {
       echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
       echo ""
       # If CentOS
-      echo "Removing yum versionlock for Salt."
-      echo ""
-      yum versionlock delete "salt-*"
-      echo "Updating Salt packages and restarting services."
-      echo ""
-      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-      echo "Applying yum versionlock for Salt."
-      echo ""
-      yum versionlock add "salt-*"
+      if [ "$OS" == "centos" ]; then
+        echo "Removing yum versionlock for Salt."
+        echo ""
+        yum versionlock delete "salt-*"
+        echo "Updating Salt packages and restarting services."
+        echo ""
+        sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+        echo "Applying yum versionlock for Salt."
+        echo ""
+        yum versionlock add "salt-*"
       # Else do Ubuntu things
+      elif [ "$OS" == "ubuntu" ]; then
+        echo "Removing apt hold for Salt."
+        echo ""
+        apt-mark unhold "salt"
+        apt-mark unhold "salt-master"
+        apt-mark unhold "salt-minion"
+        echo "Updating Salt packages and restarting services."
+        echo ""
+        sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+        echo "Applying apt hold for Salt."
+        echo ""
+        apt-mark hold "salt"
+        apt-mark hold "salt-master"
+        apt-mark hold "salt-minion"
+      fi
     fi 
 }
 
@@ -189,7 +216,7 @@ verify_latest_update_script() {
       echo "This version of the soup script is up to date. Proceeding."
     else
       echo "You are not running the latest soup version. Updating soup."
-      cp $UPDATE_DIR/salt/common/tools/sbin/soup $default_salt_dir/salt/common/tools/sbin/
+      cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       salt-call state.apply common queue=True
       echo ""
       echo "soup has been updated. Please run soup again."
@@ -249,7 +276,7 @@ echo "Updating dockers to $NEWVERSION."
 update_dockers
 
 echo ""
-echo "Copying new Security Onion code from $UPDATE_DIR to $default_salt_dir."
+echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
 copy_new_files
 echo ""
 update_version
