@@ -26,7 +26,7 @@ manager_check() {
   # Check to see if this is a manager
   MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
   if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch')$ ]]; then
-    echo "This is a manager. We can proceed"
+    echo "This is a manager. We can proceed."
   else
     echo "Please run soup on the manager. The manager controls all updates."
     exit 0
@@ -75,7 +75,7 @@ highstate() {
 
 pillar_changes() {
     # This function is to add any new pillar items if needed.
-    echo "Checking to see if pillar changes are needed"
+    echo "Checking to see if pillar changes are needed."
 
 }
 
@@ -145,7 +145,7 @@ update_dockers() {
 
 update_version() {
   # Update the version to the latest
-  echo "Updating the version file."
+  echo "Updating the Security Onion version file."
   echo $NEWVERSION > /etc/soversion
   sed -i "s/$INSTALLEDVERSION/$NEWVERSION/g" /opt/so/saltstack/local/pillar/static.sls
 }
@@ -165,16 +165,16 @@ upgrade_check_salt() {
       echo "You are already running the correct version of Salt for Security Onion."
     else
       SALTUPGRADED=True
-      echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION"
+      echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
       echo ""
       # If CentOS
-      echo "Removing yum versionlock for Salt"
+      echo "Removing yum versionlock for Salt."
       echo ""
       yum versionlock delete "salt-*"
-      echo "Updating Salt packages and restarting services"
+      echo "Updating Salt packages and restarting services."
       echo ""
       sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-      echo "Applying yum versionlock for Salt"
+      echo "Applying yum versionlock for Salt."
       echo ""
       yum versionlock add "salt-*"
       # Else do Ubuntu things
@@ -203,7 +203,7 @@ while getopts ":b" opt; do
        shift
        BATCHSIZE=$1
        if ! [[ "$BATCHSIZE" =~ ^[0-9]+$ ]]; then
-         echo "Batch size must be a number greater than 0"
+         echo "Batch size must be a number greater than 0."
          exit 1
        fi
       ;;
@@ -212,57 +212,56 @@ while getopts ":b" opt; do
   esac
 done
 
-echo "Checking to see if this is a manager"
+echo "Checking to see if this is a manager."
 manager_check
-echo "Cloning latest code to a temporary location"
+echo "Cloning Security Onion github repo into $UPDATE_DIR."
 clone_to_tmp
 echo ""
-echo "Verifying we have the latest script"
+echo "Verifying we have the latest soup script."
 verify_latest_update_script
 echo ""
 
-echo "Let's see if we need to update"
+echo "Let's see if we need to update Security Onion."
 upgrade_check
 
 
 echo ""
-echo "Performing Upgrade from $INSTALLEDVERSION to $NEWVERSION"
+echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
 echo ""
-echo "Stopping Salt Minion service"
+echo "Stopping Salt Minion service."
 systemctl stop salt-minion
 echo ""
-echo "Stopping Salt Master service"
+echo "Stopping Salt Master service."
 systemctl stop salt-master
 echo ""
-echo "Checking for Salt updates"
+echo "Checking for Salt master and minion updates."
 upgrade_check_salt
 
 
-echo "Making pillar changes"
+echo "Making pillar changes."
 pillar_changes
 echo ""
 
-echo "Cleaning up old dockers"
+echo "Cleaning up old dockers."
 clean_dockers
 echo ""
-echo "Updating docker to $NEWVERSION"
+echo "Updating dockers to $NEWVERSION."
 update_dockers
 
 echo ""
-echo "Copying new code"
+echo "Copying new Security Onion code from $UPDATE_DIR to $default_salt_dir."
 copy_new_files
 echo ""
-echo "Updating version"
 update_version
 
 
 echo ""
-echo "Starting Salt Master service"
+echo "Starting Salt Master service."
 systemctl start salt-master
 
 
 echo ""
-echo "Running a highstate to complete upgrade"
+echo "Running a highstate to complete the upgrade."
 highstate
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
