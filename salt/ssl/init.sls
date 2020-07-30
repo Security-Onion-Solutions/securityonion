@@ -242,7 +242,7 @@ msslkeyperms:
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
@@ -289,7 +289,7 @@ fbcertdir:
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+      - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 # Convert the key to pkcs#8 so logstash will work correctly.
 filebeatpkcs:
@@ -378,7 +378,7 @@ msslkeyperms:
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
