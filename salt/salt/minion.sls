@@ -11,7 +11,7 @@ include:
     {% set UPGRADECOMMAND = 'apt-mark unhold salt && apt-mark unhold salt-minion && sh bootstrap-salt.sh -F -x python3 stable {{ SALTVERSION }}' %}
   {% endif %}
 {% else %}
-  {% set UPGRADECOMMAND = 'echo "Already running Salt Minon version {{ SALTVERSION }}"' %}
+  {% set UPGRADECOMMAND = 'echo Already running Salt Minon version {{ SALTVERSION }}' %}
 {% endif %}
 
 install_salt_minion:
