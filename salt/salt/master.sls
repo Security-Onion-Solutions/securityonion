@@ -5,7 +5,7 @@ salt_master_package:
       - salt-master
     - hold: True
 
-salt_minion_service:
+salt_master_service:
   service.running:
     - name: salt-master
     - enable: True
