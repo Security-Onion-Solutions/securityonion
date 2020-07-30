@@ -6,12 +6,12 @@ include:
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower == 'centos' %}
-    {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && sh bootstrap-salt.sh -F -x python3 stable {{ SALTVERSION }}' %}
+    {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && sh bootstrap-salt.sh -F -x python3 stable ' ~ {{ SALTVERSION }} %}
   {% elif grains.os|lower == 'ubuntu' %}
-    {% set UPGRADECOMMAND = 'apt-mark unhold salt && apt-mark unhold salt-minion && sh bootstrap-salt.sh -F -x python3 stable {{ SALTVERSION }}' %}
+    {% set UPGRADECOMMAND = 'apt-mark unhold salt && apt-mark unhold salt-minion && sh bootstrap-salt.sh -F -x python3 stable ' ~ {{ SALTVERSION }} %}
   {% endif %}
 {% else %}
-  {% set UPGRADECOMMAND = 'echo Already running Salt Minon version {{ SALTVERSION }}' %}
+  {% set UPGRADECOMMAND = 'echo Already running Salt Minon version ' ~ {{ SALTVERSION }} %}
 {% endif %}
 
 install_salt_minion:
