@@ -1,10 +1,11 @@
 {% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set SALTVERSION = salt.salt.minion.version %}
 
-{% set SALTPACKAGES = salt['grains.filter_by']({
-    'Ubuntu': {'common': 'salt-common'},
-    'Centos': {'common': 'salt'},
-}) %}
+{% if grains.os|lower == 'ubuntu' %}
+  {% set COMMON = 'salt-common' %}
+{% elif grains.os|lower == 'centos' %}
+  {% set COMMON = 'salt' %}
+{% endif %}
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower == 'centos' %}

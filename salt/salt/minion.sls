@@ -1,4 +1,4 @@
-{% from 'salt/map.jinja' import SALTPACKAGES with context %}
+{% from 'salt/map.jinja' import COMMON with context %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 
 include:
@@ -16,7 +16,7 @@ install_salt_minion:
 salt_minion_package:
   pkg.installed:
     - pkgs:
-      - {{ SALTPACKAGES.common }}
+      - {{ COMMON }}
       - salt-minion
     - hold: True
 
