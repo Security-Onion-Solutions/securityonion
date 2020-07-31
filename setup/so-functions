@@ -875,8 +875,10 @@ generate_passwords(){
   FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
@@ -1027,12 +1029,14 @@ manager_static() {
 		"  hiveuser: $WEBUSER"\
 		"  hivepassword: '$WEBPASSWD1'"\
 		"  hivekey: $HIVEKEY"\
+		"  hiveplaysecret: $HIVEPLAYSECRET"\
 		"  cortexuser: $WEBUSER"\
 		"  cortexpassword: '$WEBPASSWD1'"\
 		"  cortexkey: $CORTEXKEY"\
 		"  cortexorgname: SecurityOnion"\
-		"  cortexorguser: $WEBUSER"\
+		"  cortexorguser: soadmin"\
 		"  cortexorguserkey: $CORTEXORGUSERKEY"\
+		"  cortexplaysecret: $CORTEXPLAYSECRET"\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
 		"  fleet_node: False"\
@@ -1510,9 +1514,6 @@ sensor_pillar() {
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  zeekbpf:"\
-		"  pcapbpf:"\
-		"  nidsbpf:"\
 		"  manager: $MSRV"\
 		"  mtu: $MTU"\
 		"  uniqueid: $(date '+%s')" >> "$pillar_file"

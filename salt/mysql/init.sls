@@ -89,7 +89,7 @@ so-mysql:
       - /opt/so/conf/mysql/etc
   cmd.run:
     - name: until nc -z {{ MAINIP }} 3306; do sleep 1; done
-    - timeout: 120
+    - timeout: 900
     - onchanges:
       - docker_container: so-mysql
 {% endif %}
