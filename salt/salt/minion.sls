@@ -1,9 +1,8 @@
-include:
-  - salt
-
 {% from 'salt/map.jinja' import SALTPACKAGES with context %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 
+include:
+  - salt
 
 install_salt_minion:
   cmd.run:
