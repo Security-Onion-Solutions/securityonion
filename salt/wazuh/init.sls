@@ -46,6 +46,15 @@ wazuhpkgs:
     - hold: True
     - update_holds: True
 
+wazuhvarossecdir:
+ file.directory:
+    - name: /var/ossec
+    - user: ossec
+    - group: ossec
+    - recurse:
+      - user
+      - group
+
 # Add Wazuh agent conf
 wazuhagentconf:
   file.managed:
