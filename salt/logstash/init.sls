@@ -127,7 +127,7 @@ importdir:
 # Create the logstash data directory
 nsmlsdir:
   file.directory:
-    - name: /nsm/logstash
+    - name: /nsm/logstash/tmp
     - user: 931
     - group: 939
     - makedirs: True
