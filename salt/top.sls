@@ -150,6 +150,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
     - kibana
     - elastalert
     - filebeat
@@ -197,6 +198,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
     - kibana
     - pcap
     - suricata

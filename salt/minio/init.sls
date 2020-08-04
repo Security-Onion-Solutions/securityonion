@@ -31,14 +31,6 @@ miniodatadir:
     - group: 939
     - makedirs: True
 
-#redisconfsync:
-#  file.recurse:
-#    - name: /opt/so/conf/redis/etc
-#    - source: salt://redis/etc
-#    - user: 939
-#    - group: 939
-#    - template: jinja
-
 minio/minio:
   docker_image.present
 
