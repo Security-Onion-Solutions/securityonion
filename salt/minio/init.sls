@@ -15,6 +15,8 @@
 
 {% set access_key = salt['pillar.get']('minio:access_key', '') %}
 {% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 # Minio Setup
 minioconfdir:
@@ -38,12 +40,9 @@ logstashbucket:
     - group: 939
     - makedirs: True
 
-minio/minio:
-  docker_image.present
-
 minio:
   docker_container.running:
-    - image: minio/minio
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-minio:{{ VERSION }}
     - hostname: so-minio
     - user: socore
     - port_bindings:
