@@ -142,7 +142,6 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -151,6 +150,7 @@ base:
     {%- endif %}
     - logstash
     - minio
+    - redis
     - kibana
     - elastalert
     - filebeat
@@ -159,6 +159,7 @@ base:
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
+    - redis
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -190,7 +191,6 @@ base:
     - idstools
     - suricata.manager    
     - healthcheck
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -314,7 +314,7 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
+    - minio
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -330,6 +330,7 @@ base:
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
+    - redis
     - fleet.install_package
     {%- endif %}
     - soctopus
@@ -353,7 +354,7 @@ base:
     - common
     - telegraf
     - firewall
-    - redis
+    - minio
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
@@ -362,6 +363,7 @@ base:
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
+    - redis
     {%- endif %}
     - pcap
     - suricata
