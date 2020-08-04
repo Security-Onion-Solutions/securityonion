@@ -17,6 +17,8 @@
 {% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+
 
 # Minio Setup
 minioconfdir:
