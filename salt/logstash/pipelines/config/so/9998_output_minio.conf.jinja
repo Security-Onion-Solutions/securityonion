@@ -1,0 +1,17 @@
+{%- set MANAGER = salt['pillar.get']('global:managerip', '') -%}
+{%- set access_key = salt['pillar.get']('global:access_key', '') %}
+{%- set access_secret = salt['pillar.get']('global:access_secret', '') %}
+output {
+	s3 {
+		access_key_id => "{{ access_key }}"
+        secret_access_key => "{{ access_secret}}"
+        endpoint => "http://{{ MANAGER }}:9595"
+        bucket => "logstash"
+        size_file => 2048
+        time_file => 1
+        codec => json
+        additional_settings => {
+            "force_path_style" => true
+            }
+	}
+}

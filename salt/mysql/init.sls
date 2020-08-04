@@ -1,7 +1,7 @@
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
-{%- set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['pillar.get']('elasticsearch:mainip') %}
 {% set FLEETARCH = salt['grains.get']('role') %}
@@ -10,7 +10,7 @@
   {% set MAININT = salt['pillar.get']('host:mainint') %}
   {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% else %}
-  {% set MAINIP = salt['pillar.get']('static:managerip') %}
+  {% set MAINIP = salt['pillar.get']('global:managerip') %}
 {% endif %}
 
 # MySQL Setup

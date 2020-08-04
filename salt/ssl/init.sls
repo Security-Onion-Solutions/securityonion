@@ -1,11 +1,11 @@
 {% set manager = salt['grains.get']('master') %}
-{% set managerip = salt['pillar.get']('static:managerip', '') %}
+{% set managerip = salt['pillar.get']('global:managerip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
-{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
+{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone'] %}
     {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}

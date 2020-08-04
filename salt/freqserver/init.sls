@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 # Create the user
 fservergroup:

@@ -1006,8 +1006,8 @@ manager_pillar() {
 	cat "$pillar_file" >> "$setup_log" 2>&1
   }
 
-manager_static() {
-	local static_pillar="$local_salt_dir/pillar/static.sls"
+manager_global() {
+	local global_pillar="$local_salt_dir/pillar/global.sls"
 
 	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
 		SENSOR_CHECKIN_INTERVAL_MS=10000
@@ -1016,9 +1016,9 @@ manager_static() {
 		fi
 	fi
 
-	# Create a static file for global values
+	# Create a global file for global values
 	printf '%s\n'\
-		"static:"\
+		"global:"\
 		"  soversion: $SOVERSION"\
 		"  hnmanager: $HNMANAGER"\
 		"  ntpserver: $NTPSERVER"\
@@ -1117,10 +1117,13 @@ manager_static() {
 		"      shards: 5"\
 		"      warm: 7"\
 		"      close: 365"\
-		"      delete: 45" > "$static_pillar"
-
+		"      delete: 45"\
+		"minio:"\
+		"  access_key: $ACCESS_KEY"\
+		"  access_secret: $ACCESS_SECRET" > "$global_pillar"
+		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$static_pillar" >> "$setup_log" 2>&1
+	cat "$global_pillar" >> "$setup_log" 2>&1
 }
 
 minio_generate_keys() {
@@ -1520,10 +1523,6 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
-	printf '%s\n'\
-		"  access_key: $ACCESS_KEY"\
-		"  access_secret: $ACCESS_SECRET"\
-		"" >> "$pillar_file"
 
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$pillar_file" >> "$setup_log" 2>&1

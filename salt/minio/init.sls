@@ -13,8 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set access_key = salt['pillar.get']('manager:access_key', '') %}
-{% set access_secret = salt['pillar.get']('manager:access_secret', '') %}
+{% set access_key = salt['pillar.get']('minio:access_key', '') %}
+{% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
 
 # Minio Setup
 minioconfdir:
@@ -26,7 +26,14 @@ minioconfdir:
 
 miniodatadir:
   file.directory:
-    - name: /nsm/minio/data
+    - name: /nsm/minio/data/
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+logstashbucket:
+  file.directory:
+    - name: /nsm/minio/data/logstash
     - user: 939
     - group: 939
     - makedirs: True
@@ -40,12 +47,11 @@ minio:
     - hostname: so-minio
     - user: socore
     - port_bindings:
-      - 0.0.0.0:9000:9000
+      - 0.0.0.0:9595:9595
     - environment:
       - MINIO_ACCESS_KEY: {{ access_key }}
       - MINIO_SECRET_KEY: {{ access_secret }}
     - binds:
       - /nsm/minio/data:/data:rw
       - /opt/so/conf/minio/etc:/root/.minio:rw
-    - entrypoint: "/usr/bin/docker-entrypoint.sh server /data"
-    - network_mode: so-elastic-net
+    - entrypoint: "/usr/bin/docker-entrypoint.sh server --address :9595 /data"
