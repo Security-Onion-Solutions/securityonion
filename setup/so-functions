@@ -142,65 +142,7 @@ secrets_pillar(){
   fi
 }
 
-# Enable Bro Logs
-zeek_logs_enabled() {
-	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local zeeklogs_pillar=./pillar/zeeklogs.sls
-
-	printf '%s\n'\
-		"zeeklogs:"\
-		"  enabled:" > "$zeeklogs_pillar"
-
-	if [ "$MANAGERADV" = 'ADVANCED' ]; then
-		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
-		done
-	else
-		printf '%s\n'\
-			"    - conn"\
-			"    - dce_rpc"\
-			"    - dhcp"\
-			"    - dhcpv6"\
-			"    - dnp3"\
-			"    - dns"\
-			"    - dpd"\
-			"    - files"\
-			"    - ftp"\
-			"    - http"\
-			"    - intel"\
-			"    - irc"\
-			"    - kerberos"\
-			"    - modbus"\
-			"    - mqtt"\
-			"    - notice"\
-			"    - ntlm"\
-			"    - openvpn"\
-			"    - pe"\
-			"    - radius"\
-			"    - rfb"\
-			"    - rdp"\
-			"    - signatures"\
-			"    - sip"\
-			"    - smb_files"\
-			"    - smb_mapping"\
-			"    - smtp"\
-			"    - snmp"\
-			"    - software"\
-			"    - ssh"\
-			"    - ssl"\
-			"    - syslog"\
-			"    - telnet"\
-			"    - tunnel"\
-			"    - weird"\
-			"    - mysql"\
-			"    - socks"\
-			"    - x509" >> "$zeeklogs_pillar"
-	fi
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
-}
 
 check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
@@ -416,11 +358,19 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+	elif [[ "$standalone_or_dist" == 'importpcap' ]]; then
+	    req_mem=4
+	    req_cores=2
+		req_nics=1
 	fi
 
-	if [[ $setup_type == 'network' ]]; then
+	if [[ $setup_type == 'network' ]] ; then
 		if [[ -n $nsm_mount ]]; then
-			req_storage=100
+			if [[ "$standalone_or_dist" == 'importpcap' ]]; then
+		    	req_storage=50
+			else
+				req_storage=100
+			fi
 			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
@@ -428,7 +378,11 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			req_storage=200
+			if [[ "$standalone_or_dist" == 'importpcap' ]]; then
+		    	req_storage=50
+			else
+				req_storage=200
+			fi
 			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
@@ -720,7 +674,7 @@ docker_install() {
 		
 	else
 		case "$install_type" in
-			'MANAGER' | 'EVAL')
+			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORTPCAP')
 				apt-get update >> "$setup_log" 2>&1
 				;;
 			*)
@@ -1264,7 +1218,7 @@ saltify() {
 		set_progress_str 6 'Installing various dependencies'
 		yum -y install wget nmap-ncat >> "$setup_log" 2>&1
 		case "$install_type" in
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE')
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORTPCAP')
 				reserve_group_ids >> "$setup_log" 2>&1
 				yum -y install epel-release >> "$setup_log" 2>&1
 				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
@@ -1335,7 +1289,7 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE') # TODO: should this also be HELIXSENSOR?
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORTPCAP') # TODO: should this also be HELIXSENSOR?
 
 				# Add saltstack repo(s)
 				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3001/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
@@ -1801,4 +1755,64 @@ es_heapsize() {
 		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
 		export NODE_ES_HEAP_SIZE
 	fi
+}
+
+# Enable Bro Logs
+zeek_logs_enabled() {
+	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
+
+	local zeeklogs_pillar=./pillar/zeeklogs.sls
+
+	printf '%s\n'\
+		"zeeklogs:"\
+		"  enabled:" > "$zeeklogs_pillar"
+
+	if [ "$MANAGERADV" = 'ADVANCED' ]; then
+		for BLOG in "${BLOGS[@]}"; do
+			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
+		done
+	else
+		printf '%s\n'\
+			"    - conn"\
+			"    - dce_rpc"\
+			"    - dhcp"\
+			"    - dhcpv6"\
+			"    - dnp3"\
+			"    - dns"\
+			"    - dpd"\
+			"    - files"\
+			"    - ftp"\
+			"    - http"\
+			"    - intel"\
+			"    - irc"\
+			"    - kerberos"\
+			"    - modbus"\
+			"    - mqtt"\
+			"    - notice"\
+			"    - ntlm"\
+			"    - openvpn"\
+			"    - pe"\
+			"    - radius"\
+			"    - rfb"\
+			"    - rdp"\
+			"    - signatures"\
+			"    - sip"\
+			"    - smb_files"\
+			"    - smb_mapping"\
+			"    - smtp"\
+			"    - snmp"\
+			"    - software"\
+			"    - ssh"\
+			"    - ssl"\
+			"    - syslog"\
+			"    - telnet"\
+			"    - tunnel"\
+			"    - weird"\
+			"    - mysql"\
+			"    - socks"\
+			"    - x509" >> "$zeeklogs_pillar"
+	fi
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }
