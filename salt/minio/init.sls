@@ -55,4 +55,6 @@ minio:
     - binds:
       - /nsm/minio/data:/data:rw
       - /opt/so/conf/minio/etc:/root/.minio:rw
+      - /etc/pki/minio.key:/root/.minio/certs/private.key:ro
+      - /etc/pki/minio.crt:/root/.minio/certs/private.crt:ro
     - entrypoint: "/usr/bin/docker-entrypoint.sh server --address :9595 /data"
