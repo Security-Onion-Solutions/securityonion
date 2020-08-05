@@ -181,6 +181,41 @@ regkeyperms:
     - mode: 640
     - group: 939
 
+/etc/pki/minio.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/minio.key') -%}
+    - prereq:
+      - x509: /etc/pki/minio.crt
+    {%- endif %}
+
+# Create a cert for the docker registry
+/etc/pki/minio.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/minio.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/minio.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+
+miniokeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/minio.key
+    - mode: 640
+    - group: 939
+
 /etc/pki/managerssl.key:
   x509.private_key_managed:
     - CN: {{ manager }}
