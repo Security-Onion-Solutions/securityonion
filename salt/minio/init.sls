@@ -42,7 +42,7 @@ logstashbucket:
     - group: 939
     - makedirs: True
 
-minio:
+so-minio:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-minio:{{ VERSION }}
     - hostname: so-minio
