@@ -19,11 +19,10 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
-
 # Minio Setup
 minioconfdir:
   file.directory:
-    - name: /opt/so/conf/minio/etc
+    - name: /opt/so/conf/minio/etc/certs
     - user: 939
     - group: 939
     - makedirs: True
@@ -54,7 +53,7 @@ so-minio:
       - MINIO_SECRET_KEY: {{ access_secret }}
     - binds:
       - /nsm/minio/data:/data:rw
-      - /opt/so/conf/minio/etc:/root/.minio:rw
-      - /etc/pki/minio.key:/root/.minio/certs/private.key:ro
-      - /etc/pki/minio.crt:/root/.minio/certs/public.crt:ro
-    - entrypoint: "/usr/bin/docker-entrypoint.sh server --address :9595 /data"
+      - /opt/so/conf/minio/etc:/.minio:rw
+      - /etc/pki/minio.key:/.minio/certs/private.key:ro
+      - /etc/pki/minio.crt:/.minio/certs/public.crt:ro
+    - entrypoint: "/usr/bin/docker-entrypoint.sh server --certs-dir /.minio/certs --address :9595 /data"
