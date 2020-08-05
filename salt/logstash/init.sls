@@ -148,6 +148,7 @@ so-logstash:
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
+      - SSL_CERT_FILE=/etc/ssl/certs/ca.crt
     - port_bindings:
 {% for BINDING in DOCKER_OPTIONS.port_bindings %}
       - {{ BINDING }}
