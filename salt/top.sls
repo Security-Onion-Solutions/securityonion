@@ -1,11 +1,11 @@
-{%- set ZEEKVER = salt['pillar.get']('static:zeekversion', '') -%}
-{%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
+{%- set ZEEKVER = salt['pillar.get']('global:zeekversion', '') -%}
+{%- set WAZUH = salt['pillar.get']('global:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('manager:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') -%}
-{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
-{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
 {% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set saltversion = salt.salt.minion.version %}
@@ -142,7 +142,6 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -150,6 +149,8 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
+    - redis
     - kibana
     - elastalert
     - filebeat
@@ -158,6 +159,7 @@ base:
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
+    - redis
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -189,7 +191,6 @@ base:
     - idstools
     - suricata.manager    
     - healthcheck
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -197,6 +198,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
     - kibana
     - pcap
     - suricata
@@ -312,7 +314,7 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
+    - minio
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -328,6 +330,7 @@ base:
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
+    - redis
     - fleet.install_package
     {%- endif %}
     - soctopus
@@ -351,7 +354,7 @@ base:
     - common
     - telegraf
     - firewall
-    - redis
+    - minio
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
@@ -360,6 +363,7 @@ base:
     - filebeat
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
+    - redis
     {%- endif %}
     - pcap
     - suricata

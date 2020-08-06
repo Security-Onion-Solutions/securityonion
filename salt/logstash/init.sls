@@ -12,8 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
@@ -127,7 +127,7 @@ importdir:
 # Create the logstash data directory
 nsmlsdir:
   file.directory:
-    - name: /nsm/logstash
+    - name: /nsm/logstash/tmp
     - user: 931
     - group: 939
     - makedirs: True
@@ -148,6 +148,7 @@ so-logstash:
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
+      - SSL_CERT_FILE=/etc/ssl/certs/ca.crt
     - port_bindings:
 {% for BINDING in DOCKER_OPTIONS.port_bindings %}
       - {{ BINDING }}
@@ -166,6 +167,7 @@ so-logstash:
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
+      - /etc/ssl/certs/intca.crt:/etc/ssl/certs/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro

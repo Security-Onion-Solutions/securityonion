@@ -1,8 +1,8 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {%- set MANAGER_URL = salt['pillar.get']('manager:url_base', '') %}
-{%- set MANAGER_IP = salt['pillar.get']('static:managerip', '') %}
+{%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
 
 soctopusdir:
   file.directory:
