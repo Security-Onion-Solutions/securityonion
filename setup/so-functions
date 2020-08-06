@@ -27,7 +27,7 @@ accept_salt_key_remote() {
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
 	# Delete the key just in case.
 	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
-	salt-call state.apply ca >> /dev/null 2>&1
+	salt-call state.apply ca
 	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 
 }
@@ -1126,6 +1126,7 @@ manager_global() {
 		"s3_settings:"\ 
 		"  size_file: 2048"\
 		"  time_file: 1"\
+		"  upload_queue_size: 4"
 		"  encoding: gzip"\
 		"  interval: 5" > "$global_pillar"
 		
