@@ -1,16 +1,19 @@
 {%- set MANAGER = salt['grains.get']('master') %}
 {%- set access_key = salt['pillar.get']('minio:access_key', '') %}
 {%- set access_secret = salt['pillar.get']('minio:access_secret', '') %}
+{%- set SIZE_FILE = salt['pillar.get']('s3_settings:size_file', 2048) %}
+{%- set TIME_FILE = salt['pillar.get']('s3_settings:time_file', 1) %}
+{%- set ENCODING = salt['pillar.get']('s3_settings:encoding', 'gzip') %}
 output {
 	s3 {
 		access_key_id => "{{ access_key }}"
         secret_access_key => "{{ access_secret}}"
         endpoint => "https://{{ MANAGER }}:9595"
         bucket => "logstash"
-        size_file => 2048
-        time_file => 1
+        size_file => {{ SIZE_FILE }}
+        time_file => {{ TIME_FILE }}
         codec => json
-        encoding => gzip
+        encoding => {{ ENCODING }}
         temporary_directory => "/usr/share/logstash/data/tmp"
         additional_settings => {
             "force_path_style" => true
