@@ -80,3 +80,10 @@ base:
     - logstash.search
     - elasticsearch.search
     - minions.{{ grains.id }}
+
+  '*_importpcap':
+    - zeeklogs
+    - secrets
+    - elasticsearch.eval
+    - global
+    - minions.{{ grains.id }}
