@@ -23,7 +23,7 @@
   {% set FEATURES = '' %}
 {% endif %}
 
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-importpcap'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
   {% set esheap = salt['pillar.get']('manager:esheap', '') %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}

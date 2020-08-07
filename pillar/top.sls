@@ -2,7 +2,7 @@ base:
   '*':
     - patch.needs_restarting
 
-  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone':
+  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone or *_importpcap':
     - match: compound
     - zeek
 
