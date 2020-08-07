@@ -1,6 +1,6 @@
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
@@ -45,6 +45,15 @@ wazuhpkgs:
       - wazuh-agent: 3.13.1-1
     - hold: True
     - update_holds: True
+
+wazuhvarossecdir:
+ file.directory:
+    - name: /var/ossec
+    - user: ossec
+    - group: ossec
+    - recurse:
+      - user
+      - group
 
 # Add Wazuh agent conf
 wazuhagentconf:

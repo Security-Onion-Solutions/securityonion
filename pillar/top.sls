@@ -14,14 +14,14 @@ base:
     - elasticsearch.search
 
   '*_sensor':
-    - static
+    - global
     - zeeklogs
     - healthcheck.sensor
     - minions.{{ grains.id }}
 
   '*_manager or *_managersearch':
     - match: compound
-    - static
+    - global
     - data.*
     - secrets
     - minions.{{ grains.id }}
@@ -36,7 +36,7 @@ base:
     - secrets
     - healthcheck.eval
     - elasticsearch.eval
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_standalone':
@@ -48,20 +48,20 @@ base:
     - zeeklogs
     - secrets
     - healthcheck.standalone
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_node':
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_heavynode':
-    - static
+    - global
     - zeeklogs
     - minions.{{ grains.id }}
 
   '*_helix':
-    - static
+    - global
     - fireeye
     - zeeklogs
     - logstash
@@ -69,13 +69,13 @@ base:
     - minions.{{ grains.id }}
 
   '*_fleet':
-    - static
+    - global
     - data.*
     - secrets
     - minions.{{ grains.id }}
 
   '*_searchnode':
-    - static
+    - global
     - logstash
     - logstash.search
     - elasticsearch.search

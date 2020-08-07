@@ -1,0 +1,23 @@
+{%- if grains.role == 'so-heavynode' %}
+{%- set MANAGER = salt['grains.get']('host') %}
+{%- else %}
+{%- set MANAGER = salt['grains.get']('master') %}
+{% endif -%}
+{%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
+{%- set access_key = salt['pillar.get']('minio:access_key', '') %}
+{%- set access_secret = salt['pillar.get']('minio:access_secret', '') %}
+{%- set INTERVAL = salt['pillar.get']('s3_settings:interval', 5) %}
+input {
+	s3 {
+        access_key_id => "{{ access_key }}"
+        secret_access_key => "{{ access_secret }}"
+        endpoint => "https://{{ MANAGER }}:9595"
+        bucket => "logstash"
+        delete => true
+        interval => {{ INTERVAL }}
+        codec => json
+        additional_settings => {
+            "force_path_style" => true
+            }
+    }
+}

@@ -14,9 +14,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set ZEEKVER = salt['pillar.get']('static:zeekversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set ZEEKVER = salt['pillar.get']('global:zeekversion', '') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}

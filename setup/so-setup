@@ -463,8 +463,9 @@ fi
 		set_progress_str 11 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
 		
-		set_progress_str 12 'Generating manager static pillar'
-		manager_static >> $setup_log 2>&1
+		set_progress_str 12 'Generating manager global pillar'
+		minio_generate_keys
+		manager_global >> $setup_log 2>&1
 		
 		set_progress_str 13 'Generating manager pillar'
 		manager_pillar >> $setup_log 2>&1
@@ -619,7 +620,7 @@ fi
 
 		if [[ $is_fleet_standalone && $FLEETCUSTOMHOSTNAME != '' ]]; then
 			set_progress_str 77 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
-			pillar_override="{\"static\":{\"fleet_custom_hostname\": \"$FLEETCUSTOMHOSTNAME\"}}"
+			pillar_override="{\"global\":{\"fleet_custom_hostname\": \"$FLEETCUSTOMHOSTNAME\"}}"
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
