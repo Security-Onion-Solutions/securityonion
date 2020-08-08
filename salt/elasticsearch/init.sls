@@ -50,6 +50,11 @@ cascriptsync:
     - mode: 750
     - template: jinja
 
+# Run the CA magic
+cascriptfun:
+  cmd.run:
+    - name: /usr/sbin/so-catrust
+
 {% endif %}
 
 # Move our new CA over so Elastic and Logstash can use SSL with the internal CA
