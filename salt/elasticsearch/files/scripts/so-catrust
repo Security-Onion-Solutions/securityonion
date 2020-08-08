@@ -22,11 +22,11 @@
 if [ ! -f /opt/so/saltstack/local/salt/common/cacerts ]; then
     docker run -v /etc/pki/ca.crt:/etc/pki/ca.crt --name so-elasticsearchca --user root --entrypoint keytool {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }} -keystore /etc/pki/ca-trust/extracted/java/cacerts -alias SOSCA -import -file /etc/pki/ca.crt -storepass changeit -noprompt
     docker cp so-elasticsearchca:/etc/pki/ca-trust/extracted/java/cacerts /opt/so/saltstack/local/salt/common/cacerts
-    docker cp so-elasticsearchca:/etc/pki/tls/certs/ca-bundle.crt /opt/so/saltstack/local/salt/common/ca-bundle.crt
+    docker cp so-elasticsearchca:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
     docker rm so-elasticsearchca
     echo "" >> /opt/so/saltstack/local/salt/common/ca-bundle.crt
     echo "sosca" >> /opt/so/saltstack/local/salt/common/ca-bundle.crt
-    echo /etc/pki/ca.crt >> /opt/so/saltstack/local/salt/common/ca-bundle.crt
+    echo $(cat /etc/pki/ca.crt) >> /opt/so/saltstack/local/salt/common/ca-bundle.crt
 else
     exit 0
 fi
