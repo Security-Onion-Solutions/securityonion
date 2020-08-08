@@ -40,6 +40,7 @@ vm.max_map_count:
     - value: 262144
 
 {% if ismanager %}
+# We have to add the Manager CA to the CA list
 cascriptsync:
   file.managed:
     - name: /usr/sbin/so-catrust
@@ -50,6 +51,21 @@ cascriptsync:
     - template: jinja
 
 {% endif %}
+
+# Move our new CA over so Elastic and Logstash can use SSL with the internal CA
+catrustdir:
+  file.directory:
+    - name: /opt/so/conf/ca
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+cacertz:
+  file.managed:
+    - name: /opt/so/conf/ca/cacerts
+    - source: salt://common/cacerts
+    - user: 939
+    - group: 939
 
 # Add ES Group
 elasticsearchgroup:
@@ -163,6 +179,10 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
+      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+
+    - watch:
+      - file: cacertz
 
 so-elasticsearch-pipelines-file:
   file.managed:
