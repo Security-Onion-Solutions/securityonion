@@ -46,6 +46,7 @@ cascriptsync:
     - user: 939
     - group: 939
     - mode: 750
+    - template: jinja
     
 {% endif %}
 
