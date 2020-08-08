@@ -26,6 +26,7 @@
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
   {% set esheap = salt['pillar.get']('manager:esheap', '') %}
+  {% set ismanager = True %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
@@ -36,6 +37,17 @@
 vm.max_map_count:
   sysctl.present:
     - value: 262144
+
+{% if ismanager %}
+cascriptsync:
+  file.managed:
+    - name: /usr/sbin/so-catrust
+    - source: salt://elasticsearch/files/scripts/so-catrust
+    - user: 939
+    - group: 939
+    - mode: 750
+    
+{% endif %}
 
 # Add ES Group
 elasticsearchgroup:
