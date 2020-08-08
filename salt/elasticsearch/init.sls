@@ -67,6 +67,13 @@ cacertz:
     - user: 939
     - group: 939
 
+capemz:
+  file.managed:
+    - name: /opt/so/conf/ca/tls-ca-bundle.pem
+    - source: salt://common/tls-ca-bundle.pem
+    - user: 939
+    - group: 939
+
 # Add ES Group
 elasticsearchgroup:
   group.present:
