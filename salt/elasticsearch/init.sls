@@ -30,6 +30,7 @@
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
+  {% set ismanager = False %}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
@@ -47,7 +48,7 @@ cascriptsync:
     - group: 939
     - mode: 750
     - template: jinja
-    
+
 {% endif %}
 
 # Add ES Group
