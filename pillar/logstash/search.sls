@@ -3,11 +3,7 @@ logstash:
   pipelines:
     search:
       config:
-        {%- if PIPELINE == "minio"%}
-        - so/0899_input_minio.conf.jinja
-        {%- else %}
         - so/0900_input_redis.conf.jinja
-        {%- endif %}
         - so/9000_output_zeek.conf.jinja
         - so/9002_output_import.conf.jinja
         - so/9034_output_syslog.conf.jinja
