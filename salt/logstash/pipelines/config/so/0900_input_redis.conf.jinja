@@ -1,13 +1,11 @@
-{%- if grains.role == 'so-heavynode' %}
-{%- set MANAGER = salt['pillar.get']('elasticsearch:mainip', '') %}
-{%- else %}
-{%- set MANAGER = salt['pillar.get']('global:managerip', '') %}
-{% endif -%}
+{%- set MANAGER = salt['grains.get']('master') %}
 {%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
 
 input {
 	redis {
 		host => '{{ MANAGER }}'
+		port => 6380
+		ssl => true
 		data_type => 'list'
 		key => 'logstash:unparsed'
 		type => 'redis-input'
