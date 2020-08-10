@@ -167,7 +167,8 @@ so-logstash:
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
-      - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+      - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
+      - /etc/pki/ca.cer:/ca/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro

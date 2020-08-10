@@ -3,10 +3,16 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [event_type] == "sflow" {
     elasticsearch {
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-flow-%{+YYYY.MM.dd}"
       template_name => "so-flow"
       template => "/templates/so-flow-template.json"

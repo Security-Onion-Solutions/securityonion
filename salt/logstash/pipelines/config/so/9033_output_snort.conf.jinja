@@ -3,10 +3,16 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [event_type] == "ids" and "import" not in [tags] {
     elasticsearch {
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-ids-%{+YYYY.MM.dd}"
       template_name => "so-ids"
       template => "/templates/so-ids-template.json"

@@ -1,10 +1,15 @@
 ---
 # Default Kibana configuration from kibana-docker.
 {%- set ES = salt['pillar.get']('manager:mainip', '') -%}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 server.name: kibana
 server.host: "0"
 server.basePath: /kibana
+{% if FEATURES %}
+elasticsearch.hosts: [ "https://{{ ES }}:9200" ]
+{%- else %}
 elasticsearch.hosts: [ "http://{{ ES }}:9200" ]
+{%- endif %}
 #kibana.index: ".kibana"
 #elasticsearch.username: elastic
 #elasticsearch.password: changeme

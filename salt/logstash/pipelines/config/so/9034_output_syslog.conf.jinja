@@ -3,11 +3,17 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [module] =~ "syslog" {
     elasticsearch {
       pipeline => "%{module}"
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-syslog-%{+YYYY.MM.dd}"
       template_name => "so-syslog"
       template => "/templates/so-syslog-template.json"

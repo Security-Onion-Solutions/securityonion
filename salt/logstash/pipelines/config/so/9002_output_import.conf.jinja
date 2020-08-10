@@ -3,11 +3,17 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if "import" in [tags] {
     elasticsearch {
       pipeline => "%{module}.%{dataset}"
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-import-%{+YYYY.MM.dd}"
       template_name => "so-import"
       template => "/templates/so-import-template.json"

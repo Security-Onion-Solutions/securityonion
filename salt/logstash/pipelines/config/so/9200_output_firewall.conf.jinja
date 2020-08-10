@@ -3,10 +3,16 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if "firewall" in [tags] {
     elasticsearch {
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-firewall-%{+YYYY.MM.dd}"
       template_name => "so-firewall"
       template => "/templates/so-firewall-template.json"

@@ -1,5 +1,6 @@
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') -%}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') -%}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -15,7 +16,11 @@
         "hostUrl": "http://{{ MANAGERIP }}:4434/"
       },
       "elastic": {
+        {%- if FEATURES %}
+        "hostUrl": "https://{{ MANAGERIP }}:9200",
+        {%- else %}
         "hostUrl": "http://{{ MANAGERIP }}:9200",
+        {%- endif %}
         "username": "",
         "password": "",
         "verifyCert": false

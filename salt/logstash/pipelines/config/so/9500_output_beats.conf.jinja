@@ -3,11 +3,17 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if "beat-ext" in [tags] and "import" not in [tags] {
     elasticsearch {
       pipeline => "beats.common" 
+      {%- if FEATURES %}
+      hosts => "https://{{ ES }}"
+      cacert => '/ca/ca.crt'
+      {%- else %}
       hosts => "{{ ES }}"
+      {%- endif %}
       index => "so-beats-%{+YYYY.MM.dd}"
       template_name => "so-beats"
       template => "/templates/so-beats-template.json"
