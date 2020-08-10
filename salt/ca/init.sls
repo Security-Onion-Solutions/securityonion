@@ -36,6 +36,7 @@ pki_private_key:
     - days_valid: 3650
     - days_remaining: 0
     - backup: True
+    - replace: False
     - require:
       - file: /etc/pki
 
