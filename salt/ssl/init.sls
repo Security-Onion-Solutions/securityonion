@@ -234,7 +234,7 @@ miniokeyperms:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
-    - public_key: /etc/pki/ealsticsearch.key
+    - public_key: /etc/pki/elasticsearch.key
     - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
