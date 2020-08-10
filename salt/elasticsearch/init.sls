@@ -26,9 +26,11 @@
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-importpcap'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
   {% set esheap = salt['pillar.get']('manager:esheap', '') %}
+  {% set ismanager = True %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
+  {% set ismanager = False %}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
@@ -36,6 +38,46 @@
 vm.max_map_count:
   sysctl.present:
     - value: 262144
+
+{% if ismanager %}
+# We have to add the Manager CA to the CA list
+cascriptsync:
+  file.managed:
+    - name: /usr/sbin/so-catrust
+    - source: salt://elasticsearch/files/scripts/so-catrust
+    - user: 939
+    - group: 939
+    - mode: 750
+    - template: jinja
+
+# Run the CA magic
+cascriptfun:
+  cmd.run:
+    - name: /usr/sbin/so-catrust
+
+{% endif %}
+
+# Move our new CA over so Elastic and Logstash can use SSL with the internal CA
+catrustdir:
+  file.directory:
+    - name: /opt/so/conf/ca
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+cacertz:
+  file.managed:
+    - name: /opt/so/conf/ca/cacerts
+    - source: salt://common/cacerts
+    - user: 939
+    - group: 939
+
+capemz:
+  file.managed:
+    - name: /opt/so/conf/ca/tls-ca-bundle.pem
+    - source: salt://common/tls-ca-bundle.pem
+    - user: 939
+    - group: 939
 
 # Add ES Group
 elasticsearchgroup:
@@ -149,6 +191,9 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
+      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+    - watch:
+      - file: cacertz
 
 so-elasticsearch-pipelines-file:
   file.managed:

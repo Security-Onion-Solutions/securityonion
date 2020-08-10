@@ -148,7 +148,6 @@ so-logstash:
     - user: logstash
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
-      - SSL_CERT_FILE=/etc/ssl/certs/ca.crt
     - port_bindings:
 {% for BINDING in DOCKER_OPTIONS.port_bindings %}
       - {{ BINDING }}
@@ -167,7 +166,8 @@ so-logstash:
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
-      - /etc/ssl/certs/intca.crt:/etc/ssl/certs/ca.crt:ro
+      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
