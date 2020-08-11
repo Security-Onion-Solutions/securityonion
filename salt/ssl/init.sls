@@ -496,6 +496,18 @@ fleetkeyperms:
 
 {% if grains['role'] in ['so-node', 'so-heavynode'] %}
 # Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    - prereq:
+      - x509: /etc/pki/elasticsearch.crt
+      
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
@@ -516,17 +528,5 @@ miniokeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
-
-/etc/pki/elasticsearch.key:
-  x509.private_key_managed:
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
-    - prereq:
-      - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
 {%- endif %}
