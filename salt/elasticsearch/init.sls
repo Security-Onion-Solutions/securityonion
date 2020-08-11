@@ -204,9 +204,9 @@ so-elasticsearch:
       - /etc/ssl/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
         {%- else %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+        {%- endif %}
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
-        {%- endif %}
       {%- endif %}
     - watch:
       - file: cacertz
