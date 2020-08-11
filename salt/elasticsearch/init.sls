@@ -180,6 +180,7 @@ so-elasticsearch:
       {%- if salt['pillar.get']('nodestab', {}) %}
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN }}:{{ SNDATA.ip }}
+      {%- endfor %}
       {%- endif %}
       {%- endif %}
     - environment:
