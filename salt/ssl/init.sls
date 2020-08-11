@@ -494,7 +494,7 @@ fleetkeyperms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-search', 'so-heavynode'] %}
+{% if grains['role'] in ['so-node', 'so-heavynode'] %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
