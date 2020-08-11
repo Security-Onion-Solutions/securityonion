@@ -37,10 +37,6 @@ echo "Applying cross cluster search config..."
 
 {%- if salt['pillar.get']('nodestab', {}) %}
   {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-    {%- if FEATURES is sameas true %}
 curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
-    {%- else %}
-curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNDATA.ip }}:9300"]}}}}}'
-    {%- endif %}
   {%- endfor %}
 {%- endif %}
