@@ -179,7 +179,7 @@ so-elasticsearch:
       {%- if ismanager %}
       {%- if salt['pillar.get']('nodestab', {}) %}
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - {{ SN }}:{{ SNDATA.ip }}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
       {%- endfor %}
       {%- endif %}
       {%- endif %}
