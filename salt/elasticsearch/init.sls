@@ -16,6 +16,8 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+
 
 {%- if FEATURES is sameas true %}
   {% set FEATUREZ = "-features" %}
@@ -173,7 +175,7 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
-      - {{ grains.host }}:127.0.0.1
+      - {{ grains.host }}:{{ NODEIP }}
     - environment:
       - discovery.type=single-node
       #- bootstrap.memory_lock=true
