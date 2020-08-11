@@ -172,6 +172,8 @@ so-elasticsearch:
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
+    - extra_hosts: 
+      - {{ grains.host }}
     - environment:
       - discovery.type=single-node
       #- bootstrap.memory_lock=true
