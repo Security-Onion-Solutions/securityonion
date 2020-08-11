@@ -515,7 +515,7 @@ miniokeyperms:
     - replace: False
     - name: /etc/pki/elasticsearch.key
     - mode: 640
-    - group: 939
+    - group: 930
 
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
