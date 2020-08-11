@@ -193,9 +193,9 @@ so-elasticsearch:
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       {%- if FEATURES is sameas true %}
-      - /etc/pki/ca.crt:/etc/elasticsearch/ca/ca.crt:ro
-      - /etc/pki/elasticsearch.key:/etc/elasticsearch/ca/elasticsearch.key:ro
-      - /etc/pki/elasticsearch.crt:/etc/elasticsearch/ca/elasticsearch.crt:ro
+      - /etc/pki/ca.crt:/etc/elasticsearch/ca.crt:ro
+      - /etc/pki/elasticsearch.key:/etc/elasticsearch/elasticsearch.key:ro
+      - /etc/pki/elasticsearch.crt:/etc/elasticsearch/elasticsearch.crt:ro
       {%- endif %}
     - watch:
       - file: cacertz
