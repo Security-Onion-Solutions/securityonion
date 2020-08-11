@@ -501,7 +501,7 @@ fleetkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ manager }}
+    - CN: {{ HOSTNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
