@@ -185,12 +185,8 @@ so-elasticsearch:
       {%- endif %}
     - environment:
       - discovery.type=single-node
-      #- bootstrap.memory_lock=true
-      #- cluster.name={{ esclustername }}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
-      #- http.host=0.0.0.0
-      #- transport.host=127.0.0.1
-    - ulimits:
+      ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
