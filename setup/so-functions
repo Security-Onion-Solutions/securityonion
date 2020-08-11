@@ -718,6 +718,20 @@ docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
+	    if [ "$install_type" == 'IMPORTPCAP' ]; then
+		local TRUSTED_CONTAINERS=(\
+			"so-nginx:$VERSION" \
+			"so-filebeat:$VERSION" \
+			"so-suricata:$VERSION" \
+			"so-soc:$VERSION" \
+			"so-elasticsearch:$VERSION" \
+			"so-kibana:$VERSION" \
+			"so-kratos:$VERSION" \
+			"so-suricata:$VERSION" \
+			"so-registry:$VERSION" \			
+			"so-zeek:$VERSION"
+		)
+		else
 		local TRUSTED_CONTAINERS=(\
 			"so-nginx:$VERSION" \
 			"so-filebeat:$VERSION" \
@@ -729,7 +743,8 @@ docker_seed_registry() {
 			"so-telegraf:$VERSION" \
 			"so-zeek:$VERSION"
 		)
-		if [ "$install_type" != 'HELIXSENSOR' ]; then
+		fi
+		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORTPCAP' ]; then
 			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
 				"so-acng:$VERSION" \
 				"so-thehive-cortex:$VERSION" \
