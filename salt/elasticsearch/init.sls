@@ -18,9 +18,9 @@
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 {%- if FEATURES is sameas true %}
-  {% set FEATURES = "-features" %}
+  {% set FEATUREZ = "-features" %}
 {% else %}
-  {% set FEATURES = '' %}
+  {% set FEATUREZ = '' %}
 {% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
@@ -168,7 +168,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
