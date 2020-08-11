@@ -1,10 +1,3 @@
-nidsrulesdir:
-  file.directory:
-    - name: /opt/so/rules/nids
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 surilocaldir:
   file.directory:
     - name: /opt/so/saltstack/local/salt/suricata

@@ -397,6 +397,7 @@ base:
     - nginx
     - soc
     - firewall
+    - idstools
     - suricata.manager
     - elasticsearch
     - kibana
