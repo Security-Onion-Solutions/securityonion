@@ -173,7 +173,7 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
-      - {{ grains.host }}
+      - {{ grains.host }}:127.0.0.1
     - environment:
       - discovery.type=single-node
       #- bootstrap.memory_lock=true
