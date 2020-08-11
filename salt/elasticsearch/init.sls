@@ -193,7 +193,7 @@ so-elasticsearch:
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       {%- if FEATURES is sameas true %}
-      - /etc/pki/ca.crt:/usr/share/elasticsearch/ca/ca.cert:ro
+      - /etc/pki/ca.crt:/usr/share/elasticsearch/ca/ca.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/ca/elasticsearch.key:ro
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/ca/elasticsearch.crt:ro
       {%- endif %}
