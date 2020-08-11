@@ -176,6 +176,12 @@ so-elasticsearch:
     - user: elasticsearch
     - extra_hosts: 
       - {{ grains.host }}:{{ NODEIP }}
+      {%- if ismanager %}
+      {%- if salt['pillar.get']('nodestab', {}) %}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN }}:{{ SNDATA.ip }}
+      {%- endif %}
+      {%- endif %}
     - environment:
       - discovery.type=single-node
       #- bootstrap.memory_lock=true
