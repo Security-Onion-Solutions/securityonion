@@ -5,6 +5,7 @@
 {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
 {%- endif %}
 {%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
@@ -22,6 +23,17 @@ cluster.routing.allocation.disk.threshold_enabled: true
 cluster.routing.allocation.disk.watermark.low: 95%
 cluster.routing.allocation.disk.watermark.high: 98%
 cluster.routing.allocation.disk.watermark.flood_stage: 98%
+{%- if FEATURES is sameas true %}
+xpack.security.enabled: true
+xpack.security.http.ssl.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.http.ssl.key: /ca/elasticsearch.key
+xpack.security.http.ssl.certificate: /ca/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: /ca/ca.crt
+xpack.security.transport.ssl.key: /ca/elasticsearch.key
+xpack.security.transport.ssl.certificate: /ca/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: /ca/ca.crt
+{%- endif %}
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}
 node.name: {{ ESCLUSTERNAME }}
 script.max_compilations_rate: 1000/1m
