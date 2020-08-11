@@ -216,7 +216,8 @@ miniokeyperms:
     - mode: 640
     - group: 939
 
-/etc/pki/redis.key:
+# Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
   x509.private_key_managed:
     - CN: {{ manager }}
     - bits: 4096
@@ -224,12 +225,11 @@ miniokeyperms:
     - days_valid: 820
     - backup: True
     - new: True
-    {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
-      - x509: /etc/pki/redis.crt
+      - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
 
-# Create a cert for elasticsearch
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
@@ -249,9 +249,10 @@ ealstickeyperms:
     - replace: False
     - name: /etc/pki/elasticsearch.key
     - mode: 640
-    - group: 939
+    - group: 930
 
-/etc/pki/elasticsearch.key:
+# Create a cert for Redis encryption
+/etc/pki/redis.key:
   x509.private_key_managed:
     - CN: {{ manager }}
     - bits: 4096
@@ -259,12 +260,11 @@ ealstickeyperms:
     - days_valid: 820
     - backup: True
     - new: True
-    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
     - prereq:
-      - x509: /etc/pki/elasticsearch.crt
+      - x509: /etc/pki/redis.crt
     {%- endif %}
 
-# Create a cert for the docker registry
 /etc/pki/redis.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
