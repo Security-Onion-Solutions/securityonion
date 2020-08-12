@@ -194,7 +194,7 @@ regkeyperms:
       - x509: /etc/pki/minio.crt
     {%- endif %}
 
-# Create a cert for the docker registry
+# Create a cert for minio
 /etc/pki/minio.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
@@ -216,6 +216,46 @@ miniokeyperms:
     - mode: 640
     - group: 939
 
+# Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    - prereq:
+      - x509: /etc/pki/elasticsearch.crt
+    {%- endif %}
+
+/etc/pki/elasticsearch.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/elasticsearch.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
+
+ealstickeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.key
+    - mode: 640
+    - group: 930
+
+# Create a cert for Redis encryption
 /etc/pki/redis.key:
   x509.private_key_managed:
     - CN: {{ manager }}
@@ -229,7 +269,6 @@ miniokeyperms:
       - x509: /etc/pki/redis.crt
     {%- endif %}
 
-# Create a cert for the docker registry
 /etc/pki/redis.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
@@ -458,3 +497,44 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
+
+{% if grains['role'] in ['so-node', 'so-heavynode'] %}
+# Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    - prereq:
+      - x509: /etc/pki/elasticsearch.crt
+
+/etc/pki/elasticsearch.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/elasticsearch.key
+    - CN: {{ HOSTNAME }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
+
+miniokeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.key
+    - mode: 640
+    - group: 930
+    {%- endif %}
+{%- endif %}

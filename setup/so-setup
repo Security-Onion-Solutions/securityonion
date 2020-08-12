@@ -118,7 +118,22 @@ if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 fi
 
-setterm -blank 0 >> $setup_log 2>&1
+# Kernel consoleblank is causing whiptail progress screen to appear to hang #1084
+# https://github.com/Security-Onion-Solutions/securityonion/issues/1084
+if [ "$automated" == no ]; then
+	TTY=$(tty)
+	echo "Setup is running on TTY $TTY" >> $setup_log 2>&1
+	if echo $TTY | grep -q "/dev/tty"; then 
+		CONSOLEBLANK=$(cat /sys/module/kernel/parameters/consoleblank)
+		echo "Kernel consoleblank value before: $CONSOLEBLANK" >> $setup_log 2>&1
+		if [ $CONSOLEBLANK -gt 0 ]; then 
+			echo "Running 'setterm -blank 0' for TTY $TTY" >> $setup_log 2>&1
+			TERM=linux setterm -blank 0 >$TTY <$TTY
+			CONSOLEBLANK=$(cat /sys/module/kernel/parameters/consoleblank)
+			echo "Kernel consoleblank value after: $CONSOLEBLANK" >> $setup_log 2>&1
+		fi
+	fi
+fi
 
 if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
 	true

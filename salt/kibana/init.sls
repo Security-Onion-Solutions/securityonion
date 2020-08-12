@@ -2,7 +2,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{% if FEATURES %}
+{%- if FEATURES is sameas true %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
