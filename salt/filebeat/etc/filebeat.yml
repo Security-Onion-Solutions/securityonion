@@ -74,7 +74,7 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
-{%- if grains['role'] == 'so-sensor' or grains['role'] == "so-eval" or grains['role'] == "so-helix" or grains['role'] == "so-heavynode" or grains['role'] == "so-standalone" %}
+{%- if grains['role'] in ['so-sensor', "so-eval", "so-helix", "so-heavynode", "so-standalone", "so-import"] %}
 - type: udp
   enabled: true
   host: "0.0.0.0:514"
@@ -253,7 +253,7 @@ output.{{ type }}:
   {%- endfor %}
 {%- else %}
 #----------------------------- Elasticsearch/Logstash output ---------------------------------
-  {%- if grains['role'] == "so-eval" %}
+  {%- if grains['role'] in ["so-eval", "so-import"] %}
 output.elasticsearch:
   enabled: true
   hosts: ["{{ MANAGER }}:9200"]
