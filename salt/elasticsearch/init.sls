@@ -139,6 +139,13 @@ esyml:
     - group: 939
     - template: jinja
 
+sotls:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/sotls.yml
+    - source: salt://elasticsearch/files/sotls.yml
+    - user: 930
+    - group: 939
+
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
@@ -200,8 +207,9 @@ so-elasticsearch:
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
-      - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
-      - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
+      - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
+      - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
+
     - watch:
       - file: cacertz
 
