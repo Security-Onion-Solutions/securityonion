@@ -1,6 +1,8 @@
 #!/bin/bash
 {% set ES = salt['pillar.get']('manager:mainip', '') %}
 {%- set MANAGER = salt['grains.get']('master') %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+
 
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
@@ -35,6 +37,6 @@ echo "Applying cross cluster search config..."
 
 {%- if salt['pillar.get']('nodestab', {}) %}
   {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SNDATA.ip }}:9300"]}}}}}'
+curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
   {%- endfor %}
 {%- endif %}

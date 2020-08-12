@@ -16,11 +16,13 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 
-{% if FEATURES %}
-  {% set FEATURES = "-features" %}
+
+{%- if FEATURES is sameas true %}
+  {% set FEATUREZ = "-features" %}
 {% else %}
-  {% set FEATURES = '' %}
+  {% set FEATUREZ = '' %}
 {% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
@@ -168,18 +170,23 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
+    - extra_hosts: 
+      - {{ grains.host }}:{{ NODEIP }}
+      {%- if ismanager %}
+      {%- if salt['pillar.get']('nodestab', {}) %}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
+      {%- endfor %}
+      {%- endif %}
+      {%- endif %}
     - environment:
       - discovery.type=single-node
-      #- bootstrap.memory_lock=true
-      #- cluster.name={{ esclustername }}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
-      #- http.host=0.0.0.0
-      #- transport.host=127.0.0.1
-    - ulimits:
+      ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
@@ -192,6 +199,9 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
+      - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
     - watch:
       - file: cacertz
 
