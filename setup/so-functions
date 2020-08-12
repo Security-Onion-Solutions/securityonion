@@ -302,7 +302,7 @@ configure_minion() {
 		'helix')
 			echo "master: $HOSTNAME" >> "$minion_config"
 			;;
-		'manager' | 'eval' | 'managersearch' | 'standalone' | 'importpcap')
+		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
 			printf '%s\n'\
 				"master: $HOSTNAME"\
 				"mysql.host: '$MAINIP'"\
@@ -358,7 +358,7 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
-	elif [[ "$standalone_or_dist" == 'importpcap' ]]; then
+	elif [[ "$standalone_or_dist" == 'import' ]]; then
 	    req_mem=4
 	    req_cores=2
 		req_nics=1
@@ -366,7 +366,7 @@ check_requirements() {
 
 	if [[ $setup_type == 'network' ]] ; then
 		if [[ -n $nsm_mount ]]; then
-			if [[ "$standalone_or_dist" == 'importpcap' ]]; then
+			if [[ "$standalone_or_dist" == 'import' ]]; then
 		    	req_storage=50
 			else
 				req_storage=100
@@ -378,7 +378,7 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			if [[ "$standalone_or_dist" == 'importpcap' ]]; then
+			if [[ "$standalone_or_dist" == 'import' ]]; then
 		    	req_storage=50
 			else
 				req_storage=200
@@ -417,7 +417,7 @@ copy_salt_master_config() {
 
 copy_minion_tmp_files() {
 	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORTPCAP')
+		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
 			if [ -d "$temp_install_dir"/salt ] ; then
@@ -674,7 +674,7 @@ docker_install() {
 		
 	else
 		case "$install_type" in
-			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORTPCAP')
+			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
 				apt-get update >> "$setup_log" 2>&1
 				;;
 			*)
@@ -718,7 +718,7 @@ docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
-	    if [ "$install_type" == 'IMPORTPCAP' ]; then
+	    if [ "$install_type" == 'IMPORT' ]; then
 		local TRUSTED_CONTAINERS=(\
 			"so-logstash:$VERSION" \
 			"so-idstools:$VERSION" \					
@@ -746,7 +746,7 @@ docker_seed_registry() {
 			"so-zeek:$VERSION"
 		)
 		fi
-		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORTPCAP' ]; then
+		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORT' ]; then
 			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
 				"so-acng:$VERSION" \
 				"so-thehive-cortex:$VERSION" \
@@ -874,7 +874,7 @@ got_root() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORTPCAP')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -1246,7 +1246,7 @@ saltify() {
 		set_progress_str 6 'Installing various dependencies'
 		yum -y install wget nmap-ncat >> "$setup_log" 2>&1
 		case "$install_type" in
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORTPCAP')
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
 				yum -y install epel-release >> "$setup_log" 2>&1
 				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
@@ -1317,7 +1317,7 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORTPCAP') # TODO: should this also be HELIXSENSOR?
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # TODO: should this also be HELIXSENSOR?
 
 				# Add saltstack repo(s)
 				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
@@ -1374,7 +1374,7 @@ saltify() {
 salt_checkin() {
 
 	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORTPCAP') # Fix Mine usage
+		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
 			{
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
@@ -1538,7 +1538,7 @@ set_hostname() {
 
 	set_hostname_iso
 
-	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORTPCAP)$ ]]; then
+	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
 		if ! getent hosts "$MSRV"; then
 			echo "$MSRVIP   $MSRV" >> /etc/hosts
 		fi
@@ -1570,7 +1570,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost minion "$MAINIP"
 			$default_salt_dir/pillar/data/addtotab.sh managertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
-		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORTPCAP')
+		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"

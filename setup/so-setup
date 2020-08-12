@@ -163,8 +163,8 @@ elif [ "$install_type" = 'FLEET' ]; then
 	OSQUERY=1
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
-elif [ "$install_type" = 'IMPORTPCAP' ]; then
-	is_importpcap=true
+elif [ "$install_type" = 'IMPORT' ]; then
+	is_import=true
 fi
 
 if [[ $is_manager && $is_sensor ]]; then
@@ -173,13 +173,13 @@ elif [[ $is_fleet_standalone ]]; then
 	check_requirements "dist" "fleet"
 elif [[ $is_sensor && ! $is_eval ]]; then
 	check_requirements "dist" "sensor"
-elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_importpcap ]]; then
+elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
 	check_requirements "dist"
-elif [[ $is_importpcap ]]; then
-	check_requirements "importpcap"
+elif [[ $is_import ]]; then
+	check_requirements "import"
 fi
 
-if [[ ! $is_importpcap ]]; then
+if [[ ! $is_import ]]; then
 	whiptail_patch_schedule
 fi
 
@@ -243,7 +243,7 @@ if [[ $is_node ]]; then
 	CURCLOSEDAYS=30
 fi
 
-if [[ $is_importpcap ]]; then
+if [[ $is_import ]]; then
 	PATCHSCHEDULENAME=auto
 	MTU=1500
 	RULESETUP=ETOPEN
@@ -271,11 +271,11 @@ if [[ $is_helix || $is_sensor ]]; then
 	whiptail_sensor_nics
 fi
 
-if [[ $is_helix || $is_sensor || $is_importpcap ]]; then
+if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
-if [[ $is_helix ||  $is_manager || $is_importpcap ]]; then
+if [[ $is_helix ||  $is_manager || $is_import ]]; then
 	whiptail_homenet_manager
 fi
 
@@ -306,7 +306,7 @@ if [[ $is_manager ]]; then
 	fi
 fi
 
-if [[ $is_manager || $is_importpcap ]]; then
+if [[ $is_manager || $is_import ]]; then
 	collect_webuser_inputs
 	get_redirect
 fi
@@ -368,7 +368,7 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
-if [[ $is_manager || $is_importpcap ]]; then whiptail_so_allow; fi
+if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 
 whiptail_make_changes
 
@@ -392,7 +392,7 @@ fi
 } >> $setup_log 2>&1
 
 
-if [[ $is_manager || $is_importpcap ]]; then
+if [[ $is_manager || $is_import ]]; then
 	{
 		generate_passwords;
 		secrets_pillar;
@@ -411,7 +411,7 @@ fi
 
 host_pillar >> $setup_log 2>&1
 
-if [[ $is_minion || $is_importpcap ]]; then
+if [[ $is_minion || $is_import ]]; then
 	set_updates >> $setup_log 2>&1
 	copy_ssh_key >> $setup_log 2>&1
 fi
@@ -434,7 +434,7 @@ fi
 		configure_network_sensor >> $setup_log 2>&1
 	fi
 
-	if [[ $is_sensor || $is_helix || $is_importpcap ]]; then
+	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
 	fi
@@ -451,7 +451,7 @@ fi
 	set_progress_str 9 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
-	if [[ $is_manager || $is_helix || $is_importpcap ]]; then
+	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 10 'Configuring Salt master'
 		{
 			create_local_directories;
@@ -496,7 +496,7 @@ fi
 		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager || $is_importpcap ]]; then
+	if [[ $is_manager || $is_import ]]; then
 		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
@@ -509,15 +509,15 @@ fi
 		salt-call state.apply salt.minion -l info >> $setup_log 2>&1
 	fi
 
-	if [[ $is_importpcap ]]; then
+	if [[ $is_import ]]; then
 		set_progress_str 22 'Configuring bond interface'
-		salt-call state.apply importpcap.bond -l info >> $setup_log 2>&1
+		salt-call state.apply import.bond -l info >> $setup_log 2>&1
 	fi
 
 	set_progress_str 23 'Generating CA and checking in'
 	salt_checkin >> $setup_log 2>&1
 
-	if [[ $is_manager || $is_helix || $is_importpcap ]]; then
+	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 		
@@ -555,7 +555,7 @@ fi
 	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
 	salt-call state.apply -l info nginx >> $setup_log 2>&1
 
-	if [[ $is_manager || $is_node || $is_importpcap ]]; then
+	if [[ $is_manager || $is_node || $is_import ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
 		salt-call state.apply -l info elasticsearch >> $setup_log 2>&1
 	fi
@@ -565,7 +565,7 @@ fi
 		salt-call state.apply -l info pcap >> $setup_log 2>&1
 	fi
 
-	if [[ $is_sensor || $is_importpcap ]]; then
+	if [[ $is_sensor || $is_import ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
@@ -578,7 +578,7 @@ fi
 		salt-call state.apply -l info curator >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager || $is_importpcap ]]; then
+	if [[ $is_manager || $is_import ]]; then
 		set_progress_str 69 "$(print_salt_state_apply 'soc')"
 		salt-call state.apply -l info soc >> $setup_log 2>&1
 
@@ -644,7 +644,7 @@ fi
 		fi
 	fi
 
-	if [[ $is_manager || $is_helix || $is_importpcap ]]; then		
+	if [[ $is_manager || $is_helix || $is_import ]]; then		
 		set_progress_str 81 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi

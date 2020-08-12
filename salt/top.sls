@@ -387,7 +387,7 @@ base:
     - fleet.install_package
     - filebeat
 
-  '*_importpcap and G@saltversion:{{saltversion}}':
+  '*_import and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
