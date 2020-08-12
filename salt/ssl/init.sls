@@ -243,7 +243,11 @@ miniokeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -in /etc/pki/elasticsearch.key -topk12 -out /etc/pki/elasticsearch.p12 -nocrypt"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
+      
 ealstickeyperms:
   file.managed:
     - replace: False
@@ -507,7 +511,7 @@ fleetkeyperms:
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
-      
+
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
@@ -521,6 +525,10 @@ fleetkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -in /etc/pki/elasticsearch.key -topk12 -out /etc/pki/elasticsearch.p12 -nocrypt"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
 
 miniokeyperms:
   file.managed:
