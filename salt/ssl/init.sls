@@ -244,7 +244,7 @@ miniokeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
   cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -in /etc/pki/elasticsearch.key -export -out /etc/pki/elasticsearch.p12 -nocrypt"
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nocrypt"
     - onchanges:
       - x509: /etc/pki/elasticsearch.key
 
@@ -526,7 +526,7 @@ fleetkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
   cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -in /etc/pki/elasticsearch.key -export -out /etc/pki/elasticsearch.p12 -nocrypt"
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12"
     - onchanges:
       - x509: /etc/pki/elasticsearch.key
 
