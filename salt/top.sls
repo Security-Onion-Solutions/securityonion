@@ -401,7 +401,8 @@ base:
     - suricata.manager
     - elasticsearch
     - kibana
-    - suricata
     - filebeat
     - utility
+    - suricata
+    - zeek
     - schedule
