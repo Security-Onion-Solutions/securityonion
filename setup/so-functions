@@ -1377,9 +1377,9 @@ check_service_status() {
 	local status=$?
 	#true service is running false if not
 	if [ $status -gt 0 ]; then
-		status=false
+		status=1
 	else
-		status=true
+		status=0
 	fi
 
 	return $status
@@ -1390,11 +1390,11 @@ check_salt_master_status() {
 	echo "Checking salt-master status" >> "$setup_log" 2>&1
 	salt-call state.show_top >> "$setup_log" 2>&1
 	local status=$?
-	#true if we can talk to salt master false if not
+	#true if there is an issue talking to salt master
 	if [ $status -gt 0 ]; then
-		status=false
+		status=1
 	else
-		status=true
+		status=0
 	fi
 
 	echo "$status" >> "$setup_log" 2>&1
