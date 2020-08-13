@@ -2,7 +2,7 @@ base:
   '*':
     - patch.needs_restarting
 
-  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone':
+  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
 
@@ -79,4 +79,11 @@ base:
     - logstash
     - logstash.search
     - elasticsearch.search
+    - minions.{{ grains.id }}
+
+  '*_import':
+    - zeeklogs
+    - secrets
+    - elasticsearch.eval
+    - global
     - minions.{{ grains.id }}

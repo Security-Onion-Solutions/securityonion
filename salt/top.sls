@@ -386,3 +386,23 @@ base:
     - fleet
     - fleet.install_package
     - filebeat
+
+  '*_import and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ca
+    - ssl
+    - registry
+    - manager
+    - common
+    - nginx
+    - soc
+    - firewall
+    - idstools
+    - suricata.manager
+    - elasticsearch
+    - kibana
+    - filebeat
+    - utility
+    - suricata
+    - zeek
+    - schedule

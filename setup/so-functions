@@ -142,65 +142,7 @@ secrets_pillar(){
   fi
 }
 
-# Enable Bro Logs
-zeek_logs_enabled() {
-	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
 
-	local zeeklogs_pillar=./pillar/zeeklogs.sls
-
-	printf '%s\n'\
-		"zeeklogs:"\
-		"  enabled:" > "$zeeklogs_pillar"
-
-	if [ "$MANAGERADV" = 'ADVANCED' ]; then
-		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
-		done
-	else
-		printf '%s\n'\
-			"    - conn"\
-			"    - dce_rpc"\
-			"    - dhcp"\
-			"    - dhcpv6"\
-			"    - dnp3"\
-			"    - dns"\
-			"    - dpd"\
-			"    - files"\
-			"    - ftp"\
-			"    - http"\
-			"    - intel"\
-			"    - irc"\
-			"    - kerberos"\
-			"    - modbus"\
-			"    - mqtt"\
-			"    - notice"\
-			"    - ntlm"\
-			"    - openvpn"\
-			"    - pe"\
-			"    - radius"\
-			"    - rfb"\
-			"    - rdp"\
-			"    - signatures"\
-			"    - sip"\
-			"    - smb_files"\
-			"    - smb_mapping"\
-			"    - smtp"\
-			"    - snmp"\
-			"    - software"\
-			"    - ssh"\
-			"    - ssl"\
-			"    - syslog"\
-			"    - telnet"\
-			"    - tunnel"\
-			"    - weird"\
-			"    - mysql"\
-			"    - socks"\
-			"    - x509" >> "$zeeklogs_pillar"
-	fi
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
-}
 
 check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
@@ -360,7 +302,7 @@ configure_minion() {
 		'helix')
 			echo "master: $HOSTNAME" >> "$minion_config"
 			;;
-		'manager' | 'eval' | 'managersearch' | 'standalone')
+		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
 			printf '%s\n'\
 				"master: $HOSTNAME"\
 				"mysql.host: '$MAINIP'"\
@@ -416,11 +358,19 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+	elif [[ "$standalone_or_dist" == 'import' ]]; then
+	    req_mem=4
+	    req_cores=2
+		req_nics=1
 	fi
 
-	if [[ $setup_type == 'network' ]]; then
+	if [[ $setup_type == 'network' ]] ; then
 		if [[ -n $nsm_mount ]]; then
-			req_storage=100
+			if [[ "$standalone_or_dist" == 'import' ]]; then
+		    	req_storage=50
+			else
+				req_storage=100
+			fi
 			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
@@ -428,7 +378,11 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			req_storage=200
+			if [[ "$standalone_or_dist" == 'import' ]]; then
+		    	req_storage=50
+			else
+				req_storage=200
+			fi
 			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
@@ -463,7 +417,7 @@ copy_salt_master_config() {
 
 copy_minion_tmp_files() {
 	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE')
+		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
 			if [ -d "$temp_install_dir"/salt ] ; then
@@ -720,7 +674,7 @@ docker_install() {
 		
 	else
 		case "$install_type" in
-			'MANAGER' | 'EVAL')
+			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
 				apt-get update >> "$setup_log" 2>&1
 				;;
 			*)
@@ -764,6 +718,22 @@ docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
+	    if [ "$install_type" == 'IMPORT' ]; then
+		local TRUSTED_CONTAINERS=(\
+			"so-idstools:$VERSION" \
+			"so-nginx:$VERSION" \
+			"so-filebeat:$VERSION" \
+			"so-suricata:$VERSION" \
+			"so-soc:$VERSION" \
+			"so-elasticsearch:$VERSION" \
+			"so-kibana:$VERSION" \
+			"so-kratos:$VERSION" \
+			"so-suricata:$VERSION" \
+			"so-registry:$VERSION" \
+			"so-pcaptools:$VERSION" \
+			"so-zeek:$VERSION"
+		)
+		else
 		local TRUSTED_CONTAINERS=(\
 			"so-nginx:$VERSION" \
 			"so-filebeat:$VERSION" \
@@ -775,7 +745,8 @@ docker_seed_registry() {
 			"so-telegraf:$VERSION" \
 			"so-zeek:$VERSION"
 		)
-		if [ "$install_type" != 'HELIXSENSOR' ]; then
+		fi
+		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORT' ]; then
 			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
 				"so-acng:$VERSION" \
 				"so-thehive-cortex:$VERSION" \
@@ -903,7 +874,7 @@ got_root() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -1275,7 +1246,7 @@ saltify() {
 		set_progress_str 6 'Installing various dependencies'
 		yum -y install wget nmap-ncat >> "$setup_log" 2>&1
 		case "$install_type" in
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE')
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
 				yum -y install epel-release >> "$setup_log" 2>&1
 				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
@@ -1346,7 +1317,7 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE') # TODO: should this also be HELIXSENSOR?
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # TODO: should this also be HELIXSENSOR?
 
 				# Add saltstack repo(s)
 				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
@@ -1403,7 +1374,7 @@ saltify() {
 salt_checkin() {
 
 	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE') # Fix Mine usage
+		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
 			{
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
@@ -1567,7 +1538,7 @@ set_hostname() {
 
 	set_hostname_iso
 
-	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE)$ ]]; then
+	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
 		if ! getent hosts "$MSRV"; then
 			echo "$MSRVIP   $MSRV" >> /etc/hosts
 		fi
@@ -1599,7 +1570,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost minion "$MAINIP"
 			$default_salt_dir/pillar/data/addtotab.sh managertab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 			;;
-		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE')
+		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
@@ -1804,8 +1775,68 @@ es_heapsize() {
 	fi
 	export ES_HEAP_SIZE
 
-	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE)$ ]]; then
+	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
 		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
 		export NODE_ES_HEAP_SIZE
 	fi
+}
+
+# Enable Bro Logs
+zeek_logs_enabled() {
+	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
+
+	local zeeklogs_pillar=./pillar/zeeklogs.sls
+
+	printf '%s\n'\
+		"zeeklogs:"\
+		"  enabled:" > "$zeeklogs_pillar"
+
+	if [ "$MANAGERADV" = 'ADVANCED' ]; then
+		for BLOG in "${BLOGS[@]}"; do
+			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
+		done
+	else
+		printf '%s\n'\
+			"    - conn"\
+			"    - dce_rpc"\
+			"    - dhcp"\
+			"    - dhcpv6"\
+			"    - dnp3"\
+			"    - dns"\
+			"    - dpd"\
+			"    - files"\
+			"    - ftp"\
+			"    - http"\
+			"    - intel"\
+			"    - irc"\
+			"    - kerberos"\
+			"    - modbus"\
+			"    - mqtt"\
+			"    - notice"\
+			"    - ntlm"\
+			"    - openvpn"\
+			"    - pe"\
+			"    - radius"\
+			"    - rfb"\
+			"    - rdp"\
+			"    - signatures"\
+			"    - sip"\
+			"    - smb_files"\
+			"    - smb_mapping"\
+			"    - smtp"\
+			"    - snmp"\
+			"    - software"\
+			"    - ssh"\
+			"    - ssl"\
+			"    - syslog"\
+			"    - telnet"\
+			"    - tunnel"\
+			"    - weird"\
+			"    - mysql"\
+			"    - socks"\
+			"    - x509" >> "$zeeklogs_pillar"
+	fi
+
+	printf '%s\n'  '----' >> "$setup_log" 2>&1
+	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }
