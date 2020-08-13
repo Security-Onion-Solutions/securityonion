@@ -1386,6 +1386,7 @@ check_service_status() {
 }
 
 check_salt_master_status() {
+	echo "Checking salt-master status" >> "$setup_log" 2>&1
 	salt-call state.show_top >> "$setup_log" 2>&1
 	local exit_code=$?
 	if [ $exit_code -gt 0 ]; then
@@ -1394,6 +1395,7 @@ check_salt_master_status() {
 		exit_code=0
 	fi
 
+	echo "$exit_code" >> "$setup_log" 2>&1
 	return $exit_code
 
 }
@@ -1413,26 +1415,26 @@ salt_checkin() {
 				)
 				local LOOP_COUNT=0
 				for service in "${SALT_SERVICES[@]}"; do
-					systemctl stop "$service";
+					systemctl stop "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
 					while check_service_status "$service"; do
 						echo "$service still running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 120 ]; then
 							echo "$service could not be stopped in 120 seconds" >> "$setup_log" 2>&1
-							whiptail_setup_failed
+							#whiptail_setup_failed
 							exit 1
 						fi
 						sleep 1;
 						((LOOP_COUNT+=1))
 					done
 
-					systemctl start "$service";
+					systemctl start "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
 					while ! check_service_status "$service"; do
 						echo "$service still not running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 120 ]; then
 							echo "$service could not be started in 120 seconds" >> "$setup_log" 2>&1
-							whiptail_setup_failed
+							#whiptail_setup_failed
 							exit 1
 						fi
 						sleep 1;
@@ -1444,9 +1446,9 @@ salt_checkin() {
 				LOOP_COUNT=0
 				while check_salt_master_status; do
 					echo "salt-minion cannot talk to salt-master" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 20 ]; then
-						echo "salt-minion could not talk to salt-master after 20 attempts" >> "$setup_log" 2>&1
-						whiptail_setup_failed
+					if [ $LOOP_COUNT -gt 120 ]; then
+						echo "salt-minion could not talk to salt-master after 120 attempts" >> "$setup_log" 2>&1
+						#whiptail_setup_failed
 						exit 1
 					fi
 					sleep 1;
