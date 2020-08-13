@@ -567,6 +567,7 @@ detect_os() {
 			OSVER=7
 		elif grep -q "Red Hat Enterprise Linux Server release 7" /etc/redhat-release; then
 		    OSVER=7
+			REDHAT=yes
 		elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
 			OSVER=8
 			echo "We currently do not support CentOS $OSVER but we are working on it!"
@@ -1249,7 +1250,12 @@ saltify() {
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
-				yum -y install epel-release >> "$setup_log" 2>&1
+				if [ $REDHAT = 'yes']; then
+				  subscription-manager repos --enable "rhel-*-optional-rpms" --enable "rhel-*-extras-rpms"  --enable "rhel-ha-for-rhel-*-server-rpms"
+				  yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+				else
+				  yum -y install epel-release >> "$setup_log" 2>&1
+				fi
 				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
