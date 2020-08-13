@@ -21,6 +21,40 @@ source ./so-common-functions
 
 SOVERSION=$(cat ../VERSION)
 
+log() {
+	msg=$1
+	level=${2:-I}
+	now=$(TZ=GMT date +"%Y-%m-%dT%H:%M:%SZ")
+	echo -e "$now | $level | $msg" >> "$setup_log" 2>&1
+}
+
+error() {
+	log "$1" "E"
+}
+
+info() {
+	log "$1" "I"
+}
+
+header() {
+	echo -e "-----------------------------\n $1\n-----------------------------\n" >> "$setup_log" 2>&1
+}
+
+logCmd() {
+	cmd=$1
+	info "Executing command: $cmd\n$($cmd)\n"
+}
+
+analyze_system() {
+	header "System Characteristics"
+	logCmd "uptime"
+	logCmd "uname -a"
+	logCmd "free -h"
+	logCmd "lscpu"
+	logCmd "df -h"
+	logCmd "ip a"
+}
+
 accept_salt_key_remote() {
 	systemctl restart salt-minion
 	
