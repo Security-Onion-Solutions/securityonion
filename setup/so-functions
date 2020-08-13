@@ -1373,7 +1373,8 @@ saltify() {
 check_service_status() {
 
 	local service_name=$1
-	systemctl status $service_name > /dev/null 2>&1
+	echo "Checking service $service_name status" >> "$setup_log" 2>&1
+	systemctl status $service_name >> "$setup_log" 2>&1
 	local status=$?
 	#true service is running false if not
 	if [ $status -gt 0 ]; then
@@ -1453,6 +1454,9 @@ salt_checkin() {
 					sleep 1;
 					((LOOP_COUNT+=1))
 				done
+
+				systemctl status salt-master;
+				systemctl status salt-minion;
 
 				echo " Confirming existence of the CA certificate"
 				cat /etc/pki/ca.crt
