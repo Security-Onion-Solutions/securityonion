@@ -1370,6 +1370,34 @@ saltify() {
 
 }
 
+check_service_status() {
+
+	local service_name=$1
+	systemctl status $service_name > /dev/null 2>&1
+	local service_status=$?
+	if [ $service_status -gt 0 ]; then
+		service_status=1
+	else
+		service_status=0
+	fi
+
+	return $service_status
+
+}
+
+check_salt_master_status() {
+	salt-call state.show_top >> "$setup_log" 2>&1
+	local exit_code=$?
+	if [ $exit_code -gt 0 ]; then
+		exit_code=1
+	else
+		exit_code=0
+	fi
+
+	return $exit_code
+
+}
+
 salt_checkin() {
 
 	case "$install_type" in
@@ -1378,10 +1406,53 @@ salt_checkin() {
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
 				echo " *** Restarting Salt to fix any SSL errors. ***";
-				systemctl restart salt-master;
-				sleep 5;
-				systemctl restart salt-minion;
-				sleep 15;
+
+				local SALT_SERVICES=(\
+				"salt-minion" \
+				"salt-master"
+				)
+				local LOOP_COUNT=0
+				for service in "${SALT_SERVICES[@]}"; do
+					systemctl stop "$service";
+					LOOP_COUNT=0
+					while check_service_status "$service"; do
+						echo "$service still running" >> "$setup_log" 2>&1
+						if [ LOOP_COUNT -gt 120 ]; then
+							echo "$service could not be stopped in 120 seconds" >> "$setup_log" 2>&1
+							whiptail_setup_failed()
+							exit 1;
+						fi
+						sleep 1;
+						((LOOP_COUNT+=1))
+					done
+
+					systemctl start "$service";
+					LOOP_COUNT=0
+					while ! check_service_status "$service"; do
+						echo "$service still not running" >> "$setup_log" 2>&1
+						if [ LOOP_COUNT -gt 120 ]; then
+							echo "$service could not be started in 120 seconds" >> "$setup_log" 2>&1
+							whiptail_setup_failed()
+							exit 1; 
+						fi
+						sleep 1;
+						((LOOP_COUNT+=1))
+					done
+
+				done
+
+				LOOP_COUNT=0
+				while check_salt_master_status; do
+					echo "salt-minion cannot talk to salt-master" >> "$setup_log" 2>&1
+					if [ LOOP_COUNT -gt 20 ]; then
+						echo "salt-minion could not talk to salt-master after 20 attempts" >> "$setup_log" 2>&1
+						whiptail_setup_failed()
+						exit 1;
+					fi
+					sleep 1;
+					((LOOP_COUNT+=1))
+				done
+
 				echo " Confirming existence of the CA certificate"
 				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
