@@ -1395,9 +1395,9 @@ check_salt_master_status() {
 	local status=$?
 	#true if there is an issue talking to salt master
 	if [ $status -gt 0 ]; then
-		echo "Cannot talk to salt master" >> "$setup_log" 2>&1
 		status=1
 	else
+		echo "Can talk to salt master" >> "$setup_log" 2>&1
 		status=0
 	fi
 
@@ -1411,16 +1411,15 @@ check_salt_minion_status() {
 	local status=$?
 	#true if there is an issue getting a job response from the minion
 	if [ $status -gt 0 ]; then
-		echo "Not receiving job response from salt minion" >> "$setup_log" 2>&1
 		status=1
 	else
+		echo "Received job response from salt minion" >> "$setup_log" 2>&1
 		status=0
 	fi
 
 	return $status
 
 }
-
 
 salt_checkin() {
 
@@ -1437,6 +1436,7 @@ salt_checkin() {
 				)
 				local LOOP_COUNT=0
 				for service in "${SALT_SERVICES[@]}"; do
+					echo "Stopping service $service" >> "$setup_log" 2>&1
 					systemctl stop "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
 					while check_service_status "$service"; do
@@ -1449,6 +1449,7 @@ salt_checkin() {
 						((LOOP_COUNT+=1))
 					done
 
+					echo "Starting service $service" >> "$setup_log" 2>&1
 					systemctl start "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
 					while ! check_service_status "$service"; do
@@ -1478,9 +1479,9 @@ salt_checkin() {
 
 				LOOP_COUNT=0
 				while ! check_salt_minion_status; do
-					echo "salt master not getting job response from salt minion" >> "$setup_log" 2>&1
+					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
 					if [ $LOOP_COUNT -gt 30 ]; then
-						echo "salt master not getting job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
+						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					sleep 1;
