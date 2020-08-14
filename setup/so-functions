@@ -1431,8 +1431,8 @@ salt_checkin() {
 				echo " *** Restarting Salt to fix any SSL errors. ***";
 
 				local SALT_SERVICES=(\
-				"salt-minion" \
-				"salt-master"
+				"salt-master" \
+				"salt-minion"
 				)
 				local LOOP_COUNT=0
 				for service in "${SALT_SERVICES[@]}"; do
@@ -1448,7 +1448,11 @@ salt_checkin() {
 						sleep 1;
 						((LOOP_COUNT+=1))
 					done
+				done
 
+				sleep 5;
+
+				for service in "${SALT_SERVICES[@]}"; do
 					echo "Starting service $service" >> "$setup_log" 2>&1
 					systemctl start "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
@@ -1461,7 +1465,6 @@ salt_checkin() {
 						sleep 1;
 						((LOOP_COUNT+=1))
 					done
-
 				done
 
 				#sleep 15;
