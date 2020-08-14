@@ -1388,7 +1388,7 @@ check_service_status() {
 }
 
 check_salt_master_status() {
-	echo "Checking salt-master status" >> "$setup_log" 2>&1
+	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
 	salt-call state.show_top >> "$setup_log" 2>&1
 	local status=$?
 	#true if there is an issue talking to salt master
@@ -1398,10 +1398,25 @@ check_salt_master_status() {
 		status=0
 	fi
 
-	echo "$status" >> "$setup_log" 2>&1
 	return $status
 
 }
+
+check_salt_minion_status() {
+	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping >> "$setup_log" 2>&1
+	local status=$?
+	#true if there is an issue getting a job response from the minion
+	if [ $status -gt 0 ]; then
+		status=1
+	else
+		status=0
+	fi
+
+	return $status
+
+}
+
 
 salt_checkin() {
 
@@ -1422,8 +1437,8 @@ salt_checkin() {
 					LOOP_COUNT=0
 					while check_service_status "$service"; do
 						echo "$service still running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 120 ]; then
-							echo "$service could not be stopped in 120 seconds" >> "$setup_log" 2>&1
+						if [ $LOOP_COUNT -gt 60 ]; then
+							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
 							exit 1
 						fi
 						sleep 1;
@@ -1434,8 +1449,8 @@ salt_checkin() {
 					LOOP_COUNT=0
 					while ! check_service_status "$service"; do
 						echo "$service still not running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 120 ]; then
-							echo "$service could not be started in 120 seconds" >> "$setup_log" 2>&1
+						if [ $LOOP_COUNT -gt 60 ]; then
+							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
 							exit 1
 						fi
 						sleep 1;
@@ -1446,25 +1461,33 @@ salt_checkin() {
 
 				LOOP_COUNT=0
 				while ! check_salt_master_status; do
-					echo "salt-minion cannot talk to salt-master" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 40 ]; then
-						echo "salt-minion could not talk to salt-master after 40 attempts" >> "$setup_log" 2>&1
+					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
+					if [ $LOOP_COUNT -gt 30 ]; then
+						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					sleep 1;
 					((LOOP_COUNT+=1))
 				done
 
-				systemctl status salt-master;
-				systemctl status salt-minion;
+				LOOP_COUNT=0
+				while ! check_salt_minion_status; do
+					echo "salt master not getting job response from salt minion" >> "$setup_log" 2>&1
+					if [ $LOOP_COUNT -gt 30 ]; then
+						echo "salt master not getting job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
+						exit 1
+					fi
+					sleep 1;
+					((LOOP_COUNT+=1))
+				done
 
 				echo " Confirming existence of the CA certificate"
 				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
-				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
-				salt '*' mine.update;
+				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
+				salt "$MINION_ID" mine.update;
 				echo " Confirming salt mine now contain the certificate";
-				salt '*' mine.get '*' x509.get_pem_entries;
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
