@@ -1378,7 +1378,7 @@ check_service_status() {
 	local status=$?
 	#true if there is an issue with the service false if it is running properly
 	if [ $status -gt 0 ]; then
-		echo "$service_name not is running" >> "$setup_log" 2>&1
+		echo "$service_name is not running" >> "$setup_log" 2>&1
 		status=1
 	else
 		echo "$service_name is running" >> "$setup_log" 2>&1
@@ -1439,7 +1439,7 @@ salt_checkin() {
 					echo "Stopping service $service" >> "$setup_log" 2>&1
 					systemctl stop "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
-					while ! (( $(check_service_status $service) )); do
+					while ! check_service_status $service; do
 						echo "$service still running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 60 ]; then
 							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
@@ -1456,7 +1456,7 @@ salt_checkin() {
 					echo "Starting service $service" >> "$setup_log" 2>&1
 					systemctl start "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
-					while (( $(check_service_status $service) )); do
+					while check_service_status $service; do
 						echo "$service still not running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 60 ]; then
 							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
@@ -1470,7 +1470,7 @@ salt_checkin() {
 				#sleep 15;
 
 				LOOP_COUNT=0
-				while (( check_salt_master_status )); do
+				while check_salt_master_status; do
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
 					if [ $LOOP_COUNT -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
@@ -1481,7 +1481,7 @@ salt_checkin() {
 				done
 
 				LOOP_COUNT=0
-				while (( check_salt_minion_status )); do
+				while check_salt_minion_status; do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
 					if [ $LOOP_COUNT -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
