@@ -229,6 +229,51 @@ check_pass_match() {
 	fi
 }
 
+check_service_status() {
+
+	local service_name=$1
+	echo "Checking service $service_name status" >> "$setup_log" 2>&1
+	systemctl status $service_name >> "$setup_log" 2>&1
+	local status=$?
+	#true if there is an issue with the service false if it is running properly
+	if [ $status -gt 0 ]; then
+		echo "$service_name is not running" >> "$setup_log" 2>&1
+		echo 1;
+	else
+		echo "$service_name is running" >> "$setup_log" 2>&1
+		echo 0;
+	fi
+
+}
+
+check_salt_master_status() {
+	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
+	salt-call state.show_top > /dev/null 2>&1
+	local status=$?
+	#true if there is an issue talking to salt master
+	if [ $status -gt 0 ]; then
+		echo 1;
+	else
+		echo "Can talk to salt master" >> "$setup_log" 2>&1
+		echo 0;
+	fi
+
+}
+
+check_salt_minion_status() {
+	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping >> "$setup_log" 2>&1
+	local status=$?
+	#true if there is an issue getting a job response from the minion
+	if [ $status -gt 0 ]; then
+		echo 1;
+	else
+		echo "Received job response from salt minion" >> "$setup_log" 2>&1
+		echo 0;
+	fi
+
+}
+
 check_soremote_pass() {
 	check_pass_match "$SOREMOTEPASS1" "$SOREMOTEPASS2" "SCMATCH"
 }
@@ -1431,17 +1476,75 @@ salt_checkin() {
 				echo "Building Certificate Authority";
 				salt-call state.apply ca;
 				echo " *** Restarting Salt to fix any SSL errors. ***";
-				systemctl restart salt-master;
+
+				local SALT_SERVICES=(\
+				"salt-master" \
+				"salt-minion"
+				)
+				local LOOP_COUNT=0
+				for service in "${SALT_SERVICES[@]}"; do
+					echo "Stopping service $service" >> "$setup_log" 2>&1
+					systemctl stop "$service" >> "$setup_log" 2>&1
+					LOOP_COUNT=0
+					while ! (( $(check_service_status $service) )); do
+						echo "$service still running" >> "$setup_log" 2>&1
+						if [ $LOOP_COUNT -gt 60 ]; then
+							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
+							exit 1
+						fi
+						sleep 1;
+						((LOOP_COUNT+=1))
+					done
+				done
+
 				sleep 5;
-				systemctl restart salt-minion;
-				sleep 15;
+
+				for service in "${SALT_SERVICES[@]}"; do
+					echo "Starting service $service" >> "$setup_log" 2>&1
+					systemctl start "$service" >> "$setup_log" 2>&1
+					LOOP_COUNT=0
+					while (( $(check_service_status $service) )); do
+						echo "$service still not running" >> "$setup_log" 2>&1
+						if [ $LOOP_COUNT -gt 60 ]; then
+							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
+							exit 1
+						fi
+						sleep 1;
+						((LOOP_COUNT+=1))
+					done
+				done
+
+				sleep 5;
+
+				LOOP_COUNT=0
+				while (( $(check_salt_master_status) )); do
+					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
+					if [ $LOOP_COUNT -gt 30 ]; then
+						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
+						exit 1
+					fi
+					sleep 1;
+					((LOOP_COUNT+=1))
+				done
+
+				LOOP_COUNT=0
+				while (( $(check_salt_minion_status) )); do
+					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
+					if [ $LOOP_COUNT -gt 30 ]; then
+						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
+						exit 1
+					fi
+					sleep 1;
+					((LOOP_COUNT+=1))
+				done
+
 				echo " Confirming existence of the CA certificate"
 				cat /etc/pki/ca.crt
 				echo " Applyng a mine hack";
-				salt '*' mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
-				salt '*' mine.update;
+				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
+				salt "$MINION_ID" mine.update;
 				echo " Confirming salt mine now contain the certificate";
-				salt '*' mine.get '*' x509.get_pem_entries;
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
