@@ -879,11 +879,13 @@ generate_passwords(){
   PLAYBOOKPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
   FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  if [[ "$THEHIVE" == "1" ]]; then
+  	HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  fi
   SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
@@ -1022,26 +1024,34 @@ manager_global() {
 	fi
 
 	# Create a global file for global values
+        printf '%s\n'\
+                "global:"\
+                "  soversion: $SOVERSION"\
+                "  hnmanager: $HNMANAGER"\
+                "  ntpserver: $NTPSERVER"\
+                "  proxy: $PROXY"\
+                "  zeekversion: $ZEEKVERSION"\
+                "  ids: $NIDS"\
+                "  managerip: $MAINIP" > "$global_pillar"
+
+        # Check if TheHive is enabled.  If so, add creds and other details
+        if [[ "$THEHIVE" == "1" ]]; then
+                printf '%s\n'\
+                        "  hiveuser: $WEBUSER"\
+                        "  hivepassword: '$WEBPASSWD1'"\
+                        "  hivekey: $HIVEKEY"\
+                        "  hiveplaysecret: $HIVEPLAYSECRET"\
+                        "  cortexuser: $WEBUSER"\
+                        "  cortexpassword: '$WEBPASSWD1'"\
+                        "  cortexkey: $CORTEXKEY"\
+                        "  cortexorgname: SecurityOnion"\
+                        "  cortexorguser: soadmin"\
+                        "  cortexorguserkey: $CORTEXORGUSERKEY"\
+                        "  cortexplaysecret: $CORTEXPLAYSECRET" >> "$global_pillar"
+        fi
+
+        # Continue adding other details	
 	printf '%s\n'\
-		"global:"\
-		"  soversion: $SOVERSION"\
-		"  hnmanager: $HNMANAGER"\
-		"  ntpserver: $NTPSERVER"\
-		"  proxy: $PROXY"\
-		"  zeekversion: $ZEEKVERSION"\
-		"  ids: $NIDS"\
-		"  managerip: $MAINIP"\
-		"  hiveuser: $WEBUSER"\
-		"  hivepassword: '$WEBPASSWD1'"\
-		"  hivekey: $HIVEKEY"\
-		"  hiveplaysecret: $HIVEPLAYSECRET"\
-		"  cortexuser: $WEBUSER"\
-		"  cortexpassword: '$WEBPASSWD1'"\
-		"  cortexkey: $CORTEXKEY"\
-		"  cortexorgname: SecurityOnion"\
-		"  cortexorguser: soadmin"\
-		"  cortexorguserkey: $CORTEXORGUSERKEY"\
-		"  cortexplaysecret: $CORTEXPLAYSECRET"\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
 		"  fleet_node: False"\
@@ -1132,7 +1142,7 @@ manager_global() {
 		"  time_file: 1"\
 		"  upload_queue_size: 4"\
 		"  encoding: gzip"\
-		"  interval: 5" > "$global_pillar"
+		"  interval: 5" >> "$global_pillar"
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 	cat "$global_pillar" >> "$setup_log" 2>&1
