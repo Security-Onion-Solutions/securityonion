@@ -18,6 +18,18 @@
 source ./so-variables
 source ./so-common-functions
 
+whiptail_airgap() {
+
+	[ -n "$TESTING" ] && return
+
+	INTERWEBS=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose your install conditions:" 20 75 4 \
+	"STANDARD" "This manager has internet accesss" ON  \
+	"AIRGAP" "This manager does not have internet access" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
 
 whiptail_basic_zeek() {
 
@@ -1123,8 +1135,6 @@ whiptail_so_allow() {
 		export ALLOW_ROLE='a'
 		export ALLOW_CIDR
 	fi
-
-	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_gauge_post_setup() {
