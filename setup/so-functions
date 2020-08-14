@@ -655,24 +655,27 @@ detect_os() {
 
 		echo "Installing required packages to run installer..." >> "$setup_log" 2>&1
 		# Install bind-utils so the host command exists
-		if ! command -v host > /dev/null 2>&1; then
+		if [[ ! $is_iso ]]; then
+		  if ! command -v host > /dev/null 2>&1; then
 			yum -y install bind-utils >> "$setup_log" 2>&1
-		fi
-		if ! command -v nmcli > /dev/null 2>&1; then
+		  fi
+		  if ! command -v nmcli > /dev/null 2>&1; then
 			{
 				yum -y install NetworkManager;
 				systemctl enable NetworkManager;
 				systemctl start NetworkManager;
 			} >> "$setup_log" 2<&1
-		fi
-		if ! command -v bc > /dev/null 2>&1; then
+		  fi
+		  if ! command -v bc > /dev/null 2>&1; then
 			yum -y install bc >> "$setup_log" 2>&1
-		fi
-		if ! yum versionlock > /dev/null 2>&1; then
+		  fi
+		  if ! yum versionlock > /dev/null 2>&1; then
 			yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
-		fi
-
-
+		  fi
+        else
+		  logCmd "systemctl enable NetworkManager"
+		  logCmd "systemctl start NetworkManager"
+        fi
 	elif [ -f /etc/os-release ]; then
 		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
@@ -745,8 +748,12 @@ docker_install() {
 	if [ $OS = 'centos' ]; then
 		{
 			yum clean expire-cache;
-			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			yum -y install docker-ce-19.03.11-3.el7 containerd.io-1.2.13-3.2.el7;
+			if [[ ! $is_airgap ]]; then
+			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
+			fi
+			if [[ ! $is_iso ]]; then
+			  yum -y install docker-ce-19.03.11-3.el7 containerd.io-1.2.13-3.2.el7;
+			fi
 			yum versionlock docker-ce-19.03.11-3.el7;
 			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
@@ -989,10 +996,10 @@ install_cleanup() {
 
 import_registry_docker() {
 	if [ -f /nsm/docker-registry/docker/registry_image.tar ]; then
-	  service docker start
-	  docker import /nsm/docker-registry/docker/registry_image.tar registry:2
+	  logCmd "service docker start"
+	  logCmd "docker import /nsm/docker-registry/docker/registry_image.tar registry:2" 
 	else
-	  echo "Need to download registry"
+	  info "Need to download registry"
 	fi
 }
 
@@ -1341,41 +1348,56 @@ saltify() {
 			cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
 		} >> "$setup_log" 2>&1
 		set_progress_str 6 'Installing various dependencies'
-		yum -y install wget nmap-ncat >> "$setup_log" 2>&1
+		if [[ ! $is_iso ]]; then
+		  logCmd "yum -y install wget nmap-ncat"
+		fi 
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
-				yum -y install epel-release >> "$setup_log" 2>&1
-				yum -y install sqlite argon2 curl mariadb-devel >> "$setup_log" 2>&1
+				if [[ ! $is_iso ]]; then
+				  logCmd "yum -y install epel-release"
+				  logCmd "yum -y install sqlite argon2 curl mariadb-devel"
+				fi 
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
+				if [[ ! $is_airgap ]]; then
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+				  logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
+				fi
 				set_progress_str 7 'Installing salt-master'
-				yum -y install salt-master-3001.1 >> "$setup_log" 2>&1
+				if [[ ! $is_iso ]]; then
+				  logCmd "yum -y install salt-master-3001.1"
+				fi
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
 			*)
 				if [ "$MANAGERUPDATES" = '1' ]; then
 					{
-						# Create the GPG Public Key for the Salt Repo
-						cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
+						if [[ ! $is_airgap ]]; then
+						  # Create the GPG Public Key for the Salt Repo
+						  cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
 
-						# Copy repo files over
-						cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
+						  # Copy repo files over
+						  cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
+						else
+						  info "This is airgap"
+						fi
 					} >> "$setup_log" 2>&1
 				fi
 				;;
 		esac
-		cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
-		yum clean expire-cache >> "$setup_log" 2>&1
+		if [[ ! $is_airgap ]]; then
+		  cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
+		  yum clean expire-cache >> "$setup_log" 2>&1
+		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
-			yum -y install epel-release
-			yum -y install salt-minion-3001.1\
-				python3\
+			if [[ ! $is_iso ]]; then
+			  yum -y install epel-release
+			  yum -y install salt-minion-3001.1\
+			   	python3\
 				python36-docker\
 				python36-dateutil\
 				python36-m2crypto\
@@ -1385,7 +1407,8 @@ saltify() {
 				lvm2\
 				openssl\
 				jq;
-			yum -y update --exclude=salt*;
+			  yum -y update --exclude=salt*;
+			fi
 			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
 		yum versionlock salt*
