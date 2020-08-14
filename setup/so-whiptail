@@ -1064,17 +1064,21 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ -n $ALLOW_CIDR ]]; then
-		local sentence_prefix="Access"
+	if [[ -n "$REDIRECTIT" ]]; then
+		if [[ -n $ALLOW_CIDR ]]; then
+			local sentence_prefix="Access"
+		else
+			local sentence_prefix="Run so-allow after reboot to access"
+		fi
+		local accessMessage="\n${sentence_prefix} the web interface at: https://${REDIRECTIT}\n"
 	else
-		local sentence_prefix="Run so-allow after reboot to access"
+		local accessMessage=""
 	fi
+
 
 	read -r -d '' message <<- EOM
 		Finished ${install_type} installation.
-
-		${sentence_prefix} the web interface at: https://${REDIRECTIT}
-
+		$accessMessage
 		Press ENTER to reboot.
 	EOM
 
