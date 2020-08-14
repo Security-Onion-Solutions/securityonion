@@ -1,3 +1,5 @@
+{% from "zeek/map.jinja" import START with context %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -167,6 +169,7 @@ localzeeksync:
 so-zeek:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
+    - start: {{ START }}
     - privileged: True
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw

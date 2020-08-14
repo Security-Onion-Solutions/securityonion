@@ -399,6 +399,7 @@ base:
     - firewall
     - idstools
     - suricata.manager
+    - pcap
     - elasticsearch
     - kibana
     - filebeat

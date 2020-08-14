@@ -18,6 +18,7 @@
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
 {% set BPF_COMPILED = "" %}
+{% from "pcap/map.jinja" import START with context %}
 
 # PCAP Section
 
@@ -131,6 +132,7 @@ sensoronilog:
 so-steno:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
+    - start: {{ START }}
     - network_mode: host
     - privileged: True
     - port_bindings:

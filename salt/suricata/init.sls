@@ -23,6 +23,7 @@
 
 {# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
 {% from 'suricata/suricata_config.map.jinja' import suricata_defaults as suricata_config with context %}
+{% from "suricata/map.jinja" import START with context %}
 
 # Suricata
 
@@ -134,6 +135,7 @@ suribpf:
 so-suricata:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
+    - start: {{ START }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
