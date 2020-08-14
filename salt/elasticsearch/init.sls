@@ -212,6 +212,9 @@ so-elasticsearch:
 
     - watch:
       - file: cacertz
+      - file: esyml
+      - file: esingestconf
+      - file: so-elasticsearch-pipelines-file
 
 so-elasticsearch-pipelines-file:
   file.managed:
