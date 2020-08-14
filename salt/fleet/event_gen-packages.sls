@@ -11,7 +11,7 @@
 {% elif FLEETNODE %}
    {% set HOSTNAME = grains.host  %}
 {% else %}
-   {% set HOSTNAME = salt['pillar.get']('manager:url_base')  %}
+   {% set HOSTNAME = salt['pillar.get']('global:url_base')  %}
 {% endif %}
 
 so/fleet:
