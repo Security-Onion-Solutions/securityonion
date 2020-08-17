@@ -89,6 +89,18 @@ highstate() {
 pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
+    
+    # Move baseurl in global.sls
+    if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+      # Move the static file to global.sls
+      echo "Migrating static.sls to global.sls"
+      mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
+      sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
+
+      # Moving baseurl inside static.sls
+
+
+    fi
 }
 
 update_dockers() {
