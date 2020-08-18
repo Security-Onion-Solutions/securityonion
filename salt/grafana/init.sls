@@ -182,7 +182,6 @@ dashboardsearch-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
