@@ -91,7 +91,7 @@ dashboard-manager:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -114,7 +114,7 @@ dashboard-managersearch:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -137,7 +137,7 @@ dashboard-standalone:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -159,8 +159,8 @@ dashboard-{{ SN }}:
     - source: salt://grafana/dashboards/sensor_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
-      MONINT: {{ SNDATA.monint }}
       MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -183,7 +183,7 @@ dashboardsearch-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
