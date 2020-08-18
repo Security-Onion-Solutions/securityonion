@@ -254,6 +254,13 @@ ealstickeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
+    
+elasticp12perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.p12
+    - mode: 640
+    - group: 930
 
 # Create a cert for Redis encryption
 /etc/pki/redis.key:
@@ -530,11 +537,19 @@ fleetkeyperms:
     - onchanges:
       - x509: /etc/pki/elasticsearch.key
 
-miniokeyperms:
+elasticp12perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.p12
+    - mode: 640
+    - group: 930
+    
+elastickeyperms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
+    
     {%- endif %}
 {%- endif %}
