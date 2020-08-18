@@ -361,6 +361,9 @@ base:
     - logstash
     - curator
     - filebeat
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     - redis
