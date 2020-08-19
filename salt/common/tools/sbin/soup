@@ -87,6 +87,28 @@ highstate() {
   salt-call state.highstate -l info
 }
 
+masterlock() {
+  # Lock the ACL to just the manager
+  cp -v /etc/salt/master /etc/salt/master.upgrade
+  echo "peer:" >> /etc/salt/master
+  echo "  *_manager:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+  echo "  *_standalone:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+  echo "  *_managersearch:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+  echo "  *_eval:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+  echo "  *_helix:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+  echo "  *_import:" >> /etc/salt/master
+  echo "    - .*" >> /etc/salt/master
+}
+
+masterunlock() {
+  mv /etc/salt/master.upgrade /etc/salt/master
+}
+
 pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
@@ -343,6 +365,19 @@ copy_new_files
 echo ""
 update_version
 
+echo ""
+echo "Locking down Salt Master for upgrade"
+masterlock
+
+echo ""
+echo "Starting Salt Master service."
+systemctl start salt-master
+
+echo ""
+echo "Stopping Salt Master to remove ACL"
+systemctl stop salt-master
+
+masterunlock
 
 echo ""
 echo "Starting Salt Master service."
