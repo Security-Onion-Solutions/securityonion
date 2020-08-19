@@ -37,6 +37,16 @@ m2cryptopkgs:
       - python-m2crypto
 {% endif %}
 
+removefbcertdir:
+  file.absent:
+    - name: /etc/pki/filebeat.crt 
+    - onlyif: "[ -d /etc/pki/filebeat.crt ]"
+
+removefbp8dir:
+  file.absent:
+    - name: /etc/pki/filebeat.p8 
+    - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
+    
 /etc/pki/influxdb.key:
   x509.private_key_managed:
     - CN: {{ manager }}
@@ -370,18 +380,7 @@ fleetkeyperms:
 
 {% endif %}
 {% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-searchnode', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
-
-removefbcertdir:
-  file.absent:
-    - name: /etc/pki/filebeat.crt 
-    - onlyif: "[ -d /etc/pki/filebeat.crt ]"
-
-removefbp8dir:
-  file.absent:
-    - name: /etc/pki/filebeat.p8 
-    - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
-      
-
+   
 fbcertdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
