@@ -375,7 +375,7 @@ removefbcertdir:
     - name: /etc/pki/filebeat.crt 
     - onlyif: "[ -d /etc/pki/filebeat.crt ]"
 
-removefbcertdir:
+removefbp8dir:
   file.absent:
     - name: /etc/pki/filebeat.p8 
     - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
