@@ -87,6 +87,36 @@ highstate() {
   salt-call state.highstate -l info
 }
 
+masterlock() {
+  echo "Locking Salt Master"
+  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+    TOPFILE=/opt/so/saltstack/default/salt/top.sls
+    BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
+    mv -v $TOPFILE $BACKUPTOPFILE
+    echo "base:" > $TOPFILE
+    echo "  $MINIONID:" >> $TOPFILE
+    echo "    - ca" >> $TOPFILE
+    echo "    - ssl" >> $TOPFILE
+    echo "    - elasticsearch" >> $TOPFILE
+  fi
+}
+
+masterunlock() {
+  echo "Unlocking Salt Master"
+  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+    mv -v $BACKUPTOPFILE $TOPFILE
+  fi
+}
+
+playbook() {
+  echo "Applying playbook settings"
+  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+    salt-call state.apply playbook.db_init
+    rm -f /opt/so/rules/elastalert/playbook/*.yaml
+    so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
+  fi
+}
+
 pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
@@ -102,6 +132,31 @@ pillar_changes() {
       local line=$(grep '^  url_base:' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls)
       sed -i '/^  url_base:/d' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls;
       sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
+
+      # Adding play values to the global.sls
+      local HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	  local CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+      sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
+      sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
+
+      # Move storage nodes to hostname for SSL
+      # Get a list we can use:
+      grep -A1 searchnode /opt/so/saltstack/local/pillar/data/nodestab.sls | grep -v '\-\-' | sed '$!N;s/\n/ /' | awk '{print $1,$3}' | awk '/_searchnode:/{gsub(/\_searchnode:/, "_searchnode"); print}' >/tmp/nodes.txt
+      # Remove the nodes from cluster settings
+      while read p; do
+        local NAME=$(echo $p | awk '{print $1}')
+        local IP=$(echo $p | awk '{print $2}')
+        echo "Removing the old cross cluster config for $NAME"
+        curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
+      done </tmp/nodes.txt
+      # Add the nodes back using hostname
+      while read p; do
+        local NAME=$(echo $p | awk '{print $1}')
+        local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
+        echo "Adding the new cross cluster config for $NAME"
+        curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
+      done </tmp/nodes.txt
+
 
     fi
 }
@@ -318,17 +373,31 @@ copy_new_files
 echo ""
 update_version
 
+echo ""
+echo "Locking down Salt Master for upgrade"
+masterlock
 
 echo ""
 echo "Starting Salt Master service."
 systemctl start salt-master
-
 
 echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
 highstate
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
+
+echo ""
+echo "Stopping Salt Master to remove ACL"
+systemctl stop salt-master
+
+masterunlock
+
+echo ""
+echo "Starting Salt Master service."
+systemctl start salt-master
+highstate
+playbook
 
 SALTUPGRADED="True"
 if [[ "$SALTUPGRADED" == "True" ]]; then

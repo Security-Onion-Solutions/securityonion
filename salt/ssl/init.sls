@@ -368,7 +368,18 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+
+removefbcertdir:
+  file.absent:
+    - name: /etc/pki/filebeat.crt 
+    - onlyif: "[ -d /etc/pki/filebeat.crt ]"
+
+removefbp8dir:
+  file.absent:
+    - name: /etc/pki/filebeat.p8 
+    - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
+      
 
 fbcertdir:
   file.directory:
@@ -505,7 +516,7 @@ fleetkeyperms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-node', 'so-heavynode'] %}
+{% if grains['role'] in ['so-searchnode', 'so-heavynode'] %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
@@ -518,6 +529,7 @@ fleetkeyperms:
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
+    {%- endif %}
 
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
@@ -550,6 +562,5 @@ elastickeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
-    
-    {%- endif %}
+
 {%- endif %}
