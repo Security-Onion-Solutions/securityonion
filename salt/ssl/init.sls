@@ -518,6 +518,7 @@ fleetkeyperms:
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
+    {%- endif %}
 
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
@@ -550,6 +551,4 @@ elastickeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
-    
-    {%- endif %}
 {%- endif %}
