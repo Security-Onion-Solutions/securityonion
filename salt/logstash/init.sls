@@ -15,6 +15,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 {%- if FEATURES is sameas true %}
@@ -146,6 +147,8 @@ so-logstash:
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
+    - extra_hosts:
+      - {{ MANAGER }}:{{ MANAGERIP }}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
