@@ -88,25 +88,19 @@ highstate() {
 }
 
 masterlock() {
-  # Lock the ACL to just the manager
-  cp -v /etc/salt/master /etc/salt/master.upgrade
-  echo "peer:" >> /etc/salt/master
-  echo "  *_manager:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
-  echo "  *_standalone:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
-  echo "  *_managersearch:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
-  echo "  *_eval:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
-  echo "  *_helix:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
-  echo "  *_import:" >> /etc/salt/master
-  echo "    - .*" >> /etc/salt/master
+  TOPFILE=/opt/so/saltstack/default/salt/top.sls
+  BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
+  mv -v $TOPFILE $BACKUPTOPFILE
+  echo "base:" > $TOPFILE
+  echo "  $MINIONID:" >> $TOPFILE
+  echo "    - ca" >> $TOPFILE
+  echo "    - ssl" >> $TOPFILE
+  echo "    - elasticsearch" >> $TOPFILE
+
 }
 
 masterunlock() {
-  mv /etc/salt/master.upgrade /etc/salt/master
+  mv -v $BACKUPTOPFILE $TOPFILE
 }
 
 pillar_changes() {
