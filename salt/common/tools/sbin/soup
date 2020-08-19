@@ -153,8 +153,9 @@ pillar_changes() {
       while read p; do
         local NAME=$(echo $p | awk '{print $1}')
         local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
+	local IP=$(echo $p | awk '{print $2}')
         echo "Adding the new cross cluster config for $NAME"
-        curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
+        curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'/'$IP'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
       done </tmp/nodes.txt
 
 
@@ -164,19 +165,19 @@ pillar_changes() {
 update_dockers() {
     # List all the containers
     if [ $MANAGERCHECK == 'so-import' ]; then
-		  TRUSTED_CONTAINERS=( \
-			"so-idstools" \
-			"so-nginx" \
-			"so-filebeat" \
-			"so-suricata" \
-			"so-soc" \
-			"so-elasticsearch" \
-			"so-kibana" \
-			"so-kratos" \
-			"so-suricata" \
-			"so-registry" \
-			"so-pcaptools" \
-			"so-zeek" )
+      TRUSTED_CONTAINERS=( \
+      "so-idstools" \
+      "so-nginx" \
+      "so-filebeat" \
+      "so-suricata" \
+      "so-soc" \
+      "so-elasticsearch" \
+      "so-kibana" \
+      "so-kratos" \
+      "so-suricata" \
+      "so-registry" \
+      "so-pcaptools" \
+      "so-zeek" )
     elif [ $MANAGERCHECK != 'so-helix' ]; then
       TRUSTED_CONTAINERS=( \
       "so-acng" \
