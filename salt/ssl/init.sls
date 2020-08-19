@@ -72,8 +72,44 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+# Create a cert for Redis encryption
+/etc/pki/redis.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
+    - prereq:
+      - x509: /etc/pki/redis.crt
+    {%- endif %}
 
+/etc/pki/redis.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/redis.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+
+rediskeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/redis.key
+    - mode: 640
+    - group: 939
+{% endif %}
+
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
 /etc/pki/filebeat.key:
   x509.private_key_managed:
     - CN: {{ manager }}
@@ -261,41 +297,6 @@ elasticp12perms:
     - name: /etc/pki/elasticsearch.p12
     - mode: 640
     - group: 930
-
-# Create a cert for Redis encryption
-/etc/pki/redis.key:
-  x509.private_key_managed:
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
-    - prereq:
-      - x509: /etc/pki/redis.crt
-    {%- endif %}
-
-/etc/pki/redis.crt:
-  x509.certificate_managed:
-    - ca_server: {{ ca_server }}
-    - signing_policy: registry
-    - public_key: /etc/pki/redis.key
-    - CN: {{ manager }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-
-rediskeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/redis.key
-    - mode: 640
-    - group: 939
 
 /etc/pki/managerssl.key:
   x509.private_key_managed:

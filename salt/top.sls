@@ -352,6 +352,7 @@ base:
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
     - minio
