@@ -88,19 +88,24 @@ highstate() {
 }
 
 masterlock() {
-  TOPFILE=/opt/so/saltstack/default/salt/top.sls
-  BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
-  mv -v $TOPFILE $BACKUPTOPFILE
-  echo "base:" > $TOPFILE
-  echo "  $MINIONID:" >> $TOPFILE
-  echo "    - ca" >> $TOPFILE
-  echo "    - ssl" >> $TOPFILE
-  echo "    - elasticsearch" >> $TOPFILE
-
+  echo "Locking Salt Master"
+  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+    TOPFILE=/opt/so/saltstack/default/salt/top.sls
+    BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
+    mv -v $TOPFILE $BACKUPTOPFILE
+    echo "base:" > $TOPFILE
+    echo "  $MINIONID:" >> $TOPFILE
+    echo "    - ca" >> $TOPFILE
+    echo "    - ssl" >> $TOPFILE
+    echo "    - elasticsearch" >> $TOPFILE
+  fi
 }
 
 masterunlock() {
-  mv -v $BACKUPTOPFILE $TOPFILE
+  echo "Unlocking Salt Master"
+  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
+    mv -v $BACKUPTOPFILE $TOPFILE
+  fi
 }
 
 pillar_changes() {
