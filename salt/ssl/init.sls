@@ -145,7 +145,7 @@ rediskeyperms:
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
 {% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.id}}
+    - CN: {{grains.host}}
 {% else %}
     - CN: {{manager}}
 {% endif %}
