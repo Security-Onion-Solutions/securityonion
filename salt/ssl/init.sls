@@ -176,7 +176,8 @@ chownilogstashfilebeatp8:
     - mode: 640
     - user: 931
     - group: 939
-    
+
+  {% if grains.role != 'so-heavynode' %}
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -266,7 +267,7 @@ miniokeyperms:
     - name: /etc/pki/minio.key
     - mode: 640
     - group: 939
-
+  {% endif %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
