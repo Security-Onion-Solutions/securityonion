@@ -152,3 +152,9 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+
+surilogrotate:
+  file.managed:
+    - name: /etc/logrotate.d/suristats
+    - source: salt://suricata/files/suri-rotate.conf
+    - mode: 644
