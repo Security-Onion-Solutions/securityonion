@@ -168,7 +168,11 @@ so-logstash:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
+      {% if grains['role'] == 'so-heavynode' %}
+      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
+      {% else %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
+      {% endif %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
       - /etc/pki/ca.cer:/ca/ca.crt:ro
