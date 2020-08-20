@@ -113,7 +113,6 @@ dashboard-managersearch:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
