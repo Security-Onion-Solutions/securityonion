@@ -46,6 +46,11 @@ removefbp8dir:
   file.absent:
     - name: /etc/pki/filebeat.p8 
     - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
+
+removeesp12dir:
+  file.absent:
+    - name: /etc/pki/elasticsearch.p12
+    - onlyif: "[ -d /etc/pki/elasticsearch.p12 ]"
     
 /etc/pki/influxdb.key:
   x509.private_key_managed:
