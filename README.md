@@ -1,6 +1,6 @@
-## Security Onion 2.0.3.rc1
+## Security Onion 2.1.0.rc2
 
-Security Onion 2.0.3 RC1 is here! This version requires a fresh install, but there is good news - we have brought back soup! From now on, you should be able to run soup on the manager to upgrade your environment to RC2 and beyond! 
+Security Onion 2.1.0 RC2 is here!
 
 ### Warnings and Disclaimers
 
