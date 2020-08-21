@@ -10,7 +10,7 @@ SHA1: B716910E02EBF331DFA51E6130DF6382A8D8B756
 SHA256: 655A28107B11A2FAB2D5D1028777BB4731F6E8562A3CE75D18CA378086135811  
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.2.0-rc2.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.1.0-rc2.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
