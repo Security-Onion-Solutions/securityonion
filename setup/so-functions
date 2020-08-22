@@ -177,8 +177,6 @@ secrets_pillar(){
   fi
 }
 
-
-
 check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
 }
@@ -1606,8 +1604,13 @@ set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 }
 
+# Add /usr/sbin to everyone's path
+set_path() {
+	echo "PATH=\$PATH:/usr/sbin" > /etc/profile.d/securityonion.sh
+}
+
 setup_salt_master_dirs() {
-	# Create salt paster directories
+	# Create salt master directories
 	mkdir -p $default_salt_dir/pillar
 	mkdir -p $default_salt_dir/salt
 	mkdir -p $local_salt_dir/pillar
@@ -1868,7 +1871,6 @@ set_updates() {
 	fi
 }
 
-# FIXME: should this be a function?
 set_version() {
 	# Drop a file with the current version
 	echo "$SOVERSION" > /etc/soversion
@@ -1896,6 +1898,7 @@ update_packages() {
 	fi
 }
 
+# This is used for development to speed up network install tests.
 use_turbo_proxy() {
 	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE)$ ]]; then
 		echo "turbo is not supported on this install type" >> $setup_log 2>&1
@@ -1913,6 +1916,7 @@ use_turbo_proxy() {
 	fi
 }
 
+# Set Logstash heap size based on total memory
 ls_heapsize() {
 
 	if [ "$total_mem" -ge 32000 ]; then
@@ -1961,9 +1965,9 @@ es_heapsize() {
 	fi
 }
 
-# Enable Bro Logs
+# Enable Zeek Logs
 zeek_logs_enabled() {
-	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
+	echo "Enabling Zeek Logs" >> "$setup_log" 2>&1
 
 	local zeeklogs_pillar=./pillar/zeeklogs.sls
 
