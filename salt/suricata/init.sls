@@ -79,6 +79,12 @@ surilogscript:
     - source: salt://suricata/cron/surilogcompress
     - mode: 755
 
+surirotatescript:
+  file.managed:
+    - name: /usr/local/bin/surirotate
+    - source: salt://suricata/cron/surirotate
+    - mode: 755
+
 /usr/local/bin/surilogcompress:
   cron.present:
     - user: suricata
@@ -155,6 +161,15 @@ so-suricata:
 
 surilogrotate:
   file.managed:
-    - name: /etc/logrotate.d/suristats
+    - name: /opt/so/conf/suricata/suri-rotate.conf
     - source: salt://suricata/files/suri-rotate.conf
     - mode: 644
+
+/usr/local/bin/surirotate:
+  cron.present:
+    - user: root
+    - minute: '6'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
