@@ -168,7 +168,7 @@ surilogrotate:
 /usr/local/bin/surirotate:
   cron.present:
     - user: root
-    - minute: '6'
+    - minute: '11'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
