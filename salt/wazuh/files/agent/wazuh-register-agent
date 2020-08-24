@@ -1,5 +1,5 @@
 {%- if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] %}
-  {%- set ip = salt['pillar.get']('static:managerip', '') %}
+  {%- set ip = salt['pillar.get']('global:managerip', '') %}
 {%- elif grains['role'] == 'so-node' or grains['role'] == 'so-heavynode' %}
   {%- set ip = salt['pillar.get']('elasticsearch:mainip', '') %}
 {%- elif grains['role'] == 'so-sensor' %}
@@ -135,7 +135,7 @@ shift $(($OPTIND - 1))
 #  fi
 
 # Default action -> try to register the agent
-sleep 10s
+sleep 30s
 STATUS=$(curl -s -k -u $USER:$PASSWORD $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID | jq .data.status | sed s'/"//g')
 if [[ $STATUS == "Active" ]]; then
   echo "Agent $AGENT_ID already registered!"

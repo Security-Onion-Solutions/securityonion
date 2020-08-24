@@ -18,6 +18,18 @@
 source ./so-variables
 source ./so-common-functions
 
+whiptail_airgap() {
+
+	[ -n "$TESTING" ] && return
+
+	INTERWEBS=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose your install conditions:" 20 75 4 \
+	"STANDARD" "This manager has internet accesss" ON  \
+	"AIRGAP" "This manager does not have internet access" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
 
 whiptail_basic_zeek() {
 
@@ -315,6 +327,32 @@ whiptail_requirements_error() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+whiptail_storage_requirements() {
+	local mount=$1
+	local current_val=$2
+	local needed_val=$3
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Free space on mount point '${mount}' is currently ${current_val}.
+
+		You need ${needed_val} to meet minimum requirements.
+
+		Visit https://docs.securityonion.net/en/2.1/hardware.html for more information.
+
+		Press YES to continue anyway, or press NO to cancel.
+	EOM
+
+	whiptail \
+		--title "Security Onion Setup" \
+		--yesno "$message" \
+		14 75
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_invalid_pass_warning() {
 
 	[ -n "$TESTING" ] && return
@@ -445,10 +483,11 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose install type:" 10 65 3 \
+	"Choose install type:" 10 65 4 \
 		"EVAL" "Evaluation mode (not for production) " ON \
 		"STANDALONE" "Standalone production install " OFF \
 		"DISTRIBUTED" "Distributed install submenu " OFF \
+		"IMPORT" "Standalone to import PCAP or log files " OFF \
 		3>&1 1>&2 2>&3
 	)
 
@@ -1037,17 +1076,21 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ -n $ALLOW_CIDR ]]; then
-		local sentence_prefix="Access"
+	if [[ -n "$REDIRECTIT" && $is_manager = true ]]; then
+		if [[ -n $ALLOW_CIDR ]]; then
+			local sentence_prefix="Access"
+		else
+			local sentence_prefix="Run so-allow after reboot to access"
+		fi
+		local accessMessage="\n${sentence_prefix} the web interface at: https://${REDIRECTIT}\n"
 	else
-		local sentence_prefix="Run so-allow after reboot to access"
+		local accessMessage=""
 	fi
+
 
 	read -r -d '' message <<- EOM
 		Finished ${install_type} installation.
-
-		${sentence_prefix} the web interface at: https://${REDIRECTIT}
-
+		$accessMessage
 		Press ENTER to reboot.
 	EOM
 
@@ -1092,28 +1135,28 @@ whiptail_so_allow() {
 		export ALLOW_ROLE='a'
 		export ALLOW_CIDR
 	fi
-
-	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_gauge_post_setup() {
 
-	[ -n "$TESTING" ] && return
-	
-	local msg=$1
+	if [ -n "$TESTING" ]; then
+		cat >> $setup_log 2>&1
+	else
+		local msg=$1
 
-	whiptail --title "Security Onion Setup" --gauge "$msg" 6 60 96
+		whiptail --title "Security Onion Setup" --gauge "$msg" 6 60 96
+	fi
 }
 
 whiptail_strelka_rules() {
 
-        [ -n "$TESTING" ] && return
+	[ -n "$TESTING" ] && return
 
-        whiptail --title "Security Onion Setup" --yesno "Do you want to enable the default YARA rules for Strelka?" 8 75
+	whiptail --title "Security Onion Setup" --yesno "Do you want to enable the default YARA rules for Strelka?" 8 75
 
-        local exitstatus=$?
+	local exitstatus=$?
 
-        if [[ $exitstatus == 0 ]]; then export STRELKARULES=1; fi
+	if [[ $exitstatus == 0 ]]; then export STRELKARULES=1; fi
 }
 
 whiptail_suricata_pins() {

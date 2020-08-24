@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{%- set VERSION = salt['pillar.get']('global:soversion', '') %}
+{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{%- set MANAGER = salt['grains.get']('master') %}
+. /usr/sbin/so-common
+# Check to see if we have extracted the ca cert.
+if [ ! -f /opt/so/saltstack/local/salt/common/cacerts ]; then
+    docker run -v /etc/pki/ca.crt:/etc/pki/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }} -keystore /etc/pki/ca-trust/extracted/java/cacerts -alias SOSCA -import -file /etc/pki/ca.crt -storepass changeit -noprompt
+    docker cp so-elasticsearchca:/etc/pki/ca-trust/extracted/java/cacerts /opt/so/saltstack/local/salt/common/cacerts
+    docker cp so-elasticsearchca:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
+    docker rm so-elasticsearchca
+    echo "" >> /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
+    echo "sosca" >> /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
+    cat /etc/pki/ca.crt >> /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
+else
+    exit 0
+fi

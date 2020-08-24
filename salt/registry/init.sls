@@ -40,7 +40,7 @@ dockerregistryconf:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: registry:2
+    - image: registry:latest
     - hostname: so-registry
     - restart_policy: always
     - port_bindings:

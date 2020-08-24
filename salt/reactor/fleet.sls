@@ -10,7 +10,7 @@ def run():
   MINIONID = data['id']
   ACTION = data['data']['action']
   LOCAL_SALT_DIR = "/opt/so/saltstack/local"
-  STATICFILE = f"{LOCAL_SALT_DIR}/pillar/static.sls"  
+  STATICFILE = f"{LOCAL_SALT_DIR}/pillar/global.sls"  
   SECRETSFILE = f"{LOCAL_SALT_DIR}/pillar/secrets.sls"
 
   if MINIONID.split('_')[-1] in ['manager','eval','fleet','managersearch','standalone']:

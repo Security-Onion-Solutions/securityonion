@@ -1,7 +1,9 @@
-{% set es = salt['pillar.get']('static:managerip', '') %}
-{% set hivehost = salt['pillar.get']('static:managerip', '') %}
-{% set hivekey = salt['pillar.get']('static:hivekey', '') %}
-alert: hivealerter
+{% set es = salt['pillar.get']('global:url_base', '') %}
+{% set hivehost = salt['pillar.get']('global:managerip', '') %}
+{% set hivekey = salt['pillar.get']('global:hivekey', '') %}
+alert:
+- "modules.so.playbook-es.PlaybookESAlerter"
+- "hivealerter"
 
 hive_connection:
   hive_host: http://{{hivehost}}
@@ -19,7 +21,7 @@ hive_observable_data_mapping:
   - other: '{match[osquery][hostname]}'
 
 hive_alert_config:
-  title: '{rule[name]} -- {match[osquery][hostname]} -- {match[osquery][name]}'
+  title: "{rule[name]} -- {match[osquery][hostname]} -- {match[osquery][name]}"
   type: 'osquery'
   source: 'SecurityOnion'
   description: "`Play:` https://{{es}}/playbook/issues/6000 \n\n `View Event:` <https://{{es}}/kibana/app/kibana#/discover?_g=()&_a=(columns:!(_source),interval:auto,query:(language:lucene,query:'_id:{match[_id]}'),sort:!('@timestamp',desc))>  \n\n `Hostname:` __{match[osquery][hostname]}__  `Live Query:`__[Pivot Link](https://{{es}}/fleet/queries/new?host_uuids={match[osquery][LiveQuery]})__ `Pack:`  __{match[osquery][name]}__ `Data:` {match[osquery][columns]}"
@@ -31,7 +33,6 @@ hive_alert_config:
   caseTemplate: '5000'
   
  
-alert: modules.so.playbook-es.PlaybookESAlerter
 elasticsearch_host: "{{ es }}:9200"
 play_title: ""
 event.module: "playbook"

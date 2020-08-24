@@ -1,7 +1,7 @@
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -91,7 +91,6 @@ dashboard-manager:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -114,7 +113,6 @@ dashboard-managersearch:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -137,7 +135,7 @@ dashboard-standalone:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -159,8 +157,8 @@ dashboard-{{ SN }}:
     - source: salt://grafana/dashboards/sensor_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
-      MONINT: {{ SNDATA.monint }}
       MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -183,7 +181,6 @@ dashboardsearch-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}

@@ -14,15 +14,16 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set ZEEKVER = salt['pillar.get']('static:zeekversion', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set ZEEKVER = salt['pillar.get']('global:zeekversion', '') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
 {% set BPF_STATUS = 0  %}
 
 {# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
 {% from 'suricata/suricata_config.map.jinja' import suricata_defaults as suricata_config with context %}
+{% from "suricata/map.jinja" import START with context %}
 
 # Suricata
 
@@ -76,6 +77,12 @@ surilogscript:
   file.managed:
     - name: /usr/local/bin/surilogcompress
     - source: salt://suricata/cron/surilogcompress
+    - mode: 755
+
+surirotatescript:
+  file.managed:
+    - name: /usr/local/bin/surirotate
+    - source: salt://suricata/cron/surirotate
     - mode: 755
 
 /usr/local/bin/surilogcompress:
@@ -134,6 +141,7 @@ suribpf:
 so-suricata:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
+    - start: {{ START }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
@@ -150,3 +158,18 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+
+surilogrotate:
+  file.managed:
+    - name: /opt/so/conf/suricata/suri-rotate.conf
+    - source: salt://suricata/files/suri-rotate.conf
+    - mode: 644
+
+/usr/local/bin/surirotate:
+  cron.present:
+    - user: root
+    - minute: '11'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'

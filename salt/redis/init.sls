@@ -12,8 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
 # Redis Setup
@@ -53,10 +53,14 @@ so-redis:
     - user: socore
     - port_bindings:
       - 0.0.0.0:6379:6379
+      - 0.0.0.0:9696:9696
     - binds:
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
+      - /etc/pki/redis.crt:/certs/redis.crt:ro
+      - /etc/pki/redis.key:/certs/redis.key:ro
+      - /etc/pki/ca.crt:/certs/ca.crt:ro
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
       - file: /opt/so/conf/redis/etc

@@ -15,10 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
-{%- set MANAGERIP = salt['pillar.get']('static:managerip') -%}
+{%- set MANAGER = salt['grains.get']('master') %}
+{%- set VERSION = salt['pillar.get']('global:soversion') %}
+{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{%- set MANAGERIP = salt['pillar.get']('global:managerip') -%}
+{%- set URLBASE = salt['pillar.get']('global:url_base') %}
+
+. /usr/sbin/so-common
 
 function usage {
   cat << EOF
@@ -32,13 +35,13 @@ EOF
 function pcapinfo() {
   PCAP=$1
   ARGS=$2
-  docker run --rm -v $PCAP:/input.pcap --entrypoint capinfos {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
+  docker run --rm -v "$PCAP:/input.pcap" --entrypoint capinfos {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap $ARGS
 }
 
 function pcapfix() {
   PCAP=$1
   PCAP_OUT=$2
-  docker run --rm -v $PCAP:/input.pcap -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
+  docker run --rm -v "$PCAP:/input.pcap" -v $PCAP_OUT:$PCAP_OUT --entrypoint pcapfix {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} /input.pcap -o $PCAP_OUT > /dev/null 2>&1
 }
 
 function suricata() {
@@ -57,7 +60,7 @@ function suricata() {
     -v /opt/so/conf/suricata/rules:/etc/suricata/rules:ro \
     -v ${LOG_PATH}:/var/log/suricata/:rw \
     -v ${NSM_PATH}/:/nsm/:rw \
-    -v $PCAP:/input.pcap:ro \
+    -v "$PCAP:/input.pcap:ro" \
     -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
     {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }} \
     --runmode single -k none -r /input.pcap > $LOG_PATH/console.log 2>&1
@@ -76,7 +79,7 @@ function zeek() {
     -v $NSM_PATH/logs:/nsm/zeek/logs:rw \
     -v $NSM_PATH/spool:/nsm/zeek/spool:rw \
     -v $NSM_PATH/extracted:/nsm/zeek/extracted:rw \
-    -v $PCAP:/input.pcap:ro \
+    -v "$PCAP:/input.pcap:ro" \
     -v /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro \
     -v /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro \
     -v /opt/so/conf/zeek/zeekctl.cfg:/opt/zeek/etc/zeekctl.cfg:ro \
@@ -210,9 +213,9 @@ cat << EOF
 Import complete!
 
 You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ MANAGERIP }}/#/hunt?q=%2a%20%7C%20groupby%20event.module%20event.dataset&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM
+https://{{ URLBASE }}/#/hunt?q=import.id:${HASH}%20%7C%20groupby%20event.module%20event.dataset&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
 
-or you can manually set your Time Range to be:
+or you can manually set your Time Range to be (in UTC):
 From: $START_OLDEST    To: $END_NEWEST
 
 Please note that it may take 30 seconds or more for events to appear in Onion Hunt.

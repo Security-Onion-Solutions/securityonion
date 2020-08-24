@@ -10,7 +10,7 @@ crossclusterson:
     - template: jinja
 
 {% endif %}
-{% if grains['role'] == 'so-eval' %}
+{% if grains['role'] in ['so-eval', 'so-import'] %}
 fixsearch:
   cmd.script:
     - shell: /bin/bash

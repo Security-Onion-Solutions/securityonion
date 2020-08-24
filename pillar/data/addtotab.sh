@@ -44,11 +44,11 @@ echo "    guid: $GUID" >> $local_salt_dir/pillar/data/$TYPE.sls
 echo "    rootfs: $ROOTFS" >> $local_salt_dir/pillar/data/$TYPE.sls
 echo "    nsmfs: $NSM" >> $local_salt_dir/pillar/data/$TYPE.sls
 if [ $TYPE == 'sensorstab' ]; then
-  echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
+  echo "    monint: bond0" >> $local_salt_dir/pillar/data/$TYPE.sls
   salt-call state.apply grafana queue=True
 fi
 if [ $TYPE == 'evaltab' ] || [ $TYPE == 'standalonetab' ]; then
-  echo "    monint: $MONINT" >> $local_salt_dir/pillar/data/$TYPE.sls
+  echo "    monint: bond0" >> $local_salt_dir/pillar/data/$TYPE.sls
   if [ ! $10 ]; then
     salt-call state.apply grafana queue=True
     salt-call state.apply utility queue=True

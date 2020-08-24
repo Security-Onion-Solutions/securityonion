@@ -1,28 +1,36 @@
-{%- set ZEEKVER = salt['pillar.get']('static:zeekversion', '') -%}
-{%- set WAZUH = salt['pillar.get']('static:wazuh', '0') -%}
+{%- set ZEEKVER = salt['pillar.get']('global:zeekversion', '') -%}
+{%- set WAZUH = salt['pillar.get']('global:wazuh', '0') -%}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
 {%- set FREQSERVER = salt['pillar.get']('manager:freq', '0') -%}
 {%- set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') -%}
-{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
-{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
+{% import_yaml 'salt/minion.defaults.yaml' as salt %}
+{% set saltversion = salt.salt.minion.version %}
 
 
 base:
 
-  'os:CentOS':
-    - match: grain
+  'not G@saltversion:{{saltversion}}':
+    - match: compound
+    - salt.minion
+
+  'G@os:CentOS and G@saltversion:{{saltversion}}':
+    - match: compound
     - yum
     - yum.packages
 
-  '*':
-    - salt
+  '* and G@saltversion:{{saltversion}}':
+    - match: compound
+    - salt.minion
     - docker
     - patch.os.schedule
     - motd
 
-  '*_helix':
+  '*_helix and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -39,7 +47,8 @@ base:
     - filebeat
     - schedule
 
-  '*_sensor':
+  '*_sensor and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -61,7 +70,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_eval':
+  '*_eval and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -117,7 +127,8 @@ base:
     {%- endif %}
 
 
-  '*_manager':
+  '*_manager and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -131,7 +142,6 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -139,6 +149,8 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
+    - redis
     - kibana
     - elastalert
     - filebeat
@@ -147,6 +159,7 @@ base:
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
+    - redis
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -162,7 +175,8 @@ base:
     - domainstats
     {%- endif %}
 
-  '*_standalone':
+  '*_standalone and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -177,7 +191,6 @@ base:
     - idstools
     - suricata.manager    
     - healthcheck
-    - redis
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -185,6 +198,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - minio
     - kibana
     - pcap
     - suricata
@@ -220,7 +234,7 @@ base:
 
   # Search node logic
 
-  '*_node and I@node:node_type:parser':
+  '*_node and I@node:node_type:parser and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -230,7 +244,7 @@ base:
     {%- endif %}
     - schedule
 
-  '*_node and I@node:node_type:hot':
+  '*_node and I@node:node_type:hot and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -241,7 +255,7 @@ base:
     {%- endif %}
     - schedule
 
-  '*_node and I@node:node_type:warm':
+  '*_node and I@node:node_type:warm and G@saltversion:{{saltversion}}':
     - match: compound
     - common
     - firewall
@@ -251,7 +265,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_searchnode':
+  '*_searchnode and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -269,7 +284,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_managersensor':
+  '*_managersensor and G@saltversion:{{saltversion}}':
+    - match: compound
     - common
     - nginx
     - telegraf
@@ -283,7 +299,8 @@ base:
     {%- endif %}
     - schedule
 
-  '*_managersearch':
+  '*_managersearch and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - registry
@@ -297,7 +314,7 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - redis
+    - minio
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -313,6 +330,7 @@ base:
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
+    - redis
     - fleet.install_package
     {%- endif %}
     - soctopus
@@ -329,21 +347,27 @@ base:
     - domainstats
     {%- endif %}
 
-  '*_heavynode':
+  '*_heavynode and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
+    - nginx
     - telegraf
     - firewall
-    - redis
+    - minio
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
     - logstash
     - curator
     - filebeat
+    {%- if STRELKA %}
+    - strelka
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
+    - redis
     {%- endif %}
     - pcap
     - suricata
@@ -353,7 +377,8 @@ base:
     - filebeat
     - schedule
   
-  '*_fleet':
+  '*_fleet and G@saltversion:{{saltversion}}':
+    - match: compound
     - ca
     - ssl
     - common
@@ -365,3 +390,24 @@ base:
     - fleet
     - fleet.install_package
     - filebeat
+
+  '*_import and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ca
+    - ssl
+    - registry
+    - manager
+    - common
+    - nginx
+    - soc
+    - firewall
+    - idstools
+    - suricata.manager
+    - pcap
+    - elasticsearch
+    - kibana
+    - filebeat
+    - utility
+    - suricata
+    - zeek
+    - schedule

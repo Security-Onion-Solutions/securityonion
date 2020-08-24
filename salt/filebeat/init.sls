@@ -11,12 +11,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{% if FEATURES %}
+{%- if FEATURES is sameas true %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
@@ -60,8 +60,8 @@ so-filebeat:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
-      - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
+      - /nsm/wazuh/logs/alerts:/wazuh/alerts:ro
+      - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro

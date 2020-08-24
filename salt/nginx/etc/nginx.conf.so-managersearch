@@ -1,7 +1,7 @@
 {%- set managerip = salt['pillar.get']('manager:mainip', '') %}
-{%- set FLEET_MANAGER = salt['pillar.get']('static:fleet_manager') %}
-{%- set FLEET_NODE = salt['pillar.get']('static:fleet_node') %}
-{%- set FLEET_IP = salt['pillar.get']('static:fleet_ip', None) %}
+{%- set FLEET_MANAGER = salt['pillar.get']('global:fleet_manager') %}
+{%- set FLEET_NODE = salt['pillar.get']('global:fleet_node') %}
+{%- set FLEET_IP = salt['pillar.get']('global:fleet_ip', None) %}
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -296,6 +296,9 @@ http {
 		}
 
 		location /sensoroniagents/ {
+			if ($http_authorization = "") {
+				return 403;
+			}
 			proxy_pass            http://{{ managerip }}:9822/;
 			proxy_read_timeout    90;
 			proxy_connect_timeout 90;
