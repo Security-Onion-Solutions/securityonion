@@ -2,7 +2,7 @@
 
 ### Download and Verify
 
-2.1.0-rc1 ISO image:  
+2.1.0-rc2 ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-2.1.0-rc2.iso
 
 MD5: 9EAE772B64F5B3934C0DB7913E38D6D4  
