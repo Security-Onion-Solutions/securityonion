@@ -179,8 +179,8 @@ sensorrotateconf:
 /usr/local/bin/sensor-rotate:
   cron.present:
     - user: root
-    - minute: '*'
-    - hour: '*'
+    - minute: '1'
+    - hour: '0'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
