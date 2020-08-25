@@ -163,4 +163,26 @@ utilsyncscripts:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+sensorrotatescript:
+  file.managed:
+    - name: /usr/local/bin/sensor-rotate
+    - source: salt://common/cron/sensor-rotate
+    - mode: 755
+
+sensorrotateconf:
+  file.managed:
+    - name: /opt/so/conf/sensor-rotate.conf
+    - source: salt://common/files/sensor-rotate.conf
+    - mode: 644
+
+/usr/local/bin/sensor-rotate:
+  cron.present:
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 {% endif %}
