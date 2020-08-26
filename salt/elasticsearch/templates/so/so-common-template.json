@@ -6,11 +6,61 @@
     "number_of_replicas":0,
     "number_of_shards":1,
     "index.refresh_interval":"30s",
-    "index.routing.allocation.require.box_type":"hot"
+    "index.routing.allocation.require.box_type":"hot",
+    "analysis": {
+      "analyzer": {
+        "es_security_analyzer": {
+          "type": "custom",
+          "filter": [ "path_hierarchy_pattern_filter", "lowercase" ],
+          "tokenizer": "whitespace"
+        },
+        "es_security_search_analyzer": {
+          "type": "custom",
+          "filter": [ "lowercase" ],
+          "tokenizer": "whitespace"
+        },
+        "es_security_search_quote_analyzer": {
+          "type": "custom",
+          "filter": [ "lowercase" ],
+          "tokenizer": "whitespace"
+        }
+      },
+      "filter" : {
+        "path_hierarchy_pattern_filter": {
+          "type" : "pattern_capture",
+          "preserve_original": true,
+          "patterns": [
+            "((?:[^\\\\]*\\\\)*)(.*)",
+            "((?:[^/]*/)*)(.*)"
+          ]
+        }
+      }
+    }
   },
   "mappings":{
        "dynamic":false,
        "date_detection":false,
+       "dynamic_templates": [
+        {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                 "type": "keyword"
+               },
+               "security": {
+                 "type": "text",
+                 "analyzer": "es_security_analyzer", 
+                 "search_analyzer": "es_security_search_analyzer", 
+                 "search_quote_analyzer": "es_security_search_quote_analyzer" 
+               }
+             }
+            }
+          }
+        }
+      ],
        "properties":{
         "@timestamp":{
           "type":"date"
