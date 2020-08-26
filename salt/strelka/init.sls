@@ -48,6 +48,7 @@ strelka_yara_update:
     - user: root
     - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
     - hour: '7'
+    - minute: '1'
 
 strelkarules:
   file.recurse:
