@@ -35,8 +35,15 @@ whiptail_basic_zeek() {
 
 	[ -n "$TESTING" ] && return
 
+	if [[ $is_smooshed ]]; then
+	  local PROCS=$(expr $lb_procs / 2)
+      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+	else
+	  local PROCS=$lb_procs
+	fi
+
 	BASICZEEK=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the number of zeek processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
+	"Enter the number of zeek processes:" 10 75 "$PROCS" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -45,9 +52,16 @@ whiptail_basic_zeek() {
 whiptail_basic_suri() {
 
 	[ -n "$TESTING" ] && return
+	
+	if [[ $is_smooshed ]]; then
+	  local PROCS=$(expr $lb_procs / 2)
+      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+	else
+	  local PROCS=$lb_procs
+	fi
 
 	BASICSURI=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the number of Suricata processes:" 10 75 "$lb_procs" 3>&1 1>&2 2>&3)
+	"Enter the number of Suricata processes:" 10 75 "$PROCS" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -63,7 +77,14 @@ whiptail_zeek_pins() {
 		cpu_core_list_whiptail+=("$item" "OFF")
 	done
 
-	ZEEKPINS=$(whiptail --noitem --title "Pin Zeek CPUS" --checklist "Please select $lb_procs cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
+	if [[ $is_smooshed ]]; then
+	  local PROCS=$(expr $lb_procs / 2)
+      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+	else
+	  local PROCS=$lb_procs
+	fi
+
+	ZEEKPINS=$(whiptail --noitem --title "Pin Zeek CPUS" --checklist "Please select $PROCS cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -1171,7 +1192,14 @@ whiptail_suricata_pins() {
         filtered_core_str+=("$item" "")
     done
 
-	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please select $lb_procs cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
+	if [[ $is_smooshed ]]; then
+	  local PROCS=$(expr $lb_procs / 2)
+      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+	else
+	  local PROCS=$lb_procs
+	fi
+
+	SURIPINS=$(whiptail --noitem --title "Pin Suricata CPUS" --checklist "Please select $PROCS cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
