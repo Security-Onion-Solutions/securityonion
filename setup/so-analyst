@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Copyright 2014-2020 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Install misc utils
+yum -y install wget curl unzip epel-release;
+
+# Install xWindows
+yum -y groupinstall "X Window System";
+yum -y install gnome-classic-session gnome-terminal nautilus-open-terminal control-center liberation-mono-fonts;
+unlink /etc/systemd/system/default.target;
+ln -sf /lib/systemd/system/graphical.target /etc/systemd/system/default.target;
+
+# Install Mono - prereq for NetworkMiner
+rpmkeys --import "http://pool.sks-keyservers.net/pks/lookup?op=get&search=0x3fa7e0328081bff6a14da29aa6a19b38d3d831ef";
+su -c 'curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo';
+yum -y install mono-devel;
+
+# Install NetworkMiner
+wget https://www.netresec.com/?download=NetworkMiner -O /tmp/nm.zip;
+unzip /tmp/nm.zip -d /opt/;
+cd /opt/NetworkMiner*;
+sudo chmod +x NetworkMiner.exe;
+sudo chmod -R go+w AssembledFiles/;
+sudo chmod -R go+w Captures/;
+rm /tmp/nm.zip;
+
+# Install Wireshark for Gnome
+yum -y install wireshark-gnome; 
+
+# Install dnsiff
+yum -y install dsniff;
+
+# Install hping3
+yum -y install hping3;
+
+# Install netsed
+yum -y isntall netsed;
+
+# Install netcat
+#nmap-ncat or socat?
+
+# Install ngrep
+yum -y install ngrep;
+
+# Install scapy
+yum -y install python36-scapy;
+
+# Install ssldump
+yum -y install ssldump;
+
+# Install tcpdump
+yum -y install tcpdump;
+
+# Install tcpflow
+yum -y install tcpflow;
+
+# Install tcpxtract
+yum -y install tcpxtract;
+
+# Install whois
+yum -y install whois;
+
+# Install foremost
+sudo yum -y install https://forensics.cert.org/centos/cert/7/x86_64//foremost-1.5.7-13.1.el7.x86_64.rpm;
+
+# Install Google Chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm;
+yum localinstall google-chrome-stable_current_x86_64.rpm;
+rm google-chrome-stable_current_x86_64.rpm;
+
+# Install tcpstat
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-tcpstat-1.5.0/securityonion-tcpstat-1.5.0.rpm;
+
+# Install tcptrace
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-tcptrace-6.6.7/securityonion-tcptrace-6.6.7.rpm;
+
+# Install sslsniff
+yum -y install boost-filesystem boost-thread log4cpp;
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-sslsniff-0.8.0/securityonion-sslsniff-0.8.0.rpm;
+
+# Install Bit-Twist
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-bittwist-2.0.0/securityonion-bittwist-2.0.0.rpm;
+
+# Install chaosreader
+yum -y install perl-IO-compress perl-Net-DNS;
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-chaosreader-0.95.10/securityonion-chaosreader-0.95.10.rpm;
+
+reboot
