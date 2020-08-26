@@ -33,8 +33,8 @@ base:
     - match: compound
     - ca
     - ssl
-    - registry
     - common
+    - registry
     - telegraf
     - firewall
     - idstools
@@ -74,9 +74,9 @@ base:
     - match: compound
     - ca
     - ssl
+    - common
     - registry
     - manager
-    - common
     - nginx
     - telegraf
     - influxdb
@@ -131,8 +131,8 @@ base:
     - match: compound
     - ca
     - ssl
-    - registry
     - common
+    - registry
     - nginx
     - telegraf
     - influxdb
@@ -179,9 +179,9 @@ base:
     - match: compound
     - ca
     - ssl
+    - common
     - registry
     - manager
-    - common
     - nginx
     - telegraf
     - influxdb
@@ -303,8 +303,8 @@ base:
     - match: compound
     - ca
     - ssl
-    - registry
     - common
+    - registry
     - nginx
     - telegraf
     - influxdb
@@ -395,9 +395,9 @@ base:
     - match: compound
     - ca
     - ssl
+    - common
     - registry
     - manager
-    - common
     - nginx
     - soc
     - firewall
