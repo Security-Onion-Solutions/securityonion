@@ -708,13 +708,16 @@ detect_os() {
 
 disable_auto_start() {
 	
-	# Remove the automated setup script from crontab, if it exists
-	logCmd "crontab -u $INSTALLUSERNAME -r"
+	if crontab -l | grep so-setup; then
+		# Remove the automated setup script from crontab, if it exists
+		logCmd "crontab -u $INSTALLUSERNAME -r"
+	fi
 
-	# Truncate last line of the bash profile
-	info "Removing auto-run of setup from bash profile"
-	sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-
+	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile; then
+		# Truncate last line of the bash profile
+		info "Removing auto-run of setup from bash profile"
+		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+	fi
 }
 
 disable_misc_network_features() {
