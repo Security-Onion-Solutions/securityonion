@@ -37,17 +37,37 @@ yum -y install mono-devel;
 # Install NetworkMiner
 yum -y install libcanberra-gtk2;
 wget https://www.netresec.com/?download=NetworkMiner -O /tmp/nm.zip;
-unzip /tmp/nm.zip -d /opt/;
-cd /opt/NetworkMiner*;
-chmod +x NetworkMiner.exe;
-chmod -R go+w AssembledFiles/;
-chmod -R go+w Captures/;
+mkdir -p /opt/networkminer/
+unzip /tmp/nm.zip -d /opt/networkminer/;
+mv NetworkMiner_*/* /opt/networkminer/
+chmod +x /opt/networkminer/NetworkMiner.exe;
+chmod -R go+w /opt/networkminer/AssembledFiles/;
+chmod -R go+w /opt/networkminer/Captures/;
 rm /tmp/nm.zip;
+# Create networkminer shim
 cat << EOF >> /bin/networkminer
 #!/bin/bash
-/bin/mono /opt/NetworkMiner_2-5/NetworkMiner.exe \$@ --noupdatecheck
+/bin/mono /opt/networkminer/NetworkMiner.exe \$@ --noupdatecheck
 EOF
 chmod +x /bin/networkminer
+# Convert networkminer ico file to png format
+yum -y install ImageMagick
+convert /opt/networkminer/networkminericon.ico /opt/networkminer/networkminericon.png
+# Create menu entry
+cat << EOF >> /usr/share/applications/networkminer.desktop
+[Desktop Entry]
+Name=NetworkMiner
+Comment=NetworkMiner
+Encoding=UTF-8
+Exec=/bin/networkminer %f
+Icon=/opt/networkminer/networkminericon-4.png
+StartupNotify=true
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+MimeType=application/x-pcap;
+Categories=Network;
+EOF
 
 # Install Wireshark for Gnome
 yum -y install wireshark-gnome; 
