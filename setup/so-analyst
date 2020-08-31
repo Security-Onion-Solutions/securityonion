@@ -15,6 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+if [ "$(id -u)" -ne 0 ]; then
+	echo "This script must be run using sudo!"
+	exit 1
+fi
+
 # Install misc utils
 yum -y install wget curl unzip epel-release;
 
@@ -26,18 +31,55 @@ ln -sf /lib/systemd/system/graphical.target /etc/systemd/system/default.target;
 
 # Install Mono - prereq for NetworkMiner
 rpmkeys --import "http://pool.sks-keyservers.net/pks/lookup?op=get&search=0x3fa7e0328081bff6a14da29aa6a19b38d3d831ef";
-su -c 'curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo';
+curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo;
 yum -y install mono-devel;
 
 # Install NetworkMiner
 yum -y install libcanberra-gtk2;
 wget https://www.netresec.com/?download=NetworkMiner -O /tmp/nm.zip;
-unzip /tmp/nm.zip -d /opt/;
-cd /opt/NetworkMiner*;
-sudo chmod +x NetworkMiner.exe;
-sudo chmod -R go+w AssembledFiles/;
-sudo chmod -R go+w Captures/;
+mkdir -p /opt/networkminer/
+unzip /tmp/nm.zip -d /opt/networkminer/;
 rm /tmp/nm.zip;
+mv /opt/networkminer/NetworkMiner_*/* /opt/networkminer/
+chmod +x /opt/networkminer/NetworkMiner.exe;
+chmod -R go+w /opt/networkminer/AssembledFiles/;
+chmod -R go+w /opt/networkminer/Captures/;
+# Create networkminer shim
+cat << EOF >> /bin/networkminer
+#!/bin/bash
+/bin/mono /opt/networkminer/NetworkMiner.exe --noupdatecheck "\$@"
+EOF
+chmod +x /bin/networkminer
+# Convert networkminer ico file to png format
+yum -y install ImageMagick
+convert /opt/networkminer/networkminericon.ico /opt/networkminer/networkminericon.png
+# Create menu entry
+cat << EOF >> /usr/share/applications/networkminer.desktop
+[Desktop Entry]
+Name=NetworkMiner
+Comment=NetworkMiner
+Encoding=UTF-8
+Exec=/bin/networkminer %f
+Icon=/opt/networkminer/networkminericon-4.png
+StartupNotify=true
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+MimeType=application/x-pcap;
+Categories=Network;
+EOF
+
+# Set default monospace font to Liberation
+cat << EOF >> /etc/fonts/local.conf
+ <match target="pattern">
+  <test name="family" qual="any">
+   <string>monospace</string>
+  </test>
+  <edit binding="strong" mode="prepend" name="family">
+   <string>Liberation Mono</string>
+  </edit>
+ </match>
+EOF
 
 # Install Wireshark for Gnome
 yum -y install wireshark-gnome; 
@@ -73,12 +115,10 @@ yum -y install tcpxtract;
 yum -y install whois;
 
 # Install foremost
-sudo yum -y install https://forensics.cert.org/centos/cert/7/x86_64//foremost-1.5.7-13.1.el7.x86_64.rpm;
+yum -y install https://forensics.cert.org/centos/cert/7/x86_64//foremost-1.5.7-13.1.el7.x86_64.rpm;
 
-# Install Google Chrome
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm;
-yum -y localinstall google-chrome-stable_current_x86_64.rpm;
-rm google-chrome-stable_current_x86_64.rpm;
+# Install chromium
+yum -y install chromium;
 
 # Install tcpstat
 yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-tcpstat-1.5.0/securityonion-tcpstat-1.5.0.rpm;
@@ -88,7 +128,7 @@ yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-
 
 # Install sslsplit
 yum -y install libevent;
-yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-sslsplit-0.5.5/securityonion-sslsplit-0.5.5.rpm;
+yum -y install sslsplit;
 
 # Install Bit-Twist
 yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-bittwist-2.0.0/securityonion-bittwist-2.0.0.rpm;
@@ -96,7 +136,13 @@ yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-
 # Install chaosreader
 yum -y install perl-IO-Compress perl-Net-DNS;
 yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-chaosreader-0.95.10/securityonion-chaosreader-0.95.10.rpm;
+chmod +x /bin/chaosreader;
 
 cp ../files/analyst/README /;
+
+echo
+echo "Analyst workstation has been installed!"
+echo "Press ENTER to reboot or Ctrl-C to cancel."
+read pause
 
 reboot;

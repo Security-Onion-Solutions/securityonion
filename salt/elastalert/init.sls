@@ -100,6 +100,12 @@ elastaconf:
     - group: 933
     - template: jinja
 
+wait_for_elasticsearch:
+  module.run:
+    - http.wait_for_successful_query:
+      - url: 'http://{{MANAGER}}:9200/_cat/indices/.kibana*'
+      - wait_for: 180
+
 so-elastalert:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
@@ -112,5 +118,6 @@ so-elastalert:
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/config/elastalert_config.yaml:ro
-
+    - require:
+      - module: wait_for_elasticsearch
 {% endif %}
