@@ -19,24 +19,29 @@ IMAGEREPO=securityonion
 
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
-        echo "This script must be run using sudo!"
-        exit 1
+    echo "This script must be run using sudo!"
+    exit 1
 fi
 
 # Define a banner to separate sections
 banner="========================================================================="
 
 header() {
-        echo
-        printf '%s\n' "$banner" "$*" "$banner"
+	echo
+    printf '%s\n' "$banner" "$*" "$banner"
 }
 
 lookup_pillar() {
-        key=$1
-        cat /opt/so/saltstack/local/pillar/global.sls | grep $key | awk '{print $2}'
+    key=$1
+    cat /opt/so/saltstack/local/pillar/global.sls | grep $key | awk '{print $2}'
 }
 
 lookup_pillar_secret() {
-        key=$1
-        cat /opt/so/saltstack/local/pillar/secrets.sls | grep $key | awk '{print $2}'
+    key=$1
+    cat /opt/so/saltstack/local/pillar/secrets.sls | grep $key | awk '{print $2}'
+}
+
+check_container() {
+	docker ps | grep "$1:" > /dev/null 2>&1
+	return $?
 }
