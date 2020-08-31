@@ -149,7 +149,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - minio
     - redis
     - kibana
     - elastalert
@@ -198,7 +197,6 @@ base:
     - wazuh
     {%- endif %}
     - logstash
-    - minio
     - kibana
     - pcap
     - suricata
@@ -314,7 +312,6 @@ base:
     - manager
     - idstools
     - suricata.manager
-    - minio
     {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
@@ -355,7 +352,6 @@ base:
     - nginx
     - telegraf
     - firewall
-    - minio
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
