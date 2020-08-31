@@ -199,6 +199,7 @@ base:
     {%- endif %}
     - logstash
     - minio
+    - redis
     - kibana
     - pcap
     - suricata
@@ -213,7 +214,6 @@ base:
     - elastalert
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
-    - redis
     - fleet.install_package
     {%- endif %}
     - utility
