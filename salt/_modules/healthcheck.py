@@ -97,10 +97,11 @@ def zeek():
   except FileNotFoundError:
     openmethod = "a"
 
+  influxtime = int(time() * 1000000000)
   with open("/nsm/zeek/logs/zeek_restart.log", openmethod) as f:
-    f.write('healthcheck zeek_restart=%i' % zeek_restart int(time() * 1000000000))
+    f.write('healthcheck zeek_restart=%i %i' % (zeek_restart, influxtime))
 
-  
+
   if calling_func == 'execute' and zeek_restart:
     apply_states()
   
