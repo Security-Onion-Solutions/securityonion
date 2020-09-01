@@ -158,7 +158,6 @@ base:
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
-    - redis
     {%- endif %}
     - soctopus
     {%- if THEHIVE != 0 %}
@@ -197,6 +196,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - redis
     - kibana
     - pcap
     - suricata
@@ -211,7 +211,6 @@ base:
     - elastalert
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
-    - redis
     - fleet.install_package
     {%- endif %}
     - utility
@@ -319,6 +318,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - redis
     - curator
     - kibana
     - elastalert
@@ -327,7 +327,6 @@ base:
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
-    - redis
     - fleet.install_package
     {%- endif %}
     - soctopus
@@ -356,6 +355,7 @@ base:
     - wazuh
     {%- endif %}
     - logstash
+    - redis
     - curator
     - filebeat
     {%- if STRELKA %}
@@ -363,7 +363,6 @@ base:
     {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
-    - redis
     {%- endif %}
     - pcap
     - suricata
