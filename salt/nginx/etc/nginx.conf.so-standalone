@@ -2,6 +2,7 @@
 {%- set FLEET_MANAGER = salt['pillar.get']('global:fleet_manager') %}
 {%- set FLEET_NODE = salt['pillar.get']('global:fleet_node') %}
 {%- set FLEET_IP = salt['pillar.get']('global:fleet_ip', None) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -181,6 +182,21 @@ http {
 			proxy_set_header      Proxy "";
 			proxy_set_header      X-Forwarded-Proto $scheme;
 		} 
+		
+		{%- if ISAIRGAP is sameas true %}
+		location /repo/ {
+			#auth_request          /auth/sessions/whoami;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		{%- endif %}
+
 		
 		location /grafana/ {
 			auth_request          /auth/sessions/whoami;
