@@ -18,13 +18,13 @@
 . /usr/sbin/so-common
 
 usage() {
-    echo "Usage: $0 <new-user-name>"
+    echo "Usage: $0 <user-name> <true|false>"
     echo ""
-    echo "Adds a new user to Cortex. The new password will be read from STDIN."
+    echo "Enables or disables a user in Cortex."
     exit 1
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 2 ]; then
   usage
 fi
 
@@ -32,22 +32,25 @@ USER=$1
 
 CORTEX_KEY=$(lookup_pillar cortexkey)
 CORTEX_IP=$(lookup_pillar managerip)
-CORTEX_ORG_NAME=$(lookup_pillar cortexorgname)
 CORTEX_USER=$USER
 
-# Read password for new user from stdin
-test -t 0
-if [[ $? == 0 ]]; then
-  echo "Enter new password:"
-fi
-read -s CORTEX_PASS
+case "${2^^}" in
+	FALSE | NO | 0)
+		CORTEX_STATUS=Locked
+		;;
+	TRUE | YES | 1)
+		CORTEX_STATUS=Ok
+		;;
+	*)
+		usage
+		;;
+esac
 
-# Create new user in Cortex
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" "https://$CORTEX_IP/cortex/api/user" -d "{\"name\": \"$CORTEX_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_USER\",\"password\" : \"$CORTEX_PASS\" }")
-if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
-    echo "Successfully added user to Cortex."
+resp=$(curl -sk -XPATCH -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" "https://$CORTEX_IP/cortex/api/user/${CORTEX_USER}" -d "{\"status\":\"${CORTEX_STATUS}\" }")
+if [[ "$resp" =~ \"status\":\"Locked\" || "$resp" =~ \"status\":\"Ok\" ]]; then
+    echo "Successfully updated user in Cortex."
 else
-    echo "Unable to add user to Cortex; user might already exist."
+    echo "Failed to update user in Cortex."
     exit 2
 fi
     

@@ -18,13 +18,13 @@
 . /usr/sbin/so-common
 
 usage() {
-    echo "Usage: $0 <new-user-name>"
+    echo "Usage: $0 <user-name> <true|false>"
     echo ""
-    echo "Adds a new user to TheHive. The new password will be read from STDIN."
+    echo "Enables or disables a user in thehive."
     exit 1
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 2 ]; then
   usage
 fi
 
@@ -34,18 +34,24 @@ THEHIVE_KEY=$(lookup_pillar hivekey)
 THEHIVE_IP=$(lookup_pillar managerip)
 THEHIVE_USER=$USER
 
-# Read password for new user from stdin
-test -t 0
-if [[ $? == 0 ]]; then
-  echo "Enter new password:"
-fi
-read -s THEHIVE_PASS
+case "${2^^}" in
+	FALSE | NO | 0)
+		THEHIVE_STATUS=Locked
+		;;
+	TRUE | YES | 1)
+		THEHIVE_STATUS=Ok
+		;;
+	*)
+		usage
+		;;
+esac
 
-# Create new user in TheHive
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" "https://$THEHIVE_IP/thehive/api/user" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASS\"}")
-if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
-    echo "Successfully added user to TheHive."
+resp=$(curl -sk -XPATCH -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" "https://$THEHIVE_IP/thehive/api/user/${THEHIVE_USER}" -d "{\"status\":\"${THEHIVE_STATUS}\" }")
+if [[ "$resp" =~ \"status\":\"Locked\" || "$resp" =~ \"status\":\"Ok\" ]]; then
+    echo "Successfully updated user in thehive."
 else
-    echo "Unable to add user to TheHive; user might already exist."
+    echo "Failed to update user in thehive."
+    echo "$resp"
     exit 2
 fi
+    

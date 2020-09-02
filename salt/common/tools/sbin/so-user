@@ -179,9 +179,9 @@ case "${operation}" in
     validateEmail "$email"
     createUser "$email"
     echo "Successfully added new user to SOC"
-    check_container thehive && echo $password | so-thehive-user-add "$email"
-    check_container cortex && echo $password | so-cortex-user-add "$email"
-    check_container fleet && echo $password | so-fleet-user-add "$email"
+    check_container thehive && (echo $password | so-thehive-user-add "$email" || so-thehive-user-enable "$email" true)
+    check_container cortex && (echo $password | so-cortex-user-add "$email" || so-cortex-user-enable "$email" true)
+    check_container fleet && (echo $password | so-fleet-user-add "$email" || so-fleet-user-enable "$email" true)
     ;;
 
   "list")
@@ -202,7 +202,10 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     deleteUser "$email"
-    echo "Successfully deleted user"  
+    echo "Successfully deleted user"
+    check_container thehive && so-thehive-user-enable "$email" false
+    check_container cortex && so-cortex-user-enable "$email" false
+    check_container fleet && so-fleet-user-enable "$email" false
     ;;
 
   "validate")
