@@ -19,18 +19,22 @@
 
 . /usr/sbin/so-common
 
-echo $banner
-printf "Restarting $1...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n"
-echo $banner
+if [ $# -ge 1 ]; then
 
-if [ "$2" = "--force" ]
-then
-   printf "\nForce-stopping all Salt jobs before proceeding\n\n"
-   salt-call saltutil.kill_all_jobs
+        echo $banner
+        printf "Restarting $1...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n"
+        echo $banner
+
+        if [ "$2" = "--force" ]; then
+                printf "\nForce-stopping all Salt jobs before proceeding\n\n"
+                salt-call saltutil.kill_all_jobs
+        fi
+
+        case $1 in
+                "cortex") docker stop so-thehive-cortex so-thehive && docker rm so-thehive-cortex so-thehive && salt-call state.apply hive queue=True;;
+                "steno") docker stop so-steno && docker rm so-steno && salt-call state.apply pcap queue=True;;
+                *)  docker stop so-$1 ; docker rm so-$1 ; salt-call state.apply $1 queue=True;;
+        esac
+else
+        echo -e "\nPlease provide an argument by running like so-restart $component, or by using the component-specific script.\nEx. so-restart filebeat, or so-filebeat-restart\n"
 fi
-
-case $1 in
-   "cortex") docker stop so-thehive-cortex so-thehive && docker rm so-thehive-cortex so-thehive && salt-call state.apply hive queue=True;;
-   "steno") docker stop so-steno && docker rm so-steno && salt-call state.apply pcap queue=True;;
-   *)  docker stop so-$1 ; docker rm so-$1 ; salt-call state.apply $1 queue=True;;
-esac
