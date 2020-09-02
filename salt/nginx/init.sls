@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'nginx' in top_states %}
+
 {% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
 {% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -85,3 +90,5 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+
+{% endif %}

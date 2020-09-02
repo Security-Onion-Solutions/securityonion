@@ -12,6 +12,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'nodered' in top_states %}
 
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
@@ -75,3 +79,4 @@ so-nodered-flows:
     - name: /usr/sbin/so-nodered-load-flows
     - cwd: /
 
+{% endif %}

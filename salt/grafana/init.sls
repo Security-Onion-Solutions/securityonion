@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'grafana' in top_states %}
+
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -229,5 +234,7 @@ so-grafana:
       - 0.0.0.0:3000:3000
     - watch:
       - file: /opt/so/conf/grafana/*
+
+{% endif %}
 
 {% endif %}

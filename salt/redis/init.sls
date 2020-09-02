@@ -12,6 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'redis' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -64,3 +69,5 @@ so-redis:
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
       - file: /opt/so/conf/redis/etc
+
+{% endif %}

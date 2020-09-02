@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'ca' in top_states %}
+
 {% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
   file.managed:
@@ -52,3 +57,5 @@ cakeyperms:
     - name: /etc/pki/ca.key
     - mode: 640
     - group: 939
+
+{% endif %}

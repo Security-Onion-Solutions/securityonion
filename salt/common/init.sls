@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'common' in top_states %}
+
 {% set role = grains.id.split('_') | last %}
 
 # Remove variables.txt from /tmp - This is temp
@@ -191,3 +196,5 @@ sensorrotateconf:
 docker:
   service.running:
     - enable: True
+
+{% endif %}

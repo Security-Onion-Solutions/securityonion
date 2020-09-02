@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'registry' in top_states %}
+
 # Create the config directory for the docker registry
 dockerregistryconfdir:
   file.directory:
@@ -51,3 +56,5 @@ so-dockerregistry:
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
+
+{% endif %}

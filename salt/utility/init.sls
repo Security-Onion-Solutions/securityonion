@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'utility' in top_states %}
+
 # This state is for checking things
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
 # Make sure Cross Cluster is good. Will need some logic once we have hot/warm
@@ -18,4 +23,6 @@ fixsearch:
     - runas: socore
     - source: salt://utility/bin/eval
     - template: jinja
+{% endif %}
+
 {% endif %}
