@@ -1,5 +1,9 @@
 {% set MANAGER = salt['grains.get']('master') %}
-{% set IMAGEREPO = salt['pillar.get']('global:airgap') %}
+airgapyum:
+  file.managed:
+    - name: /etc/yum/yum.conf
+    - source: salt://airgap/files/yum.conf
+
 airgap.repo:
   pkgrepo.managed:
     - humanname: Airgap Repo

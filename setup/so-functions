@@ -1109,7 +1109,7 @@ manager_global() {
 		        printf '%s\n'\
                         "  airgap: False"\ >> "$global_pillar"
 		fi
-		        
+
         # Check if TheHive is enabled.  If so, add creds and other details
         if [[ "$THEHIVE" == "1" ]]; then
                 printf '%s\n'\
@@ -1873,8 +1873,10 @@ set_redirect() {
 set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
-			if ! grep -q "$MSRV" /etc/yum.conf; then
-				echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+		    if [[ ! $is_airgap ]]; then
+			    if ! grep -q "$MSRV" /etc/yum.conf; then
+				    echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+			    fi
 			fi
 		else
 			# Set it up so the updates roll through the manager

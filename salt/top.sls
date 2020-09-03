@@ -9,17 +9,24 @@
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
 {% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set saltversion = salt.salt.minion.version %}
-
+{% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
 base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
+    {% if ISAIRGAP is sameas true %}
+    - airgap
+    {% endif %}
     - salt.minion
 
   'G@os:CentOS and G@saltversion:{{saltversion}}':
     - match: compound
+    {% if ISAIRGAP is sameas true %}
+    - airgap
+    {% else %}
     - yum
+    {% endif %}
     - yum.packages
 
   '* and G@saltversion:{{saltversion}}':
