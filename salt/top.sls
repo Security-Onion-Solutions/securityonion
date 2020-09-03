@@ -195,6 +195,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - kibana
