@@ -32,6 +32,34 @@ yum -y install gnome-classic-session gnome-terminal nautilus-open-terminal contr
 unlink /etc/systemd/system/default.target;
 ln -sf /lib/systemd/system/graphical.target /etc/systemd/system/default.target;
 
+# NetworkMiner has a compatibility issue with Mono 6 right now
+if ! grep -q "NetworkMiner has a compatibility issue with Mono 6 right now" /etc/yum/pluginconf.d/versionlock.list; then
+
+cat << EOF >> /etc/yum/pluginconf.d/versionlock.list
+
+# NetworkMiner has a compatibility issue with Mono 6 right now
+0:libmono-llvm0-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-complete-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-core-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-data-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-data-oracle-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-data-sqlite-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-devel-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-extras-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-locale-extras-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-mvc-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-nunit-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-reactive-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-wcf-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-web-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-winforms-5.20.1.34-0.xamarin.2.epel7.*
+0:mono-winfxcore-5.20.1.34-0.xamarin.2.epel7.*
+0:monodoc-core-5.20.1.34-0.xamarin.2.epel7.*
+EOF
+
+fi
+
+
 # Install Mono - prereq for NetworkMiner
 rpmkeys --import "http://pool.sks-keyservers.net/pks/lookup?op=get&search=0x3fa7e0328081bff6a14da29aa6a19b38d3d831ef";
 curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo;
