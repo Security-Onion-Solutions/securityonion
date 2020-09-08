@@ -9,8 +9,7 @@
 {%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
 {% import_yaml 'salt/minion.defaults.yaml' as salt %}
 {% set saltversion = salt.salt.minion.version %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
-
+{% set ISAIRGAP = salt['pillar.get']('global:airgap'), '' %}
 base:
 
   'not G@saltversion:{{saltversion}}':
