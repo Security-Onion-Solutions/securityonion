@@ -193,16 +193,16 @@ if [[ "$setup_type" == 'iso' ]]; then
   is_iso=true
 fi
 
-#Check if this is an airgap install
+# Check if this is an airgap install
 
-#if [[ $is_manager ]]; then
-#    if [[ $is_iso ]]; then
-#      whiptail_airgap
-#      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-#        is_airgap=true
-#      fi
-#    fi
-#fi
+if [[ $is_manager ]]; then
+    if [[ $is_iso ]]; then
+      whiptail_airgap
+      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+        is_airgap=true
+      fi
+    fi
+fi
 
 if [[ $is_manager && $is_sensor ]]; then
 	check_requirements "standalone"
@@ -411,6 +411,8 @@ if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 
 whiptail_make_changes
 
+# From here on changes will be made.
+
 if [[ -n "$TURBO" ]]; then
 	use_turbo_proxy
 fi
@@ -459,6 +461,11 @@ fi
 {
 	# Set initial percentage to 0
 	export percentage=0
+
+    if [[ $is_manager && $is_airgap ]]; then
+	    info "Creating airgap repo"
+	    create_repo >> $setup_log 2>&1
+    fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 1 'Configuring firewall'
