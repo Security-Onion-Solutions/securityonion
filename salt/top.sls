@@ -35,9 +35,10 @@ base:
     - common
     - patch.os.schedule
     - motd
-
+  
   '*_helix and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -79,6 +80,7 @@ base:
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -136,6 +138,7 @@ base:
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -182,6 +185,7 @@ base:
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -306,6 +310,7 @@ base:
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -396,6 +401,7 @@ base:
 
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
