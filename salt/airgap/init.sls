@@ -9,6 +9,7 @@ airgap.repo:
     - humanname: Airgap Repo
     - baseurl: https://{{ MANAGER }}/repo
     - gpgcheck: 0
+    - sslverify: 0
 
 agbase:
   file.absent:
@@ -53,3 +54,7 @@ agtesting:
 agssrepo:
   file.absent:
     - name: /etc/yum.repos.d/saltstack.repo
+
+agwazrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/wazuh.repo
