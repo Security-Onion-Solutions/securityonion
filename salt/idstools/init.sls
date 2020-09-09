@@ -55,7 +55,7 @@ rulesdir:
 synclocalnidsrules:
   file.managed:
     - name: /opt/so/rules/nids/local.rules
-    - source: salt://idstools/localrules/local.rules
+    - source: salt://idstools/local.rules
     - user: 939
     - group: 939
 

@@ -123,7 +123,19 @@ pillar_changes() {
     
     # Move baseurl in global.sls
     if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-      # Move the static file to global.sls
+    rc1_to_rc2
+    rc2_to_rc3
+    fi
+
+    if [[ "$INSTALLEDVERSION" =~ rc.2 ]]; then
+    rc2_to_rc3
+    fi
+
+}
+
+rc1_to_rc2() {
+
+  # Move the static file to global.sls
       echo "Migrating static.sls to global.sls"
       mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
       sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
@@ -158,8 +170,16 @@ pillar_changes() {
         curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
       done </tmp/nodes.txt
 
+}
 
-    fi
+rc2_to_rc3() {
+
+  # move location of local.rules
+  cp /opt/so/saltstack/default/salt/idstools/localrules/local.rules /opt/so/saltstack/local/salt/idstools/local.rules
+  mv /opt/so/saltstack/default/salt/idstools/localrules/local.rules /opt/so/saltstack/default/salt/idstools/localrules/local.rules.USE.THE.FILE.IN.LOCAL
+
+  # Rename ZEEKVERSION to MDENGINE
+
 }
 
 update_dockers() {
