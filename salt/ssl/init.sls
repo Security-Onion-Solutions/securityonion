@@ -13,10 +13,10 @@
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import'] %}
-    {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
+    {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
-    {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
+    {% set x509dict = salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}

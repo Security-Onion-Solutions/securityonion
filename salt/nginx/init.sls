@@ -8,6 +8,7 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
 # Drop the correct nginx config based on role
 nginxconfdir:
@@ -77,6 +78,9 @@ so-nginx:
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       - /opt/so/conf/fleet/packages:/opt/socore/html/packages
+      {% if ISAIRGAP is sameas true %}
+      - /nsm/repo:/opt/socore/html/repo:ro
+      {% endif %}
       # ATT&CK Navigator binds
       - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro

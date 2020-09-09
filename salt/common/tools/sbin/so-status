@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {%- from 'common/maps/so-status.map.jinja' import docker with context %}
-{%- set container_list = docker['containers'] | sort %}
+{%- set container_list = docker['containers'] | sort | unique %}
 
 if ! [ "$(id -u)" = 0 ]; then
    echo "This command must be run as root"
@@ -71,9 +71,9 @@ compare_lists() {
 # {% endraw %}
 
 create_expected_container_list() {
-    {% for item in container_list%}
+    {% for item in container_list -%}
         expected_container_list+=("{{ item }}")
-    {% endfor %}
+    {% endfor -%}
 }
 
 populate_container_lists() {

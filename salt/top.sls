@@ -1,25 +1,32 @@
-{%- set ZEEKVER = salt['pillar.get']('global:zeekversion', '') -%}
-{%- set WAZUH = salt['pillar.get']('global:wazuh', '0') -%}
-{%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') -%}
-{%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') -%}
-{%- set FREQSERVER = salt['pillar.get']('manager:freq', '0') -%}
-{%- set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') -%}
-{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
-{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
-{%- set STRELKA = salt['pillar.get']('strelka:enabled', '0') -%}
-{% import_yaml 'salt/minion.defaults.yaml' as salt %}
-{% set saltversion = salt.salt.minion.version %}
-
+{% set ZEEKVER = salt['pillar.get']('global:zeekversion', '') %}
+{% set WAZUH = salt['pillar.get']('global:wazuh', '0') %}
+{% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
+{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
+{% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
+{% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
+{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
+{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
+{% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
+{% set saltversion = saltversion.salt.minion.version %}
 
 base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
+    {% if ISAIRGAP is sameas true %}
+    - airgap
+    {% endif %}
     - salt.minion
 
   'G@os:CentOS and G@saltversion:{{saltversion}}':
     - match: compound
+    {% if ISAIRGAP is sameas true %}
+    - airgap
+    {% else %}
     - yum
+    {% endif %}
     - yum.packages
 
   '* and G@saltversion:{{saltversion}}':
@@ -28,9 +35,10 @@ base:
     - common
     - patch.os.schedule
     - motd
-
+  
   '*_helix and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -72,6 +80,7 @@ base:
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -129,6 +138,7 @@ base:
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -175,6 +185,7 @@ base:
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -195,6 +206,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - kibana
@@ -298,6 +310,7 @@ base:
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
@@ -388,6 +401,7 @@ base:
 
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.master
     - ca
     - ssl
     - common
