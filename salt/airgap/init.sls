@@ -4,7 +4,7 @@ airgapyum:
     - name: /etc/yum/yum.conf
     - source: salt://airgap/files/yum.conf
 
-airgap.repo:
+airgap_repo:
   pkgrepo.managed:
     - humanname: Airgap Repo
     - baseurl: https://{{ MANAGER }}/repo
