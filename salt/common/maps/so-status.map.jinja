@@ -5,9 +5,6 @@
 # to the list predefined by the role / minion id affix
 {% macro append_containers(pillar_name, k, compare )%}
   {% if salt['pillar.get'](pillar_name~':'~k, {}) != compare %}
-    {% if ':enabled' in k %}
-      {% set k = k.split(':') | first %}
-    {% endif %}
     {% from 'common/maps/'~k~'.map.jinja' import docker as d with context %}
     {% for li in d['containers'] %}
       {{ docker['containers'].append(li) }}
@@ -32,7 +29,7 @@
 {% endif %}
 
 {% if role in ['eval', 'heavynode', 'sensor', 'standalone'] %}
-  {{ append_containers('global', 'strelka:enabled', 0) }}
+  {{ append_containers('strelka', 'enabled', 0) }}
 {% endif %}
 
 {% if role in ['heavynode', 'standalone'] %}
