@@ -143,4 +143,10 @@ thehivescript:
     - template: jinja
     - hide_output: True
 
+{% else %}
+
+thehive_state_not_allowed:
+  test.fail_without_changes:
+    - name: thehive_state_not_allowed
+
 {% endif %}

@@ -57,4 +57,10 @@ so-dockerregistry:
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
 
+{% else %}
+
+registry_state_not_allowed:
+  test.fail_without_changes:
+    - name: registry_state_not_allowed
+
 {% endif %}

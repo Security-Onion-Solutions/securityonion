@@ -178,4 +178,10 @@ surilogrotate:
     - month: '*'
     - dayweek: '*'
 
+{% else %}
+
+suricata_state_not_allowed:
+  test.fail_without_changes:
+    - name: suricata_state_not_allowed
+
 {% endif %}

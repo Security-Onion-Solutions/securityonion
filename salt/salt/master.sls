@@ -33,4 +33,10 @@ engines_config:
     - watch_in:
         - service: salt_minion_service
 
+{% else %}
+
+salt_master_state_not_allowed:
+  test.fail_without_changes:
+    - name: salt_master_state_not_allowed
+
 {% endif %}

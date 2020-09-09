@@ -47,4 +47,10 @@ so-influxdb:
 
 {% endif %}
 
+{% else %}
+
+influxdb_state_not_allowed:
+  test.fail_without_changes:
+    - name: influxdb_state_not_allowed
+
 {% endif %}

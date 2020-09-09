@@ -197,4 +197,10 @@ docker:
   service.running:
     - enable: True
 
+{% else %}
+
+common_state_not_allowed:
+  test.fail_without_changes:
+    - name: common_state_not_allowed
+
 {% endif %}

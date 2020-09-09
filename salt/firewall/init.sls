@@ -134,4 +134,10 @@ iptables_drop_all_the_things:
     - jump: DROP
     - save: True
 
+{% else %}
+
+firewall_state_not_allowed:
+  test.fail_without_changes:
+    - name: firewall_state_not_allowed
+
 {% endif %}

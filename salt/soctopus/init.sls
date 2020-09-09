@@ -69,4 +69,10 @@ so-soctopus:
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
 
+{% else %}
+
+soctopus_state_not_allowed:
+  test.fail_without_changes:
+    - name: soctopus_state_not_allowed
+
 {% endif %}

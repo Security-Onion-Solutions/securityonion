@@ -70,4 +70,10 @@ so-redis:
     - watch:
       - file: /opt/so/conf/redis/etc
 
+{% else %}
+
+redis_state_not_allowed:
+  test.fail_without_changes:
+    - name: redis_state_not_allowed
+
 {% endif %}

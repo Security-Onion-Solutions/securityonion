@@ -103,4 +103,10 @@ so-playbookruleupdatecron:
     - minute: '1'
     - hour: '6'
 
+{% else %}
+
+playbook_state_not_allowed:
+  test.fail_without_changes:
+    - name: playbook_state_not_allowed
+
 {% endif %}

@@ -99,4 +99,10 @@ so-mysql:
       - docker_container: so-mysql
 {% endif %}
 
+{% else %}
+
+mysql_state_not_allowed:
+  test.fail_without_changes:
+    - name: mysql_state_not_allowed
+
 {% endif %}

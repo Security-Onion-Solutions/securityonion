@@ -244,4 +244,10 @@ so-elasticsearch-templates:
     - cwd: /opt/so
 {% endif %}
 
+{% else %}
+
+elasticsearch_state_not_allowed:
+  test.fail_without_changes:
+    - name: elasticsearch_state_not_allowed
+
 {% endif %}

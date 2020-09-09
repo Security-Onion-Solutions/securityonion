@@ -58,4 +58,10 @@ cakeyperms:
     - mode: 640
     - group: 939
 
+{% else %}
+
+ca_state_not_allowed:
+  test.fail_without_changes:
+    - name: ca_state_not_allowed
+
 {% endif %}

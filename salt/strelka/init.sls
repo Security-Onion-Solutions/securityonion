@@ -145,4 +145,10 @@ strelka_zeek_extracted_sync:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
     - minute: '*'
 
+{% else %}
+
+strelka_state_not_allowed:
+  test.fail_without_changes:
+    - name: strelka_state_not_allowed
+
 {% endif %}

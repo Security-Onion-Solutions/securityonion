@@ -121,4 +121,10 @@ so-kibana-config-load:
 #    - source: salt://kibana/bin/keepkibanahappy.sh
 #    - template: jinja
 
+{% else %}
+
+kibana_state_not_allowed:
+  test.fail_without_changes:
+    - name: kibana_state_not_allowed
+
 {% endif %}

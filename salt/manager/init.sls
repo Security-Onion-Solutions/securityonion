@@ -82,4 +82,10 @@ so-aptcacherng:
 
 {% endif %}
 
+{% else %}
+
+manager_state_not_allowed:
+  test.fail_without_changes:
+    - name: manager_state_not_allowed
+
 {% endif %}

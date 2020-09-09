@@ -56,5 +56,11 @@ so-freq:
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
 
+{% else %}
+
+freqserver_state_not_allowed:
+  test.fail_without_changes:
+    - name: freqserver_state_not_allowed
+
 {% endif %}
 

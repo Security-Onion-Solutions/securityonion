@@ -237,4 +237,10 @@ so-grafana:
 
 {% endif %}
 
+{% else %}
+
+grafana_state_not_allowed:
+  test.fail_without_changes:
+    - name: grafana_state_not_allowed
+
 {% endif %}

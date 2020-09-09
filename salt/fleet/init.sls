@@ -139,4 +139,10 @@ so-fleet:
 
 {% endif %}
 
+{% else %}
+
+fleet_state_not_allowed:
+  test.fail_without_changes:
+    - name: fleet_state_not_allowed
+
 {% endif %}

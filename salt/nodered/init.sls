@@ -79,4 +79,10 @@ so-nodered-flows:
     - name: /usr/sbin/so-nodered-load-flows
     - cwd: /
 
+{% else %}
+
+nodered_state_not_allowed:
+  test.fail_without_changes:
+    - name: nodered_state_not_allowed
+
 {% endif %}

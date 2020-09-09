@@ -9,4 +9,10 @@ so_motd:
     - source: salt://motd/files/so_motd.jinja
     - template: jinja
 
+{% else %}
+
+motd_state_not_allowed:
+  test.fail_without_changes:
+    - name: motd_state_not_allowed
+
 {% endif %}

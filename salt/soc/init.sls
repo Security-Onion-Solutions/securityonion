@@ -104,4 +104,10 @@ so-kratos:
     - watch:
       - file: /opt/so/conf/kratos
 
+{% else %}
+
+soc_state_not_allowed:
+  test.fail_without_changes:
+    - name: soc_state_not_allowed
+
 {% endif %}

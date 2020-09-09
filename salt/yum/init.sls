@@ -10,4 +10,10 @@ yumconf:
     - mode: 644
     - template: jinja
 
+{% else %}
+
+yum_state_not_allowed:
+  test.fail_without_changes:
+    - name: yum_state_not_allowed
+
 {% endif %}

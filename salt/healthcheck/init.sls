@@ -29,4 +29,10 @@ healthcheck_schedule_{{ STATUS[1] }}:
   schedule.{{ STATUS[1] }}:
     - name: healthcheck
 
+{% else %}
+
+healthcheck_state_not_allowed:
+  test.fail_without_changes:
+    - name: healthcheck_state_not_allowed
+
 {% endif %}

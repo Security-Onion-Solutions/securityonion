@@ -75,4 +75,10 @@ so-filebeat:
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
 
+{% else %}
+
+filebeat_state_not_allowed:
+  test.fail_without_changes:
+    - name: filebeat_state_not_allowed
+
 {% endif %}

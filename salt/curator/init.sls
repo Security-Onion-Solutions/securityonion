@@ -137,4 +137,10 @@ so-curator:
 # End Curator Cron Jobs
 {% endif %}
 
+{% else %}
+
+curator_state_not_allowed:
+  test.fail_without_changes:
+    - name: curator_state_not_allowed
+
 {% endif %}

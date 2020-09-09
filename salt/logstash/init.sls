@@ -201,4 +201,10 @@ so-logstash:
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
 
+{% else %}
+
+logstash_state_not_allowed:
+  test.fail_without_changes:
+    - name: logstash_state_not_allowed
+
 {% endif %}

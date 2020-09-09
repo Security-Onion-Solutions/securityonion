@@ -25,4 +25,10 @@ fixsearch:
     - template: jinja
 {% endif %}
 
+{% else %}
+
+utility_state_not_allowed:
+  test.fail_without_changes:
+    - name: utility_state_not_allowed
+
 {% endif %}

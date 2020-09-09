@@ -56,4 +56,10 @@ so-domainstats:
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
 
+{% else %}
+
+domainstats_state_not_allowed:
+  test.fail_without_changes:
+    - name: domainstats_state_not_allowed
+
 {% endif %}

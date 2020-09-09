@@ -95,4 +95,10 @@ so-nginx:
       - file: nginxconf
       - file: nginxconfdir
 
+{% else %}
+
+nginx_state_not_allowed:
+  test.fail_without_changes:
+    - name: nginx_state_not_allowed
+
 {% endif %}

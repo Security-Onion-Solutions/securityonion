@@ -166,4 +166,10 @@ so-sensoroni:
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
 
+{% else %}
+
+pcap_state_not_allowed:
+  test.fail_without_changes:
+    - name: pcap_state_not_allowed
+
 {% endif %}

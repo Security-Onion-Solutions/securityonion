@@ -147,4 +147,10 @@ hidsruledir:
   file.symlink:
     - target: /nsm/wazuh/ruleset
 
+{% else %}
+
+wazuh_state_not_allowed:
+  test.fail_without_changes:
+    - name: wazuh_state_not_allowed
+
 {% endif %}

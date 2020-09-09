@@ -131,4 +131,10 @@ so-elastalert:
       - module: wait_for_elasticsearch
 {% endif %}
 
+{% else %}
+
+elastalert_state_not_allowed:
+  test.fail_without_changes:
+    - name: elastalert_state_not_allowed
+
 {% endif %}

@@ -73,4 +73,10 @@ so-telegraf:
       - file: tgrafconf
       - file: tgrafsyncscripts
 
+{% else %}
+
+telegraf_state_not_allowed:
+  test.fail_without_changes:
+    - name: telegraf_state_not_allowed
+
 {% endif %}

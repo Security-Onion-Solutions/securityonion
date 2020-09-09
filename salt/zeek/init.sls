@@ -196,4 +196,10 @@ so-zeek:
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
 
+{% else %}
+
+zeek_state_not_allowed:
+  test.fail_without_changes:
+    - name: zeek_state_not_allowed
+
 {% endif %}

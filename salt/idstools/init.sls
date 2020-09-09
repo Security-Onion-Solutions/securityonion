@@ -75,4 +75,10 @@ so-idstools:
     - watch:
       - file: idstoolsetcsync
 
+{% else %}
+
+idstools_state_not_allowed:
+  test.fail_without_changes:
+    - name: idstools_state_not_allowed
+
 {% endif%}
