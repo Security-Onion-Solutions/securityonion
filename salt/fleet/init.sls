@@ -1,8 +1,3 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'fleet' in top_states %}
-
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set FLEETPASS = salt['pillar.get']('secrets:fleet', None) -%}
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}
@@ -136,13 +131,5 @@ so-fleet:
       - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
-
-{% endif %}
-
-{% else %}
-
-fleet_state_not_allowed:
-  test.fail_without_changes:
-    - name: fleet_state_not_allowed
 
 {% endif %}
