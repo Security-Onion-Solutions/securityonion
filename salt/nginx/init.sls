@@ -85,7 +85,7 @@ so-nginx:
       - 443:443
       {% if ISAIRGAP is sameas true %}
       - 7788:7788
-      {% enfid %}
+      {% endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
       - 8090:8090
     {%- endif %}
