@@ -88,6 +88,9 @@ so-nginx:
     - port_bindings:
       - 80:80
       - 443:443
+      {% if ISAIRGAP is sameas true %}
+      - 7788:7788
+      {% endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
       - 8090:8090
     {%- endif %}
