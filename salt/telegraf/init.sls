@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'telegraf' in top_states %}
+
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -67,3 +72,11 @@ so-telegraf:
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts
+
+{% else %}
+
+telegraf_state_not_allowed:
+  test.fail_without_changes:
+    - name: telegraf_state_not_allowed
+
+{% endif %}

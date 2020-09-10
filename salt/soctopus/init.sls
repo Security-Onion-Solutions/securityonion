@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'soctopus' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -63,3 +68,11 @@ so-soctopus:
       - 0.0.0.0:7000:7000
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
+
+{% else %}
+
+soctopus_state_not_allowed:
+  test.fail_without_changes:
+    - name: soctopus_state_not_allowed
+
+{% endif %}

@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'mysql' in top_states %}
+
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -92,4 +97,12 @@ so-mysql:
     - timeout: 900
     - onchanges:
       - docker_container: so-mysql
+{% endif %}
+
+{% else %}
+
+mysql_state_not_allowed:
+  test.fail_without_changes:
+    - name: mysql_state_not_allowed
+
 {% endif %}

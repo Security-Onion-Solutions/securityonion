@@ -12,6 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'strelka' in top_states %}
+
 {%- set MANAGER = salt['grains.get']('master') %}
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -139,3 +144,11 @@ strelka_zeek_extracted_sync:
     - user: root
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
     - minute: '*'
+
+{% else %}
+
+strelka_state_not_allowed:
+  test.fail_without_changes:
+    - name: strelka_state_not_allowed
+
+{% endif %}

@@ -12,6 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'manager' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -74,5 +79,13 @@ so-aptcacherng:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+
+{% endif %}
+
+{% else %}
+
+manager_state_not_allowed:
+  test.fail_without_changes:
+    - name: manager_state_not_allowed
 
 {% endif %}

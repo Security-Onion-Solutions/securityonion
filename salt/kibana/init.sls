@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'kibana' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -115,3 +120,11 @@ so-kibana-config-load:
 #    - runas: socore
 #    - source: salt://kibana/bin/keepkibanahappy.sh
 #    - template: jinja
+
+{% else %}
+
+kibana_state_not_allowed:
+  test.fail_without_changes:
+    - name: kibana_state_not_allowed
+
+{% endif %}
