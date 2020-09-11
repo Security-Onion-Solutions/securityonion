@@ -128,6 +128,7 @@ base:
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    - redis
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
