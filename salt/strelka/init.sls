@@ -12,11 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{%- set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') -%}
+{% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 # Strelka config
 strelkaconfdir:
@@ -43,12 +43,6 @@ strelkasync:
     - template: jinja
 
 {%- if STRELKA_RULES == 1 %}
-strelka_yara_update:
-  cron.present:
-    - user: root
-    - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
-    - hour: '7'
-    - minute: '1'
 
 strelkarules:
   file.recurse:
@@ -56,6 +50,7 @@ strelkarules:
     - source: salt://strelka/rules
     - user: 939
     - group: 939
+    
 {%- endif %}
 
 strelkadatadir:

@@ -331,7 +331,7 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [[ $STRELKA == 1 ]]; then
+	if [[ "$STRELKA" == 1 ]]; then
             STRELKARULES=1
         fi
 
@@ -573,6 +573,9 @@ fi
 		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
+		if [[ "$STRELKARULES" == 1 ]]; then
+			/usr/sbin/so-yara-update >> $setup_log 2>&1	
+		fi
 		salt-call state.apply -l info manager >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
@@ -682,9 +685,6 @@ fi
 	if [[ "$STRELKA" = 1 ]]; then
 		set_progress_str 80 "$(print_salt_state_apply 'strelka')"
 		salt-call state.apply -l info strelka >> $setup_log 2>&1
-		if [[ $STRELKARULES == 1 ]]; then
-			/usr/sbin/so-yara-update >> $setup_log 2>&1	
-		fi
 	fi
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then		
