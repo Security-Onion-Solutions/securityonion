@@ -62,6 +62,7 @@ base:
     - common
     - telegraf
     - firewall
+    - nginx
     - pcap
     - suricata
     - healthcheck
