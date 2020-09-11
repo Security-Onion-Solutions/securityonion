@@ -62,6 +62,7 @@ base:
     - common
     - telegraf
     - firewall
+    - nginx
     - pcap
     - suricata
     - healthcheck
@@ -286,6 +287,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - curator
     - filebeat
@@ -331,6 +333,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - curator
@@ -368,6 +371,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - curator
