@@ -6,8 +6,9 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
-{%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
+{% set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
+{% set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 
 soctopusdir:
   file.directory:
@@ -64,6 +65,9 @@ so-soctopus:
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
       - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
+      {% if ISAIRGAP is sameas true %}
+      - /nsm/repo/rules/sigma:/soctopus/sigma
+      {% endif %}
     - port_bindings:
       - 0.0.0.0:7000:7000
     - extra_hosts:
