@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'salt.master' in top_states %}
+
 include:
   - salt.minion
 
@@ -27,3 +32,11 @@ engines_config:
     - source: salt://salt/files/engines.conf
     - watch_in:
         - service: salt_minion_service
+
+{% else %}
+
+salt_master_state_not_allowed:
+  test.fail_without_changes:
+    - name: salt_master_state_not_allowed
+
+{% endif %}

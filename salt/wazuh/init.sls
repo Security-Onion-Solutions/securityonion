@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'wazuh' in top_states %}
+
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -141,3 +146,11 @@ hidsruledir:
 /opt/so/rules/hids/ruleset:
   file.symlink:
     - target: /nsm/wazuh/ruleset
+
+{% else %}
+
+wazuh_state_not_allowed:
+  test.fail_without_changes:
+    - name: wazuh_state_not_allowed
+
+{% endif %}

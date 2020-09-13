@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'zeek' in top_states %}
+
 {% from "zeek/map.jinja" import START with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -190,4 +195,11 @@ so-zeek:
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
-      
+
+{% else %}
+
+zeek_state_not_allowed:
+  test.fail_without_changes:
+    - name: zeek_state_not_allowed
+
+{% endif %}

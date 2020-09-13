@@ -12,6 +12,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'manager' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -84,3 +89,10 @@ strelka_yara_update:
     - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
     - hour: '7'
     - minute: '1'
+{% else %}
+
+manager_state_not_allowed:
+  test.fail_without_changes:
+    - name: manager_state_not_allowed
+
+{% endif %}

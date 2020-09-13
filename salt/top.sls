@@ -62,6 +62,7 @@ base:
     - common
     - telegraf
     - firewall
+    - nginx
     - pcap
     - suricata
     - healthcheck
@@ -127,6 +128,7 @@ base:
     {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
+    - redis
     {%- endif %}
     {%- if FREQSERVER != 0 %}
     - freqserver
@@ -158,6 +160,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - kibana
@@ -285,6 +288,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - curator
     - filebeat
@@ -330,6 +334,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - curator
@@ -367,6 +372,7 @@ base:
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    - elasticsearch
     - logstash
     - redis
     - curator

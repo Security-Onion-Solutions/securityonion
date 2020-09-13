@@ -12,4 +12,10 @@ so-tcpreplay:
     - interactive: True
     - tty: True
 
+{% else %}
+
+tcpreplay_state_not_allowed:
+  test.fail_without_changes:
+    - name: tcpreplay_state_not_allowed
+
 {% endif %}
