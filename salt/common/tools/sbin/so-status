@@ -27,6 +27,7 @@ ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
 PENDING_STRING="PENDING"
 MISSING_STRING='MISSING'
+CALLER=$(ps -o comm= $PPID)
 declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
 declare -a PENDING_STATUSES=("paused" "created" "restarting")
 declare -a GOOD_STATUSES=("running")
@@ -167,7 +168,7 @@ non_term_print_line() {
 main() {
 
     # if running from salt
-    if [ "$TERM" == 'dumb' ]; then
+    if [ "$CALLER" == 'salt-call' ] ||  [ "$CALLER" == 'salt-minion' ]; then
       printf "\n"
       printf "Checking Docker status\n\n"
 
