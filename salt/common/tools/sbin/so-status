@@ -14,6 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{%- from 'common/maps/so-status.map.jinja' import docker with context %}
+{%- set container_list = docker['containers'] | sort | unique %}
 
 if ! [ "$(id -u)" = 0 ]; then
    echo "This command must be run as root"
@@ -37,7 +39,7 @@ declare -a container_state_list=()
 
 declare -a expected_container_list=()
 
-#
+# {% raw %}
 
 compare_lists() {
     local found=0
@@ -66,17 +68,13 @@ compare_lists() {
     done
 }
 
-#
+# {% endraw %}
 
 create_expected_container_list() {
-    expected_container_list+=("so-curator")
-    expected_container_list+=("so-elasticsearch")
-    expected_container_list+=("so-filebeat")
-    expected_container_list+=("so-logstash")
-    expected_container_list+=("so-nginx")
-    expected_container_list+=("so-telegraf")
-    expected_container_list+=("so-wazuh")
-    }
+    {% for item in container_list -%}
+        expected_container_list+=("{{ item }}")
+    {% endfor -%}
+}
 
 populate_container_lists() {
     systemctl is-active --quiet docker
@@ -124,7 +122,7 @@ parse_status() {
     printf $ERROR_STRING && return 1
 }
 
-#
+# {% raw %}
 
 print_line() {
     local service_name=${1}
@@ -222,7 +220,7 @@ main() {
     fi
 }
 
-#
+# {% endraw %}
 
 
 main
