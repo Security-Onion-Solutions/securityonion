@@ -36,9 +36,85 @@ manager_check() {
   fi
 }
 
+echo "Checking to see if this is a manager."
+echo ""
+manager_check
+
+# List all the containers
+if [ $MANAGERCHECK == 'so-import' ]; then
+  TRUSTED_CONTAINERS=( \
+  "so-idstools" \
+  "so-nginx" \
+  "so-filebeat" \
+  "so-suricata" \
+  "so-soc" \
+  "so-elasticsearch" \
+  "so-kibana" \
+  "so-kratos" \
+  "so-suricata" \
+  "so-registry" \
+  "so-pcaptools" \
+  "so-zeek" )
+elif [ $MANAGERCHECK != 'so-helix' ]; then
+  TRUSTED_CONTAINERS=( \
+  "so-acng" \
+  "so-thehive-cortex" \
+  "so-curator" \
+  "so-domainstats" \
+  "so-elastalert" \
+  "so-elasticsearch" \
+  "so-filebeat" \
+  "so-fleet" \
+  "so-fleet-launcher" \
+  "so-freqserver" \
+  "so-grafana" \
+  "so-idstools" \
+  "so-influxdb" \
+  "so-kibana" \
+  "so-kratos" \
+  "so-logstash" \
+  "so-minio" \
+  "so-mysql" \
+  "so-nginx" \
+  "so-pcaptools" \
+  "so-playbook" \
+  "so-redis" \
+  "so-soc" \
+  "so-soctopus" \
+  "so-steno" \
+  "so-strelka-frontend" \
+  "so-strelka-manager" \
+  "so-strelka-backend" \
+  "so-strelka-filestream" \
+  "so-suricata" \
+  "so-telegraf" \
+  "so-thehive" \
+  "so-thehive-es" \
+  "so-wazuh" \
+  "so-zeek" )
+else
+  TRUSTED_CONTAINERS=( \
+  "so-filebeat" \
+  "so-idstools" \
+  "so-logstash" \
+  "so-nginx" \
+  "so-redis" \
+  "so-steno" \
+  "so-suricata" \
+  "so-telegraf" \
+  "so-zeek" )
+fi
+  OLD_VERSIONS=( \
+  "2.0.0-rc.1" \
+  "2.0.2-rc.1" \
+  "2.0.3-rc.1" )
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
-  echo ""
+  echo "Trying to clean up old dockers."
+  docker system prune -a -f
+}
+
 }
 
 clone_to_tmp() {
@@ -185,72 +261,20 @@ rc2_to_rc3() {
 
 }
 
-update_dockers() {
-    # List all the containers
-    if [ $MANAGERCHECK == 'so-import' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-idstools" \
-      "so-nginx" \
-      "so-filebeat" \
-      "so-suricata" \
-      "so-soc" \
-      "so-elasticsearch" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-suricata" \
-      "so-registry" \
-      "so-pcaptools" \
-      "so-zeek" )
-    elif [ $MANAGERCHECK != 'so-helix' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-acng" \
-      "so-thehive-cortex" \
-      "so-curator" \
-      "so-domainstats" \
-      "so-elastalert" \
-      "so-elasticsearch" \
-      "so-filebeat" \
-      "so-fleet" \
-      "so-fleet-launcher" \
-      "so-freqserver" \
-      "so-grafana" \
-      "so-idstools" \
-      "so-influxdb" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-logstash" \
-      "so-minio" \
-      "so-mysql" \
-      "so-nginx" \
-      "so-pcaptools" \
-      "so-playbook" \
-      "so-redis" \
-      "so-soc" \
-      "so-soctopus" \
-      "so-steno" \
-      "so-strelka-frontend" \
-      "so-strelka-manager" \
-      "so-strelka-backend" \
-      "so-strelka-filestream" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-thehive" \
-      "so-thehive-es" \
-      "so-wazuh" \
-      "so-zeek" )
-    else
-      TRUSTED_CONTAINERS=( \
-      "so-filebeat" \
-      "so-idstools" \
-      "so-logstash" \
-      "so-nginx" \
-      "so-redis" \
-      "so-steno" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-zeek" )
-    fi
+space_check() {
+  # Check to see if there is enough space
+  CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}')
+  if [ "$CURRENTSPACE" -lt "1000" ]; then
+      read -rsn1 -p"You are low on disk space. Upgrade will try and clean up space. Press any key to continue or Ctrl+c to exit";
+      clean_dockers
+  else
+      echo "Plenty of space for upgrading"
+  fi
+  
+}
 
+update_dockers() {
+    
 # Download the containers from the interwebs
     for i in "${TRUSTED_CONTAINERS[@]}"
     do
@@ -350,9 +374,6 @@ while getopts ":b" opt; do
   esac
 done
 
-echo "Checking to see if this is a manager."
-echo ""
-manager_check
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
 detect_os
