@@ -93,7 +93,7 @@ populate_container_lists() {
     for line in "${docker_raw_list[@]}"; do
         container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
         container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
-        
+
         temp_container_name_list+=( "${container_name}" )
         temp_container_state_list+=( "${container_state}" )
     done
@@ -149,30 +149,75 @@ print_line() {
     printf "%s    \n" " ]"
 }
 
-main() {
-    local focus_color="\e[1;34m"
-    printf "\n"
-    printf "${focus_color}%b\e[0m" "Checking Docker status\n\n"
+non_term_print_line() {
+    local service_name=${1}
+    local service_state="$( parse_status ${2} )"
 
-    systemctl is-active --quiet docker
-    if [[ $? = 0 ]]; then
-        print_line "Docker" "running"
-    else
-        print_line "Docker" "exited"
-    fi
+    local PADDING_CONSTANT=10
 
-    populate_container_lists
-
-    printf "\n"
-    printf "${focus_color}%b\e[0m" "Checking container statuses\n\n"
-
-    local num_containers=${#container_name_list[@]}
-
-    for i in $(seq 0 $(($num_containers - 1 ))); do
-        print_line ${container_name_list[$i]} ${container_state_list[$i]}
+    printf "    $service_name "
+    for i in $(seq 0 $(( 40 - $PADDING_CONSTANT - ${#service_name} - ${#service_state} ))); do
+        printf "-"
     done
+    printf " [ "
+    printf "$service_state"
+    printf "%s    \n" " ]"
+}
 
-    printf "\n"
+main() {
+
+    # if running from salt
+    if [ "$TERM" == 'dumb' ]; then
+      printf "\n"
+      printf "Checking Docker status\n\n"
+
+      systemctl is-active --quiet docker
+      if [[ $? = 0 ]]; then
+          non_term_print_line "Docker" "running"
+      else
+          non_term_print_line "Docker" "exited"
+      fi
+
+      populate_container_lists
+
+      printf "\n"
+      printf "Checking container statuses\n\n"
+
+      local num_containers=${#container_name_list[@]}
+
+      for i in $(seq 0 $(($num_containers - 1 ))); do
+          non_term_print_line ${container_name_list[$i]} ${container_state_list[$i]}
+      done
+
+      printf "\n"
+    
+    # else if running from a terminal
+    else
+
+      local focus_color="\e[1;34m"
+      printf "\n"
+      printf "${focus_color}%b\e[0m" "Checking Docker status\n\n"
+
+      systemctl is-active --quiet docker
+      if [[ $? = 0 ]]; then
+          print_line "Docker" "running"
+      else
+          print_line "Docker" "exited"
+      fi
+
+      populate_container_lists
+
+      printf "\n"
+      printf "${focus_color}%b\e[0m" "Checking container statuses\n\n"
+
+      local num_containers=${#container_name_list[@]}
+
+      for i in $(seq 0 $(($num_containers - 1 ))); do
+          print_line ${container_name_list[$i]} ${container_state_list[$i]}
+      done
+
+      printf "\n"
+    fi
 }
 
 # {% endraw %}
