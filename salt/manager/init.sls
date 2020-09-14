@@ -21,6 +21,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set managerproxy = salt['pillar.get']('global:managerupdate', '0') %}
+{% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 socore_own_saltstack:
   file.directory:
@@ -82,6 +83,12 @@ so-aptcacherng:
 
 {% endif %}
 
+strelka_yara_update:
+  cron.present:
+    - user: root
+    - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
 {% else %}
 
 manager_state_not_allowed:
