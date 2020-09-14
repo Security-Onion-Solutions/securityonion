@@ -1,4 +1,4 @@
-{% set ZEEKVER = salt['pillar.get']('global:zeekversion', '') %}
+{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set WAZUH = salt['pillar.get']('global:wazuh', '0') %}
 {% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
