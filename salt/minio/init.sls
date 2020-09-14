@@ -12,6 +12,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'minio' in top_states %}
 
 {% set access_key = salt['pillar.get']('minio:access_key', '') %}
 {% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
@@ -57,3 +61,11 @@ so-minio:
       - /etc/pki/minio.key:/.minio/certs/private.key:ro
       - /etc/pki/minio.crt:/.minio/certs/public.crt:ro
     - entrypoint: "/usr/bin/docker-entrypoint.sh server --certs-dir /.minio/certs --address :9595 /data"
+
+{% else %}
+
+minio_state_not_allowed:
+  test.fail_without_changes:
+    - name: minio_state_not_allowed
+
+{% endif %}
