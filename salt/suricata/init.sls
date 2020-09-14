@@ -18,7 +18,7 @@
 {% if 'suricata' in top_states %}
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set ZEEKVER = salt['pillar.get']('global:zeekversion', '') %}
+{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
