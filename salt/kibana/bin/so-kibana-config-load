@@ -3,8 +3,6 @@
 # {%- set FLEET_NODE = salt['pillar.get']('global:fleet_node', False) -%}
 # {%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
 
-KIBANA_VERSION="7.6.1"
-
 # Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
 
@@ -17,4 +15,4 @@ cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_o
 sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 # Load saved objects
-curl -X POST "localhost:5601/api/saved_objects/_import" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
+curl -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
