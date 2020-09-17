@@ -1,4 +1,4 @@
-{% set ENROLLSECRET = salt['cmd.run']('docker exec so-fleet fleetctl get enroll-secret') %}
+{% set ENROLLSECRET = salt['cmd.run']('docker exec so-fleet fleetctl get enroll-secret default') %}
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 

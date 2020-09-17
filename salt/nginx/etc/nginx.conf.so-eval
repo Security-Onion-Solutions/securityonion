@@ -2,6 +2,8 @@
 {%- set FLEET_MANAGER = salt['pillar.get']('global:fleet_manager') %}
 {%- set FLEET_NODE = salt['pillar.get']('global:fleet_node') %}
 {%- set FLEET_IP = salt['pillar.get']('global:fleet_ip', None) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+
 # For more information on configuration, see:
 #   * Official English Documentation: http://nginx.org/en/docs/
 #   * Official Russian Documentation: http://nginx.org/ru/docs/
@@ -29,7 +31,7 @@ http {
 	tcp_nodelay         on;
 	keepalive_timeout   65;
 	types_hash_max_size 2048;
-	client_max_body_size 1024M;
+	client_max_body_size 2500M;
 
 	include             /etc/nginx/mime.types;
 	default_type        application/octet-stream;
@@ -65,6 +67,23 @@ http {
 			server_name _;
 			return 301 https://$host$request_uri;
 	}
+	{%- if ISAIRGAP is sameas true %}
+	server {
+		    listen 7788;
+			server_name _;
+			root /opt/socore/html/repo;
+			location /rules/ {
+                allow all;
+                sendfile on;
+                sendfile_max_chunk 1m;
+                autoindex on;
+                autoindex_exact_size off;
+                autoindex_format html;
+                autoindex_localtime on;
+			}
+	}
+	{%- endif %}
+
 
 {% if FLEET_MANAGER %}
 	server {
@@ -180,7 +199,20 @@ http {
 			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
 			proxy_set_header      Proxy "";
 			proxy_set_header      X-Forwarded-Proto $scheme;
-		} 
+		}
+
+        {%- if ISAIRGAP is sameas true %}
+        location /repo/ {
+            allow all;
+            sendfile on;
+            sendfile_max_chunk 1m;
+            autoindex on;
+            autoindex_exact_size off;
+            autoindex_format html;
+            autoindex_localtime on;
+        }
+
+		{%- endif %}
 		
 		location /grafana/ {
 			auth_request          /auth/sessions/whoami;

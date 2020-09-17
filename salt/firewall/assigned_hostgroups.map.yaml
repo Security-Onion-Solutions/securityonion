@@ -1,3 +1,4 @@
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'firewall/portgroups.yaml' as portgroups %}
 {% set portgroups = portgroups.firewall.aliases.ports %}
 
@@ -109,6 +110,9 @@ role:
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.cortex_es_rest }}
               - {{ portgroups.cortex_es_node }}
+              {% if ISAIRGAP is sameas true %}
+              - {{ portgroups.agrules }}
+              {% endif %}
           minion:
             portgroups:
               - {{ portgroups.acng }}
@@ -117,6 +121,9 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              {% if ISAIRGAP is sameas true %}
+              - {{ portgroups.yum }}
+              {% endif %}
           sensor:
             portgroups:
               - {{ portgroups.sensoroni }}
@@ -200,6 +207,7 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              - {{ portgroups.yum }}
           sensor:
             portgroups:
               - {{ portgroups.sensoroni }}
@@ -282,7 +290,8 @@ role:
               - {{ portgroups.osquery_8080 }}
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
-              - {{ portgroups.fleet_api }}              
+              - {{ portgroups.fleet_api }}
+              - {{ portgroups.yum }}              
           sensor:
             portgroups:
               - {{ portgroups.sensoroni }}

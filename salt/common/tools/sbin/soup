@@ -38,7 +38,8 @@ manager_check() {
 
 clean_dockers() {
   # Place Holder for cleaning up old docker images
-  echo ""
+  echo "Trying to clean up old dockers."
+  docker system prune -a -f
 }
 
 clone_to_tmp() {
@@ -121,45 +122,80 @@ pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
     
-    # Move baseurl in global.sls
-    if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-      # Move the static file to global.sls
-      echo "Migrating static.sls to global.sls"
-      mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
-      sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
+    [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
+    [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
 
-      # Moving baseurl from minion sls file to inside global.sls
-      local line=$(grep '^  url_base:' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls)
-      sed -i '/^  url_base:/d' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls;
-      sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
+}
 
-      # Adding play values to the global.sls
-      local HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	  local CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-      sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
-      sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
+rc1_to_rc2() {
 
-      # Move storage nodes to hostname for SSL
-      # Get a list we can use:
-      grep -A1 searchnode /opt/so/saltstack/local/pillar/data/nodestab.sls | grep -v '\-\-' | sed '$!N;s/\n/ /' | awk '{print $1,$3}' | awk '/_searchnode:/{gsub(/\_searchnode:/, "_searchnode"); print}' >/tmp/nodes.txt
-      # Remove the nodes from cluster settings
-      while read p; do
-        local NAME=$(echo $p | awk '{print $1}')
-        local IP=$(echo $p | awk '{print $2}')
-        echo "Removing the old cross cluster config for $NAME"
-        curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
-      done </tmp/nodes.txt
-      # Add the nodes back using hostname
-      while read p; do
-        local NAME=$(echo $p | awk '{print $1}')
-        local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
-	local IP=$(echo $p | awk '{print $2}')
-        echo "Adding the new cross cluster config for $NAME"
-        curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
-      done </tmp/nodes.txt
+  # Move the static file to global.sls
+  echo "Migrating static.sls to global.sls"
+  mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
+  sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
 
+  # Moving baseurl from minion sls file to inside global.sls
+  local line=$(grep '^  url_base:' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls)
+  sed -i '/^  url_base:/d' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls;
+  sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
 
-    fi
+  # Adding play values to the global.sls
+  local HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  local CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
+  sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
+
+  # Move storage nodes to hostname for SSL
+  # Get a list we can use:
+  grep -A1 searchnode /opt/so/saltstack/local/pillar/data/nodestab.sls | grep -v '\-\-' | sed '$!N;s/\n/ /' | awk '{print $1,$3}' | awk '/_searchnode:/{gsub(/\_searchnode:/, "_searchnode"); print}' >/tmp/nodes.txt
+  # Remove the nodes from cluster settings
+  while read p; do
+  local NAME=$(echo $p | awk '{print $1}')
+  local IP=$(echo $p | awk '{print $2}')
+  echo "Removing the old cross cluster config for $NAME"
+  curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
+  done </tmp/nodes.txt
+  # Add the nodes back using hostname
+  while read p; do
+      local NAME=$(echo $p | awk '{print $1}')
+      local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
+	    local IP=$(echo $p | awk '{print $2}')
+      echo "Adding the new cross cluster config for $NAME"
+      curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
+  done </tmp/nodes.txt
+
+  INSTALLEDVERSION=rc.2
+
+}
+
+rc2_to_rc3() {
+
+  # move location of local.rules
+  cp /opt/so/saltstack/default/salt/idstools/localrules/local.rules /opt/so/saltstack/local/salt/idstools/local.rules
+  
+  if [ -f /opt/so/saltstack/local/salt/idstools/localrules/local.rules ]; then
+    cat /opt/so/saltstack/local/salt/idstools/localrules/local.rules >> /opt/so/saltstack/local/salt/idstools/local.rules
+  fi
+  rm -rf /opt/so/saltstack/local/salt/idstools/localrules
+  rm -rf /opt/so/saltstack/default/salt/idstools/localrules
+
+  # Rename mdengine to MDENGINE
+  sed -i "s/  zeekversion/  mdengine/g" /opt/so/saltstack/local/pillar/global.sls
+  # Enable Strelka Rules
+  sed -i "/  rules:/c\  rules: 1" /opt/so/saltstack/local/pillar/global.sls
+
+}
+
+space_check() {
+  # Check to see if there is enough space
+  CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
+  if [ "$CURRENTSPACE" -lt "10" ]; then
+      echo "You are low on disk space. Upgrade will try and clean up space.";
+      clean_dockers
+  else
+      echo "Plenty of space for upgrading"
+  fi
+  
 }
 
 update_dockers() {
@@ -245,7 +281,7 @@ update_version() {
   # Update the version to the latest
   echo "Updating the Security Onion version file."
   echo $NEWVERSION > /etc/soversion
-  sed -i "s/$INSTALLEDVERSION/$NEWVERSION/g" /opt/so/saltstack/local/pillar/global.sls
+  sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global.sls
 }
 
 upgrade_check() {
@@ -343,7 +379,7 @@ echo ""
 
 echo "Let's see if we need to update Security Onion."
 upgrade_check
-
+space_check
 
 echo ""
 echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
@@ -362,8 +398,6 @@ echo "Making pillar changes."
 pillar_changes
 echo ""
 
-echo "Cleaning up old dockers."
-clean_dockers
 echo ""
 echo "Updating dockers to $NEWVERSION."
 update_dockers

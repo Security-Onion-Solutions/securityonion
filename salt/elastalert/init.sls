@@ -12,9 +12,16 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'elastalert' in top_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{%- set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
+{%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
   {% set esalert = salt['pillar.get']('manager:elastalert', '1') %}
@@ -100,6 +107,12 @@ elastaconf:
     - group: 933
     - template: jinja
 
+wait_for_elasticsearch:
+  module.run:
+    - http.wait_for_successful_query:
+      - url: 'http://{{MANAGER}}:9200/_cat/indices/.kibana*'
+      - wait_for: 180
+
 so-elastalert:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
@@ -112,5 +125,16 @@ so-elastalert:
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/config/elastalert_config.yaml:ro
+    - extra_hosts:
+      - {{MANAGER_URL}}:{{MANAGER_IP}}
+    - require:
+      - module: wait_for_elasticsearch
+{% endif %}
+
+{% else %}
+
+elastalert_state_not_allowed:
+  test.fail_without_changes:
+    - name: elastalert_state_not_allowed
 
 {% endif %}

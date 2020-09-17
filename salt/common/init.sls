@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'common' in top_states %}
+
 {% set role = grains.id.split('_') | last %}
 
 # Remove variables.txt from /tmp - This is temp
@@ -88,7 +93,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-2
-      - docker-ce: 5:19.03.9~3-0~ubuntu-bionic
+      - docker-ce: 5:19.03.12~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -124,7 +129,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.11-3.el7
+      - docker-ce: 3:19.03.12-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
@@ -163,4 +168,39 @@ utilsyncscripts:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+sensorrotatescript:
+  file.managed:
+    - name: /usr/local/bin/sensor-rotate
+    - source: salt://common/cron/sensor-rotate
+    - mode: 755
+
+sensorrotateconf:
+  file.managed:
+    - name: /opt/so/conf/sensor-rotate.conf
+    - source: salt://common/files/sensor-rotate.conf
+    - mode: 644
+
+/usr/local/bin/sensor-rotate:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+{% endif %}
+
+# Make sure Docker is always running
+docker:
+  service.running:
+    - enable: True
+
+{% else %}
+
+common_state_not_allowed:
+  test.fail_without_changes:
+    - name: common_state_not_allowed
+
 {% endif %}

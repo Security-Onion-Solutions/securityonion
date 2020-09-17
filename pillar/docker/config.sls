@@ -5,7 +5,7 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
-{% set ZEEKVER = salt['pillar.get']('global:zeekversion', 'COMMUNITY') %}
+{% set ZEEKVER = salt['pillar.get']('global:mdengine', 'COMMUNITY') %}
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
 eval:

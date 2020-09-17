@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+usage() {
+    echo "Usage: $0 <user-name> <true|false>"
+    echo ""
+    echo "Enables or disables a user in Cortex."
+    exit 1
+}
+
+if [ $# -ne 2 ]; then
+  usage
+fi
+
+USER=$1
+
+CORTEX_KEY=$(lookup_pillar cortexkey)
+CORTEX_IP=$(lookup_pillar managerip)
+CORTEX_USER=$USER
+
+case "${2^^}" in
+	FALSE | NO | 0)
+		CORTEX_STATUS=Locked
+		;;
+	TRUE | YES | 1)
+		CORTEX_STATUS=Ok
+		;;
+	*)
+		usage
+		;;
+esac
+
+resp=$(curl -sk -XPATCH -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" "https://$CORTEX_IP/cortex/api/user/${CORTEX_USER}" -d "{\"status\":\"${CORTEX_STATUS}\" }")
+if [[ "$resp" =~ \"status\":\"Locked\" || "$resp" =~ \"status\":\"Ok\" ]]; then
+    echo "Successfully updated user in Cortex."
+else
+    echo "Failed to update user in Cortex."
+    echo $resp
+    exit 2
+fi
+    

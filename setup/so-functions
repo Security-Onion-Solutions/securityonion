@@ -46,6 +46,20 @@ logCmd() {
 	$cmd >> "$setup_log" 2>&1
 }
 
+airgap_rules() {
+	# Copy the rules for suricata if using Airgap
+	mkdir -p /nsm/repo/rules
+	cp -v /root/SecurityOnion/agrules/emerging-all.rules /nsm/repo/rules/
+	
+	# Copy over sigma rules
+	cp -Rv /root/SecurityOnion/agrules/sigma /nsm/repo/rules/
+
+	# Don't leave Strelka out
+	cp -Rv /root/SecurityOnion/agrules/strelka /nsm/repo/rules/
+
+
+}
+
 analyze_system() {
 	title "System Characteristics"
 	logCmd "uptime"
@@ -176,8 +190,6 @@ secrets_pillar(){
 		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
   fi
 }
-
-
 
 check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
@@ -482,72 +494,6 @@ check_requirements() {
 	fi
 }
 
-copy_salt_master_config() {
-
-	# Copy the Salt master config template to the proper directory
-	if [ "$setup_type" = 'iso' ]; then
-		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
-	else
-		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
-	fi
-
-	# Restart the service so it picks up the changes
-	systemctl restart salt-master >> "$setup_log" 2>&1
-}
-
-copy_minion_tmp_files() {
-	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
-			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
-			if [ -d "$temp_install_dir"/salt ] ; then
-				cp -Rv "$temp_install_dir"/salt/ $local_salt_dir/ >> "$setup_log" 2>&1
-			fi
-			;;
-		*)
-			{
-				echo "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
-				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
-				if [ -d $temp_install_dir/salt/patch/os/schedules/ ]; then
-					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
-						scp -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
-					fi
-				fi
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
-			} >> "$setup_log" 2>&1
-			;;
-	esac
-}
-
-copy_ssh_key() {
-
-	echo "Generating SSH key"
-	# Generate SSH key
-	mkdir -p /root/.ssh
-	ssh-keygen -f /root/.ssh/so.key -t rsa -q -N "" < /dev/zero
-	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
-	echo "Copying the SSH key to the manager"
-	#Copy the key over to the manager
-	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
-}
-
-create_local_directories() {
-	echo "Creating local pillar and salt directories"
-	PILLARSALTDIR=${SCRIPTDIR::-5}
-	for i in "pillar" "salt"; do
-		for d in $(find $PILLARSALTDIR/$i -type d); do
-			suffixdir=${d//$PILLARSALTDIR/}
-			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				mkdir -v "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
-			fi
-		done
-		chown -R socore:socore "$local_salt_dir/$i"
-	done
-
-}
-
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
 	local nic_error=0
@@ -632,6 +578,83 @@ configure_network_sensor() {
 	fi
 }
 
+copy_salt_master_config() {
+
+	# Copy the Salt master config template to the proper directory
+	if [ "$setup_type" = 'iso' ]; then
+		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
+	else
+		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
+	fi
+
+	# Restart the service so it picks up the changes
+	systemctl restart salt-master >> "$setup_log" 2>&1
+}
+
+copy_minion_tmp_files() {
+	case "$install_type" in
+		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
+			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
+			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
+			if [ -d "$temp_install_dir"/salt ] ; then
+				cp -Rv "$temp_install_dir"/salt/ $local_salt_dir/ >> "$setup_log" 2>&1
+			fi
+			;;
+		*)
+			{
+				echo "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
+				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
+				if [ -d $temp_install_dir/salt/patch/os/schedules/ ]; then
+					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
+						scp -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
+					fi
+				fi
+				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
+			} >> "$setup_log" 2>&1
+			;;
+	esac
+}
+
+copy_ssh_key() {
+
+	echo "Generating SSH key"
+	# Generate SSH key
+	mkdir -p /root/.ssh
+	ssh-keygen -f /root/.ssh/so.key -t rsa -q -N "" < /dev/zero
+	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
+	echo "Copying the SSH key to the manager"
+	#Copy the key over to the manager
+	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
+}
+
+create_local_directories() {
+	echo "Creating local pillar and salt directories"
+	PILLARSALTDIR=${SCRIPTDIR::-5}
+	for i in "pillar" "salt"; do
+		for d in $(find $PILLARSALTDIR/$i -type d); do
+			suffixdir=${d//$PILLARSALTDIR/}
+			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
+				mkdir -v "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
+			fi
+		done
+		chown -R socore:socore "$local_salt_dir/$i"
+	done
+
+}
+
+create_local_nids_rules() {
+	# Create a local.rules file so it doesn't get blasted on updates
+	mkdir -p /opt/so/saltstack/local/salt/idstools
+	echo "# Custom Suricata rules go in this file" > /opt/so/saltstack/local/salt/idstools/local.rules
+}
+
+create_repo() {
+	# Create the repo for airgap
+	createrepo /nsm/repo
+}
+
 detect_cloud() {
   echo "Testing if setup is running on a cloud instance..." >> "$setup_log" 2>&1
   if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null); then export is_cloud="true"; fi
@@ -710,13 +733,16 @@ detect_os() {
 
 disable_auto_start() {
 	
-	# Remove the automated setup script from crontab, if it exists
-	logCmd "crontab -u $INSTALLUSERNAME -r"
+	if crontab -l | grep so-setup; then
+		# Remove the automated setup script from crontab, if it exists
+		logCmd "crontab -u $INSTALLUSERNAME -r"
+	fi
 
-	# Truncate last line of the bash profile
-	info "Removing auto-run of setup from bash profile"
-	sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-
+	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile; then
+		# Truncate last line of the bash profile
+		info "Removing auto-run of setup from bash profile"
+		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+	fi
 }
 
 disable_misc_network_features() {
@@ -754,9 +780,9 @@ docker_install() {
 			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
 			fi
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-19.03.11-3.el7 containerd.io-1.2.13-3.2.el7;
+			  yum -y install docker-ce-19.03.12-3.el7 containerd.io-1.2.13-3.2.el7;
 			fi
-			yum versionlock docker-ce-19.03.11-3.el7;
+			yum versionlock docker-ce-19.03.12-3.el7;
 			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
 		
@@ -994,6 +1020,9 @@ install_cleanup() {
 
 	# Clean up after ourselves
 	rm -rf "$temp_install_dir"
+	
+	# If Mysql is running stop it.
+	/usr/sbin/so-mysql-stop
 
 }
 
@@ -1028,8 +1057,6 @@ manager_pillar() {
 
 	printf '%s\n'\
 		"  elastalert: 1"\
-		"  nids_rules: $RULESETUP"\
-		"  oinkcode: $OINKCODE"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
 		"  cur_close_days: $CURCLOSEDAYS"\
@@ -1093,10 +1120,18 @@ manager_global() {
                 "  hnmanager: $HNMANAGER"\
                 "  ntpserver: $NTPSERVER"\
                 "  proxy: $PROXY"\
-                "  zeekversion: $ZEEKVERSION"\
+                "  mdengine: $ZEEKVERSION"\
                 "  ids: $NIDS"\
 				"  url_base: $REDIRECTIT"\
                 "  managerip: $MAINIP" > "$global_pillar"
+		
+        if [[ $is_airgap ]]; then
+		        printf '%s\n'\
+                        "  airgap: True"\ >> "$global_pillar"
+		else 
+		        printf '%s\n'\
+                        "  airgap: False"\ >> "$global_pillar"
+		fi
 
         # Check if TheHive is enabled.  If so, add creds and other details
         if [[ "$THEHIVE" == "1" ]]; then
@@ -1132,7 +1167,7 @@ manager_global() {
 		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
-		"  rules: $STRELKARULES"\
+		"  rules: 1"\
 		"curator:"\
 		"  hot_warm: False"\
 		"elastic:"\
@@ -1606,8 +1641,13 @@ set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 }
 
+# Add /usr/sbin to everyone's path
+set_path() {
+	echo "PATH=\$PATH:/usr/sbin" > /etc/profile.d/securityonion.sh
+}
+
 setup_salt_master_dirs() {
-	# Create salt paster directories
+	# Create salt master directories
 	mkdir -p $default_salt_dir/pillar
 	mkdir -p $default_salt_dir/salt
 	mkdir -p $local_salt_dir/pillar
@@ -1856,8 +1896,10 @@ set_redirect() {
 set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
-			if ! grep -q "$MSRV" /etc/yum.conf; then
-				echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+		    if [[ ! $is_airgap ]]; then
+			    if ! grep -q "$MSRV" /etc/yum.conf; then
+				    echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+			    fi
 			fi
 		else
 			# Set it up so the updates roll through the manager
@@ -1868,7 +1910,6 @@ set_updates() {
 	fi
 }
 
-# FIXME: should this be a function?
 set_version() {
 	# Drop a file with the current version
 	echo "$SOVERSION" > /etc/soversion
@@ -1896,6 +1937,7 @@ update_packages() {
 	fi
 }
 
+# This is used for development to speed up network install tests.
 use_turbo_proxy() {
 	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE)$ ]]; then
 		echo "turbo is not supported on this install type" >> $setup_log 2>&1
@@ -1913,6 +1955,7 @@ use_turbo_proxy() {
 	fi
 }
 
+# Set Logstash heap size based on total memory
 ls_heapsize() {
 
 	if [ "$total_mem" -ge 32000 ]; then
@@ -1961,9 +2004,9 @@ es_heapsize() {
 	fi
 }
 
-# Enable Bro Logs
+# Enable Zeek Logs
 zeek_logs_enabled() {
-	echo "Enabling Bro Logs" >> "$setup_log" 2>&1
+	echo "Enabling Zeek Logs" >> "$setup_log" 2>&1
 
 	local zeeklogs_pillar=./pillar/zeeklogs.sls
 
@@ -1975,6 +2018,47 @@ zeek_logs_enabled() {
 		for BLOG in "${BLOGS[@]}"; do
 			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
 		done
+	elif [ "$install_type" == "EVAL" ]  || [ "$install_type" == "IMPORT" ]; then
+		printf '%s\n'\
+                        "    - conn"\
+                        "    - dce_rpc"\
+                        "    - dhcp"\
+                        "    - dhcpv6"\
+                        "    - dnp3"\
+                        "    - dns"\
+                        "    - dpd"\
+                        "    - files"\
+                        "    - ftp"\
+                        "    - http"\
+                        "    - intel"\
+                        "    - irc"\
+                        "    - kerberos"\
+                        "    - modbus"\
+                        "    - mqtt"\
+                        "    - notice"\
+                        "    - ntlm"\
+                        "    - openvpn"\
+                        "    - pe"\
+                        "    - radius"\
+                        "    - rfb"\
+                        "    - rdp"\
+                        "    - signatures"\
+                        "    - sip"\
+                        "    - smb_files"\
+                        "    - smb_mapping"\
+                        "    - smtp"\
+                        "    - snmp"\
+                        "    - software"\
+                        "    - ssh"\
+                        "    - ssl"\
+                        "    - syslog"\
+                        "    - telnet"\
+                        "    - tunnel"\
+                        "    - weird"\
+                        "    - mysql"\
+                        "    - socks"\
+                        "    - x509" >> "$zeeklogs_pillar"
+	# Disable syslog log by default
 	else
 		printf '%s\n'\
 			"    - conn"\
@@ -2008,7 +2092,6 @@ zeek_logs_enabled() {
 			"    - software"\
 			"    - ssh"\
 			"    - ssl"\
-			"    - syslog"\
 			"    - telnet"\
 			"    - tunnel"\
 			"    - weird"\

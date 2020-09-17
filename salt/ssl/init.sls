@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'ssl' in top_states %}
+
 {% set manager = salt['grains.get']('master') %}
 {% set managerip = salt['pillar.get']('global:managerip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
@@ -8,10 +13,10 @@
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import'] %}
-    {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
+    {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
-    {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
+    {% set x509dict = salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
@@ -570,3 +575,11 @@ elastickeyperms:
     - group: 930
 
 {%- endif %}
+
+{% else %}
+
+ssl_state_not_allowed:
+  test.fail_without_changes:
+    - name: ssl_state_not_allowed
+
+{% endif %}

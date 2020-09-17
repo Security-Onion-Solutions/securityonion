@@ -117,6 +117,10 @@ if [ "$OS" == ubuntu ]; then
 	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
 fi
 
+# Kernel messages can overwrite whiptail screen #812
+# https://github.com/Security-Onion-Solutions/securityonion/issues/812
+dmesg -D
+
 # Kernel consoleblank is causing whiptail progress screen to appear to hang #1084
 # https://github.com/Security-Onion-Solutions/securityonion/issues/1084
 if [ "$automated" == no ]; then
@@ -154,6 +158,7 @@ elif [ "$install_type" = 'STANDALONE' ]; then
 	is_distmanager=true
 	is_node=true
 	is_sensor=true
+	is_smooshed=true
 elif [ "$install_type" = 'MANAGERSEARCH' ]; then
 	is_manager=true
 	is_distmanager=true
@@ -172,6 +177,7 @@ elif [ "$install_type" = 'HEAVYNODE' ]; then
 	is_node=true
 	is_minion=true
 	is_sensor=true
+	is_smooshed=true
 elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
 	is_fleet_standalone=true
@@ -187,16 +193,16 @@ if [[ "$setup_type" == 'iso' ]]; then
   is_iso=true
 fi
 
-#Check if this is an airgap install
+# Check if this is an airgap install
 
-#if [[ $is_manager ]]; then
-#    if [[ $is_iso ]]; then
-#      whiptail_airgap
-#      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-#        is_airgap=true
-#      fi
-#    fi
-#fi
+if [[ $is_manager ]]; then
+    if [[ $is_iso ]]; then
+      whiptail_airgap
+      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+        is_airgap=true
+      fi
+    fi
+fi
 
 if [[ $is_manager && $is_sensor ]]; then
 	check_requirements "standalone"
@@ -325,7 +331,7 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [[ $STRELKA == 1 ]]; then
+	if [[ "$STRELKA" == 1 ]]; then
             STRELKARULES=1
         fi
 
@@ -405,6 +411,8 @@ if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 
 whiptail_make_changes
 
+# From here on changes will be made.
+
 if [[ -n "$TURBO" ]]; then
 	use_turbo_proxy
 fi
@@ -413,10 +421,10 @@ if [[ "$setup_type" == 'iso' ]]; then
 	# Init networking so rest of install works
 	set_hostname_iso
 	set_management_interface
-
-	#add_admin_user
-	disable_auto_start
 fi
+
+disable_auto_start
+
 
 {
 	set_hostname;
@@ -453,6 +461,12 @@ fi
 {
 	# Set initial percentage to 0
 	export percentage=0
+
+    if [[ $is_manager && $is_airgap ]]; then
+	    info "Creating airgap repo"
+	    create_repo >> $setup_log 2>&1
+		airgap_rules >> $setup_log 2>&1
+    fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 1 'Configuring firewall'
@@ -498,7 +512,7 @@ fi
 		update_sudoers >> $setup_log 2>&1
 		
 		set_progress_str 12 'Generating manager global pillar'
-		minio_generate_keys
+		#minio_generate_keys
 		manager_global >> $setup_log 2>&1
 		
 		set_progress_str 13 'Generating manager pillar'
@@ -559,9 +573,13 @@ fi
 		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
+		if [[ "$STRELKARULES" == 1 ]]; then
+			/usr/sbin/so-yara-update >> $setup_log 2>&1	
+		fi
 		salt-call state.apply -l info manager >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
+		create_local_nids_rules >> $setup_log 2>&1
 		salt-call state.apply -l info idstools >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'suricata.manager')"
@@ -665,8 +683,10 @@ fi
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
-		set_progress_str 80 "$(print_salt_state_apply 'strelka')"
-		salt-call state.apply -l info strelka >> $setup_log 2>&1
+		if [[ $is_sensor ]]; then
+			set_progress_str 80 "$(print_salt_state_apply 'strelka')"
+			salt-call state.apply -l info strelka >> $setup_log 2>&1
+		fi
 		if [[ $STRELKARULES == 1 ]]; then
 			/usr/sbin/so-yara-update >> $setup_log 2>&1	
 		fi
