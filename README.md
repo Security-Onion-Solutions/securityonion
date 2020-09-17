@@ -1,6 +1,6 @@
-## Security Onion 2.1.0.rc2
+## Security Onion 2.2.0.rc3
 
-Security Onion 2.1.0 RC2 is here!
+Security Onion 2.2.0 RC3 is here!
 
 ### Warnings and Disclaimers
 
@@ -14,24 +14,24 @@ Security Onion 2.1.0 RC2 is here!
 
 ### Release Notes
 
-https://docs.securityonion.net/en/2.1/release-notes.html
+https://docs.securityonion.net/en/2.2/release-notes.html
 
 ### Requirements
 
-https://docs.securityonion.net/en/2.1/hardware.html
+https://docs.securityonion.net/en/2.2/hardware.html
 
 ### Download
 
-https://docs.securityonion.net/en/2.1/download.html
+https://docs.securityonion.net/en/2.2/download.html
 
 ### Installation
 
-https://docs.securityonion.net/en/2.1/installation.html
+https://docs.securityonion.net/en/2.2/installation.html
 
 ### FAQ
 
-https://docs.securityonion.net/en/2.1/faq.html
+https://docs.securityonion.net/en/2.2/faq.html
 
 ### Feedback
 
-https://docs.securityonion.net/en/2.1/community-support.html
+https://docs.securityonion.net/en/2.2/community-support.html
