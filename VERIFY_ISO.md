@@ -1,4 +1,4 @@
-### 2.2.0-rc2 ISO image built on 2020/09/17
+### 2.2.0-rc3 ISO image built on 2020/09/17
 
 ### Download and Verify
 
