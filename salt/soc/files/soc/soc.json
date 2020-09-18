@@ -28,9 +28,13 @@
     },
     "client": {
       "hunt": {
+        "advanced": true,
+        "groupItemsPerPage": 10,
         "groupFetchLimit": 10,
+        "eventItemsPerPage": 10,
         "eventFetchLimit": 100,
-        "dateRangeMinutes": 1440,
+        "relativeTimeValue": 24,
+        "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
         "eventFields": {
           "default": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.uid", "network.community_id", "event.dataset" ],
@@ -76,6 +80,8 @@
           ":sysmon:": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "source.hostname", "event.dataset", "process.executable", "user.name" ],
           ":windows_eventlog:": ["soc_timestamp", "user.name" ]
         },
+        "queryPrefix": "",
+        "querySuffix": "",        
         "queries": [
           { "name": "Default Query", "description": "Show all events grouped by the origin host", "query": "* | groupby observer.name"},
           { "name": "Log Type", "description": "Show all events grouped by module and dataset", "query": "* | groupby event.module event.dataset"},
@@ -148,7 +154,38 @@
           { "name": "", "description": "actionGoogleHelp", "icon": "fab fa-google", "link": "https://www.google.com/search?q={value}", "target": "_blank" },
           { "name": "actionVirusTotal", "description": "actionVirusTotalHelp", "icon": "", "link": "https://www.virustotal.com/gui/search/{value}", "target": "_blank" }
         ]
-      }
+      },
+      "alerts": {
+        "advanced": false,
+        "groupItemsPerPage": 50,
+        "groupFetchLimit": 500,
+        "eventItemsPerPage": 50,
+        "eventFetchLimit": 5000,
+        "relativeTimeValue": 7,
+        "relativeTimeUnit": 40,
+        "mostRecentlyUsedLimit": 5,
+        "eventFields": {
+          "default": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.gid", "rule.category", "rule.rev"],
+          ":ossec:": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.level", "rule.category", "process.name", "user.name", "user.escalated", "location", "process.name" ]
+        },
+        "queryPrefix": "event.dataset:alert AND",
+        "querySuffix": "",
+        "queries": [
+          { "name": "Group By Name", "query": "* | groupby rule.name event.severity_label" },
+          { "name": "Group By Sensor, Source IP/Port, Destination IP/Port, Name", "query": "* | groupby observer.name source.ip source.port destination.ip destination.port rule.name event.severity_label" },
+          { "name": "Group By Source IP, Name", "query": "* | groupby source.ip rule.name event.severity_label" },
+          { "name": "Group By Source Port, Name", "query": "* | groupby source.port rule.name event.severity_label" },
+          { "name": "Group By Destination IP, Name", "query": "* | groupby destination.ip rule.name event.severity_label" },
+          { "name": "Group By Destination Port, Name", "query": "* | groupby destination.port rule.name event.severity_label" },
+          { "name": "Ungroup", "query": "*" }
+        ],
+        "actions": [
+          { "name": "", "description": "actionPcapHelp", "icon": "fa-stream", "link": "/joblookup?esid={eventId}", "target": "" },
+          { "name": "", "description": "actionAlertHelp", "icon": "fa-bell", "link": "/soctopus/thehive/alert/{eventId}", "target": "_blank" },
+          { "name": "", "description": "actionGoogleHelp", "icon": "fab fa-google", "link": "https://www.google.com/search?q={value}", "target": "_blank" },
+          { "name": "actionVirusTotal", "description": "actionVirusTotalHelp", "icon": "", "link": "https://www.virustotal.com/gui/search/{value}", "target": "_blank" }
+        ]
+      }        
     }
   }
 }
