@@ -92,7 +92,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
 # Create a cert for Redis encryption
 /etc/pki/redis.key:
   x509.private_key_managed:
