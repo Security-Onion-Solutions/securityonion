@@ -124,6 +124,8 @@ pillar_changes() {
     
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
+    [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
+    
 
 }
 
@@ -184,7 +186,13 @@ rc2_to_rc3() {
   # Enable Strelka Rules
   sed -i "/  rules:/c\  rules: 1" /opt/so/saltstack/local/pillar/global.sls
 
+  INSTALLEDVERSION=rc.3
+
 }
+
+rc3_to_2.3.0() [
+  echo ""
+]
 
 space_check() {
   # Check to see if there is enough space
@@ -263,7 +271,7 @@ update_dockers() {
       "so-telegraf" \
       "so-zeek" )
     fi
-
+    
 # Download the containers from the interwebs
     for i in "${TRUSTED_CONTAINERS[@]}"
     do
@@ -274,6 +282,9 @@ update_dockers() {
       docker tag $IMAGEREPO/$i:$NEWVERSION $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
       docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
     done
+
+    # Cleanup on Aisle 4
+    clean_dockers
 
 }
 
