@@ -136,7 +136,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
-    docker_clean
+    - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -185,7 +185,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
-    docker_clean
+    - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -244,7 +244,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
-    docker_clean
+    - docker_clean
 
   # Search node logic
 
@@ -367,7 +367,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
-    docker_clean
+    - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
