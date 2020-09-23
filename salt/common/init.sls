@@ -192,6 +192,18 @@ sensorrotateconf:
 
 {% endif %}
 
+{% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
+# Add config backup
+/usr/sbin/so-config-backup:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+{% endif %}
+
 # Make sure Docker is always running
 docker:
   service.running:
