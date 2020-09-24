@@ -1,3 +1,5 @@
+{% from 'salt/map.jinja' import COMMON with context %}
+
 {% set show_top = salt['state.show_top']() %}
 {% set top_states = show_top.values() | join(', ') %}
 
@@ -9,7 +11,7 @@ include:
 salt_master_package:
   pkg.installed:
     - pkgs:
-      - salt
+      - {{ COMMON }}
       - salt-master
     - hold: True
 
