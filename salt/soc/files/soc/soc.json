@@ -80,8 +80,7 @@
           ":sysmon:": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "source.hostname", "event.dataset", "process.executable", "user.name" ],
           ":windows_eventlog:": ["soc_timestamp", "user.name" ]
         },
-        "queryPrefix": "",
-        "querySuffix": "",        
+        "queryBaseFilter": "",
         "queries": [
           { "name": "Default Query", "description": "Show all events grouped by the origin host", "query": "* | groupby observer.name"},
           { "name": "Log Type", "description": "Show all events grouped by module and dataset", "query": "* | groupby event.module event.dataset"},
@@ -161,15 +160,14 @@
         "groupFetchLimit": 500,
         "eventItemsPerPage": 50,
         "eventFetchLimit": 5000,
-        "relativeTimeValue": 7,
-        "relativeTimeUnit": 40,
+        "relativeTimeValue": 24,
+        "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
         "eventFields": {
           "default": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.gid", "rule.category", "rule.rev"],
           ":ossec:": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.level", "rule.category", "process.name", "user.name", "user.escalated", "location", "process.name" ]
         },
-        "queryPrefix": "event.dataset:alert AND",
-        "querySuffix": "",
+        "queryBaseFilter": "event.dataset:alert AND NOT event.acknowledged:true",
         "queries": [
           { "name": "Group By Name, Module", "query": "* | groupby rule.name event.module event.severity_label" },
           { "name": "Group By Sensor, Source IP/Port, Destination IP/Port, Name", "query": "* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label" },
@@ -180,7 +178,7 @@
           { "name": "Ungroup", "query": "*" }
         ],
         "actions": [
-          { "name": "", "description": "actionHuntHelp", "icon": "fa-crosshairs", "link": "/hunt?q={value}", "target": "_blank" },
+          { "name": "", "description": "actionHuntHelp", "icon": "fa-crosshairs", "link": "/#/hunt?q={value}", "target": "_blank" },
           { "name": "", "description": "actionPcapHelp", "icon": "fa-stream", "link": "/joblookup?esid={eventId}", "target": "_blank" },
           { "name": "", "description": "actionAlertHelp", "icon": "fa-bell", "link": "/soctopus/thehive/alert/{eventId}", "target": "_blank" },
           { "name": "", "description": "actionGoogleHelp", "icon": "fab fa-google", "link": "https://www.google.com/search?q={value}", "target": "_blank" },
