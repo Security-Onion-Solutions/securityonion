@@ -81,6 +81,7 @@
           ":windows_eventlog:": ["soc_timestamp", "user.name" ]
         },
         "queryBaseFilter": "",
+        "queryToggleFilters": [],
         "queries": [
           { "name": "Default Query", "description": "Show all events grouped by the origin host", "query": "* | groupby observer.name"},
           { "name": "Log Type", "description": "Show all events grouped by module and dataset", "query": "* | groupby event.module event.dataset"},
@@ -167,7 +168,11 @@
           "default": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.gid", "rule.category", "rule.rev"],
           ":ossec:": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.level", "rule.category", "process.name", "user.name", "user.escalated", "location", "process.name" ]
         },
-        "queryBaseFilter": "event.dataset:alert AND NOT event.acknowledged:true",
+        "queryBaseFilter": "event.dataset:alert",
+        "queryToggleFilters": [
+          { "name": "acknowledged", "filter": "event.acknowledged:true", "enabled": false, "exclusive": true },
+          { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true }
+        ],
         "queries": [
           { "name": "Group By Name, Module", "query": "* | groupby rule.name event.module event.severity_label" },
           { "name": "Group By Sensor, Source IP/Port, Destination IP/Port, Name", "query": "* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label" },
