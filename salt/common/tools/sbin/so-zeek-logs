@@ -2,17 +2,14 @@
 local_salt_dir=/opt/so/saltstack/local
 
 zeek_logs_enabled() {
-
   echo "zeeklogs:" > $local_salt_dir/pillar/zeeklogs.sls
   echo "  enabled:" >> $local_salt_dir/pillar/zeeklogs.sls
-  for BLOG in ${BLOGS[@]}; do
+  for BLOG in "${BLOGS[@]}"; do
     echo "    - $BLOG" | tr -d '"' >> $local_salt_dir/pillar/zeeklogs.sls
   done
-
 }
 
 whiptail_manager_adv_service_zeeklogs() {
-
   BLOGS=$(whiptail --title "Security Onion Setup" --checklist "Please Select Logs to Send:" 24 78 12 \
   "conn" "Connection Logging" ON \
   "dce_rpc" "RPC Logs" ON \
@@ -52,7 +49,25 @@ whiptail_manager_adv_service_zeeklogs() {
   "mysql" "MySQL Logs" ON \
   "socks" "SOCKS Logs" ON \
   "x509" "x.509 Logs" ON 3>&1 1>&2 2>&3 )
+  
+  local exitstatus=$?
+
+  IFS=' ' read -ra BLOGS <<< "$BLOGS"
+
+  return $exitstatus
 }
 
 whiptail_manager_adv_service_zeeklogs
-zeek_logs_enabled
+return_code=$?
+case $return_code in
+  1)
+    whiptail --title "Security Onion Setup" --msgbox "Cancelling. No changes have been made." 8 75
+    ;;
+  255)
+    whiptail --title "Security Onion Setup" --msgbox "Whiptail error occured, exiting." 8 75
+    ;;
+  *)
+    zeek_logs_enabled
+    ;;
+esac
+

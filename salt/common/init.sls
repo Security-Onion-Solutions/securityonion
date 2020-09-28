@@ -194,7 +194,7 @@ sensorrotateconf:
 
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
 # Add config backup
-/usr/sbin/so-config-backup:
+/usr/sbin/so-config-backup > /dev/null 2>&1:
   cron.present:
     - user: root
     - minute: '1'
