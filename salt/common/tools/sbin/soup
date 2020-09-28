@@ -96,6 +96,7 @@ clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
   docker system prune -a -f
+
 }
 
 clone_to_tmp() {
@@ -289,7 +290,6 @@ update_dockers() {
       docker rm so-dockerregistry
       echo "Copying the new dockers over"
       tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
-      docker load -i $AGDOCKER/registry_image.tar 
     fi
   else
     # List all the containers
@@ -370,6 +370,10 @@ update_dockers() {
   fi
     # Cleanup on Aisle 4
     clean_dockers
+    echo "Add Registry back if airgap"
+    if [[ $is_airgap ]]; then
+      docker load -i $AGDOCKER/registry_image.tar
+    fi 
 
 }
 
