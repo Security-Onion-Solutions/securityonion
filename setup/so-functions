@@ -371,7 +371,11 @@ collect_webuser_inputs() {
 
 	WPMATCH=no
 	while [[ $WPMATCH != yes ]]; do
-		whiptail_create_web_user_password1
+	    whiptail_create_web_user_password1
+	    while ! check_password "$WEBPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_web_user_password1
+		done
 		if echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1; then
 			whiptail_create_web_user_password2
 			check_web_pass
