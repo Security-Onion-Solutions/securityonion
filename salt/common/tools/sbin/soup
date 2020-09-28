@@ -41,17 +41,17 @@ airgap_mounted() {
   if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
     echo "The ISO is already mounted"
   else
-    echo "Looks like we need to mount the ISO"
-    echo "" 
-    echo "You will need the full path of the ISO"
-    echo "Example: /home/user/securityonion-2.3.0.iso"
     echo ""
-    read -p 'Enter the FULL path of the iso: ' ISOLOC
-    if [ ! -f $ISOLOC ]; then
-      echo "Unable to locate ISO image. Please try soup again"
-      exit 0
-    else
-      # Mounting the ISO
+    echo "Looks like we need access to the upgrade content"
+    echo "" 
+    echo "If you just copied the .iso file over you can specify the path."
+    echo "If you burned the ISO to a disk the standard way you can specify the device."
+    echo "Example: /home/user/securityonion-2.X.0.iso"
+    echo "Example: /dev/cdrom"
+    echo ""
+    read -p 'Enter the location of the iso: ' ISOLOC
+    if [ -f $ISOLOC ]; then
+      # Mounting the ISO image
       mkdir -p /tmp/soagupdate
       mount -t iso9660 -o loop $ISOLOC /tmp/soagupdate
       # Make sure mounting was successful
@@ -61,7 +61,20 @@ airgap_mounted() {
         exit 0
       else
         echo "ISO has been mounted!"
-      fi
+      fi  
+    elif [ -f $ISOLOC/SecurityOnion/VERSION ]; then
+      ln -s $ISOLOC /tmp/soagupdate
+      echo "Found the update content"
+    else 
+      mkdir -p /tmp/soagupdate
+      mount $ISOLOC /tmp/soagupdate
+      if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+        echo "Something went wrong trying to mount the device."
+        echo "Ensure you verify the ISO that you downloaded."
+        exit 0
+      else
+        echo "Device has been mounted!"
+      fi        
     fi
   fi
 }
@@ -168,7 +181,6 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-    
 
 }
 
@@ -233,9 +245,12 @@ rc2_to_rc3() {
 
 }
 
-rc3_to_2.3.0() [
-  echo ""
-]
+rc3_to_2.3.0() {
+  # Fix Tab Complete
+  if [ ! -f /etc/profile.d/securityonion.sh ]; then
+    echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+  fi
+}
 
 space_check() {
   # Check to see if there is enough space
@@ -247,6 +262,19 @@ space_check() {
       echo "Plenty of space for upgrading"
   fi
   
+}
+
+unmount_update() {
+  cd /tmp
+  umount /tmp/soagupdate
+}
+
+update_centos_repo() {
+  # Update the files in the repo
+  echo "Syncing new updates to /nsm/repo"
+  rsync -a $AGDOCKER/repo /nsm/repo
+  echo "Creating repo"
+  createrepo /nsm/repo
 }
 
 update_dockers() {
@@ -477,6 +505,11 @@ echo ""
 echo "Updating dockers to $NEWVERSION."
 update_dockers
 
+# Only update the repo if its airgap
+if [ $is_airgap ]; then
+update_centos_repo
+fi
+
 echo ""
 echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
 copy_new_files
@@ -508,6 +541,7 @@ echo "Starting Salt Master service."
 systemctl start salt-master
 highstate
 playbook
+unmount_update
 
 SALTUPGRADED="True"
 if [[ "$SALTUPGRADED" == "True" ]]; then
