@@ -490,17 +490,17 @@ fi
 	set_progress_str 5 'Installing Salt and dependencies'
 	saltify 2>> $setup_log
 
-	set_progress_str 7 'Installing Docker and dependencies'
+	set_progress_str 6 'Installing Docker and dependencies'
 	docker_install >> $setup_log 2>&1
 	
-	set_progress_str 8 'Generating patch pillar'
+	set_progress_str 7 'Generating patch pillar'
 	patch_pillar >> $setup_log 2>&1
 
-	set_progress_str 9 'Initializing Salt minion'
+	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
-		set_progress_str 10 'Configuring Salt master'
+		set_progress_str 9 'Configuring Salt master'
 		{
 			create_local_directories;
 			addtotab_generate_templates;
@@ -509,15 +509,20 @@ fi
 			firewall_generate_templates;
 		} >> $setup_log 2>&1
 		
-		set_progress_str 11 'Updating sudoers file for soremote user'
+		set_progress_str 10 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
 		
-		set_progress_str 12 'Generating manager global pillar'
+		set_progress_str 11 'Generating manager global pillar'
 		#minio_generate_keys
 		manager_global >> $setup_log 2>&1
 		
-		set_progress_str 13 'Generating manager pillar'
+		set_progress_str 12 'Generating manager pillar'
 		manager_pillar >> $setup_log 2>&1
+	fi
+
+	if [[ $is_sensor || $is_import ]]; then
+		set_progress_str 13 'Generating zeeklogs pillar'
+		zeek_logs_enabled >> $setup_log 2>&1
 	fi
 
 
