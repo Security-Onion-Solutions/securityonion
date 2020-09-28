@@ -36,10 +36,67 @@ manager_check() {
   fi
 }
 
+airgap_mounted() {
+  # Let's see if the ISO is already mounted. 
+  if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+    echo "The ISO is already mounted"
+  else
+    echo ""
+    echo "Looks like we need access to the upgrade content"
+    echo "" 
+    echo "If you just copied the .iso file over you can specify the path."
+    echo "If you burned the ISO to a disk the standard way you can specify the device."
+    echo "Example: /home/user/securityonion-2.X.0.iso"
+    echo "Example: /dev/cdrom"
+    echo ""
+    read -p 'Enter the location of the iso: ' ISOLOC
+    if [ -f $ISOLOC ]; then
+      # Mounting the ISO image
+      mkdir -p /tmp/soagupdate
+      mount -t iso9660 -o loop $ISOLOC /tmp/soagupdate
+      # Make sure mounting was successful
+      if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+        echo "Something went wrong trying to mount the ISO."
+        echo "Ensure you verify the ISO that you downloaded."
+        exit 0
+      else
+        echo "ISO has been mounted!"
+      fi  
+    elif [ -f $ISOLOC/SecurityOnion/VERSION ]; then
+      ln -s $ISOLOC /tmp/soagupdate
+      echo "Found the update content"
+    else 
+      mkdir -p /tmp/soagupdate
+      mount $ISOLOC /tmp/soagupdate
+      if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+        echo "Something went wrong trying to mount the device."
+        echo "Ensure you verify the ISO that you downloaded."
+        exit 0
+      else
+        echo "Device has been mounted!"
+      fi        
+    fi
+  fi
+}
+
+check_airgap() {
+  # See if this is an airgap install
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap | awk '{print $2}')
+  if [[ "$AIRGAP" == "True" ]]; then
+      is_airgap=true
+      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
+      AGDOCKER=/tmp/soagupdate/docker
+      AGREPO=/tmp/soagupdate/Packages
+  else 
+      is_airgap=false
+  fi
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
   docker system prune -a -f
+
 }
 
 clone_to_tmp() {
@@ -63,7 +120,7 @@ clone_to_tmp() {
 
 copy_new_files() {
   # Copy new files over to the salt dir
-  cd /tmp/sogh/securityonion
+  cd $UPDATE_DIR
   rsync -a salt $DEFAULT_SALT_DIR/
   rsync -a pillar $DEFAULT_SALT_DIR/
   chown -R socore:socore $DEFAULT_SALT_DIR/
@@ -125,7 +182,6 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-    
 
 }
 
@@ -190,9 +246,12 @@ rc2_to_rc3() {
 
 }
 
-rc3_to_2.3.0() [
-  echo ""
-]
+rc3_to_2.3.0() {
+  # Fix Tab Complete
+  if [ ! -f /etc/profile.d/securityonion.sh ]; then
+    echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+  fi
+}
 
 space_check() {
   # Check to see if there is enough space
@@ -206,7 +265,33 @@ space_check() {
   
 }
 
+unmount_update() {
+  cd /tmp
+  umount /tmp/soagupdate
+}
+
+update_centos_repo() {
+  # Update the files in the repo
+  echo "Syncing new updates to /nsm/repo"
+  rsync -a $AGDOCKER/repo /nsm/repo
+  echo "Creating repo"
+  createrepo /nsm/repo
+}
+
 update_dockers() {
+  if [[ $is_airgap ]]; then
+    # Let's copy the tarball
+    if [ ! -f $AGDOCKER/registry.tar ]; then
+      echo "Unable to locate registry. Exiting"
+      exit 0
+    else
+      echo "Stopping the registry docker"
+      docker stop so-dockerregistry
+      docker rm so-dockerregistry
+      echo "Copying the new dockers over"
+      tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
+    fi
+  else
     # List all the containers
     if [ $MANAGERCHECK == 'so-import' ]; then
       TRUSTED_CONTAINERS=( \
@@ -282,9 +367,13 @@ update_dockers() {
       docker tag $IMAGEREPO/$i:$NEWVERSION $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
       docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
     done
-
+  fi
     # Cleanup on Aisle 4
     clean_dockers
+    echo "Add Registry back if airgap"
+    if [[ $is_airgap ]]; then
+      docker load -i $AGDOCKER/registry_image.tar
+    fi 
 
 }
 
@@ -345,7 +434,7 @@ upgrade_check_salt() {
 verify_latest_update_script() {
     # Check to see if the update scripts match. If not run the new one.
     CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
-    GITSOUP=$(md5sum /tmp/sogh/securityonion/salt/common/tools/sbin/soup | awk '{print $1}')
+    GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
     if [[ "$CURRENTSOUP" == "$GITSOUP" ]]; then
       echo "This version of the soup script is up to date. Proceeding."
     else
@@ -377,12 +466,20 @@ done
 echo "Checking to see if this is a manager."
 echo ""
 manager_check
+echo "Checking to see if this is an airgap install"
+echo ""
+check_airgap
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
 detect_os
 echo ""
-echo "Cloning Security Onion github repo into $UPDATE_DIR."
-clone_to_tmp
+if [[ $is_airgap ]]; then
+  # Let's mount the ISO since this is airgap
+  airgap_mounted
+else
+  echo "Cloning Security Onion github repo into $UPDATE_DIR."
+  clone_to_tmp
+fi
 echo ""
 echo "Verifying we have the latest soup script."
 verify_latest_update_script
@@ -412,6 +509,11 @@ echo ""
 echo ""
 echo "Updating dockers to $NEWVERSION."
 update_dockers
+
+# Only update the repo if its airgap
+if [ $is_airgap ]; then
+update_centos_repo
+fi
 
 echo ""
 echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
@@ -444,6 +546,7 @@ echo "Starting Salt Master service."
 systemctl start salt-master
 highstate
 playbook
+unmount_update
 
 SALTUPGRADED="True"
 if [[ "$SALTUPGRADED" == "True" ]]; then
