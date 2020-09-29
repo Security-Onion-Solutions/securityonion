@@ -9,7 +9,7 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
-{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
+{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db', None) -%}
 
 include:
   - mysql
