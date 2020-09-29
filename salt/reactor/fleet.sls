@@ -65,7 +65,7 @@ def run():
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_packages-timestamp: \S*', f"fleet_packages-timestamp: {strftime('%Y-%m-%d-%H:%M', gmtime())}", line.rstrip())
+        line = re.sub(r'fleet_packages-timestamp: \S*', f"fleet_packages-timestamp: '{strftime('%Y-%m-%d-%H:%M', gmtime())}'", line.rstrip())
         print(line)
 
         # Update the Fleet Osquery package version in the static pillar
