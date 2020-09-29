@@ -2,7 +2,7 @@
 # {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 # {%- set admin_pass = salt['pillar.get']('secrets:playbook_admin', None) -%}
 # {%- set automation_pass = salt['pillar.get']('secrets:playbook_automation', None) %}
-vi re
+
 default_salt_dir=/opt/so/saltstack/default
 
 # Generate salt + hash for admin user
