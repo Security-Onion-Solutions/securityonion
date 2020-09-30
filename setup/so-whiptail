@@ -411,8 +411,51 @@ whiptail_dhcp_or_static() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+	if [[ $address_type == "DHCP" ]]; then
+		whiptail_dhcp_warn
+	fi
+
 	export address_type
 
+}
+
+whiptail_dhcp_warn() {
+	[ -n "$TESTING" ] && return
+
+	if [[ $setup_type == "iso" ]]; then
+		local interaction_text="Press YES to keep DHCP or NO to go back."
+		local window_type="yesno"
+	else
+		local interaction_text="Press ENTER to continue."
+		local window_type="msgbox"
+	fi
+
+	read -r -d '' dhcp_message <<- EOM
+		WARNING: Using DHCP can causing problems if your IP address changes. If you want to use DHCP, make sure that you have a DHCP reservation so that this does not occur. Otherwise, use a static IP address to be safe. 
+
+		$interaction_text
+	EOM
+
+	whiptail \
+	--title "Security Onion Setup" \
+	--"$window_type" "$dhcp_message" \
+	14 75
+
+	local exitstatus=$?
+	if [[ $setup_type == "iso" ]]; then
+		case $exitstatus in
+			1)
+				whiptail_dhcp_or_static
+				;;
+			255)
+				whiptail --title "Security Onion Setup" --msgbox "Whiptail error occured, exiting. Check log for details." 8 75
+				exit
+				;;
+		esac
+	else
+		whiptail_check_exitstatus $exitstatus
+	fi
+	
 }
 
 whiptail_enable_components() {
