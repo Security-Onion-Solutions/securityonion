@@ -15,7 +15,7 @@ while [[ $try_count -le 6 ]]; do
         mapfile -t automation_res < <(
             curl -s --location --request POST 'http://127.0.0.1:3200/playbook/users.json' --user "admin:{{ admin_pass }}" --header 'Content-Type: application/json' --data '{
                 "user" : {
-                    "login" : "Automation",
+                    "login" : "automation",
                     "password": "{{ automation_pass }}",
                     "firstname": "SecOps",
                     "lastname": "Automation",
