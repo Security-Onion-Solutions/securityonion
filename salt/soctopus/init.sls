@@ -63,6 +63,7 @@ so-soctopus:
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
+      - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
       - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
       {% if ISAIRGAP is sameas true %}
       - /nsm/repo/rules/sigma:/soctopus/sigma
