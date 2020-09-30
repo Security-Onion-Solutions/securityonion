@@ -1,4 +1,3 @@
-
 # This state will create the SecOps Automation user within Playbook
 
 include:

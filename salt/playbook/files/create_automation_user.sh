@@ -9,9 +9,9 @@ interval=10
 
 while [[ $try_count -le 6 ]]; do
     if docker top "so-playbook" &>/dev/null; then
-        #Create Automation user
         automation_group=6
 
+        # Create user and retrieve api_key and user_id from response
         mapfile -t automation_res < <(
             curl -s --location --request POST 'http://127.0.0.1:3200/playbook/users.json' --user "admin:{{ admin_pass }}" --header 'Content-Type: application/json' --data '{
                 "user" : {
@@ -27,6 +27,7 @@ while [[ $try_count -le 6 ]]; do
         automation_api_key=${automation_res[0]}
         automation_user_id=${automation_res[1]}
 
+        # Add user_id from newly created user to Automation group
         curl -s --location --request POST "http://127.0.0.1:3200/playbook/groups/${automation_group}/users.json" \
             --user "admin:{{ admin_pass }}" \
             --header 'Content-Type: application/json' \
@@ -34,6 +35,7 @@ while [[ $try_count -le 6 ]]; do
                 \"user_id\" : ${automation_user_id}
             }"
 
+        # Search for the needed keys in the global pillar file, if missing then add them
         if (sed -z '/playbook:\n  api_key:.*/Q' $local_salt_dir/pillar/global.sls); then
             sed -iz "s/playbook:\n  api_key:.*/playbook:\n  api_key: ${automation_api_key}/" $local_salt_dir/pillar/global.sls
         else
