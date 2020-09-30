@@ -43,4 +43,3 @@ while [[ $try_count -le 6 ]]; do
     ((try_count++))
     sleep "${interval}s"
 done
-

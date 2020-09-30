@@ -12,3 +12,4 @@ salt://playbook/files/create_automation_user.sh:
 
 'sleep 5':
   cmd.run
+  
