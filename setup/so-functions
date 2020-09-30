@@ -399,17 +399,17 @@ configure_minion() {
 
 	local minion_config=/etc/salt/minion
 
-	echo "id: $MINION_ID" > "$minion_config"
+	echo "id: '$MINION_ID'" > "$minion_config"
 
 	case "$minion_type" in
 		'helix')
-			echo "master: $HOSTNAME" >> "$minion_config"
+			echo "master: '$HOSTNAME'" >> "$minion_config"
 			;;
 		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
 			printf '%s\n'\
-				"master: $HOSTNAME"\
+				"master: '$HOSTNAME'"\
 				"mysql.host: '$MAINIP'"\
-				"mysql.port: 3306"\
+				"mysql.port: '3306'"\
 				"mysql.user: 'root'" >> "$minion_config"
 			if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
 				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
@@ -419,7 +419,7 @@ configure_minion() {
 			fi
 			;;
 		*)
-			echo "master: $MSRV" >> "$minion_config"
+			echo "master: '$MSRV'" >> "$minion_config"
 			;;
 	esac
 
@@ -942,7 +942,7 @@ fireeye_pillar() {
 	printf '%s\n'\
 		"fireeye:"\
 		"  helix:"\
-		"    api_key: $HELIXAPIKEY" 
+		"    api_key: '$HELIXAPIKEY'" 
 		"" > "$fireeye_pillar_path"/init.sls
 
 }
@@ -968,8 +968,8 @@ fleet_pillar() {
 	# Create the fleet pillar
 	printf '%s\n'\
 		"fleet:"\
-		"  mainip: $MAINIP"\
-		"  manager: $MSRV"\
+		"  mainip: '$MAINIP'"\
+		"  manager: '$MSRV'"\
 		"" > "$pillar_file"
 }
 
@@ -1032,7 +1032,7 @@ host_pillar() {
 	# Create the host pillar
 	printf '%s\n'\
 		"host:"\
-		"  mainint: $MNIC"\
+		"  mainint: '$MNIC'"\
 		"" > "$pillar_file"
 }
 
@@ -1068,9 +1068,9 @@ manager_pillar() {
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
 		"  freq: 0"\
 		"  domainstats: 0" >> "$pillar_file"
@@ -1092,14 +1092,14 @@ manager_pillar() {
 		"  playbook: $PLAYBOOK"\
 		""\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		""\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: 125"\
@@ -1110,8 +1110,8 @@ manager_pillar() {
 		""\
 		"idstools:"\
 		"  config:"\
-		"    ruleset: $RULESETUP"\
-		"    oinkcode: $OINKCODE"\
+		"    ruleset: '$RULESETUP'"\
+		"    oinkcode: '$OINKCODE'"\
 		"    urls:"\
 		"  sids:"\
 		"    enabled:"\
@@ -1122,7 +1122,7 @@ manager_pillar() {
 		
 
 	printf '%s\n'\
-		"  kratoskey: $KRATOSKEY"\
+		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
 
   }
@@ -1140,14 +1140,14 @@ manager_global() {
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
-                "  soversion: $SOVERSION"\
-                "  hnmanager: $HNMANAGER"\
-                "  ntpserver: $NTPSERVER"\
-                "  proxy: $PROXY"\
-                "  mdengine: $ZEEKVERSION"\
-                "  ids: $NIDS"\
-				"  url_base: $REDIRECTIT"\
-                "  managerip: $MAINIP" > "$global_pillar"
+                "  soversion: '$SOVERSION'"\
+                "  hnmanager: '$HNMANAGER'"\
+                "  ntpserver: '$NTPSERVER'"\
+                "  proxy: '$PROXY'"\
+                "  mdengine: '$ZEEKVERSION'"\
+                "  ids: '$NIDS'"\
+				"  url_base: '$REDIRECTIT'"\
+                "  managerip: '$MAINIP'" > "$global_pillar"
 		
         if [[ $is_airgap ]]; then
 		        printf '%s\n'\
@@ -1160,17 +1160,17 @@ manager_global() {
         # Check if TheHive is enabled.  If so, add creds and other details
         if [[ "$THEHIVE" == "1" ]]; then
                 printf '%s\n'\
-                        "  hiveuser: $WEBUSER"\
+                        "  hiveuser: '$WEBUSER'"\
                         "  hivepassword: '$WEBPASSWD1'"\
-                        "  hivekey: $HIVEKEY"\
-                        "  hiveplaysecret: $HIVEPLAYSECRET"\
-                        "  cortexuser: $WEBUSER"\
+                        "  hivekey: '$HIVEKEY'"\
+                        "  hiveplaysecret: '$HIVEPLAYSECRET'"\
+                        "  cortexuser: '$WEBUSER'"\
                         "  cortexpassword: '$WEBPASSWD1'"\
-                        "  cortexkey: $CORTEXKEY"\
-                        "  cortexorgname: SecurityOnion"\
-                        "  cortexorguser: soadmin"\
-                        "  cortexorguserkey: $CORTEXORGUSERKEY"\
-                        "  cortexplaysecret: $CORTEXPLAYSECRET" >> "$global_pillar"
+                        "  cortexkey: '$CORTEXKEY'"\
+                        "  cortexorgname: 'SecurityOnion'"\
+                        "  cortexorguser: 'soadmin'"\
+                        "  cortexorguserkey: '$CORTEXORGUSERKEY'"\
+                        "  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
         fi
 
         # Continue adding other details	
@@ -1178,15 +1178,15 @@ manager_global() {
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
 		"  fleet_node: False"\
-		"  fleet_packages-timestamp: N/A"\
+		"  fleet_packages-timestamp: 'N/A'"\
 		"  fleet_packages-version: 1"\
-		"  fleet_hostname: N/A"\
-		"  fleet_ip: N/A"\
-		"  sensoronikey: $SENSORONIKEY"\
+		"  fleet_hostname: 'N/A'"\
+		"  fleet_ip: 'N/A'"\
+		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
                 "  managerupdate: $MANAGERUPDATES"\
-		"  imagerepo: $IMAGEREPO"\
-		"  pipeline: redis"\
+		"  imagerepo: '$IMAGEREPO'"\
+		"  pipeline: 'redis'"\
 		"pcap:"\
 		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
@@ -1199,13 +1199,13 @@ manager_global() {
 		"elasticsearch:"\
 		"  replicas: 0"\
 		"  true_cluster: False"\
-		"  true_cluster_name: so"\
+		"  true_cluster_name: 'so'"\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: 95%"\
-                "  cluster_routing_allocation_disk_watermark_high: 98%"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: 98%"\
+                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1264,11 +1264,11 @@ manager_global() {
 		"  size_file: 2048"\
 		"  time_file: 1"\
 		"  upload_queue_size: 4"\
-		"  encoding: gzip"\
+		"  encoding: 'gzip'"\
 		"  interval: 5"\
-	        "backup:"\
-                "  locations:"\
-                "    - /opt/so/saltstack/local" >> "$global_pillar"
+	    "backup:"\
+        "  locations:"\
+        "    - /opt/so/saltstack/local" >> "$global_pillar"
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
@@ -1312,14 +1312,14 @@ elasticsearch_pillar() {
 	# Create the node pillar
 	printf '%s\n'\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
 	
 	printf '%s\n'\
@@ -1344,7 +1344,7 @@ patch_pillar() {
 	printf '%s\n'\
 		"patch:"\
 		"  os:"\
-		"    schedule_name: $PATCHSCHEDULENAME"\
+		"    schedule_name: '$PATCHSCHEDULENAME'"\
 		"    enabled: True"\
 		"    splay: 300"\
 		"" >> "$pillar_file"
@@ -1713,9 +1713,9 @@ sensor_pillar() {
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
-		"  interface: $INTERFACE"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC" >> "$pillar_file"
+		"  interface: '$INTERFACE'"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'" >> "$pillar_file"
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  zeek_pins:" >> "$pillar_file"
@@ -1736,7 +1736,7 @@ sensor_pillar() {
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  manager: $MSRV"\
+		"  manager: '$MSRV'"\
 		"  mtu: $MTU"\
 		"  uniqueid: $(date '+%s')" >> "$pillar_file"
 	if [ "$HNSENSOR" != 'inherit' ]; then
