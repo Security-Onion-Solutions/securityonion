@@ -1481,7 +1481,17 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','95535e9f7a386c412f20134ebb869c00cf346477','Admin','Admin',1,1,'2020-08-17 18:03:20','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','5ceb2c95ce1593d4ba034d385ceefb2f',0,'2020-04-26 13:10:27'),(2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),(3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),(4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),(6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),(7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL),(9,'automation','d2e7d78af1f0c0637765ae8cf1a359c4a30034c9','SecOps','Automation',0,1,'2020-05-01 18:26:17','en',NULL,'2020-04-26 18:47:46','2020-05-01 18:26:10','User',NULL,'none','41043e596f70e327e34fc99c861f5b31',0,'2020-05-01 18:26:10');
+INSERT INTO `users` 
+  VALUES 
+    (1,'admin','ADMIN_HASH','Admin','Admin',1,1,'2020-08-17 18:03:20','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','ADMIN_SALT',0,'2020-04-26 13:10:27'),
+    (2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),
+    (3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),
+    (4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),
+    (5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),
+    (6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),
+    (7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL),
+    (9,'automation','AUTO_HASH','SecOps','Automation',0,1,'2020-05-01 18:26:17','en',NULL,'2020-04-26 18:47:46','2020-05-01 18:26:10','User',NULL,'none','AUTO_SALT',0,'2020-05-01 18:26:10')
+;
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
