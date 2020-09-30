@@ -1,5 +1,6 @@
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') -%}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') -%}
+{%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') -%}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
@@ -24,7 +25,12 @@
       "statickeyauth": {
         "anonymousCidr": "172.17.0.0/24",
         "apiKey": "{{ SENSORONIKEY }}"
-      }
+      },
+      "thehive": {
+        "hostUrl": "http://{{ MANAGERIP }}:9000/thehive",
+        "key": "{{ THEHIVEKEY }}",
+        "verifyCert": false
+      }        
     },
     "client": {
       "hunt": {
@@ -150,7 +156,6 @@
         "actions": [
           { "name": "", "description": "actionHuntHelp", "icon": "fa-search", "link": "/#/hunt?q=\"{value}\" | groupby event.module event.dataset", "target": "" },
           { "name": "", "description": "actionPcapHelp", "icon": "fa-stream", "link": "/joblookup?esid={eventId}", "target": "" },
-          { "name": "", "description": "actionAlertHelp", "icon": "fa-bell", "link": "/soctopus/thehive/alert/{eventId}", "target": "_blank" },
           { "name": "", "description": "actionGoogleHelp", "icon": "fab fa-google", "link": "https://www.google.com/search?q={value}", "target": "_blank" },
           { "name": "actionVirusTotal", "description": "actionVirusTotalHelp", "icon": "", "link": "https://www.virustotal.com/gui/search/{value}", "target": "_blank" }
         ]
@@ -185,7 +190,6 @@
         "actions": [
           { "name": "", "description": "actionHuntHelp", "icon": "fa-crosshairs", "link": "/#/hunt?q=\"{value}\" | groupby event.module event.dataset", "target": "_blank" },
           { "name": "", "description": "actionPcapHelp", "icon": "fa-stream", "link": "/joblookup?esid={eventId}", "target": "_blank" },
-          { "name": "", "description": "actionAlertHelp", "icon": "fa-bell", "link": "/soctopus/thehive/alert/{eventId}", "target": "_blank" },
           { "name": "", "description": "actionGoogleHelp", "icon": "fab fa-google", "link": "https://www.google.com/search?q={value}", "target": "_blank" },
           { "name": "actionVirusTotal", "description": "actionVirusTotalHelp", "icon": "", "link": "https://www.virustotal.com/gui/search/{value}", "target": "_blank" }
         ]
