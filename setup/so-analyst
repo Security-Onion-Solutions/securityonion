@@ -20,6 +20,41 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
+OS=$(grep PRETTY_NAME /etc/os-release | grep 'CentOS Linux 7')
+if [ $? -ne 0 ]; then
+  echo "This is an unsupported OS. Please use CentOS 7 to install the analyst node."
+  exit 2
+fi
+
+if [[ "$manufacturer" == "Security Onion Solutions" && "$family" == "Automated" ]]; then
+  INSTALL=yes
+else
+  INSTALL=''
+fi
+
+while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
+  clear
+  echo "###########################################"
+  echo "##          ** W A R N I N G **          ##"
+  echo "##    _______________________________    ##"
+  echo "##                                       ##"
+  echo "##    Installing the Security Onion      ##"
+  echo "##   analyst node on this device will    ##"
+  echo "##      make permanenet changes to       ##"
+  echo "##              the system.              ##"
+  echo "##                                       ##"
+  echo "###########################################"
+  echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+  read INSTALL
+done
+
+if [[ $INSTALL == "no" ]]; then
+  echo "Exiting analyst node installation."
+  exit 0
+fi
+
+
+
 # Install a GUI text editor
 yum -y install gedit
 
