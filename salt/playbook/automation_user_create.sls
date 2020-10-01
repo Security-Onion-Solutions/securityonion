@@ -3,7 +3,7 @@
 include:
   - playbook
 
-salt://playbook/files/create_automation_user.sh:
+salt://playbook/files/automation_user_create.sh:
   cmd.script:
     - cwd: /root
     - template: jinja
