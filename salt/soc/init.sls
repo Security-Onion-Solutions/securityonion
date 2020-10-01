@@ -28,10 +28,19 @@ soclogdir:
     - group: 939
     - makedirs: True
 
-socsync:
-  file.recurse:
-    - name: /opt/so/conf/soc
-    - source: salt://soc/files/soc
+socconfig:
+  file.managed:
+    - name: /opt/so/conf/soc/soc.json
+    - source: salt://soc/files/soc/soc.json
+    - user: 939
+    - group: 939
+    - file_mode: 600
+    - template: jinja
+
+socchanges:
+  file.managed:
+    - name: /opt/so/conf/soc/changes.json
+    - source: salt://soc/files/soc/changes.json
     - user: 939
     - group: 939
     - file_mode: 600
