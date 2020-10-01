@@ -36,7 +36,7 @@ while [[ $try_count -le 6 ]]; do
             }"
 
         # Search for the needed keys in the global pillar file, if missing then add them
-        if (sed -z '/playbook:\n  api_key:.*/Q' $local_salt_dir/pillar/global.sls); then
+        if (grep -Pzq 'playbook:\n  api_key:.*' $local_salt_dir/pillar/global.sls); then
             sed -iz "s/playbook:\n  api_key:.*/playbook:\n  api_key: ${automation_api_key}/" $local_salt_dir/pillar/global.sls
         else
             {
