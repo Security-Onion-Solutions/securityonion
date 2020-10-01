@@ -34,7 +34,7 @@ socconfig:
     - source: salt://soc/files/soc/soc.json
     - user: 939
     - group: 939
-    - file_mode: 600
+    - mode: 600
     - template: jinja
 
 socchanges:
@@ -43,7 +43,7 @@ socchanges:
     - source: salt://soc/files/soc/changes.json
     - user: 939
     - group: 939
-    - file_mode: 600
+    - mode: 600
     - template: jinja
 
 so-soc:
