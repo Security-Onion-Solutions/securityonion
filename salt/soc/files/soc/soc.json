@@ -4,6 +4,7 @@
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {%- import_json "soc/files/soc/alerts.queries.default.json" as alerts_queries %}
 {%- import_json "soc/files/soc/alerts.actions.default.json" as alerts_actions %}
+{%- import_json "soc/files/soc/alerts.eventfields.default.json" as alerts_eventfields %}
 {%- import_json "soc/files/soc/hunt.queries.default.json" as hunt_queries %}
 {%- import_json "soc/files/soc/hunt.actions.default.json" as hunt_actions %}
 {%- import_json "soc/files/soc/hunt.eventfields.default.json" as hunt_eventfields %}
@@ -62,10 +63,7 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "eventFields": {
-          "default": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.gid", "rule.uuid", "rule.category", "rule.rev"],
-          ":ossec:": ["soc_timestamp", "rule.name", "event.severity_label", "source.ip", "source.port", "destination.ip", "destination.port", "rule.level", "rule.category", "process.name", "user.name", "user.escalated", "location", "process.name" ]
-        },
+        "eventFields": {{ alerts_eventfields }},
         "queryBaseFilter": "event.dataset:alert",
         "queryToggleFilters": [
           { "name": "acknowledged", "filter": "event.acknowledged:true", "enabled": false, "exclusive": true },
