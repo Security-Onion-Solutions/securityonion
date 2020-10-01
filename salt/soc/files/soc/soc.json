@@ -2,6 +2,7 @@
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') -%}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') -%}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{% import_yaml "soc/files/soc/alerts.queries.default.yaml" as alerts_queries %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -179,15 +180,8 @@
           { "name": "acknowledged", "filter": "event.acknowledged:true", "enabled": false, "exclusive": true },
           { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true }
         ],
-        "queries": [
-          { "name": "Group By Name, Module", "query": "* | groupby rule.name rule.uuid event.module event.severity_label" },
-          { "name": "Group By Sensor, Source IP/Port, Destination IP/Port, Name", "query": "* | groupby observer.name source.ip source.port destination.ip destination.port rule.name rule.uuid network.community_id event.severity_label" },
-          { "name": "Group By Source IP, Name", "query": "* | groupby source.ip rule.name rule.uuid event.severity_label" },
-          { "name": "Group By Source Port, Name", "query": "* | groupby source.port rule.name rule.uuid event.severity_label" },
-          { "name": "Group By Destination IP, Name", "query": "* | groupby destination.ip rule.name rule.uuid event.severity_label" },
-          { "name": "Group By Destination Port, Name", "query": "* | groupby destination.port rule.name rule.uuid event.severity_label" },
-          { "name": "Ungroup", "query": "*" }
-        ],
+        "queries": {{ alert_queries.soc.alerts.queries}} 
+                  ,
         "actions": [
           { "name": "", "description": "actionHuntHelp", "icon": "fa-crosshairs", "link": "/#/hunt?q=\"{value}\" | groupby event.module event.dataset", "target": "_blank" },
           { "name": "", "description": "actionPcapHelp", "icon": "fa-stream", "link": "/joblookup?esid={eventId}", "target": "_blank" },
