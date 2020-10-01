@@ -218,6 +218,33 @@ yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-
 chmod +x /bin/chaosreader;
 
 cp ../files/analyst/README /;
+mkdir /usr/local/share/backgrounds/;
+cp ../files/analyst/so-wallpaper.jpg /usr/local/share/backgrounds/;
+cp ../files/analyst/so-lockscreen.jpg /usr/local/share/backgrounds/;
+
+# Set background wallpaper
+cat << EOF >> /etc/dconf/db/local.d/00-background
+# Specify the dconf path
+[org/gnome/desktop/background]
+
+# Specify the path to the desktop background image file
+picture-uri='file:///usr/local/share/backgrounds/wallpaper.jpg'
+# Specify one of the rendering options for the background image:
+# 'none', 'wallpaper', 'centered', 'scaled', 'stretched', 'zoom', 'spanned'
+picture-options='scaled'
+# Specify the left or top color when drawing gradients or the solid color
+primary-color='000000'
+# Specify the right or bottom color when drawing gradients
+secondary-color='FFFFFF'
+EOF
+
+# Set screen shield
+cat << EOF >> /etc/dconf/db/gdm.d/01-screensaver
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/local/share/backgrounds/so-lockscreen.jpg'
+EOF
+
+dconf update;
 
 echo
 echo "Analyst workstation has been installed!"
