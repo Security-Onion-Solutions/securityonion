@@ -2,11 +2,11 @@
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- import_yaml "soc/files/soc/alerts.queries.default.yaml" as alerts_queries %}
-{%- import_yaml "soc/files/soc/alerts.actions.default.yaml" as alerts_actions %}
-{%- import_yaml "soc/files/soc/hunt.queries.default.yaml" as hunt_queries %}
-{%- import_yaml "soc/files/soc/hunt.actions.default.yaml" as hunt_actions %}
-{%- import_yaml "soc/files/soc/hunt.eventfields.default.yaml" as hunt_eventfields %}
+{%- import_json "soc/files/soc/alerts.queries.default.json" as alerts_queries %}
+{%- import_json "soc/files/soc/alerts.actions.default.json" as alerts_actions %}
+{%- import_json "soc/files/soc/hunt.queries.default.json" as hunt_queries %}
+{%- import_json "soc/files/soc/hunt.actions.default.json" as hunt_actions %}
+{%- import_json "soc/files/soc/hunt.eventfields.default.json" as hunt_eventfields %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -47,10 +47,11 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
+        "eventFields": {{ hunt_eventfields }},
         "queryBaseFilter": "",
         "queryToggleFilters": [],
-        "queries": {{ hunt_queries.soc.hunt.queries | json }} ,
-        "actions": {{ hunt_actions.soc.hunt.actions | json }} ,          
+        "queries": {{ hunt_queries }} ,
+        "actions": {{ hunt_actions }} ,          
       },
       "alerts": {
         "advanced": false,
@@ -70,8 +71,8 @@
           { "name": "acknowledged", "filter": "event.acknowledged:true", "enabled": false, "exclusive": true },
           { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true }
         ],
-        "queries": {{ alerts_queries.soc.alerts.queries | json }},
-        "actions": {{ alerts_actions.soc.alerts.actions | json }}        
+        "queries": {{ alerts_queries }},
+        "actions": {{ alerts_actions }}        
       }        
     }
   }
