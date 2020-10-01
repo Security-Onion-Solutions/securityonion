@@ -28,8 +28,10 @@ fi
 
 if [[ "$manufacturer" == "Security Onion Solutions" && "$family" == "Automated" ]]; then
   INSTALL=yes
+  CURLCONTINUE=no
 else
   INSTALL=''
+  CURLCONTINUE=''
 fi
 
 while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
@@ -53,7 +55,20 @@ if [[ $INSTALL == "no" ]]; then
   exit 0
 fi
 
-
+echo "Testing for internet connection with curl https://securityonionsolutions.com/"
+CANCURL=$(curl -sI https://securityonionsolutions.com/ | grep "200 OK")
+  if [ $? -ne 0 ]; then
+    echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
+    read CURLCONTINUE
+    while [[ $CURLCONTINUE != "yes" ]] && [[ $CURLCONTINUE != "no" ]]; do
+      echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
+      read CURLCONTINUE
+    done
+    if [[ "$CURLCONTINUE" == "no" ]]; then
+      echo "Exiting analyst node installation."
+      exit 0
+    fi
+  fi
 
 # Install a GUI text editor
 yum -y install gedit
