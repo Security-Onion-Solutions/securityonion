@@ -1,6 +1,6 @@
 #!/bin/bash
 # {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
-# {%- set admin_pass = salt['pillar.get']('secrets:playbook_admin', None) -%}
+# {%- set admin_pass = salt['pillar.get']('secrets:playbook_admin', None) %}
 
 default_salt_dir=/opt/so/saltstack/default
 

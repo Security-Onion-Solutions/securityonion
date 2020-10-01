@@ -640,26 +640,26 @@ fi
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager ]]; then
-		set_progress_str 71 "$(print_salt_state_apply 'elastalert')"
-		salt-call state.apply -l info elastalert >> $setup_log 2>&1
-
-		set_progress_str 72 "$(print_salt_state_apply 'soctopus')"
-		salt-call state.apply -l info soctopus >> $setup_log 2>&1
-	fi
-
 	if [[ "$PLAYBOOK" = 1 ]]; then
-		set_progress_str 73 "$(print_salt_state_apply 'playbook.db_init')"
+		set_progress_str 71 "$(print_salt_state_apply 'playbook.db_init')"
 		salt-call state.apply -l info playbook.db_init >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'playbook')"
+		set_progress_str 71 "$(print_salt_state_apply 'playbook')"
 		salt-call state.apply -l info playbook >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'playbook.automation_user_create')"
+		set_progress_str 71 "$(print_salt_state_apply 'playbook.automation_user_create')"
 		salt-call state.apply -l info playbook.automation_user_create >> $setup_log 2>&1
 
-		set_progress_str 73 "Update playbook rules"
+		set_progress_str 71 "Update playbook rules"
 		so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
+	fi
+
+	if [[ $is_manager ]]; then
+		set_progress_str 72 "$(print_salt_state_apply 'elastalert')"
+		salt-call state.apply -l info elastalert >> $setup_log 2>&1
+
+		set_progress_str 73 "$(print_salt_state_apply 'soctopus')"
+		salt-call state.apply -l info soctopus >> $setup_log 2>&1
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
