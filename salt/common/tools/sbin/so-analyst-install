@@ -218,30 +218,54 @@ yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-
 chmod +x /bin/chaosreader;
 
 cp ../../files/analyst/README /;
-mkdir /usr/local/share/backgrounds/;
-cp ../../files/analyst/so-wallpaper.jpg /usr/local/share/backgrounds/;
-cp ../../files/analyst/so-lockscreen.jpg /usr/local/share/backgrounds/;
+mkdir /usr/share/backgrounds/;
+cp ../../files/analyst/so-wallpaper.jpg /usr/share/backgrounds/;
+cp ../../files/analyst/so-lockscreen.jpg /usr/share/backgrounds/;
+
+# Create gdm profile
+cat << EOF >> /etc/dconf/profile/gdm
+user-db:user
+system-db:gdm
+file-db:/usr/share/gdm/greeter-dconf-defaults
+EOF
 
 # Set background wallpaper
-cat << EOF >> /etc/dconf/db/local.d/00-background
+cat << EOF >> /etc/dconf/db/gdm.d/00-background
 # Specify the dconf path
 [org/gnome/desktop/background]
 
 # Specify the path to the desktop background image file
-picture-uri='file:///usr/local/share/backgrounds/so-wallpaper.jpg'
+picture-uri='file:///usr/share/backgrounds/so-wallpaper.jpg'
 # Specify one of the rendering options for the background image:
 # 'none', 'wallpaper', 'centered', 'scaled', 'stretched', 'zoom', 'spanned'
-picture-options='scaled'
+picture-options='zoom'
 # Specify the left or top color when drawing gradients or the solid color
 primary-color='000000'
 # Specify the right or bottom color when drawing gradients
 secondary-color='FFFFFF'
 EOF
 
-# Set screen shield
+# Set lock screen
 cat << EOF >> /etc/dconf/db/gdm.d/01-screensaver
+[org/gnome/desktop/session]
+idle-delay=uint32 60
+
 [org/gnome/desktop/screensaver]
-picture-uri='file:///usr/local/share/backgrounds/so-lockscreen.jpg'
+lock-enabled=true
+lock-delay=uint32 60
+picture-uri='file:///usr/share/backgrounds/so-lockscreen.jpg'
+EOF
+
+cat << EOF >> /etc/dconf/db/local.d/locks/screensaver
+/org/gnome/desktop/session/idle-delay
+/org/gnome/desktop/screensaver/lock-enabled
+/org/gnome/desktop/screensaver/lock-delay
+EOF
+
+# Do not show the user list at login
+cat << EOF >> /etc/dconf/db/gdm.d/00-login-screen
+[org/gnome/login-screen]
+disable-user-list=true
 EOF
 
 dconf update;
