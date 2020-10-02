@@ -20,10 +20,13 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
+INSTALL_LOG=/root/so-analyst-install.log
+exec 3>&1 1>${INSTALL_LOG} 2>&1
+
 OS=$(grep PRETTY_NAME /etc/os-release | grep 'CentOS Linux 7')
 if [ $? -ne 0 ]; then
   echo "This is an unsupported OS. Please use CentOS 7 to install the analyst node."
-  exit 2
+  exit 1
 fi
 
 if [[ "$manufacturer" == "Security Onion Solutions" && "$family" == "Automated" ]]; then
@@ -68,6 +71,8 @@ CANCURL=$(curl -sI https://securityonionsolutions.com/ | grep "200 OK")
       echo "Exiting analyst node installation."
       exit 0
     fi
+  else
+    echo "We were able to curl https://securityonionsolutions.com/."
   fi
 
 # Install a GUI text editor
@@ -221,6 +226,7 @@ cp ../../files/analyst/README /;
 cp ../../files/analyst/so-wallpaper.jpg /usr/share/backgrounds/;
 cp ../../files/analyst/so-lockscreen.jpg /usr/share/backgrounds/;
 cp ../../files/analyst/so-login-logo.svg /usr/share/pixmaps/;
+cp ../../files/analyst/so-login-logo-dark.svg /usr/share/pixmaps/;
 
 # Set background wallpaper
 cat << EOF >> /etc/dconf/db/local.d/00-background
@@ -259,7 +265,7 @@ EOF
 # Do not show the user list at login screen
 cat << EOF >> /etc/dconf/db/local.d/00-login-screen
 [org/gnome/login-screen]
-logo='/usr/share/pixmaps/so-login-logo.svg'
+logo='/usr/share/pixmaps/so-login-logo-dark.svg'
 disable-user-list=true
 EOF
 
