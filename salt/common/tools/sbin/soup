@@ -169,7 +169,7 @@ masterunlock() {
 playbook() {
   echo "Applying playbook settings"
   if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-    salt-call state.apply playbook.db_init
+    salt-call state.apply playbook.OLD_db_init
     rm -f /opt/so/rules/elastalert/playbook/*.yaml
     so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   fi
@@ -251,9 +251,13 @@ rc3_to_2.3.0() {
   if [ ! -f /etc/profile.d/securityonion.sh ]; then
     echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
   fi
-  # Add Redis settings to global pillar
-  echo "redis_settings:" >> /opt/so/saltstack/local/pillar/global.sls
-  echo "  redis_maxmemory: 827" >> /opt/so/saltstack/local/pillar/global.sls
+
+  {
+      echo "redis_settings:"
+      echo "  redis_maxmemory: 827"
+      echo "playbook:"
+      echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
+  } >> /opt/so/saltstack/local/pillar/global.sls
 }
 
 space_check() {
