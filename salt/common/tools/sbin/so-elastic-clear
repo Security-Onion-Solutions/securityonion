@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') -%}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 . /usr/sbin/so-common
 
 SKIP=0
@@ -50,7 +50,7 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        curl {{ MANAGERIP }}:9200/_cat/indices?v
+        curl {{ NODEIP }}:9200/_cat/indices?v
         echo
         # Inform user we are about to delete all data
         echo
@@ -89,10 +89,10 @@ fi
 # Delete data
 echo "Deleting data..."
 
-INDXS=$(curl -s -XGET {{ MANAGERIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+INDXS=$(curl -s -XGET {{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 for INDX in ${INDXS}
 do
-    curl -XDELETE "{{ MANAGERIP }}:9200/${INDX}" > /dev/null 2>&1
+    curl -XDELETE "{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
 #Start Logstash/Filebeat
