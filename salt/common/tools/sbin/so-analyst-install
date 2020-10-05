@@ -20,11 +20,66 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
+INSTALL_LOG=/root/so-analyst-install.log
+exec &> >(tee -a "$INSTALL_LOG")
+
+OS=$(grep PRETTY_NAME /etc/os-release | grep 'CentOS Linux 7')
+if [ $? -ne 0 ]; then
+  echo "This is an unsupported OS. Please use CentOS 7 to install the analyst node."
+  exit 1
+fi
+
+if [[ "$manufacturer" == "Security Onion Solutions" && "$family" == "Automated" ]]; then
+  INSTALL=yes
+  CURLCONTINUE=no
+else
+  INSTALL=''
+  CURLCONTINUE=''
+fi
+
+while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
+  clear
+  echo "###########################################"
+  echo "##          ** W A R N I N G **          ##"
+  echo "##    _______________________________    ##"
+  echo "##                                       ##"
+  echo "##    Installing the Security Onion      ##"
+  echo "##   analyst node on this device will    ##"
+  echo "##      make permanenet changes to       ##"
+  echo "##              the system.              ##"
+  echo "##                                       ##"
+  echo "###########################################"
+  echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+  read INSTALL
+done
+
+if [[ $INSTALL == "no" ]]; then
+  echo "Exiting analyst node installation."
+  exit 0
+fi
+
+echo "Testing for internet connection with curl https://securityonionsolutions.com/"
+CANCURL=$(curl -sI https://securityonionsolutions.com/ | grep "200 OK")
+  if [ $? -ne 0 ]; then
+    echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
+    read CURLCONTINUE
+    while [[ $CURLCONTINUE != "yes" ]] && [[ $CURLCONTINUE != "no" ]]; do
+      echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
+      read CURLCONTINUE
+    done
+    if [[ "$CURLCONTINUE" == "no" ]]; then
+      echo "Exiting analyst node installation."
+      exit 0
+    fi
+  else
+    echo "We were able to curl https://securityonionsolutions.com/."
+  fi
+
 # Install a GUI text editor
 yum -y install gedit
 
 # Install misc utils
-yum -y install wget curl unzip epel-release;
+yum -y install wget curl unzip epel-release yum-plugin-versionlock;
 
 # Install xWindows
 yum -y groupinstall "X Window System";
@@ -167,7 +222,54 @@ yum -y install perl-IO-Compress perl-Net-DNS;
 yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-chaosreader-0.95.10/securityonion-chaosreader-0.95.10.rpm;
 chmod +x /bin/chaosreader;
 
-cp ../files/analyst/README /;
+cp ../../files/analyst/README /;
+cp ../../files/analyst/so-wallpaper.jpg /usr/share/backgrounds/;
+cp ../../files/analyst/so-lockscreen.jpg /usr/share/backgrounds/;
+cp ../../files/analyst/so-login-logo.svg /usr/share/pixmaps/;
+cp ../../files/analyst/so-login-logo-dark.svg /usr/share/pixmaps/;
+
+# Set background wallpaper
+cat << EOF >> /etc/dconf/db/local.d/00-background
+# Specify the dconf path
+[org/gnome/desktop/background]
+
+# Specify the path to the desktop background image file
+picture-uri='file:///usr/share/backgrounds/so-wallpaper.jpg'
+# Specify one of the rendering options for the background image:
+# 'none', 'wallpaper', 'centered', 'scaled', 'stretched', 'zoom', 'spanned'
+picture-options='zoom'
+# Specify the left or top color when drawing gradients or the solid color
+primary-color='000000'
+# Specify the right or bottom color when drawing gradients
+secondary-color='FFFFFF'
+EOF
+
+# Set lock screen
+cat << EOF >> /etc/dconf/db/local.d/00-screensaver
+[org/gnome/desktop/session]
+idle-delay=uint32 180
+
+[org/gnome/desktop/screensaver]
+lock-enabled=true
+lock-delay=uint32 120
+picture-options='zoom'
+picture-uri='file:///usr/share/backgrounds/so-lockscreen.jpg'
+EOF
+
+cat << EOF >> /etc/dconf/db/local.d/locks/screensaver
+/org/gnome/desktop/session/idle-delay
+/org/gnome/desktop/screensaver/lock-enabled
+/org/gnome/desktop/screensaver/lock-delay
+EOF
+
+# Do not show the user list at login screen
+cat << EOF >> /etc/dconf/db/local.d/00-login-screen
+[org/gnome/login-screen]
+logo='/usr/share/pixmaps/so-login-logo-dark.svg'
+disable-user-list=true
+EOF
+
+dconf update;
 
 echo
 echo "Analyst workstation has been installed!"
