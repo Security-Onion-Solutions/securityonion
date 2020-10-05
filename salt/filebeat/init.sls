@@ -44,6 +44,12 @@ filebeatpkidir:
     - user: 939
     - group: 939
     - makedirs: True
+fileregistrydir:
+  file.directory:
+    - name: /opt/so/conf/filebeat/registry
+    - user: 939
+    - group: 939
+    - makedirs: True
 # This needs to be owned by root
 filebeatconfsync:
   file.managed:
@@ -69,6 +75,7 @@ so-filebeat:
       - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
+      - /opt/so/conf/filebeat/registry:/usr/share/filebeat/data/registry:rw
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp
