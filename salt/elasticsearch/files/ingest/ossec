@@ -37,17 +37,18 @@
     { "rename":         { "field": "predecoder.program_name",                   "target_field": "process.name",         "ignore_missing": true  } },
     { "rename":         { "field": "decoder.name",                   "target_field": "event.dataset",         "ignore_missing": true  } },
     { "rename":         { "field": "rule.description",                   "target_field": "rule.name",         "ignore_missing": true  } },
-    {
-        "remove": {
-                "field": [ "predecoder" ],
-                "ignore_failure": true
-        }
-    },
+    { "rename":         { "field": "rule.id",                            "target_field": "rule.uuid",         "ignore_missing": true  } },
+    { "set":         { "if": "ctx.rule != null && ctx.rule.level >= 1 && ctx.rule.level <=7",   "field": "event.severity", "value": 1, "override": true }  },
+    { "set":         { "if": "ctx.rule != null && ctx.rule.level >= 8 && ctx.rule.level <=11",   "field": "event.severity", "value": 2, "override": true }  },
+    { "set":         { "if": "ctx.rule != null && ctx.rule.level >= 12 && ctx.rule.level <=14",   "field": "event.severity", "value": 3, "override": true }  },
+    { "set":         { "if": "ctx.rule != null && ctx.rule.level >= 15",   "field": "event.severity", "value": 4, "override": true }  },
+    { "rename":         { "field": "rule.id",                            "target_field": "rule.uuid",         "ignore_missing": true  } },
+    { "remove":         { "field": [ "predecoder" ],                                                          "ignore_failure": true  } },
     { "rename":         { "field": "fields.category",              "target_field": "event.category",                  "ignore_failure": true, "ignore_missing": true  } },
-    { "rename":         { "field": "fields.module",              "target_field": "event.module",                  "ignore_failure": true, "ignore_missing": true  } }, 
+    { "rename":         { "field": "fields.module",              "target_field": "event.module",                  "ignore_failure": true, "ignore_missing": true  } },
     { "pipeline":      { "if": "ctx.winlog?.channel == 'Microsoft-Windows-Sysmon/Operational'",   "name": "sysmon"  }  },
     { "pipeline":      { "if": "ctx.winlog?.channel != 'Microsoft-Windows-Sysmon/Operational'",  "name":"win.eventlogs" }  },
     { "set":           { "if": "ctx.containsKey('rule') && ctx.rule != null",   "field": "event.dataset", "value": "alert", "override": true }  },
-    { "pipeline":       { "name": "common" } }
+    { "pipeline":       { "name": "common" } }    
   ]
 }
