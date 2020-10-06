@@ -4,6 +4,7 @@ logrotate:
     rotate 14
     missingok
     copytruncate
+    compress
     create
     extension .log
     dateext

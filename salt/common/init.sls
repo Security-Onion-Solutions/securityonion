@@ -202,6 +202,7 @@ commonlogrotateconf:
   file.managed:
     - name: /opt/so/conf/log-rotate.conf
     - source: salt://common/files/log-rotate.conf
+    - template: jinja
     - mode: 644
 
 /usr/local/bin/common-rotate:
