@@ -240,7 +240,7 @@ so-elasticsearch-pipelines:
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-searchnode', 'so-import'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
-    - name: /usr/sbin/so-elasticsearch-templates
+    - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
 {% endif %}
 
