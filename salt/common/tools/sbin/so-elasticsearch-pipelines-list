@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#
 # Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,10 +14,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 . /usr/sbin/so-common
-
-echo ""
-echo "Hosts/Networks that have access to login to the Security Onion Console:"
-
-so-firewall includedhosts analyst
+if [ "$1" == "" ]; then
+    curl -s {{ NODEIP }}:9200/_ingest/pipeline/* | jq 'keys'
+else
+    curl -s {{ NODEIP }}:9200/_ingest/pipeline/$1 | jq
+fi
