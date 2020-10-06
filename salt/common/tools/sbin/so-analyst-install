@@ -23,6 +23,24 @@ fi
 INSTALL_LOG=/root/so-analyst-install.log
 exec &> >(tee -a "$INSTALL_LOG")
 
+logCmd() {
+	cmd=$1
+	info "Executing command: $cmd"
+	$cmd >> "$INSTALL_LOG" 2>&1
+}
+
+analyze_system() {
+	title "System Characteristics"
+	logCmd "uptime"
+	logCmd "uname -a"
+	logCmd "free -h"
+	logCmd "lscpu"
+	logCmd "df -h"
+	logCmd "ip a"
+}
+
+analyze_system
+
 OS=$(grep PRETTY_NAME /etc/os-release | grep 'CentOS Linux 7')
 if [ $? -ne 0 ]; then
   echo "This is an unsupported OS. Please use CentOS 7 to install the analyst node."
