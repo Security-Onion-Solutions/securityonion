@@ -74,19 +74,25 @@ else
   CURLCONTINUE=''
 fi
 
+FIRSTPASS=yes
 while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
-  clear
-  echo "###########################################"
-  echo "##          ** W A R N I N G **          ##"
-  echo "##    _______________________________    ##"
-  echo "##                                       ##"
-  echo "##    Installing the Security Onion      ##"
-  echo "##   analyst node on this device will    ##"
-  echo "##      make permanenet changes to       ##"
-  echo "##              the system.              ##"
-  echo "##                                       ##"
-  echo "###########################################"
-  echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+  if [[ "$FIRSTPASS" == "yes" ]]; then
+    clear
+    echo "###########################################"
+    echo "##          ** W A R N I N G **          ##"
+    echo "##    _______________________________    ##"
+    echo "##                                       ##"
+    echo "##    Installing the Security Onion      ##"
+    echo "##   analyst node on this device will    ##"
+    echo "##      make permanenet changes to       ##"
+    echo "##              the system.              ##"
+    echo "##                                       ##"
+    echo "###########################################"
+    echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+    FIRSTPASS=no
+  else
+    echo "Please type 'yes' to continue or 'no' to exit."
+  fi      
   read INSTALL
 done
 
@@ -98,10 +104,17 @@ fi
 echo "Testing for internet connection with curl https://securityonionsolutions.com/"
 CANCURL=$(curl -sI https://securityonionsolutions.com/ | grep "200 OK")
   if [ $? -ne 0 ]; then
-    echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
-    read CURLCONTINUE
+    FIRSTPASS=yes
     while [[ $CURLCONTINUE != "yes" ]] && [[ $CURLCONTINUE != "no" ]]; do
-      echo "We could not access https://securityonionsolutions.com/. Since packages are downloaded from the internet in order to configure the analyst node, internet acceess is required. If you would like to ignore this warning and continue anyway, please type 'yes'. Otherwise, type 'no' to exit."
+      if [[ "$FIRSTPASS" == "yes" ]]; then
+        echo "We could not access https://securityonionsolutions.com/."
+        echo "Since packages are downloaded from the internet, internet acceess is required."
+        echo "If you would like to ignore this warning and continue anyway, please type 'yes'."
+        echo "Otherwise, type 'no' to exit."
+        FIRSTPASS=no
+      else
+        echo "Please type 'yes' to continue or 'no' to exit."
+      fi  
       read CURLCONTINUE
     done
     if [[ "$CURLCONTINUE" == "no" ]]; then
