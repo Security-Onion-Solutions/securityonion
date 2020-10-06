@@ -205,13 +205,13 @@ commonlogrotateconf:
     - mode: 644
 
 /usr/local/bin/common-rotate:
-cron.present:
-  - user: root
-  - minute: '1'
-  - hour: '0'
-  - daymonth: '*'
-  - month: '*'
-  - dayweek: '*'
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
 # Add config backup
