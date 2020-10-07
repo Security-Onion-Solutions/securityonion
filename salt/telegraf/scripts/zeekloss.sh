@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script returns the packets dropped by Zeek, but it isn't a percentage. $LOSS * 100 would be the percentage
 ZEEKLOG=$(tac /host/nsm/zeek/logs/packetloss.log | head -2)
 declare RESULT=($ZEEKLOG)
 CURRENTDROP=${RESULT[3]}
