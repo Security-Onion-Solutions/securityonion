@@ -12,5 +12,5 @@ if [ -f "$ZEEKLOG" ]; then
       echo "zeekcaptureloss loss=$LOSS"
     fi
   fi
-  echo "$CURRENTS" > "$LASTCAPTURELOSSLOG"
+  echo "$CURRENTS" > $LASTCAPTURELOSSLOG
 fi
