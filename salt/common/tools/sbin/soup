@@ -286,7 +286,7 @@ update_centos_repo() {
 }
 
 update_dockers() {
-  if [[ $is_airgap ]]; then
+  if [ $is_airgap -eq 0 ]; then
     # Let's copy the tarball
     if [ ! -f $AGDOCKER/registry.tar ]; then
       echo "Unable to locate registry. Exiting"
@@ -378,7 +378,7 @@ update_dockers() {
     # Cleanup on Aisle 4
     clean_dockers
     echo "Add Registry back if airgap"
-    if [[ $is_airgap ]]; then
+    if [ $is_airgap -eq 0 ]; then
       docker load -i $AGDOCKER/registry_image.tar
     fi 
 
@@ -480,7 +480,7 @@ echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
 detect_os
 echo ""
-if [[ $is_airgap ]]; then
+if [ $is_airgap -eq 0 ]; then
   # Let's mount the ISO since this is airgap
   airgap_mounted
 else
@@ -518,7 +518,7 @@ echo "Updating dockers to $NEWVERSION."
 update_dockers
 
 # Only update the repo if its airgap
-if [ $is_airgap ]; then
+if [ $is_airgap -eq 0 ]; then
 update_centos_repo
 fi
 
