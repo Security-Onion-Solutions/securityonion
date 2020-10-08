@@ -7,7 +7,7 @@
     { "rename":         { "field": "message2.request",        "target_field": "request",          "ignore_missing": true  } },
     { "rename":         { "field": "scan.hash",        "target_field": "hash",          "ignore_missing": true  } },
 
-    { "grok":           { "if": "ctx.request.attributes.filename != null",   "field": "request.attributes.filename",       "patterns": ["-%{WORD:log.id.fuid}-"], "ignore_failure": true } },
+    { "grok":           { "if": "ctx.request?.attributes?.filename != null",   "field": "request.attributes.filename",       "patterns": ["-%{WORD:log.id.fuid}-"], "ignore_failure": true } },
     { "foreach":
       {
         "if": "ctx.scan?.exiftool?.keys !=null",
@@ -32,15 +32,15 @@
           }
       }
     },
-    { "set":         { "if": "ctx.scan.yara.matches != null", "field": "rule.name",        "value": "{{scan.yara.matches.0}}" }},
-    { "set":         { "if": "ctx.scan.yara.matches != null", "field": "dataset",        "value": "alert", "override": true }},
+    { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "rule.name",        "value": "{{scan.yara.matches.0}}" }},
+    { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "dataset",        "value": "alert", "override": true }},
     { "rename":         { "field": "scan.hash",        "target_field": "",          "ignore_missing": true  } },
-    { "set":         { "if": "ctx.rule.name != null && ctx.rule.score == null",   "field": "event.severity", "value": 3, "override": true }  },
-    { "convert" : { "if": "ctx.rule.score != null", "field" : "rule.score","type": "integer"}},
-    { "set":         { "if": "ctx.rule.score != null && ctx.rule.score >= 0 && ctx.rule.score <= 49",   "field": "event.severity", "value": 1, "override": true }  },
-    { "set":         { "if": "ctx.rule.score != null && ctx.rule.score >= 50 && ctx.rule.score <=69",   "field": "event.severity", "value": 2, "override": true }  },
-    { "set":         { "if": "ctx.rule != null && ctx.rule.score >= 70 && ctx.rule.score <=89",   "field": "event.severity", "value": 3, "override": true }  },
-    { "set":         { "if": "ctx.rule != null && ctx.rule.score >= 90",   "field": "event.severity", "value": 4, "override": true }  },
+    { "set":         { "if": "ctx.rule?.name != null && ctx.rule?.score == null",   "field": "event.severity", "value": 3, "override": true }  },
+    { "convert" :    { "if": "ctx.rule?.score != null", "field" : "rule.score","type": "integer"}},
+    { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 0 && ctx.rule?.score <= 49",   "field": "event.severity", "value": 1, "override": true }  },
+    { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 50 && ctx.rule?.score <=69",   "field": "event.severity", "value": 2, "override": true }  },
+    { "set":         { "if": "ctx.rule != null && ctx.rule?.score >= 70 && ctx.rule?.score <=89",   "field": "event.severity", "value": 3, "override": true }  },
+    { "set":         { "if": "ctx.rule != null && ctx.rule?.score >= 90",   "field": "event.severity", "value": 4, "override": true }  },
     { "set":         { "field": "observer.name",        "value": "{{agent.name}}" }},
     { "remove":         { "field": ["host", "path", "message", "scan.exiftool.keys", "scan.yara.meta"],                                         "ignore_missing": true  } },
     { "pipeline":       { "name": "common"                                                                                   } }
