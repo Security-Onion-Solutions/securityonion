@@ -237,7 +237,7 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-searchnode', 'so-import'] and TEMPLATES %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-node', 'so-import'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
