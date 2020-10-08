@@ -84,9 +84,9 @@ clean() {
 	# Clean Wazuh archives
 	# Slightly different code since we have 2 files to remove (.json and .log)
 	WAZUH_ARCHIVE='/nsm/wazuh/logs/archives'
-	OLDEST_WAZUH=$(find $WAZUH_ARCHIVE -type f ! -name "archives.json" ! -name "archives.log" -printf "%T+\t%p\n" | sort -n | awk '{print $1}' | head -n 1)
+	OLDEST_WAZUH=$(find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $1}' | head -n 1)
 	# Make sure we don't delete the current files
-	find $WAZUH_ARCHIVE -type f ! -name "archives.json" ! -name "archives.log" -printf "%T+\t%p\n" | sort -n | awk '{print $2}' | head -n 2 >/tmp/files$$
+	find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $2}' | head -n 1 >/tmp/files$$
 	if [[ $(wc -l </tmp/files$$) -ge 1 ]]; then
 		echo "$(date) - Removing logs for $OLDEST_WAZUH" >>$LOG
 		while read -r line; do
