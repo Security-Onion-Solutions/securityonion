@@ -58,6 +58,14 @@ query_updatepluginurls:
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
 
+playbooklogdir:
+  file.directory:
+    - name: /opt/so/log/playbook
+    - dir_mode: 775
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 {% if PLAYBOOKPASS == None %}
 
 playbook_password_none:
@@ -73,6 +81,8 @@ so-playbook:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
     - hostname: playbook
     - name: so-playbook
+    - binds:
+      - /opt/so/log/playbook:/playbook/log:rw
     - environment:
       - REDMINE_DB_MYSQL={{ MANAGERIP }}
       - REDMINE_DB_DATABASE=playbook
@@ -82,13 +92,6 @@ so-playbook:
       - 0.0.0.0:3200:3000
 
 {% endif %}
-
-playbooklogdir:
-  file.directory:
-    - name: /opt/so/log/playbook
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 so-playbooksynccron:
   cron.present:
