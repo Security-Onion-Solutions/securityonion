@@ -1,6 +1,7 @@
 base:
   '*':
     - patch.needs_restarting
+    - logrotate
 
   '*_eval or *_helix or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound

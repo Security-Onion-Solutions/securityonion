@@ -23,97 +23,104 @@ CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 LOG="/opt/so/log/sensor_clean.log"
 TODAY=$(date -u "+%Y-%m-%d")
 
-clean () {
-                ## find the oldest Zeek logs directory
-                OLDEST_DIR=$(ls /nsm/zeek/logs/ | grep -v "current" | grep -v "stats" | grep -v "packetloss" | grep -v "zeek_clean" | sort | head -n 1)
-                if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
-                then
-                        echo "$(date) - No old Zeek logs available to clean up in /nsm/zeek/logs/" >> $LOG
-                        #exit 0
-                else
-                        echo "$(date) - Removing directory: /nsm/zeek/logs/$OLDEST_DIR" >> $LOG
-                        rm -rf /nsm/zeek/logs/"$OLDEST_DIR"
-                fi
+clean() {
+	## find the oldest Zeek logs directory
+	OLDEST_DIR=$(ls /nsm/zeek/logs/ | grep -v "current" | grep -v "stats" | grep -v "packetloss" | grep -v "zeek_clean" | sort | head -n 1)
+	if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]; then
+		echo "$(date) - No old Zeek logs available to clean up in /nsm/zeek/logs/" >>$LOG
+		#exit 0
+	else
+		echo "$(date) - Removing directory: /nsm/zeek/logs/$OLDEST_DIR" >>$LOG
+		rm -rf /nsm/zeek/logs/"$OLDEST_DIR"
+	fi
 
+	## Remarking for now, as we are moving extracted files to /nsm/strelka/processed
+	## find oldest files in extracted directory and exclude today
+	#OLDEST_EXTRACT=$(find /nsm/zeek/extracted/complete -type f -printf '%T+ %p\n' 2>/dev/null | sort | grep -v $TODAY | head -n 1)
+	#if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
+	#then
+	#        echo "$(date) - No old extracted files available to clean up in /nsm/zeek/extracted/complete" >> $LOG
+	#else
+	#        OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}' | cut -d+ -f1`
+	#        OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
+	#        echo "$(date) - Removing extracted files for $OLDEST_EXTRACT_DATE" >> $LOG
+	#        find /nsm/zeek/extracted/complete -type f -printf '%T+ %p\n' | grep $OLDEST_EXTRACT_DATE | awk '{print $2}' |while read FILE
+	#        do
+	#                echo "$(date) - Removing extracted file: $FILE" >> $LOG
+	#                rm -f "$FILE"
+	#        done
+	#fi
 
-                ## Remarking for now, as we are moving extracted files to /nsm/strelka/processed
-                ## find oldest files in extracted directory and exclude today
-                #OLDEST_EXTRACT=$(find /nsm/zeek/extracted/complete -type f -printf '%T+ %p\n' 2>/dev/null | sort | grep -v $TODAY | head -n 1)
-                #if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
-                #then
-                #        echo "$(date) - No old extracted files available to clean up in /nsm/zeek/extracted/complete" >> $LOG
-                #else
-                #        OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}' | cut -d+ -f1`
-                #        OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
-                #        echo "$(date) - Removing extracted files for $OLDEST_EXTRACT_DATE" >> $LOG
-                #        find /nsm/zeek/extracted/complete -type f -printf '%T+ %p\n' | grep $OLDEST_EXTRACT_DATE | awk '{print $2}' |while read FILE
-                #        do
-                #                echo "$(date) - Removing extracted file: $FILE" >> $LOG
-                #                rm -f "$FILE"
-                #        done
-                #fi
- 
-                ## Clean up Zeek extracted files processed by Strelka
-                STRELKA_FILES='/nsm/strelka/processed'
-                OLDEST_STRELKA=$(find $STRELKA_FILES -type f -printf '%T+ %p\n' | sort -n | head -n 1 )
-                if [ -z "$OLDEST_STRELKA" -o "$OLDEST_STRELKA" == ".." -o "$OLDEST_STRELKA" == "." ]
-                then
-                        echo "$(date) - No old files available to clean up in $STRELKA_FILES" >> $LOG
-                else
-                        OLDEST_STRELKA_DATE=`echo $OLDEST_STRELKA | awk '{print $1}' | cut -d+ -f1`
-                        OLDEST_STRELKA_FILE=`echo $OLDEST_STRELKA | awk '{print $2}'`
-                        echo "$(date) - Removing extracted files for $OLDEST_STRELKA_DATE" >> $LOG
-                        find $STRELKA_FILES -type f -printf '%T+ %p\n' | grep $OLDEST_STRELKA_DATE | awk '{print $2}' |while read FILE
-                        do
-                                echo "$(date) - Removing file: $FILE" >> $LOG
-                                rm -f "$FILE"
-                        done
-                fi
+	## Clean up Zeek extracted files processed by Strelka
+	STRELKA_FILES='/nsm/strelka/processed'
+	OLDEST_STRELKA=$(find $STRELKA_FILES -type f -printf '%T+ %p\n' | sort -n | head -n 1)
+	if [ -z "$OLDEST_STRELKA" -o "$OLDEST_STRELKA" == ".." -o "$OLDEST_STRELKA" == "." ]; then
+		echo "$(date) - No old files available to clean up in $STRELKA_FILES" >>$LOG
+	else
+		OLDEST_STRELKA_DATE=$(echo $OLDEST_STRELKA | awk '{print $1}' | cut -d+ -f1)
+		OLDEST_STRELKA_FILE=$(echo $OLDEST_STRELKA | awk '{print $2}')
+		echo "$(date) - Removing extracted files for $OLDEST_STRELKA_DATE" >>$LOG
+		find $STRELKA_FILES -type f -printf '%T+ %p\n' | grep $OLDEST_STRELKA_DATE | awk '{print $2}' | while read FILE; do
+			echo "$(date) - Removing file: $FILE" >>$LOG
+			rm -f "$FILE"
+		done
+	fi
 
-                ## Clean up Suricata log files
-                SURICATA_LOGS='/nsm/suricata'
-                OLDEST_SURICATA=$(find $STRELKA_FILES -type f -printf '%T+ %p\n' | sort -n | head -n 1)
-                if [ -z "$OLDEST_SURICATA" -o "$OLDEST_SURICATA" == ".." -o "$OLDEST_SURICATA" == "." ]
-                then
-                        echo "$(date) - No old files available to clean up in $SURICATA_LOGS" >> $LOG
-                else
-                        OLDEST_SURICATA_DATE=`echo $OLDEST_SURICATA | awk '{print $1}' | cut -d+ -f1`
-                        OLDEST_SURICATA_FILE=`echo $OLDEST_SURICATA | awk '{print $2}'`
-                        echo "$(date) - Removing logs for $OLDEST_SURICATA_DATE" >> $LOG
-                        find $SURICATA_LOGS -type f -printf '%T+ %p\n' | grep $OLDEST_SURICATA_DATE | awk '{print $2}' |while read FILE
-                        do
-                                echo "$(date) - Removing file: $FILE" >> $LOG
-                                rm -f "$FILE"
-                        done
-                fi
+	## Clean up Suricata log files
+	SURICATA_LOGS='/nsm/suricata'
+	OLDEST_SURICATA=$(find $SURICATA_LOGS -type f -printf '%T+ %p\n' | sort -n | head -n 1)
+	if [[ -z "$OLDEST_SURICATA" ]] || [[ "$OLDEST_SURICATA" == ".." ]] || [[ "$OLDEST_SURICATA" == "." ]]; then
+		echo "$(date) - No old files available to clean up in $SURICATA_LOGS" >>$LOG
+	else
+		OLDEST_SURICATA_DATE=$(echo $OLDEST_SURICATA | awk '{print $1}' | cut -d+ -f1)
+		OLDEST_SURICATA_FILE=$(echo $OLDEST_SURICATA | awk '{print $2}')
+		echo "$(date) - Removing logs for $OLDEST_SURICATA_DATE" >>$LOG
+		find $SURICATA_LOGS -type f -printf '%T+ %p\n' | grep $OLDEST_SURICATA_DATE | awk '{print $2}' | while read FILE; do
+			echo "$(date) - Removing file: $FILE" >>$LOG
+			rm -f "$FILE"
+		done
+	fi
 
-                ## Clean up extracted pcaps from Steno
-                PCAPS='/nsm/pcapout'
-                OLDEST_PCAP=$(find $PCAPS -type f -printf '%T+ %p\n' | sort -n | head -n 1 )
-                if [ -z "$OLDEST_PCAP" -o "$OLDEST_PCAP" == ".." -o "$OLDEST_PCAP" == "." ]
-                then
-                        echo "$(date) - No old files available to clean up in $PCAPS" >> $LOG
-                else
-                        OLDEST_PCAP_DATE=`echo $OLDEST_PCAP | awk '{print $1}' | cut -d+ -f1`
-                        OLDEST_PCAP_FILE=`echo $OLDEST_PCAP | awk '{print $2}'`
-                        echo "$(date) - Removing extracted files for $OLDEST_PCAP_DATE" >> $LOG
-                        find $PCAPS -type f -printf '%T+ %p\n' | grep $OLDEST_PCAP_DATE | awk '{print $2}' |while read FILE
-                        do
-                                echo "$(date) - Removing file: $FILE" >> $LOG
-                                rm -f "$FILE"
-                        done
-                fi
+	# Clean Wazuh archives
+	# Slightly different code since we have 2 files to remove (.json and .log)
+	WAZUH_ARCHIVE='/nsm/wazuh/logs/archives'
+	OLDEST_WAZUH=$(find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $1}' | head -n 1)
+	# Make sure we don't delete the current files
+	find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $2}' | head -n 1 >/tmp/files$$
+	if [[ $(wc -l </tmp/files$$) -ge 1 ]]; then
+		echo "$(date) - Removing logs for $OLDEST_WAZUH" >>$LOG
+		while read -r line; do
+			echo "$(date) - Removing file: $line" >>$LOG
+			rm "$line"
+		done </tmp/files$$
+	else
+		echo "$(date) - No old files available to clean up in $WAZUH_ARCHIVE" >>$LOG
+	fi
+	rm /tmp/files$$
+
+	## Clean up extracted pcaps from Steno
+	PCAPS='/nsm/pcapout'
+	OLDEST_PCAP=$(find $PCAPS -type f -printf '%T+ %p\n' | sort -n | head -n 1)
+	if [ -z "$OLDEST_PCAP" -o "$OLDEST_PCAP" == ".." -o "$OLDEST_PCAP" == "." ]; then
+		echo "$(date) - No old files available to clean up in $PCAPS" >>$LOG
+	else
+		OLDEST_PCAP_DATE=$(echo $OLDEST_PCAP | awk '{print $1}' | cut -d+ -f1)
+		OLDEST_PCAP_FILE=$(echo $OLDEST_PCAP | awk '{print $2}')
+		echo "$(date) - Removing extracted files for $OLDEST_PCAP_DATE" >>$LOG
+		find $PCAPS -type f -printf '%T+ %p\n' | grep $OLDEST_PCAP_DATE | awk '{print $2}' | while read FILE; do
+			echo "$(date) - Removing file: $FILE" >>$LOG
+			rm -f "$FILE"
+		done
+	fi
 }
 
 # Check to see if we are already running
 IS_RUNNING=$(ps aux | grep "sensor_clean" | grep -v grep | wc -l)
-[ "$IS_RUNNING" -gt 2 ] && echo "$(date) - $IS_RUNNING sensor clean script processes running...exiting." >> $LOG && exit 0
+[ "$IS_RUNNING" -gt 2 ] && echo "$(date) - $IS_RUNNING sensor clean script processes running...exiting." >>$LOG && exit 0
 
 if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
-    while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ];
-        do
-         clean
-         CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
-    done
+	while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; do
+		clean
+		CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
+	done
 fi
-

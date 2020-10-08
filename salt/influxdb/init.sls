@@ -16,6 +16,14 @@ influxconfdir:
     - name: /opt/so/conf/influxdb/etc
     - makedirs: True
 
+influxlogdir:
+  file.directory:
+    - name: /opt/so/log/influxdb
+    - dir_mode: 775
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 influxdbdir:
   file.directory:
     - name: /nsm/influxdb
@@ -36,6 +44,7 @@ so-influxdb:
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
     - binds:
+      - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
       - /etc/pki/influxdb.crt:/etc/ssl/influxdb.crt:ro
