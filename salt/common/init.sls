@@ -56,6 +56,12 @@ salttmp:
 
 # Install epel
 {% if grains['os'] == 'CentOS' %}
+repair_yumdb:
+  cmd.run:
+    - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
+    - onlyif:
+      - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
+
 epel:
   pkg.installed:
     - skip_suggestions: True
