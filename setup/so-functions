@@ -593,12 +593,15 @@ copy_salt_master_config() {
 
 	# Copy the Salt master config template to the proper directory
 	if [ "$setup_type" = 'iso' ]; then
-		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	else
-		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	fi
 
 	# Restart the service so it picks up the changes
+	systemctl daemon-reload >> "$setup_log" 2>&1
 	systemctl restart salt-master >> "$setup_log" 2>&1
 }
 
