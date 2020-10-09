@@ -5,11 +5,12 @@
 include:
   - playbook
   
-cmd.run:
-  - name: until nc -z {{ MAINIP }} 3200; do sleep 1; done
-  - timeout: 30
-  - onchanges:
-    - cmd: create_user
+wait_for_playbook:
+  cmd.run:
+    - name: until nc -z {{ MAINIP }} 3200; do sleep 1; done
+    - timeout: 30
+    - onchanges:
+      - cmd: create_user
 
 create_user:
   cmd.script:
