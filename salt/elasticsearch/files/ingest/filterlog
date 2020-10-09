@@ -1,0 +1,60 @@
+{
+  "description" : "filterlog",
+  "processors" : [
+      {
+        "dissect": {
+                "field": "real_message",
+
+                "pattern" : "%{rule.uuid},%{rule.sub_uuid},%{firewall.anchor},%{firewall.tracker_id},%{interface.name},%{rule.reason},%{rule.action},%{network.direction},%{ip.version},%{firewall.sub_message}",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+        }
+     },
+     {
+        "dissect": {
+                "if": "ctx.ip.version == '4'",
+                "field": "firewall.sub_message",
+                "pattern" : "%{ip.tos},%{ip.ecn},%{ip.ttl},%{ip.id},%{ip.offset},%{ip.flags},%{network.transport_id},%{network.transport},%{data.length},%{source.ip},%{destination.ip},%{ip_sub_msg}",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+       }
+     },
+     {
+        "dissect": {
+                "if": "ctx.ip?.version == '6'",
+                "field": "firewall.sub_message",
+                "pattern" : "%{network.class},%{network.flow_label},%{network.hop_limit},%{network.transport},%{network.transport_id},%{data.length},%{source.ip},%{destination.ip},%{ip_sub_msg}",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+        }
+     },
+     {
+        "dissect": {
+                "if": "ctx.network?.transport == 'tcp'",
+                "field": "ip_sub_msg",
+                "pattern" : "%{source.port},%{destination.port},%{data.length},%{tcp.flags},",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+        }
+     },
+     {
+        "dissect": {
+                "if": "ctx.protocol == 'udp'",
+                "field": "ip_sub_msg",
+                "pattern" : "%{source.port},%{destination.port},%{data.length}",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+        }
+     },
+     {
+        "split": {
+                "if": "ctx.ip.version =='6' && ctx.network?.transport == 'Options'",
+                "field": "ip_sub_msg",
+                "target_field": "ip.options",
+                "separator" : ",",
+                "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
+        }
+     },
+     { "set":         { "field": "_index",        "value": "so-firewall", "override": true           } },
+     { "set":         { "if": "ctx.network?.transport_id == '0'", "field": "network.transport",        "value": "icmp", "override": true           } },
+     { "set":         { "field": "event.module",        "value": "pfsense", "override": true           } },
+     { "set":         { "field": "event.dataset",        "value": "firewall", "override": true           } },
+     { "remove":      { "field": ["real_message", "ip_sub_msg", "firewall.sub_message"],     "ignore_failure": true                                                                  } },
+     { "append":      { "field": "tags", "value": ["pfsense"]                                   } }
+  ]
+}
