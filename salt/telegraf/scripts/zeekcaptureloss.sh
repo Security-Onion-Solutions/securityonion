@@ -18,7 +18,7 @@ if [ -f "$ZEEKLOG" ]; then
   if [ -f "$LASTCAPTURELOSSLOG" ]; then
     LASTTS=$(cat $LASTCAPTURELOSSLOG)
     if [[ "$LASTTS" != "$CURRENTTS" ]]; then
-      LOSS=$(tail -$WORKERS $ZEEKLOG | awk -F, '{print $NF}' | sed 's/}//' | awk -F: '{LOSS += $2 / $WORKERS END { print LOSS}')
+      LOSS=$(tail -$WORKERS $ZEEKLOG | awk -F, '{print $NF}' | sed 's/}//' | awk -v WORKERS=$WORKERS -F: '{LOSS += $2 / WORKERS} END { print LOSS}')
       echo "zeekcaptureloss loss=$LOSS"
     fi
   fi
