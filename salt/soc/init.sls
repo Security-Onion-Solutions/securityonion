@@ -59,7 +59,7 @@ so-soc:
     - port_bindings:
       - 0.0.0.0:9822:9822
     - watch:
-      - file: /opt/so/conf/soc
+      - file: /opt/so/conf/soc/*
 
 # Add Kratos Group
 kratosgroup:
