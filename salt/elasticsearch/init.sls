@@ -229,11 +229,11 @@ so-elasticsearch-pipelines-file:
     - user: 930
     - group: 939
     - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
-   - template: jinja
    - onchanges:
       - file: esingestconf
       - file: esyml
