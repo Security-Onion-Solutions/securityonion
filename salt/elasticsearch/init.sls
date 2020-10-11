@@ -150,6 +150,7 @@ sotls:
     - source: salt://elasticsearch/files/sotls.yml
     - user: 930
     - group: 939
+    - template: jinja
 
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
