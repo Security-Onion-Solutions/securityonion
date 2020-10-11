@@ -30,7 +30,11 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
+    {% if grains['role'] in ['so-node','so-heavynode'] %}
+    curl -k --output /dev/null --silent --head --fail https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+    {% else %}
 	curl --output /dev/null --silent --head --fail http://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+	{% endif %}
 	if [ $? -eq 0 ]; then
 		ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"

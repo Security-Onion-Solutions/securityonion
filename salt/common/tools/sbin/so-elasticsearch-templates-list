@@ -17,7 +17,11 @@
 {%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 . /usr/sbin/so-common
 if [ "$1" == "" ]; then
+    {% if grains['role'] in ['so-node','so-heavynode'] %}
+    curl -s -k kttps://{{ NODEIP }}:9200/_template/* | jq 'keys'
+    {% else %}
     curl -s {{ NODEIP }}:9200/_template/* | jq 'keys'
+    {% endif %}
 else
     curl -s {{ NODEIP }}:9200/_template/$1 | jq
 fi
