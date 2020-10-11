@@ -233,6 +233,7 @@ so-elasticsearch-pipelines-file:
 so-elasticsearch-pipelines:
  cmd.run:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
+   - template: jinja
    - onchanges:
       - file: esingestconf
       - file: esyml
@@ -243,6 +244,7 @@ so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
+    - template: jinja
 {% endif %}
 
 {% else %}
