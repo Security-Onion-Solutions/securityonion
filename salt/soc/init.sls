@@ -56,10 +56,16 @@ so-soc:
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
+    - extra_hosts:
+    {%- if salt['pillar.get']('nodestab', {}) %}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
+      {%- endfor %}
+      {%- endif %}
     - port_bindings:
       - 0.0.0.0:9822:9822
     - watch:
-      - file: /opt/so/conf/soc
+      - file: /opt/so/conf/soc/*
 
 # Add Kratos Group
 kratosgroup:
