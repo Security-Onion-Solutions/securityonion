@@ -56,8 +56,8 @@ so-soc:
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
-    - extra_hosts:
     {%- if salt['pillar.get']('nodestab', {}) %}
+    - extra_hosts:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
       {%- endfor %}
