@@ -2,6 +2,7 @@
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
 {%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
@@ -15,6 +16,11 @@
     "baseUrl": "/",
     "maxPacketCount": 5000,
     "htmlDir": "html",
+    {%- if ISAIRGAP is sameas true -%}
+    "airgapEnabled": true,
+    {%- else %}
+    "airgapEnabled": false,
+    {%- endif %}
     "modules": {
       "filedatastore": {
         "jobDir": "jobs"
