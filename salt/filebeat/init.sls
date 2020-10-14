@@ -18,6 +18,9 @@
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set LOCALHOSTNAME = salt['grains.get']('host') %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
@@ -66,7 +69,7 @@ so-filebeat:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }}
+    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
     - binds:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
