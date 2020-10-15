@@ -78,6 +78,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
