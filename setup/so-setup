@@ -138,7 +138,7 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if [ "$setup_type" == 'iso' ] || (whiptail_you_sure); then
+if (whiptail_you_sure); then
 	true
 else
 	echo "User cancelled setup." | tee $setup_log
@@ -169,7 +169,6 @@ elif [ "$install_type" = 'MANAGER' ]; then
 elif [ "$install_type" = 'SENSOR' ]; then
 	is_sensor=true
 	is_minion=true
-	STRELKA=1
 elif [[ "$install_type" =~ ^('SEARCHNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
 	is_node=true
 	is_minion=true
@@ -238,6 +237,7 @@ case "$setup_type" in
 		;;
 	'network')
 		whiptail_network_notice
+		whiptail_dhcp_warn
 		whiptail_set_hostname
 		whiptail_management_nic
 		;;
@@ -271,7 +271,7 @@ if [[ $is_manager && $is_node ]]; then
 	LSPIPELINEWORKERS=1
 	LSPIPELINEBATCH=125
 	LSINPUTTHREADS=1
-	LSINPUTBATCHCOUNT=125
+	LSPIPELINEBATCH=125
 	NIDS=Suricata
 	ZEEKVERSION=ZEEK
 fi
@@ -297,13 +297,10 @@ if [[ $is_import ]]; then
 	WAZUH=0
 	THEHIVE=0
 	PLAYBOOK=0
-	STRELKA=0
-	
 fi
 
 
 # Start user prompts
-
 
 if [[ $is_helix || $is_sensor ]]; then
 	whiptail_sensor_nics
@@ -324,7 +321,9 @@ fi
 if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
 	whiptail_zeek_version
-	whiptail_nids
+	# Don't run this function for now since Snort is not yet supported
+	# whiptail_nids
+	NIDS=Suricata
 	whiptail_rule_setup
 
 	if [ "$RULESETUP" != 'ETOPEN' ]; then
@@ -386,7 +385,6 @@ if [[ $is_node && ! $is_eval ]]; then
 		whiptail_node_ls_pipeline_worker
 		whiptail_node_ls_pipline_batchsize
 		whiptail_node_ls_input_threads
-		whiptail_node_ls_input_batch_count
 		whiptail_cur_close_days
 		whiptail_log_size_limit
 	else
@@ -395,7 +393,7 @@ if [[ $is_node && ! $is_eval ]]; then
 		LSPIPELINEWORKERS=$num_cpu_cores
 		LSPIPELINEBATCH=125
 		LSINPUTTHREADS=1
-		LSINPUTBATCHCOUNT=125
+		LSPIPELINEBATCH=125
 	fi
 fi
 
@@ -423,8 +421,8 @@ if [[ "$setup_type" == 'iso' ]]; then
 	set_management_interface
 fi
 
+disable_ipv6
 disable_auto_start
-
 
 {
 	set_hostname;
@@ -461,6 +459,7 @@ fi
 {
 	# Set initial percentage to 0
 	export percentage=0
+	set_path
 
     if [[ $is_manager && $is_airgap ]]; then
 	    info "Creating airgap repo"
@@ -489,17 +488,17 @@ fi
 	set_progress_str 5 'Installing Salt and dependencies'
 	saltify 2>> $setup_log
 
-	set_progress_str 7 'Installing Docker and dependencies'
+	set_progress_str 6 'Installing Docker and dependencies'
 	docker_install >> $setup_log 2>&1
 	
-	set_progress_str 8 'Generating patch pillar'
+	set_progress_str 7 'Generating patch pillar'
 	patch_pillar >> $setup_log 2>&1
 
-	set_progress_str 9 'Initializing Salt minion'
+	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
-		set_progress_str 10 'Configuring Salt master'
+		set_progress_str 9 'Configuring Salt master'
 		{
 			create_local_directories;
 			addtotab_generate_templates;
@@ -508,18 +507,18 @@ fi
 			firewall_generate_templates;
 		} >> $setup_log 2>&1
 		
-		set_progress_str 11 'Updating sudoers file for soremote user'
+		set_progress_str 10 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
 		
-		set_progress_str 12 'Generating manager global pillar'
+		set_progress_str 11 'Generating manager global pillar'
 		#minio_generate_keys
 		manager_global >> $setup_log 2>&1
 		
-		set_progress_str 13 'Generating manager pillar'
+		set_progress_str 12 'Generating manager pillar'
 		manager_pillar >> $setup_log 2>&1
+		zeek_logs_enabled >> $setup_log 2>&1
 	fi
-
-
+	
 	set_progress_str 16 'Running first Salt checkin'
 	salt_firstcheckin >> $setup_log 2>&1
 
@@ -632,21 +631,28 @@ fi
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager ]]; then
-		set_progress_str 71 "$(print_salt_state_apply 'elastalert')"
-		salt-call state.apply -l info elastalert >> $setup_log 2>&1
-
-		set_progress_str 72 "$(print_salt_state_apply 'soctopus')"
-		salt-call state.apply -l info soctopus >> $setup_log 2>&1
-	fi
-
 	if [[ "$PLAYBOOK" = 1 ]]; then
-		set_progress_str 73 "$(print_salt_state_apply 'playbook.db_init')"
+		set_progress_str 71 "$(print_salt_state_apply 'playbook.db_init')"
 		salt-call state.apply -l info playbook.db_init >> $setup_log 2>&1
 
-		set_progress_str 73 "$(print_salt_state_apply 'playbook')"
+		set_progress_str 71 "$(print_salt_state_apply 'playbook')"
 		salt-call state.apply -l info playbook >> $setup_log 2>&1
-		so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
+
+		set_progress_str 71 "$(print_salt_state_apply 'playbook.automation_user_create')"
+		salt-call state.apply -l info playbook.automation_user_create >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager ]]; then
+		set_progress_str 72 "$(print_salt_state_apply 'elastalert')"
+		salt-call state.apply -l info elastalert >> $setup_log 2>&1
+
+		set_progress_str 73 "$(print_salt_state_apply 'soctopus')"
+		salt-call state.apply -l info soctopus >> $setup_log 2>&1
+
+		if [[ "$PLAYBOOK" = 1 ]]; then
+			set_progress_str 73 "Update playbook rules"
+			so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
+		fi
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then

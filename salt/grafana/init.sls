@@ -7,6 +7,7 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -229,7 +230,7 @@ so-grafana:
       - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
       - /opt/so/conf/grafana/grafana_dashboards:/etc/grafana/grafana_dashboards:rw
     - environment:
-      - GF_SECURITY_ADMIN_PASSWORD=augusta
+      - GF_SECURITY_ADMIN_PASSWORD={{ ADMINPASS }}
     - port_bindings:
       - 0.0.0.0:3000:3000
     - watch:

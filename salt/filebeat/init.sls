@@ -18,6 +18,9 @@
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set LOCALHOSTNAME = salt['grains.get']('host') %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
@@ -44,6 +47,12 @@ filebeatpkidir:
     - user: 939
     - group: 939
     - makedirs: True
+fileregistrydir:
+  file.directory:
+    - name: /opt/so/conf/filebeat/registry
+    - user: 939
+    - group: 939
+    - makedirs: True
 # This needs to be owned by root
 filebeatconfsync:
   file.managed:
@@ -60,7 +69,7 @@ so-filebeat:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }}
+    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
     - binds:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
@@ -69,6 +78,7 @@ so-filebeat:
       - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
+      - /opt/so/conf/filebeat/registry:/usr/share/filebeat/data/registry:rw
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp

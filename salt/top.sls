@@ -78,6 +78,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
@@ -136,7 +137,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
-
+    - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -185,6 +186,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
+    - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -243,6 +245,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
+    - docker_clean
 
   # Search node logic
 
@@ -255,6 +258,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_node and I@node:node_type:hot and G@saltversion:{{saltversion}}':
     - match: compound
@@ -266,6 +270,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_node and I@node:node_type:warm and G@saltversion:{{saltversion}}':
     - match: compound
@@ -276,6 +281,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -296,6 +302,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_managersensor and G@saltversion:{{saltversion}}':
     - match: compound
@@ -311,6 +318,7 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -360,6 +368,7 @@ base:
     {%- if DOMAINSTATS != 0 %}
     - domainstats
     {%- endif %}
+    - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -390,6 +399,7 @@ base:
     {%- endif %}
     - filebeat
     - schedule
+    - docker_clean
   
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
@@ -404,6 +414,7 @@ base:
     - fleet
     - fleet.install_package
     - filebeat
+    - docker_clean
 
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
@@ -426,3 +437,4 @@ base:
     - suricata
     - zeek
     - schedule
+    - docker_clean

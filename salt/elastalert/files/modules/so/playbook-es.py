@@ -16,7 +16,7 @@ class PlaybookESAlerter(Alerter):
             today = strftime("%Y.%m.%d", gmtime())
             timestamp = strftime("%Y-%m-%d"'T'"%H:%M:%S", gmtime())
             headers = {"Content-Type": "application/json"}
-            payload = {"rule.name": self.rule['play_title'],"event.severity": self.rule['event.severity'],"kibana_pivot": self.rule['kibana_pivot'],"soc_pivot": self.rule['soc_pivot'],"event.module": self.rule['event.module'],"event.dataset": self.rule['event.dataset'],"play_url": self.rule['play_url'],"sigma_level": self.rule['sigma_level'],"rule.category": self.rule['rule.category'],"event_data": match, "@timestamp": timestamp}
+            payload = {"rule": { "name": self.rule['play_title'],"uuid": self.rule['play_id'],"category": self.rule['rule.category']},"event":{ "severity": self.rule['event.severity'],"module": self.rule['event.module'],"dataset": self.rule['event.dataset'],"severity_label": self.rule['sigma_level']},"kibana_pivot": self.rule['kibana_pivot'],"soc_pivot": self.rule['soc_pivot'],"play_url": self.rule['play_url'],"sigma_level": self.rule['sigma_level'],"event_data": match, "@timestamp": timestamp}
             url = f"http://{self.rule['elasticsearch_host']}/so-playbook-alerts-{today}/_doc/"
             requests.post(url, data=json.dumps(payload), headers=headers, verify=False)
                             

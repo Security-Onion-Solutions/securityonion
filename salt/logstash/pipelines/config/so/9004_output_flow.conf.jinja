@@ -8,10 +8,14 @@ output {
   if [event_type] == "sflow" {
     elasticsearch {
       hosts => "{{ ES }}"
-      index => "so-flow-%{+YYYY.MM.dd}"
+      index => "so-flow"
       template_name => "so-flow"
       template => "/templates/so-flow-template.json"
       template_overwrite => true
+      {%- if grains['role'] in ['so-node','so-heavynode'] %}
+      ssl => true
+      ssl_certificate_verification => false
+      {%- endif %}
     }
   }
 }

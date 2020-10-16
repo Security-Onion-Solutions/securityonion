@@ -10,7 +10,7 @@
 
 . /usr/sbin/so-common
 
-if [[ $# < 1 || $# > 2 ]]; then
+if [[ $# -lt 1 || $# -gt 2 ]]; then
   echo "Usage: $0 <list|add|update|enable|disable|validate|valemail|valpass> [email]"
   echo ""
   echo "     list: Lists all user email addresses currently defined in the identity system"
@@ -22,7 +22,7 @@ if [[ $# < 1 || $# > 2 ]]; then
   echo " valemail: Validates that the given email address is acceptable for defining a new user; requires 'email' parameter"
   echo "  valpass: Validates that a password is acceptable for defining a new user"
   echo ""
-  echo " Note that the password can be piped into stdin to avoid prompting for it."
+  echo " Note that the password can be piped into STDIN to avoid prompting for it"
   exit 1
 fi
 
@@ -90,14 +90,16 @@ function validateEmail() {
 function updatePassword() {
   identityId=$1
   
-  # Read password from stdin (show prompt only if no stdin was piped in)
-  test -t 0
-  if [[ $? == 0 ]]; then
-    echo "Enter new password:"
-  fi
-  read -s password
+  if [ -z "$password" ]; then
+    # Read password from stdin (show prompt only if no stdin was piped in)
+    test -t 0
+    if [[ $? == 0 ]]; then
+      echo "Enter new password:"
+    fi
+    read -rs password
 
-  validatePassword "$password"
+    validatePassword "$password"
+  fi
 
   if [[ -n $identityId ]]; then
     # Generate password hash
@@ -199,6 +201,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     validateEmail "$email"
+    updatePassword
     createUser "$email"
     echo "Successfully added new user to SOC"
     check_container thehive && echo $password | so-thehive-user-add "$email"

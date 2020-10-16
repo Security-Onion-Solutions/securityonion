@@ -28,13 +28,22 @@ soclogdir:
     - group: 939
     - makedirs: True
 
-socsync:
-  file.recurse:
-    - name: /opt/so/conf/soc
-    - source: salt://soc/files/soc
+socconfig:
+  file.managed:
+    - name: /opt/so/conf/soc/soc.json
+    - source: salt://soc/files/soc/soc.json
     - user: 939
     - group: 939
-    - file_mode: 600
+    - mode: 600
+    - template: jinja
+
+socchanges:
+  file.managed:
+    - name: /opt/so/conf/soc/changes.json
+    - source: salt://soc/files/soc/changes.json
+    - user: 939
+    - group: 939
+    - mode: 600
     - template: jinja
 
 so-soc:
@@ -47,10 +56,16 @@ so-soc:
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
+    {%- if salt['pillar.get']('nodestab', {}) %}
+    - extra_hosts:
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
+      {%- endfor %}
+      {%- endif %}
     - port_bindings:
       - 0.0.0.0:9822:9822
     - watch:
-      - file: /opt/so/conf/soc
+      - file: /opt/so/conf/soc/*
 
 # Add Kratos Group
 kratosgroup:

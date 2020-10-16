@@ -606,7 +606,7 @@ CREATE TABLE `groups_users` (
 
 LOCK TABLES `groups_users` WRITE;
 /*!40000 ALTER TABLE `groups_users` DISABLE KEYS */;
-INSERT INTO `groups_users` VALUES (6,9),(7,1);
+INSERT INTO `groups_users` VALUES (7,1);
 /*!40000 ALTER TABLE `groups_users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1380,7 +1380,19 @@ CREATE TABLE `tokens` (
 
 LOCK TABLES `tokens` WRITE;
 /*!40000 ALTER TABLE `tokens` DISABLE KEYS */;
-INSERT INTO `tokens` VALUES (3,1,'feeds','6e5575602e1227c188cd85ef6d12608bb8701193','2020-04-26 13:10:46','2020-04-26 13:10:46'),(4,1,'session','999412fa9badda7423c6c654d6364c32c20b3eac','2020-04-26 18:07:03','2020-04-26 18:12:02'),(5,1,'session','124ad4acbf87a942426350e7ad028c1d119c3851','2020-04-26 18:17:11','2020-04-26 18:19:24'),(9,1,'session','2890c663e0552f26ddb92acad6ab3b6d05b92915','2020-04-26 18:51:15','2020-04-26 18:51:15'),(19,1,'session','b7ffb106ea0b34650dd9c1770f74c2b0ffe166b2','2020-05-01 16:52:33','2020-05-01 18:02:30'),(20,1,'session','f44cfcf918eef59ffda47991c431d9c2b2ac6113','2020-05-01 18:05:56','2020-05-01 18:05:56'),(23,9,'feeds','211918c9d7168979b5dc19bebb14573b928a5067','2020-05-01 18:26:17','2020-05-01 18:26:17'),(25,9,'api','de6639318502476f2fa5aa06f43f51fb389a3d7f','2020-05-01 18:26:31','2020-05-01 18:26:31'),(46,1,'session','2d0c8f8ae641c06d8c2362746846440d465d53c0','2020-05-06 20:48:01','2020-05-06 20:48:07'),(59,1,'session','2afe6590653d59a697d1436729c64f322a2eff82','2020-07-01 18:11:07','2020-07-01 20:30:43'),(61,1,'session','b01f95709ca1ab086a049cf9c5afd81ca9d4526e','2020-07-15 16:30:42','2020-07-15 16:31:40'),(62,1,'session','d29acdcd0b8e4ebf78ef8f696d3e76df7e2ab2ac','2020-08-17 14:51:59','2020-08-17 14:53:22');
+INSERT INTO `tokens` 
+  VALUES 
+    (3,1,'feeds','6e5575602e1227c188cd85ef6d12608bb8701193','2020-04-26 13:10:46','2020-04-26 13:10:46'),
+    (4,1,'session','999412fa9badda7423c6c654d6364c32c20b3eac','2020-04-26 18:07:03','2020-04-26 18:12:02'),
+    (5,1,'session','124ad4acbf87a942426350e7ad028c1d119c3851','2020-04-26 18:17:11','2020-04-26 18:19:24'),
+    (9,1,'session','2890c663e0552f26ddb92acad6ab3b6d05b92915','2020-04-26 18:51:15','2020-04-26 18:51:15'),
+    (19,1,'session','b7ffb106ea0b34650dd9c1770f74c2b0ffe166b2','2020-05-01 16:52:33','2020-05-01 18:02:30'),
+    (20,1,'session','f44cfcf918eef59ffda47991c431d9c2b2ac6113','2020-05-01 18:05:56','2020-05-01 18:05:56'),
+    (23,9,'feeds','211918c9d7168979b5dc19bebb14573b928a5067','2020-05-01 18:26:17','2020-05-01 18:26:17'),
+    (46,1,'session','2d0c8f8ae641c06d8c2362746846440d465d53c0','2020-05-06 20:48:01','2020-05-06 20:48:07'),
+    (59,1,'session','2afe6590653d59a697d1436729c64f322a2eff82','2020-07-01 18:11:07','2020-07-01 20:30:43'),
+    (61,1,'session','b01f95709ca1ab086a049cf9c5afd81ca9d4526e','2020-07-15 16:30:42','2020-07-15 16:31:40'),
+    (62,1,'session','d29acdcd0b8e4ebf78ef8f696d3e76df7e2ab2ac','2020-08-17 14:51:59','2020-08-17 14:53:22');
 /*!40000 ALTER TABLE `tokens` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1481,7 +1493,16 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','95535e9f7a386c412f20134ebb869c00cf346477','Admin','Admin',1,1,'2020-08-17 18:03:20','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','5ceb2c95ce1593d4ba034d385ceefb2f',0,'2020-04-26 13:10:27'),(2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),(3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),(4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),(6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),(7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL),(9,'automation','d2e7d78af1f0c0637765ae8cf1a359c4a30034c9','SecOps','Automation',0,1,'2020-05-01 18:26:17','en',NULL,'2020-04-26 18:47:46','2020-05-01 18:26:10','User',NULL,'none','41043e596f70e327e34fc99c861f5b31',0,'2020-05-01 18:26:10');
+INSERT INTO `users` 
+  VALUES 
+    (1,'admin','ADMIN_HASH','Admin','Admin',1,1,'2020-08-17 18:03:20','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','ADMIN_SALT',0,'2020-04-26 13:10:27'),
+    (2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),
+    (3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),
+    (4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),
+    (5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),
+    (6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),
+    (7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL)
+;
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 

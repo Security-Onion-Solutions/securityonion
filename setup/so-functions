@@ -99,7 +99,7 @@ add_manager_hostfile() {
 	echo "Checking if I can resolve manager. If not add to hosts file" >> "$setup_log" 2>&1
 	# Pop up an input to get the IP address
 	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your Manager Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+	"Enter your Manager Server IP Address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -184,7 +184,10 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  mysql: $MYSQLPASS"\
-		"  playbook: $PLAYBOOKPASS"\
+		"  playbook_db: $PLAYBOOKDBPASS"\
+		"  playbook_admin: $PLAYBOOKADMINPASS"\
+		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
+		"  grafana_admin: $GRAFANAPASS"\
 		"  fleet: $FLEETPASS"\
 		"  fleet_jwt: $FLEETJWT"\
 		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
@@ -351,6 +354,10 @@ collect_fleetuser_inputs() {
 	FPMATCH=no
 	while [[ $FPMATCH != yes ]]; do
 		whiptail_create_fleet_node_user_password1
+		while ! check_password "$FLEETNODEPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_fleet_node_user_password1
+		done
 		whiptail_create_fleet_node_user_password2
 		check_fleet_node_pass
 	done
@@ -371,7 +378,11 @@ collect_webuser_inputs() {
 
 	WPMATCH=no
 	while [[ $WPMATCH != yes ]]; do
-		whiptail_create_web_user_password1
+	    whiptail_create_web_user_password1
+	    while ! check_password "$WEBPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_web_user_password1
+		done
 		if echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1; then
 			whiptail_create_web_user_password2
 			check_web_pass
@@ -388,17 +399,17 @@ configure_minion() {
 
 	local minion_config=/etc/salt/minion
 
-	echo "id: $MINION_ID" > "$minion_config"
+	echo "id: '$MINION_ID'" > "$minion_config"
 
 	case "$minion_type" in
 		'helix')
-			echo "master: $HOSTNAME" >> "$minion_config"
+			echo "master: '$HOSTNAME'" >> "$minion_config"
 			;;
 		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
 			printf '%s\n'\
-				"master: $HOSTNAME"\
+				"master: '$HOSTNAME'"\
 				"mysql.host: '$MAINIP'"\
-				"mysql.port: 3306"\
+				"mysql.port: '3306'"\
 				"mysql.user: 'root'" >> "$minion_config"
 			if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
 				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
@@ -408,7 +419,7 @@ configure_minion() {
 			fi
 			;;
 		*)
-			echo "master: $MSRV" >> "$minion_config"
+			echo "master: '$MSRV'" >> "$minion_config"
 			;;
 	esac
 
@@ -582,12 +593,15 @@ copy_salt_master_config() {
 
 	# Copy the Salt master config template to the proper directory
 	if [ "$setup_type" = 'iso' ]; then
-		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	else
-		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	fi
 
 	# Restart the service so it picks up the changes
+	systemctl daemon-reload >> "$setup_log" 2>&1
 	systemctl restart salt-master >> "$setup_log" 2>&1
 }
 
@@ -733,16 +747,24 @@ detect_os() {
 
 disable_auto_start() {
 	
-	if crontab -l | grep so-setup; then
+	if crontab -l 2>&1 | grep so-setup > /dev/null 2>&1; then
 		# Remove the automated setup script from crontab, if it exists
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
 
-	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile; then
+	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile > /dev/null 2>&1; then
 		# Truncate last line of the bash profile
 		info "Removing auto-run of setup from bash profile"
 		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
 	fi
+}
+
+disable_ipv6() {
+	{
+		info "Disabling ipv6"
+		sysctl -w net.ipv6.conf.all.disable_ipv6=1
+		sysctl -w net.ipv6.conf.default.disable_ipv6=1
+	}  >> "$setup_log" 2>&1
 }
 
 disable_misc_network_features() {
@@ -923,7 +945,7 @@ fireeye_pillar() {
 	printf '%s\n'\
 		"fireeye:"\
 		"  helix:"\
-		"    api_key: $HELIXAPIKEY" 
+		"    api_key: '$HELIXAPIKEY'" 
 		"" > "$fireeye_pillar_path"/init.sls
 
 }
@@ -949,17 +971,20 @@ fleet_pillar() {
 	# Create the fleet pillar
 	printf '%s\n'\
 		"fleet:"\
-		"  mainip: $MAINIP"\
-		"  manager: $MSRV"\
+		"  mainip: '$MAINIP'"\
+		"  manager: '$MSRV'"\
 		"" > "$pillar_file"
 }
 
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
+  PLAYBOOKDBPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
+  PLAYBOOKADMINPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
+  PLAYBOOKAUTOMATIONPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
   FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  GRAFANAPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   if [[ "$THEHIVE" == "1" ]]; then
   	HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
   	HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
@@ -1010,7 +1035,7 @@ host_pillar() {
 	# Create the host pillar
 	printf '%s\n'\
 		"host:"\
-		"  mainint: $MNIC"\
+		"  mainint: '$MNIC'"\
 		"" > "$pillar_file"
 }
 
@@ -1021,7 +1046,11 @@ install_cleanup() {
 	# Clean up after ourselves
 	rm -rf "$temp_install_dir"
 	
-	# If Mysql is running stop it.
+	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
+	# that will disrupt automated tests should be placed beneath this statement.
+	[ -n "$TESTING" ] && return
+
+	# If Mysql is running stop it
 	/usr/sbin/so-mysql-stop
 
 }
@@ -1042,9 +1071,9 @@ manager_pillar() {
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
 		"  freq: 0"\
 		"  domainstats: 0" >> "$pillar_file"
@@ -1066,26 +1095,25 @@ manager_pillar() {
 		"  playbook: $PLAYBOOK"\
 		""\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		""\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: 125"\
 		"  ls_input_threads: 1"\
-		"  ls_batch_count: 125"\
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  ls_pipeline_workers: $num_cpu_cores"\
 		""\
 		"idstools:"\
 		"  config:"\
-		"    ruleset: $RULESETUP"\
-		"    oinkcode: $OINKCODE"\
+		"    ruleset: '$RULESETUP'"\
+		"    oinkcode: '$OINKCODE'"\
 		"    urls:"\
 		"  sids:"\
 		"    enabled:"\
@@ -1096,11 +1124,9 @@ manager_pillar() {
 		
 
 	printf '%s\n'\
-		"  kratoskey: $KRATOSKEY"\
+		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
   }
 
 manager_global() {
@@ -1116,14 +1142,14 @@ manager_global() {
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
-                "  soversion: $SOVERSION"\
-                "  hnmanager: $HNMANAGER"\
-                "  ntpserver: $NTPSERVER"\
-                "  proxy: $PROXY"\
-                "  mdengine: $ZEEKVERSION"\
-                "  ids: $NIDS"\
-				"  url_base: $REDIRECTIT"\
-                "  managerip: $MAINIP" > "$global_pillar"
+                "  soversion: '$SOVERSION'"\
+                "  hnmanager: '$HNMANAGER'"\
+                "  ntpserver: '$NTPSERVER'"\
+                "  proxy: '$PROXY'"\
+                "  mdengine: '$ZEEKVERSION'"\
+                "  ids: '$NIDS'"\
+				"  url_base: '$REDIRECTIT'"\
+                "  managerip: '$MAINIP'" > "$global_pillar"
 		
         if [[ $is_airgap ]]; then
 		        printf '%s\n'\
@@ -1136,17 +1162,17 @@ manager_global() {
         # Check if TheHive is enabled.  If so, add creds and other details
         if [[ "$THEHIVE" == "1" ]]; then
                 printf '%s\n'\
-                        "  hiveuser: $WEBUSER"\
+                        "  hiveuser: '$WEBUSER'"\
                         "  hivepassword: '$WEBPASSWD1'"\
-                        "  hivekey: $HIVEKEY"\
-                        "  hiveplaysecret: $HIVEPLAYSECRET"\
-                        "  cortexuser: $WEBUSER"\
+                        "  hivekey: '$HIVEKEY'"\
+                        "  hiveplaysecret: '$HIVEPLAYSECRET'"\
+                        "  cortexuser: '$WEBUSER'"\
                         "  cortexpassword: '$WEBPASSWD1'"\
-                        "  cortexkey: $CORTEXKEY"\
-                        "  cortexorgname: SecurityOnion"\
-                        "  cortexorguser: soadmin"\
-                        "  cortexorguserkey: $CORTEXORGUSERKEY"\
-                        "  cortexplaysecret: $CORTEXPLAYSECRET" >> "$global_pillar"
+                        "  cortexkey: '$CORTEXKEY'"\
+                        "  cortexorgname: 'SecurityOnion'"\
+                        "  cortexorguser: 'soadmin'"\
+                        "  cortexorguserkey: '$CORTEXORGUSERKEY'"\
+                        "  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
         fi
 
         # Continue adding other details	
@@ -1154,15 +1180,15 @@ manager_global() {
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
 		"  fleet_node: False"\
-		"  fleet_packages-timestamp: N/A"\
+		"  fleet_packages-timestamp: 'N/A'"\
 		"  fleet_packages-version: 1"\
-		"  fleet_hostname: N/A"\
-		"  fleet_ip: N/A"\
-		"  sensoronikey: $SENSORONIKEY"\
+		"  fleet_hostname: 'N/A'"\
+		"  fleet_ip: 'N/A'"\
+		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
                 "  managerupdate: $MANAGERUPDATES"\
-		"  imagerepo: $IMAGEREPO"\
-		"  pipeline: redis"\
+		"  imagerepo: '$IMAGEREPO'"\
+		"  pipeline: 'redis'"\
 		"pcap:"\
 		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
@@ -1175,13 +1201,13 @@ manager_global() {
 		"elasticsearch:"\
 		"  replicas: 0"\
 		"  true_cluster: False"\
-		"  true_cluster_name: so"\
+		"  true_cluster_name: 'so'"\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: 95%"\
-                "  cluster_routing_allocation_disk_watermark_high: 98%"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: 98%"\
+                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1240,8 +1266,18 @@ manager_global() {
 		"  size_file: 2048"\
 		"  time_file: 1"\
 		"  upload_queue_size: 4"\
-		"  encoding: gzip"\
-		"  interval: 5" >> "$global_pillar"
+		"  encoding: 'gzip'"\
+		"  interval: 5"\
+	        "backup:"\
+                "  locations:"\
+                "    - /opt/so/saltstack/local"\
+	        "soctopus:"\
+		"  playbook:"\
+		"    rulesets:"\
+		"      - windows"\
+		"redis_settings:"\
+		"  redis_maxmemory: 812" >> "$global_pillar"
+
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
@@ -1285,26 +1321,24 @@ elasticsearch_pillar() {
 	# Create the node pillar
 	printf '%s\n'\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
 	
 	printf '%s\n'\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
 		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
 		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
 		"" >> "$pillar_file"
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 parse_install_username() {
@@ -1319,13 +1353,10 @@ patch_pillar() {
 	printf '%s\n'\
 		"patch:"\
 		"  os:"\
-		"    schedule_name: $PATCHSCHEDULENAME"\
+		"    schedule_name: '$PATCHSCHEDULENAME'"\
 		"    enabled: True"\
 		"    splay: 300"\
 		"" >> "$pillar_file"
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 
 }
 
@@ -1349,8 +1380,6 @@ patch_schedule_os_new() {
 		done
 	done
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$OSPATCHSCHEDULE" >> "$setup_log" 2>&1
 }
 
 print_salt_state_apply() {
@@ -1643,7 +1672,7 @@ set_main_ip() {
 
 # Add /usr/sbin to everyone's path
 set_path() {
-	echo "PATH=\$PATH:/usr/sbin" > /etc/profile.d/securityonion.sh
+	echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
 }
 
 setup_salt_master_dirs() {
@@ -1693,9 +1722,9 @@ sensor_pillar() {
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
-		"  interface: $INTERFACE"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC" >> "$pillar_file"
+		"  interface: '$INTERFACE'"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'" >> "$pillar_file"
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  zeek_pins:" >> "$pillar_file"
@@ -1716,15 +1745,13 @@ sensor_pillar() {
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  manager: $MSRV"\
+		"  manager: '$MSRV'"\
 		"  mtu: $MTU"\
 		"  uniqueid: $(date '+%s')" >> "$pillar_file"
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 set_default_log_size() {
@@ -2008,7 +2035,7 @@ es_heapsize() {
 zeek_logs_enabled() {
 	echo "Enabling Zeek Logs" >> "$setup_log" 2>&1
 
-	local zeeklogs_pillar=./pillar/zeeklogs.sls
+	local zeeklogs_pillar=$local_salt_dir/pillar/zeeklogs.sls
 
 	printf '%s\n'\
 		"zeeklogs:"\
@@ -2020,44 +2047,44 @@ zeek_logs_enabled() {
 		done
 	elif [ "$install_type" == "EVAL" ]  || [ "$install_type" == "IMPORT" ]; then
 		printf '%s\n'\
-                        "    - conn"\
-                        "    - dce_rpc"\
-                        "    - dhcp"\
-                        "    - dhcpv6"\
-                        "    - dnp3"\
-                        "    - dns"\
-                        "    - dpd"\
-                        "    - files"\
-                        "    - ftp"\
-                        "    - http"\
-                        "    - intel"\
-                        "    - irc"\
-                        "    - kerberos"\
-                        "    - modbus"\
-                        "    - mqtt"\
-                        "    - notice"\
-                        "    - ntlm"\
-                        "    - openvpn"\
-                        "    - pe"\
-                        "    - radius"\
-                        "    - rfb"\
-                        "    - rdp"\
-                        "    - signatures"\
-                        "    - sip"\
-                        "    - smb_files"\
-                        "    - smb_mapping"\
-                        "    - smtp"\
-                        "    - snmp"\
-                        "    - software"\
-                        "    - ssh"\
-                        "    - ssl"\
-                        "    - syslog"\
-                        "    - telnet"\
-                        "    - tunnel"\
-                        "    - weird"\
-                        "    - mysql"\
-                        "    - socks"\
-                        "    - x509" >> "$zeeklogs_pillar"
+			"    - conn"\
+			"    - dce_rpc"\
+			"    - dhcp"\
+			"    - dhcpv6"\
+			"    - dnp3"\
+			"    - dns"\
+			"    - dpd"\
+			"    - files"\
+			"    - ftp"\
+			"    - http"\
+			"    - intel"\
+			"    - irc"\
+			"    - kerberos"\
+			"    - modbus"\
+			"    - mqtt"\
+			"    - notice"\
+			"    - ntlm"\
+			"    - openvpn"\
+			"    - pe"\
+			"    - radius"\
+			"    - rfb"\
+			"    - rdp"\
+			"    - signatures"\
+			"    - sip"\
+			"    - smb_files"\
+			"    - smb_mapping"\
+			"    - smtp"\
+			"    - snmp"\
+			"    - software"\
+			"    - ssh"\
+			"    - ssl"\
+			"    - syslog"\
+			"    - telnet"\
+			"    - tunnel"\
+			"    - weird"\
+			"    - mysql"\
+			"    - socks"\
+			"    - x509" >> "$zeeklogs_pillar"
 	# Disable syslog log by default
 	else
 		printf '%s\n'\
@@ -2099,7 +2126,4 @@ zeek_logs_enabled() {
 			"    - socks"\
 			"    - x509" >> "$zeeklogs_pillar"
 	fi
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }

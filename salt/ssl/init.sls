@@ -92,7 +92,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
 # Create a cert for Redis encryption
 /etc/pki/redis.key:
   x509.private_key_managed:
@@ -390,7 +390,7 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-searchnode', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
    
 fbcertdir:
   file.directory:
@@ -527,7 +527,7 @@ fleetkeyperms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-node', 'so-searchnode'] %}
+{% if grains['role'] == 'so-node' %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:

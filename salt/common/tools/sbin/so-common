@@ -33,15 +33,21 @@ header() {
 
 lookup_pillar() {
     key=$1
-    cat /opt/so/saltstack/local/pillar/global.sls | grep $key | awk '{print $2}'
+    salt-call --no-color  pillar.get global:${key} --out=newline_values_only
 }
 
 lookup_pillar_secret() {
     key=$1
-    cat /opt/so/saltstack/local/pillar/secrets.sls | grep $key | awk '{print $2}'
+    salt-call --no-color  pillar.get secrets:${key} --out=newline_values_only
 }
 
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
+}
+
+check_password() {
+    local password=$1
+    echo "$password" | egrep -v "'|\"|\\\\" > /dev/null 2>&1
+    return $?
 }

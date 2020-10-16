@@ -56,6 +56,12 @@ salttmp:
 
 # Install epel
 {% if grains['os'] == 'CentOS' %}
+repair_yumdb:
+  cmd.run:
+    - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
+    - onlyif:
+      - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
+
 epel:
   pkg.installed:
     - skip_suggestions: True
@@ -190,6 +196,40 @@ sensorrotateconf:
     - month: '*'
     - dayweek: '*'
 
+{% endif %}
+
+commonlogrotatescript:
+  file.managed:
+    - name: /usr/local/bin/common-rotate
+    - source: salt://common/cron/common-rotate
+    - mode: 755
+
+commonlogrotateconf:
+  file.managed:
+    - name: /opt/so/conf/log-rotate.conf
+    - source: salt://common/files/log-rotate.conf
+    - template: jinja
+    - mode: 644
+
+/usr/local/bin/common-rotate:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+{% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
+# Add config backup
+/usr/sbin/so-config-backup > /dev/null 2>&1:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 {% endif %}
 
 # Make sure Docker is always running
