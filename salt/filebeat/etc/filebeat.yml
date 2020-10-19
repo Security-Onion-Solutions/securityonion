@@ -74,7 +74,6 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
-{%- if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
 - type: udp
   enabled: true
   host: "0.0.0.0:514"
@@ -100,6 +99,8 @@ filebeat.inputs:
   - drop_fields:
       fields: ["source", "prospector", "input", "offset", "beat"]
   fields_under_root: true
+
+{%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
 - type: log
