@@ -8,31 +8,21 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-got_root() {
+. /usr/sbin/so-common
 
-  # Make sure you are root
-  if [ "$(id -u)" -ne 0 ]; then
-          echo "This script must be run using sudo!"
-          exit 1
-  fi
-
-}
-
-# Make sure the user is root
-got_root
-
-if [[ $# < 1 || $# > 2 ]]; then
-  echo "Usage: $0 <list|add|update|delete|validate|valemail|valpass> [email]"
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "Usage: $0 <list|add|update|enable|disable|validate|valemail|valpass> [email]"
   echo ""
   echo "     list: Lists all user email addresses currently defined in the identity system"
   echo "      add: Adds a new user to the identity system; requires 'email' parameter"
   echo "   update: Updates a user's password; requires 'email' parameter"
-  echo "   delete: Deletes an existing user; requires 'email' parameter"
+  echo "   enable: Enables a user; requires 'email' parameter"
+  echo "  disable: Disables a user; requires 'email' parameter"
   echo " validate: Validates that the given email address and password are acceptable for defining a new user; requires 'email' parameter"
   echo " valemail: Validates that the given email address is acceptable for defining a new user; requires 'email' parameter"
   echo "  valpass: Validates that a password is acceptable for defining a new user"
   echo ""
-  echo " Note that the password can be piped into stdin to avoid prompting for it."
+  echo " Note that the password can be piped into STDIN to avoid prompting for it"
   exit 1
 fi
 
@@ -74,7 +64,7 @@ function findIdByEmail() {
   email=$1
 
   response=$(curl -Ss ${kratosUrl}/identities)
-  identityId=$(echo "${response}" | jq ".[] | select(.addresses[0].value == \"$email\") | .id")
+  identityId=$(echo "${response}" | jq ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
   echo $identityId
 }
 
@@ -100,14 +90,16 @@ function validateEmail() {
 function updatePassword() {
   identityId=$1
   
-  # Read password from stdin (show prompt only if no stdin was piped in)
-  test -t 0
-  if [[ $? == 0 ]]; then
-    echo "Enter new password:"
-  fi
-  read -s password
+  if [ -z "$password" ]; then
+    # Read password from stdin (show prompt only if no stdin was piped in)
+    test -t 0
+    if [[ $? == 0 ]]; then
+      echo "Enter new password:"
+    fi
+    read -rs password
 
-  validatePassword "$password"
+    validatePassword "$password"
+  fi
 
   if [[ -n $identityId ]]; then
     # Generate password hash
@@ -124,7 +116,7 @@ function listUsers() {
   response=$(curl -Ss ${kratosUrl}/identities)
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  echo "${response}" | jq -r ".[] | .addresses[0].value" | sort
+  echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort
 }
 
 function createUser() {
@@ -133,17 +125,8 @@ function createUser() {
   now=$(date -u +%FT%TZ)
   addUserJson=$(cat <<EOF
 {
-  "addresses": [
-    {
-      "expires_at": "2099-01-31T12:00:00Z",
-      "value": "${email}",
-      "verified": true,
-      "verified_at": "${now}",
-      "via": "so-add-user"
-    }
-  ],
   "traits": {"email":"${email}"},
-  "traits_schema_id": "default"
+  "schema_id": "default"
 }
 EOF
   )
@@ -161,6 +144,36 @@ EOF
   fi
 
   updatePassword $identityId
+}
+
+function updateStatus() {
+  email=$1
+  status=$2
+
+  identityId=$(findIdByEmail "$email")
+  [[ ${identityId} == "" ]] && fail "User not found"
+
+  response=$(curl -Ss "${kratosUrl}/identities/$identityId")
+  [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
+
+  oldConfig=$(echo "select config from identity_credentials where identity_id=${identityId};" | sqlite3 "$databasePath")
+  if [[ "$status" == "locked" ]]; then
+    config=$(echo $oldConfig | sed -e 's/hashed/locked/')
+    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to lock credential record"
+
+    echo "delete from sessions where identity_id=${identityId};" | sqlite3 "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to invalidate sessions"    
+  else
+    config=$(echo $oldConfig | sed -e 's/locked/hashed/')
+    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to unlock credential record"
+  fi  
+
+  updatedJson=$(echo "$response" | jq ".traits.status = \"$status\" | del(.verifiable_addresses) | del(.id) | del(.schema_url)")
+  response=$(curl -Ss -XPUT ${kratosUrl}/identities/$identityId -d "$updatedJson")
+  [[ $? != 0 ]] && fail "Unable to mark user as locked"
+
 }
 
 function updateUser() {
@@ -188,8 +201,11 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     validateEmail "$email"
+    updatePassword
     createUser "$email"
-    echo "Successfully added new user"
+    echo "Successfully added new user to SOC"
+    check_container thehive && echo $password | so-thehive-user-add "$email"
+    check_container fleet && echo $password | so-fleet-user-add "$email"
     ;;
 
   "list")
@@ -205,12 +221,34 @@ case "${operation}" in
     echo "Successfully updated user"
     ;;
 
+  "enable")
+    verifyEnvironment
+    [[ "$email" == "" ]] && fail "Email address must be provided"
+
+    updateStatus "$email" 'active'
+    echo "Successfully enabled user"
+    check_container thehive && so-thehive-user-enable "$email" true
+    check_container fleet && so-fleet-user-enable "$email" true   
+    ;;
+
+  "disable")
+    verifyEnvironment
+    [[ "$email" == "" ]] && fail "Email address must be provided"
+
+    updateStatus "$email" 'locked'
+    echo "Successfully disabled user"
+    check_container thehive && so-thehive-user-enable "$email" false
+    check_container fleet && so-fleet-user-enable "$email" false   
+    ;;    
+
   "delete")
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     deleteUser "$email"
-    echo "Successfully deleted user"  
+    echo "Successfully deleted user"
+    check_container thehive && so-thehive-user-enable "$email" false
+    check_container fleet && so-fleet-user-enable "$email" false
     ;;
 
   "validate")

@@ -21,39 +21,30 @@
 		"properties": ["ip", "country_iso_code", "country_name", "continent_name", "region_iso_code", "region_name", "city_name", "timezone", "location"]
 	}
     },
-    { 
-	"split":  {
-		"field": "_index",
-		"target_field": "index_name_prefix",
-		"separator": "-"
-	}
-    },
-    { 
-	"date_index_name": {
-        	"field": "@timestamp",
-	        "index_name_prefix": "{{index_name_prefix.0}}-{{index_name_prefix.1}}-",
-        	"date_rounding": "d",
-	        "ignore_failure": true,
-        	"index_name_format": "yyyy.MM.dd"
-        }
-    },  
-    { "set":         { "if": "ctx.event?.severity == 1",   "field": "event.severity_label", "value": "low", "override": true }  },
-    { "set":         { "if": "ctx.event?.severity == 2",   "field": "event.severity_label", "value": "medium", "override": true }  },
-    { "set":         { "if": "ctx.event?.severity == 3",   "field": "event.severity_label", "value": "high", "override": true }  },
-    { "set":         { "if": "ctx.event?.severity == 4",   "field": "event.severity_label", "value": "critical", "override": true }  },
-    { "rename":         { "field": "module",              "target_field": "event.module",                  "ignore_failure": true, "ignore_missing": true  } },
-    { "rename":         { "field": "dataset",              "target_field": "event.dataset",                  "ignore_failure": true, "ignore_missing": true  } },
-    { "rename":         { "field": "category",              "target_field": "event.category",                  "ignore_missing": true  } },
-    { "rename":         { "field": "message2.community_id", "target_field": "network.community_id",  "ignore_failure": true,  "ignore_missing": true  } },
-    { "lowercase":         { "field": "event.dataset", "ignore_failure": true,  "ignore_missing": true  } },    
+    { "set":             { "if": "ctx.event?.severity == 1",   "field": "event.severity_label", "value": "low", "override": true }  },
+    { "set":             { "if": "ctx.event?.severity == 2",   "field": "event.severity_label", "value": "medium", "override": true }  },
+    { "set":             { "if": "ctx.event?.severity == 3",   "field": "event.severity_label", "value": "high", "override": true }  },
+    { "set":             { "if": "ctx.event?.severity == 4",   "field": "event.severity_label", "value": "critical", "override": true }  },
+    { "rename":          { "field": "fields.category",              "target_field": "event.category",                  "ignore_failure": true, "ignore_missing": true  } },
+    { "rename":          { "field": "fields.module",              "target_field": "event.module",                  "ignore_failure": true, "ignore_missing": true  } },
+    { "rename":          { "field": "module",              "target_field": "event.module",                  "ignore_failure": true, "ignore_missing": true  } },
+    { "rename":          { "field": "dataset",             "target_field": "event.dataset",                "ignore_failure": true, "ignore_missing": true  } },
+    { "rename":          { "field": "category",            "target_field": "event.category",              "ignore_failure": true, "ignore_missing": true  } },
+    { "rename":          { "field": "message2.community_id", "target_field": "network.community_id",  "ignore_failure": true,  "ignore_missing": true  } },
+    { "lowercase":       { "field": "event.dataset", "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "destination.port", "type": "integer",  "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "source.port", "type": "integer",  "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "log.id.uid", "type": "string",  "ignore_failure": true,  "ignore_missing": true  } },
+    { "convert":         { "field": "agent.id", "type": "string",  "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "event.severity", "type": "integer",  "ignore_failure": true,  "ignore_missing": true  } },
-    { 
-        "remove": {
-                "field": [ "index_name_prefix", "message2", "type" ],
-                "ignore_failure": true
+    { "remove":          { "field": [ "message2", "type", "fields", "category", "module", "dataset" ], "ignore_missing": true, "ignore_failure": true } }, 
+    {
+        "date_index_name": {
+                "field": "@timestamp",
+                "index_name_prefix": "{{ _index }}-",
+                "date_rounding": "d",
+                "ignore_failure": true,
+                "index_name_format": "yyyy.MM.dd"
         }
     }
   ]

@@ -2,6 +2,8 @@
 
 import logging
 import sys
+from time import time
+from os.path import getsize
 
 allowed_functions = ['is_enabled', 'zeek']
 states_to_apply = []
@@ -85,8 +87,21 @@ def zeek():
   else:
     zeek_restart = 0
 
-  __salt__['telegraf.send']('healthcheck zeek_restart=%i' % zeek_restart)
-  
+  #__salt__['telegraf.send']('healthcheck zeek_restart=%i' % zeek_restart)
+  # write out to file in /nsm/zeek/logs/ for telegraf to read for zeek restart
+  try:
+    if getsize("/nsm/zeek/logs/zeek_restart.log") >= 1000000:
+      openmethod = "w"
+    else:
+      openmethod = "a"
+  except FileNotFoundError:
+    openmethod = "a"
+
+  influxtime = int(time() * 1000000000)
+  with open("/nsm/zeek/logs/zeek_restart.log", openmethod) as f:
+    f.write('healthcheck zeek_restart=%i %i\n' % (zeek_restart, influxtime))
+
+
   if calling_func == 'execute' and zeek_restart:
     apply_states()
   

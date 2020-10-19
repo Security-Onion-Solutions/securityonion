@@ -12,12 +12,18 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'logstash' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
-{% if FEATURES %}
+{%- if FEATURES is sameas true %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
@@ -127,7 +133,7 @@ importdir:
 # Create the logstash data directory
 nsmlsdir:
   file.directory:
-    - name: /nsm/logstash
+    - name: /nsm/logstash/tmp
     - user: 931
     - group: 939
     - makedirs: True
@@ -146,6 +152,8 @@ so-logstash:
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
+    - extra_hosts:
+      - {{ MANAGER }}:{{ MANAGERIP }}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
@@ -165,12 +173,19 @@ so-logstash:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
+      {% if grains['role'] == 'so-heavynode' %}
+      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
+      {% else %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
+      {% endif %}
+      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
+      - /etc/pki/ca.cer:/ca/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
-      - /opt/so/wazuh/logs/alerts:/wazuh/alerts:ro
-      - /opt/so/wazuh/logs/archives:/wazuh/archives:ro
+      - /nsm/wazuh/logs/alerts:/wazuh/alerts:ro
+      - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
       {%- endif %}
@@ -185,3 +200,11 @@ so-logstash:
 {% for TEMPLATE in TEMPLATES %}
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
+
+{% else %}
+
+logstash_state_not_allowed:
+  test.fail_without_changes:
+    - name: logstash_state_not_allowed
+
+{% endif %}

@@ -5,6 +5,9 @@
 # to the list predefined by the role / minion id affix
 {% macro append_containers(pillar_name, k, compare )%}
   {% if salt['pillar.get'](pillar_name~':'~k, {}) != compare %}
+    {% if k == 'enabled' %}
+      {% set k = pillar_name %}
+    {% endif %}
     {% from 'common/maps/'~k~'.map.jinja' import docker as d with context %}
     {% for li in d['containers'] %}
       {{ docker['containers'].append(li) }}
@@ -20,8 +23,8 @@
 
 {% if role in ['eval', 'managersearch', 'manager', 'standalone'] %}
   {{ append_containers('manager', 'grafana', 0) }}
-  {{ append_containers('static', 'fleet_manager', 0) }}
-  {{ append_containers('manager', 'wazuh', 0) }}
+  {{ append_containers('global', 'fleet_manager', 0) }}
+  {{ append_containers('global', 'wazuh', 0) }}
   {{ append_containers('manager', 'thehive', 0) }}
   {{ append_containers('manager', 'playbook', 0) }}
   {{ append_containers('manager', 'freq', 0) }}
@@ -29,11 +32,11 @@
 {% endif %}
 
 {% if role in ['eval', 'heavynode', 'sensor', 'standalone'] %}
-  {{ append_containers('static', 'strelka', 0) }}
+  {{ append_containers('strelka', 'enabled', 0) }}
 {% endif %}
 
 {% if role in ['heavynode', 'standalone'] %}
-  {{ append_containers('static', 'zeekversion', 'SURICATA') }}
+  {{ append_containers('global', 'mdengine', 'SURICATA') }}
 {% endif %}
 
 {% if role == 'searchnode' %}
@@ -41,5 +44,5 @@
 {% endif %}
 
 {% if role == 'sensor' %}
-  {{ append_containers('static', 'zeekversion', 'SURICATA') }}
+  {{ append_containers('global', 'mdengine', 'SURICATA') }}
 {% endif %}

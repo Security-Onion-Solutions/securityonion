@@ -6,11 +6,79 @@
     "number_of_replicas":0,
     "number_of_shards":1,
     "index.refresh_interval":"30s",
-    "index.routing.allocation.require.box_type":"hot"
+    "index.routing.allocation.require.box_type":"hot",
+    "index.mapping.total_fields.limit": "1500",
+    "analysis": {
+      "analyzer": {
+        "es_security_analyzer": {
+          "type": "custom",
+          "filter": [ "path_hierarchy_pattern_filter", "lowercase" ],
+          "tokenizer": "whitespace"
+        },
+        "es_security_search_analyzer": {
+          "type": "custom",
+          "filter": [ "lowercase" ],
+          "tokenizer": "whitespace"
+        },
+        "es_security_search_quote_analyzer": {
+          "type": "custom",
+          "filter": [ "lowercase" ],
+          "tokenizer": "whitespace"
+        }
+      },
+      "filter" : {
+        "path_hierarchy_pattern_filter": {
+          "type" : "pattern_capture",
+          "preserve_original": true,
+          "patterns": [
+            "((?:[^\\\\]*\\\\)*)(.*)",
+            "((?:[^/]*/)*)(.*)"
+          ]
+        }
+      }
+    }
   },
   "mappings":{
        "dynamic":false,
        "date_detection":false,
+       "dynamic_templates": [
+       {
+          "ip_address": {
+            "match_mapping_type": "string",
+            "path_match": "*.ip",
+            "mapping": {
+              "type": "ip"
+            }
+          }
+       },
+       {
+          "port": {
+            "match_mapping_type": "string",
+            "path_match": "*.port",
+            "mapping": {
+              "type": "integer"
+            }
+          }
+       },
+       {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                 "type": "keyword"
+               },
+               "security": {
+                 "type": "text",
+                 "analyzer": "es_security_analyzer",
+                 "search_analyzer": "es_security_search_analyzer",
+                 "search_quote_analyzer": "es_security_search_quote_analyzer"
+               }
+             }
+            }
+          }
+       }],
        "properties":{
         "@timestamp":{
           "type":"date"
@@ -18,7 +86,7 @@
         "@version":{
           "type":"keyword"
         },
-  "osquery":{
+        "osquery":{
           "type":"object",
           "dynamic":true
         },
@@ -85,7 +153,7 @@
           "type":"object",
           "dynamic": true
         },
-	"client":{
+	      "client":{
           "type":"object",
           "dynamic": true
         },
@@ -177,14 +245,36 @@
           "type":"object",
           "dynamic": true
         },
+        "import":{
+          "type":"object",
+          "dynamic": true
+        },
         "ingest":{
           "type":"object",
           "dynamic": true
+        },
+        "intel":{
+          "type":"object",
+          "dynamic": true,
+          "properties":{
+            "indicator":{
+              "type":"text",
+              "fields":{
+                "keyword":{
+                  "type":"keyword"
+                }
+              }
+            }
+          } 
         },
         "interface":{
           "type":"object",
           "dynamic": true
         },
+	"ip":{
+          "type":"object",
+          "dynamic": true
+        }, 
 	"irc":{
           "type":"object",
           "dynamic": true
@@ -213,7 +303,7 @@
           "type":"object",
           "dynamic": true
         },
-	"mysql":{
+	      "mysql":{
           "type":"object",
           "dynamic": true
         },
@@ -221,7 +311,7 @@
           "type":"object",
           "dynamic": true
         },
-	"notice":{
+	      "notice":{
           "type":"object",
           "dynamic": true
         },
@@ -269,7 +359,7 @@
           "type":"object",
           "dynamic": true
         },
-	"request":{
+	      "request":{
           "type":"object",
           "dynamic": true
         },
@@ -279,9 +369,17 @@
         },
         "rule":{
           "type":"object",
-          "dynamic": true
+          "dynamic":true,
+          "properties":{
+            "score":{
+              "type":"long"
+            },
+            "uuid":{
+              "type":"keyword"
+            }
+          }
         },
-	"scan":{
+	      "scan":{
           "type":"object",
           "dynamic": true
         },
@@ -317,7 +415,7 @@
           "type":"object",
           "dynamic": true
         },
-	"source":{
+	      "source":{
           "type":"object",
           "dynamic": true
         },
@@ -329,7 +427,7 @@
           "type":"object",
           "dynamic": true
         },
-	"syslog":{
+	      "syslog":{
           "type":"object",
           "dynamic": true
         },
@@ -383,8 +481,19 @@
         },
         "winlog":{
           "type":"object",
-          "dynamic": true
-        },
+          "dynamic": true,
+          "properties":{
+            "event_id":{
+              "type":"long"
+            },
+            "event_data":{
+              "type":"object"
+            },
+            "version":{
+              "type":"long"
+            }
+        }
+      },
         "x509":{
           "type":"object",
           "dynamic": true

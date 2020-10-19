@@ -1,7 +1,7 @@
 
 #!/bin/bash
 
-{%- if grains['role'] in ['so-node', 'so-searchnode', 'so-heavynode'] %}
+{%- if grains['role'] in ['so-node', 'so-heavynode'] %}
   {%- set ELASTICSEARCH_HOST = salt['pillar.get']('elasticsearch:mainip', '') -%}  
   {%- set ELASTICSEARCH_PORT = salt['pillar.get']('elasticsearch:es_port', '') -%}
   {%- set LOG_SIZE_LIMIT = salt['pillar.get']('elasticsearch:log_size_limit', '') -%}
@@ -11,7 +11,7 @@
   {%- set LOG_SIZE_LIMIT = salt['pillar.get']('manager:log_size_limit', '') -%}
 {%- endif -%}
 
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,20 +33,32 @@ LOG="/opt/so/log/curator/so-curator-closed-delete.log"
 
 # Check for 2 conditions:
 # 1. Are Elasticsearch indices using more disk space than LOG_SIZE_LIMIT?
-# 2. Are there any closed logstash-, or so- indices that we can delete?
+# 2. Are there any closed logstash- or so- indices that we can delete?
 # If both conditions are true, keep on looping until one of the conditions is false.
 while [[ $(du -hs --block-size=1GB /nsm/elasticsearch/nodes | awk '{print $1}' ) -gt "{{LOG_SIZE_LIMIT}}" ]] &&
-curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E "^      close (logstash-|so-)" > /dev/null; do
+{% if grains['role'] in ['so-node','so-heavynode'] %}
+curl -s -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E " close (logstash-|so-)" > /dev/null; do
+{% else %}
+curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E " close (logstash-|so-)" > /dev/null; do
+{% endif %}
 
 	# We need to determine OLDEST_INDEX.
 	# First, get the list of closed indices that are prefixed with "logstash-" or "so-".
 	# For example: logstash-ids-YYYY.MM.DD
 	# Then, sort by date by telling sort to use hyphen as delimiter and then sort on the third field.
 	# Finally, select the first entry in that sorted list.
-	OLDEST_INDEX=$(curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E "^      close (logstash-|so-)" | awk '{print $2}' | sort -t- -k3 | head -1)
-
+	{% if grains['role'] in ['so-node','so-heavynode'] %}
+	OLDEST_INDEX=$(curl -s -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E " close (logstash-|so-)" | awk '{print $2}' | sort -t- -k3 | head -1)
+	{% else %}
+	OLDEST_INDEX=$(curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices | grep -E " close (logstash-|so-)" | awk '{print $2}' | sort -t- -k3 | head -1)
+	{% endif %}
+	
 	# Now that we've determined OLDEST_INDEX, ask Elasticsearch to delete it.
+	{% if grains['role'] in ['so-node','so-heavynode'] %}
+	curl -XDELETE -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
+	{% else %}
 	curl -XDELETE {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
+	{% endif %}
 
 	# Finally, write a log entry that says we deleted it.
 	echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT ({{LOG_SIZE_LIMIT}} GB) - Index ${OLDEST_INDEX} deleted ..." >> ${LOG}

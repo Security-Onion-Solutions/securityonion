@@ -12,10 +12,16 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'manager' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set managerproxy = salt['pillar.get']('static:managerupdate', '0') %}
+{% set managerproxy = salt['pillar.get']('global:managerupdate', '0') %}
+{% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 socore_own_saltstack:
   file.directory:
@@ -74,5 +80,19 @@ so-aptcacherng:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+
+{% endif %}
+
+strelka_yara_update:
+  cron.present:
+    - user: root
+    - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
+{% else %}
+
+manager_state_not_allowed:
+  test.fail_without_changes:
+    - name: manager_state_not_allowed
 
 {% endif %}

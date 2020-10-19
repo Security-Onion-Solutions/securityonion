@@ -12,8 +12,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
 
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% if 'freqserver' in top_states %}
+
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 # Create the user
 fservergroup:
@@ -51,4 +55,12 @@ so-freq:
     - user: freqserver
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
+
+{% else %}
+
+freqserver_state_not_allowed:
+  test.fail_without_changes:
+    - name: freqserver_state_not_allowed
+
+{% endif %}
 

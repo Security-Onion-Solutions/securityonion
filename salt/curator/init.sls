@@ -1,5 +1,10 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'curator' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
 # Curator
@@ -130,4 +135,12 @@ so-curator:
 # Segment Merge
 
 # End Curator Cron Jobs
+{% endif %}
+
+{% else %}
+
+curator_state_not_allowed:
+  test.fail_without_changes:
+    - name: curator_state_not_allowed
+
 {% endif %}

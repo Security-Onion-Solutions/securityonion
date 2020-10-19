@@ -1,8 +1,9 @@
 base:
   '*':
     - patch.needs_restarting
+    - logrotate
 
-  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone':
+  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
 
@@ -13,22 +14,23 @@ base:
     - logstash.search
     - elasticsearch.search
 
-  '*_sensor':
-    - static
-    - zeeklogs
-    - healthcheck.sensor
-    - minions.{{ grains.id }}
-
-  '*_manager or *_managersearch':
-    - match: compound
-    - static
-    - data.*
-    - secrets
-    - minions.{{ grains.id }}
-
   '*_manager':
     - logstash
     - logstash.manager
+    - elasticsearch.manager
+
+  '*_manager or *_managersearch':
+    - match: compound
+    - data.*
+    - secrets
+    - global
+    - minions.{{ grains.id }}
+
+  '*_sensor':
+    - zeeklogs
+    - healthcheck.sensor
+    - global
+    - minions.{{ grains.id }}
 
   '*_eval':
     - data.*
@@ -36,7 +38,7 @@ base:
     - secrets
     - healthcheck.eval
     - elasticsearch.eval
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_standalone':
@@ -48,35 +50,42 @@ base:
     - zeeklogs
     - secrets
     - healthcheck.standalone
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_node':
-    - static
+    - global
     - minions.{{ grains.id }}
 
   '*_heavynode':
-    - static
     - zeeklogs
+    - global
     - minions.{{ grains.id }}
 
   '*_helix':
-    - static
     - fireeye
     - zeeklogs
     - logstash
     - logstash.helix
+    - global
     - minions.{{ grains.id }}
 
   '*_fleet':
-    - static
     - data.*
     - secrets
+    - global
     - minions.{{ grains.id }}
 
   '*_searchnode':
-    - static
     - logstash
     - logstash.search
     - elasticsearch.search
+    - global
+    - minions.{{ grains.id }}
+
+  '*_import':
+    - zeeklogs
+    - secrets
+    - elasticsearch.eval
+    - global
     - minions.{{ grains.id }}

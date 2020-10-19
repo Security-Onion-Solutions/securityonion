@@ -1,8 +1,13 @@
 #!/bin/bash
-# {%- set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
-# {%- set THEHIVEUSER = salt['pillar.get']('static:hiveuser', 'hiveadmin') %}
-# {%- set THEHIVEPASSWORD = salt['pillar.get']('static:hivepassword', 'hivechangeme') %}
-# {%- set THEHIVEKEY = salt['pillar.get']('static:hivekey', '') %}
+# {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+# {%- set THEHIVEUSER = salt['pillar.get']('global:hiveuser', 'hiveadmin') %}
+# {%- set THEHIVEPASSWORD = salt['pillar.get']('global:hivepassword', 'hivechangeme') %}
+# {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
+
+thehive_clean(){
+    sed -i '/^  hiveuser:/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/^  hivepassword:/d' /opt/so/saltstack/local/pillar/global.sls 
+}
 
 thehive_init(){
     sleep 120
@@ -49,6 +54,7 @@ thehive_init(){
 }
 
 if [ -f /opt/so/state/thehive.txt ]; then
+    thehive_clean
     exit 0
 else
     rm -f garbage_file
@@ -61,4 +67,5 @@ else
     rm -f garbage_file
     sleep 5
     thehive_init
+    thehive_clean
 fi

@@ -12,23 +12,32 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'elasticsearch' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 
-{% if FEATURES %}
-  {% set FEATURES = "-features" %}
+
+{%- if FEATURES is sameas true %}
+  {% set FEATUREZ = "-features" %}
 {% else %}
-  {% set FEATURES = '' %}
+  {% set FEATUREZ = '' %}
 {% endif %}
 
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
   {% set esheap = salt['pillar.get']('manager:esheap', '') %}
+  {% set ismanager = True %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
+  {% set ismanager = False %}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
@@ -36,6 +45,46 @@
 vm.max_map_count:
   sysctl.present:
     - value: 262144
+
+{% if ismanager %}
+# We have to add the Manager CA to the CA list
+cascriptsync:
+  file.managed:
+    - name: /usr/sbin/so-catrust
+    - source: salt://elasticsearch/files/scripts/so-catrust
+    - user: 939
+    - group: 939
+    - mode: 750
+    - template: jinja
+
+# Run the CA magic
+cascriptfun:
+  cmd.run:
+    - name: /usr/sbin/so-catrust
+
+{% endif %}
+
+# Move our new CA over so Elastic and Logstash can use SSL with the internal CA
+catrustdir:
+  file.directory:
+    - name: /opt/so/conf/ca
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+cacertz:
+  file.managed:
+    - name: /opt/so/conf/ca/cacerts
+    - source: salt://common/cacerts
+    - user: 939
+    - group: 939
+
+capemz:
+  file.managed:
+    - name: /opt/so/conf/ca/tls-ca-bundle.pem
+    - source: salt://common/tls-ca-bundle.pem
+    - user: 939
+    - group: 939
 
 # Add ES Group
 elasticsearchgroup:
@@ -95,6 +144,14 @@ esyml:
     - group: 939
     - template: jinja
 
+sotls:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/sotls.yml
+    - source: salt://elasticsearch/files/sotls.yml
+    - user: 930
+    - group: 939
+    - template: jinja
+
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
@@ -126,18 +183,23 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
+    - extra_hosts: 
+      - {{ grains.host }}:{{ NODEIP }}
+      {%- if ismanager %}
+      {%- if salt['pillar.get']('nodestab', {}) %}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
+      {%- endfor %}
+      {%- endif %}
+      {%- endif %}
     - environment:
       - discovery.type=single-node
-      #- bootstrap.memory_lock=true
-      #- cluster.name={{ esclustername }}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
-      #- http.host=0.0.0.0
-      #- transport.host=127.0.0.1
-    - ulimits:
+      ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
@@ -149,6 +211,16 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
+      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
+      - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
+
+    - watch:
+      - file: cacertz
+      - file: esyml
+      - file: esingestconf
+      - file: so-elasticsearch-pipelines-file
 
 so-elasticsearch-pipelines-file:
   file.managed:
@@ -157,6 +229,7 @@ so-elasticsearch-pipelines-file:
     - user: 930
     - group: 939
     - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines:
  cmd.run:
@@ -166,9 +239,18 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] and TEMPLATES %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-node', 'so-import'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
-    - name: /usr/sbin/so-elasticsearch-templates
+    - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
+    - template: jinja
+{% endif %}
+
+{% else %}
+
+elasticsearch_state_not_allowed:
+  test.fail_without_changes:
+    - name: elasticsearch_state_not_allowed
+
 {% endif %}

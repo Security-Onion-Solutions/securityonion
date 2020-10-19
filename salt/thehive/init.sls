@@ -1,6 +1,11 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'thehive' in top_states %}
+
 {% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 thehiveconfdir:
   file.directory:
@@ -137,3 +142,11 @@ thehivescript:
     - cwd: /opt/so
     - template: jinja
     - hide_output: True
+
+{% else %}
+
+thehive_state_not_allowed:
+  test.fail_without_changes:
+    - name: thehive_state_not_allowed
+
+{% endif %}

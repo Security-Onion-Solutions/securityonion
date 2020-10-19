@@ -12,8 +12,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
 
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% if 'nodered' in top_states %}
+
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 # Create the nodered group
 noderedgroup:
@@ -75,3 +79,10 @@ so-nodered-flows:
     - name: /usr/sbin/so-nodered-load-flows
     - cwd: /
 
+{% else %}
+
+nodered_state_not_allowed:
+  test.fail_without_changes:
+    - name: nodered_state_not_allowed
+
+{% endif %}

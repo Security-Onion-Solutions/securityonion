@@ -12,48 +12,60 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
 
-{% set access_key = salt['pillar.get']('manager:access_key', '') %}
-{% set access_secret = salt['pillar.get']('manager:access_secret', '') %}
+{% if 'minio' in top_states %}
+
+{% set access_key = salt['pillar.get']('minio:access_key', '') %}
+{% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
 
 # Minio Setup
 minioconfdir:
   file.directory:
-    - name: /opt/so/conf/minio/etc
+    - name: /opt/so/conf/minio/etc/certs
     - user: 939
     - group: 939
     - makedirs: True
 
 miniodatadir:
   file.directory:
-    - name: /nsm/minio/data
+    - name: /nsm/minio/data/
     - user: 939
     - group: 939
     - makedirs: True
 
-#redisconfsync:
-#  file.recurse:
-#    - name: /opt/so/conf/redis/etc
-#    - source: salt://redis/etc
-#    - user: 939
-#    - group: 939
-#    - template: jinja
+logstashbucket:
+  file.directory:
+    - name: /nsm/minio/data/logstash
+    - user: 939
+    - group: 939
+    - makedirs: True
 
-minio/minio:
-  docker_image.present
-
-minio:
+so-minio:
   docker_container.running:
-    - image: minio/minio
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-minio:{{ VERSION }}
     - hostname: so-minio
     - user: socore
     - port_bindings:
-      - 0.0.0.0:9000:9000
+      - 0.0.0.0:9595:9595
     - environment:
       - MINIO_ACCESS_KEY: {{ access_key }}
       - MINIO_SECRET_KEY: {{ access_secret }}
     - binds:
       - /nsm/minio/data:/data:rw
-      - /opt/so/conf/minio/etc:/root/.minio:rw
-    - entrypoint: "/usr/bin/docker-entrypoint.sh server /data"
-    - network_mode: so-elastic-net
+      - /opt/so/conf/minio/etc:/.minio:rw
+      - /etc/pki/minio.key:/.minio/certs/private.key:ro
+      - /etc/pki/minio.crt:/.minio/certs/public.crt:ro
+    - entrypoint: "/usr/bin/docker-entrypoint.sh server --certs-dir /.minio/certs --address :9595 /data"
+
+{% else %}
+
+minio_state_not_allowed:
+  test.fail_without_changes:
+    - name: minio_state_not_allowed
+
+{% endif %}

@@ -1,5 +1,5 @@
 #!/bin/bash
 
-INFLUXSIZE=$(du -s -B1 /host/nsm/influxdb | awk {'print $1'})
+INFLUXSIZE=$(du -s -k /host/nsm/influxdb | awk {'print $1'})
 
-echo "influxsize bytes=$INFLUXSIZE"
+echo "influxsize kbytes=$INFLUXSIZE"

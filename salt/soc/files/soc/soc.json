@@ -1,5 +1,14 @@
-{%- set MANAGERIP = salt['pillar.get']('static:managerip', '') -%}
-{%- set SENSORONIKEY = salt['pillar.get']('static:sensoronikey', '') -%}
+{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
+{%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
+{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
+{%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
+{%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
+{%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
+{%- import_json "soc/files/soc/hunt.actions.json" as hunt_actions %}
+{%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -7,6 +16,11 @@
     "baseUrl": "/",
     "maxPacketCount": 5000,
     "htmlDir": "html",
+    {%- if ISAIRGAP is sameas true -%}
+    "airgapEnabled": true,
+    {%- else %}
+    "airgapEnabled": false,
+    {%- endif %}
     "modules": {
       "filedatastore": {
         "jobDir": "jobs"
@@ -16,138 +30,72 @@
       },
       "elastic": {
         "hostUrl": "http://{{ MANAGERIP }}:9200",
+        {%- if salt['pillar.get']('nodestab', {}) %}
+        "remoteHostUrls": [
+        {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+        "https://{{ SN.split('_')|first }}:9200"{{ "," if not loop.last }}
+        {%- endfor %}
+        ],
+        {%- endif %}
         "username": "",
         "password": "",
         "verifyCert": false
       },
+{% if THEHIVEKEY != '' %}
+      "thehive": {
+        "hostUrl": "http://{{ MANAGERIP }}:9000/thehive",
+        "key": "{{ THEHIVEKEY }}",
+        "verifyCert": false
+      },
+{% endif %}
       "statickeyauth": {
         "anonymousCidr": "172.17.0.0/24",
         "apiKey": "{{ SENSORONIKEY }}"
       }
     },
     "client": {
+      {%- if ISAIRGAP is sameas true -%}
+      "docsUrl": "/docs/,
+      {%- else %}
+      "docsUrl": "https://docs.securityonion.net/en/2.3/",
+      {%- endif %}
       "hunt": {
+        "advanced": true,
+        "groupItemsPerPage": 10,
         "groupFetchLimit": 10,
+        "eventItemsPerPage": 10,
         "eventFetchLimit": 100,
-        "dateRangeMinutes": 1440,
+        "relativeTimeValue": 24,
+        "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "eventFields": {
-          "default": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.uid", "network.community_id", "event.dataset" ],
-          "bro_conn": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "protocol", "service", "log.id.uid" ],
-          "bro_dce_rpc": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "endpoint", "named_pipe", "operation", "log.id.uid" ],
-          "bro_dhcp": ["soc_timestamp", "source.ip", "destination.ip", "domain_name", "hostname", "message_types", "log.id.uid" ],
-          "bro_dnp3": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "fc_reply", "log.id.uid" ],
-          "bro_dns": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "protocol", "query", "query_type_name", "rcode_name", "log.id.uid" ],
-          "bro_dpd": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.uid" ],
-          "bro_files": ["soc_timestamp", "source.ip", "destination.ip", "log.id.flog.id.uid", "mimetype", "source", "log.id.uid" ],
-          "bro_ftp": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "ftp_argument", "ftp_command", "reply_code", "log.id.uid", "username" ],
-          "bro_http": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "method", "virtual_host", "status_code", "status_message", "log.id.uid" ],
-          "bro_intel": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "indicator", "indicator_type", "seen_where", "log.id.uid" ],
-          "bro_irc": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "irc_command", "log.id.uid", "value" ],
-          "bro_kerberos": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "client", "service", "request_type", "log.id.uid" ],
-          "bro_modbus": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "function", "log.id.uid" ],
-          "bro_mysql": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "mysql_argument", "mysql_command", "mysql_success", "response", "log.id.uid" ],
-          "bro_notice": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "note", "msg", "log.id.uid" ],
-          "bro_ntlm": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "hostname", "ntlm_success", "server_dns_computer_name", "server_nb_computer_name", "server_tree_name", "log.id.uid" ],
-          "bro_pe": ["soc_timestamp", "is_64bit", "is_exe", "machine", "os", "subsystem", "log.id.flog.id.uid" ],
-          "bro_radius": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.uid", "username", "framed_addr", "reply_msg", "result" ],
-          "bro_rdp": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "client_build", "client_name", "cookie", "encryption_level", "encryption_method", "keyboard_layout", "result", "security_protocol", "log.id.uid" ],
-          "bro_rfb": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "authentication_method", "auth", "share_flag", "desktop_name", "log.id.uid" ],
-          "bro_signatures"	: ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "note", "signature_id", "event_message", "sub_message", "signature_count", "host_count", "log.id.uid" ],
-          "bro_sip": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "method", "uri", "request_from", "request_to", "response_from", "response_to", "call_id", "subject", "user_agent", "status_code", "log.id.uid" ],
-          "bro_smb_files" 	: ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.flog.id.uid", "action", "path", "name", "size", "prev_name", "log.id.uid" ],
-          "bro_smb_mapping" 	: ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "path", "service", "share_type", "log.id.uid" ],
-          "bro_smtp": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "helo", "mail_from", "recipient_to", "from", "to", "cc", "reply_to", "subject", "useragent", "log.id.uid" ],
-          "bro_snmp": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "community", "version", "log.id.uid" ],
-          "bro_socks": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "log.id.uid" ],
-          "bro_software": ["soc_timestamp", "source.ip", "name", "software_type" ],
-          "bro_ssh": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "version", "hassh", "direction", "client", "server", "log.id.uid" ],
-          "bro_ssl": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "cipher", "curve", "server_name", "log.id.uid", "validation_status", "version" ],
-          "bro_syslog": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "facility", "protocol", "severity", "syslog-priority", "log.id.uid" ],
-          "bro_tunnels": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "tunnel_type", "action", "log.id.uid" ],
-          "bro_weird": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "name", "log.id.uid" ],
-          "bro_x509": ["soc_timestamp", "certificate_common_name", "certificate_country_code", "certificate_key_length", "issuer_organization", "log.id.id" ],
-          "cron"	: ["soc_timestamp", "message" ],
-          "anacron": ["soc_timestamp", "message" ],
-          "bluetoothd": ["soc_timestamp", "message" ],
-          "firewall": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "protocol", "direction", "interface", "action", "reason" ],
-          "ntpd"	: ["soc_timestamp", "message" ],
-          "ossec": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "alert_level", "classification", "description", "username", "escalated_user", "location", "process" ],
-          "pulseaudio": ["soc_timestamp", "message" ],
-          "snort": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "sid", "alert", "category", "classification", "severity" ],
-          "su"	: ["soc_timestamp", "message" ],
-          "sudo"	: ["soc_timestamp", "message" ],
-          "systemd": ["soc_timestamp", "message" ],
-          "sysmon": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "host.name", "event.dataset", "parent_image_path", "source_name", "task", "user.name" ],
-          "wineventlog": ["soc_timestamp", "source.ip", "source.port", "destination.ip", "destination.port", "host.name", "event.code", "event.dataset", "source_name", "task" ]
-        },
-        "queries": [
-          { "name": "Default Query", "description": "Show all events grouped by the origin host", "query": "* | groupby observer.name"},
-          { "name": "Log Type", "description": "Show all events grouped by module and dataset", "query": "* | groupby event.module event.dataset"},
-          { "name": "Elastalerts", "description": "", "query": "_type:elastalert | groupby rule.name"},
-          { "name": "Alerts", "description": "Show all alerts grouped by alert source", "query": "event.dataset: alert | groupby event.module"},
-          { "name": "NIDS Alerts", "description": "Show all NIDS alerts grouped by alert name", "query": "event.category: network AND event.dataset: alert | groupby rule.name"},
-          { "name": "Wazuh/OSSEC Alerts", "description": "Show all Wazuh alerts grouped by category", "query": "event.module:ossec AND event.dataset:alert | groupby rule.category"},
-          { "name": "Wazuh/OSSEC Commands", "description": "Show all Wazuh alerts grouped by command line", "query": "event.module:ossec AND event.dataset:alert | groupby process.command_line"},
-          { "name": "Wazuh/OSSEC Processes", "description": "Show all Wazuh alerts grouped by process name", "query": "event.module:ossec AND event.dataset:alert | groupby process.name"},
-          { "name": "Wazuh/OSSEC Users", "description": "Show all Wazuh alerts grouped by username", "query": "event.module:ossec AND event.dataset:alert | groupby user.name"},
-          { "name": "Sysmon Events", "description": "Show all Sysmon logs grouped by event type", "query": "event.module:sysmon | groupby event.dataset"},
-          { "name": "Sysmon Usernames", "description": "Show all Sysmon logs grouped by username", "query": "event.module:sysmon | groupby event.dataset, user.name.keyword"},
-          { "name": "Zeek Notice", "description": "Show notices from Zeek", "query": "event.dataset:notice | groupby notice.note notice.message"},
-          { "name": "Connections", "description": "Connections grouped by IP and Port", "query": "event.dataset:conn | groupby source.ip destination.ip network.protocol destination.port"},
-          { "name": "Connections", "description": "Connections grouped by Service", "query": "event.dataset:conn | groupby network.protocol destination.port"},
-          { "name": "Connections", "description": "Connections grouped by destination country", "query": "event.dataset:conn | groupby destination.geo.country_name"},
-          { "name": "Connections", "description": "Connections grouped by source country", "query": "event.dataset:conn | groupby source.geo.country_name"},
-          { "name": "DCE_RPC", "description": "DCE_RPC grouped by operation", "query": "event.dataset:dce_rpc | groupby dce_rpc.operation"},
-          { "name": "DHCP", "description": "DHCP leases", "query": "event.dataset:dhcp | groupby host.hostname host.domain"},
-          { "name": "DHCP", "description": "DHCP grouped by message type", "query": "event.dataset:dhcp | groupby dhcp.message_types"},
-          { "name": "DNP3", "description": "DNP3 grouped by reply", "query": "event.dataset:dnp3 | groupby dnp3.fc_reply"},
-          { "name": "DNS", "description": "DNS queries grouped by port", "query": "event.dataset:dns | groupby dns.query.name destination.port"},
-          { "name": "DNS", "description": "DNS queries grouped by type", "query": "event.dataset:dns | groupby dns.query.type_name destination.port"},
-          { "name": "DNS", "description": "DNS queries grouped by response code", "query": "event.dataset:dns | groupby dns.response.code_name destination.port"},
-          { "name": "DNS", "description": "DNS highest registered domain", "query": "event.dataset:dns | groupby dns.highest_registered_domain.keyword destination.port"},
-          { "name": "DNS", "description": "DNS grouped by parent domain", "query": "event.dataset:dns | groupby dns.parent_domain.keyword destination.port"},
-          { "name": "DPD", "description": "Dynamic Protocol Detection errors", "query": "event.dataset:dpd | groupby error.reason"},
-          { "name": "Files", "description": "Files grouped by mimetype", "query": "event.dataset:file | groupby file.mime_type source.ip"},
-          { "name": "Files", "description": "Files grouped by source", "query": "event.dataset:file | groupby file.source source.ip"},
-          { "name": "FTP", "description": "FTP grouped by argument", "query": "event.dataset:ftp | groupby ftp.argument"},
-          { "name": "FTP", "description": "FTP grouped by command", "query": "event.dataset:ftp | groupby ftp.command"},
-          { "name": "FTP", "description": "FTP grouped by username", "query": "event.dataset:ftp | groupby ftp.user"},
-          { "name": "HTTP", "description": "HTTP grouped by destination port", "query": "event.dataset:http | groupby destination.port"},
-          { "name": "HTTP", "description": "HTTP grouped by method", "query": "event.dataset:http | groupby http.method"},
-          { "name": "HTTP", "description": "HTTP grouped by status code and message", "query": "event.dataset:http | groupby http.status_code http.status_message"},
-          { "name": "HTTP", "description": "HTTP grouped by user agent", "query": "event.dataset:http | groupby http.useragent"},
-          { "name": "HTTP", "description": "HTTP grouped by virtual host", "query": "event.dataset:http | groupby http.virtual_host"},
-          { "name": "HTTP", "description": "HTTP with exe downloads", "query": "event.dataset:http AND file.resp_mime_types:dosexec | groupby http.virtual_host"},
-          { "name": "Intel", "description": "Intel framework hits grouped by indicator", "query": "event.dataset:intel | groupby intel.indicator"},
-          { "name": "IRC", "description": "IRC grouped by command", "query": "event.dataset:irc | groupby irc.command.type"},
-          { "name": "KERBEROS", "description": "KERBEROS grouped by service", "query": "event.dataset:kerberos | groupby kerberos.service"},
-          { "name": "MODBUS", "description": "MODBUS grouped by function", "query": "event.dataset:modbus | groupby modbus.function"},
-          { "name": "MYSQL", "description": "MYSQL grouped by command", "query": "event.dataset:mysql | groupby mysql.command"},
-          { "name": "NOTICE", "description": "Zeek notice logs grouped by note and message", "query": "event.dataset:notice | groupby notice.note notice.message"},
-          { "name": "NTLM", "description": "NTLM grouped by computer name", "query": "event.dataset:ntlm | groupby ntlm.server.dns.name"},
-          { "name": "PE", "description": "PE files list", "query": "event.dataset:pe | groupby file.machine file.os file.subsystem"},
-          { "name": "RADIUS", "description": "RADIUS grouped by username", "query": "event.dataset:radius | groupby user.name.keyword"},
-          { "name": "RDP", "description": "RDP grouped by client name", "query": "event.dataset:rdp | groupby client.name"},
-          { "name": "RFB", "description": "RFB grouped by desktop name", "query": "event.dataset:rfb | groupby rfb.desktop.name"},
-          { "name": "Signatures", "description": "Zeek signatures grouped by signature id", "query": "event.dataset:signatures | groupby signature_id"},
-          { "name": "SIP", "description": "SIP grouped by user agent", "query": "event.dataset:sip | groupby client.user_agent"},
-          { "name": "SMB_Files", "description": "SMB files grouped by action", "query": "event.dataset:smb_files | groupby file.action"},
-          { "name": "SMB_Mapping", "description": "SMB mapping grouped by path", "query": "event.dataset:smb_mapping | groupby smb.path"},
-          { "name": "SMTP", "description": "SMTP grouped by subject", "query": "event.dataset:smtp | groupby smtp.subject"},
-          { "name": "SNMP", "description": "SNMP grouped by version and string", "query": "event.dataset:snmp | groupby snmp.community snmp.version"},
-          { "name": "Software", "description": "List of software seen on the network", "query": "event.dataset:software | groupby software.type software.name"},
-          { "name": "SSH", "description": "SSH grouped by version", "query": "event.dataset:ssh | groupby ssh.version"},
-          { "name": "SSL", "description": "SSL grouped by version and server name", "query": "event.dataset:ssl | groupby ssl.version ssl.server_name"},
-          { "name": "SYSLOG", "description": "SYSLOG grouped by severity and facility ", "query": "event.dataset:syslog | groupby syslog.severity syslog.facility"},
-          { "name": "Tunnels", "description": "Tunnels grouped by action", "query": "event.dataset:tunnels | groupby event.action"},
-          { "name": "Weird", "description": "Zeek weird log grouped by name", "query": "event.dataset:weird | groupby weird.name"},
-          { "name": "x509", "description": "x.509 grouped by key length", "query": "event.dataset:x509 | groupby x509.certificate.key.length"},
-          { "name": "x509", "description": "x.509 grouped by issuer", "query": "event.dataset:x509 | groupby x509.certificate.issuer"},
-          { "name": "x509", "description": "x.509 grouped by subject", "query": "event.dataset:x509 | groupby x509.certificate.subject"},
-          { "name": "Firewall", "description": "Firewall events grouped by action", "query": "event_type:firewall | groupby action"}
-        ]
-      }
+        "dismissEnabled": false,
+        "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
+        "eventFields": {{ hunt_eventfields | json }},
+        "queryBaseFilter": "",
+        "queryToggleFilters": [],
+        "queries": {{ hunt_queries | json }},
+        "actions": {{ hunt_actions | json }}           
+      },
+      "alerts": {
+        "advanced": false,
+        "groupItemsPerPage": 50,
+        "groupFetchLimit": 500,
+        "eventItemsPerPage": 50,
+        "eventFetchLimit": 500,
+        "relativeTimeValue": 24,
+        "relativeTimeUnit": 30,
+        "mostRecentlyUsedLimit": 5,
+        "dismissEnabled": true,
+        "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
+        "eventFields": {{ alerts_eventfields | json }},
+        "queryBaseFilter": "event.dataset:alert",
+        "queryToggleFilters": [
+          { "name": "acknowledged", "filter": "event.acknowledged:true", "enabled": false, "exclusive": true },
+          { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true, "enablesToggles":["acknowledged"] }
+        ],
+        "queries": {{ alerts_queries | json }},
+        "actions": {{ alerts_actions | json }}        
+      }        
     }
   }
 }

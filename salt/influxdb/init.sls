@@ -1,7 +1,12 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'influxdb' in top_states %}
+
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -9,6 +14,14 @@
 influxconfdir:
   file.directory:
     - name: /opt/so/conf/influxdb/etc
+    - makedirs: True
+
+influxlogdir:
+  file.directory:
+    - name: /opt/so/log/influxdb
+    - dir_mode: 775
+    - user: 939
+    - group: 939
     - makedirs: True
 
 influxdbdir:
@@ -31,6 +44,7 @@ so-influxdb:
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
     - binds:
+      - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
       - /nsm/influxdb:/var/lib/influxdb:rw
       - /etc/pki/influxdb.crt:/etc/ssl/influxdb.crt:ro
@@ -39,5 +53,13 @@ so-influxdb:
       - 0.0.0.0:8086:8086
     - watch:
       - file: influxdbconf
+
+{% endif %}
+
+{% else %}
+
+influxdb_state_not_allowed:
+  test.fail_without_changes:
+    - name: influxdb_state_not_allowed
 
 {% endif %}

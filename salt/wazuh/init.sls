@@ -1,6 +1,11 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'wazuh' in top_states %}
+
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 # Add ossec group
 ossecgroup:
@@ -13,7 +18,7 @@ ossecm:
   user.present:
     - uid: 943
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -23,7 +28,7 @@ ossecr:
   user.present:
     - uid: 944
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -33,7 +38,7 @@ ossec:
   user.present:
     - uid: 945
     - gid: 945
-    - home: /opt/so/conf/wazuh
+    - home: /nsm/wazuh
     - createhome: False
     - allow_uid_change: True
     - allow_gid_change: True
@@ -42,16 +47,18 @@ wazuhpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      - wazuh-agent: 3.10.2-1
+      - wazuh-agent: 3.13.1-1
     - hold: True
     - update_holds: True
 
-wazuhdir:
+wazuhvarossecdir:
  file.directory:
-   - name: /opt/so/wazuh
-   - user: 945
-   - group: 945
-   - makedirs: True
+    - name: /var/ossec
+    - user: ossec
+    - group: ossec
+    - recurse:
+      - user
+      - group
 
 # Add Wazuh agent conf
 wazuhagentconf:
@@ -61,6 +68,13 @@ wazuhagentconf:
     - user: 0
     - group: 945
     - template: jinja
+
+wazuhdir:
+ file.directory:
+   - name: /nsm/wazuh
+   - user: 945
+   - group: 945
+   - makedirs: True
 
 # Wazuh agent registration script
 wazuhagentregister:
@@ -94,7 +108,7 @@ so-wazuh:
       - 0.0.0.0:1515:1515/tcp
       - 0.0.0.0:55000:55000
     - binds:
-      - /opt/so/wazuh:/var/ossec/data:rw
+      - /nsm/wazuh:/var/ossec/data:rw
 
 # Register the agent
 registertheagent:
@@ -113,3 +127,30 @@ wazuhagentservice:
   service.running:
     - name: wazuh-agent
     - enable: True
+
+/opt/so/conf/wazuh:
+  file.symlink:
+    - target: /nsm/wazuh/etc
+
+hidsruledir:
+ file.directory:
+   - name: /opt/so/rules/hids
+   - user: 939
+   - group: 939
+   - makedirs: True
+
+/opt/so/rules/hids/local_rules.xml:
+  file.symlink:
+    - target: /nsm/wazuh/etc/rules/local_rules.xml
+
+/opt/so/rules/hids/ruleset:
+  file.symlink:
+    - target: /nsm/wazuh/ruleset
+
+{% else %}
+
+wazuh_state_not_allowed:
+  test.fail_without_changes:
+    - name: wazuh_state_not_allowed
+
+{% endif %}

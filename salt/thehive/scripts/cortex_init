@@ -1,13 +1,19 @@
 #!/bin/bash
-# {%- set MANAGERIP = salt['pillar.get']('static:managerip', '') %}
-# {%- set CORTEXUSER = salt['pillar.get']('static:cortexuser', 'cortexadmin') %}
-# {%- set CORTEXPASSWORD = salt['pillar.get']('static:cortexpassword', 'cortexchangeme') %}
-# {%- set CORTEXKEY = salt['pillar.get']('static:cortexkey', '') %}
-# {%- set CORTEXORGNAME = salt['pillar.get']('static:cortexorgname', '') %}
-# {%- set CORTEXORGUSER = salt['pillar.get']('static:cortexorguser', '') %}
-# {%- set CORTEXORGUSERKEY = salt['pillar.get']('static:cortexorguserkey', '') %}
+# {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+# {%- set CORTEXUSER = salt['pillar.get']('global:cortexuser', 'cortexadmin') %}
+# {%- set CORTEXPASSWORD = salt['pillar.get']('global:cortexpassword', 'cortexchangeme') %}
+# {%- set CORTEXKEY = salt['pillar.get']('global:cortexkey', '') %}
+# {%- set CORTEXORGNAME = salt['pillar.get']('global:cortexorgname', '') %}
+# {%- set CORTEXORGUSER = salt['pillar.get']('global:cortexorguser', 'soadmin') %}
+# {%- set CORTEXORGUSERKEY = salt['pillar.get']('global:cortexorguserkey', '') %}
 
 default_salt_dir=/opt/so/saltstack/default
+
+cortex_clean(){
+    sed -i '/^  cortexuser:/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/^  cortexpassword:/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/^  cortexorguser:/d' /opt/so/saltstack/local/pillar/global.sls
+}
 
 cortex_init(){
     sleep 60
@@ -51,6 +57,7 @@ cortex_init(){
 }
 
 if [ -f /opt/so/state/cortex.txt ]; then
+    cortex_clean
     exit 0
 else
     rm -f garbage_file
@@ -63,4 +70,5 @@ else
     rm -f garbage_file
     sleep 5
     cortex_init
+    cortex_clean
 fi

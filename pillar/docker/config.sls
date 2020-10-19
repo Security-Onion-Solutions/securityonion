@@ -1,11 +1,11 @@
-{%- set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) -%}
-{%- set FLEETNODE = salt['pillar.get']('static:fleet_node', False) -%}
+{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
+{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
 {% set WAZUH = salt['pillar.get']('manager:wazuh', '0') %}
 {% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
-{% set ZEEKVER = salt['pillar.get']('static:zeekversion', 'COMMUNITY') %}
+{% set ZEEKVER = salt['pillar.get']('global:mdengine', 'COMMUNITY') %}
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
 eval:

@@ -1,16 +1,16 @@
-{%- if grains.role == 'so-heavynode' %}
-{%- set MANAGER = salt['pillar.get']('elasticsearch:mainip', '') %}
-{%- else %}
-{%- set MANAGER = salt['pillar.get']('static:managerip', '') %}
-{% endif -%}
+{%- set MANAGER = salt['grains.get']('master') %}
 {%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
+{% set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) %}
 
 input {
 	redis {
 		host => '{{ MANAGER }}'
+		port => 9696
+		ssl => true
 		data_type => 'list'
 		key => 'logstash:unparsed'
 		type => 'redis-input'
 		threads => {{ THREADS }}
+		batch_count => {{ BATCH }}
 	}
 }

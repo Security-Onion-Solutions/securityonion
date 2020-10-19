@@ -1,3 +1,4 @@
+{%- set PIPELINE = salt['pillar.get']('global:pipeline', 'minio') %}
 logstash:
   pipelines:
     search:

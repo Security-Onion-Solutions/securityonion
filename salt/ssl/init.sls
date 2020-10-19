@@ -1,17 +1,22 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'ssl' in top_states %}
+
 {% set manager = salt['grains.get']('master') %}
-{% set managerip = salt['pillar.get']('static:managerip', '') %}
+{% set managerip = salt['pillar.get']('global:managerip', '') %}
 {% set HOSTNAME = salt['grains.get']('host') %}
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
-{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('static:fleet_custom_hostname', None) %}
+{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
 
-{% if grains.id.split('_')|last in ['manager', 'eval', 'standalone'] %}
-    {% set trusttheca_text =  salt['mine.get'](grains.id, 'x509.get_pem_entries')[grains.id]['/etc/pki/ca.crt']|replace('\n', '') %}
+{% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import'] %}
+    {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
     {% set ca_server = grains.id %}
 {% else %}
-    {% set x509dict =  salt['mine.get']('*', 'x509.get_pem_entries') %}
+    {% set x509dict = salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
@@ -37,6 +42,34 @@ m2cryptopkgs:
       - python-m2crypto
 {% endif %}
 
+removefbcertdir:
+  file.absent:
+    - name: /etc/pki/filebeat.crt 
+    - onlyif: "[ -d /etc/pki/filebeat.crt ]"
+
+removefbp8dir:
+  file.absent:
+    - name: /etc/pki/filebeat.p8 
+    - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
+
+removeesp12dir:
+  file.absent:
+    - name: /etc/pki/elasticsearch.p12
+    - onlyif: "[ -d /etc/pki/elasticsearch.p12 ]"
+    
+/etc/pki/influxdb.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/influxdb.key') -%}
+    - prereq:
+      - x509: /etc/pki/influxdb.crt
+    {%- endif %}
+
 # Create a cert for the talking to influxdb
 /etc/pki/influxdb.crt:
   x509.certificate_managed:
@@ -47,10 +80,10 @@ m2cryptopkgs:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/influxdb.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 influxkeyperms:
   file.managed:
@@ -59,7 +92,56 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+# Create a cert for Redis encryption
+/etc/pki/redis.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
+    - prereq:
+      - x509: /etc/pki/redis.crt
+    {%- endif %}
+
+/etc/pki/redis.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/redis.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+
+rediskeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/redis.key
+    - mode: 640
+    - group: 939
+{% endif %}
+
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+/etc/pki/filebeat.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
+    - prereq:
+      - x509: /etc/pki/filebeat.crt
+    {%- endif %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -68,19 +150,22 @@ influxkeyperms:
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
 {% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.id}}
+    - CN: {{grains.host}}
 {% else %}
     - CN: {{manager}}
 {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/filebeat.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
+    - onchanges:
+      - x509: /etc/pki/filebeat.key
+
 
 fbperms:
   file.managed:
@@ -96,7 +181,8 @@ chownilogstashfilebeatp8:
     - mode: 640
     - user: 931
     - group: 939
-    
+
+  {% if grains.role != 'so-heavynode' %}
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -107,11 +193,28 @@ fbkeylink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.p8
     - target: /etc/pki/filebeat.p8
+    - user: socore
+    - group: socore
 
 fbcrtlink:
   file.symlink:
     - name: /opt/so/saltstack/local/salt/filebeat/files/filebeat.crt
     - target: /etc/pki/filebeat.crt
+    - user: socore
+    - group: socore
+
+/etc/pki/registry.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/registry.key') -%}
+    - prereq:
+      - x509: /etc/pki/registry.crt
+    {%- endif %}
 
 # Create a cert for the docker registry
 /etc/pki/registry.crt:
@@ -123,10 +226,10 @@ fbcrtlink:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/registry.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/registry.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 regkeyperms:
   file.managed:
@@ -134,6 +237,100 @@ regkeyperms:
     - name: /etc/pki/registry.key
     - mode: 640
     - group: 939
+
+/etc/pki/minio.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/minio.key') -%}
+    - prereq:
+      - x509: /etc/pki/minio.crt
+    {%- endif %}
+
+# Create a cert for minio
+/etc/pki/minio.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/minio.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/minio.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+
+miniokeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/minio.key
+    - mode: 640
+    - group: 939
+  {% endif %}
+# Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    - prereq:
+      - x509: /etc/pki/elasticsearch.crt
+    {%- endif %}
+
+/etc/pki/elasticsearch.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/elasticsearch.key
+    - CN: {{ manager }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
+
+ealstickeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.key
+    - mode: 640
+    - group: 930
+    
+elasticp12perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.p12
+    - mode: 640
+    - group: 930
+
+/etc/pki/managerssl.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
+    - prereq:
+      - x509: /etc/pki/managerssl.crt
+    {%- endif %}
 
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
@@ -146,10 +343,10 @@ regkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/managerssl.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 msslkeyperms:
   file.managed:
@@ -166,6 +363,11 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
+    - prereq:
+      - x509: /etc/pki/fleet.crt
+    {%- endif %}
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -175,10 +377,10 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/fleet.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
@@ -188,12 +390,25 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone'] %}
-
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+   
 fbcertdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
+
+/opt/so/conf/filebeat/etc/pki/filebeat.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
+    - prereq:
+      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
+    {%- endif %}
 
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
@@ -209,15 +424,17 @@ fbcertdir:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 # Convert the key to pkcs#8 so logstash will work correctly.
 filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
+    - onchanges:
+      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.key
 
 filebeatkeyperms:
   file.managed:
@@ -238,6 +455,19 @@ chownfilebeatp8:
 
 {% if grains['role'] == 'so-fleet' %}
 
+/etc/pki/managerssl.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
+    - prereq:
+      - x509: /etc/pki/managerssl.crt
+    {%- endif %}
+
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
   x509.certificate_managed:
@@ -249,10 +479,10 @@ chownfilebeatp8:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/managerssl.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 msslkeyperms:
   file.managed:
@@ -264,11 +494,16 @@ msslkeyperms:
 # Create a private key and cert for Fleet
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ HOSTNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
+    - prereq:
+      - x509: /etc/pki/fleet.crt
+    {%- endif %}
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -278,10 +513,10 @@ msslkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/fleet.key
-        bits: 4096
-        backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
 
 fleetkeyperms:
   file.managed:
@@ -289,5 +524,62 @@ fleetkeyperms:
     - name: /etc/pki/fleet.key
     - mode: 640
     - group: 939
+
+{% endif %}
+
+{% if grains['role'] == 'so-node' %}
+# Create a cert for elasticsearch
+/etc/pki/elasticsearch.key:
+  x509.private_key_managed:
+    - CN: {{ manager }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
+    - prereq:
+      - x509: /etc/pki/elasticsearch.crt
+    {%- endif %}
+
+/etc/pki/elasticsearch.crt:
+  x509.certificate_managed:
+    - ca_server: {{ ca_server }}
+    - signing_policy: registry
+    - public_key: /etc/pki/elasticsearch.key
+    - CN: {{ HOSTNAME }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
+    - onchanges:
+      - x509: /etc/pki/elasticsearch.key
+
+elasticp12perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.p12
+    - mode: 640
+    - group: 930
+    
+elastickeyperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticsearch.key
+    - mode: 640
+    - group: 930
+
+{%- endif %}
+
+{% else %}
+
+ssl_state_not_allowed:
+  test.fail_without_changes:
+    - name: ssl_state_not_allowed
 
 {% endif %}

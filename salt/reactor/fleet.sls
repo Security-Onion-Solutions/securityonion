@@ -10,7 +10,7 @@ def run():
   MINIONID = data['id']
   ACTION = data['data']['action']
   LOCAL_SALT_DIR = "/opt/so/saltstack/local"
-  STATICFILE = f"{LOCAL_SALT_DIR}/pillar/static.sls"  
+  STATICFILE = f"{LOCAL_SALT_DIR}/pillar/global.sls"  
   SECRETSFILE = f"{LOCAL_SALT_DIR}/pillar/secrets.sls"
 
   if MINIONID.split('_')[-1] in ['manager','eval','fleet','managersearch','standalone']:
@@ -37,12 +37,12 @@ def run():
 
         # Update the Fleet host in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_hostname: \S*', f"fleet_hostname: {HOSTNAME}", line.rstrip())
+        line = re.sub(r'fleet_hostname: \S*', f"fleet_hostname: '{HOSTNAME}'", line.rstrip())
         print(line)  
 
         # Update the Fleet IP in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_ip: \S*', f"fleet_ip: {MAINIP}", line.rstrip())
+        line = re.sub(r'fleet_ip: \S*', f"fleet_ip: '{MAINIP}'", line.rstrip())
         print(line)   
 
     if ACTION == 'genpackages':
@@ -65,7 +65,7 @@ def run():
       
       # Update the 'packages-built' timestamp on the webpage (stored in the static pillar)
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_packages-timestamp: \S*', f"fleet_packages-timestamp: {strftime('%Y-%m-%d-%H:%M', gmtime())}", line.rstrip())
+        line = re.sub(r'fleet_packages-timestamp: \S*', f"fleet_packages-timestamp: '{strftime('%Y-%m-%d-%H:%M', gmtime())}'", line.rstrip())
         print(line)
 
         # Update the Fleet Osquery package version in the static pillar

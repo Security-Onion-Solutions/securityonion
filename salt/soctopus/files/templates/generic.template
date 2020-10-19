@@ -1,32 +1,10 @@
-{% set es = salt['pillar.get']('static:managerip', '') %}
-{% set hivehost = salt['pillar.get']('static:managerip', '') %}
-{% set hivekey = salt['pillar.get']('static:hivekey', '') %}
-alert: hivealerter
+{% set es = salt['pillar.get']('global:url_base', '') %}
+alert:
+- "modules.so.playbook-es.PlaybookESAlerter"
 
-hive_connection:
-  hive_host: http://{{hivehost}}
-  hive_port: 9000/thehive
-  hive_apikey: {{hivekey}}
-  
-hive_proxies:
-  http: ''
-  https: ''
-
-hive_alert_config:
-  title: '{rule[name]} - '
-  type: 'playbook'
-  source: 'SecurityOnion'
-  description: "`Play:` https://{{es}}/playbook/issues/6000 \n\n `View Event:` <https://{{es}}/kibana/app/kibana#/discover?_g=()&_a=(columns:!(_source),interval:auto,query:(language:lucene,query:'_id:{match[_id]}'),sort:!('@timestamp',desc))>  \n\n `Raw Data:` {match[message]}"
-  severity: 2
-  tags: ['playbook']
-  tlp: 3
-  status: 'New'
-  follow: True
-  caseTemplate: '5000'
-
-alert: modules.so.playbook-es.PlaybookESAlerter
 elasticsearch_host: "{{ es }}:9200"
 play_title: ""
+play_id: ""
 event.module: "playbook"
 event.dataset: "alert"
 event.severity:

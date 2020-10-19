@@ -3,15 +3,20 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [module] =~ "zeek" and "import" not in [tags] {
     elasticsearch {
       pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
-      index => "so-zeek-%{+YYYY.MM.dd}"
+      index => "so-zeek"
       template_name => "so-zeek"
       template => "/templates/so-zeek-template.json"
       template_overwrite => true
+      {%- if grains['role'] in ['so-node','so-heavynode'] %}
+      ssl => true
+      ssl_certificate_verification => false
+      {%- endif %}
     }
   }
 }

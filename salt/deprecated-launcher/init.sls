@@ -1,4 +1,4 @@
-{%- set FLEETSETUP = salt['pillar.get']('static:fleetsetup', '0') -%}
+{%- set FLEETSETUP = salt['pillar.get']('global:fleetsetup', '0') -%}
 
 {%- if FLEETSETUP != 0 %}
 launcherpkg:

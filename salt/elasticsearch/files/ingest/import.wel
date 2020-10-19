@@ -1,0 +1,9 @@
+{
+  "description" : "import.wel",
+  "processors" : [
+    { "remove":         { "field": ["event.created","timestamp", "winlog.event_data.UtcTime", "event_record_id"],     "ignore_failure": true                                               } },
+    { "pipeline":      { "if": "ctx.winlog?.channel == 'Microsoft-Windows-Sysmon/Operational'",   "name": "sysmon"  }  },
+    { "pipeline":      { "if": "ctx.winlog?.channel != 'Microsoft-Windows-Sysmon/Operational'",  "name":"win.eventlogs" }  },
+    { "pipeline":    { "name": "common" } }
+  ]
+}

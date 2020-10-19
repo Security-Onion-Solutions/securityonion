@@ -3,15 +3,20 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [module] =~ "osquery" {
     elasticsearch {
       pipeline => "%{module}.%{dataset}" 
       hosts => "{{ ES }}"
-      index => "so-osquery-%{+YYYY.MM.dd}"
+      index => "so-osquery"
       template_name => "so-osquery"
       template => "/templates/so-osquery-template.json"
       template_overwrite => true
+      {%- if grains['role'] in ['so-node','so-heavynode'] %}
+      ssl => true
+      ssl_certificate_verification => false
+      {%- endif %}
     }
   }
 }

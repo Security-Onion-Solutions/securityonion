@@ -12,8 +12,13 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'idstools' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 # IDSTools Setup
 idstoolsdir:
@@ -55,7 +60,7 @@ rulesdir:
 synclocalnidsrules:
   file.managed:
     - name: /opt/so/rules/nids/local.rules
-    - source: salt://idstools/localrules/local.rules
+    - source: salt://idstools/local.rules
     - user: 939
     - group: 939
 
@@ -69,3 +74,11 @@ so-idstools:
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
     - watch:
       - file: idstoolsetcsync
+
+{% else %}
+
+idstools_state_not_allowed:
+  test.fail_without_changes:
+    - name: idstools_state_not_allowed
+
+{% endif%}

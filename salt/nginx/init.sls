@@ -1,8 +1,14 @@
-{% set FLEETMANAGER = salt['pillar.get']('static:fleet_manager', False) %}
-{% set FLEETNODE = salt['pillar.get']('static:fleet_node', False) %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'nginx' in top_states %}
+
+{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
+{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
 # Drop the correct nginx config based on role
 nginxconfdir:
@@ -72,6 +78,9 @@ so-nginx:
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       - /opt/so/conf/fleet/packages:/opt/socore/html/packages
+      {% if ISAIRGAP is sameas true %}
+      - /nsm/repo:/opt/socore/html/repo:ro
+      {% endif %}
       # ATT&CK Navigator binds
       - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
@@ -79,9 +88,20 @@ so-nginx:
     - port_bindings:
       - 80:80
       - 443:443
+      {% if ISAIRGAP is sameas true %}
+      - 7788:7788
+      {% endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
       - 8090:8090
     {%- endif %}
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+
+{% else %}
+
+nginx_state_not_allowed:
+  test.fail_without_changes:
+    - name: nginx_state_not_allowed
+
+{% endif %}

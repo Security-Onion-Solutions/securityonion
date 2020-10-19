@@ -1,10 +1,15 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'playbook' in top_states %}
+
 {% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
-{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook', None) -%}
+{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db', None) -%}
 
 include:
   - mysql
@@ -53,6 +58,14 @@ query_updatepluginurls:
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
 
+playbooklogdir:
+  file.directory:
+    - name: /opt/so/log/playbook
+    - dir_mode: 775
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 {% if PLAYBOOKPASS == None %}
 
 playbook_password_none:
@@ -68,6 +81,8 @@ so-playbook:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
     - hostname: playbook
     - name: so-playbook
+    - binds:
+      - /opt/so/log/playbook:/playbook/log:rw
     - environment:
       - REDMINE_DB_MYSQL={{ MANAGERIP }}
       - REDMINE_DB_DATABASE=playbook
@@ -77,13 +92,6 @@ so-playbook:
       - 0.0.0.0:3200:3000
 
 {% endif %}
-
-playbooklogdir:
-  file.directory:
-    - name: /opt/so/log/playbook
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 so-playbooksynccron:
   cron.present:
@@ -97,3 +105,11 @@ so-playbookruleupdatecron:
     - user: root
     - minute: '1'
     - hour: '6'
+
+{% else %}
+
+playbook_state_not_allowed:
+  test.fail_without_changes:
+    - name: playbook_state_not_allowed
+
+{% endif %}

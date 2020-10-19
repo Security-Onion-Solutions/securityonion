@@ -5,6 +5,7 @@
 {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
 {%- endif %}
 {%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
@@ -16,12 +17,30 @@ discovery.zen.minimum_master_nodes: 1
 path.logs: /var/log/elasticsearch
 action.destructive_requires_name: true
 transport.bind_host: 0.0.0.0
-transport.publish_host: {{ NODEIP }}
+transport.publish_host: {{ grains.host }}
 transport.publish_port: 9300
 cluster.routing.allocation.disk.threshold_enabled: true
 cluster.routing.allocation.disk.watermark.low: 95%
 cluster.routing.allocation.disk.watermark.high: 98%
 cluster.routing.allocation.disk.watermark.flood_stage: 98%
+{%- if FEATURES is sameas true %}
+#xpack.security.enabled: false
+#xpack.security.http.ssl.enabled: false
+#xpack.security.transport.ssl.enabled: false
+#xpack.security.http.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
+#xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+#xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
+#xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
+#xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+#xpack.security.transport.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
+#xpack.security.transport.ssl.verification_mode: none
+#xpack.security.http.ssl.client_authentication: none
+#xpack.security.authc:
+#  anonymous:
+#    username: anonymous_user 
+#    roles: superuser 
+#    authz_exception: true 
+{%- endif %}
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}
 node.name: {{ ESCLUSTERNAME }}
 script.max_compilations_rate: 1000/1m

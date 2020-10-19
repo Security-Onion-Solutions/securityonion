@@ -1,8 +1,13 @@
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'kibana' in top_states %}
+
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{% if FEATURES %}
+{%- if FEATURES is sameas true %}
   {% set FEATURES = "-features" %}
 {% else %}
   {% set FEATURES = '' %}
@@ -115,3 +120,11 @@ so-kibana-config-load:
 #    - runas: socore
 #    - source: salt://kibana/bin/keepkibanahappy.sh
 #    - template: jinja
+
+{% else %}
+
+kibana_state_not_allowed:
+  test.fail_without_changes:
+    - name: kibana_state_not_allowed
+
+{% endif %}

@@ -1,7 +1,13 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'grafana' in top_states %}
+
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('static:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('static:imagerepo') %}
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -91,7 +97,6 @@ dashboard-manager:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -114,7 +119,6 @@ dashboard-managersearch:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -137,7 +141,7 @@ dashboard-standalone:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: so_overview
       ROOTFS: {{ SNDATA.rootfs }}
@@ -159,8 +163,8 @@ dashboard-{{ SN }}:
     - source: salt://grafana/dashboards/sensor_nodes/sensor.json
     - defaults:
       SERVERNAME: {{ SN }}
-      MONINT: {{ SNDATA.monint }}
       MANINT: {{ SNDATA.manint }}
+      MONINT: {{ SNDATA.monint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -183,7 +187,6 @@ dashboardsearch-{{ SN }}:
     - defaults:
       SERVERNAME: {{ SN }}
       MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.manint }}
       CPUS: {{ SNDATA.totalcpus }}
       UID: {{ SNDATA.guid }}
       ROOTFS: {{ SNDATA.rootfs }}
@@ -227,10 +230,18 @@ so-grafana:
       - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
       - /opt/so/conf/grafana/grafana_dashboards:/etc/grafana/grafana_dashboards:rw
     - environment:
-      - GF_SECURITY_ADMIN_PASSWORD=augusta
+      - GF_SECURITY_ADMIN_PASSWORD={{ ADMINPASS }}
     - port_bindings:
       - 0.0.0.0:3000:3000
     - watch:
       - file: /opt/so/conf/grafana/*
+
+{% endif %}
+
+{% else %}
+
+grafana_state_not_allowed:
+  test.fail_without_changes:
+    - name: grafana_state_not_allowed
 
 {% endif %}

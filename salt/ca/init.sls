@@ -1,3 +1,8 @@
+{% set show_top = salt['state.show_top']() %}
+{% set top_states = show_top.values() | join(', ') %}
+
+{% if 'ca' in top_states %}
+
 {% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
   file.managed:
@@ -10,12 +15,16 @@
   file.directory: []
 
 pki_private_key:
-    x509.private_key_managed:
-        - name: /etc/pki/ca.key
-        - bits: 4096
-        - passphrase:
-        - cipher: aes_256_cbc
-        - backup: True
+  x509.private_key_managed:
+    - name: /etc/pki/ca.key
+    - bits: 4096
+    - passphrase:
+    - cipher: aes_256_cbc
+    - backup: True
+    {% if salt['file.file_exists']('/etc/pki/ca.key') -%}
+    - prereq:
+      - x509: /etc/pki/ca.crt
+    {%- endif %}
 
 /etc/pki/ca.crt:
   x509.certificate_managed:
@@ -32,18 +41,15 @@ pki_private_key:
     - days_valid: 3650
     - days_remaining: 0
     - backup: True
-    - managed_private_key:
-        name: /etc/pki/ca.key
-        bits: 4096
-        backup: True
+    - replace: False
     - require:
       - file: /etc/pki
 
-send_x509_pem_entries_to_mine:
+x509_pem_entries:
   module.run:
     - mine.send:
-      - func: x509.get_pem_entries
-      - glob_path: /etc/pki/ca.crt
+       - name: x509.get_pem_entries
+       - glob_path: /etc/pki/ca.crt
 
 cakeyperms:
   file.managed:
@@ -51,3 +57,11 @@ cakeyperms:
     - name: /etc/pki/ca.key
     - mode: 640
     - group: 939
+
+{% else %}
+
+ca_state_not_allowed:
+  test.fail_without_changes:
+    - name: ca_state_not_allowed
+
+{% endif %}
