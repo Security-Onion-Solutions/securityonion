@@ -1,6 +1,15 @@
-# don't start the docker container if it is an import node
-{% if grains.id.split('_')|last == 'import' %}
-  {% set START = False %}
+{% set PCAPOPTIONS = {} %}
+{% set ENABLED = salt['pillar.get']('steno:enabled', 'True') %}
+
+# don't start the docker container if it is an import node or disabled via pillar
+{% if grains.id.split('_')|last == 'import' || ENABLED is sameas false %}
+  {% set PCAPOPTIONS['start'] = False %}
 {% else %}
-  {% set START = True %}
+  {% set PCAPOPTIONS['start'] = True %}
+{% endif %}
+
+{% if ENABLED is sameas false %}
+  {% set PCAPOPTIONS['status'] = 'stopped' %}
+{% else %}
+  {% set PCAPOPTIONS['status'] = 'running' %}
 {% endif %}
