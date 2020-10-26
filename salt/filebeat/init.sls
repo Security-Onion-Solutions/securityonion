@@ -82,6 +82,7 @@ so-filebeat:
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp
+        - 0.0.0.0:514:514/tcp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
 
