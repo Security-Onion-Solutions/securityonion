@@ -39,7 +39,7 @@ gpg --verify securityonion-2.3.2.iso.sig securityonion-2.3.2.iso
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Thu 22 Oct 2020 10:34:27 AM EDT using RSA key ID FE507013
+gpg: Signature made Sun 25 Oct 2020 10:44:27 AM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
