@@ -1,4 +1,4 @@
-### 2.3.2 ISO image built on 2020/10/23
+### 2.3.2 ISO image built on 2020/10/25
 
 ### Download and Verify
 
