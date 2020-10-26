@@ -52,7 +52,7 @@ register_agent() {
   echo ""
   echo "Adding agent:"
   echo "curl -s -u $USER:**** -k -X POST -d 'name=$AGENT_NAME&ip=$AGENT_IP' $PROTOCOL://$API_IP:$API_PORT/agents"
-  API_RESULT=$(curl -s -u $USER:"$PASSWORD" -k -X POST -d 'name='$AGENT_NAME'&ip='$AGENT_IP $PROTOCOL://$API_IP:$API_PORT/agents)
+  API_RESULT=$(curl -s -u $USER:"$PASSWORD" -k -X POST -d 'name='$AGENT_NAME'&ip='$AGENT_IP -L $PROTOCOL://$API_IP:$API_PORT/agents)
   echo -e $API_RESULT | grep -q "\"error\":0" 2>&1
 
   if [ "$?" != "0" ]; then
@@ -84,14 +84,14 @@ remove_agent() {
   echo "Found: $AGENT_ID"
   echo "Removing previous registration for '$AGENT_NAME' using ID: $AGENT_ID ..."
   # curl -u foo:bar -k -X DELETE "https://127.0.0.1:55000/agents/001
-  REMOVE_AGENT=$(curl -s -u $USER:"$PASSWORD" -k -X DELETE $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID)
+  REMOVE_AGENT=$(curl -s -u $USER:"$PASSWORD" -k -X DELETE -L $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID)
   echo -e $REMOVE_AGENT
 }
 
 get_agent_id() {
   echo ""
   echo "Checking for Agent ID..."
-  AGENT_ID=$(curl -s -u $USER:"$PASSWORD" -k -X GET $PROTOCOL://$API_IP:$API_PORT/agents/name/$AGENT_NAME | rev | cut -d: -f1 | rev | grep -o '".*"' | tr -d '"')
+  AGENT_ID=$(curl -s -u $USER:"$PASSWORD" -k -X GET -L $PROTOCOL://$API_IP:$API_PORT/agents/name/$AGENT_NAME | rev | cut -d: -f1 | rev | grep -o '".*"' | tr -d '"')
 }
 
 # MAIN
@@ -136,7 +136,7 @@ shift $(($OPTIND - 1))
 
 # Default action -> try to register the agent
 sleep 30s
-STATUS=$(curl -s -k -u $USER:$PASSWORD $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID | jq .data.status | sed s'/"//g')
+STATUS=$(curl -s -k -u $USER:$PASSWORD -L $PROTOCOL://$API_IP:$API_PORT/agents/$AGENT_ID | jq .data.status | sed s'/"//g')
 if [[ $STATUS == "Active" ]]; then
   echo "Agent $AGENT_ID already registered!"
 else

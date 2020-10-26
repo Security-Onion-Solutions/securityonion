@@ -4,7 +4,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 30 ]]; do
-  curl --output /dev/null --silent --head --fail http://{{ ES }}:9200
+  curl --output /dev/null --silent --head --fail -L http://{{ ES }}:9200
   if [ $? -eq 0 ]; then
     ELASTICSEARCH_CONNECTED="yes"
     echo "connected!"
@@ -28,7 +28,7 @@ MAX_WAIT=240
 
 # Check to see if Kibana is available
 wait_step=0
-  until curl -s -XGET http://{{ ES }}:5601 > /dev/null ; do
+  until curl -s -XGET -L http://{{ ES }}:5601 > /dev/null ; do
   wait_step=$(( ${wait_step} + 1 ))
   echo "Waiting on Kibana...Attempt #$wait_step"
 	  if [ ${wait_step} -gt ${MAX_WAIT} ]; then
@@ -42,12 +42,12 @@ wait_step=0
 # Apply Kibana template
   echo
   echo "Applying Kibana template..."
-  curl -s -XPUT http://{{ ES }}:9200/_template/kibana \
+  curl -s -XPUT -L http://{{ ES }}:9200/_template/kibana \
        -H 'Content-Type: application/json' \
        -d'{"index_patterns" : ".kibana", "settings": { "number_of_shards" : 1, "number_of_replicas" : 0 }, "mappings" : { "search": {"properties": {"hits": {"type": "integer"}, "version": {"type": "integer"}}}}}'
   echo
 
-  curl -s -XPUT "{{ ES }}:9200/.kibana/_settings" \
+  curl -s -XPUT -L "{{ ES }}:9200/.kibana/_settings" \
        -H 'Content-Type: application/json' \
        -d'{"index" : {"number_of_replicas" : 0}}'
   echo
