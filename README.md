@@ -1,6 +1,6 @@
-## Security Onion 2.3.1
+## Security Onion 2.3.2
 
-Security Onion 2.3.1 is here!
+Security Onion 2.3.2 is here!
 
 
 ### Release Notes
