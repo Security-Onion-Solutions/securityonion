@@ -845,6 +845,12 @@ docker_registry() {
 	printf '%s\n'\
 		"{"\
 		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
+		"  \"default-address-pools\": ["\
+		"    {"\
+		"      \"base\" : \"$DOCKERNET\","\
+		"      \"size\" : 24"\
+		"    }"\
+		"  ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -1139,12 +1145,17 @@ manager_global() {
 		fi
 	fi
 
+	if [ -z "$DOCKERNET" ]; then
+        DOCKERNET=172.17.0.0/16
+	fi
+
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
                 "  soversion: '$SOVERSION'"\
                 "  hnmanager: '$HNMANAGER'"\
                 "  ntpserver: '$NTPSERVER'"\
+				"  dockernet: '$DOCKERNET'"\
                 "  proxy: '$PROXY'"\
                 "  mdengine: '$ZEEKVERSION'"\
                 "  ids: '$NIDS'"\
