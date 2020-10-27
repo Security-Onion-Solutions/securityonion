@@ -841,11 +841,12 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# Make the host use the manager docker registry
+	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
 		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
-		"  \"bip\": \"$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24,\"\
+		"  \"bip\": \"$DNETBIP\",\
 		"  \"default-address-pools\": ["\
 		"    {"\
 		"      \"base\" : \"$DOCKERNET\","\
