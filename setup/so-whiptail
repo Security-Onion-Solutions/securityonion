@@ -560,11 +560,12 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose install type:" 10 65 4 \
+	"Choose install type:" 10 65 5 \
 		"EVAL" "Evaluation mode (not for production) " ON \
 		"STANDALONE" "Standalone production install " OFF \
 		"DISTRIBUTED" "Distributed install submenu " OFF \
 		"IMPORT" "Standalone to import PCAP or log files " OFF \
+		"OTHER" "Other install types" OFF \
 		3>&1 1>&2 2>&3
 	)
 
@@ -572,21 +573,50 @@ whiptail_install_type() {
 	whiptail_check_exitstatus $exitstatus
 
 	if [[ $install_type == "DISTRIBUTED" ]]; then
-		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-		"Choose distributed node type:" 13 60 6 \
-			"MANAGER" "Start a new grid " ON \
-			"SENSOR" "Create a forward only sensor " OFF \
-			"SEARCHNODE" "Add a search node with parsing " OFF \
-			"MANAGERSEARCH" "Manager + search node " OFF \
-			"FLEET" "Dedicated Fleet Osquery Node " OFF \
-			"HEAVYNODE" "Sensor + Search Node " OFF \
-			3>&1 1>&2 2>&3
-			# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
-			# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
-			# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
-			# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
-		)
+		whiptail_install_type_dist
 	fi
+	if [[ $install_type == "OTHER" ]]; then
+		whiptail_install_type_other
+	fi
+
+	export install_type
+}
+
+whiptail_install_type_dist() {
+
+	[ -n "$TESTING" ] && return
+	
+	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose distributed node type:" 13 60 6 \
+		"MANAGER" "Start a new grid " ON \
+		"SENSOR" "Create a forward only sensor " OFF \
+		"SEARCHNODE" "Add a search node with parsing " OFF \
+		"MANAGERSEARCH" "Manager + search node " OFF \
+		"FLEET" "Dedicated Fleet Osquery Node " OFF \
+		"HEAVYNODE" "Sensor + Search Node " OFF \
+		3>&1 1>&2 2>&3
+		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
+		# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
+		# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
+		# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
+	)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	export install_type
+}
+
+whiptail_install_type_other() {
+
+	[ -n "$TESTING" ] && return
+
+	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+	"Choose distributed node type:" 13 60 2 \
+		"ANALYST" "Quit setup and run the installer for an analyst workstation" ON \
+		"HELIXSENSOR" "Create a Helix sensor" OFF \
+		3>&1 1>&2 2>&3
+	)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
