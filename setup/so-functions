@@ -840,6 +840,9 @@ docker_registry() {
 
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
+	if [ -z "$DOCKERNET" ]; then
+            DOCKERNET=172.17.0.0
+	fi
 	# Make the host use the manager docker registry
 	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
