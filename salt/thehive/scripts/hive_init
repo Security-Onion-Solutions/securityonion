@@ -1,5 +1,6 @@
 #!/bin/bash
 # {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+# {%- set URLBASE = salt['pillar.get']('global:url_base', '') %}
 # {%- set THEHIVEUSER = salt['pillar.get']('global:hiveuser', 'hiveadmin') %}
 # {%- set THEHIVEPASSWORD = salt['pillar.get']('global:hivepassword', 'hivechangeme') %}
 # {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
@@ -11,7 +12,8 @@ thehive_clean(){
 
 thehive_init(){
     sleep 120
-    THEHIVE_IP="{{MANAGERIP}}"
+    THEHIVE_URL="{{URLBASE}}/thehive"
+    THEHIVE_API_URL="$THEHIVE_URL/api"
     THEHIVE_USER="{{THEHIVEUSER}}"
     THEHIVE_PASSWORD="{{THEHIVEPASSWORD}}"
     THEHIVE_KEY="{{THEHIVEKEY}}"
@@ -21,7 +23,7 @@ thehive_init(){
     COUNT=0
     THEHIVE_CONNECTED="no"
     while [[ "$COUNT" -le 240 ]]; do
-        curl --output /dev/null --silent --head --fail -k "https://$THEHIVE_IP/thehive"
+        curl --output /dev/null --silent --head --fail -k "https://$THEHIVE_URL"
             if [ $? -eq 0 ]; then
                 THEHIVE_CONNECTED="yes"
                 echo "connected!"
@@ -36,15 +38,15 @@ thehive_init(){
     if [ "$THEHIVE_CONNECTED" == "yes" ]; then
     
         # Migrate DB
-        curl -v -k -XPOST -L "https://$THEHIVE_IP:/thehive/api/maintenance/migrate"
+        curl -v -k -XPOST -L "https://$THEHIVE_API_URL/maintenance/migrate"
 
         # Create intial TheHive user
-        curl -v -k -L "https://$THEHIVE_IP/thehive/api/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
+        curl -v -k -L "https://$THEHIVE_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
    
         # Pre-load custom fields
         #
         # reputation
-        curl -v -k -L "https://$THEHIVE_IP/thehive/api/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
+        curl -v -k -L "https://$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
 
    
         touch /opt/so/state/thehive.txt
