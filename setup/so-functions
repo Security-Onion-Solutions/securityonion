@@ -841,10 +841,18 @@ docker_registry() {
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# Make the host use the manager docker registry
+	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
+		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
+		"  \"bip\": \"$DNETBIP\","\
+		"  \"default-address-pools\": ["\
+		"    {"\
+		"      \"base\" : \"$DOCKERNET\","\
+		"      \"size\" : 24"\
+		"    }"\
+		"  ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -1130,12 +1138,17 @@ manager_global() {
 		fi
 	fi
 
+	if [ -z "$DOCKERNET" ]; then
+        DOCKERNET=172.17.0.0
+	fi
+
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
                 "  soversion: '$SOVERSION'"\
                 "  hnmanager: '$HNMANAGER'"\
                 "  ntpserver: '$NTPSERVER'"\
+				"  dockernet: '$DOCKERNET'"\
                 "  proxy: '$PROXY'"\
                 "  mdengine: '$ZEEKVERSION'"\
                 "  ids: '$NIDS'"\

@@ -10,6 +10,8 @@
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db', None) -%}
+{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+
 
 include:
   - mysql
@@ -19,7 +21,7 @@ create_playbookdbuser:
     - mysql.user_create:
       - user: playbookdbuser
       - password: {{ PLAYBOOKPASS }}
-      - host: 172.17.0.0/255.255.0.0
+      - host: {{ DNET }}/255.255.255.0
       - connection_host: {{ MAINIP }}
       - connection_port: 3306
       - connection_user: root
@@ -28,7 +30,7 @@ create_playbookdbuser:
 query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
-    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'172.17.0.0/255.255.0.0';"
+    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DNET }}/255.255.255.0';"
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root

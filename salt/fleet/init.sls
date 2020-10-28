@@ -12,6 +12,8 @@
 {% else %}
   {% set MAINIP = salt['pillar.get']('global:managerip') %}
 {% endif %}
+{% set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+
 
 include:
   - mysql
@@ -71,7 +73,7 @@ fleetdb:
 
 fleetdbuser:
   mysql_user.present:
-    - host: 172.17.0.0/255.255.0.0
+    - host: {{ DNET }}/255.255.0.0
     - password: {{ FLEETPASS }}
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
@@ -85,7 +87,7 @@ fleetdbpriv:
     - grant: all privileges
     - database: fleet.*
     - user: fleetdbuser
-    - host: 172.17.0.0/255.255.0.0
+    - host: {{ DNET }}/255.255.0.0
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root
