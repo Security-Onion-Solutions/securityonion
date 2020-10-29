@@ -31,7 +31,7 @@ fi
 USER=$1
 
 CORTEX_KEY=$(lookup_pillar cortexkey)
-CORTEX_IP=$(lookup_pillar managerip)
+CORTEX_API_URL="$(lookup_pillar url_base)/cortex/api"
 CORTEX_ORG_NAME=$(lookup_pillar cortexorgname)
 CORTEX_USER=$USER
 
@@ -43,7 +43,7 @@ fi
 read -rs CORTEX_PASS
 
 # Create new user in Cortex
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_IP/cortex/api/user" -d "{\"name\": \"$CORTEX_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_USER\",\"password\" : \"$CORTEX_PASS\" }")
+resp=$(curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/user" -d "{\"name\": \"$CORTEX_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_USER\",\"password\" : \"$CORTEX_PASS\" }")
 if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
     echo "Successfully added user to Cortex."
 else
