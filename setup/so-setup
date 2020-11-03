@@ -54,12 +54,15 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if [[ -f $setup_log ]]; then
+	is_reinstall=true
+
+	# Move last setup log to backup
+	mv $setup_log $setup_log.bak
+fi
+
 # Begin Installation pre-processing
 parse_install_username
-
-if [[ -f $setup_log ]]; then
-	reinstall_init
-fi
 
 title "Initializing Setup"
 info "Installing as the $INSTALLUSERNAME user"
@@ -424,6 +427,10 @@ if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 whiptail_make_changes
 
 # From here on changes will be made.
+
+if [[ $is_reinstall ]]; then
+	reinstall_init
+fi
 
 if [[ -n "$TURBO" ]]; then
 	use_turbo_proxy

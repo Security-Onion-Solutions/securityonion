@@ -1414,13 +1414,8 @@ reserve_group_ids() {
 reinstall_init() {
 	local minion_config=/etc/salt/minion
 
-	is_reinstall=0
-	export is_reinstall
-
-	# Move last setup log to backup
-	mv $setup_log $setup_log.bak
-
 	info "Putting system in state to run setup again"
+	info "Some commands may fail depending on whether setup previously succeeded"
 
 	{
 		# Remove startup_states from minion config so we don't immediately highstate when salt starts back up
@@ -1429,11 +1424,12 @@ reinstall_init() {
 		# Disable schedule so highstate doesn't start running during the install
 		salt-call -l info schedule.disable
 
-		# Stop all containers so files can be changed with more safety
-		docker stop $(docker ps -a -q)
+		# Stop and remove all so-* containers so files can be changed with more safety
+		docker stop $(docker ps -a -q --filter "name=so-")
+		docker rm $(docker ps -a -q --filter "name=so-")
 
-		# Remove /opt/so since we'll be rebuilding this directory during setup
-		rm -rf /opt/so
+		# Backup /opt/so since we'll be rebuilding this directory during setup
+		mv /opt/so /opt/so_old
 	} >> $setup_log 2>&1
 }
 
