@@ -1411,6 +1411,24 @@ reserve_group_ids() {
 	groupadd -g 946 cyberchef
 }
 
+reinstall_init() {
+
+	# Move last setup log to backup
+	mv $setup_log $setup_log.bak
+
+	# Stop salt so it won't highstate and start containers back up.
+	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
+		systemctl stop salt-master
+	fi
+	systemctl stop salt-minion
+
+	# Remove startup highstate from minion config so we don't immediately highstate when salt starts back up
+	sed -i '/startup_states/d' $minion_config
+
+	# Stop all containers so files can be changed with more safety
+	docker stop $(docker ps -a -q)
+}
+
 # When updating the salt version, also update the version in securityonion-builds/images/iso-task/Dockerfile and salt/salt/master.defaults.yaml and salt/salt/minion.defaults.yaml
 saltify() {
 
@@ -1566,7 +1584,6 @@ saltify() {
 }
 
 salt_checkin() {
-
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
 			{
