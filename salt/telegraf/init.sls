@@ -26,7 +26,7 @@ tgrafetsdir:
 tgrafsyncscripts:
   file.recurse:
     - name: /opt/so/conf/telegraf/scripts
-    - user: 0
+    - user: root
     - group: 939
     - file_mode: 700
     - template: jinja
