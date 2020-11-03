@@ -1413,14 +1413,19 @@ reserve_group_ids() {
 
 reinstall_init() {
 	local minion_config=/etc/salt/minion
-	
+
 	is_reinstall=0
 	export is_reinstall
 
 	# Move last setup log to backup
 	mv $setup_log $setup_log.bak
 
+	info "Putting system in state to run setup again"
+
 	{
+		# Remove /opt/so since we'll be rebuilding this directory during setup
+		rm -rf /opt/so
+
 		# Remove startup_states from minion config so we don't immediately highstate when salt starts back up
 		sed -i '/startup_states/d' $minion_config
 
