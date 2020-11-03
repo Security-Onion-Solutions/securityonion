@@ -1423,9 +1423,6 @@ reinstall_init() {
 	info "Putting system in state to run setup again"
 
 	{
-		# Remove /opt/so since we'll be rebuilding this directory during setup
-		rm -rf /opt/so
-
 		# Remove startup_states from minion config so we don't immediately highstate when salt starts back up
 		sed -i '/startup_states/d' $minion_config
 
@@ -1434,6 +1431,9 @@ reinstall_init() {
 
 		# Stop all containers so files can be changed with more safety
 		docker stop $(docker ps -a -q)
+
+		# Remove /opt/so since we'll be rebuilding this directory during setup
+		rm -rf /opt/so
 	} >> $setup_log 2>&1
 }
 
