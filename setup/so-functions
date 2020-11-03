@@ -430,8 +430,6 @@ configure_minion() {
 
 	{
 		systemctl restart salt-minion;
-		printf '%s\n'  '----';
-		cat "$minion_config";
 	} >> "$setup_log" 2>&1
 }
 
@@ -1635,12 +1633,17 @@ salt_checkin() {
 				done
 
 				echo " Confirming existence of the CA certificate"
-				cat /etc/pki/ca.crt
+				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 				echo " Applyng a mine hack";
 				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
 				salt "$MINION_ID" mine.update;
-				echo " Confirming salt mine now contain the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
+				echo "Confirming salt mine now contains the certificate";
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
+				if [ $? -eq 0 ]; then
+					echo "CA in mine"
+				else
+					echo "CA not in mine"
+				fi
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
