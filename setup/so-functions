@@ -1424,9 +1424,12 @@ reinstall_init() {
 		# Disable schedule so highstate doesn't start running during the install
 		salt-call -l info schedule.disable
 
+		# Kill any currently running salt jobs, also to prevent issues with highstate.
+		salt-call -l info saltutil.kill_all_jobs
+
 		# Stop and remove all so-* containers so files can be changed with more safety
 		docker stop $(docker ps -a -q --filter "name=so-")
-		docker rm $(docker ps -a -q --filter "name=so-")
+		docker rm -f $(docker ps -a -q --filter "name=so-")
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		mv /opt/so /opt/so_old
