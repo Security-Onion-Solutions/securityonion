@@ -140,9 +140,9 @@ detect_os() {
 }
 
 highstate() {
-  # Run a highstate but first cancel a running one.
-  salt-call saltutil.kill_all_jobs
-  salt-call state.highstate -l info
+  # Run a highstate.
+  echo "Running a highstate. This could take a few minutes"
+  salt-call state.highstate -l info queue=True
 }
 
 masterlock() {
@@ -529,6 +529,7 @@ if [ "$UPGRADESALT" == "1" ]; then
   # Update the repo files so it can actually upgrade
   if [ $is_airgap -eq 0 ]; then
     update_centos_repo
+    yum clean all
   fi
   upgrade_salt
 fi
@@ -575,10 +576,12 @@ highstate
 playbook
 unmount_update
 
-SALTUPGRADED="True"
-if [[ "$SALTUPGRADED" == "True" ]]; then
+if [ "$UPGRADESALT" == "1" ]; then
   echo ""
   echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
+  if [ $is_airgap -eq 0 ]; then
+    salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+  fi
   salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
   echo ""
 fi
