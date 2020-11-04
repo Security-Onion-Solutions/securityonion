@@ -1447,19 +1447,24 @@ reinstall_init() {
 			mv "$dir" "${dir}_old_${date_string}"
 		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -print0)
 
-
 		# Remove the old launcher package in case the config changes
-		if [ $OS = 'centos' ]; then
-			if rpm -qa | grep -q launcher-final; then
-				yum remove -y launcher-final
-			fi
-		else
-			if dpkg -l | grep -q launcher-final; then
-				apt purge -y launcher-final
-			fi
-		fi
+		remove_package launcher-final
+		remove_package wazuh-agent
 
 	} >> $setup_log 2>&1
+}
+
+remove_package() {
+	local package_name=$1
+	if [ $OS = 'centos' ]; then
+		if rpm -qa | grep -q "$package_name"; then
+			yum remove -y "$package_name"
+		fi
+	else
+		if dpkg -l | grep -q "$package_name"; then
+			apt purge -y "$package_name"
+		fi
+	fi
 }
 
 # When updating the salt version, also update the version in securityonion-builds/images/iso-task/Dockerfile and salt/salt/master.defaults.yaml and salt/salt/minion.defaults.yaml
