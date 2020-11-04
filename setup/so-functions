@@ -1435,6 +1435,17 @@ reinstall_init() {
 		# Remove container data directories
 		rm -rf /nsm/mysql
 
+		# Remove the old launcher package in case the config changes
+		if [ $OS = 'centos' ]; then
+			if rpm -qa | grep launcher-final; then
+				yum remove -y launcher-final
+			fi
+		else
+			if dpkg -l | grep launcher-final; then
+				apt purge -y launcher-final
+			fi
+		fi
+
 	} >> $setup_log 2>&1
 }
 
