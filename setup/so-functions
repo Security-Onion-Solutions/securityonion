@@ -1442,8 +1442,11 @@ reinstall_init() {
 			mv /opt/so "/opt/so_old_${date_string}"
 		fi
 
-		# Remove container data directories
-		rm -rf /nsm/mysql
+		# Backup /nsm for the same reason
+		while IFS= read -r -d '' dir; do
+			mv "$dir" "${dir}_old_${date_string}"
+		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -print0)
+
 
 		# Remove the old launcher package in case the config changes
 		if [ $OS = 'centos' ]; then
