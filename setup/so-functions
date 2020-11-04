@@ -431,8 +431,6 @@ configure_minion() {
 
 	{
 		systemctl restart salt-minion;
-		printf '%s\n'  '----';
-		cat "$minion_config";
 	} >> "$setup_log" 2>&1
 }
 
@@ -748,7 +746,7 @@ detect_os() {
 
 disable_auto_start() {
 	
-	if crontab -l 2>&1 | grep so-setup > /dev/null 2>&1; then
+	if crontab -l -u $INSTALLUSERNAME 2>&1 | grep so-setup > /dev/null 2>&1; then
 		# Remove the automated setup script from crontab, if it exists
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
@@ -1664,12 +1662,17 @@ salt_checkin() {
 				done
 
 				echo " Confirming existence of the CA certificate"
-				cat /etc/pki/ca.crt
+				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 				echo " Applyng a mine hack";
 				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
 				salt "$MINION_ID" mine.update;
-				echo " Confirming salt mine now contain the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
+				echo "Confirming salt mine now contains the certificate";
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
+				if [ $? -eq 0 ]; then
+					echo "CA in mine"
+				else
+					echo "CA not in mine"
+				fi
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
@@ -1722,10 +1725,12 @@ setup_salt_master_dirs() {
 	if [ "$setup_type" = 'iso' ]; then
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv /home/$INSTALLUSERNAME/SecurityOnion/files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	else
 		cp -Rv ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -Rv ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	fi
 
