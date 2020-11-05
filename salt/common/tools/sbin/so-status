@@ -27,10 +27,15 @@ ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
 PENDING_STRING="PENDING"
 MISSING_STRING='MISSING'
+DISABLED_STRING='DISABLED'
 CALLER=$(ps -o comm= $PPID)
 declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
 declare -a PENDING_STATUSES=("paused" "created" "restarting")
 declare -a GOOD_STATUSES=("running")
+declare -a DISABLED_CONTAINERS=()
+{%- if salt['pillar.get']('steno:enabled', 'True') is sameas false %}
+DISABLED_CONTAINERS+=("so-steno")
+{%- endif %}
 
 declare -a temp_container_name_list=()
 declare -a temp_container_state_list=()
@@ -104,6 +109,7 @@ populate_container_lists() {
 
 parse_status() {
     local container_state=${1}
+    local service_name=${2}
 
     [[ $container_state = "missing" ]] && printf $MISSING_STRING && return 1
 
@@ -117,7 +123,13 @@ parse_status() {
 
     # This is technically not needed since the default is error state
     for state in "${BAD_STATUSES[@]}"; do
-        [[ $container_state = "$state" ]] && printf $ERROR_STRING && return 1
+        if [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]]; then
+            printf $DISABLED_STRING
+            return 0
+        elif [[ $container_state = "$state" ]]; then
+            printf $ERROR_STRING
+            return 1
+        fi
     done
 
     printf $ERROR_STRING && return 1
@@ -127,7 +139,7 @@ parse_status() {
 
 print_line() {
     local service_name=${1}
-    local service_state="$( parse_status ${2} )"
+    local service_state="$( parse_status ${2} ${1} )"
     local columns=$(tput cols)
     local state_color="\e[0m"
 
@@ -137,7 +149,7 @@ print_line() {
         state_color="\e[1;31m"
     elif [[ $service_state = "$SUCCESS_STRING" ]]; then
         state_color="\e[1;32m"
-    elif [[ $service_state = "$PENDING_STRING" ]]; then
+    elif [[ $service_state = "$PENDING_STRING" ]] || [[ $service_state = "$DISABLED_STRING" ]]; then
         state_color="\e[1;33m"
     fi
 

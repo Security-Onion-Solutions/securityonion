@@ -173,7 +173,7 @@ add_web_user() {
 		echo "Attempting to add administrator user for web interface...";
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER";
 		echo "Add user result: $?";
-	} >> "$setup_log" 2>&1
+	} >> "/root/so-user-add.log" 2>&1
 }
 
 # Create an secrets pillar so that passwords survive re-install
@@ -430,8 +430,6 @@ configure_minion() {
 
 	{
 		systemctl restart salt-minion;
-		printf '%s\n'  '----';
-		cat "$minion_config";
 	} >> "$setup_log" 2>&1
 }
 
@@ -747,7 +745,7 @@ detect_os() {
 
 disable_auto_start() {
 	
-	if crontab -l 2>&1 | grep so-setup > /dev/null 2>&1; then
+	if crontab -l -u $INSTALLUSERNAME 2>&1 | grep so-setup > /dev/null 2>&1; then
 		# Remove the automated setup script from crontab, if it exists
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
@@ -840,11 +838,22 @@ docker_registry() {
 
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
+	if [ -z "$DOCKERNET" ]; then
+            DOCKERNET=172.17.0.0
+	fi
 	# Make the host use the manager docker registry
+	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
+		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
+		"  \"bip\": \"$DNETBIP\","\
+		"  \"default-address-pools\": ["\
+		"    {"\
+		"      \"base\" : \"$DOCKERNET\","\
+		"      \"size\" : 24"\
+		"    }"\
+		"  ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
@@ -1003,15 +1012,6 @@ get_redirect() {
 	fi
 }
 
-got_root() {
-	# Make sure you are root
-	uid="$(id -u)"
-	if [ "$uid" -ne 0 ]; then
-		echo "This script must be run using sudo!"
-		exit 1
-	fi
-}
-
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
@@ -1139,12 +1139,17 @@ manager_global() {
 		fi
 	fi
 
+	if [ -z "$DOCKERNET" ]; then
+        DOCKERNET=172.17.0.0
+	fi
+
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
                 "  soversion: '$SOVERSION'"\
                 "  hnmanager: '$HNMANAGER'"\
                 "  ntpserver: '$NTPSERVER'"\
+				"  dockernet: '$DOCKERNET'"\
                 "  proxy: '$PROXY'"\
                 "  mdengine: '$ZEEKVERSION'"\
                 "  ids: '$NIDS'"\
@@ -1633,12 +1638,17 @@ salt_checkin() {
 				done
 
 				echo " Confirming existence of the CA certificate"
-				cat /etc/pki/ca.crt
+				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 				echo " Applyng a mine hack";
 				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
 				salt "$MINION_ID" mine.update;
-				echo " Confirming salt mine now contain the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
+				echo "Confirming salt mine now contains the certificate";
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
+				if [ $? -eq 0 ]; then
+					echo "CA in mine"
+				else
+					echo "CA not in mine"
+				fi
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
@@ -1691,10 +1701,12 @@ setup_salt_master_dirs() {
 	if [ "$setup_type" = 'iso' ]; then
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv /home/$INSTALLUSERNAME/SecurityOnion/files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	else
 		cp -Rv ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -Rv ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	fi
 

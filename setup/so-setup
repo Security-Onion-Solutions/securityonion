@@ -15,7 +15,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Make sure you are root before doing anything
+uid="$(id -u)"
+if [ "$uid" -ne 0 ]; then
+	echo "This script must be run using sudo!"
+	exit 1
+fi
+
 cd "$(dirname "$0")" || exit 255
+
 source ./so-functions
 source ./so-common-functions
 source ./so-whiptail
@@ -108,8 +116,6 @@ esac
 # Allow execution of SO tools during setup
 export PATH=$PATH:../salt/common/tools/sbin
 
-got_root
-
 detect_os && detect_cloud
 set_network_dev_status_list
 
@@ -185,6 +191,10 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
+elif [ "$install_type" = 'ANALYST' ]; then
+	cd .. || exit 255
+	./so-analyst-install
+	exit 0
 fi
 
 # Say yes to the dress if its an ISO install
@@ -310,9 +320,8 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
-if [[ $is_helix ||  $is_manager || $is_import ]]; then
-	whiptail_homenet_manager
-fi
+whiptail_homenet_manager
+whiptail_dockernet_check
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
