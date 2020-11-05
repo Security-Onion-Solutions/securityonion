@@ -635,12 +635,22 @@ whiptail_install_type_other() {
 
 	[ -n "$TESTING" ] && return
 
-	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose distributed node type:" 9 65 2 \
-		"ANALYST" "Quit setup and run so-analyst-install " ON \
-		"HELIXSENSOR" "Create a Helix sensor " OFF \
-		3>&1 1>&2 2>&3
-	)
+	# so-analyst-install will only work with a working network connection
+	# so only show it on network installs for now
+	if [[ $setup_type == 'network' ]]; then
+		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+		"Choose distributed node type:" 9 65 2 \
+			"ANALYST" "Quit setup and run so-analyst-install " ON \
+			"HELIXSENSOR" "Create a Helix sensor " OFF \
+			3>&1 1>&2 2>&3
+		)
+	else
+		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+		"Choose distributed node type:" 8 65 1 \
+			"HELIXSENSOR" "Create a Helix sensor " ON \
+			3>&1 1>&2 2>&3
+		)
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
