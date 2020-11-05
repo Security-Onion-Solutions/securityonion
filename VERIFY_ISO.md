@@ -1,16 +1,16 @@
-### 2.3.2 ISO image built on 2020/10/25
+### 2.3.3 ISO image built on 2020/10/25
 
 ### Download and Verify
 
-2.3.2 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.3.2.iso
+2.3.3 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.3.3.iso
 
-MD5: EF2DEBCCBAE0B0BCCC906552B5FF918A  
-SHA1: 16AFCACB102BD217A038044D64E7A86DA351640E  
-SHA256: 7125F90B6323179D0D29F5745681BE995BD2615E64FA1E0046D94888A72C539E 
+MD5: 8010C32803CD62AA3F61487524E37049  
+SHA1: DCA300424C9DF81A4F332B8AA3945E18779C9D28  
+SHA256: 1099494AA3E476D682746AAD9C2BD7DED292589DFAAB7B517933336C07AA01D0 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.2.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.3.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
@@ -24,17 +24,17 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.2.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.3.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.3.2.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.3.3.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.3.2.iso.sig securityonion-2.3.2.iso
+gpg --verify securityonion-2.3.3.iso.sig securityonion-2.3.3.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
