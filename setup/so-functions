@@ -107,9 +107,12 @@ add_manager_hostfile() {
 
 
 add_mngr_ip_to_hosts() {
-	if [[ -n "$MSRVIP" ]]; then
-		echo "$MSRVIP   $MSRV" >> /etc/hosts
+	if [[ -z "$MSRVIP" ]]; then
+		MSRVIP=getent hosts "$MSRV" | awk 'NR==1{print $1}'
 	fi
+	
+	echo "$MSRVIP   $MSRV" >> /etc/hosts
+
 }
 
 addtotab_generate_templates() {
