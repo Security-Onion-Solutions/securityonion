@@ -641,6 +641,10 @@ copy_ssh_key() {
 	mkdir -p /root/.ssh
 	ssh-keygen -f /root/.ssh/so.key -t rsa -q -N "" < /dev/zero
 	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
+
+	echo "Removing old entry for manager from known_hosts if it exists"
+	sed -i "/${MSRV}/d" /root/.ssh/known_hosts
+
 	echo "Copying the SSH key to the manager"
 	#Copy the key over to the manager
 	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
