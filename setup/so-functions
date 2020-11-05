@@ -105,6 +105,10 @@ add_manager_hostfile() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+add_mngr_ip_to_hosts() {
+	echo "$MSRVIP   $MSRV" >> /etc/hosts
+}
+
 addtotab_generate_templates() {
 
 	local addtotab_path=$local_salt_dir/pillar/data
@@ -264,6 +268,7 @@ check_service_status() {
 
 check_salt_master_status() {
 	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
+	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
 	salt-call state.show_top > /dev/null 2>&1
 	local status=$?
 	#true if there is an issue talking to salt master
@@ -1408,6 +1413,64 @@ reserve_group_ids() {
 	groupadd -g 946 cyberchef
 }
 
+reinstall_init() {
+	info "Putting system in state to run setup again"
+
+	{
+		local minion_config=/etc/salt/minion
+		
+		# Remove startup_states from minion config so we don't immediately highstate when salt starts back up
+		if [[ -f $minion_config ]] && grep -q "startup_states" $minion_config; then
+			sed -i '/startup_states/d' $minion_config
+		fi
+
+		if command -v salt-call &> /dev/null; then
+			# Disable schedule so highstate doesn't start running during the install
+			salt-call -l info schedule.disable
+
+			# Kill any currently running salt jobs, also to prevent issues with highstate.
+			salt-call -l info saltutil.kill_all_jobs
+		fi
+
+		if command -v docker &> /dev/null; then
+			# Stop and remove all so-* containers so files can be changed with more safety
+			docker stop $(docker ps -a -q --filter "name=so-")
+			docker rm -f $(docker ps -a -q --filter "name=so-")
+		fi
+
+		local date_string
+		date_string=$(date +%s)
+
+		# Backup /opt/so since we'll be rebuilding this directory during setup
+		if [[ -d /opt/so ]]; then
+			mv /opt/so "/opt/so_old_${date_string}"
+		fi
+
+		# Backup /nsm for the same reason
+		while IFS= read -r -d '' dir; do
+			mv "$dir" "${dir}_old_${date_string}"
+		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -print0)
+
+		# Remove the old launcher package in case the config changes
+		remove_package launcher-final
+
+	} >> $setup_log 2>&1
+}
+
+remove_package() {
+	local package_name=$1
+	if [ $OS = 'centos' ]; then
+		if rpm -qa | grep -q "$package_name"; then
+			yum remove -y "$package_name"
+		fi
+	else
+		if dpkg -l | grep -q "$package_name"; then
+			apt purge -y "$package_name"
+		fi
+	fi
+}
+
+# When updating the salt version, also update the version in securityonion-builds/images/iso-task/Dockerfile and salt/salt/master.defaults.yaml and salt/salt/minion.defaults.yaml
 # CAUTION! SALT VERSION UDDATES - READ BELOW
 # When updating the salt version, also update the version in:
 # - securityonion-builds/iso-resources/build.sh
@@ -1568,7 +1631,6 @@ saltify() {
 }
 
 salt_checkin() {
-
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
 			{
@@ -1800,25 +1862,12 @@ set_default_log_size() {
 
 set_hostname() {
 
-	set_hostname_iso
-
-	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
-		if ! getent hosts "$MSRV"; then
-			echo "$MSRVIP   $MSRV" >> /etc/hosts
-		fi
-	fi
-
-}
-
-set_hostname_iso() {
-
 	hostnamectl set-hostname --static "$HOSTNAME"
 	echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
 	echo "::1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
 	echo "$HOSTNAME" > /etc/hostname
 
 	hostname -F /etc/hostname
-
 }
 
 set_initial_firewall_policy() {

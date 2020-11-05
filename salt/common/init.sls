@@ -158,8 +158,8 @@ Etc/UTC:
 utilsyncscripts:
   file.recurse:
     - name: /usr/sbin
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin

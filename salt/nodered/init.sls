@@ -52,8 +52,8 @@ noderedflowsload:
   file.managed:
     - name: /usr/sbin/so-nodered-load-flows
     - source: salt://nodered/files/nodered_load_flows
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
 
