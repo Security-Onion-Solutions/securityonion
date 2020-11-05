@@ -35,6 +35,7 @@ base:
     - common
     - patch.os.schedule
     - motd
+    - salt.lasthighstate
   
   '*_helix and G@saltversion:{{saltversion}}':
     - match: compound
