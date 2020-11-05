@@ -140,9 +140,8 @@ detect_os() {
 }
 
 highstate() {
-  # Run a highstate but first cancel a running one.
-  salt-call saltutil.kill_all_jobs
-  salt-call state.highstate -l info
+  # Run a highstate.
+  salt-call state.highstate -l info queue=True
 }
 
 masterlock() {
@@ -286,7 +285,7 @@ unmount_update() {
 update_centos_repo() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo"
-  rsync -a $AGDOCKER/repo /nsm/repo
+  rsync -av $AGREPO/* /nsm/repo/
   echo "Creating repo"
   createrepo /nsm/repo
 }
@@ -381,8 +380,6 @@ update_dockers() {
       docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
     done
   fi
-    # Cleanup on Aisle 4
-    clean_dockers
     echo "Add Registry back if airgap"
     if [ $is_airgap -eq 0 ]; then
       docker load -i $AGDOCKER/registry_image.tar
@@ -411,6 +408,10 @@ upgrade_check_salt() {
     if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
       echo "You are already running the correct version of Salt for Security Onion."
     else
+      UPGRADESALT=1
+    fi
+}   
+upgrade_salt() {
       SALTUPGRADED=True
       echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
       echo ""
@@ -421,7 +422,11 @@ upgrade_check_salt() {
         yum versionlock delete "salt-*"
         echo "Updating Salt packages and restarting services."
         echo ""
-        sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+	if [ $is_airgap -eq 0 ]; then
+          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
+	else 
+          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+	fi
         echo "Applying yum versionlock for Salt."
         echo ""
         yum versionlock add "salt-*"
@@ -441,7 +446,6 @@ upgrade_check_salt() {
         apt-mark hold "salt-master"
         apt-mark hold "salt-minion"
       fi
-    fi 
 }
 
 verify_latest_update_script() {
@@ -502,8 +506,14 @@ echo "Let's see if we need to update Security Onion."
 upgrade_check
 space_check
 
+echo "Checking for Salt Master and Minion updates."
+upgrade_check_salt
+
 echo ""
 echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
+echo ""
+echo "Updating dockers to $NEWVERSION."
+update_dockers
 echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
@@ -511,20 +521,24 @@ echo ""
 echo "Stopping Salt Master service."
 systemctl stop salt-master
 echo ""
-echo "Checking for Salt Master and Minion updates."
-upgrade_check_salt
 
+# Does salt need upgraded. If so update it.
+if [ "$UPGRADESALT" == "1" ]; then
+  echo "Upgrading Salt"
+  # Update the repo files so it can actually upgrade
+  if [ $is_airgap -eq 0 ]; then
+    update_centos_repo
+    yum clean all
+  fi
+  upgrade_salt
+fi
 
 echo "Making pillar changes."
 pillar_changes
 echo ""
 
-echo ""
-echo "Updating dockers to $NEWVERSION."
-update_dockers
-
 # Only update the repo if its airgap
-if [ $is_airgap -eq 0 ]; then
+if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
 update_centos_repo
 fi
 
@@ -561,10 +575,12 @@ highstate
 playbook
 unmount_update
 
-SALTUPGRADED="True"
-if [[ "$SALTUPGRADED" == "True" ]]; then
+if [ "$UPGRADESALT" == "1" ]; then
   echo ""
   echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
+  if [ $is_airgap -eq 0 ]; then
+    salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+  fi
   salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
   echo ""
 fi
