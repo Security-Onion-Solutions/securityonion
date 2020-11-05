@@ -121,6 +121,10 @@ parse_status() {
         [[ $container_state = "$state" ]] && printf $SUCCESS_STRING && return 0
     done
 
+    for state in "${BAD_STATUSES[@]}"; do
+        [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]] && printf $DISABLED_STRING && return 0
+    done
+
     # if a highstate has finished running since the system has started
     # then the containers should be running so let's check the status
     if [ $LAST_HIGHSTATE_END -ge $SYSTEM_START_TIME ]; then
@@ -133,13 +137,7 @@ parse_status() {
 
         # This is technically not needed since the default is error state
         for state in "${BAD_STATUSES[@]}"; do
-            if [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]]; then
-                printf $DISABLED_STRING
-                return 0
-            elif [[ $container_state = "$state" ]]; then
-                printf $ERROR_STRING
-                return 1
-            fi
+            [[ $container_state = "$state" ]] &&  printf $ERROR_STRING && return 1
         done
 
         printf $ERROR_STRING && return 1
