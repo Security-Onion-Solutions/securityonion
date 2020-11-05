@@ -384,7 +384,7 @@ whiptail_invalid_pass_characters_warning() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Password is invalid. Please exclude single quotes, double quotes, dollar signs, and backslashes from the password." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password." 8 75
 }
 
 whiptail_cur_close_days() {
@@ -457,31 +457,6 @@ whiptail_dhcp_warn() {
 	
 }
 
-whiptail_dockernet_check(){
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "Security Onion Setup" --yesno \
-	"Do you want to keep the default Docker IP range? \n \n(Choose yes if you don't know what this means)" 10 75
-
-	local exitstatus=$?
-
-	if [[ $exitstatus == 1 ]]; then
-	whiptail_dockernet_net
-	fi
-}
-
-whiptail_dockernet_net() {
-
-	[ -n "$TESTING" ] && return
-
-	DOCKERNET=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter a /24 network range for docker to use: \nThe same range MUST be used on ALL nodes \n(Default value is pre-populated.)" 10 75 172.17.0.0 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
 whiptail_enable_components() {
 
 	[ -n "$TESTING" ] && return
@@ -585,12 +560,11 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose install type:" 12 65 5 \
+	"Choose install type:" 10 65 4 \
 		"EVAL" "Evaluation mode (not for production) " ON \
 		"STANDALONE" "Standalone production install " OFF \
 		"DISTRIBUTED" "Distributed install submenu " OFF \
 		"IMPORT" "Standalone to import PCAP or log files " OFF \
-		"OTHER" "Other install types" OFF \
 		3>&1 1>&2 2>&3
 	)
 
@@ -598,49 +572,21 @@ whiptail_install_type() {
 	whiptail_check_exitstatus $exitstatus
 
 	if [[ $install_type == "DISTRIBUTED" ]]; then
-		whiptail_install_type_dist
-	elif [[ $install_type == "OTHER" ]]; then
-		whiptail_install_type_other
+		install_type=$(whiptail --title "Security Onion Setup" --radiolist \
+		"Choose distributed node type:" 13 60 6 \
+			"MANAGER" "Start a new grid " ON \
+			"SENSOR" "Create a forward only sensor " OFF \
+			"SEARCHNODE" "Add a search node with parsing " OFF \
+			"MANAGERSEARCH" "Manager + search node " OFF \
+			"FLEET" "Dedicated Fleet Osquery Node " OFF \
+			"HEAVYNODE" "Sensor + Search Node " OFF \
+			3>&1 1>&2 2>&3
+			# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
+			# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
+			# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
+			# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
+		)
 	fi
-
-	export install_type
-}
-
-whiptail_install_type_dist() {
-
-	[ -n "$TESTING" ] && return
-	
-	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose distributed node type:" 13 60 6 \
-		"MANAGER" "Start a new grid " ON \
-		"SENSOR" "Create a forward only sensor " OFF \
-		"SEARCHNODE" "Add a search node with parsing " OFF \
-		"MANAGERSEARCH" "Manager + search node " OFF \
-		"FLEET" "Dedicated Fleet Osquery Node " OFF \
-		"HEAVYNODE" "Sensor + Search Node " OFF \
-		3>&1 1>&2 2>&3
-		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
-		# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
-		# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
-		# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
-	)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	export install_type
-}
-
-whiptail_install_type_other() {
-
-	[ -n "$TESTING" ] && return
-
-	install_type=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose distributed node type:" 9 65 2 \
-		"ANALYST" "Quit setup and run so-analyst-install " ON \
-		"HELIXSENSOR" "Create a Helix sensor " OFF \
-		3>&1 1>&2 2>&3
-	)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus

@@ -37,9 +37,9 @@ LOG="/opt/so/log/curator/so-curator-closed-delete.log"
 # If both conditions are true, keep on looping until one of the conditions is false.
 while [[ $(du -hs --block-size=1GB /nsm/elasticsearch/nodes | awk '{print $1}' ) -gt "{{LOG_SIZE_LIMIT}}" ]] &&
 {% if grains['role'] in ['so-node','so-heavynode'] %}
-curl -s -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
+curl -s -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
 {% else %}
-curl -s -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
+curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
 {% endif %}
 
 	# We need to determine OLDEST_INDEX:
@@ -47,16 +47,16 @@ curl -s -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&e
 	# Then, sort by date by telling sort to use hyphen as delimiter and then sort on the third field.
 	# Finally, select the first entry in that sorted list.
 	{% if grains['role'] in ['so-node','so-heavynode'] %}
-	OLDEST_INDEX=$(curl -s -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
+	OLDEST_INDEX=$(curl -s -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
 	{% else %}
-	OLDEST_INDEX=$(curl -s -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
+	OLDEST_INDEX=$(curl -s {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
 	{% endif %}
 	
 	# Now that we've determined OLDEST_INDEX, ask Elasticsearch to delete it.
 	{% if grains['role'] in ['so-node','so-heavynode'] %}
-	curl -XDELETE -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
+	curl -XDELETE -k https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
 	{% else %}
-	curl -XDELETE -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
+	curl -XDELETE {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
 	{% endif %}
 
 	# Finally, write a log entry that says we deleted it.

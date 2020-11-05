@@ -9,8 +9,6 @@
 {%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
 {%- import_json "soc/files/soc/hunt.actions.json" as hunt_actions %}
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
-{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
-
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -35,7 +33,7 @@
         {%- if salt['pillar.get']('nodestab', {}) %}
         "remoteHostUrls": [
         {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-        "https://{{ SN.split('_')|first }}:9200"{{ "," if not loop.last else ""}}
+        "https://{{ SN.split('_')|first }}:9200"{{ "," if not loop.last }}
         {%- endfor %}
         ],
         {%- endif %}
@@ -51,7 +49,7 @@
       },
 {% endif %}
       "statickeyauth": {
-        "anonymousCidr": "{{ DNET }}/24",
+        "anonymousCidr": "172.17.0.0/24",
         "apiKey": "{{ SENSORONIKEY }}"
       }
     },
@@ -72,7 +70,7 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "ackEnabled": false,
+        "dismissEnabled": false,
         "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
         "eventFields": {{ hunt_eventfields | json }},
         "queryBaseFilter": "",
@@ -89,7 +87,7 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "ackEnabled": true,
+        "dismissEnabled": true,
         "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
         "eventFields": {{ alerts_eventfields | json }},
         "queryBaseFilter": "event.dataset:alert",

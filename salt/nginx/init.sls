@@ -31,7 +31,7 @@ nginxconf:
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://nginx/etc/nginx.conf
+    - source: salt://nginx/etc/nginx.conf.{{ grains.role }}
 
 nginxlogdir:
   file.directory:

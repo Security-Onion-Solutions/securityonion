@@ -1,0 +1,360 @@
+{%- set managerip = salt['pillar.get']('manager:mainip', '') %}
+{%- set FLEET_MANAGER = salt['pillar.get']('global:fleet_manager') %}
+{%- set FLEET_NODE = salt['pillar.get']('global:fleet_node') %}
+{%- set FLEET_IP = salt['pillar.get']('global:fleet_ip', None) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+# Load dynamic modules. See /usr/share/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+	worker_connections 1024;
+}
+
+http {
+	log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+					  '$status $body_bytes_sent "$http_referer" '
+					  '"$http_user_agent" "$http_x_forwarded_for"';
+
+	access_log  /var/log/nginx/access.log  main;
+
+	sendfile            on;
+	tcp_nopush          on;
+	tcp_nodelay         on;
+	keepalive_timeout   65;
+	types_hash_max_size 2048;
+	client_max_body_size 2500M;
+
+	include             /etc/nginx/mime.types;
+	default_type        application/octet-stream;
+
+	# Load modular configuration files from the /etc/nginx/conf.d directory.
+	# See http://nginx.org/en/docs/ngx_core_module.html#include
+	# for more information.
+	include /etc/nginx/conf.d/*.conf;
+
+	#server {
+	#    listen       80 default_server;
+	#    listen       [::]:80 default_server;
+	#    server_name  _;
+	#    root         /opt/socore/html;
+	#    index        index.html;
+
+			# Load configuration files for the default server block.
+			#include /etc/nginx/default.d/*.conf;
+
+	#    location / {
+	#    }
+
+	#    error_page 404 /404.html;
+	#        location = /40x.html {
+	#    }
+
+	#    error_page 500 502 503 504 /50x.html;
+	#        location = /50x.html {
+	#    }
+	#}
+	server {
+			listen 80 default_server;
+			server_name _;
+			return 301 https://$host$request_uri;
+	}
+	{%- if ISAIRGAP is sameas true %}
+	server {
+		    listen 7788;
+			server_name _;
+			root /opt/socore/html/repo;
+			location /rules/ {
+                allow all;
+                sendfile on;
+                sendfile_max_chunk 1m;
+                autoindex on;
+                autoindex_exact_size off;
+                autoindex_format html;
+                autoindex_localtime on;
+			}
+	}
+	{%- endif %}
+
+{% if FLEET_MANAGER %}
+	server {
+		listen       8090 ssl http2 default_server;
+		server_name  _;
+		root         /opt/socore/html;
+		index        blank.html;
+
+		ssl_certificate "/etc/pki/nginx/server.crt";
+		ssl_certificate_key "/etc/pki/nginx/server.key";
+		ssl_session_cache shared:SSL:1m;
+		ssl_session_timeout  10m;
+		ssl_ciphers HIGH:!aNULL:!MD5;
+		ssl_prefer_server_ciphers on;
+
+		location ~ ^/kolide.agent.Api/(RequestEnrollment|RequestConfig|RequestQueries|PublishLogs|PublishResults|CheckHealth)$ {
+			grpc_pass  grpcs://{{ managerip }}:8080;
+			grpc_set_header Host $host;
+			grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_buffering off;
+		}
+
+	}
+{% endif %}
+
+# Settings for a TLS enabled server.
+
+	server {
+		listen       443 ssl http2 default_server;
+		#listen       [::]:443 ssl http2 default_server;
+		server_name  _;
+		root         /opt/socore/html;
+		index        index.html;
+
+		ssl_certificate "/etc/pki/nginx/server.crt";
+		ssl_certificate_key "/etc/pki/nginx/server.key";
+		ssl_session_cache shared:SSL:1m;
+		ssl_session_timeout  10m;
+		ssl_ciphers HIGH:!aNULL:!MD5;
+		ssl_prefer_server_ciphers on;
+
+		# Load configuration files for the default server block.
+		#include /etc/nginx/default.d/*.conf;
+
+		location ~* (^/login/|^/js/.*|^/css/.*|^/images/.*) {
+			proxy_pass            http://{{ managerip }}:9822;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      Upgrade $http_upgrade;
+			proxy_set_header      Connection "Upgrade";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location / {
+			auth_request          /auth/sessions/whoami;
+			proxy_pass            http://{{ managerip }}:9822/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      Upgrade $http_upgrade;
+			proxy_set_header      Connection "Upgrade";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location ~ ^/auth/.*?(whoami|login|logout|settings) {
+			rewrite               /auth/(.*) /$1 break;
+			proxy_pass            http://{{ managerip }}:4433;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /cyberchef/ {
+			auth_request          /auth/sessions/whoami;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /navigator/ {
+			auth_request          /auth/sessions/whoami;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /packages/ {
+			try_files $uri =206;
+			auth_request          /auth/sessions/whoami;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		} 
+		
+		location /grafana/ {
+			auth_request          /auth/sessions/whoami;
+			rewrite               /grafana/(.*) /$1 break;
+			proxy_pass            http://{{ managerip }}:3000/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /kibana/ {
+			auth_request          /auth/sessions/whoami;
+			rewrite               /kibana/(.*) /$1 break;
+			proxy_pass            http://{{ managerip }}:5601/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /nodered/ {
+			proxy_pass http://{{ managerip }}:1880/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header Upgrade $http_upgrade;
+			proxy_set_header Connection "Upgrade";
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+		
+		location /playbook/ {
+			proxy_pass            http://{{ managerip }}:3200/playbook/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		{%- if ISAIRGAP is sameas true %}
+        location /repo/ {
+            allow all;
+            sendfile on;
+            sendfile_max_chunk 1m;
+            autoindex on;
+            autoindex_exact_size off;
+            autoindex_format html;
+            autoindex_localtime on;
+        }
+
+		{%- endif %}
+
+	{%- if FLEET_NODE %}
+		location /fleet/ {
+			return 301 https://{{ FLEET_IP }}/fleet;
+		}
+	{%- else %}
+		location /fleet/ {
+			proxy_pass https://{{ managerip }}:8080;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+	{%- endif %}
+
+		location /thehive/ {
+			proxy_pass            http://{{ managerip }}:9000/thehive/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_http_version    1.1; # this is essential for chunked responses to work
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /cortex/ {
+			proxy_pass            http://{{ managerip }}:9001/cortex/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_http_version    1.1; # this is essential for chunked responses to work
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+		
+		location /soctopus/ {
+			proxy_pass            http://{{ managerip }}:7000/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		location /kibana/app/soc/ {
+			rewrite ^/kibana/app/soc/(.*) /soc/$1 permanent;
+		}
+
+		location /kibana/app/fleet/ {
+			rewrite ^/kibana/app/fleet/(.*) /fleet/$1 permanent;
+		}
+
+		location /kibana/app/soctopus/ {
+			rewrite ^/kibana/app/soctopus/(.*) /soctopus/$1 permanent;
+		}
+
+		location /sensoroniagents/ {
+			if ($http_authorization = "") {
+				return 403;
+			}
+			proxy_pass            http://{{ managerip }}:9822/;
+			proxy_read_timeout    90;
+			proxy_connect_timeout 90;
+			proxy_set_header      Host $host;
+			proxy_set_header      X-Real-IP $remote_addr;
+			proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header      Proxy "";
+			proxy_set_header      X-Forwarded-Proto $scheme;
+		}
+
+		error_page 401 = @error401;
+
+		location @error401 {
+			add_header    Set-Cookie "AUTH_REDIRECT=$request_uri;Path=/;Max-Age=14400";
+			return        302 /auth/self-service/browser/flows/login;
+		}
+
+		#error_page 404 /404.html;
+		#    location = /40x.html {
+		#}
+
+		error_page 500 502 503 504 /50x.html;
+				location = /usr/share/nginx/html/50x.html {
+		}
+	}
+
+}

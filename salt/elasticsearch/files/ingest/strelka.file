@@ -6,16 +6,16 @@
     { "rename":         { "field": "message2.scan",        "target_field": "scan",          "ignore_missing": true  } },
     { "rename":         { "field": "message2.request",        "target_field": "request",          "ignore_missing": true  } },
     { "rename":         { "field": "scan.hash",        "target_field": "hash",          "ignore_missing": true  } },
-    { "rename":         { "field": "scan.exiftool",        "target_field": "exiftool",          "ignore_missing": true  } },
+
     { "grok":           { "if": "ctx.request?.attributes?.filename != null",   "field": "request.attributes.filename",       "patterns": ["-%{WORD:log.id.fuid}-"], "ignore_failure": true } },
     { "foreach":
       {
-        "if": "ctx.exiftool?.keys !=null",
-          "field": "exiftool.keys",
+        "if": "ctx.scan?.exiftool?.keys !=null",
+          "field": "scan.exiftool.keys",
           "processor":{
-            "append": {
-              "field": "scan.exiftool",
-              "value": "{{_ingest._value.key}}={{_ingest._value.value}}"
+            "set": {
+              "field": "scan.exiftool.{{_ingest._value.key}}",
+              "value": "{{_ingest._value.value}}"
             }
           }
       }
@@ -42,8 +42,7 @@
     { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 70 && ctx.rule?.score <=89",   "field": "event.severity", "value": 3, "override": true }  },
     { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 90",   "field": "event.severity", "value": 4, "override": true }  },
     { "set":         { "field": "observer.name",        "value": "{{agent.name}}" }},
-    { "convert" :    { "field" : "scan.exiftool","type": "string", "ignore_missing":true }},
-    { "remove":         { "field": ["host", "path", "message", "exiftool", "scan.yara.meta"],                                         "ignore_missing": true  } },
+    { "remove":         { "field": ["host", "path", "message", "scan.exiftool.keys", "scan.yara.meta"],                                         "ignore_missing": true  } },
     { "pipeline":       { "name": "common"                                                                                   } }
   ]
 }

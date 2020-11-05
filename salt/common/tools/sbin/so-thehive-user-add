@@ -31,7 +31,7 @@ fi
 USER=$1
 
 THEHIVE_KEY=$(lookup_pillar hivekey)
-THEHVIE_API_URL="$(lookup_pillar url_base)/thehive/api"
+THEHIVE_IP=$(lookup_pillar managerip)
 THEHIVE_USER=$USER
 
 # Read password for new user from stdin
@@ -47,7 +47,7 @@ if ! check_password "$THEHIVE_PASS"; then
 fi
 
 # Create new user in TheHive
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -L "https://$THEHVIE_API_URL/user" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASS\"}")
+resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" "https://$THEHIVE_IP/thehive/api/user" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASS\"}")
 if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
     echo "Successfully added user to TheHive"
 else

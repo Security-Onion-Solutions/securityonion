@@ -51,9 +51,9 @@ if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
         {% if grains['role'] in ['so-node','so-heavynode'] %}
-        curl -k -L https://{{ NODEIP }}:9200/_cat/indices?v
+        curl -k https://{{ NODEIP }}:9200/_cat/indices?v
         {% else %}
-        curl -L {{ NODEIP }}:9200/_cat/indices?v
+        curl {{ NODEIP }}:9200/_cat/indices?v
         {% endif %}
         echo
         # Inform user we are about to delete all data
@@ -94,16 +94,16 @@ fi
 echo "Deleting data..."
 
 {% if grains['role'] in ['so-node','so-heavynode'] %}
-INDXS=$(curl -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+INDXS=$(curl -s -XGET -k https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 {% else %}
-INDXS=$(curl -s -XGET -L {{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+INDXS=$(curl -s -XGET {{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 {% endif %}
 for INDX in ${INDXS}
 do
     {% if grains['role'] in ['so-node','so-heavynode'] %}
-    curl -XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    curl -XDELETE -k https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
     {% else %}
-    curl -XDELETE -L "{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    curl -XDELETE "{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
     {% endif %}
 done
 
