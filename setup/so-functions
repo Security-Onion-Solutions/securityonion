@@ -103,6 +103,9 @@ add_manager_hostfile() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	# Add manager to hosts file
+	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
 addtotab_generate_templates() {
@@ -1852,25 +1855,12 @@ set_default_log_size() {
 
 set_hostname() {
 
-	set_hostname_iso
-
-	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
-		if ! getent hosts "$MSRV"; then
-			echo "$MSRVIP   $MSRV" >> /etc/hosts
-		fi
-	fi
-
-}
-
-set_hostname_iso() {
-
 	hostnamectl set-hostname --static "$HOSTNAME"
 	echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
 	echo "::1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
 	echo "$HOSTNAME" > /etc/hostname
 
 	hostname -F /etc/hostname
-
 }
 
 set_initial_firewall_policy() {
