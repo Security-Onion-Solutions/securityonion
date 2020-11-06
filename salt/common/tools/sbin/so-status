@@ -23,11 +23,17 @@ if ! [ "$(id -u)" = 0 ]; then
 fi
 
 # Constants
+SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
+# file populated by salt.lasthighstate state at end of successful highstate run
+LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
+HIGHSTATE_RUNNING=$(salt-call --local saltutil.running --out=json | jq -r '.local[].fun' | grep -q 'state.highstate' && echo $?)
 ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
 PENDING_STRING="PENDING"
 MISSING_STRING='MISSING'
 DISABLED_STRING='DISABLED'
+WAIT_START_STRING='WAIT_START'
+STARTING_STRING='STARTING'
 CALLER=$(ps -o comm= $PPID)
 declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
 declare -a PENDING_STATUSES=("paused" "created" "restarting")
@@ -111,28 +117,42 @@ parse_status() {
     local container_state=${1}
     local service_name=${2}
 
-    [[ $container_state = "missing" ]] && printf $MISSING_STRING && return 1
-
     for state in "${GOOD_STATUSES[@]}"; do
         [[ $container_state = "$state" ]] && printf $SUCCESS_STRING && return 0
     done
 
-    for state in "${PENDING_STATUSES[@]}"; do
-        [[ $container_state = "$state" ]] && printf $PENDING_STRING && return 0
-    done
-
-    # This is technically not needed since the default is error state
     for state in "${BAD_STATUSES[@]}"; do
-        if [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]]; then
-            printf $DISABLED_STRING
-            return 0
-        elif [[ $container_state = "$state" ]]; then
-            printf $ERROR_STRING
-            return 1
-        fi
+        [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]] && printf $DISABLED_STRING && return 0
     done
 
-    printf $ERROR_STRING && return 1
+    # if a highstate has finished running since the system has started
+    # then the containers should be running so let's check the status
+    if [ $LAST_HIGHSTATE_END -ge $SYSTEM_START_TIME ]; then
+
+        [[ $container_state = "missing" ]] && printf $MISSING_STRING && return 1
+
+        for state in "${PENDING_STATUSES[@]}"; do
+            [[ $container_state = "$state" ]] && printf $PENDING_STRING && return 0
+        done
+
+        # This is technically not needed since the default is error state
+        for state in "${BAD_STATUSES[@]}"; do
+            [[ $container_state = "$state" ]] &&  printf $ERROR_STRING && return 1
+        done
+
+        printf $ERROR_STRING && return 1
+    
+    # if a highstate has not run since system start time, but a highstate is currently running
+    # then show that the containers are STARTING
+    elif [[ "$HIGHSTATE_RUNNING" == 0 ]]; then
+        printf $STARTING_STRING && return 0
+
+    # if a highstate has not finished running since system startup and isn't currently running
+    # then just show that the containers are WAIT_START; waiting to be started
+    else
+        printf $WAIT_START_STRING && return 1
+
+    fi
 }
 
 # {% raw %}
@@ -143,13 +163,13 @@ print_line() {
     local columns=$(tput cols)
     local state_color="\e[0m"
 
-    local PADDING_CONSTANT=14
+    local PADDING_CONSTANT=15
 
-    if [[ $service_state = "$ERROR_STRING" ]] || [[ $service_state = "$MISSING_STRING" ]]; then
+    if [[ $service_state = "$ERROR_STRING" ]] || [[ $service_state = "$MISSING_STRING" ]] || [[ $service_state = "$WAIT_START_STRING" ]]; then
         state_color="\e[1;31m"
     elif [[ $service_state = "$SUCCESS_STRING" ]]; then
         state_color="\e[1;32m"
-    elif [[ $service_state = "$PENDING_STRING" ]] || [[ $service_state = "$DISABLED_STRING" ]]; then
+    elif [[ $service_state = "$PENDING_STRING" ]] || [[ $service_state = "$DISABLED_STRING" ]] || [[ $service_state = "$STARTING_STRING" ]]; then
         state_color="\e[1;33m"
     fi
 
