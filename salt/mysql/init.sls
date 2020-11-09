@@ -98,7 +98,7 @@ so-mysql:
     - onchanges:
       - docker_container: so-mysql
   module.run:
-    - mysql.status:
+    - so.mysql_conn:
       - retry: 900
     - onchanges:
       - cmd: so-mysql
