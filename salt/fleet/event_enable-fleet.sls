@@ -2,7 +2,7 @@
 {% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% if FLEETNODE or FLEETMANAGER %}
   {% set ENROLLSECRET = salt['cmd.run']('docker exec so-fleet fleetctl get enroll-secret default') %}
-{% else %}}
+{% else %}
   {% set ENROLLSECRET = '' %}
 {% endif %}
 {% set MAININT = salt['pillar.get']('host:mainint') %}
