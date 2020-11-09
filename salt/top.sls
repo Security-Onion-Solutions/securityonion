@@ -98,7 +98,7 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -156,7 +156,7 @@ base:
     - manager
     - idstools
     - suricata.manager
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -206,7 +206,7 @@ base:
     - idstools
     - suricata.manager    
     - healthcheck
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
@@ -337,7 +337,7 @@ base:
     - manager
     - idstools
     - suricata.manager
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
