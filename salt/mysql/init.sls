@@ -97,6 +97,11 @@ so-mysql:
     - timeout: 900
     - onchanges:
       - docker_container: so-mysql
+  module.run:
+    - mysql.status:
+      - retry: 900
+    - onchanges:
+      - cmd: so-mysql
 {% endif %}
 
 {% else %}
