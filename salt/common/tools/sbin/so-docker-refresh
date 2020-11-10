@@ -28,46 +28,6 @@ manager_check() {
   fi
 }
 
-update_docker_containers() {
-  SIGNPATH=/root/sosigs
-  rm -rf $SIGNPATH
-  mkdir -p $SIGNPATH
-  if [ -z "$BRANCH" ]; then
-    BRANCH="master"
-  fi
-  # Download the containers from the interwebs
-  for i in "${TRUSTED_CONTAINERS[@]}"
-  do
-    # Pull down the trusted docker image
-    echo "Downloading $i"
-    docker pull quay.io/$IMAGEREPO/$i
-    
-    # Get signature
-    curl https://github.com/Security-Onion-Solutions/securityonion/blob/$BRANCH/sigs/images/$i.gpg --output $SIGNPATH/$i.gpg
-    if [[ $? -ne 0 ]]
-      echo "Unable to pull signature file for $i"
-      exit 1
-    fi
-    # Dump our hash values
-    docker inspect quay.io/$IMAGEREPO/$i | jq '.[0].Created, .[0].Id, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
-    if [[ $? -ne 0 ]]
-      echo "Unable to inspect $i"
-      exit 1
-    fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$i.gpg $SIGNPATH/$i.txt 2>&1)
-    if [[ $? -eq 0 ]]
-      # Tag it with the new registry destination
-      docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i
-    else
-      echo "There is a problem downloading the $i image. Details: "
-      echo ""
-      echo $GPGTEST
-      exit 1
-  done
-  
-}
-
 version_check() {
   if [ -f /etc/soversion ]; then
     VERSION=$(cat /etc/soversion)
@@ -83,54 +43,5 @@ version_check
 # Use the hostname
 HOSTNAME=$(hostname)
 # List all the containers
-if [ $MANAGERCHECK != 'so-helix' ]; then
-    TRUSTED_CONTAINERS=( \
-    "so-acng:$VERSION" \
-    "so-thehive-cortex:$VERSION" \
-    "so-curator:$VERSION" \
-    "so-domainstats:$VERSION" \
-    "so-elastalert:$VERSION" \
-    "so-elasticsearch:$VERSION" \
-    "so-filebeat:$VERSION" \
-    "so-fleet:$VERSION" \
-    "so-fleet-launcher:$VERSION" \
-    "so-freqserver:$VERSION" \
-    "so-grafana:$VERSION" \
-    "so-idstools:$VERSION" \
-    "so-influxdb:$VERSION" \
-    "so-kibana:$VERSION" \
-    "so-kratos:$VERSION" \
-    "so-logstash:$VERSION" \
-    "so-minio:$VERSION" \
-    "so-mysql:$VERSION" \
-    "so-nginx:$VERSION" \
-    "so-pcaptools:$VERSION" \
-    "so-playbook:$VERSION" \
-    "so-redis:$VERSION" \
-    "so-soc:$VERSION" \
-    "so-soctopus:$VERSION" \
-    "so-steno:$VERSION" \
-    "so-strelka-frontend:$VERSION" \
-		"so-strelka-manager:$VERSION" \
-		"so-strelka-backend:$VERSION" \
-		"so-strelka-filestream:$VERSION" \
-    "so-suricata:$VERSION" \
-    "so-telegraf:$VERSION" \
-    "so-thehive:$VERSION" \
-    "so-thehive-es:$VERSION" \
-    "so-wazuh:$VERSION" \
-    "so-zeek:$VERSION" )
-  else
-    TRUSTED_CONTAINERS=( \
-    "so-filebeat:$VERSION" \
-    "so-idstools:$VERSION" \
-    "so-logstash:$VERSION" \
-    "so-nginx:$VERSION" \
-    "so-redis:$VERSION" \
-    "so-steno:$VERSION" \
-    "so-suricata:$VERSION" \
-    "so-telegraf:$VERSION" \
-    "so-zeek:$VERSION" )
-  fi
-
+container_list
 update_docker_containers
