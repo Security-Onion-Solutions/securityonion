@@ -102,6 +102,11 @@ so-thehive-es:
       - 0.0.0.0:9400:9400
       - 0.0.0.0:9500:9500
 
+append_so-thehive-es_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-thehive-es
+
 # Install Cortex
 so-cortex:
   docker_container.running:
@@ -115,6 +120,11 @@ so-cortex:
       - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
+
+append_so-cortex_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-cortex
 
 cortexscript:
   cmd.script:
@@ -135,6 +145,11 @@ so-thehive:
       - /opt/so/conf/thehive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
+
+append_so-thehive_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-thehive
 
 thehivescript:
   cmd.script:

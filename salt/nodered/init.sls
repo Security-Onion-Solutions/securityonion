@@ -74,6 +74,11 @@ so-nodered:
     - port_bindings:
       - 0.0.0.0:1880:1880
 
+append_so-nodered_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-nodered
+
 so-nodered-flows:
   cmd.run:
     - name: /usr/sbin/so-nodered-load-flows

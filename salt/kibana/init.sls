@@ -90,6 +90,11 @@ so-kibana:
     - port_bindings:
       - 0.0.0.0:5601:5601
 
+append_so-kibana_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-kibana
+
 kibanadashtemplate:
   file.managed:
     - name: /opt/so/conf/kibana/saved_objects.ndjson.template

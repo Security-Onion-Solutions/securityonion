@@ -121,6 +121,12 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - module: wait_for_elasticsearch
+
+append_so-elastalert_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-elastalert
+
 {% endif %}
 
 {% else %}

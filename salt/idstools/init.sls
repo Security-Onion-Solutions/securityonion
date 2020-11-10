@@ -76,6 +76,11 @@ so-idstools:
     - watch:
       - file: idstoolsetcsync
 
+append_so-idstools_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-idstools
+
 {% else %}
 
 idstools_state_not_allowed:

@@ -134,4 +134,9 @@ so-fleet:
     - watch:
       - /opt/so/conf/fleet/etc
 
+append_so-fleet_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-fleet
+
 {% endif %}

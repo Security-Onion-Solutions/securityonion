@@ -102,6 +102,12 @@ so-mysql:
       - retry: 300
     - onchanges:
       - cmd: so-mysql
+
+append_so-mysql_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-mysql
+
 {% endif %}
 
 {% else %}

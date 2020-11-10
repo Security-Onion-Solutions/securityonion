@@ -215,12 +215,16 @@ so-elasticsearch:
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
       - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
-
     - watch:
       - file: cacertz
       - file: esyml
       - file: esingestconf
       - file: so-elasticsearch-pipelines-file
+
+append_so-elasticsearch_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-elasticsearch
 
 so-elasticsearch-pipelines-file:
   file.managed:
