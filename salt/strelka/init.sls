@@ -87,6 +87,11 @@ strelka_coordinator:
     - port_bindings:
       - 0.0.0.0:6380:6379
 
+append_so-strelka-coordinator_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-coordinator
+
 strelka_gatekeeper:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
@@ -94,6 +99,11 @@ strelka_gatekeeper:
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
       - 0.0.0.0:6381:6379
+
+append_so-strelka-gatekeeper_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-gatekeeper
 
 strelka_frontend:
   docker_container.running:
@@ -107,6 +117,11 @@ strelka_frontend:
     - port_bindings:
       - 0.0.0.0:57314:57314
 
+append_so-strelka-frontend_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-frontend
+
 strelka_backend:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-backend:{{ VERSION }}
@@ -117,6 +132,11 @@ strelka_backend:
     - command: strelka-backend
     - restart_policy: on-failure
 
+append_so-strelka-backend_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-backend
+
 strelka_manager:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-manager:{{ VERSION }}
@@ -124,6 +144,11 @@ strelka_manager:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
     - command: strelka-manager
+
+append_so-strelka-manager_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-manager
 
 strelka_filestream:
   docker_container.running:
@@ -133,6 +158,11 @@ strelka_filestream:
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
     - command: strelka-filestream
+
+append_so-strelka-filestream_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-strelka-filestream
     
 strelka_zeek_extracted_sync:
   cron.present:

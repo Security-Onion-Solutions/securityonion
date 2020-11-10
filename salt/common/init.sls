@@ -32,6 +32,23 @@ soconfperms:
     - gid: 939
     - dir_mode: 770
 
+sostatusconf:
+  file.directory:
+    - name: /opt/so/conf/so-status
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+
+so-status.running.conf:
+  file.touch:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - unless: ls /opt/so/conf/so-status/so-status.conf
+
+so-status.stopped.conf:
+  file.touch:
+    - name: /opt/so/conf/so-status/so-status.disabled.conf
+    - unless: ls /opt/so/conf/so-status/so-status.disabled.conf
+
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack

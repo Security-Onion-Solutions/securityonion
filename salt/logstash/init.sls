@@ -202,6 +202,11 @@ so-logstash:
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
 
+append_so-logstash_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-logstash
+
 {% else %}
 
 logstash_state_not_allowed:

@@ -81,6 +81,11 @@ so-aptcacherng:
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
 
+append_so-aptcacher_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-aptcacherng
+
 {% endif %}
 
 strelka_yara_update:

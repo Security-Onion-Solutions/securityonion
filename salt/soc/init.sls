@@ -67,6 +67,11 @@ so-soc:
     - watch:
       - file: /opt/so/conf/soc/*
 
+append_so-soc_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-soc
+
 # Add Kratos Group
 kratosgroup:
   group.present:
@@ -118,6 +123,11 @@ so-kratos:
       - 0.0.0.0:4434:4434
     - watch:
       - file: /opt/so/conf/kratos
+
+append_so-kratos_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-kratos
 
 {% else %}
 
