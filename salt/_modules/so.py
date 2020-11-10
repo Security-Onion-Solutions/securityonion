@@ -25,15 +25,17 @@ def mysql_conn(retry):
         log.debug(f'Connection attempt {i+1}')
         try:
             _mysql.connect(
-            host=mainip,
-            user="root",
-            passwd=__salt__['pillar.get']('secrets:mysql')
+                host=mainip,
+                user='root',
+                passwd=__salt__['pillar.get']('secrets:mysql')
             )
+            log.debug(f'Connected to MySQL server on {mainip} after {retry} attempts.')
             mysql_up = True
             break
         except _mysql.OperationalError as e:
             log.debug(e)
         except Exception as e:
+            log.error('Unexpected error occured.')
             log.error(e)
             break
         sleep(1)
