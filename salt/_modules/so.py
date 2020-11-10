@@ -30,8 +30,10 @@ def mysql_conn(retry):
                 passwd=__salt__['pillar.get']('secrets:mysql')
             )
             log.debug(f'Connected to MySQL server on {mainip} after {i} attempts.')
+            
             db.query("""SELECT 1;""")
             log.debug(f'Successfully completed query against MySQL server on {mainip}')
+            
             mysql_up = True
             break
         except _mysql.OperationalError as e:
