@@ -39,12 +39,12 @@ sostatusconf:
     - gid: 939
     - dir_mode: 770
 
-so-status.running.conf:
+so-status.conf:
   file.touch:
     - name: /opt/so/conf/so-status/so-status.conf
     - unless: ls /opt/so/conf/so-status/so-status.conf
 
-so-status.stopped.conf:
+so-status.disabled.conf:
   file.touch:
     - name: /opt/so/conf/so-status/so-status.disabled.conf
     - unless: ls /opt/so/conf/so-status/so-status.disabled.conf
