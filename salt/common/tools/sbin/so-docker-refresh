@@ -29,16 +29,41 @@ manager_check() {
 }
 
 update_docker_containers() {
-  
+  SIGNPATH=/root/sosigs
+  rm -rf $SIGNPATH
+  mkdir -p $SIGNPATH
+  if [ -z "$BRANCH" ]; then
+    BRANCH="master"
+  fi
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
-    # Tag it with the new registry destination
-    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-    docker push $HOSTNAME:5000/$IMAGEREPO/$i
+    docker pull quay.io/$IMAGEREPO/$i
+    
+    # Get signature
+    curl https://github.com/Security-Onion-Solutions/securityonion/blob/$BRANCH/sigs/images/$i.gpg --output $SIGNPATH/$i.gpg
+    if [[ $? -ne 0 ]]
+      echo "Unable to pull signature file for $i"
+      exit 1
+    fi
+    # Dump our hash values
+    docker inspect quay.io/$IMAGEREPO/$i | jq '.[0].Created, .[0].Id, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    if [[ $? -ne 0 ]]
+      echo "Unable to inspect $i"
+      exit 1
+    fi
+    GPGTEST=$(gpg --verify $SIGNPATH/$i.gpg $SIGNPATH/$i.txt 2>&1)
+    if [[ $? -eq 0 ]]
+      # Tag it with the new registry destination
+      docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
+      docker push $HOSTNAME:5000/$IMAGEREPO/$i
+    else
+      echo "There is a problem downloading the $i image. Details: "
+      echo ""
+      echo $GPGTEST
+      exit 1
   done
   
 }
