@@ -9,12 +9,13 @@ def status():
 def mysql_conn(retry):
     log = logging.getLogger(__name__)
 
+    from time import sleep
+
     try:
         from MySQLdb import _mysql
     except ImportError as e:
         log.error(e)
         return False
-    from time import sleep
 
     mainint = __salt__['pillar.get']('sensor:mainint', __salt__['pillar.get']('manager:mainint'))
     mainip = __salt__['grains.get']('ip_interfaces').get(mainint)[0]
