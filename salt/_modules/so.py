@@ -34,6 +34,7 @@ def mysql_conn(retry):
             db.query("""SELECT 1;""")
             log.debug(f'Successfully completed query against MySQL server on {mainip}')
             
+            db.close()
             mysql_up = True
             break
         except _mysql.OperationalError as e:
