@@ -57,10 +57,10 @@ so-dockerregistry:
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
 
-append_so-dockerregistry_so-status.conf:
+append_so-registry_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-dockerregistry
+    - text: so-registry
 
 {% else %}
 

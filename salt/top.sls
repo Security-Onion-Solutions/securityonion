@@ -42,7 +42,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - telegraf
     - firewall
@@ -60,7 +59,6 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - telegraf
     - firewall
     - nginx
@@ -86,7 +84,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
@@ -145,7 +142,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - nginx
     - telegraf
@@ -194,7 +190,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
@@ -252,7 +247,6 @@ base:
 
   '*_node and I@node:node_type:parser and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
     - logstash
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -263,7 +257,6 @@ base:
 
   '*_node and I@node:node_type:hot and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
     - logstash
     - curator
@@ -275,7 +268,6 @@ base:
 
   '*_node and I@node:node_type:warm and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
     - elasticsearch
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -288,7 +280,6 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
@@ -307,7 +298,6 @@ base:
 
   '*_managersensor and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - nginx
     - telegraf
     - influxdb
@@ -326,7 +316,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - nginx
     - telegraf
@@ -375,7 +364,6 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
@@ -406,7 +394,6 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
@@ -422,7 +409,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
