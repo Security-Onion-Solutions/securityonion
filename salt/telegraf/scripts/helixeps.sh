@@ -1,5 +1,14 @@
 #!/bin/bash
 
+APP=helixeps
+lf=/tmp/$APP-pidLockFile
+# create empty lock file if none exists
+cat /dev/null >> $lf
+read lastPID < $lf
+# if lastPID is not null and a process with that pid exists , exit
+[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
+echo $$ > $lf
+
 PREVCOUNTFILE='/tmp/helixevents.txt'
 EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.helix.events.out')"
 
