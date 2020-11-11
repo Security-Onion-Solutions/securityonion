@@ -19,6 +19,8 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
+CONTAINER_REGISTRY=quay.io
+
 SOVERSION=$(cat ../VERSION)
 
 log() {
@@ -932,21 +934,47 @@ docker_seed_registry() {
 			)
 		fi
 		local percent=25
+		# Let's make sure we have the public key
+        curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
+  
+        SIGNPATH=/root/sosigs
+        rm -rf $SIGNPATH
+        mkdir -p $SIGNPATH
+        if [ -z "$BRANCH" ]; then
+            BRANCH="master"
+        fi
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
 			if [ "$install_type" != 'HELIXSENSOR' ]; then ((percent=percent+1)); else ((percent=percent+6)); fi
 			# Pull down the trusted docker image
 			set_progress_str "$percent" "Downloading $i"
 			{
-				
-				if ! docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"; then
-					sleep 5
-					docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"
-				fi
-				# Tag it with the new registry destination
-				docker tag $IMAGEREPO/"$i" "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				docker push "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				#docker rmi $IMAGEREPO/"$i"
-			} >> "$setup_log" 2>&1
+				echo "Downloading $i"
+                docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i
+    
+    			# Get signature
+    			curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$i.sig --output $SIGNPATH/$i.gpg
+    			if [[ $? -ne 0 ]]; then
+      				echo "Unable to pull signature file for $i"
+      				exit 1
+    			fi
+    			# Dump our hash values
+    			docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i | jq '.[0].Created, .[0].RepoDigests, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    			if [[ $? -ne 0 ]]; then
+      				echo "Unable to inspect $i"
+      				exit 1
+    			fi
+    				GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
+    			if [[ $? -eq 0 ]]; then
+      			# Tag it with the new registry destination
+      				docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
+      				docker push $HOSTNAME:5000/$IMAGEREPO/$i
+    			else
+      				echo "There is a problem downloading the $i image. Details: "
+      				echo ""
+      				echo $GPGTEST
+      				exit 1
+    			fi
+ 			} >> "$setup_log" 2>&1
 		done
 	else
 		tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker >> "$setup_log" 2>&1

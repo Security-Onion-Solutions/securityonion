@@ -101,18 +101,18 @@ update_docker_containers() {
     docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i
     
     # Get signature
-    curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$i.gpg --output $SIGNPATH/$i.gpg
+    curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$i.sig --output $SIGNPATH/$i.gpg
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $i"
       exit 1
     fi
     # Dump our hash values
-    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i | jq '.[0].Created, .[0].Id, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i | jq '.[0].Created, .[0].RepoDigests, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
     if [[ $? -ne 0 ]]; then
       echo "Unable to inspect $i"
       exit 1
     fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$i.gpg $SIGNPATH/$i.txt 2>&1)
+    GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
     if [[ $? -eq 0 ]]; then
       # Tag it with the new registry destination
       docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
