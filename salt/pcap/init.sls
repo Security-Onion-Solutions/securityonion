@@ -156,18 +156,18 @@ append_so-steno_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-steno
+    - unless: grep so-steno /opt/so/conf/so-status/so-status.conf
 
   {% if STENOOPTIONS.status == 'running' %}
 delete_so-steno_so-status.disabled:
-  file.line:
-    - name: /opt/so/conf/so-status/so-status.disabled.conf
-    - match: so-steno
-    - mode: delete
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-steno$
   {% elif STENOOPTIONS.status == 'stopped' %}
-append_so-steno_so-status.disabled:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.disabled.conf
-    - text: so-steno
+so-steno_so-status.disabled:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-steno$
   {% endif %}
 
 so-sensoroni:
