@@ -12,9 +12,24 @@
                 "ignore_failure": true
         }
     },
-    { "grok":           { "field": "message",       "patterns": ["<%{INT:syslog.priority}>%{DATA:syslog.timestamp} %{WORD:source.application}: %{GREEDYDATA:real_message}"], "ignore_failure": false } },
-    { "set": { "if": "ctx.source?.application == 'filterlog'", "field": "dataset", "value": "firewall" } },
-    { "pipeline": { "if": "ctx.dataset == 'firewall'", "name": "filterlog" } },
+    { 
+	"grok":           
+		{ 
+			"field": "message",       
+			"patterns": [
+					"^<%{INT:syslog.priority}>%{DATA:syslog.timestamp} %{WORD:source.application}: %{GREEDYDATA:real_message}$",
+                               		"^%{SYSLOGTIMESTAMP:syslog.timestamp} %{SYSLOGHOST:syslog.host} %{SYSLOGPROG:syslog.program}: CEF:0\\|%{DATA:vendor}\\|%{DATA:product}\\|%{GREEDYDATA:message2}$"
+                                    ],
+                        "ignore_failure": true 
+		}
+    },
+    { "set": { "if": "ctx.source?.application == 'filterlog'", "field": "dataset", "value": "firewall", "ignore_failure": true  } },
+    { "set": { "if": "ctx.vendor != null", "field": "module", "value": "{{ vendor }}", "ignore_failure": true } },
+    { "set": { "if": "ctx.product != null", "field": "dataset", "value": "{{ product }}", "ignore_failure": true } },
+    { "set": { "field": "ingest.timestamp",      "value": "{{ @timestamp }}"       } },
+    { "date": { "if": "ctx.syslog?.timestamp != null", "field": "syslog.timestamp",       "target_field": "@timestamp",   "formats": ["MMM  d HH:mm:ss", "MMM dd HH:mm:ss", "ISO8601", "UNIX"], "ignore_failure": true  } },
+    { "pipeline": { "if": "ctx.vendor != null && ctx.product != null", "name": "{{ vendor }}.{{ product }}", "ignore_failure": true } },
+    { "pipeline": { "if": "ctx.dataset == 'firewall'", "name": "filterlog", "ignore_failure": true } },
     { "pipeline":       { "name": "common"                                             } }
   ]
 }
