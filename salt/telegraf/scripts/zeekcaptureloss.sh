@@ -1,7 +1,7 @@
 #!/bin/bash
 # This script returns the average of all the workers average capture loss to telegraf / influxdb in influx format include nanosecond precision timestamp
 
-APP=zeekloss
+APP=zeekcaploss
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
 cat /dev/null >> $lf
