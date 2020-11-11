@@ -73,6 +73,11 @@ so-telegraf:
       - file: tgrafconf
       - file: tgrafsyncscripts
 
+append_so-telegraf_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-telegraf
+
 {% else %}
 
 telegraf_state_not_allowed:

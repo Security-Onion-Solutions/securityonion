@@ -62,6 +62,11 @@ so-minio:
       - /etc/pki/minio.crt:/.minio/certs/public.crt:ro
     - entrypoint: "/usr/bin/docker-entrypoint.sh server --certs-dir /.minio/certs --address :9595 /data"
 
+append_so-minio_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-minio
+
 {% else %}
 
 minio_state_not_allowed:

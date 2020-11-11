@@ -56,6 +56,11 @@ so-domainstats:
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
 
+append_so-domainstats_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-domainstats
+
 {% else %}
 
 domainstats_state_not_allowed:

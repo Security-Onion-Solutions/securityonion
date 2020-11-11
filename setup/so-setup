@@ -590,6 +590,10 @@ fi
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 		
+		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
+		mkdir -p /opt/so/conf/so-status/
+		touch /opt/so/conf/so-status/so-status.conf
+
 		if [[ "$setup_type" == 'iso' ]]; then
 			set_progress_str 26 'Copying containers from iso'
 		else
@@ -684,12 +688,9 @@ fi
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
-		if [[ "$PLAYBOOK" != 1 ]]; then
-		set_progress_str 74 "$(print_salt_state_apply 'mysql')"
-		salt-call state.apply -l info mysql >> $setup_log 2>&1
-		fi
 
 		set_progress_str 75 "$(print_salt_state_apply 'fleet')"
+		salt-call state.apply fleet.event_enable-fleet # enable fleet in the global pillar
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
 
 		set_progress_str 76 "$(print_salt_state_apply 'redis')"
@@ -701,24 +702,24 @@ fi
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
-		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
+		set_progress_str 78 "$(print_salt_state_apply 'so-fleet-setup')"	
 		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
 
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
-		set_progress_str 78 "$(print_salt_state_apply 'wazuh')"
+		set_progress_str 79 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
 
 	if [[ "$THEHIVE" = 1 ]]; then
-		set_progress_str 79 "$(print_salt_state_apply 'thehive')"
+		set_progress_str 80 "$(print_salt_state_apply 'thehive')"
 		salt-call state.apply -l info thehive >> $setup_log 2>&1
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
 		if [[ $is_sensor ]]; then
-			set_progress_str 80 "$(print_salt_state_apply 'strelka')"
+			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
 		if [[ $STRELKARULES == 1 ]]; then
@@ -727,15 +728,15 @@ fi
 	fi
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then		
-		set_progress_str 81 "$(print_salt_state_apply 'utility')"
+		set_progress_str 82 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
 
 	if [[ ( $is_helix || $is_manager || $is_node ) && ! $is_eval ]]; then
-		set_progress_str 82 "$(print_salt_state_apply 'logstash')"
+		set_progress_str 83 "$(print_salt_state_apply 'logstash')"
 		salt-call state.apply -l info logstash >> $setup_log 2>&1
 
-		set_progress_str 83 "$(print_salt_state_apply 'filebeat')"
+		set_progress_str 84 "$(print_salt_state_apply 'filebeat')"
 		salt-call state.apply -l info filebeat >> $setup_log 2>&1
 	fi
 

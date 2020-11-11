@@ -31,16 +31,17 @@ def run():
         print(line) 
 
       # Update the enroll secret in the secrets pillar
-      for line in fileinput.input(SECRETSFILE, inplace=True):
-        line = re.sub(r'fleet_enroll-secret: \S*', f"fleet_enroll-secret: {ESECRET}", line.rstrip())
-        print(line)      
+      if ESECRET != "":
+        for line in fileinput.input(SECRETSFILE, inplace=True):
+          line = re.sub(r'fleet_enroll-secret: \S*', f"fleet_enroll-secret: {ESECRET}", line.rstrip())
+          print(line)
 
-        # Update the Fleet host in the static pillar
+      # Update the Fleet host in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
         line = re.sub(r'fleet_hostname: \S*', f"fleet_hostname: '{HOSTNAME}'", line.rstrip())
         print(line)  
 
-        # Update the Fleet IP in the static pillar
+      # Update the Fleet IP in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
         line = re.sub(r'fleet_ip: \S*', f"fleet_ip: '{MAINIP}'", line.rstrip())
         print(line)   

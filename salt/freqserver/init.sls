@@ -56,6 +56,11 @@ so-freq:
     - binds:
       - /opt/so/log/freq_server:/var/log/freq_server:rw
 
+append_so-freq_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-freq
+
 {% else %}
 
 freqserver_state_not_allowed:

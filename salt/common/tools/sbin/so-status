@@ -14,8 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- from 'common/maps/so-status.map.jinja' import docker with context %}
-{%- set container_list = docker['containers'] | sort | unique %}
 
 if ! [ "$(id -u)" = 0 ]; then
    echo "This command must be run as root"
@@ -39,9 +37,8 @@ declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
 declare -a PENDING_STATUSES=("paused" "created" "restarting")
 declare -a GOOD_STATUSES=("running")
 declare -a DISABLED_CONTAINERS=()
-{%- if salt['pillar.get']('steno:enabled', 'True') is sameas false %}
-DISABLED_CONTAINERS+=("so-steno")
-{%- endif %}
+mapfile -t DISABLED_CONTAINERS < <(sort -u /opt/so/conf/so-status/so-status.conf | grep "^\s*#" | tr -d "#")
+
 
 declare -a temp_container_name_list=()
 declare -a temp_container_state_list=()
@@ -83,9 +80,9 @@ compare_lists() {
 # {% endraw %}
 
 create_expected_container_list() {
-    {% for item in container_list -%}
-        expected_container_list+=("{{ item }}")
-    {% endfor -%}
+
+    mapfile -t expected_container_list < <(sort -u /opt/so/conf/so-status/so-status.conf | tr -d "#")    
+
 }
 
 populate_container_lists() {
@@ -175,7 +172,7 @@ print_line() {
 
     printf "    $service_name "
     for i in $(seq 0 $(( $columns - $PADDING_CONSTANT - ${#service_name} - ${#service_state} ))); do
-        printf "-"
+        printf "${state_color}%b\e[0m" "-"
     done
     printf " [ "
     printf "${state_color}%b\e[0m" "$service_state"

@@ -127,6 +127,12 @@ so-curator:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
       - /opt/so/log/curator:/var/log/curator:rw
+
+append_so-curator_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-curator
+
 # Begin Curator Cron Jobs
 
 # Close

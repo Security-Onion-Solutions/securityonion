@@ -98,6 +98,11 @@ so-nginx:
       - file: nginxconf
       - file: nginxconfdir
 
+append_so-nginx_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-nginx
+
 {% else %}
 
 nginx_state_not_allowed:

@@ -93,6 +93,11 @@ so-playbook:
     - port_bindings:
       - 0.0.0.0:3200:3000
 
+append_so-playbook_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-playbook
+
 {% endif %}
 
 so-playbooksynccron:

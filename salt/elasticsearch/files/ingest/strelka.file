@@ -12,10 +12,22 @@
       {
         "if": "ctx.exiftool?.keys !=null",
           "field": "exiftool.keys",
-          "processor":{
+          "processor": {
             "append": {
               "field": "scan.exiftool",
               "value": "{{_ingest._value.key}}={{_ingest._value.value}}"
+            }
+          }
+      }
+    },
+    { "foreach":
+      {
+        "if": "ctx.exiftool?.keys !=null",
+          "field": "exiftool.keys",
+          "processor": {
+            "set": {
+              "field": "exiftool.{{_ingest._value.key}}",
+              "value": "{{_ingest._value.value}}"
             }
           }
       }
@@ -32,6 +44,14 @@
           }
       }
     },
+    { "set":         { "if": "ctx.exiftool?.SourceFile != null", "field": "file.source",        "value": "{{exiftool.SourceFile}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FilePermissions != null", "field": "file.permissions",        "value": "{{exiftool.FilePermissions}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FileName != null", "field": "file.name",        "value": "{{exiftool.FileName}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FileModifyDate != null", "field": "file.mtime",        "value": "{{exiftool.FileModifyDate}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FileAccessDate != null", "field": "file.accessed",        "value": "{{exiftool.FileAccessDate}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FileInodeChangeDate != null", "field": "file.ctime",        "value": "{{exiftool.FileInodeChangeDate}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.FileDirectory != null", "field": "file.directory",        "value": "{{exiftool.FileDirectory}}", "ignore_failure": true }},
+    { "set":         { "if": "ctx.exiftool?.Subsystem != null", "field": "host.subsystem",        "value": "{{exiftool.Subsystem}}", "ignore_failure": true }},
     { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "rule.name",        "value": "{{scan.yara.matches.0}}" }},
     { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "dataset",        "value": "alert", "override": true }},
     { "rename":         { "field": "file.flavors.mime", "target_field": "file.mime_type",        "ignore_missing": true }},

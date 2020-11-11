@@ -110,6 +110,11 @@ so-wazuh:
     - binds:
       - /nsm/wazuh:/var/ossec/data:rw
 
+append_so-wazuh_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-wazuh
+
 # Register the agent
 registertheagent:
   cmd.run:

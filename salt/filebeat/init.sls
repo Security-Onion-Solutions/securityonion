@@ -86,6 +86,11 @@ so-filebeat:
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
 
+append_so-filebeat_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-filebeat
+
 {% else %}
 
 filebeat_state_not_allowed:

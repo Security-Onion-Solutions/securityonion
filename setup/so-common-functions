@@ -18,12 +18,22 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
 	for nic in "${filtered_nics[@]}"; do
-		nic_list+=("$nic" "" "OFF")
+		case $(cat "/sys/class/net/${nic}/carrier") in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
 	done
 
 	export nic_list
