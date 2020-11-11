@@ -5,8 +5,7 @@
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
 {% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
-{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
-{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
+{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
 {% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
@@ -14,7 +13,6 @@
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
-{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
