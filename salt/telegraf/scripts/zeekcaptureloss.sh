@@ -1,6 +1,15 @@
 #!/bin/bash
 # This script returns the average of all the workers average capture loss to telegraf / influxdb in influx format include nanosecond precision timestamp
 
+APP=zeekloss
+lf=/tmp/$APP-pidLockFile
+# create empty lock file if none exists
+cat /dev/null >> $lf
+read lastPID < $lf
+# if lastPID is not null and a process with that pid exists , exit
+[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
+echo $$ > $lf
+
 if [ -d "/host/nsm/zeek/spool/logger" ]; then
   WORKERS={{ salt['pillar.get']('sensor:zeek_lbprocs', salt['pillar.get']('sensor:zeek_pins') | length) }}
   ZEEKLOG=/host/nsm/zeek/spool/logger/capture_loss.log
