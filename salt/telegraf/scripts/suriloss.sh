@@ -1,5 +1,14 @@
 #!/bin/bash
 
+APP=suriloss
+lf=/tmp/$APP-pidLockFile
+# create empty lock file if none exists
+cat /dev/null >> $lf
+read lastPID < $lf
+# if lastPID is not null and a process with that pid exists , exit
+[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
+echo $$ > $lf
+
 SURILOG=$(tac /var/log/suricata/stats.log | grep kernel | head -4)
 CHECKIT=$(echo $SURILOG | grep -o 'drop' | wc -l)
 
