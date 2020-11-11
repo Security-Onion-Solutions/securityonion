@@ -44,11 +44,6 @@ so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - unless: ls /opt/so/conf/so-status/so-status.conf
 
-so-status.disabled.conf:
-  file.touch:
-    - name: /opt/so/conf/so-status/so-status.disabled.conf
-    - unless: ls /opt/so/conf/so-status/so-status.disabled.conf
-
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack
