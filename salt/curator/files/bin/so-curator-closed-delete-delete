@@ -1,6 +1,15 @@
 
 #!/bin/bash
 
+APP=closedeletedelete
+lf=/tmp/$APP-pidLockFile
+# create empty lock file if none exists
+cat /dev/null >> $lf
+read lastPID < $lf
+# if lastPID is not null and a process with that pid exists , exit
+[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
+echo $$ > $lf
+
 {%- if grains['role'] in ['so-node', 'so-heavynode'] %}
   {%- set ELASTICSEARCH_HOST = salt['pillar.get']('elasticsearch:mainip', '') -%}  
   {%- set ELASTICSEARCH_PORT = salt['pillar.get']('elasticsearch:es_port', '') -%}
