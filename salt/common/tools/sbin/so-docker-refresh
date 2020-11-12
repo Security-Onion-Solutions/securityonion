@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
+. /usr/sbin/so-image-common
 
 manager_check() {
   # Check to see if this is a manager
@@ -26,21 +27,6 @@ manager_check() {
     echo "Please run soup on the manager. The manager controls all updates."
     exit 1
   fi
-}
-
-update_docker_containers() {
-  
-  # Download the containers from the interwebs
-  for i in "${TRUSTED_CONTAINERS[@]}"
-  do
-    # Pull down the trusted docker image
-    echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
-    # Tag it with the new registry destination
-    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-    docker push $HOSTNAME:5000/$IMAGEREPO/$i
-  done
-  
 }
 
 version_check() {
@@ -58,54 +44,5 @@ version_check
 # Use the hostname
 HOSTNAME=$(hostname)
 # List all the containers
-if [ $MANAGERCHECK != 'so-helix' ]; then
-    TRUSTED_CONTAINERS=( \
-    "so-acng:$VERSION" \
-    "so-thehive-cortex:$VERSION" \
-    "so-curator:$VERSION" \
-    "so-domainstats:$VERSION" \
-    "so-elastalert:$VERSION" \
-    "so-elasticsearch:$VERSION" \
-    "so-filebeat:$VERSION" \
-    "so-fleet:$VERSION" \
-    "so-fleet-launcher:$VERSION" \
-    "so-freqserver:$VERSION" \
-    "so-grafana:$VERSION" \
-    "so-idstools:$VERSION" \
-    "so-influxdb:$VERSION" \
-    "so-kibana:$VERSION" \
-    "so-kratos:$VERSION" \
-    "so-logstash:$VERSION" \
-    "so-minio:$VERSION" \
-    "so-mysql:$VERSION" \
-    "so-nginx:$VERSION" \
-    "so-pcaptools:$VERSION" \
-    "so-playbook:$VERSION" \
-    "so-redis:$VERSION" \
-    "so-soc:$VERSION" \
-    "so-soctopus:$VERSION" \
-    "so-steno:$VERSION" \
-    "so-strelka-frontend:$VERSION" \
-		"so-strelka-manager:$VERSION" \
-		"so-strelka-backend:$VERSION" \
-		"so-strelka-filestream:$VERSION" \
-    "so-suricata:$VERSION" \
-    "so-telegraf:$VERSION" \
-    "so-thehive:$VERSION" \
-    "so-thehive-es:$VERSION" \
-    "so-wazuh:$VERSION" \
-    "so-zeek:$VERSION" )
-  else
-    TRUSTED_CONTAINERS=( \
-    "so-filebeat:$VERSION" \
-    "so-idstools:$VERSION" \
-    "so-logstash:$VERSION" \
-    "so-nginx:$VERSION" \
-    "so-redis:$VERSION" \
-    "so-steno:$VERSION" \
-    "so-suricata:$VERSION" \
-    "so-telegraf:$VERSION" \
-    "so-zeek:$VERSION" )
-  fi
-
+container_list
 update_docker_containers

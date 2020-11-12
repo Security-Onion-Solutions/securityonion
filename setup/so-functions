@@ -19,6 +19,8 @@ source ./so-whiptail
 source ./so-variables
 source ./so-common-functions
 
+CONTAINER_REGISTRY=quay.io
+
 SOVERSION=$(cat ../VERSION)
 
 log() {
@@ -874,79 +876,105 @@ docker_seed_registry() {
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
 	    if [ "$install_type" == 'IMPORT' ]; then
 		local TRUSTED_CONTAINERS=(\
-			"so-idstools:$VERSION" \
-			"so-nginx:$VERSION" \
-			"so-filebeat:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-soc:$VERSION" \
-			"so-steno:$VERSION" \
-			"so-elasticsearch:$VERSION" \
-			"so-kibana:$VERSION" \
-			"so-kratos:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-pcaptools:$VERSION" \
-			"so-zeek:$VERSION"
+			"so-idstools" \
+			"so-nginx" \
+			"so-filebeat" \
+			"so-suricata" \
+			"so-soc" \
+			"so-steno" \
+			"so-elasticsearch" \
+			"so-kibana" \
+			"so-kratos" \
+			"so-suricata" \
+			"so-pcaptools" \
+			"so-zeek"
 		)
 		else
 		local TRUSTED_CONTAINERS=(\
-			"so-nginx:$VERSION" \
-			"so-filebeat:$VERSION" \
-			"so-logstash:$VERSION" \
-			"so-idstools:$VERSION" \
-			"so-redis:$VERSION" \
-			"so-steno:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-telegraf:$VERSION" \
-			"so-zeek:$VERSION"
+			"so-nginx" \
+			"so-filebeat" \
+			"so-logstash" \
+			"so-idstools" \
+			"so-redis" \
+			"so-steno" \
+			"so-suricata" \
+			"so-telegraf" \
+			"so-zeek"
 		)
 		fi
 		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORT' ]; then
 			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
-				"so-acng:$VERSION" \
-				"so-thehive-cortex:$VERSION" \
-				"so-curator:$VERSION" \
-				"so-domainstats:$VERSION" \
-				"so-elastalert:$VERSION" \
-				"so-elasticsearch:$VERSION" \
-				"so-fleet:$VERSION" \
-				"so-fleet-launcher:$VERSION" \
-				"so-freqserver:$VERSION" \
-				"so-grafana:$VERSION" \
-				"so-influxdb:$VERSION" \
-				"so-kibana:$VERSION" \
-				"so-minio:$VERSION" \
-				"so-mysql:$VERSION" \
-				"so-pcaptools:$VERSION" \
-				"so-playbook:$VERSION" \
-				"so-soc:$VERSION" \
-				"so-kratos:$VERSION" \
-				"so-soctopus:$VERSION" \
-				"so-steno:$VERSION" \
-				"so-strelka-frontend:$VERSION" \
-				"so-strelka-manager:$VERSION" \
-				"so-strelka-backend:$VERSION" \
-				"so-strelka-filestream:$VERSION" \
-				"so-thehive:$VERSION" \
-				"so-thehive-es:$VERSION" \
-				"so-wazuh:$VERSION"
+				"so-acng" \
+				"so-thehive-cortex" \
+				"so-curator" \
+				"so-domainstats" \
+				"so-elastalert" \
+				"so-elasticsearch" \
+				"so-fleet" \
+				"so-fleet-launcher" \
+				"so-freqserver" \
+				"so-grafana" \
+				"so-influxdb" \
+				"so-kibana" \
+				"so-minio" \
+				"so-mysql" \
+				"so-pcaptools" \
+				"so-playbook" \
+				"so-soc" \
+				"so-kratos" \
+				"so-soctopus" \
+				"so-steno" \
+				"so-strelka-frontend" \
+				"so-strelka-manager" \
+				"so-strelka-backend" \
+				"so-strelka-filestream" \
+				"so-thehive" \
+				"so-thehive-es" \
+				"so-wazuh"
 			)
 		fi
 		local percent=25
+		# Let's make sure we have the public key
+        curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
+  
+        SIGNPATH=/root/sosigs
+        rm -rf $SIGNPATH
+        mkdir -p $SIGNPATH
+        if [ -z "$BRANCH" ]; then
+            BRANCH="master"
+        fi
 		for i in "${TRUSTED_CONTAINERS[@]}"; do
 			if [ "$install_type" != 'HELIXSENSOR' ]; then ((percent=percent+1)); else ((percent=percent+6)); fi
 			# Pull down the trusted docker image
-			set_progress_str "$percent" "Downloading $i"
+			set_progress_str "$percent" "Downloading $i:$VERSION"
 			{
-				
-				if ! docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"; then
-					sleep 5
-					docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"
-				fi
-				# Tag it with the new registry destination
-				docker tag $IMAGEREPO/"$i" "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				docker push "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				#docker rmi $IMAGEREPO/"$i"
-			} >> "$setup_log" 2>&1
+				echo "Downloading $i"
+                docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
+    
+    			# Get signature
+    			curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$VERSION/$i.sig --output $SIGNPATH/$i.sig
+    			if [[ $? -ne 0 ]]; then
+      				echo "Unable to pull signature file for $i:$VERSION"
+      				exit 1
+    			fi
+    			# Dump our hash values
+    			docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RepoDigests, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    			if [[ $? -ne 0 ]]; then
+      				echo "Unable to inspect $i"
+      				exit 1
+    			fi
+    				GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
+    			if [[ $? -eq 0 ]]; then
+      			# Tag it with the new registry destination
+      				docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      				docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+    			else
+      				echo "There is a problem downloading the $i image. Details: "
+      				echo ""
+      				echo $GPGTEST
+      				exit 1
+    			fi
+ 			} >> "$setup_log" 2>&1
 		done
 	else
 		tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker >> "$setup_log" 2>&1

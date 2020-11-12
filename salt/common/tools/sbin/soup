@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
+. /usr/sbin/so-image-common
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
@@ -77,6 +78,24 @@ airgap_mounted() {
       fi        
     fi
   fi
+}
+
+airgap_update_dockers() {
+  if [ $is_airgap -eq 0 ]; then
+    # Let's copy the tarball
+    if [ ! -f $AGDOCKER/registry.tar ]; then
+      echo "Unable to locate registry. Exiting"
+      exit 1
+    else
+      echo "Stopping the registry docker"
+      docker stop so-dockerregistry
+      docker rm so-dockerregistry
+      echo "Copying the new dockers over"
+      tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
+      echo "Add Registry back"
+      docker load -i $AGDOCKER/registry_image.tar
+    fi
+
 }
 
 check_airgap() {
@@ -290,103 +309,6 @@ update_centos_repo() {
   createrepo /nsm/repo
 }
 
-update_dockers() {
-  if [ $is_airgap -eq 0 ]; then
-    # Let's copy the tarball
-    if [ ! -f $AGDOCKER/registry.tar ]; then
-      echo "Unable to locate registry. Exiting"
-      exit 0
-    else
-      echo "Stopping the registry docker"
-      docker stop so-dockerregistry
-      docker rm so-dockerregistry
-      echo "Copying the new dockers over"
-      tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
-    fi
-  else
-    # List all the containers
-    if [ $MANAGERCHECK == 'so-import' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-idstools" \
-      "so-nginx" \
-      "so-filebeat" \
-      "so-suricata" \
-      "so-soc" \
-      "so-elasticsearch" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-suricata" \
-      "so-registry" \
-      "so-pcaptools" \
-      "so-zeek" )
-    elif [ $MANAGERCHECK != 'so-helix' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-acng" \
-      "so-thehive-cortex" \
-      "so-curator" \
-      "so-domainstats" \
-      "so-elastalert" \
-      "so-elasticsearch" \
-      "so-filebeat" \
-      "so-fleet" \
-      "so-fleet-launcher" \
-      "so-freqserver" \
-      "so-grafana" \
-      "so-idstools" \
-      "so-influxdb" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-logstash" \
-      "so-minio" \
-      "so-mysql" \
-      "so-nginx" \
-      "so-pcaptools" \
-      "so-playbook" \
-      "so-redis" \
-      "so-soc" \
-      "so-soctopus" \
-      "so-steno" \
-      "so-strelka-frontend" \
-      "so-strelka-manager" \
-      "so-strelka-backend" \
-      "so-strelka-filestream" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-thehive" \
-      "so-thehive-es" \
-      "so-wazuh" \
-      "so-zeek" )
-    else
-      TRUSTED_CONTAINERS=( \
-      "so-filebeat" \
-      "so-idstools" \
-      "so-logstash" \
-      "so-nginx" \
-      "so-redis" \
-      "so-steno" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-zeek" )
-    fi
-    
-# Download the containers from the interwebs
-    for i in "${TRUSTED_CONTAINERS[@]}"
-    do
-      # Pull down the trusted docker image
-      echo "Downloading $i:$NEWVERSION"
-      docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i:$NEWVERSION
-      # Tag it with the new registry destination
-      docker tag $IMAGEREPO/$i:$NEWVERSION $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
-    done
-  fi
-    echo "Add Registry back if airgap"
-    if [ $is_airgap -eq 0 ]; then
-      docker load -i $AGDOCKER/registry_image.tar
-    fi 
-
-}
-
 update_version() {
   # Update the version to the latest
   echo "Updating the Security Onion version file."
@@ -513,7 +435,12 @@ echo ""
 echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
 echo ""
 echo "Updating dockers to $NEWVERSION."
-update_dockers
+if [ $is_airgap -eq 0 ]; then
+  airgap_update_dockers
+else
+  container_list
+  update_docker_containers
+fi
 echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
