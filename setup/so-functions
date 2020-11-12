@@ -958,9 +958,12 @@ docker_seed_registry() {
       				exit 1
     			fi
     			# Dump our hash values
-			docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].RepoDigests[] | select(. | contains("$CONTAINER_REGISTRY"))' > $SIGNPATH/$i.txt
-    			docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RootFS.Layers' >> $SIGNPATH/$i.txt
-    			if [[ $? -ne 0 ]]; then
+			DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
+    
+                        echo "$DOCKERINSPECT" | jq '.[0].RepoDigests[] | select(. | contains("$CONTAINER_REGISTRY"))' > $SIGNPATH/$i.txt
+                        echo "$DOCKERINSPECT" | jq '.[0].Created, .[0].RootFS.Layers' >> $SIGNPATH/$i.txt
+			
+			if [[ $? -ne 0 ]]; then
       				echo "Unable to inspect $i"
       				exit 1
     			fi
