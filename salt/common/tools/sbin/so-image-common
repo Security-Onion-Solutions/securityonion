@@ -15,6 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Figure out if this is soup or refresh
+if [ -z "$VERSION" ]; then
+    VERSION="$NEWVERSION"
+fi
+
 container_list() {
     MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
     if [ $MANAGERCHECK == 'so-import' ]; then
@@ -98,27 +103,27 @@ update_docker_containers() {
   do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
     
     # Get signature
-    curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$i.sig --output $SIGNPATH/$i.gpg
+    curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$VERSION/$i.sig --output $SIGNPATH/$i.sig
     if [[ $? -ne 0 ]]; then
-      echo "Unable to pull signature file for $i"
+      echo "Unable to pull signature file for $i:$VERSION"
       exit 1
     fi
     # Dump our hash values
-    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i | jq '.[0].Created, .[0].RepoDigests, .[0].Size, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RepoDigests, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
     if [[ $? -ne 0 ]]; then
-      echo "Unable to inspect $i"
+      echo "Unable to inspect $i:$VERSION"
       exit 1
     fi
     GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
     if [[ $? -eq 0 ]]; then
       # Tag it with the new registry destination
-      docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i
+      docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
     else
-      echo "There is a problem downloading the $i image. Details: "
+      echo "There is a problem downloading the $i:$VERSION image. Details: "
       echo ""
       echo $GPGTEST
       exit 1
