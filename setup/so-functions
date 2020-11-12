@@ -949,7 +949,7 @@ docker_seed_registry() {
 			set_progress_str "$percent" "Downloading $i:$VERSION"
 			{
 				echo "Downloading $i"
-                docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
+                        docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
     
     			# Get signature
     			curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$VERSION/$i.sig --output $SIGNPATH/$i.sig
@@ -960,8 +960,8 @@ docker_seed_registry() {
     			# Dump our hash values
 			DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
     
-                        echo "$DOCKERINSPECT" | jq '.[0].RepoDigests[] | select(. | contains("$CONTAINER_REGISTRY"))' > $SIGNPATH/$i.txt
-                        echo "$DOCKERINSPECT" | jq '.[0].Created, .[0].RootFS.Layers' >> $SIGNPATH/$i.txt
+                        echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i.txt
+                        echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i.txt
 			
 			if [[ $? -ne 0 ]]; then
       				echo "Unable to inspect $i"
