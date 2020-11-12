@@ -112,7 +112,11 @@ update_docker_containers() {
       exit 1
     fi
     # Dump our hash values
-    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RepoDigests, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
+    
+    echo "$DOCKERINSPECT" | jq '.[0].RepoDigests[] | select(. | contains("$CONTAINER_REGISTRY"))' > $SIGNPATH/$i.txt
+    echo "$DOCKERINSPECT" | jq '.[0].Created, .[0].RootFS.Layers' >> $SIGNPATH/$i.txt
+    
     if [[ $? -ne 0 ]]; then
       echo "Unable to inspect $i:$VERSION"
       exit 1
