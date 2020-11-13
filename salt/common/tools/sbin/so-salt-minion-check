@@ -34,7 +34,7 @@ LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/
 LAST_HEALTHCHECK_STATE_APPLY=$([ -e "/opt/so/log/salt/state-apply-test" ] && date -r /opt/so/log/salt/state-apply-test +%s || echo 0)
 # SETTING THRESHOLD TO ANYTHING UNDER 600 seconds may cause a lot of salt-minion restarts
 THRESHOLD={{SALT_MINION_DEFAULTS.salt.minion.check_threshold}} #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
-THRESHOLD_DATE=$((CURRENT_TIME-THRESHOLD))
+THRESHOLD_DATE=$((LAST_HEALTHCHECK_STATE_APPLY+THRESHOLD))
 
 logCmd() {
   cmd=$1
@@ -87,7 +87,7 @@ log "running so-salt-minion-check"
 
 if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
   log "system uptime is at least $UPTIME_REQ seconds" I
-  if [ $LAST_HEALTHCHECK_STATE_APPLY -le $THRESHOLD_DATE ]; then
+  if [ $THRESHOLD_DATE -le $CURRENT_TIME ]; then
     log "salt-minion is unable to apply states" E
     log "/opt/so/log/salt/healthcheck-state-apply ($LAST_HEALTHCHECK_STATE_APPLY) older than threshold date ($THRESHOLD_DATE)" I
     log "last highstate completed at $LAST_HIGHSTATE_END" I
