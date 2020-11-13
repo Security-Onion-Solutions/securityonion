@@ -9,7 +9,7 @@ state-apply-test:
        start: 0
        end: 180
 
-/usr/bin/so-salt-minon-check -q:
+/usr/sbin/so-salt-minon-check -q:
   cron.present:
     - identifier: so-salt-minion-check
     - user: root
