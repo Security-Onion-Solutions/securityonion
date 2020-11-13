@@ -103,9 +103,7 @@ update_docker_containers() {
   SIGNPATH=/root/sosigs
   rm -rf $SIGNPATH
   mkdir -p $SIGNPATH
-  if [ -z "$BRANCH" ]; then
-    BRANCH="master"
-  fi
+
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
@@ -131,9 +129,11 @@ update_docker_containers() {
     fi
     GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION.sig $SIGNPATH/$i:$VERSION.txt 2>&1)
     if [[ $? -eq 0 ]]; then
-      # Tag it with the new registry destination
-      docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      if [[ -z "$SKIP_TAGPUSH" ]]; then
+        # Tag it with the new registry destination
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+        docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      fi
     else
       echo "There is a problem downloading the $i:$VERSION image. Details: "
       echo ""
