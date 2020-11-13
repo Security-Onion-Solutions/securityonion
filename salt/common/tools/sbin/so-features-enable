@@ -51,22 +51,61 @@ manager_check() {
 }
 
 manager_check
+
+# Let's make sure we have the public key
+curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
+  
+CONTAINER_REGISTRY=quay.io
+SIGNPATH=/root/sosigs
+rm -rf $SIGNPATH
+mkdir -p $SIGNPATH
+if [ -z "$BRANCH" ]; then
+  BRANCH="master"
+fi
+
 VERSION=$(lookup_pillar soversion) 
 # Modify global.sls to enable Features
-sed -i 's/features: False/features: True/' $local_salt_dir/pillar/global.sls
 SUFFIX="-features"
 TRUSTED_CONTAINERS=( \
-  "so-elasticsearch:$VERSION$SUFFIX" \
-  "so-filebeat:$VERSION$SUFFIX" \
-  "so-kibana:$VERSION$SUFFIX" \
-  "so-logstash:$VERSION$SUFFIX" )
+  "so-elasticsearch" \
+  "so-filebeat" \
+  "so-kibana" \
+  "so-logstash" )
 
 for i in "${TRUSTED_CONTAINERS[@]}"
 do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
-    # Tag it with the new registry destination
-    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-    docker push $HOSTNAME:5000/$IMAGEREPO/$i
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$SUFFIX
+    
+    # Get signature
+    curl https://sigs.securityonion.net/$VERSION/$i:$VERSION$SUFFIX.sig --output $SIGNPATH/$i:$VERSION$SUFFIX.sig
+    if [[ $? -ne 0 ]]; then
+      echo "Unable to pull signature file for $i:$VERSION$SUFFIX"
+      exit 1
+    fi
+    # Dump our hash values
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$SUFFIX)
+       
+    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION$SUFFIX.txt
+    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION$SUFFIX.txt
+        
+    if [[ $? -ne 0 ]]; then
+      echo "Unable to inspect $i:$VERSION:$SUFFIX"
+      exit 1
+    fi
+    GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION$SUFFIX.sig $SIGNPATH/$i:$VERSION$SUFFIX.txt 2>&1)
+    if [[ $? -eq 0 ]]; then
+      # Tag it with the new registry destination
+      docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$SUFFIX $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$SUFFIX
+      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$SUFFIX
+    else
+      echo "There is a problem downloading the $i:$VERSION$SUFFIX image. Details: "
+      echo ""
+      echo $GPGTEST
+      exit 1
+    fi
+    
+
 done
+sed -i 's/features: False/features: True/' $local_salt_dir/pillar/global.sls

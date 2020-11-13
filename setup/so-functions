@@ -949,21 +949,25 @@ docker_seed_registry() {
 			set_progress_str "$percent" "Downloading $i:$VERSION"
 			{
 				echo "Downloading $i"
-                docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
+                        docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
     
     			# Get signature
-    			curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$VERSION/$i.sig --output $SIGNPATH/$i.sig
+    			curl -A "netinstall/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
     			if [[ $? -ne 0 ]]; then
       				echo "Unable to pull signature file for $i:$VERSION"
       				exit 1
     			fi
     			# Dump our hash values
-    			docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RepoDigests, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
-    			if [[ $? -ne 0 ]]; then
+			    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
+    
+                echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION.txt
+                echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION.txt
+			
+			    if [[ $? -ne 0 ]]; then
       				echo "Unable to inspect $i"
       				exit 1
     			fi
-    				GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
+    				GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION.sig $SIGNPATH/$i:$VERSION.txt 2>&1)
     			if [[ $? -eq 0 ]]; then
       			# Tag it with the new registry destination
       				docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION

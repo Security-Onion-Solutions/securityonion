@@ -1,28 +1,5 @@
-#!/bin/bash
-#
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-APP=closedeletedelete
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
+#!/bin/bash
 
 {%- if grains['role'] in ['so-node', 'so-heavynode'] %}
   {%- set ELASTICSEARCH_HOST = salt['pillar.get']('elasticsearch:mainip', '') -%}  
@@ -49,38 +26,34 @@ echo $$ > $lf
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#. /usr/sbin/so-elastic-common
-#. /etc/nsm/securityonion.conf
-
 LOG="/opt/so/log/curator/so-curator-closed-delete.log"
+
+overlimit() {
+
+        [[ $(du -hs --block-size=1GB /nsm/elasticsearch/nodes | awk '{print $1}' ) -gt "{{LOG_SIZE_LIMIT}}" ]]
+}
+
+closedindices() {
+
+        INDICES=$(curl -s -k {% if grains['role'] in ['so-node','so-heavynode'] %}https://{% endif %}{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed 2> /dev/null)
+        [ $? -eq 1 ] && return false 
+        echo ${INDICES} | grep -q -E "(logstash-|so-)"
+}
 
 # Check for 2 conditions:
 # 1. Are Elasticsearch indices using more disk space than LOG_SIZE_LIMIT?
 # 2. Are there any closed indices that we can delete?
 # If both conditions are true, keep on looping until one of the conditions is false.
-while [[ $(du -hs --block-size=1GB /nsm/elasticsearch/nodes | awk '{print $1}' ) -gt "{{LOG_SIZE_LIMIT}}" ]] &&
-{% if grains['role'] in ['so-node','so-heavynode'] %}
-curl -s -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
-{% else %}
-curl -s -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed > /dev/null; do
-{% endif %}
+while overlimit && closedindices; do
 
 	# We need to determine OLDEST_INDEX:
 	# First, get the list of closed indices using _cat/indices?h=index\&expand_wildcards=closed.
 	# Then, sort by date by telling sort to use hyphen as delimiter and then sort on the third field.
 	# Finally, select the first entry in that sorted list.
-	{% if grains['role'] in ['so-node','so-heavynode'] %}
-	OLDEST_INDEX=$(curl -s -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
-	{% else %}
-	OLDEST_INDEX=$(curl -s -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | sort -t- -k3 | head -1)
-	{% endif %}
+	OLDEST_INDEX=$(curl -s -k {% if grains['role'] in ['so-node','so-heavynode'] %}https://{% endif %}{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/_cat/indices?h=index\&expand_wildcards=closed | grep -E "(logstash-|so-)" | sort -t- -k3 | head -1)
 	
 	# Now that we've determined OLDEST_INDEX, ask Elasticsearch to delete it.
-	{% if grains['role'] in ['so-node','so-heavynode'] %}
-	curl -XDELETE -k -L https://{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
-	{% else %}
-	curl -XDELETE -L {{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
-	{% endif %}
+	curl -XDELETE -k {% if grains['role'] in ['so-node','so-heavynode'] %}https://{% endif %}{{ELASTICSEARCH_HOST}}:{{ELASTICSEARCH_PORT}}/${OLDEST_INDEX}
 
 	# Finally, write a log entry that says we deleted it.
 	echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT ({{LOG_SIZE_LIMIT}} GB) - Index ${OLDEST_INDEX} deleted ..." >> ${LOG}

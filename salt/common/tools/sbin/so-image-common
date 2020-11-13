@@ -87,6 +87,14 @@ container_list() {
     fi
 }
 
+operating_system() {
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+  else
+    OS=ubuntu
+  fi
+}
+
 update_docker_containers() {
   # Let's make sure we have the public key
   curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
@@ -95,9 +103,7 @@ update_docker_containers() {
   SIGNPATH=/root/sosigs
   rm -rf $SIGNPATH
   mkdir -p $SIGNPATH
-  if [ -z "$BRANCH" ]; then
-    BRANCH="master"
-  fi
+
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
@@ -106,22 +112,28 @@ update_docker_containers() {
     docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
     
     # Get signature
-    curl https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/$BRANCH/sigs/images/$VERSION/$i.sig --output $SIGNPATH/$i.sig
+    curl -A "$CURLTYPE/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $i:$VERSION"
       exit 1
     fi
     # Dump our hash values
-    docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION | jq '.[0].Created, .[0].RepoDigests, .[0].RootFS.Layers' > $SIGNPATH/$i.txt
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
+       
+    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION.txt
+    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION.txt
+        
     if [[ $? -ne 0 ]]; then
       echo "Unable to inspect $i:$VERSION"
       exit 1
     fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$i.sig $SIGNPATH/$i.txt 2>&1)
+    GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION.sig $SIGNPATH/$i:$VERSION.txt 2>&1)
     if [[ $? -eq 0 ]]; then
-      # Tag it with the new registry destination
-      docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      if [[ -z "$SKIP_TAGPUSH" ]]; then
+        # Tag it with the new registry destination
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+        docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+      fi
     else
       echo "There is a problem downloading the $i:$VERSION image. Details: "
       echo ""

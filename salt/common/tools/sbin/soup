@@ -16,13 +16,17 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
-. /usr/sbin/so-image-common
+if [ -f /usr/sbin/so-image-common ]; then
+  . /usr/sbin/so-image-common
+fi
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+CURLTYPE=soup
+
 exec 3>&1 1>${SOUP_LOG} 2>&1
 
 manager_check() {
@@ -119,7 +123,6 @@ clean_dockers() {
 }
 
 clone_to_tmp() {
-  # TODO Need to add a air gap option
   # Clean old files
   rm -rf /tmp/sogh
   # Make a temp location for the files
@@ -379,6 +382,7 @@ verify_latest_update_script() {
     else
       echo "You are not running the latest soup version. Updating soup."
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+      cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       salt-call state.apply common queue=True
       echo ""
       echo "soup has been updated. Please run soup again."
