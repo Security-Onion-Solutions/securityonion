@@ -42,6 +42,7 @@ base:
     - common
     - patch.os.schedule
     - motd
+    - salt.minion-check
     - salt.lasthighstate
   
   '*_helix and G@saltversion:{{saltversion}}':
