@@ -16,9 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
-if [ -f /usr/sbin/so-image-common ]; then
-  . /usr/sbin/so-image-common
-fi
+
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
@@ -39,6 +37,12 @@ manager_check() {
     echo "Please run soup on the manager. The manager controls all updates."
     exit 0
   fi
+}
+
+add_common() {
+  cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+  echo "Run soup one more time"
+  exit 0
 }
 
 airgap_mounted() {
@@ -381,8 +385,6 @@ verify_latest_update_script() {
       echo "This version of the soup script is up to date. Proceeding."
     else
       echo "You are not running the latest soup version. Updating soup."
-      echo "Copying so-image-common"
-      cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       salt-call state.apply common queue=True
       echo ""
@@ -424,6 +426,12 @@ else
   echo "Cloning Security Onion github repo into $UPDATE_DIR."
   clone_to_tmp
 fi
+if [ -f /usr/sbin/so-image-common ]; then
+  . /usr/sbin/so-image-common
+else 
+add_common
+fi
+
 echo ""
 echo "Verifying we have the latest soup script."
 verify_latest_update_script
