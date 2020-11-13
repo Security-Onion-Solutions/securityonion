@@ -89,9 +89,9 @@ container_list() {
 
 operating_system() {
   if [ -f /etc/redhat-release ]; then
-    OS=CentOS
+    OS=centos
   else
-    OS=Ubuntu
+    OS=ubuntu
   fi
 }
 
@@ -114,7 +114,7 @@ update_docker_containers() {
     docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
     
     # Get signature
-    curl -A "$OS $CURLTYPE" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
+    curl -A "$CURLTYPE/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $i:$VERSION"
       exit 1
