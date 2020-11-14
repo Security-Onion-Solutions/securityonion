@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+. /usr/sbin/so-common
 . /usr/sbin/so-image-common
 local_salt_dir=/opt/so/saltstack/local
 
@@ -39,29 +40,14 @@ fi
 
 echo "Please wait while switching to Elastic Features."
 
-manager_check() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch')$ ]]; then
-    echo "This is a manager. We can proceed"
-  else
-    echo "Please run so-features-enable on the manager."
-    exit 0
-  fi
-}
+require_manager
 
-manager_check
-
-VERSION=$(lookup_pillar soversion) 
-# Modify global.sls to enable Features
-SUFFIX="-features"
 TRUSTED_CONTAINERS=( \
   "so-elasticsearch" \
   "so-filebeat" \
   "so-kibana" \
   "so-logstash" )
+update_docker_containers "features" "-features"
 
-CURLTYPE=features
-update_docker_containers
-
+# Modify global.sls to enable Features
 sed -i 's/features: False/features: True/' $local_salt_dir/pillar/global.sls

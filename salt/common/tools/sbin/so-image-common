@@ -15,16 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Figure out if this is soup or refresh
-set_version() {
-  CURRENTVERSION=0.0.0
-  if [ -f /etc/soversion ]; then
-    CURRENTVERSION=$(cat /etc/soversion)
-  fi
-  if [ -z "$VERSION" ]; then
-      VERSION="$NEWVERSION"
-  fi
-}
+# NOTE: This script depends on so-common
 
 container_list() {
     MANAGERCHECK=so-unknown
@@ -97,24 +88,29 @@ container_list() {
     fi
 }
 
-operating_system() {
-  if [ -f /etc/redhat-release ]; then
-    OS=centos
-  else
-    OS=ubuntu
-  fi
-}
-
 update_docker_containers() {
+  CURLTYPE=$1
+  IMAGE_TAG_SUFFIX=$2
+
+  CONTAINER_REGISTRY=quay.io
+  IMAGEREPO=securityonion
+  SIGNPATH=/root/sosigs
+  
+  if [ -z "$CURLTYPE" ]; then
+    CURLTYPE=unknown
+  fi
+
   # Recheck the version for scenarios were the VERSION wasn't known before this script was imported
   set_version
+  set_os
+
+  if [ -z "$TRUSTED_CONTAINERS" ]; then
+    container_list
+  fi
 
   # Let's make sure we have the public key
   curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
   
-  CONTAINER_REGISTRY=quay.io
-  IMAGEREPO=securityonion
-  SIGNPATH=/root/sosigs
   rm -rf $SIGNPATH
   mkdir -p $SIGNPATH
 
@@ -145,6 +141,9 @@ update_docker_containers() {
     if [[ $? -eq 0 ]]; then
       if [[ -z "$SKIP_TAGPUSH" ]]; then
         # Tag it with the new registry destination
+        if [ -z "$HOSTNAME" ]; then
+          HOSTNAME=$(hostname)
+        fi
         docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
         docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
       fi
@@ -157,5 +156,3 @@ update_docker_containers() {
   done
   
 }
-
-set_version

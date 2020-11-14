@@ -18,33 +18,5 @@
 . /usr/sbin/so-common
 . /usr/sbin/so-image-common
 
-manager_check() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ]; then
-    echo "This is a manager. We can proceed"
-  else
-    echo "Please run soup on the manager. The manager controls all updates."
-    exit 1
-  fi
-}
-
-version_check() {
-  if [ -f /etc/soversion ]; then
-    VERSION=$(cat /etc/soversion)
-  else
-    echo "Unable to detect version. I will now terminate."
-    exit 1
-  fi
-}
-
-manager_check
-version_check
-operating_system
-
-# Use the hostname
-HOSTNAME=$(hostname)
-# List all the containers
-container_list
-CURLTYPE=refresh
-update_docker_containers
+require_manager
+update_docker_containers "refresh"

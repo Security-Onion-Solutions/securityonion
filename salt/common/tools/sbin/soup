@@ -23,23 +23,11 @@ INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
-CURLTYPE=soup
 
 exec 3>&1 1>${SOUP_LOG} 2>&1
 
-manager_check() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch'|'so-import')$ ]]; then
-    echo "This is a manager. We can proceed."
-    MINIONID=$(salt-call grains.get id --out=txt|awk -F: {'print $2'}|tr -d ' ')
-  else
-    echo "Please run soup on the manager. The manager controls all updates."
-    exit 0
-  fi
-}
-
 add_common() {
+  cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
   cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
   salt-call state.apply common queue=True
   echo "Run soup one more time"
@@ -154,17 +142,6 @@ copy_new_files() {
   chown -R socore:socore $DEFAULT_SALT_DIR/
   chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
-}
-
-detect_os() {
-	# Detect Base OS
-	echo "Determining Base OS." >> "$SOUP_LOG" 2>&1
-	if [ -f /etc/redhat-release ]; then
-		OS="centos"
-	elif [ -f /etc/os-release ]; then
-		OS="ubuntu"
-	fi
-	echo "Found OS: $OS" >> "$SOUP_LOG" 2>&1
 }
 
 highstate() {
@@ -413,13 +390,14 @@ done
 
 echo "Checking to see if this is a manager."
 echo ""
-manager_check
+require_manager
+set_minionid
 echo "Checking to see if this is an airgap install"
 echo ""
 check_airgap
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
-detect_os
+set_os
 echo ""
 if [ $is_airgap -eq 0 ]; then
   # Let's mount the ISO since this is airgap
@@ -454,7 +432,7 @@ if [ $is_airgap -eq 0 ]; then
   airgap_update_dockers
 else
   container_list
-  update_docker_containers
+  update_docker_containers "soup"
 fi
 echo ""
 echo "Stopping Salt Minion service."

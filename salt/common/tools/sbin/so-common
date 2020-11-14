@@ -39,6 +39,11 @@ lookup_pillar_secret() {
     salt-call --no-color  pillar.get secrets:${key} --out=newline_values_only
 }
 
+lookup_grain() {
+    key=$1
+    salt-call --no-color  grains.get ${key} --out=newline_values_only
+}
+
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
@@ -48,4 +53,46 @@ check_password() {
     local password=$1
     echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
     return $?
+}
+
+set_os() {
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+  else
+    OS=ubuntu
+  fi
+}
+
+set_minionid() {
+  MINIONID=$(lookup_grain id)
+}
+
+set_version() {
+  CURRENTVERSION=0.0.0
+  if [ -f /etc/soversion ]; then
+    CURRENTVERSION=$(cat /etc/soversion)
+  fi
+  if [ -z "$VERSION" ]; then
+    if [ -z "$NEWVERSION" ]; then
+      if [ "$CURRENTVERSION" == "0.0.0" ]; then
+        echo "ERROR: Unable to detect Security Onion version; terminating script."
+        exit 1
+      else
+        VERSION=$CURRENTVERSION
+      fi
+    else
+      VERSION="$NEWVERSION"
+    fi
+  fi
+}
+
+require_manager() {
+  # Check to see if this is a manager
+  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
+    echo "This is a manager, We can proceed."
+  else
+    echo "Please run this command on the manager; the manager controls the grid."
+    exit 1
+  fi
 }
