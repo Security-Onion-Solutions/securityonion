@@ -16,12 +16,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Figure out if this is soup or refresh
-if [ -z "$VERSION" ]; then
-    VERSION="$NEWVERSION"
-fi
+set_version() {
+  if [ -f /etc/soversion ]; then
+    CURRENTVERSION=$(cat /etc/soversion)
+  fi
+  if [ -z "$VERSION" ]; then
+      VERSION="$NEWVERSION"
+  fi
+}
 
 container_list() {
-    MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+    MANAGERCHECK=so-unknown
+    if [ -f /etc/salt/grains ]; then
+      MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+    fi
+
     if [ $MANAGERCHECK == 'so-import' ]; then
         TRUSTED_CONTAINERS=( \
         "so-idstools" \
@@ -96,13 +105,14 @@ operating_system() {
 }
 
 update_docker_containers() {
-  if [ -z "$VERSION" ]; then
-    VERSION="$NEWVERSION"
-  fi
+  # Recheck the version for scenarios were the VERSION wasn't known before this script was imported
+  set_version
+
   # Let's make sure we have the public key
   curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
   
   CONTAINER_REGISTRY=quay.io
+  IMAGEREPO=securityonion
   SIGNPATH=/root/sosigs
   rm -rf $SIGNPATH
   mkdir -p $SIGNPATH
@@ -112,33 +122,33 @@ update_docker_containers() {
   do
     # Pull down the trusted docker image
     echo "Downloading $i"
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
     
     # Get signature
-    curl -A "$CURLTYPE/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
+    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.sig
     if [[ $? -ne 0 ]]; then
-      echo "Unable to pull signature file for $i:$VERSION"
+      echo "Unable to pull signature file for $i:$VERSION$IMAGE_TAG_SUFFIX"
       exit 1
     fi
     # Dump our hash values
-    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX)
        
-    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION.txt
-    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION.txt
+    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt
+    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt
         
     if [[ $? -ne 0 ]]; then
-      echo "Unable to inspect $i:$VERSION"
+      echo "Unable to inspect $i:$VERSION$IMAGE_TAG_SUFFIX"
       exit 1
     fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION.sig $SIGNPATH/$i:$VERSION.txt 2>&1)
+    GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.sig $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt 2>&1)
     if [[ $? -eq 0 ]]; then
       if [[ -z "$SKIP_TAGPUSH" ]]; then
         # Tag it with the new registry destination
-        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
-        docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
+        docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
       fi
     else
-      echo "There is a problem downloading the $i:$VERSION image. Details: "
+      echo "There is a problem downloading the $i:$VERSION$IMAGE_TAG_SUFFIX image. Details: "
       echo ""
       echo $GPGTEST
       exit 1
@@ -146,3 +156,5 @@ update_docker_containers() {
   done
   
 }
+
+set_version
