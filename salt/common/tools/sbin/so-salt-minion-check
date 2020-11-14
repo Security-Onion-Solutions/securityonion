@@ -86,10 +86,9 @@ done
 log "running so-salt-minion-check"
 
 if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
-  log "system uptime is at least $UPTIME_REQ seconds" I
   if [ $THRESHOLD_DATE -le $CURRENT_TIME ]; then
     log "salt-minion is unable to apply states" E
-    log "/opt/so/log/salt/healthcheck-state-apply ($LAST_HEALTHCHECK_STATE_APPLY) older than threshold date ($THRESHOLD_DATE)" I
+    log "/opt/so/log/salt/healthcheck-state-apply not touched by threshold date: `date -d @$THRESHOLD_DATE`, last touched: `date -d @$LAST_HEALTHCHECK_STATE_APPLY`" I
     log "last highstate completed at $LAST_HIGHSTATE_END" I
     log "checking if any jobs are running" I
     logCmd "salt-call --local saltutil.running" I
@@ -100,7 +99,7 @@ if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
     log "starting salt-minion service" I
     logCmd "systemctl start salt-minion" I
   else
-    log "/opt/so/log/salt/healthcheck-state-apply ($LAST_HEALTHCHECK_STATE_APPLY) newer than threshold date ($THRESHOLD_DATE)" I
+    log "/opt/so/log/salt/healthcheck-state-apply touched by threshold date: `date -d @$THRESHOLD_DATE`, last touched: `date -d @$LAST_HEALTHCHECK_STATE_APPLY`" I
   fi
 else
   log "system uptime only $((CURRENT_TIME-SYSTEM_START_TIME)) seconds does not meet $UPTIME_REQ second requirement." I
