@@ -1,3 +1,6 @@
+include:
+  - salt.minion-state-apply-test
+  
 state-apply-test:
   schedule.present:
     - name: salt-minion-state-apply-test
