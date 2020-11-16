@@ -23,11 +23,6 @@ CONTAINER_REGISTRY=quay.io
 
 SOVERSION=$(cat ../VERSION)
 
-# Duplicate stdout and stderr file descriptors for use with whiptail
-# Using >&10 or >&20 will override any ancestral >> or > redirects and send 
-# to stdout or stderr, repsectively.
-exec 10>&1 20>&2
-
 log() {
 	msg=$1
 	level=${2:-I}
@@ -883,7 +878,7 @@ docker_seed_update() {
 	fi
 	((docker_seed_update_percent=docker_seed_update_percent+percent_delta))
 
-	# Backup current output descriptors and reset to normal
+	# Backup current output descriptors and reset to saved descriptors from docker_seed_registry function
 	exec 8>&1 9>&2 1>&10 2>&20
 
 	set_progress_str "$docker_seed_update_percent" "Downloading $name"
@@ -905,6 +900,10 @@ docker_seed_registry() {
 		fi
 
 		docker_seed_update_percent=25
+
+		# Save output descriptors for use in docker_seed_registry_update function
+		exec 10>&1 20>&2
+
 		update_docker_containers 'netinstall' '' 'docker_seed_update' >> "$setup_log" 2>&1
 	else
 		tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker >> "$setup_log" 2>&1
