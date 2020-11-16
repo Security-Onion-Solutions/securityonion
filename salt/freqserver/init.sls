@@ -43,13 +43,13 @@ freqlogdir:
 
 so-freqimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/{{ IMAGEREPO }}/so-freqserver:HH1.0.3
+   - name: docker pull {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-freqserver:{{ VERSION }}
 
 so-freq:
   docker_container.running:
     - require:
       - so-freqimage
-    - image: docker.io/{{ IMAGEREPO }}/so-freqserver:HH1.0.3
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-freqserver:{{ VERSION }}
     - hostname: freqserver
     - name: so-freqserver
     - user: freqserver

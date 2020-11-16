@@ -45,7 +45,7 @@ dockerregistryconf:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: registry:latest
+    - image: ghcr.io/security-onion-solutions/registry:latest
     - hostname: so-registry
     - restart_policy: always
     - port_bindings:

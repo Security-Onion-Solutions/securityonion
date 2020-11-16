@@ -95,12 +95,17 @@ update_docker_containers() {
   local CURLTYPE=$1
   local IMAGE_TAG_SUFFIX=$2
   local PROGRESS_CALLBACK=$3
+  local LOG_FILE=$4
 
   local CONTAINER_REGISTRY=quay.io
   local SIGNPATH=/root/sosigs
   
   if [ -z "$CURLTYPE" ]; then
     CURLTYPE=unknown
+  fi
+
+  if [ -z "$LOG_FILE" ]; then
+    LOG_FILE=/dev/tty
   fi
 
   # Recheck the version for scenarios were the VERSION wasn't known before this script was imported
@@ -114,26 +119,26 @@ update_docker_containers() {
   # Let's make sure we have the public key
   curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
   
-  rm -rf $SIGNPATH
-  mkdir -p $SIGNPATH
+  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
+  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
     if [ -z "$PROGRESS_CALLBACK" ]; then
-      echo "Downloading $i"
+      echo "Downloading $i" >> "$LOG_FILE" 2>&1 
     else
       $PROGRESS_CALLBACK $i
     fi
 
     # Pull down the trusted docker image
     local image=$i:$VERSION$IMAGE_TAG_SUFFIX
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
     
     # Get signature
-    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig
+    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig >> "$LOG_FILE" 2>&1 
     if [[ $? -ne 0 ]]; then
-      echo "Unable to pull signature file for $image"
+      echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
       exit 1
     fi
     # Dump our hash values
@@ -143,7 +148,7 @@ update_docker_containers() {
     echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$image.txt
         
     if [[ $? -ne 0 ]]; then
-      echo "Unable to inspect $image"
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1 
       exit 1
     fi
     GPGTEST=$(gpg --verify $SIGNPATH/$image.sig $SIGNPATH/$image.txt 2>&1)
@@ -153,15 +158,14 @@ update_docker_containers() {
         if [ -z "$HOSTNAME" ]; then
           HOSTNAME=$(hostname)
         fi
-        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image
-        docker push $HOSTNAME:5000/$IMAGEREPO/$image
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
       fi
     else
-      echo "There is a problem downloading the $image image. Details: "
-      echo ""
-      echo $GPGTEST
+      echo "There is a problem downloading the $image image. Details: " >> "$LOG_FILE" 2>&1 
+      echo "" >> "$LOG_FILE" 2>&1 
+      echo $GPGTEST >> "$LOG_FILE" 2>&1 
       exit 1
     fi
   done
-  
 }
