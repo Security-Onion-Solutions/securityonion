@@ -23,6 +23,11 @@ CONTAINER_REGISTRY=quay.io
 
 SOVERSION=$(cat ../VERSION)
 
+# Duplicate stdout and stderr file descriptors for use with whiptail
+# Using >&10 or >&20 will override any ancestral >> or > redirects and send 
+# to stdout or stderr, repsectively.
+exec 10>&1 20>&2
+
 log() {
 	msg=$1
 	level=${2:-I}
@@ -870,116 +875,37 @@ docker_registry() {
 
 }
 
+docker_seed_update() {
+	local name=$1
+	local percent_delta=1
+	if [ "$install_type" == 'HELIXSENSOR' ]; then 
+		percent_delta=6
+	fi
+	((docker_seed_update_percent=docker_seed_update_percent+percent_delta))
+
+	# Backup current output descriptors and reset to normal
+	exec 8>&1 9>&2 1>&10 2>&20
+
+	set_progress_str "$docker_seed_update_percent" "Downloading $name"
+
+	# Restore current output descriptors and remove backups
+	exec 1>&8- 2>&9-
+}
+
 docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
-	    if [ "$install_type" == 'IMPORT' ]; then
-		local TRUSTED_CONTAINERS=(\
-			"so-idstools" \
-			"so-nginx" \
-			"so-filebeat" \
-			"so-suricata" \
-			"so-soc" \
-			"so-steno" \
-			"so-elasticsearch" \
-			"so-kibana" \
-			"so-kratos" \
-			"so-suricata" \
-			"so-pcaptools" \
-			"so-zeek"
-		)
+		if [ "$install_type" == 'IMPORT' ]; then
+			container_list 'so-import'
+		elif [ "$install_type" != 'HELIXSENSOR' ]; then
+			container_list 'so-helix'
 		else
-		local TRUSTED_CONTAINERS=(\
-			"so-nginx" \
-			"so-filebeat" \
-			"so-logstash" \
-			"so-idstools" \
-			"so-redis" \
-			"so-steno" \
-			"so-suricata" \
-			"so-telegraf" \
-			"so-zeek"
-		)
+			container_list
 		fi
-		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORT' ]; then
-			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
-				"so-acng" \
-				"so-thehive-cortex" \
-				"so-curator" \
-				"so-domainstats" \
-				"so-elastalert" \
-				"so-elasticsearch" \
-				"so-fleet" \
-				"so-fleet-launcher" \
-				"so-freqserver" \
-				"so-grafana" \
-				"so-influxdb" \
-				"so-kibana" \
-				"so-minio" \
-				"so-mysql" \
-				"so-pcaptools" \
-				"so-playbook" \
-				"so-soc" \
-				"so-kratos" \
-				"so-soctopus" \
-				"so-steno" \
-				"so-strelka-frontend" \
-				"so-strelka-manager" \
-				"so-strelka-backend" \
-				"so-strelka-filestream" \
-				"so-thehive" \
-				"so-thehive-es" \
-				"so-wazuh"
-			)
-		fi
-		local percent=25
-		# Let's make sure we have the public key
-        curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
-  
-        SIGNPATH=/root/sosigs
-        rm -rf $SIGNPATH
-        mkdir -p $SIGNPATH
-        if [ -z "$BRANCH" ]; then
-            BRANCH="master"
-        fi
-		for i in "${TRUSTED_CONTAINERS[@]}"; do
-			if [ "$install_type" != 'HELIXSENSOR' ]; then ((percent=percent+1)); else ((percent=percent+6)); fi
-			# Pull down the trusted docker image
-			set_progress_str "$percent" "Downloading $i:$VERSION"
-			{
-				echo "Downloading $i"
-                        docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION
-    
-    			# Get signature
-    			curl -A "netinstall/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION.sig --output $SIGNPATH/$i:$VERSION.sig
-    			if [[ $? -ne 0 ]]; then
-      				echo "Unable to pull signature file for $i:$VERSION"
-      				exit 1
-    			fi
-    			# Dump our hash values
-			    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION)
-    
-                echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION.txt
-                echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION.txt
-			
-			    if [[ $? -ne 0 ]]; then
-      				echo "Unable to inspect $i"
-      				exit 1
-    			fi
-    				GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION.sig $SIGNPATH/$i:$VERSION.txt 2>&1)
-    			if [[ $? -eq 0 ]]; then
-      			# Tag it with the new registry destination
-      				docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
-      				docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION
-    			else
-      				echo "There is a problem downloading the $i image. Details: "
-      				echo ""
-      				echo $GPGTEST
-      				exit 1
-    			fi
- 			} >> "$setup_log" 2>&1
-		done
+
+		docker_seed_update_percent=25
+		update_docker_containers 'netinstall' '' 'docker_seed_update' >> "$setup_log" 2>&1
 	else
 		tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker >> "$setup_log" 2>&1
 		rm /nsm/docker-registry/docker/registry.tar >> "$setup_log" 2>&1
@@ -1006,10 +932,10 @@ firewall_generate_templates() {
 	local firewall_pillar_path=$local_salt_dir/salt/firewall
 	mkdir -p "$firewall_pillar_path"
    
-    cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
+	cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-    for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
-	  $default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
+	for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
+		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
 
 }
