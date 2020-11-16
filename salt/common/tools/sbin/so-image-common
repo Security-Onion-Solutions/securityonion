@@ -19,29 +19,30 @@
 IMAGEREPO=securityonion
 
 container_list() {
-    MANAGERCHECK=so-unknown
-    if [ -f /etc/salt/grains ]; then
-      MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+    MANAGERCHECK=$1
+    if [ -z "$MANAGERCHECK" ]; then
+      MANAGERCHECK=so-unknown
+      if [ -f /etc/salt/grains ]; then
+        MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+      fi
     fi
 
     if [ $MANAGERCHECK == 'so-import' ]; then
-        TRUSTED_CONTAINERS=( \
-        "so-idstools" \
-        "so-nginx" \
-        "so-filebeat" \
-        "so-suricata" \
-        "so-soc" \
+      TRUSTED_CONTAINERS=( \
         "so-elasticsearch" \
+        "so-filebeat" \
+        "so-idstools" \
         "so-kibana" \
         "so-kratos" \
-        "so-suricata" \
-        "so-registry" \
+        "so-nginx" \
         "so-pcaptools" \
+        "so-soc" \
+        "so-steno" \
+        "so-suricata" \
         "so-zeek" )
     elif [ $MANAGERCHECK != 'so-helix' ]; then
-        TRUSTED_CONTAINERS=( \
+      TRUSTED_CONTAINERS=( \
         "so-acng" \
-        "so-thehive-cortex" \
         "so-curator" \
         "so-domainstats" \
         "so-elastalert" \
@@ -65,18 +66,19 @@ container_list() {
         "so-soc" \
         "so-soctopus" \
         "so-steno" \
-        "so-strelka-frontend" \
-        "so-strelka-manager" \
         "so-strelka-backend" \
         "so-strelka-filestream" \
+        "so-strelka-frontend" \
+        "so-strelka-manager" \
         "so-suricata" \
         "so-telegraf" \
         "so-thehive" \
+        "so-thehive-cortex" \
         "so-thehive-es" \
         "so-wazuh" \
         "so-zeek" )
     else
-        TRUSTED_CONTAINERS=( \
+      TRUSTED_CONTAINERS=( \
         "so-filebeat" \
         "so-idstools" \
         "so-logstash" \
@@ -90,14 +92,20 @@ container_list() {
 }
 
 update_docker_containers() {
-  CURLTYPE=$1
-  IMAGE_TAG_SUFFIX=$2
+  local CURLTYPE=$1
+  local IMAGE_TAG_SUFFIX=$2
+  local PROGRESS_CALLBACK=$3
+  local LOG_FILE=$4
 
-  CONTAINER_REGISTRY=quay.io
-  SIGNPATH=/root/sosigs
+  local CONTAINER_REGISTRY=quay.io
+  local SIGNPATH=/root/sosigs
   
   if [ -z "$CURLTYPE" ]; then
     CURLTYPE=unknown
+  fi
+
+  if [ -z "$LOG_FILE" ]; then
+    LOG_FILE=/dev/tty
   fi
 
   # Recheck the version for scenarios were the VERSION wasn't known before this script was imported
@@ -109,50 +117,55 @@ update_docker_containers() {
   fi
 
   # Let's make sure we have the public key
-  curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -
+  curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -  >> "$LOG_FILE" 2>&1
   
-  rm -rf $SIGNPATH
-  mkdir -p $SIGNPATH
+  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
+  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
+    if [ -z "$PROGRESS_CALLBACK" ]; then
+      echo "Downloading $i" >> "$LOG_FILE" 2>&1 
+    else
+      $PROGRESS_CALLBACK $i
+    fi
+
     # Pull down the trusted docker image
-    echo "Downloading $i"
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
+    local image=$i:$VERSION$IMAGE_TAG_SUFFIX
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
     
     # Get signature
-    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.sig
+    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig >> "$LOG_FILE" 2>&1 
     if [[ $? -ne 0 ]]; then
-      echo "Unable to pull signature file for $i:$VERSION$IMAGE_TAG_SUFFIX"
+      echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
       exit 1
     fi
     # Dump our hash values
-    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX)
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$image)
        
-    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt
-    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt
+    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$image.txt
+    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$image.txt
         
     if [[ $? -ne 0 ]]; then
-      echo "Unable to inspect $i:$VERSION$IMAGE_TAG_SUFFIX"
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1 
       exit 1
     fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.sig $SIGNPATH/$i:$VERSION$IMAGE_TAG_SUFFIX.txt 2>&1)
+    GPGTEST=$(gpg --verify $SIGNPATH/$image.sig $SIGNPATH/$image.txt 2>&1)
     if [[ $? -eq 0 ]]; then
       if [[ -z "$SKIP_TAGPUSH" ]]; then
         # Tag it with the new registry destination
         if [ -z "$HOSTNAME" ]; then
           HOSTNAME=$(hostname)
         fi
-        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
-        docker push $HOSTNAME:5000/$IMAGEREPO/$i:$VERSION$IMAGE_TAG_SUFFIX
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
       fi
     else
-      echo "There is a problem downloading the $i:$VERSION$IMAGE_TAG_SUFFIX image. Details: "
-      echo ""
-      echo $GPGTEST
+      echo "There is a problem downloading the $image image. Details: " >> "$LOG_FILE" 2>&1 
+      echo "" >> "$LOG_FILE" 2>&1 
+      echo $GPGTEST >> "$LOG_FILE" 2>&1 
       exit 1
     fi
   done
-  
 }

@@ -67,7 +67,7 @@ noderedlog:
 
 so-nodered:
   docker_container.running:
-    - image: {{ IMAGEREPO }}/so-nodered:HH1.2.2
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-nodered:{{ VERSION }}
     - interactive: True
     - binds:
       - /opt/so/conf/nodered/:/data:rw
