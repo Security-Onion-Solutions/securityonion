@@ -22,6 +22,7 @@ base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.minion-state-apply-test
     {% if ISAIRGAP is sameas true %}
     - airgap
     {% endif %}
@@ -42,6 +43,7 @@ base:
     - common
     - patch.os.schedule
     - motd
+    - salt.minion-check
     - salt.lasthighstate
   
   '*_helix and G@saltversion:{{saltversion}}':
