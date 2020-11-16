@@ -22,6 +22,7 @@ base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.minion-state-apply-test
     {% if ISAIRGAP is sameas true %}
     - airgap
     {% endif %}
