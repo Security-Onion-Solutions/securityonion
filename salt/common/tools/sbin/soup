@@ -93,7 +93,12 @@ airgap_update_dockers() {
       docker load -i $AGDOCKER/registry_image.tar
     fi
   fi
+}
 
+update_registry() {
+  docker stop so-dockerregistry
+  docker rm so-dockerregistry
+  salt-call state.apply registry
 }
 
 check_airgap() {
@@ -431,6 +436,7 @@ echo "Updating dockers to $NEWVERSION."
 if [ $is_airgap -eq 0 ]; then
   airgap_update_dockers
 else
+  update_registry
   update_docker_containers "soup"
 fi
 echo ""
