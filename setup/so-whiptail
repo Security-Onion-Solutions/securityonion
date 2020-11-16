@@ -340,11 +340,27 @@ whiptail_requirements_error() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" \
-	--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  10 75
+	if [[ $(echo "$requirement_needed" | tr '[:upper:]' '[:lower:]') == 'nics' ]]; then
+		whiptail --title "Security Onion Setup" \
+			--msgbox "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press OK to exit setup and reconfigure the machine."  10 75
+		
+		# Same as whiptail_cancel, but changed the wording to exit instead of cancel.
+		whiptail --title "Security Onion Setup" --msgbox "Exiting Setup. No changes have been made." 8 75
+		if [ -d "/root/installtmp" ]; then
+			{
+				echo "/root/installtmp exists";
+				install_cleanup;
+				echo "/root/installtmp removed";
+			} >> $setup_log 2>&1
+		fi
+		exit
+	else
+		whiptail --title "Security Onion Setup" \
+			--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  10 75
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	fi
 }
 
 whiptail_storage_requirements() {
