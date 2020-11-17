@@ -89,6 +89,14 @@ so-thehive-es:
       - /opt/so/conf/thehive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /opt/so/log/thehive:/var/log/elasticsearch:rw
     - environment:
+      - http.host=0.0.0.0
+      - http.port=9400
+      - transport.tcp.port=9500
+      - transport.host=0.0.0.0
+      - cluster.name=thehive
+      - thread_pool.index.queue_size=100000
+      - thread_pool.search.queue_size=100000
+      - thread_pool.bulk.queue_size=100000
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
     - port_bindings:
       - 0.0.0.0:9400:9400
