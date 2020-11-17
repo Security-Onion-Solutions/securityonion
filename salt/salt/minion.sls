@@ -21,6 +21,7 @@ salt_minion_package:
       - {{ COMMON }}
       - salt-minion
     - hold: True
+    - onlyif: "[[ '{{INSTALLEDSALTVERSION}}' == '{{SALTVERSION}}' ]]"
 
 salt_minion_service:
   service.running:
