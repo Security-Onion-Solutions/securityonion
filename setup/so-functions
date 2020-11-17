@@ -467,15 +467,15 @@ check_requirements() {
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	elif [[ "$standalone_or_dist" == 'import' ]]; then
-	    req_mem=4
-	    req_cores=2
+		req_mem=4
+		req_cores=2
 		req_nics=1
 	fi
 
 	if [[ $setup_type == 'network' ]] ; then
 		if [[ -n $nsm_mount ]]; then
 			if [[ "$standalone_or_dist" == 'import' ]]; then
-		    	req_storage=50
+				req_storage=50
 			else
 				req_storage=100
 			fi
@@ -487,7 +487,7 @@ check_requirements() {
 			fi
 		else
 			if [[ "$standalone_or_dist" == 'import' ]]; then
-		    	req_storage=50
+				req_storage=50
 			else
 				req_storage=200
 			fi
@@ -498,11 +498,20 @@ check_requirements() {
 	fi
 
 	if [[ $num_nics -lt $req_nics ]]; then
-		whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+		if [[ $num_nics -eq 1 ]]; then
+			whiptail_requirements_error "NIC" "$num_nics" "$req_nics"
+		else
+			whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+		fi
 	fi
 
 	if [[ $num_cpu_cores -lt $req_cores ]]; then
-		whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+		if [[ $num_cpu_cores -eq 1 ]]; then
+			whiptail_requirements_error "core" "$num_cpu_cores" "$req_cores"
+		else
+			whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+		fi
+		
 	fi
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
