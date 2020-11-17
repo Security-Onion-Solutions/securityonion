@@ -458,6 +458,20 @@ if [ "$UPGRADESALT" == "1" ]; then
   upgrade_salt
 fi
 
+echo "Checking if Salt was upgraded."
+echo ""
+# Check that Salt was upgraded, should be 3 'salt' packages on a manager node. salt-minion, salt-master and salt or salt-common depending on Ubuntu or CentOS. we could add salt-syndic in the future so checking that there are at least 3 packages
+if [[ `rpm -qa | grep salt | grep $NEWSALTVERSION | wc -l` < 3 ]]; then
+  echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+  echo "Once the issue is resolved, run soup again."
+  echo "Exiting."
+  echo ""
+  exit 1
+else
+  echo "Salt upgrade success."
+  echo ""
+fi
+
 echo "Making pillar changes."
 pillar_changes
 echo ""
