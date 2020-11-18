@@ -114,6 +114,12 @@ check_airgap() {
   fi
 }
 
+check_sudoers() {
+	if grep -q "so-setup" /etc/sudoers; then
+		echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
+	fi
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
@@ -191,7 +197,6 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-
 }
 
 rc1_to_rc2() {
@@ -291,6 +296,7 @@ unmount_update() {
   cd /tmp
   umount /tmp/soagupdate
 }
+
 
 update_centos_repo() {
   # Update the files in the repo
@@ -461,7 +467,7 @@ fi
 echo "Checking if Salt was upgraded."
 echo ""
 # Check that Salt was upgraded, should be 3 'salt' packages on a manager node. salt-minion, salt-master and salt or salt-common depending on Ubuntu or CentOS. we could add salt-syndic in the future so checking that there are at least 3 packages
-if [[ `rpm -qa | grep salt | grep $NEWSALTVERSION | wc -l` < 3 ]]; then
+if [[ $(rpm -qa | grep salt | grep -c $NEWSALTVERSION) -lt 3 ]]; then
   echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
   echo "Once the issue is resolved, run soup again."
   echo "Exiting."
@@ -523,6 +529,8 @@ if [ "$UPGRADESALT" == "1" ]; then
   salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
   echo ""
 fi
+
+check_sudoers
 
 }
 
