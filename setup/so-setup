@@ -24,19 +24,10 @@ fi
 
 cd "$(dirname "$0")" || exit 255
 
-source ./so-variables
-
-is_reinstall=false
-if [[ -f $setup_log ]]; then
-	is_reinstall=true
-
-	# Move last setup log to backup
-	mv $setup_log $setup_log.bak
-fi
-
 source ./so-functions
 source ./so-common-functions
 source ./so-whiptail
+source ./so-variables
 
 # Parse command line arguments
 setup_type=$1
@@ -63,6 +54,13 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+is_reinstall=false
+if [[ -f $change_file ]]; then
+	is_reinstall=true
+
+	# Move last setup log to backup
+	mv "$setup_log" "$setup_log.bak"
+fi
 
 # Begin Installation pre-processing
 parse_install_username
@@ -320,7 +318,6 @@ if [[ $is_import ]]; then
 	PLAYBOOK=0
 fi
 
-
 # Start user prompts
 
 if [[ $is_helix || $is_sensor ]]; then
@@ -428,6 +425,7 @@ fi
 if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 
 whiptail_make_changes
+touch $change_file
 
 # From here on changes will be made.
 
