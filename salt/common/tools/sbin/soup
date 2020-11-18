@@ -501,6 +501,16 @@ echo ""
 echo "Starting Salt Master service."
 systemctl start salt-master
 
+# Only regenerate osquery packages if Fleet is enabled
+FLEET_MANAGER=$(lookup_pillar fleet_manager)
+FLEET_NODE=$(lookup_pillar fleet_node)
+if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
+  echo ""
+  echo "Regenerating Osquery Packages.... This will take several minutes."
+  salt-call state.apply fleet.event_gen-packages -l info queue=True
+  echo ""
+fi
+
 echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
 highstate
