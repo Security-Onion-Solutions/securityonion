@@ -17,8 +17,8 @@
 
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run using sudo!"
-    exit 1
+  echo "This script must be run using sudo!"
+  exit 1
 fi
 
 # Define a banner to separate sections
@@ -29,19 +29,43 @@ header() {
     printf '%s\n' "$banner" "$*" "$banner"
 }
 
+lookup_salt_value() {
+  key=$1
+  group=$2
+  kind=$3
+
+  if [ -z "$kind" ]; then
+    kind=pillar
+  fi
+
+  if [ -n "$group" ]; then
+    group=${group}:
+  fi
+
+  salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
+}
+
 lookup_pillar() {
-    key=$1
-    salt-call --no-color  pillar.get global:${key} --out=newline_values_only
+  key=$1
+  pillar=$2
+  if [ -z "$pillar" ]; then
+    pillar=global
+  fi
+  lookup_salt_value "$key" "$pillar" "pillar"
 }
 
 lookup_pillar_secret() {
-    key=$1
-    salt-call --no-color  pillar.get secrets:${key} --out=newline_values_only
+  lookup_pillar "$1" "secrets"
 }
 
 lookup_grain() {
-    key=$1
-    salt-call --no-color  grains.get ${key} --out=newline_values_only
+  lookup_salt_value "$1" "" "grains"
+}
+
+lookup_role() {
+  id=$(lookup_grain id)
+  pieces=($(echo $id | tr '_' ' '))
+  echo ${pieces[1]}
 }
 
 check_container() {
@@ -50,9 +74,9 @@ check_container() {
 }
 
 check_password() {
-    local password=$1
-    echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
-    return $?
+  local password=$1
+  echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+  return $?
 }
 
 set_os() {
@@ -95,4 +119,19 @@ require_manager() {
     echo "Please run this command on the manager; the manager controls the grid."
     exit 1
   fi
+}
+
+is_single_node_grid() {
+  role=$(lookup_role)
+  if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
+    return 1
+  fi
+  return 0
+}
+
+fail() {
+  msg=$1
+  echo "ERROR: $msg"
+  echo "Exiting."
+  exit 1
 }
