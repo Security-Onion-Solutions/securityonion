@@ -12,12 +12,12 @@
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower in ['centos', 'redhat'] %}
     {% if ISAIRGAP is sameas true %}
-      {% set UPGRADECOMMAND = 'yum clean all && yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -s 90 -r -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*" && pkill -9 -ef /usr/bin/salt-minion && salt-call state.highstate --log-file-level info' %}
+      {% set UPGRADECOMMAND = 'yum clean all && yum versionlock delete "salt-*" && systemctl stop salt-minion && pkill -9 -ef /usr/bin/salt-minion && /usr/sbin/bootstrap-salt.sh -s 90 -r -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*" && salt-call state.highstate --l info' %}
     {% else %}
-      {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -s 90 -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*" && pkill -9 -ef /usr/bin/salt-minion && salt-call state.highstate --log-file-level info' %}
+      {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && systemctl stop salt-minion && pkill -9 -ef /usr/bin/salt-minion && /usr/sbin/bootstrap-salt.sh -s 90 -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*" && salt-call state.highstate --l info' %}
     {% endif %}
   {% elif grains.os|lower == 'ubuntu' %}
-    {% set UPGRADECOMMAND = 'apt-mark unhold salt-common && apt-mark unhold salt-minion && /usr/sbin/bootstrap-salt.sh -s 90 -F -x python3 stable ' ~ SALTVERSION ~ ' && apt-mark hold salt-common && apt-mark hold salt-minion && pkill -9 -ef /usr/bin/salt-minion && salt-call state.highstate --log-file-level info' %}
+    {% set UPGRADECOMMAND = 'apt-mark unhold salt-common && apt-mark unhold salt-minion && systemctl stop salt-minion && pkill -9 -ef /usr/bin/salt-minion && /usr/sbin/bootstrap-salt.sh -s 90 -F -x python3 stable ' ~ SALTVERSION ~ ' && apt-mark hold salt-common && apt-mark hold salt-minion && salt-call state.highstate --l info' %}
   {% endif %}
 {% else %}
   {% set UPGRADECOMMAND = 'echo Already running Salt Minon version ' ~ SALTVERSION %}
