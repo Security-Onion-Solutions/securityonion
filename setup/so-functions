@@ -1398,19 +1398,25 @@ reinstall_init() {
 		date_string=$(date +%s)
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
-		if [[ -d /opt/so ]]; then
-			mv /opt/so "/opt/so_old_${date_string}"
-		fi
+		backup_dir /opt/so "$date_string"
 
-		# Backup /nsm for the same reason
-		while IFS= read -r -d '' dir; do
-			mv "$dir" "${dir}_old_${date_string}"
-		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -not -path "/nsm/docker-registry" -print0)
+		# Backup directories in /nsm to prevent app errors
+		backup_dir /nsm/mysql "$date_string"
+		backup_dir /nsm/wazuh "$date_string"
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
 	} >> $setup_log 2>&1
+}
+
+backup_dir() {
+	dir=$1
+	backup_suffix=$2
+
+	if [[ -d $dir ]]; then
+		mv "$dir" "${dir}_old_${backup_suffix}"
+	fi
 }
 
 remove_package() {
