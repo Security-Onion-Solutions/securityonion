@@ -1019,6 +1019,10 @@ install_cleanup() {
 	# If Mysql is running stop it
 	/usr/sbin/so-mysql-stop
 
+	if [[ $setup_type == 'iso' ]]; then
+		info "Removing so-setup permission entry from sudoers file"
+		sed -i '/so-setup/d' /etc/sudoers
+	fi
 }
 
 import_registry_docker() {
@@ -1378,20 +1382,11 @@ reinstall_init() {
 	info "Putting system in state to run setup again"
 
 	{
-		local minion_config=/etc/salt/minion
-		
-		# Remove startup_states from minion config so we don't immediately highstate when salt starts back up
-		if [[ -f $minion_config ]] && grep -q "startup_states" $minion_config; then
-			sed -i '/startup_states/d' $minion_config
-		fi
+		# Kill any salt processes
+		pkill -9 -ef /usr/bin/salt
 
-		if command -v salt-call &> /dev/null; then
-			# Disable schedule so highstate doesn't start running during the install
-			salt-call -l info schedule.disable
-
-			# Kill any currently running salt jobs, also to prevent issues with highstate.
-			salt-call -l info saltutil.kill_all_jobs
-		fi
+		# Remove all salt configs
+		rm -rf /etc/salt/global /etc/salt/minion /etc/salt/master /etc/salt/pki/*
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -1410,7 +1405,7 @@ reinstall_init() {
 		# Backup /nsm for the same reason
 		while IFS= read -r -d '' dir; do
 			mv "$dir" "${dir}_old_${date_string}"
-		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -print0)
+		done < <(find /nsm -maxdepth 1 -mindepth 1 -type d -not -path "/nsm/docker-registry" -print0)
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
