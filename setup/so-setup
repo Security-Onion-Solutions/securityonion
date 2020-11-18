@@ -24,10 +24,19 @@ fi
 
 cd "$(dirname "$0")" || exit 255
 
+source ./so-variables
+
+is_reinstall=false
+if [[ -f $setup_log ]]; then
+	is_reinstall=true
+
+	# Move last setup log to backup
+	mv $setup_log $setup_log.bak
+fi
+
 source ./so-functions
 source ./so-common-functions
 source ./so-whiptail
-source ./so-variables
 
 # Parse command line arguments
 setup_type=$1
@@ -54,12 +63,6 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-if [[ -f $setup_log ]]; then
-	is_reinstall=true
-
-	# Move last setup log to backup
-	mv $setup_log $setup_log.bak
-fi
 
 # Begin Installation pre-processing
 parse_install_username
