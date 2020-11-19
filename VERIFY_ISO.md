@@ -5,9 +5,9 @@
 2.3.10 ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-2.3.10.iso
 
-MD5: 2043701FC0FE785A877ECAE74CD73694  
-SHA1: 15AE0B332DAF91C7895FDBEB1FCF900D6ECA8299  
-SHA256: 4CD3FB9335F0AA00339D0F76D03867439BF963169C47C0CF43C82A18C6F32830 
+MD5: 55E10BAE3D90DF47CA4D5DCCDCB67A96  
+SHA1: 01361123F35CEACE077803BC8074594D57EE653A  
+SHA256: 772EA4EFFFF12F026593F5D1CC93DB538CC17B9BA5F60308F1976B6ED7032A8D 
 
 Signature for ISO image:  
 https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.10.iso.sig
@@ -39,7 +39,7 @@ gpg --verify securityonion-2.3.10.iso.sig securityonion-2.3.10.iso
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Thu 19 Nov 2020 10:22:55 AM EST using RSA key ID FE507013
+gpg: Signature made Thu 19 Nov 2020 03:38:54 PM EST using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
