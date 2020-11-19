@@ -163,6 +163,11 @@ so-suricata:
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
 
+append_so-suricata_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-suricata
+
 surilogrotate:
   file.managed:
     - name: /opt/so/conf/suricata/suri-rotate.conf

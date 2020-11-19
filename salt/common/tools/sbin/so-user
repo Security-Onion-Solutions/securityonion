@@ -8,7 +8,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-. /usr/sbin/so-common
+source $(dirname $0)/so-common
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
   echo "Usage: $0 <list|add|update|enable|disable|validate|valemail|valpass> [email]"
@@ -56,14 +56,14 @@ function verifyEnvironment() {
   require "openssl"
   require "sqlite3"
   [[ ! -f $databasePath ]] && fail "Unable to find database file; specify path via KRATOS_DB_PATH environment variable"
-  response=$(curl -Ss ${kratosUrl}/)
+  response=$(curl -Ss -L ${kratosUrl}/)
   [[ "$response" != "404 page not found" ]] && fail "Unable to communicate with Kratos; specify URL via KRATOS_URL environment variable"
 }
 
 function findIdByEmail() {
   email=$1
 
-  response=$(curl -Ss ${kratosUrl}/identities)
+  response=$(curl -Ss -L ${kratosUrl}/identities)
   identityId=$(echo "${response}" | jq ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
   echo $identityId
 }
@@ -113,7 +113,7 @@ function updatePassword() {
 }
 
 function listUsers() {
-  response=$(curl -Ss ${kratosUrl}/identities)
+  response=$(curl -Ss -L ${kratosUrl}/identities)
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort
@@ -131,7 +131,7 @@ function createUser() {
 EOF
   )
   
-  response=$(curl -Ss ${kratosUrl}/identities -d "$addUserJson")
+  response=$(curl -Ss -L ${kratosUrl}/identities -d "$addUserJson")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   identityId=$(echo "${response}" | jq ".id")
@@ -153,7 +153,7 @@ function updateStatus() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  response=$(curl -Ss "${kratosUrl}/identities/$identityId")
+  response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   oldConfig=$(echo "select config from identity_credentials where identity_id=${identityId};" | sqlite3 "$databasePath")
@@ -171,7 +171,7 @@ function updateStatus() {
   fi  
 
   updatedJson=$(echo "$response" | jq ".traits.status = \"$status\" | del(.verifiable_addresses) | del(.id) | del(.schema_url)")
-  response=$(curl -Ss -XPUT ${kratosUrl}/identities/$identityId -d "$updatedJson")
+  response=$(curl -Ss -XPUT -L ${kratosUrl}/identities/$identityId -d "$updatedJson")
   [[ $? != 0 ]] && fail "Unable to mark user as locked"
 
 }
@@ -191,7 +191,7 @@ function deleteUser() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  response=$(curl -Ss -XDELETE "${kratosUrl}/identities/$identityId")
+  response=$(curl -Ss -XDELETE -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 }
 

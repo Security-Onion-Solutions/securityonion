@@ -43,18 +43,23 @@ dstatslogdir:
 
 so-domainstatsimage:
  cmd.run:
-   - name: docker pull --disable-content-trust=false docker.io/{{ IMAGEREPO }}/so-domainstats:HH1.0.3
+   - name: docker pull {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-domainstats:{{ VERSION }}
 
 so-domainstats:
   docker_container.running:
     - require:
       - so-domainstatsimage
-    - image: docker.io/{{ IMAGEREPO }}/so-domainstats:HH1.0.3
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-domainstats:{{ VERSION }}
     - hostname: domainstats
     - name: so-domainstats
     - user: domainstats
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
+
+append_so-domainstats_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-domainstats
 
 {% else %}
 

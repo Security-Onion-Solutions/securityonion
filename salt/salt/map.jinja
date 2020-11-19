@@ -1,5 +1,7 @@
-{% import_yaml 'salt/minion.defaults.yaml' as salt %}
-{% set SALTVERSION = salt.salt.minion.version %}
+{% import_yaml 'salt/minion.defaults.yaml' as saltminion %}
+{% set SALTVERSION = saltminion.salt.minion.version %}
+{% set INSTALLEDSALTVERSION = salt['pkg.version']('salt-minion').split('-')[0] %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 
 {% if grains.os|lower == 'ubuntu' %}
   {% set COMMON = 'salt-common' %}
@@ -9,10 +11,14 @@
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower in ['centos', 'redhat'] %}
-    {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && sh /usr/sbin/bootstrap-salt.sh -F -x python3 stable ' ~ SALTVERSION %}
+    {% if ISAIRGAP is sameas true %}
+      {% set UPGRADECOMMAND = 'yum clean all && yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -X -s 120 -r -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*"' %}
+    {% else %}
+      {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*"' %}
+    {% endif %}
   {% elif grains.os|lower == 'ubuntu' %}
-    {% set UPGRADECOMMAND = 'apt-mark unhold salt-common && apt-mark unhold salt-minion && sh /usr/sbin/bootstrap-salt.sh -F -x python3 stable ' ~ SALTVERSION  %}
+    {% set UPGRADECOMMAND = 'apt-mark unhold salt-common && apt-mark unhold salt-minion && /usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION ~ ' && apt-mark hold salt-common && apt-mark hold salt-minion' %}
   {% endif %}
 {% else %}
-  {% set UPGRADECOMMAND = 'echo Already running Salt Minon version ' ~ SALTVERSION %}
+  {% set UPGRADECOMMAND = 'echo Already running Salt Minion version ' ~ SALTVERSION %}
 {% endif %}

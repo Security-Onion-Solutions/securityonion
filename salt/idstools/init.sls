@@ -58,11 +58,12 @@ rulesdir:
     - makedirs: True
 
 synclocalnidsrules:
-  file.managed:
-    - name: /opt/so/rules/nids/local.rules
-    - source: salt://idstools/local.rules
+  file.recurse:
+    - name: /opt/so/rules/nids/
+    - source: salt://idstools/
     - user: 939
     - group: 939
+    - include_pat: 'E@.rules'
 
 so-idstools:
   docker_container.running:
@@ -74,6 +75,11 @@ so-idstools:
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
     - watch:
       - file: idstoolsetcsync
+
+append_so-idstools_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-idstools
 
 {% else %}
 

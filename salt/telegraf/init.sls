@@ -26,7 +26,7 @@ tgrafetsdir:
 tgrafsyncscripts:
   file.recurse:
     - name: /opt/so/conf/telegraf/scripts
-    - user: 0
+    - user: root
     - group: 939
     - file_mode: 700
     - template: jinja
@@ -72,6 +72,11 @@ so-telegraf:
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts
+
+append_so-telegraf_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-telegraf
 
 {% else %}
 

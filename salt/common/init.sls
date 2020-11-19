@@ -32,6 +32,18 @@ soconfperms:
     - gid: 939
     - dir_mode: 770
 
+sostatusconf:
+  file.directory:
+    - name: /opt/so/conf/so-status
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+
+so-status.conf:
+  file.touch:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - unless: ls /opt/so/conf/so-status/so-status.conf
+
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack
@@ -158,8 +170,8 @@ Etc/UTC:
 utilsyncscripts:
   file.recurse:
     - name: /usr/sbin
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin

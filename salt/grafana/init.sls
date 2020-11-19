@@ -236,6 +236,11 @@ so-grafana:
     - watch:
       - file: /opt/so/conf/grafana/*
 
+append_so-grafana_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-grafana
+
 {% endif %}
 
 {% else %}

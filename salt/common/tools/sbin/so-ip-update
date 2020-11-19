@@ -1,0 +1,59 @@
+#!/bin/bash
+
+. $(dirname $0)/so-common
+
+if [ "$FORCE_IP_UPDATE" != "1" ]; then
+	is_single_node_grid || fail "Cannot update the IP on a distributed grid"
+fi
+
+echo "This tool will update a manager's IP address to the new IP assigned to the management network interface."
+
+echo
+echo "WARNING: This tool is still undergoing testing, use at your own risk!"
+echo
+
+if [ -z "$OLD_IP" ]; then
+	OLD_IP=$(lookup_pillar "managerip")
+	
+	if [ -z "$OLD_IP" ]; then
+		fail "Unable to find old IP; possible salt system failure"
+	fi
+
+	echo "Found old IP $OLD_IP."
+fi
+
+if [ -z "$NEW_IP" ]; then
+	iface=$(lookup_pillar "mainint" "host")
+	NEW_IP=$(ip -4 addr list $iface | grep inet | cut -d' ' -f6 | cut -d/ -f1)
+
+	if [ -z "$NEW_IP" ]; then
+		fail "Unable to detect new IP on interface $iface.    "
+	fi
+
+	echo "Detected new IP $NEW_IP on interface $iface."
+fi
+
+if [ "$OLD_IP" == "$NEW_IP" ]; then
+	fail "IP address has not changed"
+fi
+
+echo "About to change old IP $OLD_IP to new IP $NEW_IP."
+
+read -n 1 -p "Would you like to continue? (y/N) " CONTINUE
+echo
+
+if [ "$CONTINUE" == "y" ]; then
+  for file in $(grep -rlI $OLD_IP /opt/so/saltstack /etc); do
+  	echo "Updating file: $file"
+    sed -i "s|$OLD_IP|$NEW_IP|g" $file
+  done
+
+	echo "The IP has been changed from $OLD_IP to $NEW_IP."
+
+	if [ -z "$SKIP_STATE_APPLY" ]; then
+		echo "Re-applying salt states."
+		salt-call state.highstate queue=True
+	fi
+else
+	echo "Exiting without changes."
+fi

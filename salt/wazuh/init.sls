@@ -65,7 +65,7 @@ wazuhagentconf:
   file.managed:
     - name: /var/ossec/etc/ossec.conf
     - source: salt://wazuh/files/agent/ossec.conf
-    - user: 0
+    - user: root
     - group: 945
     - template: jinja
 
@@ -81,8 +81,8 @@ wazuhagentregister:
   file.managed:
     - name: /usr/sbin/wazuh-register-agent
     - source: salt://wazuh/files/agent/wazuh-register-agent
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
 
@@ -91,8 +91,8 @@ wazuhmgrwhitelist:
    file.managed:
     - name: /usr/sbin/wazuh-manager-whitelist
     - source: salt://wazuh/files/wazuh-manager-whitelist
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
 
@@ -109,6 +109,11 @@ so-wazuh:
       - 0.0.0.0:55000:55000
     - binds:
       - /nsm/wazuh:/var/ossec/data:rw
+
+append_so-wazuh_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-wazuh
 
 # Register the agent
 registertheagent:

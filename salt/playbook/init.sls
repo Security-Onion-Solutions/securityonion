@@ -10,25 +10,26 @@
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db', None) -%}
+{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+
 
 include:
   - mysql
   
 create_playbookdbuser:
-  module.run:
-    - mysql.user_create:
-      - user: playbookdbuser
-      - password: {{ PLAYBOOKPASS }}
-      - host: 172.17.0.0/255.255.0.0
-      - connection_host: {{ MAINIP }}
-      - connection_port: 3306
-      - connection_user: root
-      - connection_pass: {{ MYSQLPASS }}
+  mysql_user.present:
+    - name: playbookdbuser
+    - password: {{ PLAYBOOKPASS }}
+    - host: {{ DNET }}/255.255.255.0
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
 
 query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
-    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'172.17.0.0/255.255.0.0';"
+    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DNET }}/255.255.255.0';"
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root
@@ -90,6 +91,11 @@ so-playbook:
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
     - port_bindings:
       - 0.0.0.0:3200:3000
+
+append_so-playbook_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-playbook
 
 {% endif %}
 
