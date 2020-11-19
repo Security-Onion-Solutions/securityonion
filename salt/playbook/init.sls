@@ -17,15 +17,14 @@ include:
   - mysql
   
 create_playbookdbuser:
-  module.run:
-    - mysql.user_create:
-      - user: playbookdbuser
-      - password: {{ PLAYBOOKPASS }}
-      - host: {{ DNET }}/255.255.255.0
-      - connection_host: {{ MAINIP }}
-      - connection_port: 3306
-      - connection_user: root
-      - connection_pass: {{ MYSQLPASS }}
+  mysql_user.present:
+    - name: playbookdbuser
+    - password: {{ PLAYBOOKPASS }}
+    - host: {{ DNET }}/255.255.255.0
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}
 
 query_playbookdbuser_grants:
   mysql_query.run:
