@@ -448,6 +448,8 @@ fi
 echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
+echo "Killing any remaining Salt Minion processes."
+pkill -9 -ef /usr/bin/salt-minion
 echo ""
 echo "Stopping Salt Master service."
 systemctl stop salt-master
@@ -513,7 +515,7 @@ fi
 
 echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-highstate
+salt-call state.highstate -l info queue=True
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
@@ -527,7 +529,7 @@ echo ""
 echo "Starting Salt Master service."
 systemctl start salt-master
 echo "Running a highstate. This could take several minutes."
-highstate
+salt-call state.highstate -l info queue=True
 playbook
 unmount_update
 
