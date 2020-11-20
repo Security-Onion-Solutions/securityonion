@@ -13,7 +13,7 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
-    - onlyif: "[[ '{{INSTALLEDSALTVERSION}}' != '{{SALTVERSION}}' ]]"
+    - onlyif: test "{{INSTALLEDSALTVERSION}}" != "{{SALTVERSION}}"
 
 salt_minion_package:
   pkg.installed:
@@ -21,10 +21,10 @@ salt_minion_package:
       - {{ COMMON }}
       - salt-minion
     - hold: True
-    - onlyif: "[[ '{{INSTALLEDSALTVERSION}}' == '{{SALTVERSION}}' ]]"
+    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
 
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
-    - onlyif: "[[ '{{INSTALLEDSALTVERSION}}' == '{{SALTVERSION}}' ]]"
+    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
