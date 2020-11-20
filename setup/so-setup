@@ -639,12 +639,14 @@ fi
 		salt-call state.apply -l info pcap >> $setup_log 2>&1
 	fi
 
-	if [[ $is_sensor || $is_import ]]; then
+	if [[ $is_sensor || $is_import || $is_helix ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		set_progress_str 67 "$(print_salt_state_apply 'zeek')"
-		salt-call state.apply -l info zeek >> $setup_log 2>&1
+		if [[ $ZEEKVERSION == 'ZEEK' ]]; then
+			set_progress_str 67 "$(print_salt_state_apply 'zeek')"
+			salt-call state.apply -l info zeek >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_node ]]; then
