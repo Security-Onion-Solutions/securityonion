@@ -128,14 +128,14 @@ whitelistmanager:
     - name: /usr/sbin/wazuh-manager-whitelist
     - cwd: /
 
+/opt/so/conf/wazuh:
+  file.symlink:
+    - target: /nsm/wazuh/etc
+
 wazuhagentservice:
   service.running:
     - name: wazuh-agent
     - enable: True
-
-/opt/so/conf/wazuh:
-  file.symlink:
-    - target: /nsm/wazuh/etc
 
 hidsruledir:
  file.directory:
