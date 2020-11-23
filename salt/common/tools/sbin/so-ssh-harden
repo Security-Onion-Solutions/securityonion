@@ -2,48 +2,92 @@
 
 . /usr/sbin/so-common
 
-if [[ $1 =~ ^(q|--quiet) ]]; then
-    quiet=true
+if [[ $1 =~ ^(-q|--quiet) ]]; then
+	quiet=true
 fi
 
+before=
+after=
+reload_required=false
+
 print_sshd_t() {
-    local string=$1
-    local state=$2
-    echo "${state}:"
-    sshd -T | grep "^${string}"
+	local string=$1
+	local state=$2
+	echo "${state}:"
+
+	local grep_out
+	grep_out=$(sshd -T | grep "^${string}")
+
+	if [[ $state == "Before" ]]; then
+		before=$grep_out
+	else
+		after=$grep_out
+	fi
+
+	echo $grep_out
+}
+
+print_msg() {
+	local msg=$1
+	if ! [[ $quiet ]]; then
+	printf "%s\n" \
+		"----" \
+		"$msg" \
+		"----" \
+		""
+	fi
 }
 
 if ! [[ $quiet ]]; then print_sshd_t "ciphers" "Before"; fi
 sshd -T | grep "^ciphers" | sed -e "s/\(3des-cbc\|aes128-cbc\|aes192-cbc\|aes256-cbc\|arcfour\|arcfour128\|arcfour256\|blowfish-cbc\|cast128-cbc\|rijndael-cbc@lysator.liu.se\)\,\?//g" >> /etc/ssh/sshd_config
 if ! [[ $quiet ]]; then
-    print_sshd_t "ciphers" "After"
-    echo ""
+	print_sshd_t "ciphers" "After"
+	echo ""
+fi
+
+if [[ $before != $after ]]; then
+	reload_required=true
 fi
 
 if ! [[ $quiet ]]; then print_sshd_t "kexalgorithms" "Before"; fi
 sshd -T | grep "^kexalgorithms" | sed -e "s/\(diffie-hellman-group14-sha1\|ecdh-sha2-nistp256\|diffie-hellman-group-exchange-sha256\|diffie-hellman-group1-sha1\|diffie-hellman-group-exchange-sha1\|ecdh-sha2-nistp521\|ecdh-sha2-nistp384\)\,\?//g" >> /etc/ssh/sshd_config
 if ! [[ $quiet ]]; then
-    print_sshd_t "kexalgorithms" "After"
-    echo ""
+	print_sshd_t "kexalgorithms" "After"
+	echo ""
+fi
+
+if [[ $before != $after ]]; then
+	reload_required=true
 fi
 
 if ! [[ $quiet ]]; then print_sshd_t "macs" "Before"; fi
 sshd -T | grep "^macs" | sed -e "s/\(hmac-sha2-512,\|umac-128@openssh.com,\|hmac-sha2-256,\|umac-64@openssh.com,\|hmac-sha1,\|hmac-sha1-etm@openssh.com,\|umac-64-etm@openssh.com,\|hmac-sha1\)//g" >> /etc/ssh/sshd_config
 if ! [[ $quiet ]]; then
-    print_sshd_t "macs" "After"
-    echo ""
+	print_sshd_t "macs" "After"
+	echo ""
+fi
+
+if [[ $before != $after ]]; then
+	reload_required=true
 fi
 
 if ! [[ $quiet ]]; then print_sshd_t "hostkeyalgorithms" "Before"; fi
 sshd -T | grep "^hostkeyalgorithms" | sed "s|ecdsa-sha2-nistp256,||g" | sed "s|ssh-rsa,||g" >> /etc/ssh/sshd_config
 if ! [[ $quiet ]]; then
-    print_sshd_t "hostkeyalgorithms" "After"
-    echo ""
+	print_sshd_t "hostkeyalgorithms" "After"
+	echo ""
+fi
+
+if [[ $before != $after ]]; then
+	reload_required=true
+fi
+
+if [[ $reload_required == true ]]; then
+	print_msg "Reloading sshd to load config changes..."
+	systemctl reload sshd
 fi
 
 {% if grains['os'] != 'CentOS' %}
-echo "----"
-echo "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
-echo "----"
+print_msg "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
 {% endif %}
 
