@@ -76,13 +76,6 @@ wazuhdir:
    - group: 945
    - makedirs: True
 
-wazuhetcdir:
- file.directory:
-   - name: /nsm/wazuh/etc
-   - user: 945
-   - group: 945
-   - makedirs: True
-
 # Wazuh agent registration script
 wazuhagentregister:
   file.managed:
