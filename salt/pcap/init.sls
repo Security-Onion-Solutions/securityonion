@@ -152,6 +152,24 @@ so-steno:
     - watch:
       - file: /opt/so/conf/steno/config
 
+append_so-steno_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-steno
+    - unless: grep so-steno /opt/so/conf/so-status/so-status.conf
+
+  {% if STENOOPTIONS.status == 'running' %}
+delete_so-steno_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-steno$
+  {% elif STENOOPTIONS.status == 'stopped' %}
+so-steno_so-status.disabled:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-steno$
+  {% endif %}
+
 so-sensoroni:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
@@ -165,6 +183,11 @@ so-sensoroni:
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
+
+append_so-sensoroni_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-sensoroni
 
 {% else %}
 

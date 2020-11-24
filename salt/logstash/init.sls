@@ -173,6 +173,7 @@ so-logstash:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
+      - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
       {% if grains['role'] == 'so-heavynode' %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% else %}
@@ -200,6 +201,11 @@ so-logstash:
 {% for TEMPLATE in TEMPLATES %}
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
+
+append_so-logstash_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-logstash
 
 {% else %}
 

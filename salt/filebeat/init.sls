@@ -58,8 +58,8 @@ filebeatconfsync:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/filebeat.yml
     - source: salt://filebeat/etc/filebeat.yml
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - template: jinja
     - defaults:
         INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
@@ -85,6 +85,11 @@ so-filebeat:
         - 0.0.0.0:514:514/tcp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
+
+append_so-filebeat_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-filebeat
 
 {% else %}
 

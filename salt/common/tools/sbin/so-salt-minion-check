@@ -1,0 +1,104 @@
+{% import_yaml 'salt/minion.defaults.yaml' as SALT_MINION_DEFAULTS -%}
+
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# this script checks the time the file /opt/so/log/salt/state-apply-test was last modified and restarts the salt-minion service if it is outside a threshold date/time
+# the file is modified via file.touch using a scheduled job healthcheck.salt-minion.state-apply-test that runs a state.apply. 
+# by default the file should be updated every 5-8 minutes. 
+# this allows us to test that the minion is able apply states and communicate with the master
+# if the file is unable to be touched via the state.apply, then we assume there is a possibilty that the minion is hung (though it could be possible the master is down as well)
+# we then stop the service, pkill salt-minion, the start the salt-minion service back up
+
+. /usr/sbin/so-common
+
+QUIET=false
+UPTIME_REQ=1800 #in seconds, how long the box has to be up before considering restarting salt-minion due to /opt/so/log/salt/state-apply-test not being touched
+CURRENT_TIME=$(date +%s)
+SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
+LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
+LAST_HEALTHCHECK_STATE_APPLY=$([ -e "/opt/so/log/salt/state-apply-test" ] && date -r /opt/so/log/salt/state-apply-test +%s || echo 0)
+# SETTING THRESHOLD TO ANYTHING UNDER 600 seconds may cause a lot of salt-minion restarts since the job to touch the file occurs every 5-8 minutes by default
+THRESHOLD={{SALT_MINION_DEFAULTS.salt.minion.check_threshold}} #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
+THRESHOLD_DATE=$((LAST_HEALTHCHECK_STATE_APPLY+THRESHOLD))
+
+logCmd() {
+  cmd=$1
+  info "Executing command: $cmd"
+  $cmd >> "/opt/so/log/salt/so-salt-minion-check"
+}
+
+log() {
+    msg=$1
+    level=${2:-I}
+    now=$(TZ=GMT date +"%Y-%m-%dT%H:%M:%SZ")
+    if ! $QUIET; then
+      echo $msg
+    fi
+    echo -e "$now | $level | $msg" >> "/opt/so/log/salt/so-salt-minion-check" 2>&1
+}
+
+error() {
+    log "$1" "E"
+}
+
+info() {
+    log "$1" "I"
+}
+
+usage()
+{
+cat <<EOF
+
+Check health of salt-minion and restart it if needed
+  Options:
+  -h                This message
+  -q                Don't output to terminal
+
+EOF
+}
+
+while getopts ":q" opt; do
+  case "$opt" in
+    q )
+       QUIET=true
+      ;;
+    * ) usage
+        exit 0
+      ;;
+  esac
+done
+
+log "running so-salt-minion-check"
+
+if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
+  if [ $THRESHOLD_DATE -le $CURRENT_TIME ]; then
+    log "salt-minion is unable to apply states" E
+    log "/opt/so/log/salt/healthcheck-state-apply not touched by required date: `date -d @$THRESHOLD_DATE`, last touched: `date -d @$LAST_HEALTHCHECK_STATE_APPLY`" I
+    log "last highstate completed at `date -d @$LAST_HIGHSTATE_END`" I
+    log "checking if any jobs are running" I
+    logCmd "salt-call --local saltutil.running" I
+    log "killing all salt-minion processes" I
+    logCmd "pkill -9 -ef /usr/bin/salt-minion" I
+    log "starting salt-minion service" I
+    logCmd "systemctl start salt-minion" I
+  else
+    log "/opt/so/log/salt/healthcheck-state-apply last touched: `date -d @$LAST_HEALTHCHECK_STATE_APPLY` must be touched by `date -d @$THRESHOLD_DATE` to avoid salt-minion restart" I
+  fi
+else
+  log "system uptime only $((CURRENT_TIME-SYSTEM_START_TIME)) seconds does not meet $UPTIME_REQ second requirement." I
+fi

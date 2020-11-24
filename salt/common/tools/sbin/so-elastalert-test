@@ -19,8 +19,7 @@
 #
 # Purpose:  This script will allow you to test your elastalert rule without entering the Docker container.
 
-. /usr/sbin/so-elastic-common
-
+HOST_RULE_DIR=/opt/so/rules/elastalert
 OPTIONS=""
 SKIP=0
 RESULTS_TO_LOG="n"
@@ -29,114 +28,109 @@ FILE_SAVE_LOCATION=""
 
 usage()
 {
-cat <<EOF
+	cat <<EOF
 
 Test Elastalert Rule
   Options:
-  -h         		This message
-  -a         		Trigger real alerts instead of the debug alert
-  -l <path_to_file>     Write results to specified log file
-  -o '<options>'	Specify Elastalert options ( Ex. --schema-only , --count-only, --days N ) 
-  -r <rule_name>        Specify path/name of rule to test
+  -h                This message
+  -a                Trigger real alerts instead of the debug alert
+  -l <path_to_file> Write results to specified log file
+  -o '<options>'    Specify Elastalert options ( Ex. --schema-only , --count-only, --days N ) 
+  -r <rule_name>    Specify filename of rule to test (must exist in $HOST_RULE_DIR; do not include path)
 
 EOF
 }
 
 while getopts "hal:o:r:" OPTION
 do
-        case $OPTION in
-                h)
-                        usage
-                        exit 0
-                        ;;
-                a)
-                        OPTIONS="--alert"
-                        ;;
-                l)
-                        RESULTS_TO_LOG="y"
-                        FILE_SAVE_LOCATION=$OPTARG
-                        ;;
-                
-                o)
-			OPTIONS=$OPTARG
-                        ;;  
-                
-                r)
-                        RULE_NAME=$OPTARG
-                        SKIP=1
-                        ;;
-                *)
-                        usage
-                        exit 0
-                        ;;
-        esac
+	case $OPTION in
+	h)
+		usage
+		exit 0
+		;;
+	a)
+		OPTIONS="--alert"
+		;;
+	l)
+		RESULTS_TO_LOG="y"
+		FILE_SAVE_LOCATION=$OPTARG
+		;;		
+	o)
+		OPTIONS=$OPTARG
+		;;  	
+	r)
+		RULE_NAME=$OPTARG
+		SKIP=1
+		;;
+	*)
+		usage
+		exit 0
+		;;
+	esac
 done
 
 docker_exec(){
-	if [ ${RESULTS_TO_LOG,,} = "y" ] ; then
-        	docker exec -it so-elastalert bash -c "elastalert-test-rule $RULE_NAME $OPTIONS" > $FILE_SAVE_LOCATION
+	CMD="docker exec -it so-elastalert elastalert-test-rule /opt/elastalert/rules/$RULE_NAME --config /opt/config/elastalert_config.yaml $OPTIONS"
+	if [ "${RESULTS_TO_LOG,,}" = "y" ] ; then
+		$CMD > "$FILE_SAVE_LOCATION"
 	else
-        	docker exec -it so-elastalert bash -c "elastalert-test-rule $RULE_NAME $OPTIONS"
+		$CMD
 	fi	
 }
 
 rule_prompt(){
-	CURRENT_RULES=$(find /opt/so/rules/elastalert -name "*.yaml")
-        echo
-        echo "This script will allow you to test an Elastalert rule."
-        echo
-        echo "Below is a list of active Elastalert rules:"
-        echo
+	CURRENT_RULES=$(cd "$HOST_RULE_DIR" && find . -type f \( -name "*.yaml" -o -name "*.yml" \) | sed -e 's/^\.\///')
+	if [ -z "$CURRENT_RULES" ]; then
+		echo "There are no rules available to test. Rule files must be placed in the $HOST_RULE_DIR directory."
+		exit 1
+	fi
+	echo
+	echo "This script will allow you to test an Elastalert rule."
+	echo
+	echo "Below is a list of available Elastalert rules:"
+	echo
 	echo "-----------------------------------"
-        echo
-        echo "$CURRENT_RULES"
-        echo
+	echo
+	echo "$CURRENT_RULES"
+	echo
 	echo "-----------------------------------"
-	echo 
-        echo "Note: To test a rule it must be accessible by the Elastalert Docker container."
-        echo
-        echo "Make sure to swap the local path (/opt/so/rules/elastalert/) for the docker path (/etc/elastalert/rules/)"
-        echo "Example: /opt/so/rules/elastalert/nids2hive.yaml would be /etc/elastalert/rules/nids2hive.yaml"
-        echo
-        while [ -z $RULE_NAME ]; do
-		echo "Please enter the file path and rule name you want to test."
-		read -e RULE_NAME
+	echo
+	while [ -z "$RULE_NAME" ]; do
+		read -p "Please enter the rule filename you want to test (filename only, no path): " -e RULE_NAME
 	done
 }
 
 log_save_prompt(){
 	RESULTS_TO_LOG=""
-        while [ -z $RESULTS_TO_LOG ]; do
-		echo "The results can be rather long.  Would you like to write the results to a file? (Y/N)"
-		read RESULTS_TO_LOG
-	done
+	read -p "The results can be rather long.  Would you like to write the results to a file? (y/N) " -e RESULTS_TO_LOG
 }
 
 log_path_prompt(){
-        while [ -z $FILE_SAVE_LOCATION ]; do
-		echo "Please enter the file path and file name."
-		read -e FILE_SAVE_LOCATION
-        done
+		while [ -z "$FILE_SAVE_LOCATION" ]; do
+			read -p "Please enter the log file path and file name: " -e FILE_SAVE_LOCATION
+		done
 		echo "Depending on the rule this may take a while."
 }
 
 if [ $SKIP -eq 0 ]; then
 	rule_prompt
 	log_save_prompt
-        if [ ${RESULTS_TO_LOG,,} = "y" ] ; then
-        	log_path_prompt
-        fi
+	if [ "${RESULTS_TO_LOG,,}" = "y" ] ; then
+		log_path_prompt
+	fi
 fi
+
+echo 
 
 docker_exec
-
-if [ $? -eq 0 ]; then
-	echo "Test completed successfully!"
-else
-	echo "Something went wrong..."
-fi
+RESULT=$?
 
 echo
 
+if [ $RESULT -eq 0 ]; then
+	echo "Test completed successfully!"
+else
+	echo "Test failed."
+fi
 
-
+echo

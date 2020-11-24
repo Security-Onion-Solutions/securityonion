@@ -70,6 +70,11 @@ so-redis:
     - watch:
       - file: /opt/so/conf/redis/etc
 
+append_so-redis_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-redis
+
 {% else %}
 
 redis_state_not_allowed:

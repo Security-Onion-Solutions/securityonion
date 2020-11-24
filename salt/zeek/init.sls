@@ -196,6 +196,11 @@ so-zeek:
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
 
+append_so-zeek_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-zeek
+
 {% else %}
 
 zeek_state_not_allowed:

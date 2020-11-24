@@ -15,6 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
+. /usr/sbin/so-image-common
 local_salt_dir=/opt/so/saltstack/local
 
 cat << EOF
@@ -39,34 +40,14 @@ fi
 
 echo "Please wait while switching to Elastic Features."
 
-manager_check() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch')$ ]]; then
-    echo "This is a manager. We can proceed"
-  else
-    echo "Please run so-features-enable on the manager."
-    exit 0
-  fi
-}
+require_manager
 
-manager_check
-VERSION=$(lookup_pillar soversion) 
+TRUSTED_CONTAINERS=( \
+  "so-elasticsearch" \
+  "so-filebeat" \
+  "so-kibana" \
+  "so-logstash" )
+update_docker_containers "features" "-features"
+
 # Modify global.sls to enable Features
 sed -i 's/features: False/features: True/' $local_salt_dir/pillar/global.sls
-SUFFIX="-features"
-TRUSTED_CONTAINERS=( \
-  "so-elasticsearch:$VERSION$SUFFIX" \
-  "so-filebeat:$VERSION$SUFFIX" \
-  "so-kibana:$VERSION$SUFFIX" \
-  "so-logstash:$VERSION$SUFFIX" )
-
-for i in "${TRUSTED_CONTAINERS[@]}"
-do
-    # Pull down the trusted docker image
-    echo "Downloading $i"
-    docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i
-    # Tag it with the new registry destination
-    docker tag $IMAGEREPO/$i $HOSTNAME:5000/$IMAGEREPO/$i
-    docker push $HOSTNAME:5000/$IMAGEREPO/$i
-done
