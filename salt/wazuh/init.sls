@@ -71,7 +71,7 @@ wazuhagentconf:
 
 wazuhdir:
  file.directory:
-   - name: /nsm/wazuh
+   - name: /nsm/wazuh/etc
    - user: 945
    - group: 945
    - makedirs: True
@@ -115,6 +115,10 @@ append_so-wazuh_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-wazuh
 
+/opt/so/conf/wazuh:
+  file.symlink:
+    - target: /nsm/wazuh/etc
+
 # Register the agent
 registertheagent:
   cmd.run:
@@ -127,10 +131,6 @@ whitelistmanager:
   cmd.run:
     - name: /usr/sbin/wazuh-manager-whitelist
     - cwd: /
-
-/opt/so/conf/wazuh:
-  file.symlink:
-    - target: /nsm/wazuh/etc
 
 wazuhagentservice:
   service.running:
