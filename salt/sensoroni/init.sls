@@ -1,3 +1,7 @@
+{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set MANAGER = salt['grains.get']('master') %}
+
 sensoroniconfdir:
   file.directory:
     - name: /opt/so/conf/sensoroni
