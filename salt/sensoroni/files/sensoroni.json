@@ -1,6 +1,7 @@
 {%- set URLBASE = salt['pillar.get']('global:url_base') %}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') -%}
-{%- set CHECKININTERVALMS = salt['pillar.get']('pcap:sensor_checkin_interval_ms', 10000) -%}
+{%- set CHECKININTERVALMS = salt['pillar.get']('sensoroni:sensor_checkin_interval_ms', 10000) -%}
+{%- set STENOENABLED = salt['pillar.get']('steno:enabled', False) %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
@@ -13,11 +14,13 @@
       "statickeyauth": {
         "apiKey": "{{ SENSORONIKEY }}"
       },
+{%- if STENOENABLED %}      
       "stenoquery": {
         "executablePath": "/opt/sensoroni/scripts/stenoquery.sh",
         "pcapInputPath": "/nsm/pcap",
         "pcapOutputPath": "/nsm/pcapout"
       }
+{%- endif %}
     }
   }
 }
