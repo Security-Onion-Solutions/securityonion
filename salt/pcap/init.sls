@@ -45,13 +45,6 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-sensoroniconfdir:
-  file.directory:
-    - name: /opt/so/conf/sensoroni
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 {% if BPF_STENO %}
    {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
@@ -76,15 +69,6 @@ stenoconf:
     - template: jinja
     - defaults:
         BPF_COMPILED: "{{ BPF_COMPILED }}"
-
-sensoroniagentconf:
-  file.managed:
-    - name: /opt/so/conf/sensoroni/sensoroni.json
-    - source: salt://pcap/files/sensoroni.json
-    - user: 939
-    - group: 939
-    - mode: 600
-    - template: jinja
 
 stenoca:
   file.directory:
@@ -127,13 +111,6 @@ stenolog:
     - group: 941
     - makedirs: True
 
-sensoronilog:
-  file.directory:
-    - name: /opt/so/log/sensoroni
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 so-steno:
   docker_container.{{ STENOOPTIONS.status }}:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
@@ -169,25 +146,6 @@ so-steno_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-steno$
   {% endif %}
-
-so-sensoroni:
-  docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
-    - network_mode: host
-    - binds:
-      - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
-      - /nsm/pcap:/nsm/pcap:rw
-      - /nsm/import:/nsm/import:rw
-      - /nsm/pcapout:/nsm/pcapout:rw
-      - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
-    - watch:
-      - file: /opt/so/conf/sensoroni/sensoroni.json
-
-append_so-sensoroni_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-sensoroni
 
 {% else %}
 
