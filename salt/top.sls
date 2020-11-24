@@ -44,6 +44,7 @@ base:
     - patch.os.schedule
     - motd
     - salt.minion-check
+    - sensoroni
     - salt.lasthighstate
   
   '*_helix and G@saltversion:{{saltversion}}':
