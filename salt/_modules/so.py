@@ -17,7 +17,7 @@ def mysql_conn(retry):
         log.error(e)
         return False
 
-    mainint = __salt__['pillar.get']('sensor:mainint', __salt__['pillar.get']('manager:mainint'))
+    mainint = __salt__['pillar.get']('host:mainint')
     mainip = __salt__['grains.get']('ip_interfaces').get(mainint)[0]
 
     mysql_up = False
