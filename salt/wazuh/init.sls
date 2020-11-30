@@ -71,7 +71,7 @@ wazuhagentconf:
 
 wazuhdir:
  file.directory:
-   - name: /nsm/wazuh/etc
+   - name: /nsm/wazuh
    - user: 945
    - group: 945
    - makedirs: True
