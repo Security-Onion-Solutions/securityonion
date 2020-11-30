@@ -18,34 +18,43 @@ def mysql_conn(retry):
         return False
 
     mainint = __salt__['pillar.get']('host:mainint')
-    mainip = __salt__['grains.get']('ip_interfaces').get(mainint)[0]
+    ip_arr = __salt__['grains.get']('ip_interfaces').get(mainint)
 
     mysql_up = False
-    for i in range(0, retry):
-        log.debug(f'Connection attempt {i+1}')
-        try:
-            db = _mysql.connect(
-                host=mainip,
-                user='root',
-                passwd=__salt__['pillar.get']('secrets:mysql')
-            )
-            log.debug(f'Connected to MySQL server on {mainip} after {i} attempts.')
-            
-            db.query("""SELECT 1;""")
-            log.debug(f'Successfully completed query against MySQL server on {mainip}')
-            
-            db.close()
-            mysql_up = True
-            break
-        except _mysql.OperationalError as e:
-            log.debug(e)
-        except Exception as e:
-            log.error('Unexpected error occured.')
-            log.error(e)
-            break
-        sleep(1)
 
-    if not mysql_up:
-        log.error(f'Could not connect to MySQL server on {mainip} after {retry} attempts.')
+    if len(ip_arr) == 1:
+        mainip = ip_arr[0]
+
+        for i in range(0, retry):
+            log.debug(f'Connection attempt {i+1}')
+            try:
+                db = _mysql.connect(
+                    host=mainip,
+                    user='root',
+                    passwd=__salt__['pillar.get']('secrets:mysql')
+                )
+                log.debug(f'Connected to MySQL server on {mainip} after {i} attempts.')
+                
+                db.query("""SELECT 1;""")
+                log.debug(f'Successfully completed query against MySQL server on {mainip}')
+                
+                db.close()
+                mysql_up = True
+                break
+            except _mysql.OperationalError as e:
+                log.debug(e)
+            except Exception as e:
+                log.error('Unexpected error occured.')
+                log.error(e)
+                break
+            sleep(1)
+
+        if not mysql_up:
+            log.error(f'Could not connect to MySQL server on {mainip} after {retry} attempts.')
+    else:
+        log.error(f'Main interface {mainint} has more than one IP address assigned to it, which is not supported.')
+        log.debug(f'{mainint}:')
+        for addr in ip_arr:
+            log.debug(f'  - {addr}')
 
     return mysql_up
