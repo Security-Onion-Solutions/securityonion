@@ -37,7 +37,7 @@ def mysql_conn(retry):
                     user='root',
                     passwd=__salt__['pillar.get']('secrets:mysql')
                 )
-                log.debug(f'Connected to MySQL server on {mainip} after {i} attempts.')
+                log.debug(f'Connected to MySQL server on {mainip} after {i+1} attempts.')
                 
                 db.query("""SELECT 1;""")
                 log.debug(f'Successfully completed query against MySQL server on {mainip}')
