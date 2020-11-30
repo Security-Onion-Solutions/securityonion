@@ -25,6 +25,10 @@ def mysql_conn(retry):
     if len(ip_arr) == 1:
         mainip = ip_arr[0]
 
+        if not(retry >= 1):
+            log.debug('`retry` set to value below 1, resetting it to 1 to prevent errors.')
+            retry = 1
+
         for i in range(0, retry):
             log.debug(f'Connection attempt {i+1}')
             try:
