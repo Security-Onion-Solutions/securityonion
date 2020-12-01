@@ -1384,8 +1384,13 @@ reinstall_init() {
 	info "Putting system in state to run setup again"
 
 	{
-		# Kill any salt processes
-		pkill -9 -ef /usr/bin/salt
+		# Disable all scheduled jobs
+		if command -v salt-call &> /dev/null; then
+			salt-call schedule.disable
+		fi
+
+		# Kill any salt processes (safely)
+		systemctl stop salt-*
 
 		# Remove all salt configs
 		rm -rf /etc/salt/global /etc/salt/minion /etc/salt/master /etc/salt/pki/*
