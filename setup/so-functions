@@ -1410,7 +1410,7 @@ reinstall_init() {
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
-					kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
+					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				fi
 				sleep 5
 				((count++))
@@ -1650,7 +1650,7 @@ salt_checkin() {
 						echo "$service still not running" >> "$setup_log" 2>&1
 						if [ $count -gt 120 ]; then
 							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
-							kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
+							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 						fi
 						sleep 1;
 						((count++))
@@ -1662,7 +1662,7 @@ salt_checkin() {
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
 					((count++))
@@ -1673,7 +1673,7 @@ salt_checkin() {
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
 					((count++))
