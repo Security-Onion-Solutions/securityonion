@@ -274,9 +274,10 @@ check_salt_master_status() {
 	salt-call state.show_top > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
+		echo "  Could not talk to salt master" >> "$setup_log" 2>&1
 		return 1;
 	else
-		echo "Can talk to salt master" >> "$setup_log" 2>&1
+		echo "  Can talk to salt master" >> "$setup_log" 2>&1
 		return 0;
 	fi
 
@@ -284,15 +285,15 @@ check_salt_master_status() {
 
 check_salt_minion_status() {
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping | sed 's/ERROR/WARNING/' >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
+		echo "  Minion did not respond" >> "$setup_log" 2>&1
 		return 1;
 	else
-		echo "Received job response from salt minion" >> "$setup_log" 2>&1
+		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
 		return 0;
 	fi
-
 }
 
 check_soremote_pass() {
