@@ -1,8 +1,12 @@
 {%- set NODE_ROUTE_TYPE = salt['pillar.get']('elasticsearch:node_route_type', 'hot') %}
-{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip') %}
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {%- set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
+{%- if TRUECLUSTER is sameas true %}
+  {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name') %}
+{%- else %}
+  {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername') %}
+{%- endif %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
@@ -45,12 +49,16 @@ script.max_compilations_rate: 1000/1m
   {%- if grains.role == 'so-manager' %}
     {%- if salt['pillar.get']('nodestab', {}) %}
 node.roles: [ master, remote_cluster_client ]
-    {%- endif %}
-  {%- else %}
-node.roles: [ data, ingest, ml ] 
-  {%- endif %}
 discovery.seed_hosts:
    - {{ grains.master }}
 cluster.initial_master_nodes: 
    - {{ grains.master }}
+    {%- endif %}
+  {%- else %}
+node.roles: [ data, ingest, ml ]
+discovery.seed_hosts:
+   - {{ grains.master }}
+cluster.initial_master_nodes: 
+   - {{ grains.master }} 
+  {%- endif %}
 {%- endif %}
