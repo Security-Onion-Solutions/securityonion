@@ -483,6 +483,18 @@ if [[ $is_minion || $is_import ]]; then
 	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
 fi
 
+
+# Exit parent script if
+trap 'catch $? $LINENO' SIGSOKILL
+
+catch() {
+	if [ "$1" != 0 ]; then
+		info "Fatal error occurred at $2 in so-setup, failing setup."
+		whiptail_setup_failed
+		exit
+	fi
+}
+
 # Begin install
 {
 	# Set initial percentage to 0
@@ -583,7 +595,7 @@ fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 22 'Checking if the Salt Minion needs to be updated'
-		salt-call state.apply salt.minion -l info >> $setup_log 2>&1
+		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
 	set_progress_str 23 'Generating CA and checking in'

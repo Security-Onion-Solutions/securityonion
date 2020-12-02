@@ -273,12 +273,11 @@ check_salt_master_status() {
 	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
 	salt-call state.show_top > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue talking to salt master
 	if [ $status -gt 0 ]; then
-		echo 1;
+		return 1;
 	else
 		echo "Can talk to salt master" >> "$setup_log" 2>&1
-		echo 0;
+		return 0;
 	fi
 
 }
@@ -287,12 +286,11 @@ check_salt_minion_status() {
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
 	salt "$MINION_ID" test.ping >> "$setup_log" 2>&1
 	local status=$?
-	#true if there is an issue getting a job response from the minion
 	if [ $status -gt 0 ]; then
-		echo 1;
+		return 1;
 	else
 		echo "Received job response from salt minion" >> "$setup_log" 2>&1
-		echo 0;
+		return 0;
 	fi
 
 }
@@ -1391,7 +1389,7 @@ reinstall_init() {
 
 	{
 		if command -v salt-call &> /dev/null; then
-			# Disable scheduled jobs so highstate doesn't start running during the install
+			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable
 
 			# Kill any currently running salt jobs, also to prevent issues with highstate.
@@ -1406,12 +1404,12 @@ reinstall_init() {
 
 			local count=0
 			while check_service_status "$service"; do
-				if [[ $count > $service_retry_count ]]; then
+				if [[ $count -gt $service_retry_count ]]; then
 					echo "Could not stop $service after 1 minute, exiting setup."
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
-					whiptail_service_stop_failed "$service"
+					kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
 				fi
 				sleep 5
 				((count++))
@@ -1419,7 +1417,7 @@ reinstall_init() {
 		done
 
 		# Remove all salt configs
-		rm -rf /etc/salt/global /etc/salt/minion /etc/salt/master /etc/salt/pki/*
+		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -1440,7 +1438,7 @@ reinstall_init() {
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
-	} >> $setup_log 2>&1
+	} >> "$setup_log" 2>&1
 }
 
 backup_dir() {
@@ -1637,61 +1635,47 @@ salt_checkin() {
 				"salt-master" \
 				"salt-minion"
 				)
-				local LOOP_COUNT=0
-				for service in "${SALT_SERVICES[@]}"; do
-					echo "Stopping service $service" >> "$setup_log" 2>&1
-					systemctl stop "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
-					while check_service_status "$service"; do
-						echo "$service still running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
-						fi
-						sleep 1;
-						((LOOP_COUNT+=1))
-					done
-				done
-
-				sleep 5;
+				local count=0
 
 				for service in "${SALT_SERVICES[@]}"; do
-					echo "Starting service $service" >> "$setup_log" 2>&1
-					systemctl start "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
+					{
+						echo "Restarting service $service"
+						systemctl restart "$service" &
+						local pid=$!
+					} >> "$setup_log" 2>&1 
+
+					count=0
 					while ! (check_service_status "$service"); do
 						echo "$service still not running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
+						if [ $count -gt 120 ]; then
+							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
+							kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
 						fi
 						sleep 1;
-						((LOOP_COUNT+=1))
+						((count++))
 					done
 				done
 
-				sleep 5;
-
-				LOOP_COUNT=0
-				while (( $(check_salt_master_status) )); do
+				count=0
+				while ! (check_salt_master_status); do
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
-				LOOP_COUNT=0
-				while (( $(check_salt_minion_status) )); do
+				count=0
+				while ! (check_salt_minion_status); do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGSOKILL "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
 				echo " Confirming existence of the CA certificate"
