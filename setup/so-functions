@@ -251,19 +251,19 @@ check_pass_match() {
 	fi
 }
 
+# False if stopped, true if running
 check_service_status() {
 
 	local service_name=$1
 	echo "Checking service $service_name status" >> "$setup_log" 2>&1
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue with the service false if it is running properly
 	if [ $status -gt 0 ]; then
 		echo "$service_name is not running" >> "$setup_log" 2>&1
-		echo 1;
+		return 1;
 	else
 		echo "$service_name is running" >> "$setup_log" 2>&1
-		echo 0;
+		return 0;
 	fi
 
 }
@@ -1402,7 +1402,7 @@ reinstall_init() {
 			local pid=$!
 
 			local count=0
-			while ! (check_service_status "$service"); do
+			while check_service_status "$service"; do
 				if [[ $count > $service_retry_count ]]; then
 					echo "Could not stop $service after 1 minute, exiting setup."
 
@@ -1639,7 +1639,7 @@ salt_checkin() {
 					echo "Stopping service $service" >> "$setup_log" 2>&1
 					systemctl stop "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
-					while ! (( $(check_service_status $service) )); do
+					while check_service_status "$service"; do
 						echo "$service still running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 60 ]; then
 							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
@@ -1656,7 +1656,7 @@ salt_checkin() {
 					echo "Starting service $service" >> "$setup_log" 2>&1
 					systemctl start "$service" >> "$setup_log" 2>&1
 					LOOP_COUNT=0
-					while (( $(check_service_status $service) )); do
+					while ! (check_service_status "$service"); do
 						echo "$service still not running" >> "$setup_log" 2>&1
 						if [ $LOOP_COUNT -gt 60 ]; then
 							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
