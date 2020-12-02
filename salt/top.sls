@@ -6,6 +6,13 @@
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
 {% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
 {% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
+{% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
+{% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
+{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
+{% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
+{% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
+{% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
+{% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
@@ -15,6 +22,7 @@ base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
+    - salt.minion-state-apply-test
     {% if ISAIRGAP is sameas true %}
     - airgap
     {% endif %}
@@ -35,13 +43,15 @@ base:
     - common
     - patch.os.schedule
     - motd
+    - salt.minion-check
+    - sensoroni
+    - salt.lasthighstate
   
   '*_helix and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - telegraf
     - firewall
@@ -51,15 +61,18 @@ base:
     - suricata
     - zeek
     - redis
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - schedule
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
-    - common
     - telegraf
     - firewall
     - nginx
@@ -78,13 +91,13 @@ base:
     - fleet.install_package
     {%- endif %}
     - schedule
+    - docker_clean
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
@@ -96,14 +109,18 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if KIBANA %}
     - kibana
+    {%- endif %}
     - pcap
     - suricata
     {%- if ZEEKVER != 'SURICATA' %}
@@ -112,9 +129,15 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
+    {%- if ELASTALERT %}
     - elastalert
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - redis
@@ -143,7 +166,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - nginx
     - telegraf
@@ -154,18 +176,30 @@ base:
     - manager
     - idstools
     - suricata.manager
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if REDIS %}
     - redis
+    {%- endif %}
+    {%- if KIBANA %}
     - kibana
+    {%- endif %}
+    {%- if ELASTALERT %}
     - elastalert
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -192,7 +226,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
@@ -204,16 +237,24 @@ base:
     - idstools
     - suricata.manager    
     - healthcheck
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %} 
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if REDIS %}
     - redis
+    {%- endif %}
+    {%- if KIBANA %}
     - kibana
+    {%- endif %}
     - pcap
     - suricata
     {%- if ZEEKVER != 'SURICATA' %}
@@ -222,9 +263,15 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
+    {%- if ELASTALERT %}
     - elastalert
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet
     - fleet.install_package
@@ -250,9 +297,10 @@ base:
 
   '*_node and I@node:node_type:parser and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -261,10 +309,13 @@ base:
 
   '*_node and I@node:node_type:hot and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -273,9 +324,10 @@ base:
 
   '*_node and I@node:node_type:warm and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - firewall
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -286,17 +338,24 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -305,7 +364,6 @@ base:
 
   '*_managersensor and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - nginx
     - telegraf
     - influxdb
@@ -324,7 +382,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - nginx
     - telegraf
@@ -335,19 +392,34 @@ base:
     - manager
     - idstools
     - suricata.manager
-    {%- if FLEETMANAGER or FLEETNODE or PLAYBOOK != 0 %}
+    {%- if (FLEETMANAGER or FLEETNODE) or PLAYBOOK != 0 %}
     - mysql
     {%- endif %}
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if REDIS %}
     - redis
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
+    {%- if KIBANA %}
     - kibana
+    {%- endif %}
+    {%- if ELASTALERT %}
     - elastalert
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
+    
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -373,18 +445,27 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if LOGSTASH %}
     - logstash
+    {%- endif %}
+    {%- if REDIS %}
     - redis
+    {%- endif %}
+    {%- if CURATOR %}
     - curator
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -396,7 +477,9 @@ base:
     {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - schedule
     - docker_clean
   
@@ -404,7 +487,6 @@ base:
     - match: compound
     - ca
     - ssl
-    - common
     - nginx
     - telegraf
     - firewall
@@ -420,7 +502,6 @@ base:
     - salt.master
     - ca
     - ssl
-    - common
     - registry
     - manager
     - nginx
@@ -429,9 +510,15 @@ base:
     - idstools
     - suricata.manager
     - pcap
+    {%- if ELASTICSEARCH %}
     - elasticsearch
+    {%- endif %}
+    {%- if KIBANA %}
     - kibana
+    {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - utility
     - suricata
     - zeek

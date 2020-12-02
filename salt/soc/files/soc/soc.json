@@ -2,12 +2,15 @@
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
 {%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
 {%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
 {%- import_json "soc/files/soc/hunt.actions.json" as hunt_actions %}
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
+{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -15,6 +18,11 @@
     "baseUrl": "/",
     "maxPacketCount": 5000,
     "htmlDir": "html",
+    {%- if ISAIRGAP is sameas true %}
+    "airgapEnabled": true,
+    {%- else %}
+    "airgapEnabled": false,
+    {%- endif %}
     "modules": {
       "filedatastore": {
         "jobDir": "jobs"
@@ -27,7 +35,7 @@
         {%- if salt['pillar.get']('nodestab', {}) %}
         "remoteHostUrls": [
         {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-        "https://{{ SN.split('_')|first }}:9200"{{ "," if not loop.last }}
+        "https://{{ SN.split('_')|first }}:9200"{{ "," if not loop.last else ""}}
         {%- endfor %}
         ],
         {%- endif %}
@@ -43,11 +51,18 @@
       },
 {% endif %}
       "statickeyauth": {
-        "anonymousCidr": "172.17.0.0/24",
+        "anonymousCidr": "{{ DNET }}/24",
         "apiKey": "{{ SENSORONIKEY }}"
       }
     },
     "client": {
+      {%- if ISAIRGAP is sameas true %}
+      "docsUrl": "/docs/",
+      "cheatsheetUrl": "/docs/cheatsheet.pdf",
+      {%- else %}
+      "docsUrl": "https://docs.securityonion.net/en/2.3/",
+      "cheatsheetUrl": "https://github.com/Security-Onion-Solutions/securityonion-docs/raw/2.3/images/cheat-sheet/Security-Onion-Cheat-Sheet.pdf",
+      {%- endif %}
       "hunt": {
         "advanced": true,
         "groupItemsPerPage": 10,
@@ -57,7 +72,7 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "dismissEnabled": false,
+        "ackEnabled": false,
         "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
         "eventFields": {{ hunt_eventfields | json }},
         "queryBaseFilter": "",
@@ -74,7 +89,7 @@
         "relativeTimeValue": 24,
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
-        "dismissEnabled": true,
+        "ackEnabled": true,
         "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
         "eventFields": {{ alerts_eventfields | json }},
         "queryBaseFilter": "event.dataset:alert",

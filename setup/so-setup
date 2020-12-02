@@ -15,7 +15,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Make sure you are root before doing anything
+uid="$(id -u)"
+if [ "$uid" -ne 0 ]; then
+	echo "This script must be run using sudo!"
+	exit 1
+fi
+
 cd "$(dirname "$0")" || exit 255
+
 source ./so-functions
 source ./so-common-functions
 source ./so-whiptail
@@ -45,6 +53,13 @@ while [[ $# -gt 0 ]]; do
 			fi
 	esac
 done
+
+if [[ -f /root/accept_changes ]]; then
+	is_reinstall=true
+
+	# Move last setup log to backup
+	mv "$setup_log" "$setup_log.bak"
+fi
 
 # Begin Installation pre-processing
 parse_install_username
@@ -106,9 +121,8 @@ case "$setup_type" in
 esac
 
 # Allow execution of SO tools during setup
-export PATH=$PATH:../salt/common/tools/sbin
-
-got_root
+local_sbin="$(pwd)/../salt/common/tools/sbin"
+export PATH=$PATH:$local_sbin
 
 detect_os && detect_cloud
 set_network_dev_status_list
@@ -169,7 +183,6 @@ elif [ "$install_type" = 'MANAGER' ]; then
 elif [ "$install_type" = 'SENSOR' ]; then
 	is_sensor=true
 	is_minion=true
-	STRELKA=1
 elif [[ "$install_type" =~ ^('SEARCHNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
 	is_node=true
 	is_minion=true
@@ -186,6 +199,10 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
+elif [ "$install_type" = 'ANALYST' ]; then
+	cd .. || exit 255
+	./so-analyst-install
+	exit 0
 fi
 
 # Say yes to the dress if its an ISO install
@@ -298,13 +315,9 @@ if [[ $is_import ]]; then
 	WAZUH=0
 	THEHIVE=0
 	PLAYBOOK=0
-	STRELKA=0
-	
 fi
 
-
 # Start user prompts
-
 
 if [[ $is_helix || $is_sensor ]]; then
 	whiptail_sensor_nics
@@ -314,9 +327,8 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
-if [[ $is_helix ||  $is_manager || $is_import ]]; then
-	whiptail_homenet_manager
-fi
+whiptail_homenet_manager
+whiptail_dockernet_check
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
@@ -325,7 +337,9 @@ fi
 if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
 	whiptail_zeek_version
-	whiptail_nids
+	# Don't run this function for now since Snort is not yet supported
+	# whiptail_nids
+	NIDS=Suricata
 	whiptail_rule_setup
 
 	if [ "$RULESETUP" != 'ETOPEN' ]; then
@@ -412,6 +426,11 @@ if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
 whiptail_make_changes
 
 # From here on changes will be made.
+echo "1" > /root/accept_changes
+
+if [[ $is_reinstall ]]; then
+	reinstall_init
+fi
 
 if [[ -n "$TURBO" ]]; then
 	use_turbo_proxy
@@ -419,16 +438,23 @@ fi
 
 if [[ "$setup_type" == 'iso' ]]; then
 	# Init networking so rest of install works
-	set_hostname_iso
+	set_hostname
 	set_management_interface
 fi
 
 disable_ipv6
 disable_auto_start
 
+if [[ "$setup_type" != 'iso' ]]; then
+	set_hostname
+fi
+
+if [[ $is_minion ]]; then
+	add_mngr_ip_to_hosts
+fi
+
 {
-	set_hostname;
-	set_version;
+	mark_version;
 	clear_manager;
 } >> $setup_log 2>&1
 
@@ -456,6 +482,18 @@ if [[ $is_minion || $is_import ]]; then
 	set_updates >> $setup_log 2>&1
 	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
 fi
+
+
+# Exit parent script if
+trap 'catch $? $LINENO' SIGUSR1
+
+catch() {
+	if [ "$1" != 0 ]; then
+		info "Fatal error occurred at $2 in so-setup, failing setup."
+		whiptail_setup_failed
+		exit
+	fi
+}
 
 # Begin install
 {
@@ -485,6 +523,9 @@ fi
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
+		if [[ $is_sensor || $is_helix ]]; then
+			steno_pillar >> $setup_log
+		fi
 	fi
 
 	set_progress_str 5 'Installing Salt and dependencies'
@@ -554,7 +595,7 @@ fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 22 'Checking if the Salt Minion needs to be updated'
-		salt-call state.apply salt.minion -l info >> $setup_log 2>&1
+		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
 	set_progress_str 23 'Generating CA and checking in'
@@ -564,19 +605,20 @@ fi
 		set_progress_str 25 'Configuring firewall'
 		set_initial_firewall_policy >> $setup_log 2>&1
 		
+		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
+		mkdir -p /opt/so/conf/so-status/ >> $setup_log 2>&1
+		touch /opt/so/conf/so-status/so-status.conf >> $setup_log 2>&1
+
 		if [[ "$setup_type" == 'iso' ]]; then
 			set_progress_str 26 'Copying containers from iso'
 		else
 			set_progress_str 26 'Downloading containers from the internet'
 		fi
-        import_registry_docker >> $setup_log 2>&1
+		import_registry_docker >> $setup_log 2>&1
 		salt-call state.apply -l info registry >> $setup_log 2>&1
-		docker_seed_registry  2>> "$setup_log" # ~ 60% when finished
+		docker_seed_registry # ~ 60% when finished
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
-		if [[ "$STRELKARULES" == 1 ]]; then
-			/usr/sbin/so-yara-update >> $setup_log 2>&1	
-		fi
 		salt-call state.apply -l info manager >> $setup_log 2>&1
 
 		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
@@ -612,12 +654,14 @@ fi
 		salt-call state.apply -l info pcap >> $setup_log 2>&1
 	fi
 
-	if [[ $is_sensor || $is_import ]]; then
+	if [[ $is_sensor || $is_import || $is_helix ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		set_progress_str 67 "$(print_salt_state_apply 'zeek')"
-		salt-call state.apply -l info zeek >> $setup_log 2>&1
+		if [[ $ZEEKVERSION == 'ZEEK' ]]; then
+			set_progress_str 67 "$(print_salt_state_apply 'zeek')"
+			salt-call state.apply -l info zeek >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_node ]]; then
@@ -658,10 +702,9 @@ fi
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
-		if [[ "$PLAYBOOK" != 1 ]]; then
-		set_progress_str 74 "$(print_salt_state_apply 'mysql')"
-		salt-call state.apply -l info mysql >> $setup_log 2>&1
-		fi
+
+		set_progress_str 75 "$(print_salt_state_apply 'fleet.event_enable-fleet')"
+		salt-call state.apply -l info fleet.event_enable-fleet >> $setup_log 2>&1
 
 		set_progress_str 75 "$(print_salt_state_apply 'fleet')"
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
@@ -675,24 +718,24 @@ fi
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
 		fi
 	
-		set_progress_str 74 "$(print_salt_state_apply 'so-fleet-setup')"	
+		set_progress_str 78 "$(print_salt_state_apply 'so-fleet-setup')"	
 		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
 
 	fi
 
 	if [[ "$WAZUH" = 1 ]]; then
-		set_progress_str 78 "$(print_salt_state_apply 'wazuh')"
+		set_progress_str 79 "$(print_salt_state_apply 'wazuh')"
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
 
 	if [[ "$THEHIVE" = 1 ]]; then
-		set_progress_str 79 "$(print_salt_state_apply 'thehive')"
+		set_progress_str 80 "$(print_salt_state_apply 'thehive')"
 		salt-call state.apply -l info thehive >> $setup_log 2>&1
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
 		if [[ $is_sensor ]]; then
-			set_progress_str 80 "$(print_salt_state_apply 'strelka')"
+			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
 		if [[ $STRELKARULES == 1 ]]; then
@@ -701,15 +744,15 @@ fi
 	fi
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then		
-		set_progress_str 81 "$(print_salt_state_apply 'utility')"
+		set_progress_str 82 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
 
 	if [[ ( $is_helix || $is_manager || $is_node ) && ! $is_eval ]]; then
-		set_progress_str 82 "$(print_salt_state_apply 'logstash')"
+		set_progress_str 83 "$(print_salt_state_apply 'logstash')"
 		salt-call state.apply -l info logstash >> $setup_log 2>&1
 
-		set_progress_str 83 "$(print_salt_state_apply 'filebeat')"
+		set_progress_str 84 "$(print_salt_state_apply 'filebeat')"
 		salt-call state.apply -l info filebeat >> $setup_log 2>&1
 	fi
 

@@ -19,7 +19,15 @@
 . /usr/sbin/so-common
 
 if [ "$1" == "" ]; then
-        curl -s {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines"
+        {% if grains['role'] in ['so-node','so-heavynode'] %}
+        curl -s -k -L https://{{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines"
+        {% else %}
+        curl -s -L {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines"
+        {% endif %}
 else
-        curl -s {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines.\"$1\""
+        {% if grains['role'] in ['so-node','so-heavynode'] %}
+        curl -s -k -L https://{{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines.\"$1\""
+        {% else %}
+        curl -s -L {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines.\"$1\""
+        {% endif %}
 fi

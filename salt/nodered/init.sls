@@ -52,8 +52,8 @@ noderedflowsload:
   file.managed:
     - name: /usr/sbin/so-nodered-load-flows
     - source: salt://nodered/files/nodered_load_flows
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
 
@@ -67,12 +67,17 @@ noderedlog:
 
 so-nodered:
   docker_container.running:
-    - image: {{ IMAGEREPO }}/so-nodered:HH1.2.2
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-nodered:{{ VERSION }}
     - interactive: True
     - binds:
       - /opt/so/conf/nodered/:/data:rw
     - port_bindings:
       - 0.0.0.0:1880:1880
+
+append_so-nodered_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-nodered
 
 so-nodered-flows:
   cmd.run:

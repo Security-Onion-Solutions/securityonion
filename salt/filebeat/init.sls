@@ -18,6 +18,9 @@
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% set LOCALHOSTNAME = salt['grains.get']('host') %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
@@ -55,8 +58,8 @@ filebeatconfsync:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/filebeat.yml
     - source: salt://filebeat/etc/filebeat.yml
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - template: jinja
     - defaults:
         INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
@@ -66,7 +69,7 @@ so-filebeat:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }}
+    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
     - binds:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
@@ -79,8 +82,14 @@ so-filebeat:
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp
+        - 0.0.0.0:514:514/tcp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
+
+append_so-filebeat_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-filebeat
 
 {% else %}
 

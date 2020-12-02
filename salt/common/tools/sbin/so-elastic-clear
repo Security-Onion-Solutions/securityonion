@@ -50,7 +50,11 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        curl {{ NODEIP }}:9200/_cat/indices?v
+        {% if grains['role'] in ['so-node','so-heavynode'] %}
+        curl -k -L https://{{ NODEIP }}:9200/_cat/indices?v
+        {% else %}
+        curl -L {{ NODEIP }}:9200/_cat/indices?v
+        {% endif %}
         echo
         # Inform user we are about to delete all data
         echo
@@ -89,10 +93,18 @@ fi
 # Delete data
 echo "Deleting data..."
 
-INDXS=$(curl -s -XGET {{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+{% if grains['role'] in ['so-node','so-heavynode'] %}
+INDXS=$(curl -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+{% else %}
+INDXS=$(curl -s -XGET -L {{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+{% endif %}
 for INDX in ${INDXS}
 do
-    curl -XDELETE "{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    {% if grains['role'] in ['so-node','so-heavynode'] %}
+    curl -XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    {% else %}
+    curl -XDELETE -L "{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    {% endif %}
 done
 
 #Start Logstash/Filebeat
