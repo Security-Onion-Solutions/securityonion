@@ -1,11 +1,8 @@
 {%- set NODE_ROUTE_TYPE = salt['pillar.get']('elasticsearch:node_route_type', 'hot') %}
-{%- if salt['pillar.get']('elasticsearch:hot_warm_enabled') or salt['pillar.get']('elasticsearch:true_cluster') %}
-{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name', '') %}
-{%- else %}
 {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
-{%- endif %}
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') %}
+{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
@@ -42,5 +39,10 @@ cluster.routing.allocation.disk.watermark.flood_stage: 98%
 #    authz_exception: true 
 {%- endif %}
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}
-node.name: {{ ESCLUSTERNAME }}
+node.name: {{ grains.host }}
 script.max_compilations_rate: 1000/1m
+{%- if TRUECLUSTER is sameas true %}
+  {%- if grains.role == 'so-manager' %}
+node.roles: [ master ]
+  {%- endif %}
+{%- endif %}
