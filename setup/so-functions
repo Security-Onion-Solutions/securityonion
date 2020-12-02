@@ -1390,9 +1390,12 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
-		# Disable all scheduled jobs
 		if command -v salt-call &> /dev/null; then
-			salt-call schedule.disable
+			# Disable scheduled jobs so highstate doesn't start running during the install
+			salt-call -l info schedule.disable
+
+			# Kill any currently running salt jobs, also to prevent issues with highstate.
+			salt-call -l info saltutil.kill_all_jobs
 		fi
 
 		# Kill any salt processes (safely)
