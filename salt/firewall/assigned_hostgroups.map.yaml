@@ -1,6 +1,7 @@
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'firewall/portgroups.yaml' as portgroups %}
 {% set portgroups = portgroups.firewall.aliases.ports %}
+{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False)  %}
 
 role:
   eval:
@@ -38,6 +39,11 @@ role:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -135,6 +141,12 @@ role:
               - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
+          heavy_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.beats_5644 }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -219,6 +231,11 @@ role:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
+          heavy_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -299,6 +316,11 @@ role:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -425,6 +447,11 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          {% if TRUE_CLUSTER %}
+          search_node:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+          {% endif %}
           self:
             portgroups:
               - {{ portgroups.syslog}}
