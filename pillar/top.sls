@@ -82,6 +82,7 @@ base:
     - elasticsearch.search
     - global
     - minions.{{ grains.id }}
+    - data.nodestab
 
   '*_import':
     - zeeklogs

@@ -43,6 +43,14 @@ node.name: {{ grains.host }}
 script.max_compilations_rate: 1000/1m
 {%- if TRUECLUSTER is sameas true %}
   {%- if grains.role == 'so-manager' %}
-node.roles: [ master ]
+    {%- if salt['pillar.get']('nodestab', {}) %}
+node.roles: [ master, remote_cluster_client ]
+    {%- endif %}
+  {%- else %}
+node.roles: [ data, ingest, ml ] 
   {%- endif %}
+discovery.seed_hosts:
+   - {{ grains.master }}
+cluster.initial_master_nodes: 
+   - {{ grains.master }}
 {%- endif %}
