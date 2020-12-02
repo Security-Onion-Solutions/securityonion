@@ -1382,6 +1382,12 @@ reserve_group_ids() {
 
 reinstall_init() {
 	info "Putting system in state to run setup again"
+	
+	local salt_services=(
+		"salt-master" 
+		"salt-minion"
+	)
+	local service_retry_count=20
 
 	{
 		# Disable all scheduled jobs
@@ -1390,7 +1396,24 @@ reinstall_init() {
 		fi
 
 		# Kill any salt processes (safely)
-		systemctl stop salt-*
+		for service in "${salt_services[@]}"; do
+			# Stop the service in the background so we can exit after a certain amount of time
+			systemctl stop "$service" &
+			local pid=$!
+
+			local count=0
+			while ! (check_service_status "$service"); do
+				if [ count > $service_retry_count ]; then
+					echo "Could not stop $service after 1 minute, exiting setup."
+
+					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
+					kill -9 $pid
+					whiptail_service_stop_failed "$service"
+				fi
+				sleep 5
+				((count++))
+			done
+		done
 
 		# Remove all salt configs
 		rm -rf /etc/salt/global /etc/salt/minion /etc/salt/master /etc/salt/pki/*
