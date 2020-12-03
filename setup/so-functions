@@ -1674,12 +1674,12 @@ salt_checkin() {
 				count=0
 				while ! (check_salt_minion_status); do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					systemctl kill salt-minion
-					systemctl start salt-minion
 					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
 						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
+					systemctl kill salt-minion
+					systemctl start salt-minion
 					sleep 1;
 					((count++))
 				done
