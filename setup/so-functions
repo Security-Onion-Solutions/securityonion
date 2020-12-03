@@ -1650,7 +1650,8 @@ salt_checkin() {
 
 					count=0
 					while ! (check_service_status "$service"); do
-						echo "$service still not running" >> "$setup_log" 2>&1
+						systemctl kill "$service"
+						systemctl start "$service"
 						if [ $count -gt 120 ]; then
 							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
 							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
