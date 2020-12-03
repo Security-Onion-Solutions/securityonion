@@ -428,63 +428,7 @@ whiptail_make_changes
 # From here on changes will be made.
 echo "1" > /root/accept_changes
 
-if [[ $is_reinstall ]]; then
-	reinstall_init
-fi
-
-if [[ -n "$TURBO" ]]; then
-	use_turbo_proxy
-fi
-
-if [[ "$setup_type" == 'iso' ]]; then
-	# Init networking so rest of install works
-	set_hostname
-	set_management_interface
-fi
-
-disable_ipv6
-disable_auto_start
-
-if [[ "$setup_type" != 'iso' ]]; then
-	set_hostname
-fi
-
-if [[ $is_minion ]]; then
-	add_mngr_ip_to_hosts
-fi
-
-{
-	mark_version;
-	clear_manager;
-} >> $setup_log 2>&1
-
-
-if [[ $is_manager || $is_import ]]; then
-	{
-		generate_passwords;
-		secrets_pillar;
-		add_socore_user_manager;
-	} >> $setup_log 2>&1	
-fi
-
-if [[ $is_manager && ! $is_eval ]]; then
-	add_soremote_user_manager >> $setup_log 2>&1
-fi
-
-{
-	set_main_ip;
-	set_redirect;
-} >> $setup_log 2>&1
-
-host_pillar >> $setup_log 2>&1
-
-if [[ $is_minion || $is_import ]]; then
-	set_updates >> $setup_log 2>&1
-	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
-fi
-
-
-# Exit parent script if
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1` in child scripts)
 trap 'catch $LINENO' SIGUSR1
 
 catch() {
@@ -497,7 +441,66 @@ catch() {
 {
 	# Set initial percentage to 0
 	export percentage=0
+
+	# Show initial progress message
+	set_progress_str 0 'Running initial configuration steps'
+
 	set_path
+
+	if [[ $is_reinstall ]]; then
+		reinstall_init
+	fi
+
+	if [[ -n "$TURBO" ]]; then
+		use_turbo_proxy
+	fi
+
+	if [[ "$setup_type" == 'iso' ]]; then
+		# Init networking so rest of install works
+		set_hostname >> $setup_log 2>&1
+		set_management_interface
+	fi
+
+	disable_ipv6
+	disable_auto_start
+
+	if [[ "$setup_type" != 'iso' ]]; then
+		set_hostname >> $setup_log 2>&1
+	fi
+
+	if [[ $is_minion ]]; then
+		add_mngr_ip_to_hosts
+	fi
+
+	{
+		mark_version;
+		clear_manager;
+	} >> $setup_log 2>&1
+
+
+	if [[ $is_manager || $is_import ]]; then
+		{
+			generate_passwords;
+			secrets_pillar;
+			add_socore_user_manager;
+		} >> $setup_log 2>&1	
+	fi
+
+	if [[ $is_manager && ! $is_eval ]]; then
+		add_soremote_user_manager >> $setup_log 2>&1
+	fi
+
+	{
+		set_main_ip;
+		set_redirect;
+	} >> $setup_log 2>&1
+
+	host_pillar >> $setup_log 2>&1
+
+	if [[ $is_minion || $is_import ]]; then
+		set_updates >> $setup_log 2>&1
+		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	fi
 
 	if [[ $is_manager && $is_airgap ]]; then
 		info "Creating airgap repo"
