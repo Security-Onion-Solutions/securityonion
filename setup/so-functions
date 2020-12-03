@@ -1650,13 +1650,19 @@ salt_checkin() {
 
 					count=0
 					while ! (check_service_status "$service"); do
+						# On final loop, kill the pid trying to restart service and try to manually kill then start it
 						if [ $count -eq 12 ]; then
-							systemctl kill "$service"
-							systemctl start "$service"
+							{
+								kill -9 "$pid"
+								systemctl kill "$service"
+								systemctl start "$service" &
+								local pid=$!
+							} >> "$setup_log" 2>&1 
 						fi
 						
 						if [ $count -gt 12 ]; then
 							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
+							kill -9 "$pid"
 							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 						fi
 						sleep 10;
