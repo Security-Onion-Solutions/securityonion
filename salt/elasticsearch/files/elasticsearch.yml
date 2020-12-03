@@ -13,7 +13,7 @@ network.host: 0.0.0.0
 # minimum_master_nodes need to be explicitly set when bound on a public IP
 # set to 1 to allow single node clusters
 # Details: https://github.com/elastic/elasticsearch/pull/17288
-discovery.zen.minimum_master_nodes: 1
+#discovery.zen.minimum_master_nodes: 1
 # This is a test -- if this is here, then the volume is mounted correctly.
 path.logs: /var/log/elasticsearch
 action.destructive_requires_name: true
@@ -38,9 +38,9 @@ cluster.routing.allocation.disk.watermark.flood_stage: 98%
 #xpack.security.http.ssl.client_authentication: none
 #xpack.security.authc:
 #  anonymous:
-#    username: anonymous_user 
-#    roles: superuser 
-#    authz_exception: true 
+#    username: anonymous_user
+#    roles: superuser
+#    authz_exception: true
 {%- endif %}
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}
 node.name: {{ grains.host }}
@@ -48,17 +48,16 @@ script.max_compilations_rate: 1000/1m
 {%- if TRUECLUSTER is sameas true %}
   {%- if grains.role == 'so-manager' %}
     {%- if salt['pillar.get']('nodestab', {}) %}
-node.roles: [ master, remote_cluster_client ]
+node.roles: [ master, data, remote_cluster_client ]
 discovery.seed_hosts:
    - {{ grains.master }}
-cluster.initial_master_nodes: 
-   - {{ grains.master }}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+   - {{ SN.split('_')|first }}
+      {%- endfor %}
     {%- endif %}
   {%- else %}
 node.roles: [ data, ingest, ml ]
 discovery.seed_hosts:
    - {{ grains.master }}
-cluster.initial_master_nodes: 
-   - {{ grains.master }} 
   {%- endif %}
 {%- endif %}
