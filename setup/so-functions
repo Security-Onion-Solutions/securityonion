@@ -1382,10 +1382,12 @@ reserve_group_ids() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 	
-	local salt_services=(
-		"salt-master" 
-		"salt-minion"
-	)
+	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+		local salt_services=( "salt-master" "salt-minion" )
+	else
+		local salt_services=( "salt-minion" )
+	fi
+
 	local service_retry_count=20
 
 	{
@@ -1412,6 +1414,7 @@ reinstall_init() {
 					kill -9 $pid
 					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				fi
+				
 				sleep 5
 				((count++))
 			done
@@ -1671,6 +1674,8 @@ salt_checkin() {
 				count=0
 				while ! (check_salt_minion_status); do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
+					systemctl kill salt-minion
+					systemctl start salt-minion
 					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
 						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
