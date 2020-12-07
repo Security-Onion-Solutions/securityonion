@@ -1743,6 +1743,17 @@ set_network_dev_status_list() {
 
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f)
+
+	if [[ $MAINIP != $MNIC_IP ]]; then
+		read -r -d '' message <<- EOM
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+
+			This is not a supported configuration, please remediate and rerun setup.
+		EOM
+		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		exit 1
+	fi
 }
 
 # Add /usr/sbin to everyone's path
