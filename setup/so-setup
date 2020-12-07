@@ -428,72 +428,87 @@ whiptail_make_changes
 # From here on changes will be made.
 echo "1" > /root/accept_changes
 
-if [[ $is_reinstall ]]; then
-	reinstall_init
-fi
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1` in child scripts)
+trap 'catch $LINENO' SIGUSR1
 
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	whiptail_setup_failed
+	exit
+}
+
+# Init networking so rest of install works
 if [[ -n "$TURBO" ]]; then
 	use_turbo_proxy
 fi
 
 if [[ "$setup_type" == 'iso' ]]; then
-	# Init networking so rest of install works
-	set_hostname
+	set_hostname >> $setup_log 2>&1
 	set_management_interface
 fi
 
 disable_ipv6
-disable_auto_start
 
 if [[ "$setup_type" != 'iso' ]]; then
-	set_hostname
+	set_hostname >> $setup_log 2>&1
 fi
 
 if [[ $is_minion ]]; then
 	add_mngr_ip_to_hosts
 fi
 
-{
-	mark_version;
-	clear_manager;
-} >> $setup_log 2>&1
-
-
-if [[ $is_manager || $is_import ]]; then
-	{
-		generate_passwords;
-		secrets_pillar;
-		add_socore_user_manager;
-	} >> $setup_log 2>&1	
-fi
-
-if [[ $is_manager && ! $is_eval ]]; then
-	add_soremote_user_manager >> $setup_log 2>&1
-fi
-
+# This block sets REDIRECTIT which is used by a function outside the below subshell
 {
 	set_main_ip;
 	set_redirect;
 } >> $setup_log 2>&1
 
-host_pillar >> $setup_log 2>&1
-
-if [[ $is_minion || $is_import ]]; then
-	set_updates >> $setup_log 2>&1
-	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
-fi
-
 # Begin install
 {
 	# Set initial percentage to 0
 	export percentage=0
+
+	# Show initial progress message
+	set_progress_str 0 'Running initial configuration steps'
+
 	set_path
 
-    if [[ $is_manager && $is_airgap ]]; then
-	    info "Creating airgap repo"
-	    create_repo >> $setup_log 2>&1
+	if [[ $is_reinstall ]]; then
+		reinstall_init
+	fi
+
+	disable_auto_start
+
+	{
+		mark_version;
+		clear_manager;
+	} >> $setup_log 2>&1
+
+
+	if [[ $is_manager || $is_import ]]; then
+		{
+			generate_passwords;
+			secrets_pillar;
+			add_socore_user_manager;
+		} >> $setup_log 2>&1	
+	fi
+
+	if [[ $is_manager && ! $is_eval ]]; then
+		add_soremote_user_manager >> $setup_log 2>&1
+	fi
+
+	host_pillar >> $setup_log 2>&1
+
+	if [[ $is_minion || $is_import ]]; then
+		set_updates >> $setup_log 2>&1
+		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager && $is_airgap ]]; then
+		info "Creating airgap repo"
+		create_repo >> $setup_log 2>&1
 		airgap_rules >> $setup_log 2>&1
-    fi
+	fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 1 'Configuring firewall'
@@ -583,7 +598,7 @@ fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 22 'Checking if the Salt Minion needs to be updated'
-		salt-call state.apply salt.minion -l info >> $setup_log 2>&1
+		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
 	set_progress_str 23 'Generating CA and checking in'
