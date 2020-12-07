@@ -1259,7 +1259,20 @@ whiptail_setup_failed() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Ok to exit." 8 75
+	local check_err_msg
+	local height
+
+	[ -f "$error_log" ] && check_err_msg="A summary of errors can be found in $error_log.\n"
+
+	if [[ -n $check_err_msg ]]; then height=11; else height=10; fi
+
+	read -r -d '' message <<- EOM
+			Install had a problem. Please see $setup_log for details.\n
+			$check_err_msg
+			Press Ok to exit.
+		EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" $height 75
 }
 
 whiptail_shard_count() {

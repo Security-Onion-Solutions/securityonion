@@ -59,6 +59,7 @@ if [[ -f /root/accept_changes ]]; then
 
 	# Move last setup log to backup
 	mv "$setup_log" "$setup_log.bak"
+	mv "$error_log" "$error_log.bak"
 fi
 
 # Begin Installation pre-processing
@@ -72,14 +73,6 @@ analyze_system
 automated=no
 function progress() {
 	local title='Security Onion Install'
-	if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root ]]; then
-		if [[ -s /var/spool/mail/root ]]; then 
-			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
-		fi
-
-		export SO_ERROR=1
-		title="Error found, please check $setup_log"
-	fi
 
 	if [ $automated == no ]; then
 		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
@@ -433,6 +426,7 @@ trap 'catch $LINENO' SIGUSR1
 
 catch() {
 	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
 	exit
 }
@@ -780,12 +774,18 @@ success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
-if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then SO_ERROR=1; fi
+if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
+	SO_ERROR=1
+
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+fi
 
 if [[ -n $SO_ERROR ]]; then 
 	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
+
 	SKIP_REBOOT=1
 	whiptail_setup_failed
+
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
