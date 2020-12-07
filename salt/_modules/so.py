@@ -18,7 +18,7 @@ def mysql_conn(retry):
         return False
 
     mainint = __salt__['pillar.get']('host:mainint')
-    ip_arr = __salt__['grains.get']('ip_interfaces').get(mainint)
+    ip_arr = __salt__['grains.get']('ip4_interfaces').get(mainint)
 
     mysql_up = False
 
