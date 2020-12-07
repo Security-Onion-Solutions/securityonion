@@ -112,7 +112,6 @@ heldpackages:
     - pkgs:
       - containerd.io: 1.2.13-2
       - docker-ce: 5:19.03.14~3-0~ubuntu-bionic
-      - docker-ce-cli: 5:19.03.14~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -149,7 +148,6 @@ heldpackages:
     - pkgs:
       - containerd.io: 1.2.13-3.2.el7
       - docker-ce: 3:19.03.14-3.el7
-      - docker-ce-cli: 3:19.03.14-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
