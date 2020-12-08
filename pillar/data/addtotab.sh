@@ -55,7 +55,7 @@ if [ $TYPE == 'evaltab' ] || [ $TYPE == 'standalonetab' ]; then
   fi
 fi
 if [ $TYPE == 'nodestab' ]; then
-  salt-call state.apply elasticseach
+  salt-call state.apply elasticseach queue=True
 #  echo "    nodetype: $NODETYPE" >> $local_salt_dir/pillar/data/$TYPE.sls
 #  echo "    hotname: $HOTNAME" >> $local_salt_dir/pillar/data/$TYPE.sls
 fi
