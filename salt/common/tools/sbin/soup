@@ -155,6 +155,13 @@ copy_new_files() {
   cd /tmp
 }
 
+generate_and_clean_tarballs() {
+  local new_version
+  new_version=$(cat $UPDATE_DIR/VERSION)
+  tar -cxf "/opt/so/repo/$new_version.tar.gz" "$UPDATE_DIR"
+  find "/opt/so/repo" -type f -not -name "$new_version.tar.gz" -exec rm -rf {} \;
+}
+
 highstate() {
   # Run a highstate.
   salt-call state.highstate -l info queue=True
@@ -417,6 +424,8 @@ else
   echo "Cloning Security Onion github repo into $UPDATE_DIR."
   clone_to_tmp
 fi
+echo "Generating new repo archive"
+generate_and_clean_tarballs
 if [ -f /usr/sbin/so-image-common ]; then
   . /usr/sbin/so-image-common
 else 
