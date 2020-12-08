@@ -16,21 +16,13 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `playbook`
---
-
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `playbook` /*!40100 DEFAULT CHARACTER SET latin1 */;
-
-USE `playbook`;
-
---
 -- Table structure for table `ar_internal_metadata`
 --
 
-DROP TABLE IF EXISTS `ar_internal_metadata`;
+-- `ar_internal_metadata`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `ar_internal_metadata` (
+CREATE TABLE IF NOT EXISTS `ar_internal_metadata` (
   `key` varchar(255) NOT NULL,
   `value` varchar(255) DEFAULT NULL,
   `created_at` datetime NOT NULL,
@@ -53,10 +45,10 @@ UNLOCK TABLES;
 -- Table structure for table `attachments`
 --
 
-DROP TABLE IF EXISTS `attachments`;
+-- `attachments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `attachments` (
+CREATE TABLE IF NOT EXISTS `attachments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `container_id` int(11) DEFAULT NULL,
   `container_type` varchar(30) DEFAULT NULL,
@@ -91,10 +83,10 @@ UNLOCK TABLES;
 -- Table structure for table `auth_sources`
 --
 
-DROP TABLE IF EXISTS `auth_sources`;
+-- `auth_sources`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `auth_sources` (
+CREATE TABLE IF NOT EXISTS `auth_sources` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(30) NOT NULL DEFAULT '',
   `name` varchar(60) NOT NULL DEFAULT '',
@@ -130,10 +122,10 @@ UNLOCK TABLES;
 -- Table structure for table `boards`
 --
 
-DROP TABLE IF EXISTS `boards`;
+-- `boards`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `boards` (
+CREATE TABLE IF NOT EXISTS `boards` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL DEFAULT '',
@@ -162,10 +154,10 @@ UNLOCK TABLES;
 -- Table structure for table `changes`
 --
 
-DROP TABLE IF EXISTS `changes`;
+-- `changes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `changes` (
+CREATE TABLE IF NOT EXISTS `changes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `changeset_id` int(11) NOT NULL,
   `action` varchar(1) NOT NULL DEFAULT '',
@@ -192,10 +184,10 @@ UNLOCK TABLES;
 -- Table structure for table `changeset_parents`
 --
 
-DROP TABLE IF EXISTS `changeset_parents`;
+-- `changeset_parents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `changeset_parents` (
+CREATE TABLE IF NOT EXISTS `changeset_parents` (
   `changeset_id` int(11) NOT NULL,
   `parent_id` int(11) NOT NULL,
   KEY `changeset_parents_changeset_ids` (`changeset_id`),
@@ -216,10 +208,10 @@ UNLOCK TABLES;
 -- Table structure for table `changesets`
 --
 
-DROP TABLE IF EXISTS `changesets`;
+-- `changesets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `changesets` (
+CREATE TABLE IF NOT EXISTS `changesets` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `repository_id` int(11) NOT NULL,
   `revision` varchar(255) NOT NULL,
@@ -251,10 +243,10 @@ UNLOCK TABLES;
 -- Table structure for table `changesets_issues`
 --
 
-DROP TABLE IF EXISTS `changesets_issues`;
+-- `changesets_issues`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `changesets_issues` (
+CREATE TABLE IF NOT EXISTS `changesets_issues` (
   `changeset_id` int(11) NOT NULL,
   `issue_id` int(11) NOT NULL,
   UNIQUE KEY `changesets_issues_ids` (`changeset_id`,`issue_id`),
@@ -275,10 +267,10 @@ UNLOCK TABLES;
 -- Table structure for table `comments`
 --
 
-DROP TABLE IF EXISTS `comments`;
+-- `comments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `comments` (
+CREATE TABLE IF NOT EXISTS `comments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `commented_type` varchar(30) NOT NULL DEFAULT '',
   `commented_id` int(11) NOT NULL DEFAULT '0',
@@ -305,10 +297,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_field_enumerations`
 --
 
-DROP TABLE IF EXISTS `custom_field_enumerations`;
+-- `custom_field_enumerations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_field_enumerations` (
+CREATE TABLE IF NOT EXISTS `custom_field_enumerations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `custom_field_id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
@@ -331,10 +323,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_fields`
 --
 
-DROP TABLE IF EXISTS `custom_fields`;
+-- `custom_fields`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_fields` (
+CREATE TABLE IF NOT EXISTS `custom_fields` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(30) NOT NULL DEFAULT '',
   `name` varchar(30) NOT NULL DEFAULT '',
@@ -373,10 +365,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_fields_projects`
 --
 
-DROP TABLE IF EXISTS `custom_fields_projects`;
+-- `custom_fields_projects`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_fields_projects` (
+CREATE TABLE IF NOT EXISTS `custom_fields_projects` (
   `custom_field_id` int(11) NOT NULL DEFAULT '0',
   `project_id` int(11) NOT NULL DEFAULT '0',
   UNIQUE KEY `index_custom_fields_projects_on_custom_field_id_and_project_id` (`custom_field_id`,`project_id`)
@@ -397,10 +389,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_fields_roles`
 --
 
-DROP TABLE IF EXISTS `custom_fields_roles`;
+-- `custom_fields_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_fields_roles` (
+CREATE TABLE IF NOT EXISTS `custom_fields_roles` (
   `custom_field_id` int(11) NOT NULL,
   `role_id` int(11) NOT NULL,
   UNIQUE KEY `custom_fields_roles_ids` (`custom_field_id`,`role_id`)
@@ -420,10 +412,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_fields_trackers`
 --
 
-DROP TABLE IF EXISTS `custom_fields_trackers`;
+-- `custom_fields_trackers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_fields_trackers` (
+CREATE TABLE IF NOT EXISTS `custom_fields_trackers` (
   `custom_field_id` int(11) NOT NULL DEFAULT '0',
   `tracker_id` int(11) NOT NULL DEFAULT '0',
   UNIQUE KEY `index_custom_fields_trackers_on_custom_field_id_and_tracker_id` (`custom_field_id`,`tracker_id`)
@@ -444,10 +436,10 @@ UNLOCK TABLES;
 -- Table structure for table `custom_values`
 --
 
-DROP TABLE IF EXISTS `custom_values`;
+-- `custom_values`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_values` (
+CREATE TABLE IF NOT EXISTS `custom_values` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `customized_type` varchar(30) NOT NULL DEFAULT '',
   `customized_id` int(11) NOT NULL DEFAULT '0',
@@ -473,10 +465,10 @@ UNLOCK TABLES;
 -- Table structure for table `documents`
 --
 
-DROP TABLE IF EXISTS `documents`;
+-- `documents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `documents` (
+CREATE TABLE IF NOT EXISTS `documents` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL DEFAULT '0',
   `category_id` int(11) NOT NULL DEFAULT '0',
@@ -503,10 +495,10 @@ UNLOCK TABLES;
 -- Table structure for table `email_addresses`
 --
 
-DROP TABLE IF EXISTS `email_addresses`;
+-- `email_addresses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `email_addresses` (
+CREATE TABLE IF NOT EXISTS `email_addresses` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `address` varchar(255) NOT NULL,
@@ -525,7 +517,7 @@ CREATE TABLE `email_addresses` (
 
 LOCK TABLES `email_addresses` WRITE;
 /*!40000 ALTER TABLE `email_addresses` DISABLE KEYS */;
-INSERT INTO `email_addresses` VALUES (1,1,'admin@example.net',1,1,'2020-04-26 13:08:38','2020-04-26 13:08:38');
+INSERT INTO `email_addresses` VALUES (1,1,'admin@example.net',1,1,'2020-04-26 13:08:38','2020-04-26 13:08:38'),(3,9,'automation@localhost.local',1,1,'2020-04-26 18:47:46','2020-04-26 18:47:46'),(4,10,'automation2@localhost.local',1,1,'2020-11-21 22:14:13','2020-11-21 22:14:13');
 /*!40000 ALTER TABLE `email_addresses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -533,10 +525,10 @@ UNLOCK TABLES;
 -- Table structure for table `enabled_modules`
 --
 
-DROP TABLE IF EXISTS `enabled_modules`;
+-- `enabled_modules`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `enabled_modules` (
+CREATE TABLE IF NOT EXISTS `enabled_modules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
@@ -559,10 +551,10 @@ UNLOCK TABLES;
 -- Table structure for table `enumerations`
 --
 
-DROP TABLE IF EXISTS `enumerations`;
+-- `enumerations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `enumerations` (
+CREATE TABLE IF NOT EXISTS `enumerations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL DEFAULT '',
   `position` int(11) DEFAULT NULL,
@@ -592,10 +584,10 @@ UNLOCK TABLES;
 -- Table structure for table `groups_users`
 --
 
-DROP TABLE IF EXISTS `groups_users`;
+-- `groups_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `groups_users` (
+CREATE TABLE IF NOT EXISTS `groups_users` (
   `group_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   UNIQUE KEY `groups_users_ids` (`group_id`,`user_id`)
@@ -616,10 +608,10 @@ UNLOCK TABLES;
 -- Table structure for table `import_items`
 --
 
-DROP TABLE IF EXISTS `import_items`;
+-- `import_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `import_items` (
+CREATE TABLE IF NOT EXISTS `import_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `import_id` int(11) NOT NULL,
   `position` int(11) NOT NULL,
@@ -644,10 +636,10 @@ UNLOCK TABLES;
 -- Table structure for table `imports`
 --
 
-DROP TABLE IF EXISTS `imports`;
+-- `imports`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `imports` (
+CREATE TABLE IF NOT EXISTS `imports` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(255) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
@@ -674,10 +666,10 @@ UNLOCK TABLES;
 -- Table structure for table `issue_categories`
 --
 
-DROP TABLE IF EXISTS `issue_categories`;
+-- `issue_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `issue_categories` (
+CREATE TABLE IF NOT EXISTS `issue_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL DEFAULT '0',
   `name` varchar(60) NOT NULL DEFAULT '',
@@ -701,10 +693,10 @@ UNLOCK TABLES;
 -- Table structure for table `issue_relations`
 --
 
-DROP TABLE IF EXISTS `issue_relations`;
+-- `issue_relations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `issue_relations` (
+CREATE TABLE IF NOT EXISTS `issue_relations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `issue_from_id` int(11) NOT NULL,
   `issue_to_id` int(11) NOT NULL,
@@ -730,10 +722,10 @@ UNLOCK TABLES;
 -- Table structure for table `issue_statuses`
 --
 
-DROP TABLE IF EXISTS `issue_statuses`;
+-- `issue_statuses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `issue_statuses` (
+CREATE TABLE IF NOT EXISTS `issue_statuses` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL DEFAULT '',
   `is_closed` tinyint(1) NOT NULL DEFAULT '0',
@@ -759,10 +751,10 @@ UNLOCK TABLES;
 -- Table structure for table `issues`
 --
 
-DROP TABLE IF EXISTS `issues`;
+-- `issues`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `issues` (
+CREATE TABLE IF NOT EXISTS `issues` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tracker_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -816,10 +808,10 @@ UNLOCK TABLES;
 -- Table structure for table `journal_details`
 --
 
-DROP TABLE IF EXISTS `journal_details`;
+-- `journal_details`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `journal_details` (
+CREATE TABLE IF NOT EXISTS `journal_details` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `journal_id` int(11) NOT NULL DEFAULT '0',
   `property` varchar(30) NOT NULL DEFAULT '',
@@ -844,10 +836,10 @@ UNLOCK TABLES;
 -- Table structure for table `journals`
 --
 
-DROP TABLE IF EXISTS `journals`;
+-- `journals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `journals` (
+CREATE TABLE IF NOT EXISTS `journals` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `journalized_id` int(11) NOT NULL DEFAULT '0',
   `journalized_type` varchar(30) NOT NULL DEFAULT '',
@@ -876,10 +868,10 @@ UNLOCK TABLES;
 -- Table structure for table `member_roles`
 --
 
-DROP TABLE IF EXISTS `member_roles`;
+-- `member_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `member_roles` (
+CREATE TABLE IF NOT EXISTS `member_roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `member_id` int(11) NOT NULL,
   `role_id` int(11) NOT NULL,
@@ -905,10 +897,10 @@ UNLOCK TABLES;
 -- Table structure for table `members`
 --
 
-DROP TABLE IF EXISTS `members`;
+-- `members`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `members` (
+CREATE TABLE IF NOT EXISTS `members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL DEFAULT '0',
   `project_id` int(11) NOT NULL DEFAULT '0',
@@ -935,10 +927,10 @@ UNLOCK TABLES;
 -- Table structure for table `messages`
 --
 
-DROP TABLE IF EXISTS `messages`;
+-- `messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `messages` (
+CREATE TABLE IF NOT EXISTS `messages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `board_id` int(11) NOT NULL,
   `parent_id` int(11) DEFAULT NULL,
@@ -973,10 +965,10 @@ UNLOCK TABLES;
 -- Table structure for table `news`
 --
 
-DROP TABLE IF EXISTS `news`;
+-- `news`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `news` (
+CREATE TABLE IF NOT EXISTS `news` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) DEFAULT NULL,
   `title` varchar(60) NOT NULL DEFAULT '',
@@ -1005,10 +997,10 @@ UNLOCK TABLES;
 -- Table structure for table `open_id_authentication_associations`
 --
 
-DROP TABLE IF EXISTS `open_id_authentication_associations`;
+-- `open_id_authentication_associations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `open_id_authentication_associations` (
+CREATE TABLE IF NOT EXISTS `open_id_authentication_associations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `issued` int(11) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
@@ -1033,10 +1025,10 @@ UNLOCK TABLES;
 -- Table structure for table `open_id_authentication_nonces`
 --
 
-DROP TABLE IF EXISTS `open_id_authentication_nonces`;
+-- `open_id_authentication_nonces`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `open_id_authentication_nonces` (
+CREATE TABLE IF NOT EXISTS `open_id_authentication_nonces` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timestamp` int(11) NOT NULL,
   `server_url` varchar(255) DEFAULT NULL,
@@ -1058,10 +1050,10 @@ UNLOCK TABLES;
 -- Table structure for table `projects`
 --
 
-DROP TABLE IF EXISTS `projects`;
+-- `projects`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `projects` (
+CREATE TABLE IF NOT EXISTS `projects` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
   `description` text,
@@ -1097,10 +1089,10 @@ UNLOCK TABLES;
 -- Table structure for table `projects_trackers`
 --
 
-DROP TABLE IF EXISTS `projects_trackers`;
+-- `projects_trackers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `projects_trackers` (
+CREATE TABLE IF NOT EXISTS `projects_trackers` (
   `project_id` int(11) NOT NULL DEFAULT '0',
   `tracker_id` int(11) NOT NULL DEFAULT '0',
   UNIQUE KEY `projects_trackers_unique` (`project_id`,`tracker_id`),
@@ -1122,10 +1114,10 @@ UNLOCK TABLES;
 -- Table structure for table `queries`
 --
 
-DROP TABLE IF EXISTS `queries`;
+-- `queries`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `queries` (
+CREATE TABLE IF NOT EXISTS `queries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) DEFAULT NULL,
   `name` varchar(255) NOT NULL DEFAULT '',
@@ -1157,10 +1149,10 @@ UNLOCK TABLES;
 -- Table structure for table `queries_roles`
 --
 
-DROP TABLE IF EXISTS `queries_roles`;
+-- `queries_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `queries_roles` (
+CREATE TABLE IF NOT EXISTS `queries_roles` (
   `query_id` int(11) NOT NULL,
   `role_id` int(11) NOT NULL,
   UNIQUE KEY `queries_roles_ids` (`query_id`,`role_id`)
@@ -1180,10 +1172,10 @@ UNLOCK TABLES;
 -- Table structure for table `repositories`
 --
 
-DROP TABLE IF EXISTS `repositories`;
+-- `repositories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `repositories` (
+CREATE TABLE IF NOT EXISTS `repositories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL DEFAULT '0',
   `url` varchar(255) NOT NULL DEFAULT '',
@@ -1215,10 +1207,10 @@ UNLOCK TABLES;
 -- Table structure for table `roles`
 --
 
-DROP TABLE IF EXISTS `roles`;
+-- `roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `roles` (
+CREATE TABLE IF NOT EXISTS `roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
   `position` int(11) DEFAULT NULL,
@@ -1248,10 +1240,10 @@ UNLOCK TABLES;
 -- Table structure for table `roles_managed_roles`
 --
 
-DROP TABLE IF EXISTS `roles_managed_roles`;
+-- `roles_managed_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `roles_managed_roles` (
+CREATE TABLE IF NOT EXISTS `roles_managed_roles` (
   `role_id` int(11) NOT NULL,
   `managed_role_id` int(11) NOT NULL,
   UNIQUE KEY `index_roles_managed_roles_on_role_id_and_managed_role_id` (`role_id`,`managed_role_id`)
@@ -1271,10 +1263,10 @@ UNLOCK TABLES;
 -- Table structure for table `schema_migrations`
 --
 
-DROP TABLE IF EXISTS `schema_migrations`;
+-- `schema_migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `schema_migrations` (
+CREATE TABLE IF NOT EXISTS `schema_migrations` (
   `version` varchar(255) NOT NULL,
   PRIMARY KEY (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -1294,10 +1286,10 @@ UNLOCK TABLES;
 -- Table structure for table `settings`
 --
 
-DROP TABLE IF EXISTS `settings`;
+-- `settings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `settings` (
+CREATE TABLE IF NOT EXISTS `settings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
   `value` text,
@@ -1321,10 +1313,10 @@ UNLOCK TABLES;
 -- Table structure for table `time_entries`
 --
 
-DROP TABLE IF EXISTS `time_entries`;
+-- `time_entries`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `time_entries` (
+CREATE TABLE IF NOT EXISTS `time_entries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL,
   `author_id` int(11) DEFAULT NULL,
@@ -1361,10 +1353,10 @@ UNLOCK TABLES;
 -- Table structure for table `tokens`
 --
 
-DROP TABLE IF EXISTS `tokens`;
+-- `tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tokens` (
+CREATE TABLE IF NOT EXISTS `tokens` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL DEFAULT '0',
   `action` varchar(30) NOT NULL DEFAULT '',
@@ -1391,10 +1383,10 @@ UNLOCK TABLES;
 -- Table structure for table `trackers`
 --
 
-DROP TABLE IF EXISTS `trackers`;
+-- `trackers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `trackers` (
+CREATE TABLE IF NOT EXISTS `trackers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL DEFAULT '',
   `description` varchar(255) DEFAULT NULL,
@@ -1421,10 +1413,10 @@ UNLOCK TABLES;
 -- Table structure for table `user_preferences`
 --
 
-DROP TABLE IF EXISTS `user_preferences`;
+-- `user_preferences`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user_preferences` (
+CREATE TABLE IF NOT EXISTS `user_preferences` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL DEFAULT '0',
   `others` text,
@@ -1449,10 +1441,10 @@ UNLOCK TABLES;
 -- Table structure for table `users`
 --
 
-DROP TABLE IF EXISTS `users`;
+-- `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `login` varchar(255) NOT NULL DEFAULT '',
   `hashed_password` varchar(40) NOT NULL DEFAULT '',
@@ -1484,7 +1476,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','ADMIN_HASH','Admin','Admin',1,1,'2020-12-08 03:01:36','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','ADMIN_SALT',0,'2020-04-26 13:10:27'),(2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),(3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),(4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),(6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),(7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL);
+INSERT INTO `users` VALUES (1,'admin','27193748a2fc174c339e7c22292bccb882f6f756','Admin','Admin',1,1,'2020-12-08 03:01:36','',NULL,'2020-04-26 13:08:34','2020-04-26 13:10:45','User',NULL,'all','5exVbsSixI1ub0aOGSRyctmB4EMwk7v2',0,'2020-04-26 13:10:27'),(2,'','','','Anonymous users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupAnonymous',NULL,'',NULL,0,NULL),(3,'','','','Non member users',0,1,NULL,'',NULL,'2020-04-26 13:08:38','2020-04-26 13:08:38','GroupNonMember',NULL,'',NULL,0,NULL),(4,'','','','Anonymous',0,0,NULL,'',NULL,'2020-04-26 13:09:44','2020-04-26 13:09:44','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(5,'','','','Analysts',0,1,NULL,'',NULL,'2020-04-26 18:43:40','2020-04-26 18:43:40','Group',NULL,'',NULL,0,NULL),(6,'','','','Automation',0,1,NULL,'',NULL,'2020-04-26 18:43:47','2020-04-26 18:43:47','Group',NULL,'',NULL,0,NULL),(7,'','','','Admins',0,1,NULL,'',NULL,'2020-04-26 18:43:58','2020-04-26 18:43:58','Group',NULL,'',NULL,0,NULL),(10,'automation','05af6545acc48ea85bf4b002e560b702b727c9f8','SecOps','Automation',0,1,NULL,'en',NULL,'2020-11-21 22:14:13','2020-11-21 22:14:13','User',NULL,'only_my_events','8e99dd319cef62d18e80bb9f29cc1ce8',0,'2020-11-21 22:14:13');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1492,10 +1484,10 @@ UNLOCK TABLES;
 -- Table structure for table `versions`
 --
 
-DROP TABLE IF EXISTS `versions`;
+-- `versions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `versions` (
+CREATE TABLE IF NOT EXISTS `versions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL DEFAULT '0',
   `name` varchar(255) NOT NULL DEFAULT '',
@@ -1525,10 +1517,10 @@ UNLOCK TABLES;
 -- Table structure for table `watchers`
 --
 
-DROP TABLE IF EXISTS `watchers`;
+-- `watchers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `watchers` (
+CREATE TABLE IF NOT EXISTS `watchers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `watchable_type` varchar(255) NOT NULL DEFAULT '',
   `watchable_id` int(11) NOT NULL DEFAULT '0',
@@ -1553,10 +1545,10 @@ UNLOCK TABLES;
 -- Table structure for table `webhooks`
 --
 
-DROP TABLE IF EXISTS `webhooks`;
+-- `webhooks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `webhooks` (
+CREATE TABLE IF NOT EXISTS `webhooks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `url` varchar(255) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
@@ -1578,10 +1570,10 @@ UNLOCK TABLES;
 -- Table structure for table `wiki_content_versions`
 --
 
-DROP TABLE IF EXISTS `wiki_content_versions`;
+-- `wiki_content_versions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wiki_content_versions` (
+CREATE TABLE IF NOT EXISTS `wiki_content_versions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `wiki_content_id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL,
@@ -1610,10 +1602,10 @@ UNLOCK TABLES;
 -- Table structure for table `wiki_contents`
 --
 
-DROP TABLE IF EXISTS `wiki_contents`;
+-- `wiki_contents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wiki_contents` (
+CREATE TABLE IF NOT EXISTS `wiki_contents` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `page_id` int(11) NOT NULL,
   `author_id` int(11) DEFAULT NULL,
@@ -1640,10 +1632,10 @@ UNLOCK TABLES;
 -- Table structure for table `wiki_pages`
 --
 
-DROP TABLE IF EXISTS `wiki_pages`;
+-- `wiki_pages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wiki_pages` (
+CREATE TABLE IF NOT EXISTS `wiki_pages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `wiki_id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
@@ -1670,10 +1662,10 @@ UNLOCK TABLES;
 -- Table structure for table `wiki_redirects`
 --
 
-DROP TABLE IF EXISTS `wiki_redirects`;
+-- `wiki_redirects`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wiki_redirects` (
+CREATE TABLE IF NOT EXISTS `wiki_redirects` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `wiki_id` int(11) NOT NULL,
   `title` varchar(255) DEFAULT NULL,
@@ -1699,10 +1691,10 @@ UNLOCK TABLES;
 -- Table structure for table `wikis`
 --
 
-DROP TABLE IF EXISTS `wikis`;
+-- `wikis`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wikis` (
+CREATE TABLE IF NOT EXISTS `wikis` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL,
   `start_page` varchar(255) NOT NULL,
@@ -1725,10 +1717,10 @@ UNLOCK TABLES;
 -- Table structure for table `workflows`
 --
 
-DROP TABLE IF EXISTS `workflows`;
+-- `workflows`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `workflows` (
+CREATE TABLE IF NOT EXISTS `workflows` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tracker_id` int(11) NOT NULL DEFAULT '0',
   `old_status_id` int(11) NOT NULL DEFAULT '0',
@@ -1767,4 +1759,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-12-08  3:05:36
+-- Dump completed on 2020-12-08  3:09:49
