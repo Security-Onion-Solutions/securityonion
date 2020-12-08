@@ -54,6 +54,10 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
+	exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+fi
+
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 
@@ -62,13 +66,16 @@ if [[ -f /root/accept_changes ]]; then
 	mv "$error_log" "$error_log.bak"
 fi
 
-# Begin Installation pre-processing
-parse_install_username
 
-title "Initializing Setup"
-info "Installing as the $INSTALLUSERNAME user"
+if ! [ -f /root/install_opt ]; then
+	# Begin Installation pre-processing
+	parse_install_username
 
-analyze_system
+	title "Initializing Setup"
+	info "Installing as the $INSTALLUSERNAME user"
+
+	analyze_system
+fi
 
 automated=no
 function progress() {
@@ -145,14 +152,18 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if (whiptail_you_sure); then
-	true
-else
-	echo "User cancelled setup." | tee $setup_log
-	whiptail_cancel
-fi
+if ! [ -f /root/install_opt ]; then
+	if (whiptail_you_sure); then
+		true
+	else
+		echo "User cancelled setup." | tee "$setup_log"
+		whiptail_cancel
+	fi
 
-whiptail_install_type
+	whiptail_install_type
+else
+	install_type=$(cat /root/install_opt)
+fi
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
@@ -204,7 +215,6 @@ if [[ "$setup_type" == 'iso' ]]; then
 fi
 
 # Check if this is an airgap install
-
 if [[ $is_manager && $is_iso ]]; then
 	whiptail_airgap
 	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
@@ -212,54 +222,66 @@ if [[ $is_manager && $is_iso ]]; then
 	fi
 fi
 
-if [[ $is_manager && $is_sensor ]]; then
-	check_requirements "standalone"
-elif [[ $is_fleet_standalone ]]; then
-	check_requirements "dist" "fleet"
-elif [[ $is_sensor && ! $is_eval ]]; then
-	check_requirements "dist" "sensor"
-elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
-	check_requirements "dist"
-elif [[ $is_import ]]; then
-	check_requirements "import"
-fi
+if ! [ -f /root/install_opt ]; then
+	if [[ $is_manager && $is_sensor ]]; then
+		check_requirements "standalone"
+	elif [[ $is_fleet_standalone ]]; then
+		check_requirements "dist" "fleet"
+	elif [[ $is_sensor && ! $is_eval ]]; then
+		check_requirements "dist" "sensor"
+	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
+		check_requirements "dist"
+	elif [[ $is_import ]]; then
+		check_requirements "import"
+	fi
 
-case "$setup_type" in
-	'iso')
-		whiptail_set_hostname
-		whiptail_management_nic
-		whiptail_dhcp_or_static
+	case "$setup_type" in
+		'iso')
+			whiptail_set_hostname
+			whiptail_management_nic
+			whiptail_dhcp_or_static
 
-		if [ "$address_type" != 'DHCP' ]; then
-			whiptail_management_interface_ip
-			whiptail_management_interface_mask
-			whiptail_management_interface_gateway
-			whiptail_management_interface_dns
-			whiptail_management_interface_dns_search
-		fi
-		;;
-	'network')
-		whiptail_network_notice
-		whiptail_dhcp_warn
-		whiptail_set_hostname
-		whiptail_management_nic
-		;;
-esac
+			if [ "$address_type" != 'DHCP' ]; then
+				whiptail_management_interface_ip
+				whiptail_management_interface_mask
+				whiptail_management_interface_gateway
+				whiptail_management_interface_dns
+				whiptail_management_interface_dns_search
+			fi
+			;;
+		'network')
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			whiptail_set_hostname
+			whiptail_management_nic
+			;;
+	esac
 
-if [[ $is_minion ]]; then
-	whiptail_management_server
-fi
+	if [[ $is_minion ]]; then
+		whiptail_management_server
+	fi
 
-whiptail_management_interface_setup
+	whiptail_management_interface_setup
 
-if [[ "$setup_type" == 'iso' ]]; then
-	# Init networking so rest of install works
-	set_hostname
-	set_management_interface
-fi
+	if [[ "$setup_type" == 'iso' ]]; then
+		# Init networking so rest of install works
+		set_hostname
+		set_management_interface
+	fi
 
-if [[ $is_minion || $is_import ]]; then
-	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	if [[ $is_minion ]]; then
+		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	if [[ $is_minion ]] && ! (compare_versions); then
+		info "Installer version mismatch, downloading correct version from manager"
+		echo "$install_type" > /root/install_opt
+		download_repo_tarball >> "$setup_log" 2>&1
+		exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+	fi
+
+else
+	rm -rf /root/install_opt >> "$setup_log" 2>&1
 fi
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')

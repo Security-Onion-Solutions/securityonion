@@ -518,6 +518,14 @@ check_requirements() {
 	fi
 }
 
+compare_versions() {
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+	export manager_ver
+
+	[[ "$manager_ver" == "$SOVERSION" ]]
+	return
+}
+
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
 	local nic_error=0
@@ -911,6 +919,18 @@ docker_seed_registry() {
 		rm /nsm/docker-registry/docker/registry.tar >> "$setup_log" 2>&1
 	fi
 
+}
+
+download_repo_tarball() {
+	scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/new_setup
+	
+	# Fail if the file doesn't download
+	if ! [ -f /root/new_setup/"$manager_ver".tar.gz ]; then
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+	
+	tar -xzf /root/new_setup/"$manager_ver".tar.gz -C /root/new_setup/securityonion
+	rm -rf /root/new_setup/"$manager_ver".tar.gz
 }
 
 fireeye_pillar() {
