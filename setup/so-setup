@@ -204,9 +204,7 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	cd .. || exit 255
-	./so-analyst-install
-	exit 0
+	is_analyst=true
 fi
 
 # Say yes to the dress if its an ISO install
@@ -278,6 +276,11 @@ if ! [ -f /root/install_opt ]; then
 		echo "$install_type" > /root/install_opt
 		download_repo_tarball >> "$setup_log" 2>&1
 		exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+	fi
+
+	if [[ $is_analyst ]]; then
+		cd .. || exit 255
+		exec bash so-analyst-install
 	fi
 
 else
