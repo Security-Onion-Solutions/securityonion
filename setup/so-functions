@@ -1011,18 +1011,22 @@ host_pillar() {
 }
 
 install_cleanup() {
-	echo "Installer removing the following files:"
-	ls -lR "$temp_install_dir"
+	if [ -f "$temp_install_dir" ]; then
+		echo "Installer removing the following files:"
+		ls -lR "$temp_install_dir"
 
-	# Clean up after ourselves
-	rm -rf "$temp_install_dir"
+		# Clean up after ourselves
+		rm -rf "$temp_install_dir"
+	fi
 	
 	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
 	# that will disrupt automated tests should be placed beneath this statement.
 	[ -n "$TESTING" ] && return
 
 	# If Mysql is running stop it
-	/usr/sbin/so-mysql-stop
+	if docker ps --format "{{.Names}}" 2>&1 | grep -q "so-mysql"; then
+		/usr/sbin/so-mysql-stop
+	fi
 
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
