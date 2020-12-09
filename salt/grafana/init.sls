@@ -9,6 +9,10 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
+{% import_yaml 'grafana/defaults.yaml' as default_settings %}
+{% set GRAFANA_SETTINGS = salt['pillar.get']('grafana', default=default_settings, merge=True) %}
+
+
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
 # Grafana all the things
@@ -75,13 +79,32 @@ grafanadashsndir:
     - group: 939
     - makedirs: True
 
-grafanaconf:
-  file.recurse:
-    - name: /opt/so/conf/grafana/etc
+grafana-dashboard-config:
+  file.managed:
+    - name: /opt/so/conf/grafana/etc/dashboards/dashboard.yml
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/etc
+    - source: salt://grafana/etc/dashboards/dashboard.yml
+
+grafana-datasources-config:
+  file.recurse:
+    - name: /opt/so/conf/grafana/etc/datasources/influxdb.yaml
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/etc/datasources/influxdb.yaml
+
+grafana-config:
+  file.recurse:
+    - name: /opt/so/conf/grafana/etc/grafana.ini
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/etc/grafana.ini.jinja
+    - context:
+        config: {{ GRAFANA_SETTINGS.config|json }}
+    
 
 {% if salt['pillar.get']('managertab', False) %}
 {% for SN, SNDATA in salt['pillar.get']('managertab', {}).items() %}
