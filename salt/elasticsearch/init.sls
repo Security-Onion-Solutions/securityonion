@@ -189,6 +189,7 @@ so-elasticsearch:
     - user: elasticsearch
     - extra_hosts: 
       - "{{ grains.host }}:{{ NODEIP }}"
+      {% if salt['pillar.get']('nodestab', {}) %}
         {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - "{{ SN.split('_')|first }}:{{ SNDATA.ip }}"
         {% endfor %}
