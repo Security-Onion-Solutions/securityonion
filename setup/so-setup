@@ -480,10 +480,9 @@ if [[ $is_minion ]]; then
 fi
 
 # This block sets REDIRECTIT which is used by a function outside the below subshell
-{
-	set_main_ip;
-	set_redirect;
-} >> $setup_log 2>&1
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
+	set_redirect >> $setup_log 2>&1
 
 # Begin install
 {
@@ -824,7 +823,7 @@ else
 
 		if [[ $is_manager ]]; then
 			set_progress_str 98 "Generating archive for setup directory"
-			generate_repo_tarball
+			generate_repo_tarball >> "$setup_log" 2>&1
 		fi
 
 		if [[ $THEHIVE == 1 ]]; then 
@@ -837,6 +836,6 @@ else
 	echo "Post-installation steps have completed." >> $setup_log 2>&1
 fi
 
-install_cleanup >> $setup_log 2>&1
+install_cleanup >> "$setup_log" 2>&1
 
 if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi
