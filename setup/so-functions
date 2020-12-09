@@ -518,6 +518,14 @@ check_requirements() {
 	fi
 }
 
+compare_versions() {
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+	export manager_ver
+
+	[[ "$manager_ver" == "$SOVERSION" ]]
+	return
+}
+
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
 	local nic_error=0
@@ -771,7 +779,7 @@ disable_auto_start() {
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
 
-	if grep -q so-setup /home/$INSTALLUSERNAME/.bash_profile; then
+	if grep -s -q so-setup /home/$INSTALLUSERNAME/.bash_profile; then
 		# Truncate last line of the bash profile
 		info "Removing auto-run of setup from bash profile"
 		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
@@ -913,6 +921,18 @@ docker_seed_registry() {
 
 }
 
+download_repo_tarball() {
+	scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+	
+	# Fail if the file doesn't download
+	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+	
+	tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
+	rm -rf /root/manager_setup/"$manager_ver".tar.gz
+}
+
 fireeye_pillar() {
 
 	local fireeye_pillar_path=$local_salt_dir/pillar/fireeye
@@ -972,6 +992,10 @@ generate_passwords(){
   KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
 }
 
+generate_repo_tarball() {
+	tar -czf /opt/so/repo/"$SOVERSION".tar.gz ../.
+}
+
 get_redirect() {
 	whiptail_set_redirect
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
@@ -1007,18 +1031,22 @@ host_pillar() {
 }
 
 install_cleanup() {
-	echo "Installer removing the following files:"
-	ls -lR "$temp_install_dir"
+	if [ -f "$temp_install_dir" ]; then
+		echo "Installer removing the following files:"
+		ls -lR "$temp_install_dir"
 
-	# Clean up after ourselves
-	rm -rf "$temp_install_dir"
+		# Clean up after ourselves
+		rm -rf "$temp_install_dir"
+	fi
 	
 	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
 	# that will disrupt automated tests should be placed beneath this statement.
 	[ -n "$TESTING" ] && return
 
 	# If Mysql is running stop it
-	/usr/sbin/so-mysql-stop
+	if docker ps --format "{{.Names}}" 2>&1 | grep -q "so-mysql"; then
+		/usr/sbin/so-mysql-stop
+	fi
 
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
@@ -1103,10 +1131,10 @@ manager_pillar() {
 manager_global() {
 	local global_pillar="$local_salt_dir/pillar/global.sls"
 
-	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
-		SENSOR_CHECKIN_INTERVAL_MS=10000
+	if [ -z "$NODE_CHECKIN_INTERVAL_MS" ]; then
+		NODE_CHECKIN_INTERVAL_MS=10000
 		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ] || [ "$install_type" = 'IMPORT' ]; then
-			SENSOR_CHECKIN_INTERVAL_MS=1000
+			NODE_CHECKIN_INTERVAL_MS=1000
 		fi
 	fi
 
@@ -1166,7 +1194,9 @@ manager_global() {
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
 		"sensoroni:"\
-		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
+		"  node_address: '$MAINIP'"\
+		"  node_description: '$NODE_DESCRIPTION'"\
+		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: 1"\
@@ -1319,7 +1349,7 @@ elasticsearch_pillar() {
 
 parse_install_username() {
 	# parse out the install username so things copy correctly
-    INSTALLUSERNAME=$(pwd | sed -E 's/\// /g'  | awk '{ print $2 }')
+	INSTALLUSERNAME=${SUDO_USER:-${USER}}
 }
 
 patch_pillar() {
@@ -1741,6 +1771,19 @@ set_network_dev_status_list() {
 
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+}
+
+compare_main_nic_ip() {
+	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		read -r -d '' message <<- EOM
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+
+			This is not a supported configuration, please remediate and rerun setup.
+		EOM
+		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	fi
 }
 
 # Add /usr/sbin to everyone's path
@@ -1914,7 +1957,7 @@ set_initial_firewall_policy() {
 					;;
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;

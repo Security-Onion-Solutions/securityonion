@@ -54,32 +54,32 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
+	exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+fi
+
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 
 	# Move last setup log to backup
 	mv "$setup_log" "$setup_log.bak"
+	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
 fi
 
-# Begin Installation pre-processing
-parse_install_username
 
-title "Initializing Setup"
-info "Installing as the $INSTALLUSERNAME user"
+if ! [ -f /root/install_opt ]; then
+	# Begin Installation pre-processing
+	parse_install_username
 
-analyze_system
+	title "Initializing Setup"
+	info "Installing as the $INSTALLUSERNAME user"
+
+	analyze_system
+fi
 
 automated=no
 function progress() {
 	local title='Security Onion Install'
-	if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root ]]; then
-		if [[ -s /var/spool/mail/root ]]; then 
-			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
-		fi
-
-		export SO_ERROR=1
-		title="Error found, please check $setup_log"
-	fi
 
 	if [ $automated == no ]; then
 		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
@@ -152,14 +152,18 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if (whiptail_you_sure); then
-	true
-else
-	echo "User cancelled setup." | tee $setup_log
-	whiptail_cancel
-fi
+if ! [ -f /root/install_opt ]; then
+	if (whiptail_you_sure); then
+		true
+	else
+		echo "User cancelled setup." | tee "$setup_log"
+		whiptail_cancel
+	fi
 
-whiptail_install_type
+	whiptail_install_type
+else
+	install_type=$(cat /root/install_opt)
+fi
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
@@ -172,7 +176,6 @@ elif [ "$install_type" = 'STANDALONE' ]; then
 	is_distmanager=true
 	is_node=true
 	is_sensor=true
-	is_smooshed=true
 elif [ "$install_type" = 'MANAGERSEARCH' ]; then
 	is_manager=true
 	is_distmanager=true
@@ -190,7 +193,6 @@ elif [ "$install_type" = 'HEAVYNODE' ]; then
 	is_node=true
 	is_minion=true
 	is_sensor=true
-	is_smooshed=true
 elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
 	is_fleet_standalone=true
@@ -200,9 +202,7 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	cd .. || exit 255
-	./so-analyst-install
-	exit 0
+	is_analyst=true
 fi
 
 # Say yes to the dress if its an ISO install
@@ -211,55 +211,81 @@ if [[ "$setup_type" == 'iso' ]]; then
 fi
 
 # Check if this is an airgap install
-
-if [[ $is_manager ]]; then
-    if [[ $is_iso ]]; then
-      whiptail_airgap
-      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-        is_airgap=true
-      fi
-    fi
+if [[ $is_manager && $is_iso ]]; then
+	whiptail_airgap
+	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+		is_airgap=true
+	fi
 fi
 
-if [[ $is_manager && $is_sensor ]]; then
-	check_requirements "standalone"
-elif [[ $is_fleet_standalone ]]; then
-	check_requirements "dist" "fleet"
-elif [[ $is_sensor && ! $is_eval ]]; then
-	check_requirements "dist" "sensor"
-elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
-	check_requirements "dist"
-elif [[ $is_import ]]; then
-	check_requirements "import"
+if ! [ -f /root/install_opt ]; then
+	if [[ $is_manager && $is_sensor ]]; then
+		check_requirements "standalone"
+	elif [[ $is_fleet_standalone ]]; then
+		check_requirements "dist" "fleet"
+	elif [[ $is_sensor && ! $is_eval ]]; then
+		check_requirements "dist" "sensor"
+	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
+		check_requirements "dist"
+	elif [[ $is_import ]]; then
+		check_requirements "import"
+	fi
+
+	case "$setup_type" in
+		'iso')
+			whiptail_set_hostname
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+
+			if [ "$address_type" != 'DHCP' ]; then
+				whiptail_management_interface_ip
+				whiptail_management_interface_mask
+				whiptail_management_interface_gateway
+				whiptail_management_interface_dns
+				whiptail_management_interface_dns_search
+			fi
+			;;
+		'network')
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			whiptail_set_hostname
+			whiptail_management_nic
+			;;
+	esac
+
+	if [[ $is_minion ]]; then
+		whiptail_management_server
+	fi
+
+	if [[ $is_minion || $is_iso ]]; then
+		whiptail_management_interface_setup
+	fi
+
+	if [[ "$setup_type" == 'iso' ]]; then
+		# Init networking so rest of install works
+		set_hostname
+		set_management_interface
+	fi
+
+	if [[ $is_minion ]]; then
+		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	if [[ $is_minion ]] && ! (compare_versions); then
+		info "Installer version mismatch, downloading correct version from manager"
+		echo "$install_type" > /root/install_opt
+		download_repo_tarball >> "$setup_log" 2>&1
+		exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+	fi
+
+	if [[ $is_analyst ]]; then
+		cd .. || exit 255
+		exec bash so-analyst-install
+	fi
+
+else
+	rm -rf /root/install_opt >> "$setup_log" 2>&1
 fi
-
-if [[ ! $is_import ]]; then
-	whiptail_patch_schedule
-fi
-
-case "$setup_type" in
-	'iso')
-		whiptail_set_hostname
-		whiptail_management_nic
-		whiptail_dhcp_or_static
-
-		if [ "$address_type" != 'DHCP' ]; then
-			whiptail_management_interface_ip
-			whiptail_management_interface_mask
-			whiptail_management_interface_gateway
-			whiptail_management_interface_dns
-			whiptail_management_interface_dns_search
-		fi
-
-		#collect_adminuser_inputs
-		;;
-	'network')
-		whiptail_network_notice
-		whiptail_dhcp_warn
-		whiptail_set_hostname
-		whiptail_management_nic
-		;;
-esac
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
@@ -327,6 +353,10 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
+if [[ ! $is_import ]]; then
+	whiptail_patch_schedule
+fi
+
 whiptail_homenet_manager
 whiptail_dockernet_check
 
@@ -370,10 +400,6 @@ if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && !
 	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
 		whiptail_manager_updates_warning
 	fi
-fi
-
-if [[ $is_minion ]]; then
-	whiptail_management_server
 fi
 
 if [[ $is_distmanager ]]; then
@@ -432,16 +458,31 @@ echo "1" > /root/accept_changes
 trap 'catch $LINENO' SIGUSR1
 
 catch() {
-	info "Fatal error occurred at $2 in so-setup, failing setup."
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
 	exit
 }
 
+# Init networking so rest of install works
+if [[ -n "$TURBO" ]]; then
+	use_turbo_proxy
+fi
+
+disable_ipv6
+
+if [[ "$setup_type" != 'iso' ]]; then
+	set_hostname >> $setup_log 2>&1
+fi
+
+if [[ $is_minion ]]; then
+	add_mngr_ip_to_hosts
+fi
+
 # This block sets REDIRECTIT which is used by a function outside the below subshell
-{
-	set_main_ip;
-	set_redirect;
-} >> $setup_log 2>&1
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
+	set_redirect >> $setup_log 2>&1
 
 # Begin install
 {
@@ -457,26 +498,7 @@ catch() {
 		reinstall_init
 	fi
 
-	if [[ -n "$TURBO" ]]; then
-		use_turbo_proxy
-	fi
-
-	if [[ "$setup_type" == 'iso' ]]; then
-		# Init networking so rest of install works
-		set_hostname >> $setup_log 2>&1
-		set_management_interface
-	fi
-
-	disable_ipv6
 	disable_auto_start
-
-	if [[ "$setup_type" != 'iso' ]]; then
-		set_hostname >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]]; then
-		add_mngr_ip_to_hosts
-	fi
 
 	{
 		mark_version;
@@ -500,7 +522,6 @@ catch() {
 
 	if [[ $is_minion || $is_import ]]; then
 		set_updates >> $setup_log 2>&1
-		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager && $is_airgap ]]; then
@@ -779,19 +800,30 @@ success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
-if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then SO_ERROR=1; fi
+if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
+	SO_ERROR=1
+
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+fi
 
 if [[ -n $SO_ERROR ]]; then 
 	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
+
 	SKIP_REBOOT=1
 	whiptail_setup_failed
+
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-			set_progress_str 98 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+			set_progress_str 97 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
 			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+		fi
+
+		if [[ $is_manager ]]; then
+			set_progress_str 98 "Generating archive for setup directory"
+			generate_repo_tarball >> "$setup_log" 2>&1
 		fi
 
 		if [[ $THEHIVE == 1 ]]; then 
@@ -804,6 +836,6 @@ else
 	echo "Post-installation steps have completed." >> $setup_log 2>&1
 fi
 
-install_cleanup >> $setup_log 2>&1
+install_cleanup >> "$setup_log" 2>&1
 
 if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi
