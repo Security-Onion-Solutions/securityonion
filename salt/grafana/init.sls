@@ -86,6 +86,8 @@ grafana-dashboard-config:
     - group: 939
     - template: jinja
     - source: salt://grafana/etc/dashboards/dashboard.yml
+    - makedirs: True
+
 
 grafana-datasources-config:
   file.managed:
@@ -94,6 +96,7 @@ grafana-datasources-config:
     - group: 939
     - template: jinja
     - source: salt://grafana/etc/datasources/influxdb.yaml
+    - makedirs: True
 
 grafana-config:
   file.managed:
