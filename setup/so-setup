@@ -261,10 +261,19 @@ if ! [ -f /root/install_opt ]; then
 		whiptail_management_interface_setup
 	fi
 
+	# Init networking so rest of install works
+	disable_ipv6
 	if [[ "$setup_type" == 'iso' ]]; then
-		# Init networking so rest of install works
 		set_hostname
 		set_management_interface
+	fi
+
+	if [[ -n "$TURBO" ]]; then
+		use_turbo_proxy
+	fi
+
+	if [[ $is_minion ]]; then
+		add_mngr_ip_to_hosts
 	fi
 
 	if [[ $is_minion ]]; then
@@ -464,25 +473,10 @@ catch() {
 	exit
 }
 
-# Init networking so rest of install works
-if [[ -n "$TURBO" ]]; then
-	use_turbo_proxy
-fi
-
-disable_ipv6
-
-if [[ "$setup_type" != 'iso' ]]; then
-	set_hostname >> $setup_log 2>&1
-fi
-
-if [[ $is_minion ]]; then
-	add_mngr_ip_to_hosts
-fi
-
 # This block sets REDIRECTIT which is used by a function outside the below subshell
-	set_main_ip >> $setup_log 2>&1
-	compare_main_nic_ip
-	set_redirect >> $setup_log 2>&1
+set_main_ip >> $setup_log 2>&1
+compare_main_nic_ip
+set_redirect >> $setup_log 2>&1
 
 # Begin install
 {
