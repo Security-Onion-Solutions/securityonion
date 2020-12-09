@@ -769,14 +769,23 @@ whiptail_management_interface_setup() {
 	[ -n "$TESTING" ] && return
 
 	local minion_msg
+	local msg
 
-	if [[ $is_minion || $is_import ]]; then
-		minion_msg=" and copy the ssh key for soremote to the manager"
+	if [[ $is_minion ]]; then
+		minion_msg="copy the ssh key for soremote to the manager"
 	else
 		minion_msg="" 
 	fi
 
-	whiptail --title "Security Onion Setup" --yesno "Setup will now initialize networking$minion_msg. Select YES to continue or NO to cancel." 8 75
+	if [[ $is_iso ]]; then
+		if [[ $minion_msg != "" ]]; then
+			msg="initialize networking and $minion_msg"
+		else
+			msg="initialize networking"
+		fi
+	fi
+
+	whiptail --title "Security Onion Setup" --yesno "Setup will now $msg. Select YES to continue or NO to cancel." 8 75
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
