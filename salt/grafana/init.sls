@@ -88,7 +88,7 @@ grafana-dashboard-config:
     - source: salt://grafana/etc/dashboards/dashboard.yml
 
 grafana-datasources-config:
-  file.recurse:
+  file.managed:
     - name: /opt/so/conf/grafana/etc/datasources/influxdb.yaml
     - user: 939
     - group: 939
@@ -96,7 +96,7 @@ grafana-datasources-config:
     - source: salt://grafana/etc/datasources/influxdb.yaml
 
 grafana-config:
-  file.recurse:
+  file.managed:
     - name: /opt/so/conf/grafana/etc/grafana.ini
     - user: 939
     - group: 939
