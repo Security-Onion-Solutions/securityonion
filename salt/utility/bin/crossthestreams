@@ -1,8 +1,8 @@
 #!/bin/bash
 {% set ES = salt['pillar.get']('manager:mainip', '') %}
-{%- set MANAGER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-
+{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
@@ -34,9 +34,10 @@ echo "Applying cross cluster search config..."
          -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MANAGER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
 
 # Add all the search nodes to cross cluster searching.
-
-{%- if salt['pillar.get']('nodestab', {}) %}
-  {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+{%- if TRUECLUSTER is sameas false %}
+  {%- if salt['pillar.get']('nodestab', {}) %}
+    {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
 curl -XPUT -L http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
-  {%- endfor %}
+    {%- endfor %}
+  {%- endif %}
 {%- endif %}
