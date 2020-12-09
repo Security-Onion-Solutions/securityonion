@@ -195,7 +195,7 @@ so-elasticsearch:
         {% endfor %}
       {% endif %}
     - environment:
-      {% if TRUECLUSTER is sameas false %}
+      {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
