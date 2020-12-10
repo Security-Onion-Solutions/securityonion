@@ -22,6 +22,9 @@ if [ "$uid" -ne 0 ]; then
 	exit 1
 fi
 
+# Save the original argument array since we modify it
+readarraay -t original_args <<< "$@"
+
 cd "$(dirname "$0")" || exit 255
 
 source ./so-functions
@@ -55,7 +58,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
-	exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 fi
 
 if [[ -f /root/accept_changes ]]; then
@@ -284,7 +287,7 @@ if ! [ -f /root/install_opt ]; then
 		info "Installer version mismatch, downloading correct version from manager"
 		echo "$install_type" > /root/install_opt
 		download_repo_tarball
-		exec bash /root/manager_setup/securityonion/setup/so-setup "$@"
+		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
 
 	if [[ $is_analyst ]]; then
