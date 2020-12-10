@@ -522,6 +522,7 @@ compare_versions() {
 	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == "" ]]; then
+		rm /root/install_opt
 		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
@@ -926,16 +927,16 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
+	mkdir -p /root/manager_setup/securityonion
 	{
 		local manager_ver
 		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-		mkdir -p /root/manager_setup
 		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
 	} >> "$setup_log" 2>&1
 	
-	
 	# Fail if the file doesn't download
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
+		rm /root/install_opt
 		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
 		echo "$message" | tee -a "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
