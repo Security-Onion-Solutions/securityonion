@@ -522,7 +522,7 @@ compare_versions() {
 	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == "" ]]; then
-		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee "$setup_log"
+		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
 
@@ -936,7 +936,7 @@ download_repo_tarball() {
 	# Fail if the file doesn't download
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
 		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
-		echo "$message" | tee "$setup_log"
+		echo "$message" | tee -a "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
 	
@@ -1655,7 +1655,7 @@ saltify() {
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
-                ;;
+				;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
