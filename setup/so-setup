@@ -336,6 +336,11 @@ fi
 
 if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
+	if [ "$MANAGERADV" = 'ADVANCED' ]; then
+	  if [ "$install_type" = 'MANAGER' ] || [ "$install_type" = 'MANAGERSEARCH' ]; then
+	  whiptail_manager_adv_escluster
+	  fi
+	fi
 	whiptail_zeek_version
 	# Don't run this function for now since Snort is not yet supported
 	# whiptail_nids
@@ -741,7 +746,7 @@ fi
 			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
-		if [[ $STRELKARULES == 1 ]]; then
+		if [[ "$STRELKARULES" == 1 ]]; then
 			/usr/sbin/so-yara-update >> $setup_log 2>&1	
 		fi
 	fi

@@ -1177,15 +1177,23 @@ manager_global() {
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
-		"  replicas: 0"\
-		"  true_cluster: False"\
-		"  true_cluster_name: 'so'"\
+		"  replicas: 0" >> "$global_pillar"
+		if [ -n "$ESCLUSTERNAME" ]; then 
+		    printf '%s\n'\
+				   "  true_cluster: True"\
+		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+		else
+			printf '%s\n'\
+			       "  true_cluster: False"\
+				   "  true_cluster_name: 'so'" >> "$global_pillar"
+		fi
+		printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
-                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
+        "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+        "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+        "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1301,8 +1309,15 @@ elasticsearch_pillar() {
 		"elasticsearch:"\
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
-		"  esheap: '$NODE_ES_HEAP_SIZE'"\
-		"  esclustername: {{ grains.host }}"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
+		if [ -n "$ESCLUSTERNAME" ]; then
+		printf '%s\n'\
+		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
+		else
+		printf '%s\n'\
+		"  esclustername: {{ grains.host }}" >> "$pillar_file"
+		fi
+		printf '%s\n'\
 		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
