@@ -519,8 +519,7 @@ check_requirements() {
 }
 
 compare_versions() {
-	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-	export manager_ver
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo cat /etc/soversion)
 
 	[[ "$manager_ver" == "$SOVERSION" ]]
 	return
@@ -922,6 +921,7 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo cat /etc/soversion)
 	scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
 	
 	# Fail if the file doesn't download
