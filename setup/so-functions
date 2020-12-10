@@ -521,6 +521,11 @@ check_requirements() {
 compare_versions() {
 	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
+	if [[ $manager_ver == "" ]]; then
+		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+
 	[[ "$manager_ver" == "$SOVERSION" ]]
 	return
 }
@@ -921,16 +926,24 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
-	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-	scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+	{
+		local manager_ver
+		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+	} >> "$setup_log" 2>&1
+	
 	
 	# Fail if the file doesn't download
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
+		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
+		echo "$message" | tee "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
 	
-	tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
-	rm -rf /root/manager_setup/"$manager_ver".tar.gz
+	{
+		tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
+		rm -rf /root/manager_setup/"$manager_ver".tar.gz
+	} >> "$setup_log" 2>&1
 }
 
 fireeye_pillar() {
