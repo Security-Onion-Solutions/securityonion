@@ -1324,12 +1324,10 @@ network_setup() {
 		disable_misc_network_features;
 
 		echo "... Setting ONBOOT for management interface";
-		if ! netplan > /dev/null 2>&1; then
-			nmcli con mod "$MNIC" connection.autoconnect "yes";
-		fi
+		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
 
-        echo "... Copying 99-so-checksum-offload-disable";
-        cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+		echo "... Copying 99-so-checksum-offload-disable";
+		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
