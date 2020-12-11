@@ -9,6 +9,10 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
+{% import_yaml 'grafana/defaults.yaml' as default_settings %}
+{% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
+
+
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
 # Grafana all the things
@@ -75,13 +79,44 @@ grafanadashsndir:
     - group: 939
     - makedirs: True
 
-grafanaconf:
-  file.recurse:
-    - name: /opt/so/conf/grafana/etc
+grafana-dashboard-config:
+  file.managed:
+    - name: /opt/so/conf/grafana/etc/dashboards/dashboard.yml
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/etc
+    - source: salt://grafana/etc/dashboards/dashboard.yml
+    - makedirs: True
+
+
+grafana-datasources-config:
+  file.managed:
+    - name: /opt/so/conf/grafana/etc/datasources/influxdb.yaml
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/etc/datasources/influxdb.yaml
+    - makedirs: True
+
+grafana-config:
+  file.managed:
+    - name: /opt/so/conf/grafana/etc/grafana.ini
+    - user: 939
+    - group: 939
+    - template: jinja
+    - source: salt://grafana/etc/grafana.ini.jinja
+    - context:
+        config: {{ GRAFANA_SETTINGS.config|json }}
+
+# these are the files that are referenced inside the config such as smtp:cert_file, smtp:cert_key, auth.ldap:config_file, enterprise:license_path
+grafana-config-files:
+  file.recurse:
+    - name: /opt/so/conf/grafana/etc/files
+    - user: 939
+    - group: 939
+    - source: salt://grafana/etc/files
+    - makedirs: True
+    
 
 {% if salt['pillar.get']('managertab', False) %}
 {% for SN, SNDATA in salt['pillar.get']('managertab', {}).items() %}
@@ -229,6 +264,7 @@ so-grafana:
       - /opt/so/conf/grafana/etc/datasources:/etc/grafana/provisioning/datasources:rw
       - /opt/so/conf/grafana/etc/dashboards:/etc/grafana/provisioning/dashboards:rw
       - /opt/so/conf/grafana/grafana_dashboards:/etc/grafana/grafana_dashboards:rw
+      - /opt/so/conf/grafana/etc/files:/etc/grafana/config/files:ro
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD={{ ADMINPASS }}
     - port_bindings:
