@@ -1,4 +1,5 @@
-{%- import_yaml "zeek/fileextraction_defaults.yaml" as zeek with context %}
+{%- import_yaml "zeek/fileextraction_defaults.yaml" as zeek_default %}
+{%- set zeek = salt['grains.filter_by'](zeek_default, default='zeek', merge=salt['pillar.get']('zeek', {})) %}
 # Directory to stage Zeek extracted files before processing
 redef FileExtract::prefix = "/nsm/zeek/extracted/";
 # Set a limit to the file size
