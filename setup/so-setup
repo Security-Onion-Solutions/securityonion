@@ -165,7 +165,7 @@ if ! [ -f /root/install_opt ]; then
 
 	whiptail_install_type
 else
-	install_type=$(cat /root/install_opt)
+	source /root/install_opt
 fi
 
 if [ "$install_type" = 'EVAL' ]; then
@@ -285,7 +285,12 @@ if ! [ -f /root/install_opt ]; then
 
 	if [[ $is_minion ]] && ! (compare_versions); then
 		info "Installer version mismatch, downloading correct version from manager"
-		echo "$install_type" > /root/install_opt
+		printf '%s\n' \
+			"install_type=$install_type" \
+			"MNIC=$MNIC" \
+			"HOSTNAME=$HOSTNAME" \
+			"MSRV=$MSRV"\
+			"MSRVIP=$MSRVIP" > /root/install_opt
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
@@ -388,9 +393,9 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [[ "$STRELKA" == 1 ]]; then
-            STRELKARULES=1
-        fi
+	if [[ "$STRELKA" = 1 ]]; then
+		STRELKARULES=1
+	fi
 
 	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
 		whiptail_manager_adv_service_zeeklogs
@@ -758,7 +763,7 @@ set_redirect >> $setup_log 2>&1
 			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
-		if [[ $STRELKARULES == 1 ]]; then
+		if [[ "$STRELKARULES" = 1 ]]; then
 			/usr/sbin/so-yara-update >> $setup_log 2>&1	
 		fi
 	fi
