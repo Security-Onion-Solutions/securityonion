@@ -15,13 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-source ./so-whiptail
-source ./so-variables
-source ./so-common-functions
-
-CONTAINER_REGISTRY=quay.io
-
-SOVERSION=$(cat ../VERSION)
+# README - DO NOT DEFINE GLOBAL VARIABLES IN THIS FILE. Instead use so-variables.
 
 log() {
 	msg=$1
@@ -46,6 +40,51 @@ logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
 	$cmd >> "$setup_log" 2>&1
+}
+
+filter_unused_nics() {
+
+	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		grep_string="$grep_string"
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	readarray -t filtered_nics <<< "$filtered_nics"
+	
+	nic_list=()
+	for nic in "${filtered_nics[@]}"; do
+		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
+	done
+
+	export nic_list
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
+
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
+    export lb_procs
 }
 
 airgap_rules() {
@@ -834,9 +873,9 @@ docker_install() {
 			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
 			fi
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-19.03.12-3.el7 containerd.io-1.2.13-3.2.el7;
+			  yum -y install docker-ce-19.03.14-3.el7 containerd.io-1.2.13-3.2.el7;
 			fi
-			yum versionlock docker-ce-19.03.12-3.el7;
+			yum versionlock docker-ce-19.03.14-3.el7;
 			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
 		
@@ -884,7 +923,7 @@ docker_registry() {
 		"  \"bip\": \"$DNETBIP\","\
 		"  \"default-address-pools\": ["\
 		"    {"\
-		"      \"base\" : \"$DOCKERNET\","\
+		"      \"base\" : \"$DOCKERNET/24\","\
 		"      \"size\" : 24"\
 		"    }"\
 		"  ]"\
@@ -989,22 +1028,22 @@ fleet_pillar() {
 
 generate_passwords(){
   # Generate Random Passwords for Things
-  MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKDBPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKADMINPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKAUTOMATIONPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  GRAFANAPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  MYSQLPASS=$(get_random_value)
+  PLAYBOOKDBPASS=$(get_random_value)
+  PLAYBOOKADMINPASS=$(get_random_value)
+  PLAYBOOKAUTOMATIONPASS=$(get_random_value)
+  FLEETPASS=$(get_random_value)
+  FLEETJWT=$(get_random_value)
+  GRAFANAPASS=$(get_random_value)
   if [[ "$THEHIVE" == "1" ]]; then
-  	HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	HIVEKEY=$(get_random_value)
+  	HIVEPLAYSECRET=$(get_random_value)
+  	CORTEXKEY=$(get_random_value)
+  	CORTEXORGUSERKEY=$(get_random_value)
+  	CORTEXPLAYSECRET=$(get_random_value)
   fi
-  SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  SENSORONIKEY=$(get_random_value)
+  KRATOSKEY=$(get_random_value)
 }
 
 generate_repo_tarball() {
@@ -1221,15 +1260,23 @@ manager_global() {
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
-		"  replicas: 0"\
-		"  true_cluster: False"\
-		"  true_cluster_name: 'so'"\
+		"  replicas: 0" >> "$global_pillar"
+		if [ -n "$ESCLUSTERNAME" ]; then 
+		    printf '%s\n'\
+				   "  true_cluster: True"\
+		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+		else
+			printf '%s\n'\
+			       "  true_cluster: False"\
+				   "  true_cluster_name: 'so'" >> "$global_pillar"
+		fi
+		printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
-                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
+        "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+        "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+        "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1308,8 +1355,8 @@ minio_generate_keys() {
 
 	local charSet="[:graph:]"
 
-	ACCESS_KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-	ACCESS_SECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 40 | head -n 1)
+	ACCESS_KEY=$(get_random_value)
+	ACCESS_SECRET=$(get_random_value 40)
 
 }
 
@@ -1343,8 +1390,15 @@ elasticsearch_pillar() {
 		"elasticsearch:"\
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
-		"  esheap: '$NODE_ES_HEAP_SIZE'"\
-		"  esclustername: {{ grains.host }}"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
+		if [ -n "$ESCLUSTERNAME" ]; then
+		printf '%s\n'\
+		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
+		else
+		printf '%s\n'\
+		"  esclustername: {{ grains.host }}" >> "$pillar_file"
+		fi
+		printf '%s\n'\
 		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\

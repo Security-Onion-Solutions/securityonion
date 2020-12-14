@@ -21,22 +21,22 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 
-
-{%- if FEATURES is sameas true %}
+{% if FEATURES is sameas true %}
   {% set FEATUREZ = "-features" %}
 {% else %}
   {% set FEATUREZ = '' %}
 {% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
-  {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('manager:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('manager:esclustername') %}
+  {% set esheap = salt['pillar.get']('manager:esheap') %}
   {% set ismanager = True %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
-  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
+  {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
   {% set ismanager = False %}
 {% endif %}
 
@@ -188,16 +188,16 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
-      - {{ grains.host }}:{{ NODEIP }}
-      {%- if ismanager %}
-      {%- if salt['pillar.get']('nodestab', {}) %}
-      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
-      {%- endfor %}
-      {%- endif %}
-      {%- endif %}
+      - "{{ grains.host }}:{{ NODEIP }}"
+      {% if salt['pillar.get']('nodestab', {}) %}
+        {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - "{{ SN.split('_')|first }}:{{ SNDATA.ip }}"
+        {% endfor %}
+      {% endif %}
     - environment:
+      {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
+      {% endif %}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
       ulimits:
       - memlock=-1:-1
