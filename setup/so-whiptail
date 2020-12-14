@@ -748,11 +748,14 @@ whiptail_management_interface_setup() {
 
 	local minion_msg
 	local msg
+	local line_count
 
 	if [[ $is_minion ]]; then
-		minion_msg="copy the ssh key for soremote to the manager"
+		line_count=11
+		minion_msg="copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote"
 	else
-		minion_msg="" 
+		line_count=9
+		minion_msg=""
 	fi
 
 	if [[ $is_iso ]]; then
@@ -765,7 +768,13 @@ whiptail_management_interface_setup() {
 		msg=$minion_msg
 	fi
 
-	whiptail --title "Security Onion Setup" --yesno "Setup will now $msg. Select YES to continue or NO to cancel." 8 75
+	read -r -d '' message <<- EOM
+		Setup will now $msg.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" $line_count 75
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
