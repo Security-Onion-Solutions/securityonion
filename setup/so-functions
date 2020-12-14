@@ -15,13 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-source ./so-whiptail
-source ./so-variables
-source ./so-common-functions
-
-CONTAINER_REGISTRY=quay.io
-
-SOVERSION=$(cat ../VERSION)
+# README - DO NOT DEFINE GLOBAL VARIABLES IN THIS FILE. Instead use so-variables.
 
 log() {
 	msg=$1
@@ -46,6 +40,51 @@ logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
 	$cmd >> "$setup_log" 2>&1
+}
+
+filter_unused_nics() {
+
+	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		grep_string="$grep_string"
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	readarray -t filtered_nics <<< "$filtered_nics"
+	
+	nic_list=()
+	for nic in "${filtered_nics[@]}"; do
+		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
+	done
+
+	export nic_list
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
+
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
+    export lb_procs
 }
 
 airgap_rules() {
@@ -871,7 +910,7 @@ docker_registry() {
 		"  \"bip\": \"$DNETBIP\","\
 		"  \"default-address-pools\": ["\
 		"    {"\
-		"      \"base\" : \"$DOCKERNET\","\
+		"      \"base\" : \"$DOCKERNET/24\","\
 		"      \"size\" : 24"\
 		"    }"\
 		"  ]"\

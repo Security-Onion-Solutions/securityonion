@@ -38,7 +38,7 @@ query_playbookdbuser_grants:
 query_updatwebhooks:
   mysql_query.run:
     - database: playbook
-    - query:    "update webhooks set url = 'http://{{MANAGERIP}}:7000/playbook/webhook' where project_id in (1,2)"
+    - query:    "update webhooks set url = 'http://{{MANAGERIP}}:7000/playbook/webhook' where project_id = 1"
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root
