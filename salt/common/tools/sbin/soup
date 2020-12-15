@@ -467,6 +467,12 @@ else
   rm -rf $UPDATE_DIR
   clone_to_tmp
 fi
+
+echo ""
+echo "Verifying we have the latest soup script."
+verify_latest_update_script
+echo ""
+
 echo "Generating new repo archive"
 generate_and_clean_tarballs
 if [ -f /usr/sbin/so-image-common ]; then
@@ -474,11 +480,6 @@ if [ -f /usr/sbin/so-image-common ]; then
 else 
 add_common
 fi
-
-echo ""
-echo "Verifying we have the latest soup script."
-verify_latest_update_script
-echo ""
 
 echo "Let's see if we need to update Security Onion."
 upgrade_check
@@ -496,6 +497,15 @@ if [ $is_airgap -eq 0 ]; then
 else
   update_registry
   update_docker_containers "soup"
+  FEATURESCHECK=$(lookup_pillar features elastic)
+  if [[ "$FEATURESCHECK" == "True" ]]; then 
+    TRUSTED_CONTAINERS=( \
+      "so-elasticsearch" \
+      "so-filebeat" \
+      "so-kibana" \
+      "so-logstash" )
+    update_docker_containers "features" "-features"
+  fi
 fi
 echo ""
 echo "Stopping Salt Minion service."
