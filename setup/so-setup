@@ -526,8 +526,11 @@ set_redirect >> $setup_log 2>&1
 		{
 			generate_passwords;
 			secrets_pillar;
-			add_socore_user_manager;
 		} >> $setup_log 2>&1	
+	fi
+
+	if [[ $is_manager || $is_import || $is_helix ]]; then
+		add_socore_user_manager >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager && ! $is_eval ]]; then
@@ -680,8 +683,10 @@ set_redirect >> $setup_log 2>&1
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
-	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
-	salt-call state.apply -l info nginx >> $setup_log 2>&1
+	if [[ ! $is_helix ]]; then
+		set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+		salt-call state.apply -l info nginx >> $setup_log 2>&1
+	fi
 
 	if [[ $is_manager || $is_node || $is_import ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
@@ -782,7 +787,7 @@ set_redirect >> $setup_log 2>&1
 		fi
 	fi
 
-	if [[ $is_manager || $is_helix || $is_import ]]; then		
+	if [[ $is_manager || $is_import ]]; then		
 		set_progress_str 82 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
