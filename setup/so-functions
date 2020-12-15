@@ -1525,8 +1525,10 @@ reinstall_init() {
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			docker stop $(docker ps -a -q --filter "name=so-")
-			docker rm -f $(docker ps -a -q --filter "name=so-")
+			if [ $(docker ps -a -q --filter "name=so-") -gt 0 ]; then
+				docker stop $(docker ps -a -q --filter "name=so-")
+				docker rm -f $(docker ps -a -q --filter "name=so-")
+			fi
 		fi
 
 		local date_string
