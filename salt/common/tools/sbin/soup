@@ -197,6 +197,7 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
+    [[ "$INSTALLEDVERSION" == 2.3.0 ]] || [[ "$INSTALLEDVERSION" == 2.3.1 ]] || [[ "$INSTALLEDVERSION" == 2.3.2 ]] || [[ "$INSTALLEDVERSION" == 2.3.10 ]] && 2.3.0_to_2.3.20
 }
 
 rc1_to_rc2() {
@@ -278,6 +279,44 @@ rc3_to_2.3.0() {
     echo "playbook_admin: $(get_random_value)"
     echo "playbook_automation: $(get_random_value)"
   } >> /opt/so/saltstack/local/pillar/secrets.sls
+
+  INSTALLEDVERSION=2.3.0
+}
+
+2.3.0_to_2.3.20(){
+  # Remove PCAP from global
+  sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
+  sed '/sensor_checkin_interval_ms:/d' /opt/so/saltstack/local/pillar/global.sls
+
+  # Add checking interval to glbal
+  echo "sensoroni:" >> /opt/so/saltstack/local/pillar/global.sls
+  echo "  node_checkin_interval_ms: 10000" >> /opt/so/saltstack/local/pillar/global.sls
+
+  # Update pillar fiels for new sensoroni functionality
+  for file in /opt/so/saltstack/local/pillat/minions/*; do
+    echo "sensoroni:" >> $file
+    echo "  node_description:" >> $file
+    local SOMEADDRESS=$(cat $file | grep mainip | tail -n 1 | awk '{print $2'})
+    echo "  node_address: $SOMEADDRESS" >> $file
+  done
+
+  # Remove old firewall config to reduce confusion
+  rm -f /opt/so/saltstack/default/pillar/firewall/ports.sls
+
+  # Fix daemon.json by managing it
+  echo "docker:" >> /opt/so/saltstack/local/pillar/global.sls
+  DOCKERGREP=$(cat /etc/docker/daemon.json | grep base | awk {'print $3'} | cut -f1 -d"/")
+  if [ -z "$DOCKERGREP" ]; then
+    echo "  range: '172.17.0.0/24'" >> /opt/so/saltstack/local/pillar/global.sls
+    echo "  bip: '172.17.0.1/24'" >> /opt/so/saltstack/local/pillar/global.sls
+  else
+    DOCKERSTUFF="${DOCKERGREP//\"}"
+    DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+    echo "  range: '$DOCKERSTUFF'/24" >> /opt/so/saltstack/local/pillar/global.sls
+    echo "  bip: '$DOCKERSTUFFBIP'"  >> /opt/so/saltstack/local/pillar/global.sls
+
+  fi
+
 }
 
 space_check() {
