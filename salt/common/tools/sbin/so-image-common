@@ -17,93 +17,94 @@
 
 # NOTE: This script depends on so-common
 IMAGEREPO=securityonion
-FEATURESCHECK=$(lookup_pillar elastic features)    
 
 container_list() {
-    MANAGERCHECK=$1
-    if [ -z "$MANAGERCHECK" ]; then
-      MANAGERCHECK=so-unknown
-      if [ -f /etc/salt/grains ]; then
-        MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-      fi
-    fi
+  MANAGERCHECK=$1
+  FEATURESCHECK=$(lookup_pillar elastic features) 
 
-    if [ $MANAGERCHECK == 'so-import' ]; then
-      TRUSTED_CONTAINERS=(
+  if [ -z "$MANAGERCHECK" ]; then
+    MANAGERCHECK=so-unknown
+    if [ -f /etc/salt/grains ]; then
+      MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+    fi
+  fi
+
+  if [ $MANAGERCHECK == 'so-import' ]; then
+    TRUSTED_CONTAINERS=(
+      "so-elasticsearch"
+      "so-filebeat"
+      "so-idstools"
+      "so-kibana"
+      "so-kratos"
+      "so-nginx"
+      "so-pcaptools"
+      "so-soc"
+      "so-steno"
+      "so-suricata"
+      "so-zeek" 
+    )
+  elif [ $MANAGERCHECK != 'so-helix' ]; then
+    TRUSTED_CONTAINERS=(
+      "so-acng"
+      "so-curator"
+      "so-domainstats"
+      "so-elastalert"
+      "so-fleet"
+      "so-fleet-launcher"
+      "so-freqserver"
+      "so-grafana"
+      "so-idstools"
+      "so-influxdb"
+      "so-kratos"
+      "so-minio"
+      "so-mysql"
+      "so-nginx"
+      "so-pcaptools"
+      "so-playbook"
+      "so-redis"
+      "so-soc"
+      "so-soctopus"
+      "so-steno"
+      "so-strelka-backend"
+      "so-strelka-filestream"
+      "so-strelka-frontend"
+      "so-strelka-manager"
+      "so-suricata"
+      "so-telegraf"
+      "so-thehive"
+      "so-thehive-cortex"
+      "so-thehive-es"
+      "so-wazuh"
+      "so-zeek" 
+    )
+    if [[ "$FEATURESCHECK" == "True" ]]; then
+      TRUSTED_CONTAINERS=( "${TRUSTED_CONTAINERS[@]}"
+        "so-elasticsearch-features"
+        "so-filebeat-features"
+        "so-logstash-features"
+        "so-kibana-features"
+      )
+    else
+      TRUSTED_CONTAINERS=( "${TRUSTED_CONTAINERS[@]}"
         "so-elasticsearch"
         "so-filebeat"
-        "so-idstools"
-        "so-kibana"
-        "so-kratos"
-        "so-nginx"
-        "so-pcaptools"
-        "so-soc"
-        "so-steno"
-        "so-suricata"
-        "so-zeek" 
-      )
-    elif [ $MANAGERCHECK != 'so-helix' ]; then
-      TRUSTED_CONTAINERS=(
-        "so-acng"
-        "so-curator"
-        "so-domainstats"
-        "so-elastalert"
-        "so-fleet"
-        "so-fleet-launcher"
-        "so-freqserver"
-        "so-grafana"
-        "so-idstools"
-        "so-influxdb"
-        "so-kratos"
-        "so-minio"
-        "so-mysql"
-        "so-nginx"
-        "so-pcaptools"
-        "so-playbook"
-        "so-redis"
-        "so-soc"
-        "so-soctopus"
-        "so-steno"
-        "so-strelka-backend"
-        "so-strelka-filestream"
-        "so-strelka-frontend"
-        "so-strelka-manager"
-        "so-suricata"
-        "so-telegraf"
-        "so-thehive"
-        "so-thehive-cortex"
-        "so-thehive-es"
-        "so-wazuh"
-        "so-zeek" 
-      )
-        if [[ "$FEATURESCHECK" == "True" ]]; then
-          TRUSTED_CONTAINERS=( "${TRUSTED_CONTAINERS[@]}"
-            "so-elasticsearch-features"
-            "so-filebeat-features"
-            "so-logstash-features"
-            "so-kibana-features"
-          )
-        else
-          TRUSTED_CONTAINERS=( "${TRUSTED_CONTAINERS[@]}"
-            "so-elasticsearch"
-            "so-filebeat"
-            "so-logstash"
-            "so-kibana"
-          )
-        fi
-    else
-      TRUSTED_CONTAINERS=(
-        "so-filebeat"
-        "so-idstools"
         "so-logstash"
-        "so-nginx"
-        "so-redis"
-        "so-steno"
-        "so-suricata"
-        "so-telegraf"
-        "so-zeek" 
+        "so-kibana"
       )
     fi
+  else
+    TRUSTED_CONTAINERS=(
+      "so-filebeat"
+      "so-idstools"
+      "so-logstash"
+      "so-nginx"
+      "so-redis"
+      "so-steno"
+      "so-suricata"
+      "so-telegraf"
+      "so-zeek" 
+    )
+  fi
 }
 
 update_docker_containers() {
