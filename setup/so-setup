@@ -407,7 +407,10 @@ if [[ $is_manager && ! $is_eval ]]; then
 	fi
 
 	if [[ "$STRELKA" = 1 ]]; then
+		info "Enabling Strelka rules"
 		STRELKARULES=1
+	else
+		info "Disabling Strelka rules: STRELKA='$STRELKA'"
 	fi
 
 	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
@@ -783,7 +786,9 @@ set_redirect >> $setup_log 2>&1
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
 		if [[ "$STRELKARULES" = 1 ]]; then
-			/usr/sbin/so-yara-update >> $setup_log 2>&1	
+			logCmd /usr/sbin/so-yara-update
+		else
+			info "Skipping running yara update: STRELKARULES='$STRELKARULES'"
 		fi
 	fi
 
