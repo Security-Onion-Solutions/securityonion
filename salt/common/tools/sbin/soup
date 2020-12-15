@@ -417,10 +417,15 @@ verify_latest_update_script() {
     # Check to see if the update scripts match. If not run the new one.
     CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
     GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
-    if [[ "$CURRENTSOUP" == "$GITSOUP" ]]; then
+    CURRENTCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-common | awk '{print $1}')
+    GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
+    CURRENTIMGCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+    GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+
+    if [[ "$CURRENTSOUP" == "$GITSOUP" ]] && [[ "$CURRENTCMN" == "$GITCMN" ]] && [[ "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
       echo "This version of the soup script is up to date. Proceeding."
     else
-      echo "You are not running the latest soup version. Updating soup."
+      echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
