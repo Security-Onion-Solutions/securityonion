@@ -244,10 +244,19 @@ commonlogrotateconf:
     - dayweek: '*'
 {% endif %}
 
+# Manager daemon.json
+docker_daemon:
+  file.managed:
+    - source: salt://common/files/daemon.json
+    - name: /etc/docker/daemon.json
+    - template: jinja 
+
 # Make sure Docker is always running
 docker:
   service.running:
     - enable: True
+    - watch:
+      - file: docker_daemon
 
 {% else %}
 
