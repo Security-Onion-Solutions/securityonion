@@ -340,6 +340,12 @@ space_check() {
   
 }
 
+thehive_maint() {
+  echo "Migrating thehive databases if needed."
+  curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
+  curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+}
+
 unmount_update() {
   cd /tmp
   umount /tmp/soagupdate
@@ -602,6 +608,7 @@ echo "Running a highstate. This could take several minutes."
 salt-call state.highstate -l info queue=True
 playbook
 unmount_update
+thehive_maint
 
 if [ "$UPGRADESALT" == "1" ]; then
   echo ""
