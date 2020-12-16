@@ -133,7 +133,7 @@ append_so-steno_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-steno
-    - unless: grep so-steno /opt/so/conf/so-status/so-status.conf
+    - unless: grep -q so-steno /opt/so/conf/so-status/so-status.conf
 
   {% if STENOOPTIONS.status == 'running' %}
 delete_so-steno_so-status.disabled:

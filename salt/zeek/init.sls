@@ -200,6 +200,14 @@ append_so-zeek_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-zeek
+    - unless: grep -q so-zeek /opt/so/conf/so-status/so-status.conf
+
+{% if grains.role == 'so-import' %}
+disable_so-zeek_so-status.conf:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-zeek$
+{% endif %}
 
 {% else %}
 
