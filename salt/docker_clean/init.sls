@@ -1,6 +1,6 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set OLDVERSIONS = ['2.0.0-rc.1','2.0.1-rc.1','2.0.2-rc.1','2.0.3-rc.1','2.1.0-rc.2','2.2.0-rc.3','2.3.0','2.3.1']%}
+{% set OLDVERSIONS = ['2.0.0-rc.1','2.0.1-rc.1','2.0.2-rc.1','2.0.3-rc.1','2.1.0-rc.2','2.2.0-rc.3','2.3.0','2.3.1','2.3.2']%}
 
 {% for VERSION in OLDVERSIONS %}
 remove_images_{{ VERSION }}:

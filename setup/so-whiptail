@@ -32,7 +32,7 @@ whiptail_basic_suri() {
 
 	[ -n "$TESTING" ] && return
 	
-	if [[ $is_smooshed ]]; then
+	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
 	  local PROCS=$(expr $lb_procs / 2)
       if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
@@ -51,7 +51,7 @@ whiptail_basic_zeek() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ $is_smooshed ]]; then
+	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
 	  local PROCS=$(expr $lb_procs / 2)
       if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
@@ -276,7 +276,7 @@ whiptail_requirements_error() {
 
 	if [[ $(echo "$requirement_needed" | tr '[:upper:]' '[:lower:]') == 'nics' ]]; then
 		whiptail --title "Security Onion Setup" \
-			--msgbox "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press OK to exit setup and reconfigure the machine."  10 75
+			--msgbox "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Select OK to exit setup and reconfigure the machine."  10 75
 		
 		# Same as whiptail_cancel, but changed the wording to exit instead of cancel.
 		whiptail --title "Security Onion Setup" --msgbox "Exiting Setup. No changes have been made." 8 75
@@ -290,7 +290,7 @@ whiptail_requirements_error() {
 		exit
 	else
 		whiptail --title "Security Onion Setup" \
-			--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Press YES to continue anyway, or press NO to cancel."  10 75
+			--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Select YES to continue anyway, or select NO to cancel."  10 75
 
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
@@ -311,7 +311,7 @@ whiptail_storage_requirements() {
 
 		Visit https://docs.securityonion.net/en/2.1/hardware.html for more information.
 
-		Press YES to continue anyway, or press NO to cancel.
+		Select YES to continue anyway, or select NO to cancel.
 	EOM
 
 	whiptail \
@@ -372,7 +372,7 @@ whiptail_dhcp_warn() {
 	[ -n "$TESTING" ] && return
 
 	if [[ $setup_type == "iso" ]]; then
-		local interaction_text="Press YES to keep DHCP or NO to go back."
+		local interaction_text="Select YES to keep DHCP or NO to go back."
 		local window_type="yesno"
 	else
 		local interaction_text="Press ENTER to continue."
@@ -426,7 +426,7 @@ whiptail_dockernet_net() {
 	[ -n "$TESTING" ] && return
 
 	DOCKERNET=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter a /24 network range for docker to use: \nThe same range MUST be used on ALL nodes \n(Default value is pre-populated.)" 10 75 172.17.0.0 3>&1 1>&2 2>&3)
+	"\nEnter a /24 size network range for docker to use WITHOUT the /24 notation: \nThis range will be used on ALL nodes \n(Default value is pre-populated.)" 10 75 172.17.0.0 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -743,6 +743,44 @@ whiptail_management_nic() {
 
 }
 
+whiptail_management_interface_setup() {
+	[ -n "$TESTING" ] && return
+
+	local minion_msg
+	local msg
+	local line_count
+
+	if [[ $is_minion ]]; then
+		line_count=11
+		minion_msg="copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote"
+	else
+		line_count=9
+		minion_msg=""
+	fi
+
+	if [[ $is_iso ]]; then
+		if [[ $minion_msg != "" ]]; then
+			msg="initialize networking and $minion_msg"
+		else
+			msg="initialize networking"
+		fi
+	else
+		msg=$minion_msg
+	fi
+
+	read -r -d '' message <<- EOM
+		Setup will now $msg.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" $line_count 75
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+
+
 whiptail_management_server() {
 
 	[ -n "$TESTING" ] && return
@@ -922,7 +960,7 @@ whiptail_network_notice() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Press YES to continue." 8 75
+	whiptail --title "Security Onion Setup" --yesno "Since this is a network install we assume the management interface, DNS, Hostname, etc are already set up. Select YES to continue." 8 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1339,7 +1377,20 @@ whiptail_setup_failed() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --msgbox "Install had a problem. Please see $setup_log for details. Press Ok to exit." 8 75
+	local check_err_msg
+	local height
+
+	[ -f "$error_log" ] && check_err_msg="A summary of errors can be found in $error_log.\n"
+
+	if [[ -n $check_err_msg ]]; then height=11; else height=10; fi
+
+	read -r -d '' message <<- EOM
+			Install had a problem. Please see $setup_log for details.\n
+			$check_err_msg
+			Press Ok to exit.
+		EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" $height 75
 }
 
 whiptail_shard_count() {
@@ -1420,11 +1471,11 @@ whiptail_suricata_pins() {
 	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${ZEEKPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
 
 	local filtered_core_str=()
-    for item in "${filtered_core_list[@]}"; do
-        filtered_core_str+=("$item" "")
-    done
+	for item in "${filtered_core_list[@]}"; do
+		filtered_core_str+=("$item" "")
+	done
 
-	if [[ $is_smooshed ]]; then
+	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
 	  local PROCS=$(expr $lb_procs / 2)
       if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else

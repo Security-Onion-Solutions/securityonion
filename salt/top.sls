@@ -47,7 +47,7 @@ base:
     - sensoroni
     - salt.lasthighstate
   
-  '*_helix and G@saltversion:{{saltversion}}':
+  '*_helixsensor and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
@@ -61,9 +61,7 @@ base:
     - suricata
     - zeek
     - redis
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
