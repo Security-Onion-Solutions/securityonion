@@ -86,6 +86,8 @@ capemz:
     - user: 939
     - group: 939
 
+{% if grains['role'] != 'so-helix' %}
+
 # Add ES Group
 elasticsearchgroup:
   group.present:
@@ -251,10 +253,12 @@ so-elasticsearch-templates:
     - template: jinja
 {% endif %}
 
+{% endif %} {# if grains['role'] != 'so-helix' #}
+
 {% else %}
 
 elasticsearch_state_not_allowed:
   test.fail_without_changes:
     - name: elasticsearch_state_not_allowed
 
-{% endif %}
+{% endif %} {# if 'elasticsearch' in top_states #}
