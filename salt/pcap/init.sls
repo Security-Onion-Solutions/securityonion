@@ -135,14 +135,15 @@ append_so-steno_so-status.conf:
     - text: so-steno
     - unless: grep -q so-steno /opt/so/conf/so-status/so-status.conf
 
-  {% if STENOOPTIONS.status == 'running' %}
-delete_so-steno_so-status.disabled:
-  file.uncomment:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-steno$
-  {% elif STENOOPTIONS.status == 'stopped' %}
+
+  {% if not STENOOPTIONS.start %}
 so-steno_so-status.disabled:
   file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-steno$
+  {% else %}
+delete_so-steno_so-status.disabled:
+  file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-steno$
   {% endif %}
