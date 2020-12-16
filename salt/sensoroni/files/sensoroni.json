@@ -1,9 +1,15 @@
-{% set URLBASE = salt['pillar.get']('global:url_base') -%}
-{% set DESCRIPTION = salt['pillar.get']('sensoroni:node_description') -%}
-{% set ADDRESS = salt['pillar.get']('sensoroni:node_address') -%}
-{% set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') -%}
-{% set CHECKININTERVALMS = salt['pillar.get']('sensoroni:node_checkin_interval_ms', 10000) -%}
-{% set STENOENABLED = salt['pillar.get']('steno:enabled', False) -%}
+{%- set URLBASE = salt['pillar.get']('global:url_base') %}
+{%- set DESCRIPTION = salt['pillar.get']('sensoroni:node_description') %}
+{%- set ADDRESS = salt['pillar.get']('sensoroni:node_address') %}
+{%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
+{%- set CHECKININTERVALMS = salt['pillar.get']('sensoroni:node_checkin_interval_ms', 10000) %}
+{%- set ROLE = grains.id.split('_') | last %}
+{%- if ROLE in ['eval', 'standalone', 'sensor', 'heavynode'] %}
+{%-   set STENODEFAULT = True %}
+{%- else %}
+{%-   set STENODEFAULT = False %}
+{%- endif %}
+{%-   set STENOENABLED = salt['pillar.get']('steno:enabled', STENODEFAULT) %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
