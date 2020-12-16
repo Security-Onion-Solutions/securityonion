@@ -38,7 +38,7 @@
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
   {% set ismanager = False %}
-{% elif grains['role'] = 'so-helix' %}
+{% elif grains['role'] == 'so-helix' %}
   {% set ismanager = True %} {# Solely for the sake of running so-catrust #}
 {% endif %}
 
