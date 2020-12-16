@@ -61,6 +61,7 @@ base:
     - suricata
     - zeek
     - redis
+    - elasticsearch
     - logstash
     {%- if FILEBEAT %}
     - filebeat

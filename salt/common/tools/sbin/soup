@@ -324,6 +324,8 @@ rc3_to_2.3.0() {
 
   fi
 
+  INSTALLEDVERSION=2.3.0
+
 }
 
 space_check() {
@@ -504,11 +506,12 @@ else
   update_docker_containers "soup"
   FEATURESCHECK=$(lookup_pillar features elastic)
   if [[ "$FEATURESCHECK" == "True" ]]; then 
-    TRUSTED_CONTAINERS=( \
-      "so-elasticsearch" \
-      "so-filebeat" \
-      "so-kibana" \
-      "so-logstash" )
+    TRUSTED_CONTAINERS=(
+      "so-elasticsearch"
+      "so-filebeat"
+      "so-kibana"
+      "so-logstash" 
+    )
     update_docker_containers "features" "-features"
   fi
 fi
@@ -580,6 +583,9 @@ if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
   echo ""
 fi
 
+echo ""
+echo "Applying common state for any package updates."
+salt-call -l info state.apply common queue=True
 echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
 salt-call state.highstate -l info queue=True

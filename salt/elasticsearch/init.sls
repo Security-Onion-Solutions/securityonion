@@ -38,6 +38,8 @@
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
   {% set ismanager = False %}
+{% elif grains['role'] == 'so-helix' %}
+  {% set ismanager = True %} {# Solely for the sake of running so-catrust #}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
@@ -85,6 +87,8 @@ capemz:
     - source: salt://common/tls-ca-bundle.pem
     - user: 939
     - group: 939
+
+{% if grains['role'] != 'so-helix' %}
 
 # Add ES Group
 elasticsearchgroup:
@@ -251,10 +255,12 @@ so-elasticsearch-templates:
     - template: jinja
 {% endif %}
 
+{% endif %} {# if grains['role'] != 'so-helix' #}
+
 {% else %}
 
 elasticsearch_state_not_allowed:
   test.fail_without_changes:
     - name: elasticsearch_state_not_allowed
 
-{% endif %}
+{% endif %} {# if 'elasticsearch' in top_states #}

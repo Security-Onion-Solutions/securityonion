@@ -45,10 +45,8 @@
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
-{% if grains['role'] != 'so-helix' %}
 include:
   - elasticsearch
-{% endif %}
 
 # Create the logstash group
 logstashgroup:
