@@ -38,6 +38,8 @@
   {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
   {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
   {% set ismanager = False %}
+{% else %}
+  {% set ismanager = False %}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
