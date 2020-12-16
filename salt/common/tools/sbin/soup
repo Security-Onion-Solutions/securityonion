@@ -342,9 +342,26 @@ space_check() {
 }
 
 thehive_maint() {
-  echo "Migrating thehive databases if needed."
-  curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
-  curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+  echo -n "Waiting for TheHive..."
+  COUNT=0
+  THEHIVE_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+      curl --output /dev/null --silent --head --fail -k "https://localhost/thehive"
+          if [ $? -eq 0 ]; then
+              THEHIVE_CONNECTED="yes"
+              echo "connected!"
+              break
+          else
+              ((COUNT+=1))
+              sleep 1
+              echo -n "."
+          fi
+  done
+  if [ "$THEHIVE_CONNECTED" == "yes" ]; then
+    echo "Migrating thehive databases if needed."
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+  fi
 }
 
 unmount_update() {
