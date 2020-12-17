@@ -1199,6 +1199,9 @@ manager_global() {
 
 	if [ -z "$DOCKERNET" ]; then
         DOCKERNET=172.17.0.0
+		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+	else
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
@@ -1346,6 +1349,9 @@ manager_global() {
 		"  playbook:"\
 		"    rulesets:"\
 		"      - windows"\
+		"docker:"\
+		"  range: '$DOCKERNET/24'"\
+		"  bip: '$DOCKERBIP"
 		"redis_settings:"\
 		"  redis_maxmemory: 812" >> "$global_pillar"
 
