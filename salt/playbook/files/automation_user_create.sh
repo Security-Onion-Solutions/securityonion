@@ -2,6 +2,8 @@
 # {%- set admin_pass = salt['pillar.get']('secrets:playbook_admin', None) -%}
 # {%- set automation_pass = salt['pillar.get']('secrets:playbook_automation', None) %}
 
+set -e
+
 local_salt_dir=/opt/so/saltstack/local
 
 try_count=6
@@ -44,7 +46,11 @@ while [[ $try_count -le 6 ]]; do
                 echo "  api_key: ${automation_api_key}" 
             } >> $local_salt_dir/pillar/global.sls
         fi
+        exit 0
     fi
     ((try_count++))
     sleep "${interval}s"
 done
+
+# Timeout exceeded, exit with non-zero exit code
+exit 1

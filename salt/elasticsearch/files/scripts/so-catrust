@@ -18,6 +18,10 @@
 {%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {%- set MANAGER = salt['grains.get']('master') %}
 . /usr/sbin/so-common
+
+# Exit on errors, since all lines must succeed
+set -e
+
 # Check to see if we have extracted the ca cert.
 if [ ! -f /opt/so/saltstack/local/salt/common/cacerts ]; then
     docker run -v /etc/pki/ca.crt:/etc/pki/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }} -keystore /etc/pki/ca-trust/extracted/java/cacerts -alias SOSCA -import -file /etc/pki/ca.crt -storepass changeit -noprompt

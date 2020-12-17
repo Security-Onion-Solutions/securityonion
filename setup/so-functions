@@ -719,7 +719,7 @@ create_local_directories() {
 		for d in $(find $PILLARSALTDIR/$i -type d); do
 			suffixdir=${d//$PILLARSALTDIR/}
 			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				mkdir -v "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
+				mkdir -pv "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
 			fi
 		done
 		chown -R socore:socore "$local_salt_dir/$i"
@@ -1198,7 +1198,10 @@ manager_global() {
 	fi
 
 	if [ -z "$DOCKERNET" ]; then
-        DOCKERNET=172.17.0.0
+            DOCKERNET=172.17.0.0
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+	else
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
@@ -1276,9 +1279,9 @@ manager_global() {
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-        "  cluster_routing_allocation_disk_watermark_low: '95%'"\
-        "  cluster_routing_allocation_disk_watermark_high: '98%'"\
-        "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
+                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1346,6 +1349,9 @@ manager_global() {
 		"  playbook:"\
 		"    rulesets:"\
 		"      - windows"\
+		"docker:"\
+		"  range: '$DOCKERNET/24'"\
+		"  bip: '$DOCKERBIP'"\
 		"redis_settings:"\
 		"  redis_maxmemory: 812" >> "$global_pillar"
 
@@ -1525,7 +1531,7 @@ reinstall_init() {
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			if [ $(docker ps -a -q --filter "name=so-") -gt 0 ]; then
+			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
 				docker stop $(docker ps -a -q --filter "name=so-")
 				docker rm -f $(docker ps -a -q --filter "name=so-")
 			fi
@@ -1941,7 +1947,6 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
-
 }
 
 set_default_log_size() {

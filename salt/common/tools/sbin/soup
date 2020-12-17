@@ -158,6 +158,7 @@ copy_new_files() {
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
+  [ -d /opt/so/repo ] || mkdir -p /opt/so/repo
   tar -cxf "/opt/so/repo/$new_version.tar.gz" "$UPDATE_DIR"
   find "/opt/so/repo" -type f -not -name "$new_version.tar.gz" -exec rm -rf {} \;
 }
@@ -290,7 +291,7 @@ rc3_to_2.3.0() {
   INSTALLEDVERSION=2.3.0
 }
 
-2.3.0_to_2.3.20(){
+2.3.0_to_2.3.20(){DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
   # Remove PCAP from global
   sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
   sed '/sensor_checkin_interval_ms:/d' /opt/so/saltstack/local/pillar/global.sls
@@ -338,6 +339,29 @@ space_check() {
       echo "Plenty of space for upgrading"
   fi
   
+}
+
+thehive_maint() {
+  echo -n "Waiting for TheHive..."
+  COUNT=0
+  THEHIVE_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+      curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
+          if [ $? -eq 0 ]; then
+              THEHIVE_CONNECTED="yes"
+              echo "connected!"
+              break
+          else
+              ((COUNT+=1))
+              sleep 1
+              echo -n "."
+          fi
+  done
+  if [ "$THEHIVE_CONNECTED" == "yes" ]; then
+    echo "Migrating thehive databases if needed."
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+  fi
 }
 
 unmount_update() {
@@ -584,9 +608,6 @@ if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
 fi
 
 echo ""
-echo "Applying common state for any package updates."
-salt-call -l info state.apply common queue=True
-echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
 salt-call state.highstate -l info queue=True
 echo ""
@@ -605,6 +626,7 @@ echo "Running a highstate. This could take several minutes."
 salt-call state.highstate -l info queue=True
 playbook
 unmount_update
+thehive_maint
 
 if [ "$UPGRADESALT" == "1" ]; then
   echo ""
