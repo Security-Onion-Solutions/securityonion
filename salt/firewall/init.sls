@@ -104,7 +104,7 @@ enable_docker_user_established:
             {% for proto, ports in portgroup.items() %}
               {% for port in ports %}
 
-{{action}}_{{chain}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}:
+{{action}}_{{chain}}_{{hostgroup}}_{{ip}}_{{portgroup}}_{{port}}_{{proto}}:
   iptables.{{action}}:
     - table: filter
     - chain: {{ chain }}
