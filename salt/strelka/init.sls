@@ -180,7 +180,7 @@ strelka_zeek_extracted_sync_old:
 strelka_zeek_extracted_sync:
   cron.present:
     - user: root
-    - identifier: STRELKACRON
+    - identifier: zeek-extracted-strelka-sync
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
     - minute: '*'
 
