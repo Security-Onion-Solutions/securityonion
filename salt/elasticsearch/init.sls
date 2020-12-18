@@ -193,7 +193,6 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
-      - extra_hosts: 
       {% if ismanager %}
       - {{ grains.host }}:{{ NODEIP }}
         {% if salt['pillar.get']('nodestab', {}) %}
