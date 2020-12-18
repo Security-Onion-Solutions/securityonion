@@ -44,7 +44,7 @@ if [ $CHECKIT == 2 ]; then
     TOTALPAST=$(($PASTPACKETS + $PASTDROP))
     TOTAL=$(($TOTALCURRENT - $TOTALPAST))
 
-    LOSS=$(echo $DROPPED $TOTAL / p | dc)
+    LOSS=$(echo 4 k $DROPPED $TOTAL / p | dc)
     echo "suridrop drop=$LOSS"
   fi
 else

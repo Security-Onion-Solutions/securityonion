@@ -23,6 +23,7 @@
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 
 {% if FEATURES is sameas true %}
   {% set FEATUREZ = "-features" %}
@@ -192,11 +193,16 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
-      - "{{ grains.host }}:{{ NODEIP }}"
-      {% if salt['pillar.get']('nodestab', {}) %}
-        {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - "{{ SN.split('_')|first }}:{{ SNDATA.ip }}"
-        {% endfor %}
+      {% if ismanager %}
+      - {{ grains.host }}:{{ NODEIP }}
+        {% if salt['pillar.get']('nodestab', {}) %}
+          {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
+          {% endfor %}
+        {% endif %}
+      {% else %}
+      - {{ grains.host }}:{{ NODEIP }}
+      - {{ MANAGER }}:{{ MANAGERIP }}
       {% endif %}
     - environment:
       {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
