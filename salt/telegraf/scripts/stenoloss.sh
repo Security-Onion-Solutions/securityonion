@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 APP=stenoloss
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
@@ -25,7 +24,22 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
+TSFILE=/var/log/telegraf/laststenodrop.log
+if [ -f "$TSFILE" ]; then
+    LASTTS=$(cat $TSFILE)
+else
+    LASTTS=0
+fi
+
 # Get the data
-DROP=$(tac /var/log/stenographer/stenographer.log | grep -m1 drop | awk '{print $14}' | awk -F "=" '{print $2}')
+LOGLINE=$(tac /var/log/stenographer/stenographer.log | grep -m1 drop)
+CURRENTTS=$(echo $LOGLINE | awk '{print $1}')
+
+if [[ "$CURRENTTS" != "$LASTTS" ]]; then
+  DROP=$(echo $LOGLINE | awk '{print $14}' | awk -F "=" '{print $2}')
+  echo $CURRENTTS > $TSFILE
+else
+  DROP=0
+fi
 
 echo "stenodrop drop=$DROP"
