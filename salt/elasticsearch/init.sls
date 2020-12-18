@@ -201,6 +201,7 @@ so-elasticsearch:
           {% endfor %}
         {% endif %}
       {% else %}
+      - {{ grains.host }}:{{ NODEIP }}
       - {{ MANAGER }}:{{ MANAGERIP }}
       {% endif %}
     - environment:
