@@ -95,6 +95,7 @@ enable_docker_user_established:
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
 
+{% set count = namespace(value=0) %}
 {% for chain, hg in assigned_hostgroups.chain.items() %}
   {% for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
     {% for action in ['insert', 'delete' ] %}
@@ -103,8 +104,9 @@ enable_docker_user_established:
           {% for portgroup in portgroups.portgroups %}
             {% for proto, ports in portgroup.items() %}
               {% for port in ports %}
+                {% set count.value = count.value + 1 %}
 
-{{action}}_{{chain}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}:
+{{action}}_{{chain}}_{{hostgroup}}_{{ip}}_{{port}}_{{proto}}_{{count.value}}:
   iptables.{{action}}:
     - table: filter
     - chain: {{ chain }}
