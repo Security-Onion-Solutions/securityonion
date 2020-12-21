@@ -72,9 +72,16 @@ strelkalogdir:
     - group: 939
     - makedirs: True
 
-strelkastagedir:
+strelkaprocessed:
    file.directory:
     - name: /nsm/strelka/processed
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkaunprocessed:
+   file.directory:
+    - name: /nsm/strelka/unprocessed
     - user: 939
     - group: 939
     - makedirs: True
@@ -163,11 +170,18 @@ append_so-strelka-filestream_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-strelka-filestream
-    
+
+strelka_zeek_extracted_sync_old:
+  cron.absent:
+    - user: root
+    - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
+    - minute: '*'
+
 strelka_zeek_extracted_sync:
   cron.present:
     - user: root
-    - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
+    - identifier: zeek-extracted-strelka-sync
+    - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
     - minute: '*'
 
 {% else %}

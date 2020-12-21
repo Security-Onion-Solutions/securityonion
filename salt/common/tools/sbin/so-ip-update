@@ -39,6 +39,7 @@ fi
 
 echo "About to change old IP $OLD_IP to new IP $NEW_IP."
 
+echo
 read -n 1 -p "Would you like to continue? (y/N) " CONTINUE
 echo
 
@@ -50,9 +51,12 @@ if [ "$CONTINUE" == "y" ]; then
 
 	echo "The IP has been changed from $OLD_IP to $NEW_IP."
 
-	if [ -z "$SKIP_STATE_APPLY" ]; then
-		echo "Re-applying salt states."
-		salt-call state.highstate queue=True
+	echo
+	read -n 1 -p "The system must reboot to ensure all services have restarted with the new configuration. Reboot now? (y/N)" CONTINUE
+	echo
+
+	if [ "$CONTINUE" == "y" ]; then
+		reboot
 	fi
 else
 	echo "Exiting without changes."

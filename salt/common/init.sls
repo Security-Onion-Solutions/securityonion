@@ -111,7 +111,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-2
-      - docker-ce: 5:19.03.12~3-0~ubuntu-bionic
+      - docker-ce: 5:19.03.14~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -147,7 +147,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.12-3.el7
+      - docker-ce: 3:19.03.14-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
@@ -244,10 +244,19 @@ commonlogrotateconf:
     - dayweek: '*'
 {% endif %}
 
+# Manager daemon.json
+docker_daemon:
+  file.managed:
+    - source: salt://common/files/daemon.json
+    - name: /etc/docker/daemon.json
+    - template: jinja 
+
 # Make sure Docker is always running
 docker:
   service.running:
     - enable: True
+    - watch:
+      - file: docker_daemon
 
 {% else %}
 

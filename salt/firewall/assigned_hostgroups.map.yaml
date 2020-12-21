@@ -1,6 +1,7 @@
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'firewall/portgroups.yaml' as portgroups %}
 {% set portgroups = portgroups.firewall.aliases.ports %}
+{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False)  %}
 
 role:
   eval:
@@ -32,12 +33,17 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              - {{ portgroups.sensoroni }}
           sensor:
             portgroups:
-              - {{ portgroups.sensoroni }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -121,15 +127,21 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              - {{ portgroups.sensoroni }}
               {% if ISAIRGAP is sameas true %}
               - {{ portgroups.yum }}
               {% endif %}
           sensor:
             portgroups:
-              - {{ portgroups.sensoroni }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.beats_5644 }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -208,13 +220,18 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              - {{ portgroups.sensoroni }}
               - {{ portgroups.yum }}
           sensor:
             portgroups:
-              - {{ portgroups.sensoroni }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -292,13 +309,18 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
               - {{ portgroups.fleet_api }}
+              - {{ portgroups.sensoroni }}
               - {{ portgroups.yum }}              
           sensor:
             portgroups:
-              - {{ portgroups.sensoroni }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavy_node:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.minio }}
@@ -372,9 +394,9 @@ role:
               - {{ portgroups.osquery_8080 }}
               - {{ portgroups.influxdb }}
               - {{ portgroups.wazuh_api }}
+              - {{ portgroups.sensoroni }}
           sensor:
             portgroups:
-              - {{ portgroups.sensoroni }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
           search_node:
@@ -425,6 +447,11 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          {% if TRUE_CLUSTER %}
+          search_node:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+          {% endif %}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -533,11 +560,11 @@ role:
           minion:
             portgroups:
               - {{ portgroups.docker_registry }}
+              - {{ portgroups.sensoroni }}
           sensor:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-              - {{ portgroups.sensoroni }}
           search_node:
             portgroups:
               - {{ portgroups.redis }}

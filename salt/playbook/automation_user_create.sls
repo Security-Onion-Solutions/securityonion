@@ -8,12 +8,12 @@ include:
 wait_for_playbook:
   cmd.run:
     - name: until nc -z {{ MAINIP }} 3200; do sleep 1; done
-    - timeout: 30
-    - onchanges:
-      - cmd: create_user
+    - timeout: 300
 
 create_user:
   cmd.script:
     - source: salt://playbook/files/automation_user_create.sh
     - cwd: /root
     - template: jinja
+    - onchanges:
+      - cmd: wait_for_playbook

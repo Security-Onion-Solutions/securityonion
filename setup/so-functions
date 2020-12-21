@@ -15,13 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-source ./so-whiptail
-source ./so-variables
-source ./so-common-functions
-
-CONTAINER_REGISTRY=quay.io
-
-SOVERSION=$(cat ../VERSION)
+# README - DO NOT DEFINE GLOBAL VARIABLES IN THIS FILE. Instead use so-variables.
 
 log() {
 	msg=$1
@@ -46,6 +40,51 @@ logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
 	$cmd >> "$setup_log" 2>&1
+}
+
+filter_unused_nics() {
+
+	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		grep_string="$grep_string"
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	readarray -t filtered_nics <<< "$filtered_nics"
+	
+	nic_list=()
+	for nic in "${filtered_nics[@]}"; do
+		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
+	done
+
+	export nic_list
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
+
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
+    export lb_procs
 }
 
 airgap_rules() {
@@ -251,19 +290,19 @@ check_pass_match() {
 	fi
 }
 
+# False if stopped, true if running
 check_service_status() {
 
 	local service_name=$1
 	echo "Checking service $service_name status" >> "$setup_log" 2>&1
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue with the service false if it is running properly
 	if [ $status -gt 0 ]; then
-		echo "$service_name is not running" >> "$setup_log" 2>&1
-		echo 1;
+		echo "  $service_name is not running" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "$service_name is running" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  $service_name is running" >> "$setup_log" 2>&1
+		return 0;
 	fi
 
 }
@@ -273,28 +312,27 @@ check_salt_master_status() {
 	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
 	salt-call state.show_top > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue talking to salt master
 	if [ $status -gt 0 ]; then
-		echo 1;
+		echo "  Could not talk to salt master" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "Can talk to salt master" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  Can talk to salt master" >> "$setup_log" 2>&1
+		return 0;
 	fi
 
 }
 
 check_salt_minion_status() {
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue getting a job response from the minion
 	if [ $status -gt 0 ]; then
-		echo 1;
+		echo "  Minion did not respond" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "Received job response from salt minion" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+		return 0;
 	fi
-
 }
 
 check_soremote_pass() {
@@ -519,6 +557,19 @@ check_requirements() {
 	fi
 }
 
+compare_versions() {
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+
+	if [[ $manager_ver == "" ]]; then
+		rm /root/install_opt
+		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+
+	[[ "$manager_ver" == "$SOVERSION" ]]
+	return
+}
+
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
 	local nic_error=0
@@ -654,7 +705,7 @@ copy_ssh_key() {
 	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
 
 	echo "Removing old entry for manager from known_hosts if it exists"
-	sed -i "/${MSRV}/d" /root/.ssh/known_hosts
+	grep -q "$MSRV" /root/.ssh/known_hosts && sed -i "/${MSRV}/d" /root/.ssh/known_hosts
 
 	echo "Copying the SSH key to the manager"
 	#Copy the key over to the manager
@@ -668,7 +719,7 @@ create_local_directories() {
 		for d in $(find $PILLARSALTDIR/$i -type d); do
 			suffixdir=${d//$PILLARSALTDIR/}
 			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				mkdir -v "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
+				mkdir -pv "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
 			fi
 		done
 		chown -R socore:socore "$local_salt_dir/$i"
@@ -709,7 +760,8 @@ detect_os() {
 			exit 1
 		fi
 
-		echo "Installing required packages to run installer..." >> "$setup_log" 2>&1
+		# Print message to stdout so the user knows setup is doing something
+		echo "Installing required packages to run installer..."
 		# Install bind-utils so the host command exists
 		if [[ ! $is_iso ]]; then
 		  if ! command -v host > /dev/null 2>&1; then
@@ -743,6 +795,7 @@ detect_os() {
 			exit 1
 		fi
 
+		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
@@ -765,12 +818,12 @@ detect_os() {
 
 disable_auto_start() {
 	
-	if crontab -l -u $INSTALLUSERNAME 2>&1 | grep so-setup > /dev/null 2>&1; then
+	if crontab -l -u $INSTALLUSERNAME 2>&1 | grep -q so-setup; then
 		# Remove the automated setup script from crontab, if it exists
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
 
-	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile > /dev/null 2>&1; then
+	if grep -s -q so-setup /home/$INSTALLUSERNAME/.bash_profile; then
 		# Truncate last line of the bash profile
 		info "Removing auto-run of setup from bash profile"
 		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
@@ -820,9 +873,9 @@ docker_install() {
 			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
 			fi
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-19.03.12-3.el7 containerd.io-1.2.13-3.2.el7;
+			  yum -y install docker-ce-19.03.14-3.el7 containerd.io-1.2.13-3.2.el7;
 			fi
-			yum versionlock docker-ce-19.03.12-3.el7;
+			yum versionlock docker-ce-19.03.14-3.el7;
 			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
 		
@@ -858,6 +911,7 @@ docker_registry() {
 
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
+	# This will get applied so docker can attempt to start
 	if [ -z "$DOCKERNET" ]; then
             DOCKERNET=172.17.0.0
 	fi
@@ -870,7 +924,7 @@ docker_registry() {
 		"  \"bip\": \"$DNETBIP\","\
 		"  \"default-address-pools\": ["\
 		"    {"\
-		"      \"base\" : \"$DOCKERNET\","\
+		"      \"base\" : \"$DOCKERNET/24\","\
 		"      \"size\" : 24"\
 		"    }"\
 		"  ]"\
@@ -912,6 +966,28 @@ docker_seed_registry() {
 
 }
 
+download_repo_tarball() {
+	mkdir -p /root/manager_setup/securityonion
+	{
+		local manager_ver
+		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+	} >> "$setup_log" 2>&1
+	
+	# Fail if the file doesn't download
+	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
+		rm /root/install_opt
+		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
+		echo "$message" | tee -a "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+	
+	{
+		tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
+		rm -rf /root/manager_setup/"$manager_ver".tar.gz
+	} >> "$setup_log" 2>&1
+}
+
 fireeye_pillar() {
 
 	local fireeye_pillar_path=$local_salt_dir/pillar/fireeye
@@ -920,8 +996,8 @@ fireeye_pillar() {
 	printf '%s\n'\
 		"fireeye:"\
 		"  helix:"\
-		"    api_key: '$HELIXAPIKEY'" 
-		"" > "$fireeye_pillar_path"/init.sls
+		"    api_key: '$HELIXAPIKEY'" \
+		"" > "$fireeye_pillar_path/init.sls"
 
 }
 
@@ -953,22 +1029,27 @@ fleet_pillar() {
 
 generate_passwords(){
   # Generate Random Passwords for Things
-  MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKDBPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKADMINPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKAUTOMATIONPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  GRAFANAPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  MYSQLPASS=$(get_random_value)
+  PLAYBOOKDBPASS=$(get_random_value)
+  PLAYBOOKADMINPASS=$(get_random_value)
+  PLAYBOOKAUTOMATIONPASS=$(get_random_value)
+  FLEETPASS=$(get_random_value)
+  FLEETJWT=$(get_random_value)
+  GRAFANAPASS=$(get_random_value)
   if [[ "$THEHIVE" == "1" ]]; then
-  	HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	HIVEKEY=$(get_random_value)
+  	HIVEPLAYSECRET=$(get_random_value)
+  	CORTEXKEY=$(get_random_value)
+  	CORTEXORGUSERKEY=$(get_random_value)
+  	CORTEXPLAYSECRET=$(get_random_value)
   fi
-  SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  SENSORONIKEY=$(get_random_value)
+  KRATOSKEY=$(get_random_value)
+}
+
+generate_repo_tarball() {
+	mkdir /opt/so/repo
+	tar -czf /opt/so/repo/"$SOVERSION".tar.gz ../.
 }
 
 get_redirect() {
@@ -1002,22 +1083,29 @@ host_pillar() {
 	printf '%s\n'\
 		"host:"\
 		"  mainint: '$MNIC'"\
+		"sensoroni:"\
+		"  node_address: '$MAINIP'"\
+		"  node_description: '$NODE_DESCRIPTION'"\
 		"" > "$pillar_file"
 }
 
 install_cleanup() {
-	echo "Installer removing the following files:"
-	ls -lR "$temp_install_dir"
+	if [ -f "$temp_install_dir" ]; then
+		echo "Installer removing the following files:"
+		ls -lR "$temp_install_dir"
 
-	# Clean up after ourselves
-	rm -rf "$temp_install_dir"
+		# Clean up after ourselves
+		rm -rf "$temp_install_dir"
+	fi
 	
 	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
 	# that will disrupt automated tests should be placed beneath this statement.
 	[ -n "$TESTING" ] && return
 
 	# If Mysql is running stop it
-	/usr/sbin/so-mysql-stop
+	if docker ps --format "{{.Names}}" 2>&1 | grep -q "so-mysql"; then
+		/usr/sbin/so-mysql-stop
+	fi
 
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
@@ -1102,15 +1190,18 @@ manager_pillar() {
 manager_global() {
 	local global_pillar="$local_salt_dir/pillar/global.sls"
 
-	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
-		SENSOR_CHECKIN_INTERVAL_MS=10000
+	if [ -z "$NODE_CHECKIN_INTERVAL_MS" ]; then
+		NODE_CHECKIN_INTERVAL_MS=10000
 		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ] || [ "$install_type" = 'IMPORT' ]; then
-			SENSOR_CHECKIN_INTERVAL_MS=1000
+			NODE_CHECKIN_INTERVAL_MS=1000
 		fi
 	fi
 
 	if [ -z "$DOCKERNET" ]; then
-        DOCKERNET=172.17.0.0
+            DOCKERNET=172.17.0.0
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+	else
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
@@ -1164,8 +1255,8 @@ manager_global() {
                 "  managerupdate: $MANAGERUPDATES"\
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
-		"pcap:"\
-		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
+		"sensoroni:"\
+		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: 1"\
@@ -1174,9 +1265,17 @@ manager_global() {
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
-		"  replicas: 0"\
-		"  true_cluster: False"\
-		"  true_cluster_name: 'so'"\
+		"  replicas: 0" >> "$global_pillar"
+		if [ -n "$ESCLUSTERNAME" ]; then 
+		    printf '%s\n'\
+				   "  true_cluster: True"\
+		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+		else
+			printf '%s\n'\
+			       "  true_cluster: False"\
+				   "  true_cluster_name: 'so'" >> "$global_pillar"
+		fi
+		printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
@@ -1250,6 +1349,9 @@ manager_global() {
 		"  playbook:"\
 		"    rulesets:"\
 		"      - windows"\
+		"docker:"\
+		"  range: '$DOCKERNET/24'"\
+		"  bip: '$DOCKERBIP'"\
 		"redis_settings:"\
 		"  redis_maxmemory: 812" >> "$global_pillar"
 
@@ -1261,8 +1363,8 @@ minio_generate_keys() {
 
 	local charSet="[:graph:]"
 
-	ACCESS_KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-	ACCESS_SECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 40 | head -n 1)
+	ACCESS_KEY=$(get_random_value)
+	ACCESS_SECRET=$(get_random_value 40)
 
 }
 
@@ -1277,12 +1379,10 @@ network_setup() {
 		disable_misc_network_features;
 
 		echo "... Setting ONBOOT for management interface";
-		if ! netplan > /dev/null 2>&1; then
-			nmcli con mod "$MNIC" connection.autoconnect "yes";
-		fi
+		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
 
-        echo "... Copying 99-so-checksum-offload-disable";
-        cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+		echo "... Copying 99-so-checksum-offload-disable";
+		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
@@ -1298,8 +1398,15 @@ elasticsearch_pillar() {
 		"elasticsearch:"\
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
-		"  esheap: '$NODE_ES_HEAP_SIZE'"\
-		"  esclustername: {{ grains.host }}"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
+		if [ -n "$ESCLUSTERNAME" ]; then
+		printf '%s\n'\
+		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
+		else
+		printf '%s\n'\
+		"  esclustername: {{ grains.host }}" >> "$pillar_file"
+		fi
+		printf '%s\n'\
 		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
@@ -1318,7 +1425,7 @@ elasticsearch_pillar() {
 
 parse_install_username() {
 	# parse out the install username so things copy correctly
-    INSTALLUSERNAME=$(pwd | sed -E 's/\// /g'  | awk '{ print $2 }')
+	INSTALLUSERNAME=${SUDO_USER:-${USER}}
 }
 
 patch_pillar() {
@@ -1380,18 +1487,54 @@ reserve_group_ids() {
 
 reinstall_init() {
 	info "Putting system in state to run setup again"
+	
+	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+		local salt_services=( "salt-master" "salt-minion" )
+	else
+		local salt_services=( "salt-minion" )
+	fi
+
+	local service_retry_count=20
 
 	{
-		# Kill any salt processes
-		pkill -9 -ef /usr/bin/salt
+		if command -v salt-call &> /dev/null; then
+			# Disable schedule so highstate doesn't start running during the install
+			salt-call -l info schedule.disable
+
+			# Kill any currently running salt jobs, also to prevent issues with highstate.
+			salt-call -l info saltutil.kill_all_jobs
+		fi
+
+		# Kill any salt processes (safely)
+		for service in "${salt_services[@]}"; do
+			# Stop the service in the background so we can exit after a certain amount of time
+			systemctl stop "$service" &
+			local pid=$!
+
+			local count=0
+			while check_service_status "$service"; do
+				if [[ $count -gt $service_retry_count ]]; then
+					echo "Could not stop $service after 1 minute, exiting setup."
+
+					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
+					kill -9 $pid
+					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				fi
+				
+				sleep 5
+				((count++))
+			done
+		done
 
 		# Remove all salt configs
-		rm -rf /etc/salt/global /etc/salt/minion /etc/salt/master /etc/salt/pki/*
+		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			docker stop $(docker ps -a -q --filter "name=so-")
-			docker rm -f $(docker ps -a -q --filter "name=so-")
+			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
+				docker stop $(docker ps -a -q --filter "name=so-")
+				docker rm -f $(docker ps -a -q --filter "name=so-")
+			fi
 		fi
 
 		local date_string
@@ -1407,7 +1550,7 @@ reinstall_init() {
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
-	} >> $setup_log 2>&1
+	} >> "$setup_log" 2>&1
 }
 
 backup_dir() {
@@ -1538,7 +1681,7 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # TODO: should this also be HELIXSENSOR?
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
 				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
@@ -1576,7 +1719,7 @@ saltify() {
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
-                ;;
+				;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
@@ -1604,61 +1747,59 @@ salt_checkin() {
 				"salt-master" \
 				"salt-minion"
 				)
-				local LOOP_COUNT=0
+				local count=0
+
 				for service in "${SALT_SERVICES[@]}"; do
-					echo "Stopping service $service" >> "$setup_log" 2>&1
-					systemctl stop "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
-					while ! (( $(check_service_status $service) )); do
-						echo "$service still running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
+					{
+						echo "Restarting service $service"
+						systemctl restart "$service" &
+						local pid=$!
+					} >> "$setup_log" 2>&1 
+
+					count=0
+					while ! (check_service_status "$service"); do
+						# On final loop, kill the pid trying to restart service and try to manually kill then start it
+						if [ $count -eq 12 ]; then
+							{
+								kill -9 "$pid"
+								systemctl kill "$service"
+								systemctl start "$service" &
+								local pid=$!
+							} >> "$setup_log" 2>&1 
 						fi
-						sleep 1;
-						((LOOP_COUNT+=1))
+						
+						if [ $count -gt 12 ]; then
+							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
+							kill -9 "$pid"
+							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						fi
+						sleep 10;
+						((count++))
 					done
 				done
 
-				sleep 5;
-
-				for service in "${SALT_SERVICES[@]}"; do
-					echo "Starting service $service" >> "$setup_log" 2>&1
-					systemctl start "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
-					while (( $(check_service_status $service) )); do
-						echo "$service still not running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
-						fi
-						sleep 1;
-						((LOOP_COUNT+=1))
-					done
-				done
-
-				sleep 5;
-
-				LOOP_COUNT=0
-				while (( $(check_salt_master_status) )); do
+				count=0
+				while ! (check_salt_master_status); do
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
-				LOOP_COUNT=0
-				while (( $(check_salt_minion_status) )); do
+				count=0
+				while ! (check_salt_minion_status); do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
+					systemctl kill salt-minion
+					systemctl start salt-minion
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
 				echo " Confirming existence of the CA certificate"
@@ -1708,6 +1849,19 @@ set_network_dev_status_list() {
 
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+}
+
+compare_main_nic_ip() {
+	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		read -r -d '' message <<- EOM
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+
+			This is not a supported configuration, please remediate and rerun setup.
+		EOM
+		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	fi
 }
 
 # Add /usr/sbin to everyone's path
@@ -1793,7 +1947,6 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
-
 }
 
 set_default_log_size() {
@@ -1881,7 +2034,7 @@ set_initial_firewall_policy() {
 					;;
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
@@ -1964,6 +2117,17 @@ set_updates() {
 				"Acquire::https::Proxy \"http://$MSRV:3142\";" > /etc/apt/apt.conf.d/00Proxy
 		fi
 	fi
+}
+
+steno_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the stenographer pillar
+	printf '%s\n'\
+		"steno:"\
+		"  enabled: True" >> "$pillar_file"
+
 }
 
 mark_version() {

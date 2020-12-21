@@ -48,6 +48,7 @@ so-telegraf:
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
+      - GODEBUG=x509ignoreCN=0
     - network_mode: host
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw

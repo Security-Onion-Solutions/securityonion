@@ -44,9 +44,10 @@ base:
     - patch.os.schedule
     - motd
     - salt.minion-check
+    - sensoroni
     - salt.lasthighstate
   
-  '*_helix and G@saltversion:{{saltversion}}':
+  '*_helixsensor and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
@@ -60,9 +61,8 @@ base:
     - suricata
     - zeek
     - redis
-    {%- if LOGSTASH %}
+    - elasticsearch
     - logstash
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}

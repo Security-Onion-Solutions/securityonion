@@ -22,11 +22,24 @@ if [ "$uid" -ne 0 ]; then
 	exit 1
 fi
 
+# Save the original argument array since we modify it
+readarray -t original_args <<< "$@"
+
 cd "$(dirname "$0")" || exit 255
 
+# Source the generic function libraries that are also used by the product after
+# setup. These functions are intended to be reusable outside of the setup process.
+source ../salt/common/tools/sbin/so-common
+source ../salt/common/tools/sbin/so-image-common
+
+# Setup bash functionality is divided into functions and user-facing prompts. 
+# Do not attempt to re-use any of this functionality outside of setup. Instead, 
+# if needed, migrated generic functions into so-common.
 source ./so-functions
-source ./so-common-functions
 source ./so-whiptail
+
+# Finally, source the default variable definitions, which require availability of
+# functions sourced above.
 source ./so-variables
 
 # Parse command line arguments
@@ -54,32 +67,31 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
+	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
+fi
+
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 
 	# Move last setup log to backup
 	mv "$setup_log" "$setup_log.bak"
+	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
 fi
 
-# Begin Installation pre-processing
 parse_install_username
 
-title "Initializing Setup"
-info "Installing as the $INSTALLUSERNAME user"
+if ! [ -f /root/install_opt ]; then
+	# Begin Installation pre-processing
+	title "Initializing Setup"
+	info "Installing as the $INSTALLUSERNAME user"
 
-analyze_system
+	analyze_system
+fi
 
 automated=no
 function progress() {
 	local title='Security Onion Install'
-	if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root ]]; then
-		if [[ -s /var/spool/mail/root ]]; then 
-			echo '[ ERROR ]  /var/spool/mail/root grew unexpectedly' >> $setup_log 2>&1
-		fi
-
-		export SO_ERROR=1
-		title="Error found, please check $setup_log"
-	fi
 
 	if [ $automated == no ]; then
 		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
@@ -115,7 +127,7 @@ case "$setup_type" in
 		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'" | tee $setup_log
+		echo "Invalid install type, must be 'iso' or 'network'" | tee -a $setup_log
 		exit 1
 		;;
 esac
@@ -152,14 +164,18 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if (whiptail_you_sure); then
-	true
-else
-	echo "User cancelled setup." | tee $setup_log
-	whiptail_cancel
-fi
+if ! [ -f /root/install_opt ]; then
+	if (whiptail_you_sure); then
+		true
+	else
+		echo "User cancelled setup." | tee -a "$setup_log"
+		whiptail_cancel
+	fi
 
-whiptail_install_type
+	whiptail_install_type
+else
+	source /root/install_opt
+fi
 
 if [ "$install_type" = 'EVAL' ]; then
 	is_node=true
@@ -172,7 +188,6 @@ elif [ "$install_type" = 'STANDALONE' ]; then
 	is_distmanager=true
 	is_node=true
 	is_sensor=true
-	is_smooshed=true
 elif [ "$install_type" = 'MANAGERSEARCH' ]; then
 	is_manager=true
 	is_distmanager=true
@@ -190,7 +205,6 @@ elif [ "$install_type" = 'HEAVYNODE' ]; then
 	is_node=true
 	is_minion=true
 	is_sensor=true
-	is_smooshed=true
 elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
 	is_fleet_standalone=true
@@ -200,9 +214,7 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	cd .. || exit 255
-	./so-analyst-install
-	exit 0
+	is_analyst=true
 fi
 
 # Say yes to the dress if its an ISO install
@@ -211,55 +223,95 @@ if [[ "$setup_type" == 'iso' ]]; then
 fi
 
 # Check if this is an airgap install
-
-if [[ $is_manager ]]; then
-    if [[ $is_iso ]]; then
-      whiptail_airgap
-      if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-        is_airgap=true
-      fi
-    fi
+if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
+	whiptail_airgap
+	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+		is_airgap=true
+	fi
 fi
 
-if [[ $is_manager && $is_sensor ]]; then
-	check_requirements "standalone"
-elif [[ $is_fleet_standalone ]]; then
-	check_requirements "dist" "fleet"
-elif [[ $is_sensor && ! $is_eval ]]; then
-	check_requirements "dist" "sensor"
-elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
-	check_requirements "dist"
-elif [[ $is_import ]]; then
-	check_requirements "import"
+if ! [ -f /root/install_opt ]; then
+	if [[ $is_manager && $is_sensor ]]; then
+		check_requirements "standalone"
+	elif [[ $is_fleet_standalone ]]; then
+		check_requirements "dist" "fleet"
+	elif [[ $is_sensor && ! $is_eval ]]; then
+		check_requirements "dist" "sensor"
+	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
+		check_requirements "dist"
+	elif [[ $is_import ]]; then
+		check_requirements "import"
+	fi
+
+	case "$setup_type" in
+		'iso')
+			whiptail_set_hostname
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+
+			if [ "$address_type" != 'DHCP' ]; then
+				whiptail_management_interface_ip
+				whiptail_management_interface_mask
+				whiptail_management_interface_gateway
+				whiptail_management_interface_dns
+				whiptail_management_interface_dns_search
+			fi
+			;;
+		'network')
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			whiptail_set_hostname
+			whiptail_management_nic
+			;;
+	esac
+
+	if [[ $is_minion ]]; then
+		whiptail_management_server
+	fi
+
+	if [[ $is_minion || $is_iso ]]; then
+		whiptail_management_interface_setup
+	fi
+
+	# Init networking so rest of install works
+	disable_ipv6
+	set_hostname
+	if [[ "$setup_type" == 'iso' ]]; then
+		set_management_interface
+	fi
+
+	if [[ -n "$TURBO" ]]; then
+		use_turbo_proxy
+	fi
+
+	if [[ $is_minion ]]; then
+		add_mngr_ip_to_hosts
+	fi
+
+	if [[ $is_minion ]]; then
+		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	if [[ $is_minion ]] && ! (compare_versions); then
+		info "Installer version mismatch, downloading correct version from manager"
+		printf '%s\n' \
+			"install_type=$install_type" \
+			"MNIC=$MNIC" \
+			"HOSTNAME=$HOSTNAME" \
+			"MSRV=$MSRV"\
+			"MSRVIP=$MSRVIP" > /root/install_opt
+		download_repo_tarball
+		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
+	fi
+
+	if [[ $is_analyst ]]; then
+		cd .. || exit 255
+		exec bash so-analyst-install
+	fi
+
+else
+	rm -rf /root/install_opt >> "$setup_log" 2>&1
 fi
-
-if [[ ! $is_import ]]; then
-	whiptail_patch_schedule
-fi
-
-case "$setup_type" in
-	'iso')
-		whiptail_set_hostname
-		whiptail_management_nic
-		whiptail_dhcp_or_static
-
-		if [ "$address_type" != 'DHCP' ]; then
-			whiptail_management_interface_ip
-			whiptail_management_interface_mask
-			whiptail_management_interface_gateway
-			whiptail_management_interface_dns
-			whiptail_management_interface_dns_search
-		fi
-
-		#collect_adminuser_inputs
-		;;
-	'network')
-		whiptail_network_notice
-		whiptail_dhcp_warn
-		whiptail_set_hostname
-		whiptail_management_nic
-		;;
-esac
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
@@ -327,8 +379,11 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
+if [[ ! $is_import ]]; then
+	whiptail_patch_schedule
+fi
+
 whiptail_homenet_manager
-whiptail_dockernet_check
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
@@ -336,6 +391,11 @@ fi
 
 if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
+	if [ "$MANAGERADV" = 'ADVANCED' ]; then
+	  if [ "$install_type" = 'MANAGER' ] || [ "$install_type" = 'MANAGERSEARCH' ]; then
+	  	whiptail_manager_adv_escluster
+	  fi
+	fi
 	whiptail_zeek_version
 	# Don't run this function for now since Snort is not yet supported
 	# whiptail_nids
@@ -346,10 +406,6 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [[ "$STRELKA" == 1 ]]; then
-            STRELKARULES=1
-        fi
-
 	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
 		whiptail_manager_adv_service_zeeklogs
 	fi
@@ -358,6 +414,15 @@ fi
 if [[ $is_manager ]]; then
 	whiptail_components_adv_warning
 	whiptail_enable_components
+
+	if [[ "$STRELKA" = 1 ]]; then
+		info "Enabling Strelka rules"
+		STRELKARULES=1
+	else
+		info "Disabling Strelka rules: STRELKA='$STRELKA'"
+	fi
+
+	whiptail_dockernet_check
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -370,10 +435,6 @@ if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && !
 	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
 		whiptail_manager_updates_warning
 	fi
-fi
-
-if [[ $is_minion ]]; then
-	whiptail_management_server
 fi
 
 if [[ $is_distmanager ]]; then
@@ -428,72 +489,69 @@ whiptail_make_changes
 # From here on changes will be made.
 echo "1" > /root/accept_changes
 
-if [[ $is_reinstall ]]; then
-	reinstall_init
-fi
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1` in child scripts)
+trap 'catch $LINENO' SIGUSR1
 
-if [[ -n "$TURBO" ]]; then
-	use_turbo_proxy
-fi
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit
+}
 
-if [[ "$setup_type" == 'iso' ]]; then
-	# Init networking so rest of install works
-	set_hostname
-	set_management_interface
-fi
-
-disable_ipv6
-disable_auto_start
-
-if [[ "$setup_type" != 'iso' ]]; then
-	set_hostname
-fi
-
-if [[ $is_minion ]]; then
-	add_mngr_ip_to_hosts
-fi
-
-{
-	mark_version;
-	clear_manager;
-} >> $setup_log 2>&1
-
-
-if [[ $is_manager || $is_import ]]; then
-	{
-		generate_passwords;
-		secrets_pillar;
-		add_socore_user_manager;
-	} >> $setup_log 2>&1	
-fi
-
-if [[ $is_manager && ! $is_eval ]]; then
-	add_soremote_user_manager >> $setup_log 2>&1
-fi
-
-{
-	set_main_ip;
-	set_redirect;
-} >> $setup_log 2>&1
-
-host_pillar >> $setup_log 2>&1
-
-if [[ $is_minion || $is_import ]]; then
-	set_updates >> $setup_log 2>&1
-	[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
-fi
+# This block sets REDIRECTIT which is used by a function outside the below subshell
+set_main_ip >> $setup_log 2>&1
+compare_main_nic_ip
+set_redirect >> $setup_log 2>&1
 
 # Begin install
 {
 	# Set initial percentage to 0
 	export percentage=0
+
+	# Show initial progress message
+	set_progress_str 0 'Running initial configuration steps'
+
 	set_path
 
-    if [[ $is_manager && $is_airgap ]]; then
-	    info "Creating airgap repo"
-	    create_repo >> $setup_log 2>&1
+	if [[ $is_reinstall ]]; then
+		reinstall_init
+	fi
+
+	disable_auto_start
+
+	{
+		mark_version;
+		clear_manager;
+	} >> $setup_log 2>&1
+
+
+	if [[ $is_manager || $is_import ]]; then
+		{
+			generate_passwords;
+			secrets_pillar;
+		} >> $setup_log 2>&1	
+	fi
+
+	if [[ $is_manager || $is_import || $is_helix ]]; then
+		add_socore_user_manager >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager && ! $is_eval ]]; then
+		add_soremote_user_manager >> $setup_log 2>&1
+	fi
+
+	host_pillar >> $setup_log 2>&1
+
+	if [[ $is_minion || $is_import ]]; then
+		set_updates >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager && $is_airgap ]]; then
+		info "Creating airgap repo"
+		create_repo >> $setup_log 2>&1
 		airgap_rules >> $setup_log 2>&1
-    fi
+	fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 1 'Configuring firewall'
@@ -511,6 +569,9 @@ fi
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 4 'Generating sensor pillar'
 		sensor_pillar >> $setup_log 2>&1
+		if [[ $is_sensor || $is_helix ]]; then
+			steno_pillar >> $setup_log
+		fi
 	fi
 
 	set_progress_str 5 'Installing Salt and dependencies'
@@ -570,7 +631,7 @@ fi
 		accept_salt_key_remote >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager || $is_import ]]; then
+	if [[ $is_manager || $is_import || $is_helix ]]; then
 		set_progress_str 20 'Accepting Salt key'
 		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
 	fi
@@ -580,7 +641,7 @@ fi
 
 	if [[ $is_minion ]]; then
 		set_progress_str 22 'Checking if the Salt Minion needs to be updated'
-		salt-call state.apply salt.minion -l info >> $setup_log 2>&1
+		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
 	set_progress_str 23 'Generating CA and checking in'
@@ -626,10 +687,12 @@ fi
 	set_progress_str 63 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
-	set_progress_str 64 "$(print_salt_state_apply 'nginx')"
-	salt-call state.apply -l info nginx >> $setup_log 2>&1
+	if [[ ! $is_helix ]]; then
+		set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+		salt-call state.apply -l info nginx >> $setup_log 2>&1
+	fi
 
-	if [[ $is_manager || $is_node || $is_import ]]; then
+	if [[ $is_manager || $is_node || $is_import || $is_helix ]]; then
 		set_progress_str 64 "$(print_salt_state_apply 'elasticsearch')"
 		salt-call state.apply -l info elasticsearch >> $setup_log 2>&1
 	fi
@@ -639,12 +702,14 @@ fi
 		salt-call state.apply -l info pcap >> $setup_log 2>&1
 	fi
 
-	if [[ $is_sensor || $is_import ]]; then
+	if [[ $is_sensor || $is_import || $is_helix ]]; then
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		set_progress_str 67 "$(print_salt_state_apply 'zeek')"
-		salt-call state.apply -l info zeek >> $setup_log 2>&1
+		if [[ $ZEEKVERSION == 'ZEEK' ]]; then
+			set_progress_str 67 "$(print_salt_state_apply 'zeek')"
+			salt-call state.apply -l info zeek >> $setup_log 2>&1
+		fi
 	fi
 
 	if [[ $is_node ]]; then
@@ -686,8 +751,10 @@ fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
 
+		set_progress_str 75 "$(print_salt_state_apply 'fleet.event_enable-fleet')"
+		salt-call state.apply -l info fleet.event_enable-fleet >> $setup_log 2>&1
+
 		set_progress_str 75 "$(print_salt_state_apply 'fleet')"
-		salt-call state.apply fleet.event_enable-fleet # enable fleet in the global pillar
 		salt-call state.apply -l info fleet >> $setup_log 2>&1
 
 		set_progress_str 76 "$(print_salt_state_apply 'redis')"
@@ -719,12 +786,14 @@ fi
 			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
 			salt-call state.apply -l info strelka >> $setup_log 2>&1
 		fi
-		if [[ $STRELKARULES == 1 ]]; then
-			/usr/sbin/so-yara-update >> $setup_log 2>&1	
+		if [[ "$STRELKARULES" = 1 ]]; then
+			logCmd /usr/sbin/so-yara-update
+		else
+			info "Skipping running yara update: STRELKARULES='$STRELKARULES'"
 		fi
 	fi
 
-	if [[ $is_manager || $is_helix || $is_import ]]; then		
+	if [[ $is_manager || $is_import ]]; then		
 		set_progress_str 82 "$(print_salt_state_apply 'utility')"
 		salt-call state.apply -l info utility >> $setup_log 2>&1
 	fi
@@ -758,19 +827,30 @@ success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
-if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then SO_ERROR=1; fi
+if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
+	SO_ERROR=1
+
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+fi
 
 if [[ -n $SO_ERROR ]]; then 
 	echo "Errors detected during setup; skipping post-setup steps to allow for analysis of failures." >> $setup_log 2>&1
+
 	SKIP_REBOOT=1
 	whiptail_setup_failed
+
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
-			set_progress_str 98 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
+			set_progress_str 97 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
 			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
+		fi
+
+		if [[ $is_manager ]]; then
+			set_progress_str 98 "Generating archive for setup directory"
+			generate_repo_tarball >> "$setup_log" 2>&1
 		fi
 
 		if [[ $THEHIVE == 1 ]]; then 
@@ -783,6 +863,6 @@ else
 	echo "Post-installation steps have completed." >> $setup_log 2>&1
 fi
 
-install_cleanup >> $setup_log 2>&1
+install_cleanup >> "$setup_log" 2>&1
 
 if [[ -z $SKIP_REBOOT ]]; then shutdown -r now; else exit; fi

@@ -3,7 +3,7 @@ base:
     - patch.needs_restarting
     - logrotate
 
-  '*_eval or *_helix or *_heavynode or *_sensor or *_standalone or *_import':
+  '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
 
@@ -62,7 +62,7 @@ base:
     - global
     - minions.{{ grains.id }}
 
-  '*_helix':
+  '*_helixsensor':
     - fireeye
     - zeeklogs
     - logstash
@@ -82,6 +82,7 @@ base:
     - elasticsearch.search
     - global
     - minions.{{ grains.id }}
+    - data.nodestab
 
   '*_import':
     - zeeklogs

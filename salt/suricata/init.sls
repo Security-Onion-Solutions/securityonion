@@ -167,6 +167,14 @@ append_so-suricata_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-suricata
+    - unless: grep -q so-suricata /opt/so/conf/so-status/so-status.conf
+
+{% if grains.role == 'so-import' %}
+disable_so-suricata_so-status.conf:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-suricata$
+{% endif %}
 
 surilogrotate:
   file.managed:
