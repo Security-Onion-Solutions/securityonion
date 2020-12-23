@@ -21,25 +21,33 @@ import yaml
 
 hostgroupsFilename = "/opt/so/saltstack/local/salt/firewall/hostgroups.local.yaml"
 portgroupsFilename = "/opt/so/saltstack/local/salt/firewall/portgroups.local.yaml"
+defaultPortgroupsFilename = "/opt/so/saltstack/default/salt/firewall/portgroups.yaml"
 supportedProtocols = ['tcp', 'udp']
 
-def showUsage(args):
+def showUsage(options, args):
   print('Usage: {} [OPTIONS] <COMMAND> [ARGS...]'.format(sys.argv[0]))
   print('  Options:')
-  print('   --apply       - After updating the firewall configuration files, apply the new firewall state')
+  print('   --apply         - After updating the firewall configuration files, apply the new firewall state')
+  print('   --defaultports  - Read port groups from default configuration files instead of local configuration.')
   print('')
-  print('  Available commands:')
-  print('   help          - Prints this usage information.')
-  print('   includedhosts - Lists the IPs included in the given group. Args: <GROUP_NAME>')
-  print('   excludedhosts - Lists the IPs excluded from the given group. Args: <GROUP_NAME>')
-  print('   includehost   - Includes the given IP in the given group. Args: <GROUP_NAME> <IP>')
-  print('   excludehost   - Excludes the given IP from the given group. Args: <GROUP_NAME> <IP>')
-  print('   removehost    - Removes an excluded IP from the given group. Args: <GROUP_NAME> <IP>')
-  print('   addhostgroup  - Adds a new, custom host group. Args: <GROUP_NAME>')
-  print('   listports     - Lists ports in the given group and protocol. Args: <GROUP_NAME> <PORT_PROTOCOL>')
-  print('   addport       - Adds a PORT to the given group. Args: <GROUP_NAME> <PORT_PROTOCOL> <PORT>')
-  print('   removeport    - Removes a PORT from the given group. Args: <GROUP_NAME> <PORT_PROTOCOL> <PORT>')
-  print('   addportgroup  - Adds a new, custom port group. Args: <GROUP_NAME>')
+  print('  General commands:')
+  print('    help           - Prints this usage information.')
+  print('')
+  print('  Host commands:')
+  print('    listhostgroups - Lists the known host groups.')
+  print('    includedhosts  - Lists the IPs included in the given group. Args: <GROUP_NAME>')
+  print('    excludedhosts  - Lists the IPs excluded from the given group. Args: <GROUP_NAME>')
+  print('    includehost    - Includes the given IP in the given group. Args: <GROUP_NAME> <IP>')
+  print('    excludehost    - Excludes the given IP from the given group. Args: <GROUP_NAME> <IP>')
+  print('    removehost     - Removes an excluded IP from the given group. Args: <GROUP_NAME> <IP>')
+  print('    addhostgroup   - Adds a new, custom host group. Args: <GROUP_NAME>')
+  print('')
+  print('  Port commands:')
+  print('    listportgroups - Lists the known port groups.')
+  print('    listports      - Lists ports in the given group and protocol. Args: <GROUP_NAME> <PORT_PROTOCOL>')
+  print('    addport        - Adds a PORT to the given group. Args: <GROUP_NAME> <PORT_PROTOCOL> <PORT>')
+  print('    removeport     - Removes a PORT from the given group. Args: <GROUP_NAME> <PORT_PROTOCOL> <PORT>')
+  print('    addportgroup   - Adds a new, custom port group. Args: <GROUP_NAME>')
   print('')
   print('  Where:')
   print('   GROUP_NAME    - The name of an alias group (Ex: analyst)')
@@ -48,6 +56,15 @@ def showUsage(args):
   print('   PORT          - Either a single numeric port (Ex: 443), or a port range (Ex: 8000:8002).')
   sys.exit(1)
 
+def checkDefaultPortsOption(options):
+  global portgroupsFilename
+  if "--defaultports" in options:
+    portgroupsFilename = defaultPortgroupsFilename
+
+def checkApplyOption(options):
+  if "--apply" in options:
+    return apply()
+
 def loadYaml(filename):
   file = open(filename, "r")
   return yaml.load(file.read())
@@ -55,6 +72,14 @@ def loadYaml(filename):
 def writeYaml(filename, content):
   file = open(filename, "w")
   return yaml.dump(content, file)
+
+def listHostGroups():
+  content = loadYaml(hostgroupsFilename)
+  hostgroups = content['firewall']['hostgroups']
+  if hostgroups is not None:
+    for group in hostgroups:
+      print(group)
+  return 0
 
 def listIps(name, mode):
   content = loadYaml(hostgroupsFilename)
@@ -111,10 +136,18 @@ def createProtocolMap():
     map[protocol] = []
   return map
 
-def addhostgroup(args):
+def listPortGroups():
+  content = loadYaml(portgroupsFilename)
+  portgroups = content['firewall']['aliases']['ports']
+  if portgroups is not None:
+    for group in portgroups:
+      print(group)
+  return 0
+
+def addhostgroup(options, args):
   if len(args) != 1:
     print('Missing host group name argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
 
   name = args[0]
   content = loadYaml(hostgroupsFilename)
@@ -125,10 +158,17 @@ def addhostgroup(args):
   writeYaml(hostgroupsFilename, content)
   return 0
 
-def addportgroup(args):
+def listportgroups(options, args):
+  if len(args) != 0:
+    print('Unexpected arguments', file=sys.stderr)
+    showUsage(options, args)
+  checkDefaultPortsOption(options)
+  return listPortGroups()
+
+def addportgroup(options, args):
   if len(args) != 1:
     print('Missing port group name argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
 
   name = args[0]
   content = loadYaml(portgroupsFilename)
@@ -143,11 +183,12 @@ def addportgroup(args):
   writeYaml(portgroupsFilename, content)
   return 0
 
-def listports(args):
+def listports(options, args):
   if len(args) != 2:
     print('Missing port group name or port protocol', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
 
+  checkDefaultPortsOption(options)
   name = args[0]
   protocol = args[1]
   if protocol not in supportedProtocols:
@@ -162,16 +203,19 @@ def listports(args):
   if name not in ports:
     print('Port group does not exist', file=sys.stderr)
     return 3
+  if protocol not in ports[name]:
+    print('Port group does not contain protocol', file=sys.stderr)
+    return 3
   ports = ports[name][protocol]
   if ports is not None:
     for port in ports:
       print(port)
   return 0
 
-def addport(args):
+def addport(options, args):
   if len(args) != 3:
     print('Missing port group name or port protocol, or port argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
 
   name = args[0]
   protocol = args[1]
@@ -197,12 +241,13 @@ def addport(args):
     return 3
   ports.append(port)
   writeYaml(portgroupsFilename, content)
-  return 0
+  code = checkApplyOption(options)
+  return code
 
-def removeport(args):
+def removeport(options, args):
   if len(args) != 3:
     print('Missing port group name or port protocol, or port argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
 
   name = args[0]
   protocol = args[1]
@@ -225,43 +270,60 @@ def removeport(args):
     return 3
   ports.remove(port)
   writeYaml(portgroupsFilename, content)
-  return 0
+  code = checkApplyOption(options)
+  return code
 
-def includedhosts(args):
+
+def listhostgroups(options, args):
+  if len(args) != 0:
+    print('Unexpected arguments', file=sys.stderr)
+    showUsage(options, args)
+  return listHostGroups()
+
+def includedhosts(options, args):
   if len(args) != 1:
     print('Missing host group name argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
   return listIps(args[0], 'insert')
 
-def excludedhosts(args):
+def excludedhosts(options, args):
   if len(args) != 1:
     print('Missing host group name argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
   return listIps(args[0], 'delete')
 
-def includehost(args):
+def includehost(options, args):
   if len(args) != 2:
     print('Missing host group name or ip argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
   result = addIp(args[0], args[1], 'insert')
   if result == 0:
     removeIp(args[0], args[1], 'delete', True)
-  return result
+  code = result
+  if code == 0:
+    code = checkApplyOption(options)
+  return code
 
-def excludehost(args):
+def excludehost(options, args):
   if len(args) != 2:
     print('Missing host group name or ip argument', file=sys.stderr)
-    showUsage(args)
+    showUsage(options, args)
   result = addIp(args[0], args[1], 'delete')
   if result == 0:
     removeIp(args[0], args[1], 'insert', True)
-  return result
+  code = result
+  if code == 0:
+    code = checkApplyOption(options)
+  return code
 
-def removehost(args):
+def removehost(options, args):
   if len(args) != 2:
     print('Missing host group name or ip argument', file=sys.stderr)
-    showUsage(args)
-  return removeIp(args[0], args[1], 'delete')
+    showUsage(options, args)
+  code = removeIp(args[0], args[1], 'delete')
+  if code == 0:
+    code = checkApplyOption(options)
+  return code
 
 def apply():
   proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
@@ -276,28 +338,26 @@ def main():
       args.remove(option)
 
   if len(args) == 0:
-    showUsage(None)
+    showUsage(options, None)
 
   commands = {
     "help": showUsage,
+    "listhostgroups": listhostgroups,
     "includedhosts": includedhosts,
     "excludedhosts": excludedhosts,
     "includehost": includehost,
     "excludehost": excludehost,
     "removehost": removehost,
+    "listportgroups": listportgroups,
     "listports": listports,
     "addport": addport,
     "removeport": removeport,
     "addhostgroup": addhostgroup,
     "addportgroup": addportgroup
   }
-  
+
   cmd = commands.get(args[0], showUsage)
-  code = cmd(args[1:])
-
-
-  if code == 0 and "--apply" in options:
-    code = apply()
+  code = cmd(options, args[1:])
 
   sys.exit(code)
 

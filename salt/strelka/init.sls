@@ -55,6 +55,12 @@ strelkarules:
     - source: salt://strelka/rules
     - user: 939
     - group: 939
+
+strelkarepos:
+  file.managed:
+    - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
+    - source: salt://strelka/rules/repos.txt.jinja
+    - template: jinja
     
 {%- endif %}
 
