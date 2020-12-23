@@ -140,3 +140,32 @@ get_random_value() {
   length=${1:-20}
   head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
+
+wait_for_web_response() {
+  url=$1
+  expected=$2
+  maxAttempts=${3:-300}
+  logfile=/root/wait_for_web_response.log
+  attempt=0
+  while [[ $attempt -lt $maxAttempts ]]; do
+    attempt=$((attempt+1))
+    echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
+    result=$(curl -ks -L $url)
+    exitcode=$?
+
+    echo "--------------------------------------------------" >> $logfile
+    echo "$(date) - Checking web URL: $url ($attempt/$maxAttempts)" >> $logfile
+    echo "$result" >> $logfile
+    echo "exit code=$exitcode" >> $logfile
+    echo "" >> $logfile
+
+    if [[ $exitcode -eq 0 && "$result" =~ $expected ]]; then
+      echo "Received expected response; proceeding."
+      return 0
+    fi
+    echo "Server is not ready"
+    sleep 1
+  done
+  echo "Server still not ready after $maxAttempts attempts; giving up."
+  return 1
+}

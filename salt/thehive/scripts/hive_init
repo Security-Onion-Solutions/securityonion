@@ -5,6 +5,8 @@
 # {%- set THEHIVEPASSWORD = salt['pillar.get']('global:hivepassword', 'hivechangeme') %}
 # {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 
+. /usr/sbin/so-common
+
 thehive_clean(){
     sed -i '/^  hiveuser:/d' /opt/so/saltstack/local/pillar/global.sls
     sed -i '/^  hivepassword:/d' /opt/so/saltstack/local/pillar/global.sls 
@@ -19,23 +21,7 @@ thehive_init(){
     SOCTOPUS_CONFIG="/opt/so/saltstack/salt/soctopus/files/SOCtopus.conf"
 
     echo -n "Waiting for TheHive..."
-    COUNT=0
-    THEHIVE_CONNECTED="no"
-    while [[ "$COUNT" -le 240 ]]; do
-        curl --output /dev/null --silent --head --fail -k "https://$THEHIVE_URL"
-            if [ $? -eq 0 ]; then
-                THEHIVE_CONNECTED="yes"
-                echo "connected!"
-                break
-            else
-                ((COUNT+=1))
-                sleep 1
-                echo -n "."
-            fi
-    done
-    
-    if [ "$THEHIVE_CONNECTED" == "yes" ]; then
-    
+    if wait_for_web_response https://$THEHIVE_URL "TheHive"; then
         # Migrate DB
         curl -v -k -XPOST -L "https://$THEHIVE_API_URL/maintenance/migrate"
 
@@ -46,7 +32,6 @@ thehive_init(){
         #
         # reputation
         curl -v -k -L "https://$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
-
    
         touch /opt/so/state/thehive.txt
     else
@@ -58,15 +43,10 @@ if [ -f /opt/so/state/thehive.txt ]; then
     thehive_clean
     exit 0
 else
-    rm -f garbage_file
-    while ! wget -O garbage_file {{MANAGERIP}}:9400 2>/dev/null
-    do
-      echo "Waiting for Elasticsearch..."
-      rm -f garbage_file
-      sleep 1
-    done
-    rm -f garbage_file
-    sleep 5
-    thehive_init
-    thehive_clean
+    if wait_for_web_response http://{{MANAGERIP}}:9400 '"status":"green"'; then
+        thehive_init
+        thehive_clean
+    else
+        echo "TheHive Elasticsearch server is not ready; unable to proceed with hive init."
+    fi
 fi
