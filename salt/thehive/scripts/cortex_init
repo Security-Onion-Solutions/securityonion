@@ -1,4 +1,5 @@
 #!/bin/bash
+# {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 # {%- set URLBASE = salt['pillar.get']('global:url_base', '') %}
 # {%- set CORTEXUSER = salt['pillar.get']('global:cortexuser', 'cortexadmin') %}
 # {%- set CORTEXPASSWORD = salt['pillar.get']('global:cortexpassword', 'cortexchangeme') %}
@@ -16,7 +17,6 @@ cortex_clean(){
 }
 
 cortex_init(){
-    sleep 60
     CORTEX_API_URL="{{URLBASE}}/cortex/api"
     CORTEX_USER="{{CORTEXUSER}}"
     CORTEX_PASSWORD="{{CORTEXPASSWORD}}"
@@ -60,7 +60,7 @@ if [ -f /opt/so/state/cortex.txt ]; then
     exit 0
 else
     rm -f garbage_file
-    while ! wget -O garbage_file {{URLBASE}}:9500 2>/dev/null
+    while ! wget -O garbage_file {{MANAGERIP}}:9500 2>/dev/null
     do
       echo "Waiting for Elasticsearch..."
       rm -f garbage_file
