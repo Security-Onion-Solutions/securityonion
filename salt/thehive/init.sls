@@ -123,7 +123,7 @@ cortexscript:
     - source: salt://thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
-    - hide_output: True
+    - hide_output: False
 
 so-thehive:
   docker_container.running:
@@ -148,7 +148,7 @@ thehivescript:
     - source: salt://thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja
-    - hide_output: True
+    - hide_output: False
 
 {% else %}
 

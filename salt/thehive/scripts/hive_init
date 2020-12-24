@@ -36,6 +36,7 @@ thehive_init(){
         touch /opt/so/state/thehive.txt
     else
         echo "We experienced an issue connecting to TheHive!"
+        exit 1
     fi
 }
 
@@ -43,10 +44,11 @@ if [ -f /opt/so/state/thehive.txt ]; then
     thehive_clean
     exit 0
 else
-    if wait_for_web_response http://{{MANAGERIP}}:9400 '"status":"green"'; then
+    if wait_for_web_response http://{{MANAGERIP}}:9400/_cluster/health '"status":"green"'; then
         thehive_init
         thehive_clean
     else
-        echo "TheHive Elasticsearch server is not ready; unable to proceed with hive init."
+        echo "TheHive Elasticsearch server is not ready; unable to proceed with TheHive init."
+        exit 1
     fi
 fi

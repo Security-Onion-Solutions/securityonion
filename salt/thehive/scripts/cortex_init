@@ -58,6 +58,7 @@ cortex_init(){
         touch /opt/so/state/cortex.txt
     else
         echo "We experienced an issue connecting to Cortex!"
+        exit 1
     fi
 }
 
@@ -65,10 +66,11 @@ if [ -f /opt/so/state/cortex.txt ]; then
     cortex_clean
     exit 0
 else
-    if wait_for_web_response http://{{MANAGERIP}}:9400 '"status":"green"'; then
+    if wait_for_web_response http://{{MANAGERIP}}:9400/_cluster/health '"status":"green"'; then
         cortex_init
         cortex_clean
     else
-        echo "TheHive Elasticsearch server is not ready; unable to proceed with cortex init."
+        echo "TheHive Elasticsearch server is not ready; unable to proceed with Cortex init."
+        exit 1
     fi
 fi
