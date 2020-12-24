@@ -23,15 +23,15 @@ thehive_init(){
     echo -n "Waiting for TheHive..."
     if wait_for_web_response https://$THEHIVE_URL "TheHive"; then
         # Migrate DB
-        curl -v -k -XPOST -L "https://$THEHIVE_API_URL/maintenance/migrate"
+        curl -sk -XPOST -L "https://$THEHIVE_API_URL/maintenance/migrate"
 
         # Create intial TheHive user
-        curl -v -k -L "https://$THEHIVE_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
+        curl -sk -L "https://$THEHIVE_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
    
         # Pre-load custom fields
         #
         # reputation
-        curl -v -k -L "https://$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
+        curl -sk -L "https://$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
    
         touch /opt/so/state/thehive.txt
     else
