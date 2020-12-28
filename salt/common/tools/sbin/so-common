@@ -146,8 +146,7 @@ wait_for_apt() {
 
 	local retry_count=30
 	local retry_timeout='10s'
-	local lock_msg='Could not acquire lock'
-	local retry_msg="waiting $retry_timeout for lock to release."
+	local lock_msg="Could not acquire lock, waiting $retry_timeout for lock to release."
 	if [ -z "$progress_callback" ]; then
 		if [ -z "$progress_bar_text" ]; then
 			local old_text="Installing..."
@@ -161,9 +160,9 @@ wait_for_apt() {
 		echo "Attempting to acquire dpkg lock to run apt command... (Attempt $count/$retry_count)"
 		if __check_apt_lock; then
 			if [[ -z $progress_callback ]]; then
-				echo "  $lock_msg, $retry_msg"
+				echo "  $lock_msg"
 			else
-				$progress_callback "$retry_msg"
+				$progress_callback "$lock_msg"
 			fi
 		else
 			[[ -z $progress_callback ]] || $progress_callback "$old_text"
