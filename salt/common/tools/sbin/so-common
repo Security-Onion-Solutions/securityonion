@@ -17,8 +17,8 @@
 
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
-  echo "This script must be run using sudo!"
-  exit 1
+	echo "This script must be run using sudo!"
+	exit 1
 fi
 
 # Define a banner to separate sections
@@ -26,46 +26,46 @@ banner="========================================================================
 
 header() {
 	echo
-    printf '%s\n' "$banner" "$*" "$banner"
+		printf '%s\n' "$banner" "$*" "$banner"
 }
 
 lookup_salt_value() {
-  key=$1
-  group=$2
-  kind=$3
+	key=$1
+	group=$2
+	kind=$3
 
-  if [ -z "$kind" ]; then
-    kind=pillar
-  fi
+	if [ -z "$kind" ]; then
+		kind=pillar
+	fi
 
-  if [ -n "$group" ]; then
-    group=${group}:
-  fi
+	if [ -n "$group" ]; then
+		group=${group}:
+	fi
 
-  salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
+	salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
 }
 
 lookup_pillar() {
-  key=$1
-  pillar=$2
-  if [ -z "$pillar" ]; then
-    pillar=global
-  fi
-  lookup_salt_value "$key" "$pillar" "pillar"
+	key=$1
+	pillar=$2
+	if [ -z "$pillar" ]; then
+		pillar=global
+	fi
+	lookup_salt_value "$key" "$pillar" "pillar"
 }
 
 lookup_pillar_secret() {
-  lookup_pillar "$1" "secrets"
+	lookup_pillar "$1" "secrets"
 }
 
 lookup_grain() {
-  lookup_salt_value "$1" "" "grains"
+	lookup_salt_value "$1" "" "grains"
 }
 
 lookup_role() {
-  id=$(lookup_grain id)
-  pieces=($(echo $id | tr '_' ' '))
-  echo ${pieces[1]}
+	id=$(lookup_grain id)
+	pieces=($(echo $id | tr '_' ' '))
+	echo ${pieces[1]}
 }
 
 check_container() {
@@ -74,98 +74,147 @@ check_container() {
 }
 
 check_password() {
-  local password=$1
-  echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
-  return $?
+	local password=$1
+	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+	return $?
 }
 
 set_os() {
-  if [ -f /etc/redhat-release ]; then
-    OS=centos
-  else
-    OS=ubuntu
-  fi
+	if [ -f /etc/redhat-release ]; then
+		OS=centos
+	else
+		OS=ubuntu
+	fi
 }
 
 set_minionid() {
-  MINIONID=$(lookup_grain id)
+	MINIONID=$(lookup_grain id)
 }
 
 set_version() {
-  CURRENTVERSION=0.0.0
-  if [ -f /etc/soversion ]; then
-    CURRENTVERSION=$(cat /etc/soversion)
-  fi
-  if [ -z "$VERSION" ]; then
-    if [ -z "$NEWVERSION" ]; then
-      if [ "$CURRENTVERSION" == "0.0.0" ]; then
-        echo "ERROR: Unable to detect Security Onion version; terminating script."
-        exit 1
-      else
-        VERSION=$CURRENTVERSION
-      fi
-    else
-      VERSION="$NEWVERSION"
-    fi
-  fi
+	CURRENTVERSION=0.0.0
+	if [ -f /etc/soversion ]; then
+		CURRENTVERSION=$(cat /etc/soversion)
+	fi
+	if [ -z "$VERSION" ]; then
+		if [ -z "$NEWVERSION" ]; then
+			if [ "$CURRENTVERSION" == "0.0.0" ]; then
+				echo "ERROR: Unable to detect Security Onion version; terminating script."
+				exit 1
+			else
+				VERSION=$CURRENTVERSION
+			fi
+		else
+			VERSION="$NEWVERSION"
+		fi
+	fi
 }
 
 require_manager() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
-    echo "This is a manager, We can proceed."
-  else
-    echo "Please run this command on the manager; the manager controls the grid."
-    exit 1
-  fi
+	# Check to see if this is a manager
+	MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+	if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
+		echo "This is a manager, We can proceed."
+	else
+		echo "Please run this command on the manager; the manager controls the grid."
+		exit 1
+	fi
 }
 
 is_single_node_grid() {
-  role=$(lookup_role)
-  if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
-    return 1
-  fi
-  return 0
+	role=$(lookup_role)
+	if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
+		return 1
+	fi
+	return 0
 }
 
 fail() {
-  msg=$1
-  echo "ERROR: $msg"
-  echo "Exiting."
-  exit 1
+	msg=$1
+	echo "ERROR: $msg"
+	echo "Exiting."
+	exit 1
 }
 
 get_random_value() {
-  length=${1:-20}
-  head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+	length=${1:-20}
+	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
+wait_for_apt() {
+	local progress_callback=$1
+
+	local retry_count=2
+	local retry_timeout='30s'
+	local lock_msg='Could not acquire dpkg lock, is another process using it?'
+	local retry_msg="Waiting $retry_timeout for dpkg lock to release."
+	if [ -z "$progress_callback" ]; then
+		if [ -z "$progress_bar_text" ]; then
+			local old_text="Installing..."
+		else
+			local old_text="$progress_bar_text"
+		fi
+	fi
+
+	while [[ "$retry_count" -lt "$retry_count" ]]; do
+		if __check_apt_lock; then
+			if [ -z "$progress_callback" ]; then
+				echo "$lock_msg"
+				echo "$retry_msg" 
+			else
+				$progress_callback "$retry_msg"
+			fi
+		else
+			$progress_callback "$old_text"
+			return 0
+		fi
+		((retry_count++))
+		sleep "$retry_timeout"
+	done
+
+	if __check_apt_lock; then
+		if [[ -z $progress_callback ]]; then
+			echo "$lock_msg"
+			echo "Could not acquire lock after $retry_count attempts, aborting."
+		fi
+		return 1
+	else
+		return 0
+	fi
+}
+
+__check_apt_lock() {
+	lsof /var/lib/dpkg/lock &> /dev/null
+	local lock=$?
+
+	return $lock
 }
 
 wait_for_web_response() {
-  url=$1
-  expected=$2
-  maxAttempts=${3:-300}
-  logfile=/root/wait_for_web_response.log
-  attempt=0
-  while [[ $attempt -lt $maxAttempts ]]; do
-    attempt=$((attempt+1))
-    echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
-    result=$(curl -ks -L $url)
-    exitcode=$?
+	url=$1
+	expected=$2
+	maxAttempts=${3:-300}
+	logfile=/root/wait_for_web_response.log
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do
+		attempt=$((attempt+1))
+		echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
+		result=$(curl -ks -L $url)
+		exitcode=$?
 
-    echo "--------------------------------------------------" >> $logfile
-    echo "$(date) - Checking web URL: $url ($attempt/$maxAttempts)" >> $logfile
-    echo "$result" >> $logfile
-    echo "exit code=$exitcode" >> $logfile
-    echo "" >> $logfile
+		echo "--------------------------------------------------" >> $logfile
+		echo "$(date) - Checking web URL: $url ($attempt/$maxAttempts)" >> $logfile
+		echo "$result" >> $logfile
+		echo "exit code=$exitcode" >> $logfile
+		echo "" >> $logfile
 
-    if [[ $exitcode -eq 0 && "$result" =~ $expected ]]; then
-      echo "Received expected response; proceeding."
-      return 0
-    fi
-    echo "Server is not ready"
-    sleep 1
-  done
-  echo "Server still not ready after $maxAttempts attempts; giving up."
-  return 1
+		if [[ $exitcode -eq 0 && "$result" =~ $expected ]]; then
+			echo "Received expected response; proceeding."
+			return 0
+		fi
+		echo "Server is not ready"
+		sleep 1
+	done
+	echo "Server still not ready after $maxAttempts attempts; giving up."
+	return 1
 }
