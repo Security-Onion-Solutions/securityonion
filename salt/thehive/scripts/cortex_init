@@ -1,6 +1,5 @@
 #!/bin/bash
 # {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-# {%- set URLBASE = salt['pillar.get']('global:url_base', '') %}
 # {%- set CORTEXUSER = salt['pillar.get']('global:cortexuser', 'cortexadmin') %}
 # {%- set CORTEXPASSWORD = salt['pillar.get']('global:cortexpassword', 'cortexchangeme') %}
 # {%- set CORTEXKEY = salt['pillar.get']('global:cortexkey', '') %}
@@ -19,7 +18,7 @@ cortex_clean(){
 }
 
 cortex_init(){
-    CORTEX_URL="{{URLBASE}}/cortex"
+    CORTEX_URL="http://{{MANAGERIP}}:9001"
     CORTEX_API_URL="$CORTEX_URL/api"
     CORTEX_USER="{{CORTEXUSER}}"
     CORTEX_PASSWORD="{{CORTEXPASSWORD}}"
@@ -30,27 +29,27 @@ cortex_init(){
     CORTEX_ORG_USER_KEY="{{CORTEXORGUSERKEY}}"
     SOCTOPUS_CONFIG="$default_salt_dir/salt/soctopus/files/SOCtopus.conf"
 
-    if wait_for_web_response https://$CORTEX_URL "Cortex"; then
+    if wait_for_web_response $CORTEX_URL "Cortex"; then
         # Migrate DB
-        curl -sk -XPOST -L "https://$CORTEX_API_URL/maintenance/migrate"
+        curl -sk -XPOST -L "$CORTEX_API_URL/maintenance/migrate"
 
         # Create intial Cortex superadmin
-        curl -sk -L "https://$CORTEX_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$CORTEX_USER\",\"name\" : \"$CORTEX_USER\",\"roles\" : [\"superadmin\"],\"preferences\" : \"{}\",\"password\" : \"$CORTEX_PASSWORD\", \"key\": \"$CORTEX_KEY\"}"
+        curl -sk -L "$CORTEX_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$CORTEX_USER\",\"name\" : \"$CORTEX_USER\",\"roles\" : [\"superadmin\"],\"preferences\" : \"{}\",\"password\" : \"$CORTEX_PASSWORD\", \"key\": \"$CORTEX_KEY\"}"
 
         # Create user-supplied org
-        curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/organization" -d "{  \"name\": \"$CORTEX_ORG_NAME\",\"description\": \"$CORTEX_ORG_DESC\",\"status\": \"Active\"}"
+        curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "$CORTEX_API_URL/organization" -d "{  \"name\": \"$CORTEX_ORG_NAME\",\"description\": \"$CORTEX_ORG_DESC\",\"status\": \"Active\"}"
         
         # Create user-supplied org user
-        curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/user" -d "{\"name\": \"$CORTEX_ORG_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_ORG_USER\",\"key\": \"$CORTEX_ORG_USER_KEY\" }"
+        curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "$CORTEX_API_URL/user" -d "{\"name\": \"$CORTEX_ORG_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_ORG_USER\",\"key\": \"$CORTEX_ORG_USER_KEY\" }"
 
         # Enable URLScan.io Analyzer
-        curl -sv -k -XPOST -H "Authorization: Bearer $CORTEX_ORG_USER_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/organization/analyzer/Urlscan_io_Search_0_1_0" -d '{"name":"Urlscan_io_Search_0_1_0","configuration":{"auto_extract_artifacts":false,"check_tlp":true,"max_tlp":2}}'
+        curl -sv -k -XPOST -H "Authorization: Bearer $CORTEX_ORG_USER_KEY" -H "Content-Type: application/json" -L "$CORTEX_API_URL/organization/analyzer/Urlscan_io_Search_0_1_0" -d '{"name":"Urlscan_io_Search_0_1_0","configuration":{"auto_extract_artifacts":false,"check_tlp":true,"max_tlp":2}}'
 
         # Enable Cert PassiveDNS Analyzer
-        curl -sv -k -XPOST -H "Authorization: Bearer $CORTEX_ORG_USER_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/organization/analyzer/CERTatPassiveDNS_2_0" -d '{"name":"CERTatPassiveDNS_2_0","configuration":{"auto_extract_artifacts":false,"check_tlp":true,"max_tlp":2, "limit": 100}}'
+        curl -sv -k -XPOST -H "Authorization: Bearer $CORTEX_ORG_USER_KEY" -H "Content-Type: application/json" -L "$CORTEX_API_URL/organization/analyzer/CERTatPassiveDNS_2_0" -d '{"name":"CERTatPassiveDNS_2_0","configuration":{"auto_extract_artifacts":false,"check_tlp":true,"max_tlp":2, "limit": 100}}'
     	
         # Revoke $CORTEX_USER key
-        curl -sk -XDELETE -H "Authorization: Bearer $CORTEX_KEY" -L "https://$CORTEX_API_URL/user/$CORTEX_USER/key" 
+        curl -sk -XDELETE -H "Authorization: Bearer $CORTEX_KEY" -L "$CORTEX_API_URL/user/$CORTEX_USER/key" 
 
         # Update SOCtopus config with apikey value
         #sed -i "s/cortex_key = .*/cortex_key = $CORTEX_KEY/" $SOCTOPUS_CONFIG
