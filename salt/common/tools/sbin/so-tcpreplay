@@ -20,8 +20,10 @@
 . /usr/sbin/so-common
 . /usr/sbin/so-image-common
 
-REPLAYIFACE=${REPLAYIFACE:-bond0}
+REPLAYIFACE=${REPLAYIFACE:-$(lookup_pillar interface sensor)}
 REPLAYSPEED=${REPLAYSPEED:-10}
+
+mkdir -p /opt/so/samples
 
 if [[ $# -lt 1 ]]; then
 	echo "Replays one or more PCAP sample files to the Security Onion monitoring interface."
@@ -48,8 +50,6 @@ if ! docker ps | grep -q so-tcpreplay; then
   TRUSTED_CONTAINERS=("so-tcpreplay")
   update_docker_containers "tcpreplay"
   so-tcpreplay-start || fail "Unable to initialize tcpreplay"
-  mkdir -p /opt/so/samples
-	docker cp so-tcpreplay:/opt/samples/* /opt/so/samples
 fi
 
 echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
