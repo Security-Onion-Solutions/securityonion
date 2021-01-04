@@ -572,31 +572,27 @@ compare_versions() {
 
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
-	local nic_error=0
-
-	# Set the MTU
-	if [[ $NSMSETUP != 'ADVANCED' ]]; then
-		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
-	fi
 
 	if [[ $is_cloud ]]; then 
 		INTERFACE=${BNICS[0]}
-		local nmcli_con_arg="type ethernet"
+		local nmcli_con_args=( "type" "ethernet" )
 	else 
 		INTERFACE='bond0'
-		local nmcli_con_arg="type bond mode 0"
+		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
+	local MTU
+	MTU=$(lookup_pillar "mtu" "sensor")
+
 	# Create the bond interface only if it doesn't already exist
-	
 	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
-		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" $nmcli_con_arg -- \
+		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" "${nmcli_con_args[@]}" -- \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	else
 		local int_uuid
@@ -605,53 +601,14 @@ configure_network_sensor() {
 		nmcli con mod "$int_uuid" \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	fi
 
 	for BNIC in "${BNICS[@]}"; do
-		# Check if specific offload features are able to be disabled
-		for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
-			if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
-				echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
-				nic_error=1
-				break
-			fi
-		done
-
-		# Turn off various offloading settings for the interface
-		for i in rx tx sg tso ufo gso gro lro; do
-			ethtool -K "$BNIC" $i off >> "$setup_log" 2>&1
-		done
-		
-		if [[ $is_cloud ]]; then
-			nmcli con up "$BNIC" >> "$setup_log" 2>&1
-		else
-			# Check if the bond slave connection has already been created
-			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC" >> "$setup_log" 2>&1
-			local found_int=$?
-			
-			if [[ $found_int != 0 ]]; then
-				# Create the slave interface and assign it to the bond
-				nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			else
-				local int_uuid
-				int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
-
-				nmcli con mod "$int_uuid" \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			fi
-			
-			nmcli con up "bond0-slave-$BNIC" >> "$setup_log" 2>&1 # Bring the slave interface up
-		fi
+		add_interface_bond0 "$BNIC" >> "$setup_log" 2>&1
+		return $?
 	done
-
-	if [ $nic_error != 0 ]; then
-		return 1
-	fi
 }
 
 copy_salt_master_config() {
@@ -1980,6 +1937,11 @@ sensor_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	# Set the MTU
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
+	fi
+
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
@@ -2012,6 +1974,7 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
+	
 }
 
 set_default_log_size() {

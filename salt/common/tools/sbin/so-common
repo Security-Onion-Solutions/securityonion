@@ -21,6 +21,53 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
+add_interface_bond0() {
+	local BNIC=$1
+	if [[ -z $MTU ]]; then
+		local MTU
+		MTU=$(lookup_pillar "mtu" "sensor")
+	fi
+	local nic_error=0
+
+	# Check if specific offload features are able to be disabled
+	for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
+		if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
+			echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected."
+			((nic_error++))
+			break
+		fi
+	done
+
+	for i in rx tx sg tso ufo gso gro lro; do
+		ethtool -K "$BNIC" $i off
+	done
+	# Check if the bond slave connection has already been created
+	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+	local found_int=$?
+
+	if [[ $found_int != 0 ]]; then
+		# Create the slave interface and assign it to the bond
+		nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	else
+		local int_uuid
+		int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+
+		nmcli con mod "$int_uuid" \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	fi
+
+	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
+			
+	nmcli con up "bond0-slave-$BNIC" # Bring the slave interface up
+
+	if [ "$nic_error" != 0 ]; then
+		return "$nic_error"
+	fi
+}
+
 # Define a banner to separate sections
 banner="========================================================================="
 
