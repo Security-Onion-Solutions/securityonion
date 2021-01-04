@@ -175,7 +175,7 @@ if ! [[ -f $install_opt_file ]]; then
 		echo "User cancelled setup." | tee -a "$setup_log"
 		whiptail_cancel
 	fi
-	if [[ $setup_type == 'iso' ]]; then
+	if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "Configure Network" ]]; then
 			network_init_whiptail
@@ -184,9 +184,7 @@ if ! [[ -f $install_opt_file ]]; then
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
-			whiptail --title "Security Onion Setup" \
-				--msgbox "Successfully set up networking, setup will now exit." 7 75
-			exit 0
+			whiptail_net_setup_complete
 		else
 			whiptail_install_type
 		fi
