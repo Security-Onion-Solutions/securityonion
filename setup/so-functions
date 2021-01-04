@@ -1378,6 +1378,14 @@ minio_generate_keys() {
 }
 
 network_init() {
+	disable_ipv6
+	set_hostname
+	if [[ "$setup_type" == 'iso' ]]; then
+		set_management_interface
+	fi
+}
+
+network_init_whiptail() {
 	case "$setup_type" in
 		'iso')
 			whiptail_set_hostname
@@ -1399,21 +1407,6 @@ network_init() {
 			whiptail_management_nic
 			;;
 	esac
-
-	if [[ $is_minion ]]; then
-		whiptail_management_server
-	fi
-
-	if [[ $is_minion || $is_iso ]]; then
-		whiptail_management_interface_setup
-	fi
-
-	# Init networking so rest of install works
-	disable_ipv6
-	set_hostname
-	if [[ "$setup_type" == 'iso' ]]; then
-		set_management_interface
-	fi
 }
 
 network_setup() {

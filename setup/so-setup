@@ -23,7 +23,7 @@ if [ "$uid" -ne 0 ]; then
 fi
 
 # Save the original argument array since we modify it
-readarray -t original_args <<< "$@"
+original_args=("$@")
 
 cd "$(dirname "$0")" || exit 255
 
@@ -174,12 +174,12 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ $setup_type == 'iso' ]]; then
 		whiptail_first_menu_iso
 		if [[ $option == "Configure Network" ]] && ! [[ -f $net_init_file ]]; then
+			network_init_whiptail
+			whiptail_management_interface_setup
 			network_init
 			printf '%s\n' \
 				"MNIC=$MNIC" \
-				"HOSTNAME=$HOSTNAME" \
-				"MSRV=$MSRV" \
-				"MSRVIP=$MSRVIP" > "$net_init_file"
+				"HOSTNAME=$HOSTNAME" > "$net_init_file"
 			whiptail --title "Security Onion Setup" \
 				--msgbox "Successfully set up networking, setup will now exit." 7 75
 			exit 0
@@ -259,12 +259,26 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "import"
 	fi
 
-	if 	[[ -f $net_init_file ]]; then
-		source "$net_init_file"
+	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
+
+	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init_whiptail
 	else
- 		network_init
+		source "$net_init_file"
 	fi
 
+	if [[ $is_minion ]]; then
+		whiptail_management_server
+	fi
+
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
+	fi
+
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init
+	fi
+	
 	if [[ -n "$TURBO" ]]; then
 		use_turbo_proxy
 	fi

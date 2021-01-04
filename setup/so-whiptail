@@ -771,7 +771,11 @@ whiptail_management_interface_setup() {
 
 	if [[ $is_iso ]]; then
 		if [[ $minion_msg != "" ]]; then
-			msg="initialize networking and $minion_msg"
+			if [[ -f $net_init_file ]]; then
+				msg=$minion_msg
+			else
+				msg="initialize networking and $minion_msg"
+			fi
 		else
 			msg="initialize networking"
 		fi
@@ -976,6 +980,12 @@ whiptail_network_notice() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_net_reinit() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "The management interface has already been configured. Do you want to reconfigure it?" 8 75
 }
 
 whiptail_node_advanced() {
