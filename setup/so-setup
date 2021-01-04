@@ -23,7 +23,7 @@ if [ "$uid" -ne 0 ]; then
 fi
 
 # Save the original argument array since we modify it
-readarray -t original_args <<< "$@"
+original_args=("$@")
 
 cd "$(dirname "$0")" || exit 255
 
@@ -67,7 +67,11 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
+if [[ "$setup_type" == 'iso' ]]; then
+  is_iso=true
+fi
+
+if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
 	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 fi
 
@@ -81,7 +85,7 @@ fi
 
 parse_install_username
 
-if ! [ -f /root/install_opt ]; then
+if ! [ -f $install_opt_file ]; then
 	# Begin Installation pre-processing
 	title "Initializing Setup"
 	info "Installing as the $INSTALLUSERNAME user"
@@ -164,17 +168,33 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if ! [ -f /root/install_opt ]; then
+if ! [[ -f $install_opt_file ]]; then
 	if (whiptail_you_sure); then
 		true
 	else
 		echo "User cancelled setup." | tee -a "$setup_log"
 		whiptail_cancel
 	fi
-
-	whiptail_install_type
+	if [[ $setup_type == 'iso' ]]; then
+		whiptail_first_menu_iso
+		if [[ $option == "Configure Network" ]] && ! [[ -f $net_init_file ]]; then
+			network_init_whiptail
+			whiptail_management_interface_setup
+			network_init
+			printf '%s\n' \
+				"MNIC=$MNIC" \
+				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			whiptail --title "Security Onion Setup" \
+				--msgbox "Successfully set up networking, setup will now exit." 7 75
+			exit 0
+		else
+			whiptail_install_type
+		fi
+	else
+		whiptail_install_type
+	fi
 else
-	source /root/install_opt
+	source $install_opt_file
 fi
 
 if [ "$install_type" = 'EVAL' ]; then
@@ -217,11 +237,6 @@ elif [ "$install_type" = 'ANALYST' ]; then
 	is_analyst=true
 fi
 
-# Say yes to the dress if its an ISO install
-if [[ "$setup_type" == 'iso' ]]; then
-  is_iso=true
-fi
-
 # Check if this is an airgap install
 if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	whiptail_airgap
@@ -230,7 +245,7 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
-if ! [ -f /root/install_opt ]; then
+if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -243,43 +258,26 @@ if ! [ -f /root/install_opt ]; then
 		check_requirements "import"
 	fi
 
-	case "$setup_type" in
-		'iso')
-			whiptail_set_hostname
-			whiptail_management_nic
-			whiptail_dhcp_or_static
+	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
-			if [ "$address_type" != 'DHCP' ]; then
-				whiptail_management_interface_ip
-				whiptail_management_interface_mask
-				whiptail_management_interface_gateway
-				whiptail_management_interface_dns
-				whiptail_management_interface_dns_search
-			fi
-			;;
-		'network')
-			whiptail_network_notice
-			whiptail_dhcp_warn
-			whiptail_set_hostname
-			whiptail_management_nic
-			;;
-	esac
+	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init_whiptail
+	else
+		source "$net_init_file"
+	fi
 
 	if [[ $is_minion ]]; then
 		whiptail_management_server
 	fi
 
-	if [[ $is_minion || $is_iso ]]; then
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		whiptail_management_interface_setup
 	fi
 
-	# Init networking so rest of install works
-	disable_ipv6
-	set_hostname
-	if [[ "$setup_type" == 'iso' ]]; then
-		set_management_interface
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init
 	fi
-
+	
 	if [[ -n "$TURBO" ]]; then
 		use_turbo_proxy
 	fi
@@ -298,8 +296,8 @@ if ! [ -f /root/install_opt ]; then
 			"install_type=$install_type" \
 			"MNIC=$MNIC" \
 			"HOSTNAME=$HOSTNAME" \
-			"MSRV=$MSRV"\
-			"MSRVIP=$MSRVIP" > /root/install_opt
+			"MSRV=$MSRV" \
+			"MSRVIP=$MSRVIP" > "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
@@ -396,7 +394,10 @@ if [[ $is_manager && ! $is_eval ]]; then
 	  	whiptail_manager_adv_escluster
 	  fi
 	fi
-	whiptail_zeek_version
+	whiptail_metadata_tool
+	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
+		whiptail_manager_adv_service_zeeklogs
+	fi
 	# Don't run this function for now since Snort is not yet supported
 	# whiptail_nids
 	NIDS=Suricata
@@ -406,9 +407,6 @@ if [[ $is_manager && ! $is_eval ]]; then
 		whiptail_oinkcode
 	fi
 
-	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
-		whiptail_manager_adv_service_zeeklogs
-	fi
 fi
 
 if [[ $is_manager ]]; then

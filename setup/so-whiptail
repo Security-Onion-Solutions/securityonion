@@ -658,6 +658,17 @@ whiptail_log_size_limit() {
 
 }
 
+whiptail_first_menu_iso() {
+	[ -n "$TESTING" ] && return
+
+	option=$(whiptail --title "Security Onion Setup" --menu "Select an option" 10 75 2 \
+		"Configure Network" "Configure networking only " \
+		"Security Onion Installer" "Run the standard Security Onion installation " \
+		 3>&1 1>&2 2>&3
+	)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
 whiptail_make_changes() {
 
 	[ -n "$TESTING" ] && return
@@ -760,7 +771,11 @@ whiptail_management_interface_setup() {
 
 	if [[ $is_iso ]]; then
 		if [[ $minion_msg != "" ]]; then
-			msg="initialize networking and $minion_msg"
+			if [[ -f $net_init_file ]]; then
+				msg=$minion_msg
+			else
+				msg="initialize networking and $minion_msg"
+			fi
 		else
 			msg="initialize networking"
 		fi
@@ -965,6 +980,12 @@ whiptail_network_notice() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_net_reinit() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "The management interface has already been configured. Do you want to reconfigure it?" 8 75
 }
 
 whiptail_node_advanced() {
