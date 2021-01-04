@@ -88,6 +88,13 @@ append_so-aptcacherng_so-status.conf:
 
 {% endif %}
 
+strelka_yara_update_old:
+  cron.absent:
+    - user: root
+    - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
+
 strelka_yara_update:
   cron.present:
     - user: root
