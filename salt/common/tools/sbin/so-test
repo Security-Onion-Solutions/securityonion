@@ -15,31 +15,4 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Usage: so-test
-
-. /usr/sbin/so-common
-
-REPLAY_ENABLED=$(docker images | grep so-tcpreplay)
-REPLAY_RUNNING=$(docker ps | grep so-tcpreplay)
-
-if  [ "$REPLAY_ENABLED" != "" ] && [ "$REPLAY_RUNNING" != "" ]; then
-   echo
-   echo "Preparing to replay PCAPs..."
-   docker cp so-tcpreplay:/opt/samples /opt/samples
-   docker exec -it so-tcpreplay /usr/local/bin/tcpreplay -i bond0 -M10 /opt/samples/*
-   echo
-   echo "PCAP's have been replayed - it is normal to see some warnings."
-   echo
-else
-  echo "Replay functionality not enabled!  Enabling Now...."
-  echo
-  echo "Note that you will need internet access to download the appropriate components"
-  /usr/sbin/so-start tcpreplay
-  echo "Replay functionality enabled.  Replaying PCAPs Now...."
-  docker cp so-tcpreplay:/opt/samples /opt/samples
-  docker exec -it so-tcpreplay /usr/local/bin/tcpreplay -i bond0 -M10 /opt/samples/*
-  echo
-  echo "PCAP's have been replayed - it is normal to see some warnings."
-  echo
-fi
-
+so-tcpreplay /opt/samples/*
