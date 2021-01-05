@@ -110,10 +110,6 @@ analyze_system() {
 }
 
 accept_salt_key_remote() {
-
-	local automated=$1
-	local sshcmd=get_ssh_cmd $automated
-	
 	systemctl restart salt-minion
 	
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
@@ -558,9 +554,6 @@ check_requirements() {
 }
 
 compare_versions() {
-	local automated=$1
-	local sshcmd=get_ssh_cmd $automated
-	
 	manager_ver=$("$sshcmd" -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == "" ]]; then
@@ -675,10 +668,6 @@ copy_salt_master_config() {
 
 copy_minion_tmp_files() {
 
-	local automated=$1
-	local sshcmd=get_ssh_cmd $automated
-	local scpcmd=get_scp_cmd $automated
-
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
@@ -705,9 +694,6 @@ copy_minion_tmp_files() {
 }
 
 copy_ssh_key() {
-
-	local automated=$1
-	local sshcopyidcmd=get_ssh_copy_id_cmd $automated
 
 	echo "Generating SSH key"
 	# Generate SSH key
@@ -985,9 +971,6 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
-	local automated=$1
-	local sshcmd=get_ssh_cmd $automated
-	local scpcmd=get_scp_cmd $automated
 
 	mkdir -p /root/manager_setup/securityonion
 	{
@@ -1101,36 +1084,31 @@ get_scp_cmd() {
 	local automated=$1
 
 	if [ $automated == yes ]; then
-		local scpcmd='sshpass -p "automation" scp -o StrictHostKeyChecking=no'
+		scpcmd='sshpass -p "automation" scp -o StrictHostKeyChecking=no'
 	else
-		local scpcmd='scp'
+		scpcmd='scp'
 	fi
-
-	echo $scpcmd
 }
 
 get_ssh_cmd() {
 	local automated=$1
 
 	if [ $automated == yes ]; then
-		local sshcmd='sshpass -p "automation" ssh -o StrictHostKeyChecking=no'
+		sshcmd='sshpass -p "automation" ssh -o StrictHostKeyChecking=no'
 	else
-		local sshcmd='ssh'
+		sshcmd='ssh'
 	fi
 
-	echo $sshcmd
 }
 
 get_ssh_copy_id_cmd() {
 	local automated=$1
 
 	if [ $automated == yes ]; then
-		local sshcopyidcmd='sshpass -p "automation" ssh-copy-id -o StrictHostKeyChecking=no'
+		sshcopyidcmd='sshpass -p "automation" ssh-copy-id -o StrictHostKeyChecking=no'
 	else
-		local sshcopyidcmd='ssh-copy-id'
+		sshcopyidcmd='ssh-copy-id'
 	fi
-
-	echo $sshcopyidcmd
 }
 
 host_pillar() {
@@ -1680,9 +1658,6 @@ remove_package() {
 # - securityonion/salt/salt/minion.defaults.yaml
 saltify() {
 
-	local automated=$1
-	local scpcmd=get_scp_cmd $automated
-
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
 		set_progress_str 5 'Installing Salt repo'
@@ -2108,8 +2083,6 @@ set_hostname() {
 set_initial_firewall_policy() {
 
   set_main_ip
-  local automated=$1
-  local sshcmd=get_ssh_cmd $automated
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
   if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
