@@ -97,8 +97,6 @@ airgap_rules() {
 
 	# Don't leave Strelka out
 	cp -Rv /root/SecurityOnion/agrules/strelka /nsm/repo/rules/
-
-
 }
 
 analyze_system() {
@@ -112,16 +110,18 @@ analyze_system() {
 }
 
 accept_salt_key_remote() {
+
+	local automated=$1
+	local sshcmd=get_ssh_cmd $automated
+	
 	systemctl restart salt-minion
 	
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
 	# Delete the key just in case.
-	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
+	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
 	salt-call state.apply ca >> /dev/null 2>&1
-	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
-
+	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 }
-
 
 add_admin_user() {
 	# Add an admin user with full sudo rights if this is an ISO install. 
@@ -558,7 +558,10 @@ check_requirements() {
 }
 
 compare_versions() {
-	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+	local automated=$1
+	local sshcmd=get_ssh_cmd $automated
+	
+	manager_ver=$("$sshcmd" -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == "" ]]; then
 		rm /root/install_opt
@@ -671,6 +674,11 @@ copy_salt_master_config() {
 }
 
 copy_minion_tmp_files() {
+
+	local automated=$1
+	local sshcmd=get_ssh_cmd $automated
+	local scpcmd=get_scp_cmd $automated
+
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
@@ -682,21 +690,24 @@ copy_minion_tmp_files() {
 		*)
 			{
 				echo "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
-				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
+				$scpcmd -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
 				if [ -d $temp_install_dir/salt/patch/os/schedules/ ]; then
 					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
-						scp -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
+						$scpcmd -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
 					fi
 				fi
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
 			} >> "$setup_log" 2>&1
 			;;
 	esac
 }
 
 copy_ssh_key() {
+
+	local automated=$1
+	local sshcopyidcmd=get_ssh_copy_id_cmd $automated
 
 	echo "Generating SSH key"
 	# Generate SSH key
@@ -709,7 +720,7 @@ copy_ssh_key() {
 
 	echo "Copying the SSH key to the manager"
 	#Copy the key over to the manager
-	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
+	$sshcopyidcmd -f -i /root/.ssh/so.key soremote@"$MSRV"
 }
 
 create_local_directories() {
@@ -974,11 +985,15 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
+	local automated=$1
+	local sshcmd=get_ssh_cmd $automated
+	local scpcmd=get_scp_cmd $automated
+
 	mkdir -p /root/manager_setup/securityonion
 	{
 		local manager_ver
-		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+		manager_ver=$("$sshcmd" -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+		$scpcmd -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
 	} >> "$setup_log" 2>&1
 	
 	# Fail if the file doesn't download
@@ -1080,6 +1095,42 @@ get_minion_type() {
 			;;
 	esac
 	echo "$minion_type"
+}
+
+get_scp_cmd() {
+	local automated=$1
+
+	if [ $automated == yes ]; then
+		local scpcmd='sshpass -p "PASSWORD" scp -o StrictHostKeyChecking=no'
+	else
+		local scpcmd='scp'
+	fi
+
+	echo $scpcmd
+}
+
+get_ssh_cmd() {
+	local automated=$1
+
+	if [ $automated == yes ]; then
+		local sshcmd='sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no'
+	else
+		local sshcmd='ssh'
+	fi
+
+	echo $sshcmd
+}
+
+get_ssh_copy_id_cmd() {
+	local automated=$1
+
+	if [ $automated == yes ]; then
+		local sshcopyidcmd='sshpass -p "PASSWORD" ssh-copy-id -o StrictHostKeyChecking=no'
+	else
+		local sshcopyidcmd='ssh-copy-id'
+	fi
+
+	echo $sshcopyidcmd
 }
 
 host_pillar() {
@@ -1629,6 +1680,9 @@ remove_package() {
 # - securityonion/salt/salt/minion.defaults.yaml
 saltify() {
 
+	local automated=$1
+	local scpcmd=get_scp_cmd $automated
+
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
 		set_progress_str 5 'Installing Salt repo'
@@ -1774,7 +1828,7 @@ saltify() {
 				# Copy down the gpg keys and install them from the manager
 				mkdir "$temp_install_dir"/gpg >> "$setup_log" 2>&1
 				echo "scp the gpg keys and install them from the manager" >> "$setup_log" 2>&1
-				scp -v -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/gpg/* "$temp_install_dir"/gpg >> "$setup_log" 2>&1
+				$scpcmd -v -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/gpg/* "$temp_install_dir"/gpg >> "$setup_log" 2>&1
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
@@ -2054,6 +2108,8 @@ set_hostname() {
 set_initial_firewall_policy() {
 
   set_main_ip
+  local automated=$1
+  local sshcmd=get_ssh_cmd $automated
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
   if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
@@ -2087,24 +2143,24 @@ set_initial_firewall_policy() {
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
 					;;
 				'SEARCHNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'HEAVYNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'FLEET')
-				    ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
+				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
 			esac
 			;;

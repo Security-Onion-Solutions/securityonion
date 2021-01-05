@@ -124,6 +124,15 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
 	echo "Network is up on $MNIC" >> $setup_log 2>&1
+
+	if [[ ! $is_iso ]]; then
+		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
+		if [ "$OS" == ubuntu ]; then
+			yum -y install sshpass >> $setup_log 2>&1
+		else
+			apt-get -y install sshpass >> $setup_log 2>&1
+		fi
+	fi
 fi
 
 case "$setup_type" in
@@ -287,10 +296,10 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $is_minion ]]; then
-		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+		copy_ssh_key $automated >> $setup_log 2>&1
 	fi
 
-	if [[ $is_minion ]] && ! (compare_versions); then
+	if [[ $is_minion ]] && ! (compare_versions $automated); then
 		info "Installer version mismatch, downloading correct version from manager"
 		printf '%s\n' \
 			"install_type=$install_type" \
@@ -298,7 +307,7 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" > "$install_opt_file"
-		download_repo_tarball
+		download_repo_tarball $automated
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
 
@@ -553,7 +562,7 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 1 'Configuring firewall'
-		set_initial_firewall_policy >> $setup_log 2>&1
+		set_initial_firewall_policy $automated >> $setup_log 2>&1
 	fi
 
 	set_progress_str 2 'Updating packages'
@@ -573,7 +582,7 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 5 'Installing Salt and dependencies'
-	saltify 2>> $setup_log
+	saltify $automated 2>> $setup_log
 
 	set_progress_str 6 'Installing Docker and dependencies'
 	docker_install >> $setup_log 2>&1
@@ -626,7 +635,7 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
-		accept_salt_key_remote >> $setup_log 2>&1
+		accept_salt_key_remote $automated >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager || $is_import || $is_helix ]]; then
@@ -635,7 +644,7 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 21 'Copying minion pillars to manager'
-	copy_minion_tmp_files >> $setup_log 2>&1
+	copy_minion_tmp_files $automated >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 22 'Checking if the Salt Minion needs to be updated'
@@ -647,7 +656,7 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
-		set_initial_firewall_policy >> $setup_log 2>&1
+		set_initial_firewall_policy $automated >> $setup_log 2>&1
 		
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
 		mkdir -p /opt/so/conf/so-status/ >> $setup_log 2>&1
