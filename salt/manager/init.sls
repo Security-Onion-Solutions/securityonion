@@ -88,7 +88,14 @@ append_so-aptcacherng_so-status.conf:
 
 {% endif %}
 
-strelka_yara_update_old:
+strelka_yara_update_old_1:
+  cron.absent:
+    - user: root
+    - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
+
+strelka_yara_update_old_2:
   cron.absent:
     - user: root
     - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
