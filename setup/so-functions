@@ -1080,37 +1080,6 @@ get_minion_type() {
 	echo "$minion_type"
 }
 
-get_scp_cmd() {
-	local automated=$1
-
-	if [ $automated == yes ]; then
-		scpcmd='sshpass -p "automation" scp -o StrictHostKeyChecking=no'
-	else
-		scpcmd='scp'
-	fi
-}
-
-get_ssh_cmd() {
-	local automated=$1
-
-	if [ $automated == yes ]; then
-		sshcmd='sshpass -p "automation" ssh -o StrictHostKeyChecking=no'
-	else
-		sshcmd='ssh'
-	fi
-
-}
-
-get_ssh_copy_id_cmd() {
-	local automated=$1
-
-	if [ $automated == yes ]; then
-		sshcopyidcmd='sshpass -p "automation" ssh-copy-id -o StrictHostKeyChecking=no'
-	else
-		sshcopyidcmd='ssh-copy-id'
-	fi
-}
-
 host_pillar() {
 
 	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
@@ -2003,6 +1972,20 @@ set_progress_str() {
 	'----'\
 	"$percentage% - ${progress_bar_text^^}"\
 	"----" >> "$setup_log" 2>&1
+}
+
+set_ssh_cmds() {
+	local automated=$1
+
+	if [ $automated == yes ]; then
+		sshcmd='sshpass -p "automation" ssh -o StrictHostKeyChecking=no'
+		sshcopyidcmd='sshpass -p "automation" ssh-copy-id -o StrictHostKeyChecking=no'
+		scpcmd='sshpass -p "automation" scp -o StrictHostKeyChecking=no'
+	else
+		sshcmd='ssh'
+		sshcopyidcmd='ssh-copy-id'
+		scpcmd='scp'
+	fi
 }
 
 sensor_pillar() {
