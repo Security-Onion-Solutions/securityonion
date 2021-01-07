@@ -2200,6 +2200,13 @@ mark_version() {
 	echo "$SOVERSION" > /etc/soversion
 }
 
+update_sudoers_for_testing() {
+	if [ -n "$TESTING" ]; then
+		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
+		sed -i "s/^$INSTALLUSERNAME   ALL=(ALL) ALL/^$INSTALLUSERNAME   ALL=(ALL) NOPASSWD:ALL/" /etc/sudoers
+	fi
+}
+
 update_sudoers() {
 
 	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
