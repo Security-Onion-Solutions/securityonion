@@ -124,6 +124,15 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
 	echo "Network is up on $MNIC" >> $setup_log 2>&1
+
+	if [[ ! $is_iso ]]; then
+		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
+		if [ "$OS" == ubuntu ]; then
+			apt-get -y install sshpass >> $setup_log 2>&1
+		else
+			yum -y install sshpass >> $setup_log 2>&1
+		fi
+	fi
 fi
 
 case "$setup_type" in
@@ -135,6 +144,9 @@ case "$setup_type" in
 		exit 1
 		;;
 esac
+
+#set ssh commands that will be used based on if this is an automated test install or not
+set_ssh_cmds $automated
 
 # Allow execution of SO tools during setup
 local_sbin="$(pwd)/../salt/common/tools/sbin"
@@ -285,7 +297,7 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $is_minion ]]; then
-		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+		copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]] && ! (compare_versions); then
