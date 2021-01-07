@@ -38,6 +38,7 @@ EXITCODE=0
 SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
 # file populated by salt.lasthighstate state at end of successful highstate run
 LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
+LAST_SOSETUP_LOG=$([ -e "/root/sosetup.log" ] && date -r /root/sosetup.log +%s || echo 0)
 HIGHSTATE_RUNNING=$(salt-call --local saltutil.running --out=json | jq -r '.local[].fun' | grep -q 'state.highstate' && echo $?)
 ERROR_STRING="ERROR"
 SUCCESS_STRING="OK"
@@ -249,6 +250,9 @@ main() {
     else
 
       if [ "$QUIET" = true ]; then
+          if [ $SYSTEM_START_TIME -lt $LAST_SOSETUP_LOG ]; then
+            exit 99
+          fi
           print_or_parse="parse_status"
       else
           print_or_parse="print_line"
