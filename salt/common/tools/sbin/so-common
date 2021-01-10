@@ -141,6 +141,25 @@ get_random_value() {
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
 
+retry() {
+	maxAttempts=$1
+	sleepDelay=$2
+	cmd=$3
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do			
+		attempt=$((attempt+1))
+		logCmd "$cmd"
+		exitcode=$?
+		if [[ $exitcode -eq 0 ]]; then
+			return $exitCode
+		fi
+		info "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+		sleep $sleepDelay
+	done
+	error "Command continues to fail; giving up."
+	return 1
+}
+
 wait_for_apt() {
 	local progress_callback=$1
 
