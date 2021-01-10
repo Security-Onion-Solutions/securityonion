@@ -145,12 +145,21 @@ retry() {
 	maxAttempts=$1
 	sleepDelay=$2
 	cmd=$3
+	expectedOutput=$4
 	attempt=0
 	while [[ $attempt -lt $maxAttempts ]]; do			
 		attempt=$((attempt+1))
-		logCmd "$cmd"
+		info "Executing command with retry support: $cmd"
+		output=$($cmd)
+		info "Results: $output"
 		exitcode=$?
-		if [[ $exitcode -eq 0 ]]; then
+		if [ -n "$expectedOutput" ]; then
+			if [[ "$output" =~ "$expectedOutput" ]]; then
+				return $exitCode
+			else
+				info "Expected '$expectedOutput' but got '$output'"
+			fi
+		elif [[ $exitcode -eq 0 ]]; then
 			return $exitCode
 		fi
 		info "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
