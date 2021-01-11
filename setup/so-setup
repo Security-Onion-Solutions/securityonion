@@ -637,12 +637,12 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
-		accept_salt_key_remote >> $setup_log 2>&1
+		retry 20 10	accept_salt_key_remote "going to be accepted"
 	fi
 
 	if [[ $is_manager || $is_import || $is_helix ]]; then
 		set_progress_str 20 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
+		retry 20 10 "salt-key -ya $MINION_ID" "going to be accepted"
 	fi
 
 	set_progress_str 21 'Copying minion pillars to manager'
