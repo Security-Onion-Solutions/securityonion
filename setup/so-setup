@@ -594,6 +594,8 @@ set_redirect >> $setup_log 2>&1
 	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
+	update_sudoers_for_testing >> $setup_log 2>&1
+
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 9 'Configuring Salt master'
 		{
@@ -606,7 +608,6 @@ set_redirect >> $setup_log 2>&1
 		
 		set_progress_str 10 'Updating sudoers file for soremote user'
 		update_sudoers >> $setup_log 2>&1
-		update_sudoers_for_testing >> $setup_log 2>&1
 		
 		set_progress_str 11 'Generating manager global pillar'
 		#minio_generate_keys
@@ -851,7 +852,7 @@ if [[ -n $SO_ERROR ]]; then
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
-		[ -n "$TESTING" ] && logCmd so-test
+		[[ -n "$TESTING" && $is_sensor ]] && logCmd so-test
 
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
