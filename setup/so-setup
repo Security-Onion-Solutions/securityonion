@@ -265,7 +265,7 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $is_minion ]]; then
-		whiptail_management_server
+		collect_mngr_hostname
 	fi
 
 	if [[ $is_minion ]] || [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
@@ -367,6 +367,10 @@ fi
 
 # Start user prompts
 
+if [[ $is_helix ]]; then
+	collect_helix_key
+fi
+
 if [[ $is_helix || $is_sensor ]]; then
 	whiptail_sensor_nics
 fi
@@ -376,10 +380,10 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 fi
 
 if [[ ! $is_import ]]; then
-	whiptail_patch_schedule
+	collect_patch_schedule
 fi
 
-whiptail_homenet_manager
+collect_homenet_mngr
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
@@ -389,10 +393,10 @@ if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
 	if [ "$MANAGERADV" = 'ADVANCED' ]; then
 	  if [ "$install_type" = 'MANAGER' ] || [ "$install_type" = 'MANAGERSEARCH' ]; then
-	  	whiptail_manager_adv_escluster
+	  	collect_es_cluster_name
 	  fi
 	fi
-	
+
 	whiptail_metadata_tool
 	
 	[[ $MANAGERADV == "ADVANCED" ]] && [[ $ZEEKVERSION == "ZEEK" ]] && whiptail_manager_adv_service_zeeklogs
@@ -403,9 +407,8 @@ if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_rule_setup
 
 	if [ "$RULESETUP" != 'ETOPEN' ]; then
-		whiptail_oinkcode
+		collect_oinkcode
 	fi
-
 fi
 
 if [[ $is_manager ]]; then
@@ -419,7 +422,7 @@ if [[ $is_manager ]]; then
 		info "Disabling Strelka rules: STRELKA='$STRELKA'"
 	fi
 
-	whiptail_dockernet_check
+	collect_dockernet
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -439,28 +442,28 @@ if [[ $is_distmanager ]]; then
 fi
 
 if [[ $is_sensor && ! $is_eval ]]; then
-	whiptail_homenet_sensor
+	collect_homenet_snsr
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
 		[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
 		whiptail_suricata_pins
-		whiptail_bond_nics_mtu
+		collect_mtu
 	else
-		[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_basic_zeek
-		whiptail_basic_suri
+		[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+		collect_suri
 	fi
 fi
 
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
-		whiptail_node_es_heap
-		whiptail_node_ls_heap
-		whiptail_node_ls_pipeline_worker
-		whiptail_node_ls_pipline_batchsize
-		whiptail_node_ls_input_threads
-		whiptail_cur_close_days
-		whiptail_log_size_limit
+		collect_node_es_heap
+		collect_node_ls_heap
+		collect_node_ls_pipeline_worker_count
+		collect_node_ls_pipeline_batch_size
+		collect_node_ls_input
+		collect_cur_close_days
+		collect_es_space_limit
 	else
 		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
@@ -479,7 +482,7 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
-if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
+if [[ $is_manager || $is_import ]]; then collect_so_allow; fi
 
 whiptail_make_changes
 
