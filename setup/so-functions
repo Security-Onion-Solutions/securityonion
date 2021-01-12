@@ -556,7 +556,7 @@ check_requirements() {
 }
 
 compare_versions() {
-	manager_ver=$("$sshcmd" -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+	manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == "" ]]; then
 		rm /root/install_opt
@@ -977,7 +977,7 @@ download_repo_tarball() {
 	mkdir -p /root/manager_setup/securityonion
 	{
 		local manager_ver
-		manager_ver=$("$sshcmd" -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+		manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 		$scpcmd -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
 	} >> "$setup_log" 2>&1
 	
@@ -1982,9 +1982,9 @@ set_ssh_cmds() {
 	local automated=$1
 
 	if [ $automated == yes ]; then
-		sshcmd='sshpass -p "automation" ssh -o StrictHostKeyChecking=no'
-		sshcopyidcmd='sshpass -p "automation" ssh-copy-id -o StrictHostKeyChecking=no'
-		scpcmd='sshpass -p "automation" scp -o StrictHostKeyChecking=no'
+		sshcmd="sshpass -p $SOREMOTEPASS1 ssh -o StrictHostKeyChecking=no"
+		sshcopyidcmd="sshpass -p $SOREMOTEPASS1 ssh-copy-id -o StrictHostKeyChecking=no"
+		scpcmd="sshpass -p $SOREMOTEPASS1 scp -o StrictHostKeyChecking=no"
 	else
 		sshcmd='ssh'
 		sshcopyidcmd='ssh-copy-id'
