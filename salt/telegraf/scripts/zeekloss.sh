@@ -45,6 +45,6 @@ else
   CURRENTPACKETS=${RESULT[5]}
   PASTPACKETS=${RESULT[11]}
   TOTAL=$((CURRENTPACKETS - PASTPACKETS))
-  LOSS=$(echo 4k $DROPPED $TOTAL / p | dc)
+  LOSS=$(echo 4 k $DROPPED $TOTAL / p | dc)
   echo "zeekdrop drop=$LOSS"
 fi
