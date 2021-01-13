@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
 
 {% if 'strelka' in top_states %}
 
-{%- set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
@@ -47,7 +47,7 @@ strelkasync:
     - group: 939
     - template: jinja
 
-{%- if STRELKA_RULES == 1 %}
+{% if STRELKA_RULES == 1 %}
 
 strelkarules:
   file.recurse:
@@ -56,13 +56,15 @@ strelkarules:
     - user: 939
     - group: 939
 
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
 strelkarepos:
   file.managed:
     - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
     - source: salt://strelka/rules/repos.txt.jinja
     - template: jinja
-    
-{%- endif %}
+
+{% endif %}
+{% endif %}
 
 strelkadatadir:
    file.directory:
