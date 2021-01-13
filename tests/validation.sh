@@ -94,13 +94,13 @@ sleep 0.15s
 
 header "DNS"
 
-test_fun 0 valid_dns_list "8.8.8.8 8.8.4.4"
+test_fun 0 valid_dns_list "8.8.8.8,8.8.4.4"
 
 test_fun 0 valid_dns_list "8.8.8.8"
 
-test_fun 1 valid_dns_list "8.8.8.8,8.8.4.4"
+test_fun 1 valid_dns_list "8.8.8.8 8.8.4.4"
 
-test_fun 1 valid_dns_list "8.8.8. 8.8.4.4"
+test_fun 1 valid_dns_list "8.8.8.,8.8.4.4"
 
 test_fun 1 valid_dns_list "192.168.9."
 
