@@ -111,9 +111,7 @@ set_version() {
 }
 
 require_manager() {
-	# Check to see if this is a manager
-	MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-	if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
+	if is_manager; then
 		echo "This is a manager, We can proceed."
 	else
 		echo "Please run this command on the manager; the manager controls the grid."
@@ -121,12 +119,32 @@ require_manager() {
 	fi
 }
 
+is_manager() {
+	# Check to see if this is a manager node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'manager' ] && return 0
+	[ $role == 'managersearch' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_sensor() {
+	# Check to see if this is a sensor (forward) node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'sensor' ] && return 0
+	[ $role == 'heavynode' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
 is_single_node_grid() {
 	role=$(lookup_role)
-	if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
-		return 1
-	fi
-	return 0
+	[ $role == 'eval' ] && return 0
+	[ $role == 'standalone' ] && return 0
+	[ $role == 'import' ] && return 0
+	return 1
 }
 
 fail() {

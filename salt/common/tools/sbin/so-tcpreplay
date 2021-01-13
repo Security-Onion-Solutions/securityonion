@@ -47,13 +47,27 @@ if ! docker ps | grep -q so-tcpreplay; then
   echo "Replay functionality not enabled; attempting to enable now (may require Internet access)..."
   echo
 
-  TRUSTED_CONTAINERS=("so-tcpreplay")
-  mkdir -p /opt/so/log/tcpreplay
-  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
-  so-tcpreplay-start || fail "Unable to initialize tcpreplay"
+  if is_manager; then
+	  TRUSTED_CONTAINERS=("so-tcpreplay")
+	  mkdir -p /opt/so/log/tcpreplay
+	  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+	elif is_sensor; then
+		if ! is_manager; then
+			echo "Attempting to start replay container. If this fails then you may need to run this command on the manager first."
+		fi
+  	so-tcpreplay-start || fail "Unable to initialize tcpreplay"
+  else
+  	echo "Unable to enable replay functionality on this node type."
+  fi
 fi
 
-echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
-docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i ${REPLAYIFACE} -M${REPLAYSPEED} $@"
+if is_sensor; then
+	echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
+	docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i ${REPLAYIFACE} -M${REPLAYSPEED} $@"
 
-echo "Replay completed. Warnings shown above are typically expected."
+	echo "Replay completed. Warnings shown above are typically expected."
+elif is_manager; then
+	echo "The sensor nodes in this grid can now replay traffic."
+else
+	echo "Unable to replay traffic since this node is not a sensor node."
+fi
