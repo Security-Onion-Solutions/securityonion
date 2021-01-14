@@ -124,6 +124,15 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
 	echo "Network is up on $MNIC" >> $setup_log 2>&1
+
+	if [[ ! $is_iso ]]; then
+		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
+		if [ "$OS" == ubuntu ]; then
+			apt-get -y install sshpass >> $setup_log 2>&1
+		else
+			yum -y install sshpass >> $setup_log 2>&1
+		fi
+	fi
 fi
 
 case "$setup_type" in
@@ -135,6 +144,9 @@ case "$setup_type" in
 		exit 1
 		;;
 esac
+
+#set ssh commands that will be used based on if this is an automated test install or not
+set_ssh_cmds $automated
 
 # Allow execution of SO tools during setup
 local_sbin="$(pwd)/../salt/common/tools/sbin"
@@ -285,7 +297,7 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $is_minion ]]; then
-		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+		copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]] && ! (compare_versions); then
@@ -586,6 +598,8 @@ set_redirect >> $setup_log 2>&1
 	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
 
+	update_sudoers_for_testing >> $setup_log 2>&1
+
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 9 'Configuring Salt master'
 		{
@@ -628,12 +642,12 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
-		accept_salt_key_remote >> $setup_log 2>&1
+		retry 20 10	accept_salt_key_remote "going to be accepted"
 	fi
 
 	if [[ $is_manager || $is_import || $is_helix ]]; then
 		set_progress_str 20 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
+		retry 20 10 "salt-key -ya $MINION_ID" "going to be accepted"
 	fi
 
 	set_progress_str 21 'Copying minion pillars to manager'
@@ -842,7 +856,7 @@ if [[ -n $SO_ERROR ]]; then
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
-		[ -n "$TESTING" ] && logCmd so-test
+		[[ -n "$TESTING" ]] && logCmd so-test
 
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 

@@ -157,9 +157,7 @@ set_version() {
 }
 
 require_manager() {
-	# Check to see if this is a manager
-	MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-	if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
+	if is_manager; then
 		echo "This is a manager, We can proceed."
 	else
 		echo "Please run this command on the manager; the manager controls the grid."
@@ -167,12 +165,32 @@ require_manager() {
 	fi
 }
 
+is_manager() {
+	# Check to see if this is a manager node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'manager' ] && return 0
+	[ $role == 'managersearch' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_sensor() {
+	# Check to see if this is a sensor (forward) node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'sensor' ] && return 0
+	[ $role == 'heavynode' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
 is_single_node_grid() {
 	role=$(lookup_role)
-	if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
-		return 1
-	fi
-	return 0
+	[ $role == 'eval' ] && return 0
+	[ $role == 'standalone' ] && return 0
+	[ $role == 'import' ] && return 0
+	return 1
 }
 
 fail() {
@@ -185,6 +203,34 @@ fail() {
 get_random_value() {
 	length=${1:-20}
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
+retry() {
+	maxAttempts=$1
+	sleepDelay=$2
+	cmd=$3
+	expectedOutput=$4
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do			
+		attempt=$((attempt+1))
+		info "Executing command with retry support: $cmd"
+		output=$($cmd)
+		info "Results: $output"
+		exitcode=$?
+		if [ -n "$expectedOutput" ]; then
+			if [[ "$output" =~ "$expectedOutput" ]]; then
+				return $exitCode
+			else
+				info "Expected '$expectedOutput' but got '$output'"
+			fi
+		elif [[ $exitcode -eq 0 ]]; then
+			return $exitCode
+		fi
+		info "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+		sleep $sleepDelay
+	done
+	error "Command continues to fail; giving up."
+	return 1
 }
 
 wait_for_apt() {
