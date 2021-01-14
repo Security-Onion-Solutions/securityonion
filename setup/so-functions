@@ -356,18 +356,14 @@ clear_manager() {
 
 }
 
-collect_soremote_inputs() {
-	whiptail_create_soremote_user
-	SCMATCH=no
-	while [[ $SCMATCH != yes ]]; do
-		whiptail_create_soremote_user_password1
-		whiptail_create_soremote_user_password2
-		check_soremote_pass
-	done
-}
-
 collect_adminuser_inputs() {
 	whiptail_create_admin_user
+
+	while ! valid_username "$ADMINUSER"; do
+		whiptail_invalid_input
+		whiptail_create_admin_user
+	done
+
 	APMATCH=no
 	while [[ $APMATCH != yes ]]; do
 		whiptail_create_admin_user_password1
@@ -376,8 +372,73 @@ collect_adminuser_inputs() {
 	done
 }
 
+collect_cur_close_days() {
+	whiptail_cur_close_days
+
+	while ! valid_int "$CURCLOSEDAYS" "1"; do
+		whiptail_invalid_input
+		whiptail_cur_close_days
+	done
+}
+
+collect_dns() {
+	whiptail_management_interface_dns
+
+	while ! valid_dns_list "$MDNS"; do
+		whiptail_invalid_input
+		whiptail_management_interface_dns
+	done
+
+	MDNS=$(echo "$MDNS" | tr -s "," " ") # MDNS needs to be space separated, we prompt for comma separated for consistency
+}
+
+collect_dns_domain() {
+	whiptail_management_interface_dns_search
+
+	while ! valid_fqdn "$MSEARCH"; do
+		whiptail_invalid_input
+		whiptail_management_interface_dns_search
+	done
+}
+
+collect_dockernet() {
+	if ! whiptail_dockernet_check; then
+		whiptail_dockernet_net
+
+		while ! valid_ip4 "$DOCKERNET"; do
+			whiptail_invalid_input
+			whiptail_dockernet_net
+		done
+	fi
+}
+
+collect_es_cluster_name() {
+	if whiptail_manager_adv_escluster; then
+		whiptail_manager_adv_escluster_name
+
+		while ! valid_string "$ESCLUSTERNAME"; do
+			whiptail_invalid_string "ES cluster name"
+			whiptail_manager_adv_escluster_name
+		done
+	fi
+}
+
+collect_es_space_limit() {
+	whiptail_log_size_limit
+
+	while ! valid_int "$log_size_limit" "1"; do # Upper/lower bounds?
+		whiptail_invalid_input
+		whiptail_log_size_limit
+	done
+}
+
 collect_fleet_custom_hostname_inputs() {
 	whiptail_fleet_custom_hostname
+
+	while ! valid_fqdn "$FLEETCUSTOMHOSTNAME" || [[ $FLEETCUSTOMHOSTNAME != "" ]]; do
+		whiptail_invalid_input
+		whiptail_fleet_custom_hostname
+	done
 }
 
 collect_fleetuser_inputs() {
@@ -404,6 +465,218 @@ collect_fleetuser_inputs() {
 	done
 }
 
+collect_gateway() {
+	whiptail_management_interface_gateway
+
+	while ! valid_ip4 "$MGATEWAY"; do
+		whiptail_invalid_input
+		whiptail_management_interface_gateway
+	done
+}
+
+collect_helix_key() {
+	whiptail_helix_apikey # validate?
+}
+
+collect_homenet_mngr() {
+	whiptail_homenet_manager
+	
+	while ! valid_cidr_list "$HNMANAGER"; do
+		whiptail_invalid_input
+		whiptail_homenet_manager
+	done
+}
+
+collect_homenet_snsr() {
+	if whiptail_homenet_sensor_inherit; then
+		export HNSENSOR=inherit
+	else
+		whiptail_homenet_sensor
+		
+		while ! valid_cidr_list "$HNSENSOR"; do
+			whiptail_invalid_input
+			whiptail_homenet_sensor
+		done
+	fi
+}
+
+collect_hostname() {
+	HOSTNAME=$(cat /etc/hostname)
+	if [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+
+	whiptail_set_hostname
+
+	while ! valid_hostname "$HOSTNAME"; do
+		whiptail_invalid_hostname
+		whiptail_set_hostname
+	done
+}
+
+collect_int_ip_mask() {
+	whiptail_management_interface_ip_mask
+
+	while ! valid_cidr "$manager_ip_mask"; do
+		whiptail_invalid_input
+		whiptail_management_interface_ip_mask
+	done
+
+	MIP=$(echo "$manager_ip_mask" | sed 's/\/.*//' )
+	MMASK=$(echo "$manager_ip_mask" | sed 's/.*\///')
+}
+
+collect_mngr_hostname() {
+	whiptail_management_server
+
+	while ! valid_hostname "$MSRV"; do
+		whiptail_invalid_hostname
+		whiptail_management_server
+	done
+
+	if ! getent hosts "$MSRV"; then
+		add_manager_hostfile
+	else
+		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
+	fi
+}
+
+collect_mtu() {
+	whiptail_bond_nics_mtu
+
+	while ! valid_int "$MTU" "68"; do
+		whiptail_invalid_input
+		whiptail_bond_nics_mtu
+	done
+}
+
+collect_node_es_heap() {
+	whiptail_node_es_heap
+
+	while ! valid_int "$NODE_ES_HEAP_SIZE"; do
+		whiptail_invalid_input
+		whiptail_node_es_heap
+	done
+}
+
+collect_node_ls_heap() {
+	whiptail_node_ls_heap
+
+	while ! valid_int "$NODE_LS_HEAP_SIZE"; do
+		whiptail_invalid_input
+		whiptail_node_ls_heap
+	done
+}
+
+collect_node_ls_input() {
+	whiptail_node_ls_input_threads
+	while ! valid_int "$LSINPUTTHREADS"; do
+		whiptail_invalid_input
+		whiptail_node_ls_input_threads
+	done
+}
+
+collect_node_ls_pipeline_batch_size() {
+	whiptail_node_ls_pipline_batchsize
+
+	while ! valid_int "$LSPIPELINEBATCH"; do
+		whiptail_invalid_input
+		whiptail_node_ls_pipline_batchsize
+	done
+}
+
+collect_node_ls_pipeline_worker_count() {
+	whiptail_node_ls_pipeline_worker
+
+	while ! valid_int "$LSPIPELINEWORKERS"; do
+		whiptail_invalid_input
+		whiptail_node_ls_pipeline_worker
+	done
+}
+
+collect_oinkcode() {
+	whiptail_oinkcode
+	while ! valid_string "$OINKCODE" "" "128"; do #TODO: verify max length here
+		whiptail_invalid_input
+		whiptail_oinkcode
+	done
+}
+
+collect_patch_schedule() {
+	whiptail_patch_schedule
+
+	case "$patch_schedule" in
+		'New Schedule')
+			whiptail_patch_schedule_select_days
+			whiptail_patch_schedule_select_hours
+			collect_patch_schedule_name_new
+			patch_schedule_os_new
+		;;
+		'Import Schedule')
+			collect_patch_schedule_name_import
+		;;
+		'Automatic')
+			PATCHSCHEDULENAME='auto'
+		;;
+		'Manual')
+			PATCHSCHEDULENAME='manual'
+		;;
+	esac
+}
+
+collect_patch_schedule_name_new() {
+	whiptail_patch_name_new_schedule
+
+	while ! valid_string "$PATCHSCHEDULENAME"; do
+		whiptail_invalid_string "schedule name"
+		whiptail_patch_name_new_schedule
+	done
+}
+
+collect_patch_schedule_name_import() {
+	whiptail_patch_schedule_import
+
+	while ! valid_string "$PATCHSCHEDULENAME"; do
+		whiptail_invalid_string "schedule name"
+		whiptail_patch_schedule_import
+	done
+}
+
+collect_redirect_host() {
+	whiptail_set_redirect_host
+
+	while ! valid_ip4 "$REDIRECTHOST" && ! valid_hostname "$REDIRECTHOST" && ! valid_fqdn "$REDIRECTHOST"; do
+		whiptail_invalid_input
+		whiptail_set_redirect_host
+	done
+}
+
+collect_so_allow() {
+	if whiptail_so_allow_yesno; then
+		whiptail_so_allow
+		while ! valid_cidr "$ALLOW_CIDR" && ! valid_ip4 "$ALLOW_CIDR"; do
+			whiptail_invalid_input
+			whiptail_so_allow
+		done
+	fi
+}
+
+collect_soremote_inputs() {
+	whiptail_create_soremote_user
+	SCMATCH=no
+	while [[ $SCMATCH != yes ]]; do
+		whiptail_create_soremote_user_password1
+		whiptail_create_soremote_user_password2
+		check_soremote_pass
+	done
+}
+
+collect_suri() {
+	whiptail_basic_suri
+
+	while ! valid_int "$BASICSURI"; do
+		whiptail_invalid_input
+		whiptail_basic_suri
+	done
+}
 
 collect_webuser_inputs() {
 	# Get a password for the web admin user
@@ -421,15 +694,24 @@ collect_webuser_inputs() {
 	while [[ $WPMATCH != yes ]]; do
 	    whiptail_create_web_user_password1
 	    while ! check_password "$WEBPASSWD1"; do
-			whiptail_invalid_pass_characters_warning
-			whiptail_create_web_user_password1
-		done
+				whiptail_invalid_pass_characters_warning
+				whiptail_create_web_user_password1
+			done
 		if echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1; then
 			whiptail_create_web_user_password2
 			check_web_pass
 		else
 			whiptail_invalid_pass_warning
 		fi
+	done
+}
+
+collect_zeek() {
+	whiptail_basic_zeek
+
+	while ! valid_int "$BASICZEEK"; do
+		whiptail_invalid_input
+		whiptail_basic_zeek
 	done
 }
 
@@ -570,31 +852,27 @@ compare_versions() {
 
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
-	local nic_error=0
-
-	# Set the MTU
-	if [[ $NSMSETUP != 'ADVANCED' ]]; then
-		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
-	fi
 
 	if [[ $is_cloud ]]; then 
 		INTERFACE=${BNICS[0]}
-		local nmcli_con_arg="type ethernet"
+		local nmcli_con_args=( "type" "ethernet" )
 	else 
 		INTERFACE='bond0'
-		local nmcli_con_arg="type bond mode 0"
+		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
+	local MTU
+	MTU=$(lookup_pillar "mtu" "sensor")
+
 	# Create the bond interface only if it doesn't already exist
-	
 	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
-		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" $nmcli_con_arg -- \
+		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" "${nmcli_con_args[@]}" -- \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	else
 		local int_uuid
@@ -603,53 +881,14 @@ configure_network_sensor() {
 		nmcli con mod "$int_uuid" \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	fi
 
 	for BNIC in "${BNICS[@]}"; do
-		# Check if specific offload features are able to be disabled
-		for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
-			if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
-				echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
-				nic_error=1
-				break
-			fi
-		done
-
-		# Turn off various offloading settings for the interface
-		for i in rx tx sg tso ufo gso gro lro; do
-			ethtool -K "$BNIC" $i off >> "$setup_log" 2>&1
-		done
-		
-		if [[ $is_cloud ]]; then
-			nmcli con up "$BNIC" >> "$setup_log" 2>&1
-		else
-			# Check if the bond slave connection has already been created
-			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC" >> "$setup_log" 2>&1
-			local found_int=$?
-			
-			if [[ $found_int != 0 ]]; then
-				# Create the slave interface and assign it to the bond
-				nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			else
-				local int_uuid
-				int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
-
-				nmcli con mod "$int_uuid" \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			fi
-			
-			nmcli con up "bond0-slave-$BNIC" >> "$setup_log" 2>&1 # Bring the slave interface up
-		fi
+		add_interface_bond0 "$BNIC" >> "$setup_log" 2>&1
+		return $?
 	done
-
-	if [ $nic_error != 0 ]; then
-		return 1
-	fi
 }
 
 copy_salt_master_config() {
@@ -974,12 +1213,20 @@ docker_seed_registry() {
 
 download_repo_tarball() {
 
-	mkdir -p /root/manager_setup/securityonion
-	{
-		local manager_ver
-		manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-		$scpcmd -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
-	} >> "$setup_log" 2>&1
+	mkdir -p /root/manager_setup
+
+	local manager_ver
+	manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion) >> "$setup_log" 2>&1
+
+	# Fail if we can't determine the version
+	if [[ $manager_ver == '' ]]; then
+		rm /root/install_opt
+		local message="Could not determine the version of Security Onion running on the manager, please check your network settings."
+		echo "$message" | tee -a "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 
+	fi
+
+	$scpcmd -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup >> "$setup_log" 2>&1
 	
 	# Fail if the file doesn't download
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
@@ -988,7 +1235,8 @@ download_repo_tarball() {
 		echo "$message" | tee -a "$setup_log"
 		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
-	
+
+	mkdir -p /root/manager_setup/securityonion
 	{
 		tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
 		rm -rf /root/manager_setup/"$manager_ver".tar.gz
@@ -1062,7 +1310,7 @@ generate_repo_tarball() {
 get_redirect() {
 	whiptail_set_redirect
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
-		whiptail_set_redirect_host
+		collect_redirect_host
 	fi
 }
 
@@ -1388,22 +1636,21 @@ network_init() {
 network_init_whiptail() {
 	case "$setup_type" in
 		'iso')
-			whiptail_set_hostname
+			collect_hostname
 			whiptail_management_nic
 			whiptail_dhcp_or_static
 
 			if [ "$address_type" != 'DHCP' ]; then
-				whiptail_management_interface_ip
-				whiptail_management_interface_mask
-				whiptail_management_interface_gateway
-				whiptail_management_interface_dns
-				whiptail_management_interface_dns_search
+				collect_int_ip_mask
+				collect_gateway
+				collect_dns
+				collect_dns_domain
 			fi
 			;;
 		'network')
 			whiptail_network_notice
 			whiptail_dhcp_warn
-			whiptail_set_hostname
+			collect_hostname
 			whiptail_management_nic
 			;;
 	esac
@@ -1996,6 +2243,11 @@ sensor_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	# Set the MTU
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
+	fi
+
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
@@ -2028,6 +2280,7 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
+	
 }
 
 set_default_log_size() {

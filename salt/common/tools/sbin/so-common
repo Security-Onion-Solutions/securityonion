@@ -24,9 +24,55 @@ fi
 # Define a banner to separate sections
 banner="========================================================================="
 
+add_interface_bond0() {
+	local BNIC=$1
+	if [[ -z $MTU ]]; then
+		local MTU
+		MTU=$(lookup_pillar "mtu" "sensor")
+	fi
+	local nic_error=0
+
+	# Check if specific offload features are able to be disabled
+	for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
+		if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
+			echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected."
+			((nic_error++))
+			break
+		fi
+	done
+
+	for i in rx tx sg tso ufo gso gro lro; do
+		ethtool -K "$BNIC" $i off
+	done
+	# Check if the bond slave connection has already been created
+	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+	local found_int=$?
+
+	if [[ $found_int != 0 ]]; then
+		# Create the slave interface and assign it to the bond
+		nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	else
+		local int_uuid
+		int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+
+		nmcli con mod "$int_uuid" \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	fi
+
+	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
+			
+	nmcli con up "bond0-slave-$BNIC" # Bring the slave interface up
+
+	if [ "$nic_error" != 0 ]; then
+		return "$nic_error"
+	fi
+}
+
 header() {
-	echo
-		printf '%s\n' "$banner" "$*" "$banner"
+	printf '%s\n' "" "$banner" " $*" "$banner" 
 }
 
 lookup_salt_value() {
@@ -230,6 +276,89 @@ __check_apt_lock() {
 	local lock=$?
 
 	return $lock
+}
+
+valid_cidr() {
+	# Verify there is a backslash in the string
+	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
+	
+	local cidr
+	local ip
+
+	cidr=$(echo "$1" | sed 's/.*\///')
+	ip=$(echo "$1" | sed 's/\/.*//' )
+	
+	if valid_ip4 "$ip"; then
+		[[ $cidr =~ ([0-9]|[1-2][0-9]|3[0-2]) ]] && return 0 || return 1
+	else
+		return 1
+	fi
+}
+
+valid_cidr_list() {
+	local all_valid=0
+
+	IFS="," read -r -a net_arr <<< "$1"
+
+	for net in "${net_arr[@]}"; do
+		valid_cidr "$net" || all_valid=1
+	done
+
+	return $all_valid
+}
+
+valid_dns_list() {
+	local all_valid=0
+
+	IFS="," read -r -a dns_arr <<< "$1"
+
+	for addr in "${dns_arr[@]}"; do
+		valid_ip4 "$addr" || all_valid=1
+	done
+
+	return $all_valid
+}
+
+valid_fqdn() {
+	local fqdn=$1
+
+	echo "$fqdn" | grep -qP '(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)' \
+		&& return 0 \
+		|| return 1
+}
+
+valid_hostname() {
+	local hostname=$1
+
+	[[ $hostname =~ ^[a-zA-Z0-9\-]+$ ]] && [[ $hostname != 'localhost' ]] && return 0 || return 1
+}
+
+valid_ip4() {
+	local ip=$1
+
+	echo "$ip" | grep -qP '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$' && return 0 || return 1
+}
+
+valid_int() {
+	local num=$1
+	local min=${2:-1}
+	local max=${3:-1000}
+
+	[[ $num =~ ^[0-9]*$ ]] && [[ $num -ge $min ]] && [[ $num -le $max ]] && return 0 || return 1
+}
+
+valid_string() {
+	local str=$1
+	local min_length=${2:-1}
+	local max_length=${3:-64}
+
+	echo "$str" | grep -qP '^\S+$' && [[ ${#str} -ge $min_length ]] && [[ ${#str} -le $max_length ]] && return 0 || return 1
+}
+
+valid_username() {
+	local user=$1
+
+	echo "$user" | grep -qP '^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$' && return 0 || return 1
 }
 
 wait_for_web_response() {

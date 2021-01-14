@@ -65,7 +65,6 @@ whiptail_basic_zeek() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-
 whiptail_bond_nics_mtu() {
 
 	[ -n "$TESTING" ] && return
@@ -76,7 +75,6 @@ whiptail_bond_nics_mtu() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_cancel() {
@@ -121,6 +119,8 @@ whiptail_create_admin_user() {
 	ADMINUSER=$(whiptail --title "Security Onion Install" --inputbox \
 	"Please enter a username for a new system admin user: \nThe local onion account will be disabled during this install" 10 60 3>&1 1>&2 2>&3)
 
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_create_admin_user_password1() {
@@ -244,17 +244,6 @@ whiptail_create_web_user_password2() {
 
 }
 
-whiptail_fleet_custom_hostname() {
-
-	[ -n "$TESTING" ] && return
-
-	FLEETCUSTOMHOSTNAME=$(whiptail --title "Security Onion Install" --inputbox \
-	"What FQDN should osquery clients use for connections to this Fleet node? Leave blank if the local system hostname will be used." 10 60 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
 whiptail_requirements_error() {
 
 	local requirement_needed=$1
@@ -310,20 +299,6 @@ whiptail_storage_requirements() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_invalid_pass_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "Security Onion Setup" --msgbox "Please choose a more secure password." 8 75
-}
-
-whiptail_invalid_pass_characters_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "Security Onion Setup" --msgbox "Password is invalid. Please exclude single quotes, double quotes, dollar signs, and backslashes from the password." 8 75
 }
 
 whiptail_cur_close_days() {
@@ -403,11 +378,6 @@ whiptail_dockernet_check(){
 	whiptail --title "Security Onion Setup" --yesno \
 	"Do you want to keep the default Docker IP range? \n \n(Choose yes if you don't know what this means)" 10 75
 
-	local exitstatus=$?
-
-	if [[ $exitstatus == 1 ]]; then
-	whiptail_dockernet_net
-	fi
 }
 
 whiptail_dockernet_net() {
@@ -500,37 +470,36 @@ whiptail_helix_apikey() {
 
 }
 
+#TODO: Combine these two functions
+
 whiptail_homenet_manager() {
 
 	[ -n "$TESTING" ] && return
 
 	HNMANAGER=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your HOME_NET, separating CIDR blocks with a comma (,):" 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
+		"Enter your home network(s), separating CIDR blocks with a comma (,):" 10 75 "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	export HNMANAGER
 }
 
-whiptail_homenet_sensor() {
-
+whiptail_homenet_sensor_inherit() {
 	[ -n "$TESTING" ] && return
 
 	# Ask to inherit from manager
 	whiptail --title "Security Onion Setup" --yesno "Do you want to inherit the HOME_NET from the Manager?" 8 75
+}
 
+whiptail_homenet_sensor() {
+	[ -n "$TESTING" ] && return
+
+	HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter your home network(s), separating CIDR blocks with a comma (,):" 10 75 "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 
-	if [ $exitstatus == 0 ]; then
-		export HNSENSOR=inherit
-	else
-		HNSENSOR=$(whiptail --title "Security Onion Setup" --inputbox \
-		"Enter your HOME_NET, separating CIDR blocks with a comma (,):" 10 75 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 3>&1 1>&2 2>&3)
-		local exitstatus=$?
-		whiptail_check_exitstatus $exitstatus
-
-		export HNSENSOR
-	fi
+	export HNSENSOR
 }
 
 whiptail_install_type() {
@@ -612,6 +581,20 @@ whiptail_install_type_other() {
 	export install_type
 }
 
+whiptail_invalid_input() { # TODO: This should accept a list of arguments to specify what general pattern the input should follow
+	[ -n "$TESTING" ] && return
+	
+	whiptail --title "Security Onion Setup" --msgbox "  Invalid input, please try again." 7 40
+
+}
+
+whiptail_invalid_string() {
+		[ -n "$TESTING" ] && return
+	
+	whiptail --title "Security Onion Setup" --msgbox "Invalid input, please try again.\n\nThe $1 cannot contain spaces." 9 45
+
+}
+
 whiptail_invalid_pass_characters_warning() {
 
 	[ -n "$TESTING" ] && return
@@ -631,6 +614,18 @@ whiptail_invalid_user_warning() {
 	[ -n "$TESTING" ] && return
 	
 	whiptail --title "Security Onion Setup" --msgbox "Please enter a valid email address." 8 75
+}
+
+whiptail_invalid_hostname() {
+	[ -n "$TESTING" ] && return
+
+	local error_message
+	error_message=$(echo "Please choose a valid hostname. It cannot be localhost; and must contain only \
+		the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', \
+		and hyphen ('-')" | tr -d '\t')
+
+	whiptail --title "Security Onion Setup" \
+	--msgbox "$error_message" 10 75
 }
 
 whiptail_log_size_limit() {
@@ -674,10 +669,11 @@ whiptail_management_interface_dns() {
 	[ -n "$TESTING" ] && return
 
 	MDNS=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your DNS servers separated by a space:" 10 60 8.8.8.8 8.8.4.4 3>&1 1>&2 2>&3)
+	"Enter your DNS servers separated by commas:" 10 60 "8.8.8.8,8.8.4.4" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
 }
 
 whiptail_management_interface_dns_search() {
@@ -696,7 +692,17 @@ whiptail_management_interface_gateway() {
 	[ -n "$TESTING" ] && return
 
 	MGATEWAY=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your gateway:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+	"Enter your gateway's IPv4 address:" 10 60 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_management_interface_ip_mask() {
+	[ -n "$TESTING" ] && return
+
+	manager_ip_mask=$(whiptail --title "Security Onion Setup" --inputbox \
+		"Enter your IPv4 address with CIDR mask (e.g. 192.168.1.2/24):" 10 60 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -791,7 +797,6 @@ whiptail_net_setup_complete() {
 	exit 0
 }
 
-
 whiptail_management_server() {
 
 	[ -n "$TESTING" ] && return
@@ -801,28 +806,6 @@ whiptail_management_server() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-	while [[ $MSRV == *'localhost'* || ! ( $MSRV =~ ^[a-zA-Z0-9\-]*$ ) ]] ; do
-		local error_message
-		error_message=$(echo "Please choose a valid hostname. It cannot contain localhost; and must contain only \
-			the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', \
-			and hyphen ('-')" | tr -d '\t')
-
-		whiptail --title "Security Onion Setup" \
-		--msgbox "$error_message" 10 75
-
-		MSRV=$(whiptail --title "Security Onion Setup" --inputbox \
-		"Enter your Manager Server hostname. It is CASE SENSITIVE!" 10 75 XXXX 3>&1 1>&2 2>&3)
-
-		local exitstatus=$?
-		whiptail_check_exitstatus $exitstatus
-	done
-
-	if ! getent hosts "$MSRV"; then
-		add_manager_hostfile
-	else
-		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
-	fi
 
 }
 
@@ -849,11 +832,6 @@ whiptail_manager_adv_escluster(){
 	whiptail --title "Security Onion Setup" --yesno \
 	"Do you want to set up a traditional ES cluster for using replicas and/or Hot-Warm indices? Recommended only for those who have experience with ES clustering! " 12 75
 
-	local exitstatus=$?
-
-	if [[ $exitstatus == 0 ]]; then
-	whiptail_manager_adv_escluster_name
-	fi
 }
 
 # Get a cluster name
@@ -957,13 +935,13 @@ whiptail_metadata_tool() {
 
 	[ -n "$TESTING" ] && return
 
+	# Legacy variable naming
 	ZEEKVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate metadata?" 20 75 4 \
 	"ZEEK" "Zeek (formerly known as Bro)"  ON \
 	"SURICATA" "Suricata" OFF 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_nids() {
@@ -1016,7 +994,7 @@ whiptail_node_es_heap() {
 	[ -n "$TESTING" ] && return
 
 	NODE_ES_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter ES Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
+	"\nEnter ES heap size: \n \n(Recommended value is pre-populated)" 10 75 $ES_HEAP_SIZE 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1028,19 +1006,7 @@ whiptail_node_ls_heap() {
 	[ -n "$TESTING" ] && return
 
 	NODE_LS_HEAP_SIZE=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter LogStash Heap Size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_node_ls_pipeline_worker() {
-
-	[ -n "$TESTING" ] && return
-
-	LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter LogStash Pipeline Workers: \n \n(Recommended value is pre-populated)" 10 75 "$num_cpu_cores" 3>&1 1>&2 2>&3)
+	"\nEnter Logstash heap size: \n \n(Recommended value is pre-populated)" 10 75 $LS_HEAP_SIZE 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1052,7 +1018,19 @@ whiptail_node_ls_pipline_batchsize() {
 	[ -n "$TESTING" ] && return
 
 	LSPIPELINEBATCH=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter LogStash Pipeline Batch Size: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+	"\nEnter Logstash pipeline batch size: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+}
+
+whiptail_node_ls_pipeline_worker() {
+
+	[ -n "$TESTING" ] && return
+
+	LSPIPELINEWORKERS=$(whiptail --title "Security Onion Setup" --inputbox \
+	"\nEnter number of Logstash pipeline workers: \n \n(Recommended value is pre-populated)" 10 75 "$num_cpu_cores" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1064,7 +1042,7 @@ whiptail_node_ls_input_threads() {
 	[ -n "$TESTING" ] && return
 
 	LSINPUTTHREADS=$(whiptail --title "Security Onion Setup" --inputbox \
-		"\nEnter LogStash Input Threads: \n \n(Default value is pre-populated)" 10 75 1 3>&1 1>&2 2>&3)
+		"\nEnter number of Logstash input threads: \n \n(Default value is pre-populated)" 10 75 1 3>&1 1>&2 2>&3)
 
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
@@ -1101,53 +1079,21 @@ whiptail_patch_name_new_schedule() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-	while [[ -z "$PATCHSCHEDULENAME"  ]]; do
-		whiptail --title "Security Onion Setup" --msgbox "Please enter a name for this OS patch schedule." 8 75
-		PATCHSCHEDULENAME=$(whiptail --title "Security Onion Setup" --inputbox \
-		"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 3>&1 1>&2 2>&3)
-		local exitstatus=$?
-		whiptail_check_exitstatus $exitstatus
-	done
-
-
 }
 
 whiptail_patch_schedule() {
 
 	[ -n "$TESTING" ] && return
 
-	local patch_schedule
 	patch_schedule=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose OS patch schedule: \nThis will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
-	"Automatic" "Updates installed every 8 hours if available" ON \
-	"Manual" "Updates will be installed manually" OFF \
-	"Import Schedule" "Import named schedule on following screen" OFF \
-	"New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
+		"Choose OS patch schedule: \nThis will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
+		"Automatic" "Updates installed every 8 hours if available" ON \
+		"Manual" "Updates will be installed manually" OFF \
+		"Import Schedule" "Import named schedule on following screen" OFF \
+		"New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-
-	case $patch_schedule in
-	'New Schedule')
-		whiptail_patch_schedule_select_days
-		whiptail_patch_schedule_select_hours
-		whiptail_patch_name_new_schedule
-		patch_schedule_os_new
-		;;
-	'Import Schedule')
-		whiptail_patch_schedule_import
-		;;
-	'Automatic')
-		PATCHSCHEDULENAME='auto'
-		;;
-	'Manual')
-		PATCHSCHEDULENAME='manual'
-		;;
-	esac
-
-
 }
 
 whiptail_patch_schedule_import() {
@@ -1327,32 +1273,11 @@ whiptail_set_hostname() {
 
 	[ -n "$TESTING" ] && return
 
-	HOSTNAME=$(cat /etc/hostname)
-
-	if [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
-
 	HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the hostname (not FQDN) you would like to set:" 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+		"Enter the hostname (not FQDN) you would like to set:" 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-	while [[ $HOSTNAME == *'localhost'* || ! ( $HOSTNAME =~ ^[a-zA-Z0-9\-]*$ ) ]] ; do
-		local error_message
-		error_message=$(echo "Please choose a valid hostname. It cannot contain localhost; and must contain only \
-			the ASCII letters 'a' through 'z' (case-insensitive), the digits '0' through '9', \
-			and hyphen ('-')" | tr -d '\t')
-
-		whiptail --title "Security Onion Setup" \
-		--msgbox "$error_message" 10 75
-
-		HOSTNAME=$(whiptail --title "Security Onion Setup" --inputbox \
-		"Enter the hostname (not FQDN) you would like to set:" 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
-
-		local exitstatus=$?
-		whiptail_check_exitstatus $exitstatus
-	done
-
 }
 
 whiptail_set_redirect() {
@@ -1373,7 +1298,7 @@ whiptail_set_redirect_host() {
 	[ -n "$TESTING" ] && return
 
 	REDIRECTHOST=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter the Hostname or IP you would like to use for the web interface:" 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
+	"Enter the Hostname, IP, or FQDN you would like to use for the web interface:" 10 75 "$HOSTNAME" 3>&1 1>&2 2>&3)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
@@ -1423,37 +1348,25 @@ whiptail_setup_failed() {
 	whiptail --title "Security Onion Setup" --msgbox "$message" $height 75
 }
 
-whiptail_shard_count() {
-
+whiptail_so_allow_yesno() {
 	[ -n "$TESTING" ] && return
 
-	SHARDCOUNT=$(whiptail --title "Security Onion Setup" --inputbox \
-	"\nEnter ES Shard Count: \n \n(Default value is pre-populated)" 10 75 125 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
+	whiptail --title "Security Onion Setup" \
+		--yesno "Do you want to run so-allow to allow access to the web tools?" \
+		8 75
 }
 
 whiptail_so_allow() {
 
 	[ -n "$TESTING" ] && return
-
-	whiptail --title "Security Onion Setup" \
-	--yesno "Do you want to run so-allow to allow access to the web tools?" \
-	8 75
-
-	local exitstatus=$?
-
-	if [[ $exitstatus == 0 ]]; then
-		ALLOW_CIDR=$(whiptail --title "Security Onion Setup" \
+	
+	ALLOW_CIDR=$(whiptail --title "Security Onion Setup" \
 		--inputbox "Enter a single IP address or an IP range, in CIDR notation, to allow:" \
 		10 75 3>&1 1>&2 2>&3)
-		local exitstatus=$?
-		
-		export ALLOW_ROLE='a'
-		export ALLOW_CIDR
-	fi
+	local exitstatus=$?
+	
+	export ALLOW_ROLE='a'
+	export ALLOW_CIDR
 }
 
 whiptail_storage_requirements() {
