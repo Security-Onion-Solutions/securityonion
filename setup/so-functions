@@ -129,19 +129,6 @@ add_admin_user() {
 	
 }
 
-add_manager_hostfile() {
-
-	[ -n "$TESTING" ] && return
-
-	echo "Checking if I can resolve manager. If not add to hosts file" >> "$setup_log" 2>&1
-	# Pop up an input to get the IP address
-	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your Manager Server IP Address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
 add_mngr_ip_to_hosts() {
 	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
@@ -361,7 +348,7 @@ collect_adminuser_inputs() {
 
 	while ! valid_username "$ADMINUSER"; do
 		whiptail_invalid_input
-		whiptail_create_admin_user
+		whiptail_create_admin_user "$ADMINUSER"
 	done
 
 	APMATCH=no
@@ -373,62 +360,62 @@ collect_adminuser_inputs() {
 }
 
 collect_cur_close_days() {
-	whiptail_cur_close_days
+	whiptail_cur_close_days "$CURCLOSEDAYS"
 
 	while ! valid_int "$CURCLOSEDAYS" "1"; do
 		whiptail_invalid_input
-		whiptail_cur_close_days
+		whiptail_cur_close_days "$CURCLOSEDAYS"
 	done
 }
 
 collect_dns() {
-	whiptail_management_interface_dns
+	whiptail_management_interface_dns "8.8.8.8,8.8.4.4"
 
 	while ! valid_dns_list "$MDNS"; do
 		whiptail_invalid_input
-		whiptail_management_interface_dns
+		whiptail_management_interface_dns "$MDNS"
 	done
 
 	MDNS=$(echo "$MDNS" | tr -s "," " ") # MDNS needs to be space separated, we prompt for comma separated for consistency
 }
 
 collect_dns_domain() {
-	whiptail_management_interface_dns_search
+	whiptail_management_interface_dns_search "searchdomain.local"
 
 	while ! valid_fqdn "$MSEARCH"; do
 		whiptail_invalid_input
-		whiptail_management_interface_dns_search
+		whiptail_management_interface_dns_search "$MSEARCH"
 	done
 }
 
 collect_dockernet() {
 	if ! whiptail_dockernet_check; then
-		whiptail_dockernet_net
+		whiptail_dockernet_net "172.17.0.0"
 
 		while ! valid_ip4 "$DOCKERNET"; do
 			whiptail_invalid_input
-			whiptail_dockernet_net
+			whiptail_dockernet_net "$DOCKERNET"
 		done
 	fi
 }
 
 collect_es_cluster_name() {
 	if whiptail_manager_adv_escluster; then
-		whiptail_manager_adv_escluster_name
+		whiptail_manager_adv_escluster_name "securityonion"
 
 		while ! valid_string "$ESCLUSTERNAME"; do
 			whiptail_invalid_string "ES cluster name"
-			whiptail_manager_adv_escluster_name
+			whiptail_manager_adv_escluster_name "$ESCLUSTERNAME"
 		done
 	fi
 }
 
 collect_es_space_limit() {
-	whiptail_log_size_limit
+	whiptail_log_size_limit "$log_size_limit"
 
 	while ! valid_int "$log_size_limit" "1"; do # Upper/lower bounds?
 		whiptail_invalid_input
-		whiptail_log_size_limit
+		whiptail_log_size_limit "$log_size_limit"
 	done
 }
 
@@ -437,20 +424,17 @@ collect_fleet_custom_hostname_inputs() {
 
 	while ! valid_fqdn "$FLEETCUSTOMHOSTNAME" || [[ $FLEETCUSTOMHOSTNAME != "" ]]; do
 		whiptail_invalid_input
-		whiptail_fleet_custom_hostname
+		whiptail_fleet_custom_hostname "$FLEETCUSTOMHOSTNAME"
 	done
 }
 
+# Get a username & password for the Fleet admin user
 collect_fleetuser_inputs() {
-	# Get a username & password for the Fleet admin user
-	local valid_user=no
-	while [[ $valid_user != yes ]]; do
-		whiptail_create_fleet_node_user		
-		if so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; then
-			valid_user=yes
-		else
-			whiptail_invalid_user_warning
-		fi
+	whiptail_create_fleet_node_user
+	
+	while ! so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; do
+		whiptail_invalid_user_warning
+		whiptail_create_fleet_node_user "$FLEETNODEUSER"
 	done
 
 	FPMATCH=no
@@ -470,7 +454,7 @@ collect_gateway() {
 
 	while ! valid_ip4 "$MGATEWAY"; do
 		whiptail_invalid_input
-		whiptail_management_interface_gateway
+		whiptail_management_interface_gateway "$MGATEWAY"
 	done
 }
 
@@ -479,11 +463,11 @@ collect_helix_key() {
 }
 
 collect_homenet_mngr() {
-	whiptail_homenet_manager
+	whiptail_homenet_manager "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
 	
 	while ! valid_cidr_list "$HNMANAGER"; do
 		whiptail_invalid_input
-		whiptail_homenet_manager
+		whiptail_homenet_manager "$HNMANAGER"
 	done
 }
 
@@ -491,21 +475,23 @@ collect_homenet_snsr() {
 	if whiptail_homenet_sensor_inherit; then
 		export HNSENSOR=inherit
 	else
-		whiptail_homenet_sensor
+		whiptail_homenet_sensor "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
 		
 		while ! valid_cidr_list "$HNSENSOR"; do
 			whiptail_invalid_input
-			whiptail_homenet_sensor
+			whiptail_homenet_sensor "$HNSENSOR"
 		done
 	fi
 }
 
 collect_hostname() {
-	whiptail_set_hostname
+	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+
+	whiptail_set_hostname "$HOSTNAME"
 
 	while ! valid_hostname "$HOSTNAME"; do
 		whiptail_invalid_hostname
-		whiptail_set_hostname
+		whiptail_set_hostname "$HOSTNAME"
 	done
 }
 
@@ -514,7 +500,7 @@ collect_int_ip_mask() {
 
 	while ! valid_cidr "$manager_ip_mask"; do
 		whiptail_invalid_input
-		whiptail_management_interface_ip_mask
+		whiptail_management_interface_ip_mask "$manager_ip_mask"
 	done
 
 	MIP=$(echo "$manager_ip_mask" | sed 's/\/.*//' )
@@ -526,74 +512,81 @@ collect_mngr_hostname() {
 
 	while ! valid_hostname "$MSRV"; do
 		whiptail_invalid_hostname
-		whiptail_management_server
+		whiptail_management_server "$MSRV"
 	done
 
 	if ! getent hosts "$MSRV"; then
-		add_manager_hostfile
+		whiptail_manager_ip
+
+		while ! valid_ip4 "$MSRVIP"; do
+			whiptail_invalid_input
+			whiptail_manager_ip "$MSRVIP"
+		done
 	else
 		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
 	fi
 }
 
 collect_mtu() {
-	whiptail_bond_nics_mtu
+	whiptail_bond_nics_mtu "1500"
 
 	while ! valid_int "$MTU" "68"; do
 		whiptail_invalid_input
-		whiptail_bond_nics_mtu
+		whiptail_bond_nics_mtu "$MTU"
 	done
 }
 
 collect_node_es_heap() {
-	whiptail_node_es_heap
+	whiptail_node_es_heap "$ES_HEAP_SIZE"
 
 	while ! valid_int "$NODE_ES_HEAP_SIZE"; do
 		whiptail_invalid_input
-		whiptail_node_es_heap
+		whiptail_node_es_heap "$NODE_ES_HEAP_SIZE"
 	done
 }
 
 collect_node_ls_heap() {
-	whiptail_node_ls_heap
+	whiptail_node_ls_heap "$LS_HEAP_SIZE"
 
 	while ! valid_int "$NODE_LS_HEAP_SIZE"; do
 		whiptail_invalid_input
-		whiptail_node_ls_heap
+		whiptail_node_ls_heap "$NODE_LS_HEAP_SIZE"
 	done
 }
 
 collect_node_ls_input() {
-	whiptail_node_ls_input_threads
+	whiptail_node_ls_input_threads "1"
+
 	while ! valid_int "$LSINPUTTHREADS"; do
 		whiptail_invalid_input
-		whiptail_node_ls_input_threads
+		whiptail_node_ls_input_threads "$LSINPUTTHREADS"
 	done
 }
 
 collect_node_ls_pipeline_batch_size() {
-	whiptail_node_ls_pipline_batchsize
+	whiptail_node_ls_pipline_batchsize "125"
 
 	while ! valid_int "$LSPIPELINEBATCH"; do
 		whiptail_invalid_input
-		whiptail_node_ls_pipline_batchsize
+		whiptail_node_ls_pipline_batchsize "$LSPIPELINEBATCH"
 	done
 }
 
 collect_node_ls_pipeline_worker_count() {
-	whiptail_node_ls_pipeline_worker
+	whiptail_node_ls_pipeline_worker "$num_cpu_cores"
 
 	while ! valid_int "$LSPIPELINEWORKERS"; do
 		whiptail_invalid_input
-		whiptail_node_ls_pipeline_worker
+		whiptail_node_ls_pipeline_worker "$LSPIPELINEWORKERS"
 	done
 }
 
 collect_oinkcode() {
 	whiptail_oinkcode
+
 	while ! valid_string "$OINKCODE" "" "128"; do #TODO: verify max length here
 		whiptail_invalid_input
-		whiptail_oinkcode
+		whiptail_oinkcode "$OINKCODE"
 	done
 }
 
@@ -624,7 +617,7 @@ collect_patch_schedule_name_new() {
 
 	while ! valid_string "$PATCHSCHEDULENAME"; do
 		whiptail_invalid_string "schedule name"
-		whiptail_patch_name_new_schedule
+		whiptail_patch_name_new_schedule "$PATCHSCHEDULENAME"
 	done
 }
 
@@ -633,25 +626,26 @@ collect_patch_schedule_name_import() {
 
 	while ! valid_string "$PATCHSCHEDULENAME"; do
 		whiptail_invalid_string "schedule name"
-		whiptail_patch_schedule_import
+		whiptail_patch_schedule_import "$PATCHSCHEDULENAME"
 	done
 }
 
 collect_redirect_host() {
-	whiptail_set_redirect_host
+	whiptail_set_redirect_host "$HOSTNAME"
 
 	while ! valid_ip4 "$REDIRECTHOST" && ! valid_hostname "$REDIRECTHOST" && ! valid_fqdn "$REDIRECTHOST"; do
 		whiptail_invalid_input
-		whiptail_set_redirect_host
+		whiptail_set_redirect_host "$REDIRECTHOST"
 	done
 }
 
 collect_so_allow() {
 	if whiptail_so_allow_yesno; then
 		whiptail_so_allow
+
 		while ! valid_cidr "$ALLOW_CIDR" && ! valid_ip4 "$ALLOW_CIDR"; do
 			whiptail_invalid_input
-			whiptail_so_allow
+			whiptail_so_allow "$ALLOW_CIDR"
 		done
 	fi
 }
@@ -667,24 +661,21 @@ collect_soremote_inputs() {
 }
 
 collect_suri() {
-	whiptail_basic_suri
+	whiptail_basic_suri "$PROCS"
 
 	while ! valid_int "$BASICSURI"; do
 		whiptail_invalid_input
-		whiptail_basic_suri
+		whiptail_basic_suri "$BASICSURI"
 	done
 }
 
+# Get an email & password for the web admin user
 collect_webuser_inputs() {
-	# Get a password for the web admin user
-	local valid_user=no
-	while [[ $valid_user != yes ]]; do
-		whiptail_create_web_user		
-		if so-user valemail "$WEBUSER" >> "$setup_log" 2>&1; then
-			valid_user=yes
-		else
-			whiptail_invalid_user_warning
-		fi
+	whiptail_create_web_user
+
+	while ! so-user valemail "$WEBUSER" >> "$setup_log" 2>&1; do
+		whiptail_invalid_user_warning
+		whiptail_create_web_user "$WEBUSER"
 	done
 
 	WPMATCH=no
@@ -704,11 +695,11 @@ collect_webuser_inputs() {
 }
 
 collect_zeek() {
-	whiptail_basic_zeek
+	whiptail_basic_zeek "$PROCS"
 
 	while ! valid_int "$BASICZEEK"; do
 		whiptail_invalid_input
-		whiptail_basic_zeek
+		whiptail_basic_zeek "$BASICZEEK"
 	done
 }
 
