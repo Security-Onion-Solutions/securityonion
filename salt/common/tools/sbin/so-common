@@ -41,8 +41,18 @@ add_interface_bond0() {
 		fi
 	done
 
+	case "$2" in
+		-v|--verbose)
+			local verbose=true
+		;;
+	esac
+
 	for i in rx tx sg tso ufo gso gro lro; do
-		ethtool -K "$BNIC" $i off
+		if [[ $verbose != true ]]; then
+			ethtool -K "$BNIC" $i off
+		else
+			ethtool -K "$BNIC" $i off &>/dev/null
+		fi
 	done
 	# Check if the bond slave connection has already been created
 	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
@@ -64,8 +74,13 @@ add_interface_bond0() {
 
 	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
 			
-	nmcli con up "bond0-slave-$BNIC" # Bring the slave interface up
-
+	# Bring the slave interface up
+	if [[ $verbose != true ]]; then
+		nmcli con up "bond0-slave-$BNIC"
+	else
+		nmcli con up "bond0-slave-$BNIC" &>/dev/null
+	fi
+	 
 	if [ "$nic_error" != 0 ]; then
 		return "$nic_error"
 	fi
