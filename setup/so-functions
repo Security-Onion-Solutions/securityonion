@@ -854,10 +854,8 @@ configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
 
 	if [[ $is_cloud ]]; then 
-		INTERFACE=${BNICS[0]}
 		local nmcli_con_args=( "type" "ethernet" )
 	else 
-		INTERFACE='bond0'
 		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
@@ -1305,6 +1303,22 @@ generate_passwords(){
 generate_repo_tarball() {
 	mkdir /opt/so/repo
 	tar -czf /opt/so/repo/"$SOVERSION".tar.gz ../.
+}
+
+generate_sensor_vars() {
+	# Set the MTU
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
+	fi
+	export MTU
+
+	# Set interface variable
+	if [[ $is_cloud ]]; then 
+		INTERFACE=${BNICS[0]}
+	else 
+		INTERFACE='bond0'
+	fi
+	export INTERFACE
 }
 
 get_redirect() {
@@ -2242,12 +2256,6 @@ set_ssh_cmds() {
 sensor_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
-
-	# Set the MTU
-	if [[ $NSMSETUP != 'ADVANCED' ]]; then
-		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
-	fi
-	export MTU
 
 	# Create the sensor pillar
 	printf '%s\n'\
