@@ -861,9 +861,6 @@ configure_network_sensor() {
 		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
-	local MTU
-	MTU=$(lookup_pillar "mtu" "sensor")
-
 	# Create the bond interface only if it doesn't already exist
 	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
@@ -2250,6 +2247,7 @@ sensor_pillar() {
 	if [[ $NSMSETUP != 'ADVANCED' ]]; then
 		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
 	fi
+	export MTU
 
 	# Create the sensor pillar
 	printf '%s\n'\
