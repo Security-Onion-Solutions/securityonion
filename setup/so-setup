@@ -461,6 +461,12 @@ if [[ $is_sensor && ! $is_eval ]]; then
 		whiptail_suricata_pins
 		collect_mtu
 	else
+		if [[ $is_node && $is_sensor && ! $is_eval ]]; then
+			PROCS=$(( lb_procs / 2 ))
+			if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		else
+			PROCS=$lb_procs
+		fi
 		[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
 		collect_suri
 	fi
@@ -857,8 +863,6 @@ if [[ -n $SO_ERROR ]]; then
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
-		[[ -n "$TESTING" ]] && logCmd so-test
-
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
 			set_progress_str 96 "Stopping SOC prior to adjusting firewall rules"
