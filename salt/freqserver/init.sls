@@ -12,10 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'freqserver' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
@@ -63,9 +61,9 @@ append_so-freq_so-status.conf:
 
 {% else %}
 
-freqserver_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: freqserver_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
 

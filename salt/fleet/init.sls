@@ -1,3 +1,4 @@
+{# this state can run regardless if in allowed_states or not #}
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
 {%- set FLEETPASS = salt['pillar.get']('secrets:fleet', None) -%}
 {%- set FLEETJWT = salt['pillar.get']('secrets:fleet_jwt', None) -%}

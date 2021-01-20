@@ -1,4 +1,6 @@
-{% if grains['role'] == 'so-sensor' or grains['role'] == 'so-eval' or grains['role'] == 'so-standalone' %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -17,8 +19,8 @@ so-tcpreplay:
 
 {% else %}
 
-tcpreplay_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: tcpreplay_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
