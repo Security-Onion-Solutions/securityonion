@@ -292,7 +292,7 @@ base:
     {%- endif %}
     - docker_clean
 
-    '*_searchnode and G@saltversion:{{saltversion}}':
+  '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
