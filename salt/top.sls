@@ -494,6 +494,7 @@ base:
     - fleet
     - fleet.install_package
     - filebeat
+    - schedule
     - docker_clean
 
   '*_import and G@saltversion:{{saltversion}}':
