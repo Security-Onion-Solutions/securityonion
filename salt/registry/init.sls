@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'registry' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 # Create the config directory for the docker registry
 dockerregistryconfdir:
@@ -64,8 +62,8 @@ append_so-dockerregistry_so-status.conf:
 
 {% else %}
 
-registry_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: registry_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

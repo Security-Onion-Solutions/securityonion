@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'ssl' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set manager = salt['grains.get']('master') %}
 {% set managerip = salt['pillar.get']('global:managerip', '') %}
@@ -578,8 +576,8 @@ elastickeyperms:
 
 {% else %}
 
-ssl_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: ssl_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

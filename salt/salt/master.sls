@@ -1,9 +1,7 @@
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
+
 {% from 'salt/map.jinja' import COMMON with context %}
-
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'salt.master' in top_states %}
 
 include:
   - salt.minion
@@ -37,8 +35,8 @@ engines_config:
 
 {% else %}
 
-salt_master_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: salt_master_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

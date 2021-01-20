@@ -12,10 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'strelka' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
@@ -194,8 +192,8 @@ strelka_zeek_extracted_sync:
 
 {% else %}
 
-strelka_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: strelka_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
