@@ -7,6 +7,7 @@
 {%- else %}
   {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername') %}
 {%- endif %}
+{%- set NODE_ROLES = salt['pillar.get']('elasticsearch:node_roles', ['data', 'ingest']) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
@@ -27,13 +28,16 @@ cluster.routing.allocation.disk.watermark.flood_stage: 98%
 {%- if FEATURES is sameas true %}
 #xpack.security.enabled: false
 #xpack.security.http.ssl.enabled: false
-#xpack.security.transport.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/ca.crt" ] 
+xpack.security.transport.ssl.verification_mode: none
+
 #xpack.security.http.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
 #xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
 #xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
-#xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
-#xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
-#xpack.security.transport.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
 #xpack.security.transport.ssl.verification_mode: none
 #xpack.security.http.ssl.client_authentication: none
 #xpack.security.authc:
@@ -55,7 +59,7 @@ discovery.seed_hosts:
       {%- endfor %}
     {%- endif %}
   {%- else %}
-node.roles: [ data, ingest ]
+node.roles: [ {{ NODE_ROLES }} ]
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}
 discovery.seed_hosts:
    - {{ grains.master }}
