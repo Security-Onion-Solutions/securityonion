@@ -64,7 +64,7 @@ filebeatconfsync:
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 so-filebeat:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
