@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'mysql' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
@@ -112,8 +110,8 @@ append_so-mysql_so-status.conf:
 
 {% else %}
 
-mysql_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: mysql_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

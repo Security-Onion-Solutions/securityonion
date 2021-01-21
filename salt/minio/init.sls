@@ -12,10 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'minio' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set access_key = salt['pillar.get']('minio:access_key', '') %}
 {% set access_secret = salt['pillar.get']('minio:access_secret', '') %}
@@ -69,8 +67,8 @@ append_so-minio_so-status.conf:
 
 {% else %}
 
-minio_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: minio_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

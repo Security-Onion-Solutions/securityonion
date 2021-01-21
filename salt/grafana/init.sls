@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'grafana' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -281,8 +279,8 @@ append_so-grafana_so-status.conf:
 
 {% else %}
 
-grafana_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: grafana_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

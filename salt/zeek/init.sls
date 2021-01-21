@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'zeek' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% from "zeek/map.jinja" import START with context %}
 
@@ -211,8 +209,8 @@ disable_so-zeek_so-status.conf:
 
 {% else %}
 
-zeek_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: zeek_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
