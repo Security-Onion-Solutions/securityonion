@@ -216,12 +216,11 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
-      {% if grains['role'] in ['so-manager','so-managersearch'] %}
+      {% if ismanager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% endif %}
-      - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
