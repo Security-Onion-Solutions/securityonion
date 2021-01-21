@@ -25,12 +25,6 @@
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 
-{% if FEATURES is sameas true %}
-  {% set FEATUREZ = "-features" %}
-{% else %}
-  {% set FEATUREZ = '' %}
-{% endif %}
-
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
   {% set esheap = salt['pillar.get']('manager:esheap') %}
@@ -188,7 +182,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
