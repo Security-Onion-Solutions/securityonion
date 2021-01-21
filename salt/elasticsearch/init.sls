@@ -223,6 +223,8 @@ so-elasticsearch:
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
+      - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.keys:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
       - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
     - watch:
