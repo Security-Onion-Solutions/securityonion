@@ -83,12 +83,6 @@ surilogscript:
     - source: salt://suricata/cron/surilogcompress
     - mode: 755
 
-surirotatescript:
-  file.managed:
-    - name: /usr/local/bin/surirotate
-    - source: salt://suricata/cron/surirotate
-    - mode: 755
-
 /usr/local/bin/surilogcompress:
   cron.present:
     - user: suricata
@@ -141,7 +135,7 @@ suribpf:
     - contents:
       - ""
    {% endif %}
-    
+
 so-suricata:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
@@ -175,21 +169,6 @@ disable_so-suricata_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-suricata$
 {% endif %}
-
-surilogrotate:
-  file.managed:
-    - name: /opt/so/conf/suricata/suri-rotate.conf
-    - source: salt://suricata/files/suri-rotate.conf
-    - mode: 644
-
-/usr/local/bin/surirotate:
-  cron.present:
-    - user: root
-    - minute: '11'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
 
 {% else %}
 
