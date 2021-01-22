@@ -11,10 +11,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'filebeat' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -66,7 +64,7 @@ filebeatconfsync:
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 so-filebeat:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
@@ -93,8 +91,8 @@ append_so-filebeat_so-status.conf:
 
 {% else %}
 
-filebeat_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: filebeat_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

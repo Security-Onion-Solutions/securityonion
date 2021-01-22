@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'firewall' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 # Firewall Magic for the grid
 {% from 'firewall/map.jinja' import hostgroups with context %}
@@ -138,8 +136,8 @@ iptables_drop_all_the_things:
 
 {% else %}
 
-firewall_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: firewall_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'common' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
 
@@ -258,10 +256,21 @@ docker:
     - watch:
       - file: docker_daemon
 
+# Reserve OS ports for Docker proxy in case boot settings are not already applied/present
+dockerapplyports:
+    cmd.run:
+      - name: if [ ! -f /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"; fi
+
+# Reserve OS ports for Docker proxy
+dockerreserveports:
+  file.managed:
+    - source: salt://common/files/99-reserved-ports.conf
+    - name: /etc/sysctl.d/99-reserved-ports.conf
+
 {% else %}
 
-common_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: common_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

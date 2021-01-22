@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'wazuh' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -96,15 +94,10 @@ wazuhmgrwhitelist:
     - mode: 755
     - template: jinja
 
-# Reserve OS port for Wazuh API
-wazuhreserveport:
-    cmd.run:
-      - name: grep -q 55000 /proc/sys/net/ipv4/ip_local_reserved_ports || sysctl -w net.ipv4.ip_local_reserved_ports="55000" > /dev/null && echo "55000" >> /proc/sys/net/ipv4/ip_local_reserved_ports
-
 # Check to see if Wazuh API port is available
 wazuhportavailable:
-    cmd.run:
-      - name: netstat -anp | grep 55000 | grep -qv docker && PROCESS=$(netstat -anp | grep 55000 | awk '{print $NF}' | uniq) && echo "Another process ($PROCESS) appears to be using port 55000.  Please terminate this process, or reboot to ensure a clean state so that the Wazuh API can start properly." && exit 1 || exit 0
+  cmd.run:
+    - name: netstat -utanp | grep ":55000" | grep -qv docker && PROCESS=$(netstat -utanp | grep ":55000" | uniq) && echo "Another process ($PROCESS) appears to be using port 55000.  Please terminate this process, or reboot to ensure a clean state so that the Wazuh API can start properly." && exit 1 || exit 0
 
 so-wazuh:
   docker_container.running:
@@ -164,8 +157,8 @@ hidsruledir:
 
 {% else %}
 
-wazuh_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: wazuh_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
