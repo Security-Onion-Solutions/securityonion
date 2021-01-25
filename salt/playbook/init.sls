@@ -60,7 +60,7 @@ query_updatepluginurls:
 playbooklogdir:
   file.directory:
     - name: /opt/so/log/playbook
-    - dir_mode: 775
+    - dir_mode: 755
     - user: 939
     - group: 939
     - makedirs: True
