@@ -104,7 +104,7 @@ function progress() {
 	fi		
 }
 
-detect_os && detect_cloud
+detect_os 
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
@@ -130,7 +130,7 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 	if [[ ! $is_iso ]]; then
 		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
 		if [ "$OS" == ubuntu ]; then
-			apt-get -y install sshpass >> $setup_log 2>&1
+			if wait_for_apt; then apt-get -y install sshpass >> $setup_log 2>&1
 		else
 			yum -y install sshpass >> $setup_log 2>&1
 		fi
@@ -154,6 +154,7 @@ set_ssh_cmds $automated
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
+installer_prereq_packages && detect_cloud
 set_network_dev_status_list
 
 if [ "$OS" == ubuntu ]; then
