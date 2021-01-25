@@ -73,7 +73,7 @@ kibanabin:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}
     - hostname: kibana
     - user: kibana
     - environment:
@@ -104,7 +104,7 @@ wait_for_kibana:
   module.run:
     - http.wait_for_successful_query:
       - url: "http://{{MANAGER}}:5601/api/saved_objects/_find?type=config"
-      - wait_for: 180
+      - wait_for: 900
     - onchanges:
       - file: kibanadashtemplate
 

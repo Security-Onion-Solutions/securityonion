@@ -11,6 +11,10 @@
 {%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
 {%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
+{%- set FBMEMEVENTS = salt['pillar.get']('filebeat:mem_events', 2048) -%}
+{%- set FBMEMFLUSHMINEVENTS = salt['pillar.get']('filebeat:mem_flush_min_events', 2048) -%}
+{%- set FBLSWORKERS = salt['pillar.get']('filebeat:ls_workers', 1) -%}
+{%- set FBLSBULKMAXSIZE = salt['pillar.get']('filebeat:ls_bulk_max_size', 2048) -%}
 
 name: {{ HOSTNAME }}
 
@@ -290,7 +294,10 @@ output.logstash:
   hosts: ["{{ MANAGER }}:5644"]
 
   # Number of workers per Logstash host.
-  #worker: 1
+  worker: {{ FBLSWORKERS }}
+
+  # Number of records to send to Logstash input at a time
+  bulk_max_size: {{ FBLSBULKMAXSIZE }}
 
   # Set gzip compression level.
   #compression_level: 3
@@ -491,3 +498,6 @@ setup.template.enabled: false
 #http.host: localhost
 
 # Port on which the HTTP endpoint will bind. Default is 5066.
+
+queue.mem.events: {{ FBMEMEVENTS }}
+queue.mem.flush.min_events: {{ FBMEMFLUSHMINEVENTS }}
