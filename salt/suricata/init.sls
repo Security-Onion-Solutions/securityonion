@@ -168,6 +168,15 @@ disable_so-suricata_so-status.conf:
     - regex: ^so-suricata$
 {% endif %}
 
+/usr/local/bin/surirotate:
+  cron.absent:
+    - user: root
+    - minute: '11'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 {% else %}
 
 {{sls}}_state_not_allowed:
