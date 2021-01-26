@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-APP=redis
+APP=eps
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
 cat /dev/null >> $lf
@@ -25,7 +24,26 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
-UNPARSED=$(redis-cli llen logstash:unparsed | awk '{print $1}')
-PARSED=$(redis-cli llen logstash:parsed | awk '{print $1}')
+PREVCOUNTFILE='/tmp/eps.txt'
+EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.events.in')"
 
-echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED"
+if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+
+  if [ -f "$PREVCOUNTFILE" ]; then
+    EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
+  else
+    echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+    exit 0
+  fi
+
+  echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+  EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
+  if [ "$EVENTS" -lt 0 ]; then
+    EVENTS=0
+  fi
+
+  echo "esteps eps=${EVENTS%%.*}"
+
+fi
+
+exit 0

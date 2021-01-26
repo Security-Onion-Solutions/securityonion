@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#
 # Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,6 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. /usr/sbin/so-common
+APP=raid
+lf=/tmp/$APP-pidLockFile
+# create empty lock file if none exists
+cat /dev/null >> $lf
+read lastPID < $lf
+# if lastPID is not null and a process with that pid exists , exit
+[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
+echo $$ > $lf
+RAIDLOG=/var/log/raid/status.log
+RAIDSTATUS=$(cat /var/log/raid/status.log)
 
-/usr/sbin/so-start fleet $1
+if [ -f "$RAIDLOG" ]; then
+    echo "raid raidstatus=$RAIDSTATUS "
+else
+    exit 0
+fi
