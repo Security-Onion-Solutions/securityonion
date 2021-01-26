@@ -17,7 +17,7 @@ influxconfdir:
 influxlogdir:
   file.directory:
     - name: /opt/so/log/influxdb
-    - dir_mode: 755
+    - dir_mode: 775
     - user: 939
     - group: 939
     - makedirs: True
