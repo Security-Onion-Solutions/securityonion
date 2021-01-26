@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -913,6 +913,29 @@ detect_os() {
 			exit 1
 		fi
 
+	elif [ -f /etc/os-release ]; then
+		OS=ubuntu
+		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+			OSVER=bionic
+		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
+			OSVER=xenial
+		else
+			echo "We do not support your current version of Ubuntu."
+			exit 1
+		fi
+
+	else
+		echo "We were unable to determine if you are using a supported OS."
+		exit 1
+	fi
+
+	echo "Found OS: $OS $OSVER" >> "$setup_log" 2>&1
+
+}
+
+installer_prereq_packages() {
+
+	if [ "$OS" == centos ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
 		# Install bind-utils so the host command exists
@@ -937,17 +960,7 @@ detect_os() {
 		  logCmd "systemctl enable NetworkManager"
 		  logCmd "systemctl start NetworkManager"
         fi
-	elif [ -f /etc/os-release ]; then
-		OS=ubuntu
-		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
-			OSVER=bionic
-		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
-			OSVER=xenial
-		else
-			echo "We do not support your current version of Ubuntu."
-			exit 1
-		fi
-
+	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
 		# Install network manager so we can do interface stuff
@@ -959,14 +972,7 @@ detect_os() {
 			} >> "$setup_log" 2<&1
 		fi
 		if wait_for_apt; then apt-get install -y bc curl >> "$setup_log" 2>&1; else exit 1; fi
-
-	else
-		echo "We were unable to determine if you are using a supported OS."
-		exit 1
 	fi
-
-	echo "Found OS: $OS $OSVER" >> "$setup_log" 2>&1
-
 }
 
 disable_auto_start() {
