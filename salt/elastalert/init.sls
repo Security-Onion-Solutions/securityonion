@@ -96,7 +96,7 @@ elastaconf:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
     - source: salt://elastalert/files/elastalert_config.yaml.jinja
     - context:
-        elastalert_config: {{ elastalert_config.elastalert.config }
+        elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
     - template: jinja
