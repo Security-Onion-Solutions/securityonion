@@ -2,16 +2,15 @@
   "description" : "osquery",
   "processors" : [
     { "json":        { "field": "message",                                            "target_field": "message2",             "ignore_failure": true  } },
-
     { "gsub":        { "field": "message2.columns.data",                              "pattern": "\\\\xC2\\\\xAE",             "replacement": "", "ignore_missing": true  } },
     { "rename":      { "if": "ctx.message2.columns?.eventid != null", "field": "message2.columns",  "target_field": "winlog",       "ignore_missing": true  } },
-    { "json":        { "field": "winlog.data",                              "target_field": "temp",             "ignore_failure": true  } },
-    { "rename":      { "field": "temp.EventData",               "target_field": "winlog.event_data",       "ignore_missing": true  } },   
+    { "json":        { "field": "winlog.data",    "target_field": "unparsed",      "ignore_failure": true} },
+    { "set":         { "if": "!(ctx.unparsed?.EventData instanceof Map)", "field": "error.eventdata_parsing", "value": true, "ignore_failure": true  } },     
+    { "rename":      { "if": "!(ctx.error?.eventdata_parsing == true)", "field": "unparsed.EventData", "target_field": "winlog.event_data",       "ignore_missing": true, "ignore_failure": true  } },   
     { "rename":      { "field": "winlog.source",               "target_field": "winlog.channel",       "ignore_missing": true  } },    
     { "rename":      { "field": "winlog.eventid",               "target_field": "winlog.event_id",       "ignore_missing": true  } },   
-    { "pipeline":      { "if": "ctx.winlog?.channel == 'Microsoft-Windows-Sysmon/Operational'",   "name": "sysmon"  }  },
-    { "pipeline":      { "if": "ctx.winlog?.channel != 'Microsoft-Windows-Sysmon/Operational'",  "name":"win.eventlogs" }  },
-
+    { "pipeline":    { "if": "ctx.winlog?.channel == 'Microsoft-Windows-Sysmon/Operational'",   "name": "sysmon"  }  },
+    { "pipeline":    { "if": "ctx.winlog?.channel != 'Microsoft-Windows-Sysmon/Operational'",  "name":"win.eventlogs" }  },
     {
       "script": {
         "lang": "painless",
