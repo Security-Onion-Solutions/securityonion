@@ -42,6 +42,9 @@ pki_private_key:
     - replace: False
     - require:
       - file: /etc/pki
+    - timeout: 60
+    - retry: 5
+    - interval: 30
 
 x509_pem_entries:
   module.run:
