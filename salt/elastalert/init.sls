@@ -123,6 +123,8 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - module: wait_for_elasticsearch
+    - watch:
+      - file: elastaconf
 
 append_so-elastalert_so-status.conf:
   file.append:
