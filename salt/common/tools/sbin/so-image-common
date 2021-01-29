@@ -127,10 +127,10 @@ update_docker_containers() {
   fi
 
   # Let's make sure we have the public key
-  retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o /tmp/sig.key" >> "$LOG_FILE" 2>&1
+  retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
   result=$?
   if [[ $result -eq 0 ]]; then
-    cat /tmp/sig.key | gpg --import - >> "$LOG_FILE" 2>&1
+    cat $SIGNPATH/KEYS | gpg --import - >> "$LOG_FILE" 2>&1
   else
     echo "Failed to pull signature key file: $result"
     exit 1
