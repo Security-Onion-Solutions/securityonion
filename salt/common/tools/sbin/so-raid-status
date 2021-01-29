@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+#check_boss_raid() {
+#    BOSSBIN=/opt/boss/mvcli
+#    BOSSRC=$($BOSSBIN info -o vd | grep functional)
+#
+#    if [[ $BOSSRC ]]; then
+#        # Raid is good
+#        BOSSRAID=0
+#    else
+#        BOSSRAID=1
+#    fi
+#}
+
+check_lsi_raid() {
+    # For use for LSI on Ubuntu
+    #MEGA=/opt/MegaRAID/MegeCli/MegaCli64
+    #LSIRC=$($MEGA -LDInfo -Lall -aALL | grep Optimal)
+    # Open Source Centos
+    MEGA=/opt/mega/megasasctl
+    LSIRC=$($MEGA | grep optimal)
+
+    if [[ $LSIRC ]]; then
+        # Raid is good
+        LSIRAID=0
+    else
+        LSIRAID=1
+    fi
+
+}
+
+check_software_raid() {
+    SWRC=$(grep "_" /proc/mdstat)
+
+    if [[ $SWRC ]]; then
+        # RAID is failed in some way
+        SWRAID=1
+    else
+        SWRAID=0
+    fi
+}
+
+# This script checks raid status if you use SO appliances
+
+# See if this is an appliance
+
+{%- if salt['grains.get']('sosmodel', '') %}
+mkdir -p /opt/so/log/raid
+  {%- if grains['sosmodel'] in ['SOSMN', 'SOSSNNV'] %}
+#check_boss_raid
+check_software_raid
+echo "osraid=$BOSSRAID nsmraid=$SWRAID" > /opt/so/log/raid/status.log
+  {%- elif grains['sosmodel'] in ['SOS1000F', 'SOS1000', 'SOSSN7200', 'SOS10K', 'SOS4000'] %}
+#check_boss_raid
+check_lsi_raid
+echo "osraid=$BOSSRAID nsmraid=$LSIRAID" > /opt/so/log/raid/status.log
+  {%- else %}
+exit 0
+  {%- endif %}
+{%- else %}
+exit 0
+{%- endif %}
+
+
