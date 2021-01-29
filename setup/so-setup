@@ -459,7 +459,12 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	collect_homenet_snsr
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
-		[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
+		else
+			whiptail_zeek_pins
+		fi
+		
 		whiptail_suricata_pins
 		collect_mtu
 	else
@@ -469,7 +474,13 @@ if [[ $is_sensor && ! $is_eval ]]; then
 		else
 			PROCS=$lb_procs
 		fi
-		[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+		else
+			collect_zeek
+		fi
+
 		collect_suri
 	fi
 fi
