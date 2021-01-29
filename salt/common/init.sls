@@ -267,6 +267,19 @@ dockerreserveports:
     - source: salt://common/files/99-reserved-ports.conf
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
+{% if salt['grains.get']('sosmodel', '') %}
+# Install raid check cron
+/usr/sbin/so-raid-status > /dev/null 2>&1:
+  cron.present:
+    - user: root
+    - minute: '*/15'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+{% endif %}
+
 {% else %}
 
 {{sls}}_state_not_allowed:
