@@ -42,7 +42,7 @@ pki_private_key:
     - replace: False
     - require:
       - file: /etc/pki
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 

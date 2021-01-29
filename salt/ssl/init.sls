@@ -67,7 +67,7 @@ removeesp12dir:
     - prereq:
       - x509: /etc/pki/influxdb.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -85,7 +85,7 @@ removeesp12dir:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -110,7 +110,7 @@ influxkeyperms:
     - prereq:
       - x509: /etc/pki/redis.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -127,7 +127,7 @@ influxkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -152,7 +152,7 @@ rediskeyperms:
     - prereq:
       - x509: /etc/pki/filebeat.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -174,7 +174,7 @@ rediskeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
   cmd.run:
@@ -231,7 +231,7 @@ fbcrtlink:
     - prereq:
       - x509: /etc/pki/registry.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -249,7 +249,7 @@ fbcrtlink:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/registry.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -272,7 +272,7 @@ regkeyperms:
     - prereq:
       - x509: /etc/pki/minio.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -290,7 +290,7 @@ regkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/minio.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -314,7 +314,7 @@ miniokeyperms:
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -331,7 +331,7 @@ miniokeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
   cmd.run:
@@ -365,7 +365,7 @@ elasticp12perms:
     - prereq:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -384,7 +384,7 @@ elasticp12perms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -408,7 +408,7 @@ msslkeyperms:
     - prereq:
       - x509: /etc/pki/fleet.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -424,7 +424,7 @@ msslkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -455,7 +455,7 @@ fbcertdir:
     - prereq:
       - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -477,7 +477,7 @@ fbcertdir:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -519,7 +519,7 @@ chownfilebeatp8:
     - prereq:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -538,7 +538,7 @@ chownfilebeatp8:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -562,7 +562,7 @@ msslkeyperms:
     - prereq:
       - x509: /etc/pki/fleet.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -578,7 +578,7 @@ msslkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -605,7 +605,7 @@ fleetkeyperms:
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
 
@@ -622,7 +622,7 @@ fleetkeyperms:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 60
+    - timeout: 30
     - retry: 5
     - interval: 30
   cmd.run:
