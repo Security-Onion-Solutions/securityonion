@@ -126,6 +126,9 @@ update_docker_containers() {
     container_list
   fi
 
+  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
+  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
+
   # Let's make sure we have the public key
   retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
   result=$?
@@ -136,9 +139,6 @@ update_docker_containers() {
     exit 1
   fi
   
-  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
-  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
-
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
