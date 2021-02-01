@@ -73,7 +73,7 @@ kibanabin:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}{{ FEATURES }}
     - hostname: kibana
     - user: kibana
     - environment:
