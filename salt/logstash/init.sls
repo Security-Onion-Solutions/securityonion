@@ -146,7 +146,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}{{ FEATURES }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
