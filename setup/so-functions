@@ -965,13 +965,13 @@ installer_prereq_packages() {
 		echo "Installing required packages to run installer..."
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
-			if wait_for_apt; then apt-get install -y network-manager >> "$setup_log" 2<&1; else exit 1; fi
+			retry 50 10 "apt-get install -y network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
 				systemctl enable NetworkManager
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		if wait_for_apt; then apt-get install -y bc curl >> "$setup_log" 2>&1; else exit 1; fi
+		retry 50 10 "apt-get install -y bc curl"  >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
@@ -1041,28 +1041,19 @@ docker_install() {
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				if wait_for_apt 'whiptail_prog_new_message'; then apt-get update >> "$setup_log" 2>&1; else kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1; fi
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				;;
 			*)
-				if wait_for_apt 'whiptail_prog_new_message'; then
-					{
-						apt-key add "$temp_install_dir"/gpg/docker.pub;
-						add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
-						apt-get update;
-					} >> "$setup_log" 2>&1
-				else
-					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-				fi
+				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"" >> "$setup_log" 2>&1 \
+					|| kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				;;
 		esac 
-		if wait_for_apt 'whiptail_prog_new_message'; then
-			if [ $OSVER != "xenial" ]; then
-				apt-get -y install docker-ce python3-docker >> "$setup_log" 2>&1
-			else
-				apt-get -y install docker-ce python-docker >> "$setup_log" 2>&1
-			fi
+		if [ $OSVER != "xenial" ]; then
+			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 		else
-			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 		fi
 	fi
 	docker_registry
@@ -1873,11 +1864,7 @@ remove_package() {
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
-			if wait_for_apt 'whiptail_prog_new_message'; then
-				apt purge -y "$package_name"
-			else
-				exit 1
-			fi
+			retry 50 10 "apt purge -y \"$package_name\""
 		fi
 	fi
 }
@@ -1964,9 +1951,7 @@ saltify() {
 		} >> "$setup_log" 2>&1
 		yum versionlock salt*
 	else
-		if wait_for_apt 'whiptail_prog_new_message'; then
-			DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade >> "$setup_log" 2>&1
-		else
+		if ! (DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1); then
 			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 		fi
 
@@ -1974,18 +1959,18 @@ saltify() {
 			# Switch to Python 3 as default if this is not xenial
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
 		fi
-		if wait_for_apt 'whiptail_prog_new_message'; then
-			# Add the pre-requisites for installing docker-ce
-			apt-get -y install ca-certificates\
-				curl\
-				software-properties-common\
-				apt-transport-https\
-				openssl\
-				netcat\
-				jq >> "$setup_log" 2>&1
-		else
-			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-		fi
+		
+		local pkg_arr=(
+			'ca-certificates'
+			'curl'
+			'software-properties-common'
+			'apt-transport-https'
+			'openssl'
+			'netcat'
+			'jq'
+		)
+		retry 50 10 "apt-get -y install ${pkg_arr[*]}" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+
 		# Grab the version from the os-release file
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
@@ -1993,10 +1978,10 @@ saltify() {
 
 		case "$install_type" in
 			'FLEET')
-				if wait_for_apt 'whiptail_prog_new_message'; then
-					if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
+				if [[ $OSVER != 'xenial' ]]; then
+					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				else
-					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				fi
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
@@ -2007,7 +1992,7 @@ saltify() {
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
-				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
+				retry 50 10 "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
@@ -2020,17 +2005,12 @@ saltify() {
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				
-				if wait_for_apt 'whiptail_prog_new_message'; then
-					# Initialize the new repos
-					apt-get update >> "$setup_log" 2>&1
-					set_progress_str 6 'Installing various dependencies'
-					apt-get -y install sqlite3 argon2 libssl-dev >> "$setup_log" 2>&1
-					set_progress_str 7 'Installing salt-master'
-					apt-get -y install salt-master=3002.2+ds-1 >> "$setup_log" 2>&1
-					apt-mark hold salt-master >> "$setup_log" 2>&1
-				else
-					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-				fi
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				set_progress_str 6 'Installing various dependencies'
+				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				set_progress_str 7 'Installing salt-master'
+				retry 50 10 "apt-get -y install salt-master=3002.2+ds-1" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 				;;
 			*)
 				# Copy down the gpg keys and install them from the manager
@@ -2044,19 +2024,15 @@ saltify() {
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
-		if wait_for_apt 'whiptail_prog_new_message'; then
-			apt-get update >> "$setup_log" 2>&1
-			set_progress_str 8 'Installing salt-minion & python modules'
-			apt-get -y install salt-minion=3002.2+ds-1\
-						salt-common=3002.2+ds-1 >> "$setup_log" 2>&1
-			apt-mark hold salt-minion salt-common >> "$setup_log" 2>&1
-			if [ "$OSVER" != 'xenial' ]; then 
-				apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
-			else 
-				apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb  >> "$setup_log" 2>&1
-			fi
+
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		set_progress_str 8 'Installing salt-minion & python modules'
+		retry 50 10 "apt-get -y install salt-minion=3002.2+ds-1 salt-common=3002.2+ds-1" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		if [[ $OSVER != 'xenial' ]]; then
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 		else
-			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 		fi
 	fi
 }
@@ -2522,12 +2498,8 @@ update_packages() {
 	if [ "$OS" = 'centos' ]; then
 		yum -y update >> "$setup_log"
 	else
-		if wait_for_apt 'whiptail_prog_new_message'; then
-			apt-get -y update >> "$setup_log"
-			apt-get -y upgrade >> "$setup_log"
-		else
-			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-		fi
+		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 	fi
 }
 
@@ -2570,11 +2542,6 @@ wait_for_file() {
 	done
 	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
 	return 1
-}
-
-whiptail_prog_new_message() {
-	local message=$1
-	set_progress_str "$percentage" "$message"
 }
 
 # Enable Zeek Logs

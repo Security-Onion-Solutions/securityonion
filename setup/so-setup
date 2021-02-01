@@ -130,7 +130,7 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 	if [[ ! $is_iso ]]; then
 		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
 		if [ "$OS" == ubuntu ]; then
-			if wait_for_apt; then apt-get -y install sshpass >> $setup_log 2>&1; else exit 1; fi
+			retry 50 10 "apt-get -y install sshpass" >> $setup_log 2>&1 || exit 1
 		else
 			yum -y install sshpass >> $setup_log 2>&1
 		fi
