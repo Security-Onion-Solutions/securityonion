@@ -760,7 +760,7 @@ compare_versions() {
 
 	if [[ $manager_ver == '' ]]; then
 		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
-		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		exit 1
 	fi
 
 	[[ "$manager_ver" == "$SOVERSION" ]]
@@ -1041,19 +1041,19 @@ docker_install() {
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
-				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"" >> "$setup_log" 2>&1 \
-					|| kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					|| exit 1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac 
 		if [ $OSVER != "xenial" ]; then
-			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
 		else
-			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 	docker_registry
@@ -1136,7 +1136,7 @@ download_repo_tarball() {
 		rm -rf $install_opt_file
 		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
 		echo "$message" | tee -a "$setup_log"
-		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		exit 1
 	fi
 
 	mkdir -p /root/manager_setup/securityonion
@@ -1812,7 +1812,7 @@ reinstall_init() {
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
-					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					exit 1
 				fi
 				
 				sleep 5
@@ -1952,7 +1952,7 @@ saltify() {
 		yum versionlock salt*
 	else
 		if ! (DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1); then
-			kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			exit 1
 		fi
 
 		if [ $OSVER != "xenial" ]; then
@@ -1969,7 +1969,7 @@ saltify() {
 			'netcat'
 			'jq'
 		)
-		retry 50 10 "apt-get -y install ${pkg_arr[*]}" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-get -y install ${pkg_arr[*]}" >> "$setup_log" 2>&1 || exit 1
 
 		# Grab the version from the os-release file
 		local ubuntu_version
@@ -1979,9 +1979,9 @@ saltify() {
 		case "$install_type" in
 			'FLEET')
 				if [[ $OSVER != 'xenial' ]]; then
-					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
 				else
-					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || exit 1
 				fi
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
@@ -1992,7 +1992,7 @@ saltify() {
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
-				retry 50 10 "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"" >> "$setup_log" 2>&1 || exit 1
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
@@ -2005,12 +2005,12 @@ saltify() {
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
-				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
-				retry 50 10 "apt-get -y install salt-master=3002.2+ds-1" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				retry 50 10 "apt-get -y install salt-master=3002.2+ds-1" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				# Copy down the gpg keys and install them from the manager
@@ -2025,14 +2025,14 @@ saltify() {
 				;;
 		esac
 
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		retry 50 10 "apt-get -y install salt-minion=3002.2+ds-1 salt-common=3002.2+ds-1" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-get -y install salt-minion=3002.2+ds-1 salt-common=3002.2+ds-1" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
 		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 }
@@ -2073,7 +2073,7 @@ salt_checkin() {
 						if [ $count -gt 12 ]; then
 							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
 							kill -9 "$pid"
-							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+							exit 1
 						fi
 						sleep 10;
 						((count++))
@@ -2085,7 +2085,7 @@ salt_checkin() {
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						exit 1
 					fi
 					sleep 1;
 					((count++))
@@ -2096,7 +2096,7 @@ salt_checkin() {
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						exit 1
 					fi
 					systemctl kill salt-minion
 					systemctl start salt-minion
@@ -2498,8 +2498,8 @@ update_packages() {
 	if [ "$OS" = 'centos' ]; then
 		yum -y update >> "$setup_log"
 	else
-		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
-		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
