@@ -130,7 +130,7 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 	if [[ ! $is_iso ]]; then
 		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
 		if [ "$OS" == ubuntu ]; then
-			if wait_for_apt; then apt-get -y install sshpass >> $setup_log 2>&1; else exit 1; fi
+			retry 50 10 "apt-get -y install sshpass" >> $setup_log 2>&1 || exit 1
 		else
 			yum -y install sshpass >> $setup_log 2>&1
 		fi
@@ -397,7 +397,9 @@ if [[ ! $is_import ]]; then
 	collect_patch_schedule
 fi
 
-collect_homenet_mngr
+if [[ $is_helix ||  $is_manager || $is_import ]]; then
+	collect_homenet_mngr
+fi
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
@@ -456,10 +458,15 @@ if [[ $is_distmanager ]]; then
 fi
 
 if [[ $is_sensor && ! $is_eval ]]; then
-	collect_homenet_snsr
+	[[ $is_manager ]] || collect_homenet_snsr
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
-		[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
+		else
+			whiptail_zeek_pins
+		fi
+		
 		whiptail_suricata_pins
 		collect_mtu
 	else
@@ -469,7 +476,13 @@ if [[ $is_sensor && ! $is_eval ]]; then
 		else
 			PROCS=$lb_procs
 		fi
-		[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+		else
+			collect_zeek
+		fi
+
 		collect_suri
 	fi
 fi
@@ -730,7 +743,7 @@ set_redirect >> $setup_log 2>&1
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		if [[ $ZEEKVERSION == 'ZEEK' ]]; then
+		if [[ $(lookup_pillar "mdengine") == 'ZEEK' ]]; then
 			set_progress_str 67 "$(print_salt_state_apply 'zeek')"
 			salt-call state.apply -l info zeek >> $setup_log 2>&1
 		fi
