@@ -232,7 +232,8 @@ commonlogrotateconf:
 
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
 # Lock permissions on the backup directory
-file.directory:
+backupdir:
+  file.directory:
     - name: /nsm/backup
     - user: 0
     - group: 0
