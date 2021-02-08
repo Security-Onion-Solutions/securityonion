@@ -231,6 +231,15 @@ commonlogrotateconf:
     - dayweek: '*'
 
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
+# Lock permissions on the backup directory
+backupdir:
+  file.directory:
+    - name: /nsm/backup
+    - user: 0
+    - group: 0
+    - makedirs: True
+    - mode: 700
+  
 # Add config backup
 /usr/sbin/so-config-backup > /dev/null 2>&1:
   cron.present:
