@@ -379,6 +379,10 @@ if [[ $is_import ]]; then
 	PLAYBOOK=0
 fi
 
+if [[ $is_airgap ]]; then
+	PATCHSCHEDULENAME=manual
+fi
+
 # Start user prompts
 
 if [[ $is_helix ]]; then
@@ -393,7 +397,7 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
-if [[ ! $is_import ]]; then
+if [[ ! $is_airgap && ! $is_import ]]; then
 	collect_patch_schedule
 fi
 
@@ -446,7 +450,7 @@ if [[ $is_manager || $is_import ]]; then
 	get_redirect
 fi
 
-if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
+if [[ ! $is_airgap && $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
 	whiptail_manager_updates
 	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
 		whiptail_manager_updates_warning
