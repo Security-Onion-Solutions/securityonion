@@ -120,6 +120,15 @@ enable_docker_user_established:
   {% endfor %}
 {% endfor %}
 
+# Block icmp timestamp response
+block_icmp_timestamp_reply:
+  iptables.append:
+    - table: filter
+    - chain: OUTPUT
+    - jump: DROP
+    - proto: icmp
+    - icmp-type: 'timestamp-reply'
+
 # Make the input policy send stuff that doesn't match to be logged and dropped
 iptables_drop_all_the_things:
   iptables.append:
