@@ -20,6 +20,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
+{% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
 
 # Strelka config
 strelkaconfdir:
@@ -188,6 +189,16 @@ strelka_zeek_extracted_sync_old:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
     - minute: '*'
 
+{% if ENGINE == "SURICATA" %}
+
+strelka_suricata_extracted_sync:
+  cron.present:
+    - user: root
+    - identifier: zeek-extracted-strelka-sync
+    - name: '[ -d /nsm/suricata/extracted/ ] && mv /nsm/suricata/extracted/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
+    - minute: '*'
+
+{% else %}
 strelka_zeek_extracted_sync:
   cron.present:
     - user: root
@@ -195,6 +206,7 @@ strelka_zeek_extracted_sync:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
     - minute: '*'
 
+{% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
