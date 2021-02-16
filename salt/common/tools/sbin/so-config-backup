@@ -38,9 +38,10 @@ if [ ! -f $BACKUPFILE ]; then
 
 fi
 
-# Find oldest backup file and remove it
+# Find oldest backup files and remove them
 NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
-OLDESTBACKUP=$(find /nsm/backup/ -type f -name "so-config-backup*" -type f -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
-if [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; then
+while [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; do
+  OLDESTBACKUP=$(find /nsm/backup/ -type f -name "so-config-backup*" -type f -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
   rm -f $OLDESTBACKUP
-fi
+  NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
+done
