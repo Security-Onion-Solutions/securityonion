@@ -31,9 +31,15 @@ whiptail_airgap() {
 whiptail_avoid_default_hostname() {
 	[ -n "$TESTING" ] && return
 
+	read -r -d '' message <<- EOM
+	To prevent hostname conflicts, avoid using the default 'securityonion' hostname in a distributed environment.
+
+	You can choose to use this default hostname anyway, or change it to a new hostname.
+	EOM
+
 	whiptail --title "Security Onion Setup" \
-		--yesno "We suggest avoiding the default hostname of 'securityonion' in a distributed environment." 8 75 \
-		--yes-button "Use" --no-button "Change" --defaultno
+		--yesno "$message" 11 75 \
+		--yes-button "Use Anyway" --no-button "Change" --defaultno
 }
 
 whiptail_basic_suri() {
@@ -952,7 +958,7 @@ whiptail_metadata_tool() {
 		
 		If you choose Zeek for metadata, Suricata will still run to generate NIDS alerts.
 
-		If you choose Suricata for metadata, it will generate NIDS alerts and metadata and Zeek will not run at all.
+		If you choose Suricata for metadata, it will generate NIDS alerts and metadata, and Zeek will not run at all.
 	EOM
 
 	# Legacy variable naming
