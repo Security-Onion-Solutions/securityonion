@@ -970,6 +970,7 @@ installer_prereq_packages() {
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
@@ -1960,6 +1961,8 @@ saltify() {
 		if ! (DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1); then
 			exit 1
 		fi
+
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 
 		if [ $OSVER != "xenial" ]; then
 			# Switch to Python 3 as default if this is not xenial
