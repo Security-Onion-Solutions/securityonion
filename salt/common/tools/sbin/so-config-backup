@@ -33,12 +33,15 @@ if [ ! -f $BACKUPFILE ]; then
   {%- for LOCATION in BACKUPLOCATIONS %}
   tar -rf $BACKUPFILE {{ LOCATION }}
   {%- endfor %}
+  tar -rf $BACKUPFILE /etc/pki
+  tar -rf $BACKUPFILE /etc/salt
 
 fi
 
-# Find oldest backup file and remove it
+# Find oldest backup files and remove them
 NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
-OLDESTBACKUP=$(find /nsm/backup/ -type f -name "so-config-backup*" | ls -1t | tail -1)
-if [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; then
-  rm -f /nsm/backup/$OLDESTBACKUP
-fi
+while [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; do
+  OLDESTBACKUP=$(find /nsm/backup/ -type f -name "so-config-backup*" -type f -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
+  rm -f $OLDESTBACKUP
+  NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
+done

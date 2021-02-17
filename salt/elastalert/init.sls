@@ -15,6 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'elastalert/elastalert_config.map.jinja' import elastalert_defaults as elastalert_config with context %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -92,7 +94,9 @@ elastasomodulesync:
 elastaconf:
   file.managed:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
-    - source: salt://elastalert/files/elastalert_config.yaml
+    - source: salt://elastalert/files/elastalert_config.yaml.jinja
+    - context:
+        elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
     - template: jinja
@@ -119,6 +123,8 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - module: wait_for_elasticsearch
+    - watch:
+      - file: elastaconf
 
 append_so-elastalert_so-status.conf:
   file.append:
