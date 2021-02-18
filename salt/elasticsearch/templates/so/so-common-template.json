@@ -7,6 +7,7 @@
     "number_of_shards":1,
     "index.refresh_interval":"30s",
     "index.routing.allocation.require.box_type":"hot",
+    "index.mapping.total_fields.limit": "1500",
     "analysis": {
       "analyzer": {
         "es_security_analyzer": {
@@ -41,7 +42,25 @@
        "dynamic":false,
        "date_detection":false,
        "dynamic_templates": [
-        {
+       {
+          "ip_address": {
+            "match_mapping_type": "string",
+            "path_match": "*.ip",
+            "mapping": {
+              "type": "ip"
+            }
+          }
+       },
+       {
+          "port": {
+            "match_mapping_type": "string",
+            "path_match": "*.port",
+            "mapping": {
+              "type": "integer"
+            }
+          }
+       },
+       {
           "strings": {
             "match_mapping_type": "string",
             "mapping": {
@@ -52,15 +71,14 @@
                },
                "security": {
                  "type": "text",
-                 "analyzer": "es_security_analyzer", 
-                 "search_analyzer": "es_security_search_analyzer", 
-                 "search_quote_analyzer": "es_security_search_quote_analyzer" 
+                 "analyzer": "es_security_analyzer",
+                 "search_analyzer": "es_security_search_analyzer",
+                 "search_quote_analyzer": "es_security_search_quote_analyzer"
                }
              }
             }
           }
-        }
-      ],
+       }],
        "properties":{
         "@timestamp":{
           "type":"date"
@@ -235,11 +253,29 @@
           "type":"object",
           "dynamic": true
         },
+        "intel":{
+          "type":"object",
+          "dynamic": true,
+          "properties":{
+            "indicator":{
+              "type":"text",
+              "fields":{
+                "keyword":{
+                  "type":"keyword"
+                }
+              }
+            }
+          } 
+        },
         "interface":{
           "type":"object",
           "dynamic": true
         },
-	      "irc":{
+	"ip":{
+          "type":"object",
+          "dynamic": true
+        }, 
+	"irc":{
           "type":"object",
           "dynamic": true
         },
@@ -255,7 +291,7 @@
           "type":"object",
           "dynamic": true
         },
-	      "message":{  
+	"message":{  
           "type":"text",
           "fields":{  
             "keyword":{  
@@ -333,11 +369,24 @@
         },
         "rule":{
           "type":"object",
-          "dynamic": true
+          "dynamic":true,
+          "properties":{
+            "score":{
+              "type":"long"
+            },
+            "uuid":{
+              "type":"keyword"
+            }
+          }
         },
-	      "scan":{
+	"scan":{
           "type":"object",
-          "dynamic": true
+          "dynamic": true,
+	  "properties":{
+            "exiftool":{
+              "type":"text"
+             }
+          }
         },
         "server":{
           "type":"object",
@@ -444,6 +493,9 @@
             },
             "event_data":{
               "type":"object"
+            },
+            "version":{
+              "type":"long"
             }
         }
       },

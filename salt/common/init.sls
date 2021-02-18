@@ -32,6 +32,18 @@ soconfperms:
     - gid: 939
     - dir_mode: 770
 
+sostatusconf:
+  file.directory:
+    - name: /opt/so/conf/so-status
+    - uid: 939
+    - gid: 939
+    - dir_mode: 770
+
+so-status.conf:
+  file.touch:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - unless: ls /opt/so/conf/so-status/so-status.conf
+
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack
@@ -56,6 +68,12 @@ salttmp:
 
 # Install epel
 {% if grains['os'] == 'CentOS' %}
+repair_yumdb:
+  cmd.run:
+    - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
+    - onlyif:
+      - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
+
 epel:
   pkg.installed:
     - skip_suggestions: True
@@ -93,7 +111,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-2
-      - docker-ce: 5:19.03.12~3-0~ubuntu-bionic
+      - docker-ce: 5:19.03.14~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -129,7 +147,7 @@ heldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.12-3.el7
+      - docker-ce: 3:19.03.14-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
@@ -152,8 +170,8 @@ Etc/UTC:
 utilsyncscripts:
   file.recurse:
     - name: /usr/sbin
-    - user: 0
-    - group: 0
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
@@ -192,10 +210,53 @@ sensorrotateconf:
 
 {% endif %}
 
+commonlogrotatescript:
+  file.managed:
+    - name: /usr/local/bin/common-rotate
+    - source: salt://common/cron/common-rotate
+    - mode: 755
+
+commonlogrotateconf:
+  file.managed:
+    - name: /opt/so/conf/log-rotate.conf
+    - source: salt://common/files/log-rotate.conf
+    - template: jinja
+    - mode: 644
+
+/usr/local/bin/common-rotate:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+{% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
+# Add config backup
+/usr/sbin/so-config-backup > /dev/null 2>&1:
+  cron.present:
+    - user: root
+    - minute: '1'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+{% endif %}
+
+# Manager daemon.json
+docker_daemon:
+  file.managed:
+    - source: salt://common/files/daemon.json
+    - name: /etc/docker/daemon.json
+    - template: jinja 
+
 # Make sure Docker is always running
 docker:
   service.running:
     - enable: True
+    - watch:
+      - file: docker_daemon
 
 {% else %}
 

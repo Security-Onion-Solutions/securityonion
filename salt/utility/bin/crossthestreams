@@ -1,15 +1,15 @@
 #!/bin/bash
 {% set ES = salt['pillar.get']('manager:mainip', '') %}
-{%- set MANAGER = salt['grains.get']('master') %}
+{% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-
+{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 
 # Wait for ElasticSearch to come up, so that we can query for version infromation
 echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 30 ]]; do
-  curl --output /dev/null --silent --head --fail http://{{ ES }}:9200
+  curl --output /dev/null --silent --head --fail -L http://{{ ES }}:9200
   if [ $? -eq 0 ]; then
     ELASTICSEARCH_CONNECTED="yes"
     echo "connected!"
@@ -29,14 +29,15 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 fi
 
 echo "Applying cross cluster search config..."
-    curl -s -XPUT http://{{ ES }}:9200/_cluster/settings \
+    curl -s -XPUT -L http://{{ ES }}:9200/_cluster/settings \
          -H 'Content-Type: application/json' \
          -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MANAGER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
 
 # Add all the search nodes to cross cluster searching.
-
-{%- if salt['pillar.get']('nodestab', {}) %}
-  {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-curl -XPUT http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
-  {%- endfor %}
+{%- if TRUECLUSTER is sameas false %}
+  {%- if salt['pillar.get']('nodestab', {}) %}
+    {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+curl -XPUT -L http://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
+    {%- endfor %}
+  {%- endif %}
 {%- endif %}

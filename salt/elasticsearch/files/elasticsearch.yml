@@ -1,18 +1,19 @@
 {%- set NODE_ROUTE_TYPE = salt['pillar.get']('elasticsearch:node_route_type', 'hot') %}
-{%- if salt['pillar.get']('elasticsearch:hot_warm_enabled') or salt['pillar.get']('elasticsearch:true_cluster') %}
-{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name', '') %}
+{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip') %}
+{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
+{%- if TRUECLUSTER is sameas true %}
+  {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name') %}
 {%- else %}
-{%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername', '') %}
+  {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:esclustername') %}
 {%- endif %}
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
 
 # minimum_master_nodes need to be explicitly set when bound on a public IP
 # set to 1 to allow single node clusters
 # Details: https://github.com/elastic/elasticsearch/pull/17288
-discovery.zen.minimum_master_nodes: 1
+#discovery.zen.minimum_master_nodes: 1
 # This is a test -- if this is here, then the volume is mounted correctly.
 path.logs: /var/log/elasticsearch
 action.destructive_requires_name: true
@@ -37,10 +38,30 @@ cluster.routing.allocation.disk.watermark.flood_stage: 98%
 #xpack.security.http.ssl.client_authentication: none
 #xpack.security.authc:
 #  anonymous:
-#    username: anonymous_user 
-#    roles: superuser 
-#    authz_exception: true 
+#    username: anonymous_user
+#    roles: superuser
+#    authz_exception: true
 {%- endif %}
-node.attr.box_type: {{ NODE_ROUTE_TYPE }}
-node.name: {{ ESCLUSTERNAME }}
+node.name: {{ grains.host }}
 script.max_compilations_rate: 1000/1m
+{%- if TRUECLUSTER is sameas true %}
+  {%- if grains.role == 'so-manager' %}
+    {%- if salt['pillar.get']('nodestab', {}) %}
+node.roles: [ master, data, remote_cluster_client ]
+discovery.seed_hosts:
+   - {{ grains.master }}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+   - {{ SN.split('_')|first }}
+      {%- endfor %}
+    {%- endif %}
+  {%- else %}
+node.roles: [ data, ingest ]
+node.attr.box_type: {{ NODE_ROUTE_TYPE }}
+discovery.seed_hosts:
+   - {{ grains.master }}
+  {%- endif %}
+{%- endif %}
+{%- if TRUECLUSTER is sameas false %}
+node.attr.box_type: {{ NODE_ROUTE_TYPE }}
+{%- endif %}
+indices.query.bool.max_clause_count: 1500

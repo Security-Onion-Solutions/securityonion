@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 
+echo "Starting to check for yara rule updates at $(date)..."
+
 output_dir="/opt/so/saltstack/default/salt/strelka/rules"
 mkdir -p $output_dir
 repos="$output_dir/repos.txt"
@@ -27,6 +29,7 @@ updatecounter=0
 
 {% if ISAIRGAP is sameas true %}
 
+echo "Airgap mode enabled."
 
 clone_dir="/nsm/repo/rules/strelka"
 repo_name="signature-base"
@@ -73,17 +76,17 @@ done
 
 echo "Done!"
 
-  if [ "$newcounter" -gt 0 ];then
-    echo "$newcounter new rules added."
-  fi
+if [ "$newcounter" -gt 0 ];then
+  echo "$newcounter new rules added."
+fi
 
-  if [ "$updatecounter" -gt 0 ];then
-    echo "$updatecounter rules updated."
-  fi
+if [ "$updatecounter" -gt 0 ];then
+  echo "$updatecounter rules updated."
+fi
 
-  if [ "$deletecounter" -gt 0 ];then
-    echo "$deletecounter rules removed because they were deprecated or don't exist in the source repo."
-  fi
+if [ "$deletecounter" -gt 0 ];then
+  echo "$deletecounter rules removed because they were deprecated or don't exist in the source repo."
+fi
 
 {% else %}
 
@@ -162,4 +165,6 @@ else
   echo "No connectivity to Github...exiting..."
   exit 1
 fi
-{%- endif -%}
+{% endif %}
+
+echo "Finished rule updates at $(date)..."

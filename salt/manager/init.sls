@@ -81,12 +81,17 @@ so-aptcacherng:
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
 
+append_so-aptcacherng_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-aptcacherng
+
 {% endif %}
 
 strelka_yara_update:
   cron.present:
     - user: root
-    - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
+    - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - hour: '7'
     - minute: '1'
 {% else %}

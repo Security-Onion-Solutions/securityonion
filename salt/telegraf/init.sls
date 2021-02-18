@@ -26,7 +26,7 @@ tgrafetsdir:
 tgrafsyncscripts:
   file.recurse:
     - name: /opt/so/conf/telegraf/scripts
-    - user: 0
+    - user: root
     - group: 939
     - file_mode: 700
     - template: jinja
@@ -48,6 +48,7 @@ so-telegraf:
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
+      - GODEBUG=x509ignoreCN=0
     - network_mode: host
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
@@ -72,6 +73,11 @@ so-telegraf:
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts
+
+append_so-telegraf_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-telegraf
 
 {% else %}
 

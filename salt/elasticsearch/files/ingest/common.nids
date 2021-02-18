@@ -1,0 +1,17 @@
+{
+  "description" : "common.nids",
+  "processors" : [
+    { "convert":        { "if": "ctx.rule.uuid != null",                "field": "rule.uuid",                   "type": "integer"                                                                               } },
+    { "set":            { "if": "ctx.rule?.uuid < 1000000",             "field": "rule.reference", "value": "https://www.snort.org/search?query={{rule.gid}}-{{rule.uuid}}"     } },
+    { "set":            { "if": "ctx.rule?.uuid > 1999999",             "field": "rule.reference", "value": "https://doc.emergingthreats.net/{{rule.uuid}}"                     } },
+    { "convert":        { "if": "ctx.rule.uuid != null",                        "field": "rule.uuid",                   "type": "string"                                                                               } },
+    { "dissect":        { "if": "ctx.rule.name != null",                        "field": "rule.name",                   "pattern" : "%{rule_type} %{rest_of_rulename} ",                                "ignore_failure": true  } },
+    { "set":            { "if": "ctx.rule_type == 'GPL'",       "field": "rule.ruleset", "value": "Snort GPL"                                                   } },
+    { "set":            { "if": "ctx.rule_type == 'ET'",        "field": "rule.ruleset", "value": "Emerging Threats"                                            } },
+    { "set":            { "if": "ctx.rule.severity == 3",   "field": "event.severity", "value": 1, "override": true }  },
+    { "set":            { "if": "ctx.rule.severity == 2",   "field": "event.severity", "value": 2, "override": true }  },
+    { "set":            { "if": "ctx.rule.severity == 1",   "field": "event.severity", "value": 3, "override": true }  },
+    { "remove":         { "field": ["rule_type", "rest_of_rulename"],     "ignore_failure": true                                                                  } },
+    { "pipeline":       { "name": "common"                                                                                                                      } }
+  ]
+}

@@ -74,7 +74,6 @@ filebeat.modules:
 # List of prospectors to fetch data.
 filebeat.inputs:
 #------------------------------ Log prospector --------------------------------
-{%- if grains['role'] in ['so-sensor', "so-eval", "so-helix", "so-heavynode", "so-standalone", "so-import"] %}
 - type: udp
   enabled: true
   host: "0.0.0.0:514"
@@ -82,7 +81,7 @@ filebeat.inputs:
     module: syslog
     dataset: syslog
   pipeline: "syslog"
-  index: "so-syslog-%{+yyyy.MM.dd}"
+  index: "so-syslog"
   processors:
   - drop_fields:
       fields: ["source", "prospector", "input", "offset", "beat"]
@@ -95,11 +94,13 @@ filebeat.inputs:
     module: syslog
     dataset: syslog
   pipeline: "syslog"
-  index: "so-syslog-%{+yyyy.MM.dd}"
+  index: "so-syslog"
   processors:
   - drop_fields:
       fields: ["source", "prospector", "input", "offset", "beat"]
   fields_under_root: true
+
+{%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
 - type: log
@@ -114,7 +115,7 @@ filebeat.inputs:
       fields: ["source", "prospector", "input", "offset", "beat"]
  
   fields_under_root: true
-  clean_removed: false
+  clean_removed: true
   close_removed: false
 
 - type: log
@@ -203,15 +204,14 @@ filebeat.inputs:
 
 - type: log
   paths:
-    - /wazuh/alerts/alerts.json
+    - /wazuh/archives/archives.json
   fields:
     module: ossec
-    dataset: alert
     category: host
   processors:
   - drop_fields:
       fields: ["source", "prospector", "input", "offset", "beat"]
-
+  pipeline: "ossec"
   fields_under_root: true
   clean_removed: false
   close_removed: false
@@ -260,22 +260,22 @@ output.elasticsearch:
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"
   indices:
-    - index: "so-import-%{+yyyy.MM.dd}"
+    - index: "so-import"
       when.contains:
         tags: "import"
-    - index: "so-zeek-%{+yyyy.MM.dd}"
+    - index: "so-zeek"
       when.contains:
         module: "zeek"
-    - index: "so-ids-%{+yyyy.MM.dd}"
+    - index: "so-ids"
       when.contains:
         module: "suricata"
-    - index: "so-ossec-%{+yyyy.MM.dd}"
+    - index: "so-ossec"
       when.contains:
         module: "ossec"
-    - index: "so-osquery-%{+yyyy.MM.dd}"
+    - index: "so-osquery"
       when.contains:
         module: "osquery"
-    - index: "so-strelka-%{+yyyy.MM.dd}"
+    - index: "so-strelka"
       when.contains:
         module: "strelka"
   

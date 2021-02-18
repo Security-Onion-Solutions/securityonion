@@ -16,34 +16,118 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
+
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+
 exec 3>&1 1>${SOUP_LOG} 2>&1
 
-manager_check() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [[ "$MANAGERCHECK" =~ ^('so-eval'|'so-manager'|'so-standalone'|'so-managersearch'|'so-import')$ ]]; then
-    echo "This is a manager. We can proceed."
-    MINIONID=$(salt-call grains.get id --out=txt|awk -F: {'print $2'}|tr -d ' ')
+add_common() {
+  cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+  cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+  salt-call state.apply common queue=True
+  echo "Run soup one more time"
+  exit 0
+}
+
+airgap_mounted() {
+  # Let's see if the ISO is already mounted. 
+  if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+    echo "The ISO is already mounted"
   else
-    echo "Please run soup on the manager. The manager controls all updates."
-    exit 0
+    echo ""
+    echo "Looks like we need access to the upgrade content"
+    echo "" 
+    echo "If you just copied the .iso file over you can specify the path."
+    echo "If you burned the ISO to a disk the standard way you can specify the device."
+    echo "Example: /home/user/securityonion-2.X.0.iso"
+    echo "Example: /dev/sdx1"
+    echo ""
+    read -p 'Enter the location of the iso: ' ISOLOC
+    if [ -f $ISOLOC ]; then
+      # Mounting the ISO image
+      mkdir -p /tmp/soagupdate
+      mount -t iso9660 -o loop $ISOLOC /tmp/soagupdate
+      # Make sure mounting was successful
+      if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+        echo "Something went wrong trying to mount the ISO."
+        echo "Ensure you verify the ISO that you downloaded."
+        exit 0
+      else
+        echo "ISO has been mounted!"
+      fi  
+    elif [ -f $ISOLOC/SecurityOnion/VERSION ]; then
+      ln -s $ISOLOC /tmp/soagupdate
+      echo "Found the update content"
+    else 
+      mkdir -p /tmp/soagupdate
+      mount $ISOLOC /tmp/soagupdate
+      if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+        echo "Something went wrong trying to mount the device."
+        echo "Ensure you verify the ISO that you downloaded."
+        exit 0
+      else
+        echo "Device has been mounted!"
+      fi        
+    fi
   fi
+}
+
+airgap_update_dockers() {
+  if [ $is_airgap -eq 0 ]; then
+    # Let's copy the tarball
+    if [ ! -f $AGDOCKER/registry.tar ]; then
+      echo "Unable to locate registry. Exiting"
+      exit 1
+    else
+      echo "Stopping the registry docker"
+      docker stop so-dockerregistry
+      docker rm so-dockerregistry
+      echo "Copying the new dockers over"
+      tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
+      echo "Add Registry back"
+      docker load -i $AGDOCKER/registry_image.tar
+    fi
+  fi
+}
+
+update_registry() {
+  docker stop so-dockerregistry
+  docker rm so-dockerregistry
+  salt-call state.apply registry queue=True
+}
+
+check_airgap() {
+  # See if this is an airgap install
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap | awk '{print $2}')
+  if [[ "$AIRGAP" == "True" ]]; then
+      is_airgap=0
+      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
+      AGDOCKER=/tmp/soagupdate/docker
+      AGREPO=/tmp/soagupdate/Packages
+  else 
+      is_airgap=1
+  fi
+}
+
+check_sudoers() {
+	if grep -q "so-setup" /etc/sudoers; then
+		echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
+	fi
 }
 
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
   docker system prune -a -f
+
 }
 
 clone_to_tmp() {
-  # TODO Need to add a air gap option
   # Clean old files
   rm -rf /tmp/sogh
   # Make a temp location for the files
@@ -63,7 +147,7 @@ clone_to_tmp() {
 
 copy_new_files() {
   # Copy new files over to the salt dir
-  cd /tmp/sogh/securityonion
+  cd $UPDATE_DIR
   rsync -a salt $DEFAULT_SALT_DIR/
   rsync -a pillar $DEFAULT_SALT_DIR/
   chown -R socore:socore $DEFAULT_SALT_DIR/
@@ -71,21 +155,17 @@ copy_new_files() {
   cd /tmp
 }
 
-detect_os() {
-	# Detect Base OS
-	echo "Determining Base OS." >> "$SOUP_LOG" 2>&1
-	if [ -f /etc/redhat-release ]; then
-		OS="centos"
-	elif [ -f /etc/os-release ]; then
-		OS="ubuntu"
-	fi
-	echo "Found OS: $OS" >> "$SOUP_LOG" 2>&1
+generate_and_clean_tarballs() {
+  local new_version
+  new_version=$(cat $UPDATE_DIR/VERSION)
+  [ -d /opt/so/repo ] || mkdir -p /opt/so/repo
+  tar -cxf "/opt/so/repo/$new_version.tar.gz" "$UPDATE_DIR"
+  find "/opt/so/repo" -type f -not -name "$new_version.tar.gz" -exec rm -rf {} \;
 }
 
 highstate() {
-  # Run a highstate but first cancel a running one.
-  salt-call saltutil.kill_all_jobs
-  salt-call state.highstate -l info
+  # Run a highstate.
+  salt-call state.highstate -l info queue=True
 }
 
 masterlock() {
@@ -112,7 +192,7 @@ masterunlock() {
 playbook() {
   echo "Applying playbook settings"
   if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-    salt-call state.apply playbook.db_init
+    salt-call state.apply playbook.OLD_db_init
     rm -f /opt/so/rules/elastalert/playbook/*.yaml
     so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   fi
@@ -124,7 +204,8 @@ pillar_changes() {
     
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
-
+    [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
+    [[ "$INSTALLEDVERSION" == 2.3.0 ]] || [[ "$INSTALLEDVERSION" == 2.3.1 ]] || [[ "$INSTALLEDVERSION" == 2.3.2 ]] || [[ "$INSTALLEDVERSION" == 2.3.10 ]] && 2.3.0_to_2.3.20
 }
 
 rc1_to_rc2() {
@@ -140,8 +221,8 @@ rc1_to_rc2() {
   sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
 
   # Adding play values to the global.sls
-  local HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  local CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  local HIVEPLAYSECRET=$(get_random_value)
+  local CORTEXPLAYSECRET=$(get_random_value)
   sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
   sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
 
@@ -159,7 +240,7 @@ rc1_to_rc2() {
   while read p; do
       local NAME=$(echo $p | awk '{print $1}')
       local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
-	    local IP=$(echo $p | awk '{print $2}')
+      local IP=$(echo $p | awk '{print $2}')
       echo "Adding the new cross cluster config for $NAME"
       curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
   done </tmp/nodes.txt
@@ -184,6 +265,69 @@ rc2_to_rc3() {
   # Enable Strelka Rules
   sed -i "/  rules:/c\  rules: 1" /opt/so/saltstack/local/pillar/global.sls
 
+  INSTALLEDVERSION=rc.3
+
+}
+
+rc3_to_2.3.0() {
+  # Fix Tab Complete
+  if [ ! -f /etc/profile.d/securityonion.sh ]; then
+    echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+  fi
+
+  {
+      echo "redis_settings:"
+      echo "  redis_maxmemory: 827"
+      echo "playbook:"
+      echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
+  } >> /opt/so/saltstack/local/pillar/global.sls
+
+  sed -i 's/playbook:/playbook_db:/' /opt/so/saltstack/local/pillar/secrets.sls
+  {
+    echo "playbook_admin: $(get_random_value)"
+    echo "playbook_automation: $(get_random_value)"
+  } >> /opt/so/saltstack/local/pillar/secrets.sls
+
+  INSTALLEDVERSION=2.3.0
+}
+
+2.3.0_to_2.3.20(){
+  DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+  # Remove PCAP from global
+  sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
+  sed '/sensor_checkin_interval_ms:/d' /opt/so/saltstack/local/pillar/global.sls
+
+  # Add checking interval to glbal
+  echo "sensoroni:" >> /opt/so/saltstack/local/pillar/global.sls
+  echo "  node_checkin_interval_ms: 10000" >> /opt/so/saltstack/local/pillar/global.sls
+
+  # Update pillar fiels for new sensoroni functionality
+  for file in /opt/so/saltstack/local/pillar/minions/*; do
+    echo "sensoroni:" >> $file
+    echo "  node_description:" >> $file
+    local SOMEADDRESS=$(cat $file | grep mainip | tail -n 1 | awk '{print $2'})
+    echo "  node_address: $SOMEADDRESS" >> $file
+  done
+
+  # Remove old firewall config to reduce confusion
+  rm -f /opt/so/saltstack/default/pillar/firewall/ports.sls
+
+  # Fix daemon.json by managing it
+  echo "docker:" >> /opt/so/saltstack/local/pillar/global.sls
+  DOCKERGREP=$(cat /etc/docker/daemon.json | grep base | awk {'print $3'} | cut -f1 -d"," | tr -d '"')
+  if [ -z "$DOCKERGREP" ]; then
+    echo "  range: '172.17.0.0/24'" >> /opt/so/saltstack/local/pillar/global.sls
+    echo "  bip: '172.17.0.1/24'" >> /opt/so/saltstack/local/pillar/global.sls
+  else
+    DOCKERSTUFF="${DOCKERGREP//\"}"
+    DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+    echo "  range: '$DOCKERSTUFF/24'" >> /opt/so/saltstack/local/pillar/global.sls
+    echo "  bip: '$DOCKERSTUFFBIP'"  >> /opt/so/saltstack/local/pillar/global.sls
+
+  fi
+
+  INSTALLEDVERSION=2.3.20
+
 }
 
 space_check() {
@@ -198,83 +342,41 @@ space_check() {
   
 }
 
-update_dockers() {
-    # List all the containers
-    if [ $MANAGERCHECK == 'so-import' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-idstools" \
-      "so-nginx" \
-      "so-filebeat" \
-      "so-suricata" \
-      "so-soc" \
-      "so-elasticsearch" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-suricata" \
-      "so-registry" \
-      "so-pcaptools" \
-      "so-zeek" )
-    elif [ $MANAGERCHECK != 'so-helix' ]; then
-      TRUSTED_CONTAINERS=( \
-      "so-acng" \
-      "so-thehive-cortex" \
-      "so-curator" \
-      "so-domainstats" \
-      "so-elastalert" \
-      "so-elasticsearch" \
-      "so-filebeat" \
-      "so-fleet" \
-      "so-fleet-launcher" \
-      "so-freqserver" \
-      "so-grafana" \
-      "so-idstools" \
-      "so-influxdb" \
-      "so-kibana" \
-      "so-kratos" \
-      "so-logstash" \
-      "so-minio" \
-      "so-mysql" \
-      "so-nginx" \
-      "so-pcaptools" \
-      "so-playbook" \
-      "so-redis" \
-      "so-soc" \
-      "so-soctopus" \
-      "so-steno" \
-      "so-strelka-frontend" \
-      "so-strelka-manager" \
-      "so-strelka-backend" \
-      "so-strelka-filestream" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-thehive" \
-      "so-thehive-es" \
-      "so-wazuh" \
-      "so-zeek" )
-    else
-      TRUSTED_CONTAINERS=( \
-      "so-filebeat" \
-      "so-idstools" \
-      "so-logstash" \
-      "so-nginx" \
-      "so-redis" \
-      "so-steno" \
-      "so-suricata" \
-      "so-telegraf" \
-      "so-zeek" )
-    fi
+thehive_maint() {
+  echo -n "Waiting for TheHive..."
+  COUNT=0
+  THEHIVE_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+      curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
+          if [ $? -eq 0 ]; then
+              THEHIVE_CONNECTED="yes"
+              echo "connected!"
+              break
+          else
+              ((COUNT+=1))
+              sleep 1
+              echo -n "."
+          fi
+  done
+  if [ "$THEHIVE_CONNECTED" == "yes" ]; then
+    echo "Migrating thehive databases if needed."
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+  fi
+}
 
-# Download the containers from the interwebs
-    for i in "${TRUSTED_CONTAINERS[@]}"
-    do
-      # Pull down the trusted docker image
-      echo "Downloading $i:$NEWVERSION"
-      docker pull --disable-content-trust=false docker.io/$IMAGEREPO/$i:$NEWVERSION
-      # Tag it with the new registry destination
-      docker tag $IMAGEREPO/$i:$NEWVERSION $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION
-      docker push $HOSTNAME:5000/$IMAGEREPO/$i:$NEWVERSION 
-    done
+unmount_update() {
+  cd /tmp
+  umount /tmp/soagupdate
+}
 
+
+update_centos_repo() {
+  # Update the files in the repo
+  echo "Syncing new updates to /nsm/repo"
+  rsync -av $AGREPO/* /nsm/repo/
+  echo "Creating repo"
+  createrepo /nsm/repo
 }
 
 update_version() {
@@ -298,6 +400,10 @@ upgrade_check_salt() {
     if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
       echo "You are already running the correct version of Salt for Security Onion."
     else
+      UPGRADESALT=1
+    fi
+}   
+upgrade_salt() {
       SALTUPGRADED=True
       echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
       echo ""
@@ -308,7 +414,11 @@ upgrade_check_salt() {
         yum versionlock delete "salt-*"
         echo "Updating Salt packages and restarting services."
         echo ""
-        sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+	if [ $is_airgap -eq 0 ]; then
+          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
+	else 
+          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+	fi
         echo "Applying yum versionlock for Salt."
         echo ""
         yum versionlock add "salt-*"
@@ -328,18 +438,24 @@ upgrade_check_salt() {
         apt-mark hold "salt-master"
         apt-mark hold "salt-minion"
       fi
-    fi 
 }
 
 verify_latest_update_script() {
     # Check to see if the update scripts match. If not run the new one.
     CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
-    GITSOUP=$(md5sum /tmp/sogh/securityonion/salt/common/tools/sbin/soup | awk '{print $1}')
-    if [[ "$CURRENTSOUP" == "$GITSOUP" ]]; then
+    GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
+    CURRENTCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-common | awk '{print $1}')
+    GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
+    CURRENTIMGCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+    GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+
+    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
       echo "This version of the soup script is up to date. Proceeding."
     else
-      echo "You are not running the latest soup version. Updating soup."
+      echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
       cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+      cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+      cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
       salt-call state.apply common queue=True
       echo ""
       echo "soup has been updated. Please run soup again."
@@ -365,42 +481,108 @@ done
 
 echo "Checking to see if this is a manager."
 echo ""
-manager_check
+require_manager
+set_minionid
+echo "Checking to see if this is an airgap install"
+echo ""
+check_airgap
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
-detect_os
+set_os
 echo ""
-echo "Cloning Security Onion github repo into $UPDATE_DIR."
-clone_to_tmp
+if [ $is_airgap -eq 0 ]; then
+  # Let's mount the ISO since this is airgap
+  airgap_mounted
+else
+  echo "Cloning Security Onion github repo into $UPDATE_DIR."
+  echo "Removing previous upgrade sources."
+  rm -rf $UPDATE_DIR
+  clone_to_tmp
+fi
+
 echo ""
 echo "Verifying we have the latest soup script."
 verify_latest_update_script
 echo ""
 
+echo "Generating new repo archive"
+generate_and_clean_tarballs
+if [ -f /usr/sbin/so-image-common ]; then
+  . /usr/sbin/so-image-common
+else 
+add_common
+fi
+
 echo "Let's see if we need to update Security Onion."
 upgrade_check
 space_check
 
+echo "Checking for Salt Master and Minion updates."
+upgrade_check_salt
+
 echo ""
 echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
 echo ""
+echo "Updating dockers to $NEWVERSION."
+if [ $is_airgap -eq 0 ]; then
+  airgap_update_dockers
+else
+  update_registry
+  update_docker_containers "soup"
+  FEATURESCHECK=$(lookup_pillar features elastic)
+  if [[ "$FEATURESCHECK" == "True" ]]; then 
+    TRUSTED_CONTAINERS=(
+      "so-elasticsearch"
+      "so-filebeat"
+      "so-kibana"
+      "so-logstash" 
+    )
+    update_docker_containers "features" "-features"
+  fi
+fi
+echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
+echo "Killing any remaining Salt Minion processes."
+pkill -9 -ef /usr/bin/salt-minion
 echo ""
 echo "Stopping Salt Master service."
 systemctl stop salt-master
 echo ""
-echo "Checking for Salt Master and Minion updates."
-upgrade_check_salt
 
+# Does salt need upgraded. If so update it.
+if [ "$UPGRADESALT" == "1" ]; then
+  echo "Upgrading Salt"
+  # Update the repo files so it can actually upgrade
+  if [ $is_airgap -eq 0 ]; then
+    update_centos_repo
+    yum clean all
+  fi
+  upgrade_salt
+fi
+
+echo "Checking if Salt was upgraded."
+echo ""
+# Check that Salt was upgraded
+if [[ $(salt --versions-report | grep Salt: | awk {'print $2'}) != "$NEWSALTVERSION" ]]; then
+  echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+  echo "Once the issue is resolved, run soup again."
+  echo "Exiting."
+  echo ""
+  exit 1
+else
+  echo "Salt upgrade success."
+  echo ""
+fi
 
 echo "Making pillar changes."
 pillar_changes
 echo ""
 
-echo ""
-echo "Updating dockers to $NEWVERSION."
-update_dockers
+# Only update the repo if its airgap
+if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
+update_centos_repo
+fi
 
 echo ""
 echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
@@ -416,9 +598,19 @@ echo ""
 echo "Starting Salt Master service."
 systemctl start salt-master
 
+# Only regenerate osquery packages if Fleet is enabled
+FLEET_MANAGER=$(lookup_pillar fleet_manager)
+FLEET_NODE=$(lookup_pillar fleet_node)
+if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
+  echo ""
+  echo "Regenerating Osquery Packages.... This will take several minutes."
+  salt-call state.apply fleet.event_gen-packages -l info queue=True
+  echo ""
+fi
+
 echo ""
 echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-highstate
+salt-call state.highstate -l info queue=True
 echo ""
 echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
@@ -431,16 +623,23 @@ masterunlock
 echo ""
 echo "Starting Salt Master service."
 systemctl start salt-master
-highstate
+echo "Running a highstate. This could take several minutes."
+salt-call state.highstate -l info queue=True
 playbook
+unmount_update
+thehive_maint
 
-SALTUPGRADED="True"
-if [[ "$SALTUPGRADED" == "True" ]]; then
+if [ "$UPGRADESALT" == "1" ]; then
   echo ""
   echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
-  salt -C 'not *_eval and not *_helix and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion 
+  if [ $is_airgap -eq 0 ]; then
+    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+  fi
+  salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion queue=True
   echo ""
 fi
+
+check_sudoers
 
 }
 

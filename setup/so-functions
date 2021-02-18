@@ -15,11 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-source ./so-whiptail
-source ./so-variables
-source ./so-common-functions
-
-SOVERSION=$(cat ../VERSION)
+# README - DO NOT DEFINE GLOBAL VARIABLES IN THIS FILE. Instead use so-variables.
 
 log() {
 	msg=$1
@@ -44,6 +40,51 @@ logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
 	$cmd >> "$setup_log" 2>&1
+}
+
+filter_unused_nics() {
+
+	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		grep_string="$grep_string"
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	readarray -t filtered_nics <<< "$filtered_nics"
+	
+	nic_list=()
+	for nic in "${filtered_nics[@]}"; do
+		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
+	done
+
+	export nic_list
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
+
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
+    export lb_procs
 }
 
 airgap_rules() {
@@ -99,10 +140,14 @@ add_manager_hostfile() {
 	echo "Checking if I can resolve manager. If not add to hosts file" >> "$setup_log" 2>&1
 	# Pop up an input to get the IP address
 	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your Manager Server IP Address" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
+	"Enter your Manager Server IP Address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+}
+
+add_mngr_ip_to_hosts() {
+	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
 addtotab_generate_templates() {
@@ -173,7 +218,7 @@ add_web_user() {
 		echo "Attempting to add administrator user for web interface...";
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER";
 		echo "Add user result: $?";
-	} >> "$setup_log" 2>&1
+	} >> "/root/so-user-add.log" 2>&1
 }
 
 # Create an secrets pillar so that passwords survive re-install
@@ -184,7 +229,10 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  mysql: $MYSQLPASS"\
-		"  playbook: $PLAYBOOKPASS"\
+		"  playbook_db: $PLAYBOOKDBPASS"\
+		"  playbook_admin: $PLAYBOOKADMINPASS"\
+		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
+		"  grafana_admin: $GRAFANAPASS"\
 		"  fleet: $FLEETPASS"\
 		"  fleet_jwt: $FLEETJWT"\
 		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
@@ -242,49 +290,49 @@ check_pass_match() {
 	fi
 }
 
+# False if stopped, true if running
 check_service_status() {
 
 	local service_name=$1
 	echo "Checking service $service_name status" >> "$setup_log" 2>&1
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue with the service false if it is running properly
 	if [ $status -gt 0 ]; then
-		echo "$service_name is not running" >> "$setup_log" 2>&1
-		echo 1;
+		echo "  $service_name is not running" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "$service_name is running" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  $service_name is running" >> "$setup_log" 2>&1
+		return 0;
 	fi
 
 }
 
 check_salt_master_status() {
 	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
+	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
 	salt-call state.show_top > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue talking to salt master
 	if [ $status -gt 0 ]; then
-		echo 1;
+		echo "  Could not talk to salt master" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "Can talk to salt master" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  Can talk to salt master" >> "$setup_log" 2>&1
+		return 0;
 	fi
 
 }
 
 check_salt_minion_status() {
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping > /dev/null 2>&1
 	local status=$?
-	#true if there is an issue getting a job response from the minion
 	if [ $status -gt 0 ]; then
-		echo 1;
+		echo "  Minion did not respond" >> "$setup_log" 2>&1
+		return 1;
 	else
-		echo "Received job response from salt minion" >> "$setup_log" 2>&1
-		echo 0;
+		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+		return 0;
 	fi
-
 }
 
 check_soremote_pass() {
@@ -351,6 +399,10 @@ collect_fleetuser_inputs() {
 	FPMATCH=no
 	while [[ $FPMATCH != yes ]]; do
 		whiptail_create_fleet_node_user_password1
+		while ! check_password "$FLEETNODEPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_fleet_node_user_password1
+		done
 		whiptail_create_fleet_node_user_password2
 		check_fleet_node_pass
 	done
@@ -371,7 +423,11 @@ collect_webuser_inputs() {
 
 	WPMATCH=no
 	while [[ $WPMATCH != yes ]]; do
-		whiptail_create_web_user_password1
+	    whiptail_create_web_user_password1
+	    while ! check_password "$WEBPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_web_user_password1
+		done
 		if echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1; then
 			whiptail_create_web_user_password2
 			check_web_pass
@@ -388,17 +444,17 @@ configure_minion() {
 
 	local minion_config=/etc/salt/minion
 
-	echo "id: $MINION_ID" > "$minion_config"
+	echo "id: '$MINION_ID'" > "$minion_config"
 
 	case "$minion_type" in
 		'helix')
-			echo "master: $HOSTNAME" >> "$minion_config"
+			echo "master: '$HOSTNAME'" >> "$minion_config"
 			;;
 		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
 			printf '%s\n'\
-				"master: $HOSTNAME"\
+				"master: '$HOSTNAME'"\
 				"mysql.host: '$MAINIP'"\
-				"mysql.port: 3306"\
+				"mysql.port: '3306'"\
 				"mysql.user: 'root'" >> "$minion_config"
 			if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
 				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
@@ -408,7 +464,7 @@ configure_minion() {
 			fi
 			;;
 		*)
-			echo "master: $MSRV" >> "$minion_config"
+			echo "master: '$MSRV'" >> "$minion_config"
 			;;
 	esac
 
@@ -419,8 +475,6 @@ configure_minion() {
 
 	{
 		systemctl restart salt-minion;
-		printf '%s\n'  '----';
-		cat "$minion_config";
 	} >> "$setup_log" 2>&1
 }
 
@@ -451,15 +505,15 @@ check_requirements() {
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
 	elif [[ "$standalone_or_dist" == 'import' ]]; then
-	    req_mem=4
-	    req_cores=2
+		req_mem=4
+		req_cores=2
 		req_nics=1
 	fi
 
 	if [[ $setup_type == 'network' ]] ; then
 		if [[ -n $nsm_mount ]]; then
 			if [[ "$standalone_or_dist" == 'import' ]]; then
-		    	req_storage=50
+				req_storage=50
 			else
 				req_storage=100
 			fi
@@ -471,7 +525,7 @@ check_requirements() {
 			fi
 		else
 			if [[ "$standalone_or_dist" == 'import' ]]; then
-		    	req_storage=50
+				req_storage=50
 			else
 				req_storage=200
 			fi
@@ -482,16 +536,38 @@ check_requirements() {
 	fi
 
 	if [[ $num_nics -lt $req_nics ]]; then
-		whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+		if [[ $num_nics -eq 1 ]]; then
+			whiptail_requirements_error "NIC" "$num_nics" "$req_nics"
+		else
+			whiptail_requirements_error "NICs" "$num_nics" "$req_nics"
+		fi
 	fi
 
 	if [[ $num_cpu_cores -lt $req_cores ]]; then
-		whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+		if [[ $num_cpu_cores -eq 1 ]]; then
+			whiptail_requirements_error "core" "$num_cpu_cores" "$req_cores"
+		else
+			whiptail_requirements_error "cores" "$num_cpu_cores" "$req_cores"
+		fi
+		
 	fi
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
 		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
 	fi
+}
+
+compare_versions() {
+	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+
+	if [[ $manager_ver == "" ]]; then
+		rm /root/install_opt
+		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+
+	[[ "$manager_ver" == "$SOVERSION" ]]
+	return
 }
 
 configure_network_sensor() {
@@ -582,12 +658,15 @@ copy_salt_master_config() {
 
 	# Copy the Salt master config template to the proper directory
 	if [ "$setup_type" = 'iso' ]; then
-		cp /root/SecurityOnion/files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	else
-		cp ../files/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/master /etc/salt/master >> "$setup_log" 2>&1
+		cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service >> "$setup_log" 2>&1
 	fi
 
 	# Restart the service so it picks up the changes
+	systemctl daemon-reload >> "$setup_log" 2>&1
 	systemctl restart salt-master >> "$setup_log" 2>&1
 }
 
@@ -624,6 +703,10 @@ copy_ssh_key() {
 	mkdir -p /root/.ssh
 	ssh-keygen -f /root/.ssh/so.key -t rsa -q -N "" < /dev/zero
 	chown -R "$SUDO_USER":"$SUDO_USER" /root/.ssh
+
+	echo "Removing old entry for manager from known_hosts if it exists"
+	grep -q "$MSRV" /root/.ssh/known_hosts && sed -i "/${MSRV}/d" /root/.ssh/known_hosts
+
 	echo "Copying the SSH key to the manager"
 	#Copy the key over to the manager
 	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
@@ -636,7 +719,7 @@ create_local_directories() {
 		for d in $(find $PILLARSALTDIR/$i -type d); do
 			suffixdir=${d//$PILLARSALTDIR/}
 			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				mkdir -v "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
+				mkdir -pv "$local_salt_dir$suffixdir" >> "$setup_log" 2>&1
 			fi
 		done
 		chown -R socore:socore "$local_salt_dir/$i"
@@ -677,7 +760,8 @@ detect_os() {
 			exit 1
 		fi
 
-		echo "Installing required packages to run installer..." >> "$setup_log" 2>&1
+		# Print message to stdout so the user knows setup is doing something
+		echo "Installing required packages to run installer..."
 		# Install bind-utils so the host command exists
 		if [[ ! $is_iso ]]; then
 		  if ! command -v host > /dev/null 2>&1; then
@@ -711,6 +795,7 @@ detect_os() {
 			exit 1
 		fi
 
+		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
@@ -720,7 +805,7 @@ detect_os() {
 				systemctl start NetworkManager;
 			} >> "$setup_log" 2<&1
 		fi
-		apt-get install -y bc >> "$setup_log" 2>&1
+		apt-get install -y bc curl >> "$setup_log" 2>&1
 
 	else
 		echo "We were unable to determine if you are using a supported OS."
@@ -733,16 +818,24 @@ detect_os() {
 
 disable_auto_start() {
 	
-	if crontab -l | grep so-setup; then
+	if crontab -l -u $INSTALLUSERNAME 2>&1 | grep -q so-setup; then
 		# Remove the automated setup script from crontab, if it exists
 		logCmd "crontab -u $INSTALLUSERNAME -r"
 	fi
 
-	if grep so-setup /home/$INSTALLUSERNAME/.bash_profile; then
+	if grep -s -q so-setup /home/$INSTALLUSERNAME/.bash_profile; then
 		# Truncate last line of the bash profile
 		info "Removing auto-run of setup from bash profile"
 		sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
 	fi
+}
+
+disable_ipv6() {
+	{
+		info "Disabling ipv6"
+		sysctl -w net.ipv6.conf.all.disable_ipv6=1
+		sysctl -w net.ipv6.conf.default.disable_ipv6=1
+	}  >> "$setup_log" 2>&1
 }
 
 disable_misc_network_features() {
@@ -780,9 +873,9 @@ docker_install() {
 			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
 			fi
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-19.03.12-3.el7 containerd.io-1.2.13-3.2.el7;
+			  yum -y install docker-ce-19.03.14-3.el7 containerd.io-1.2.13-3.2.el7;
 			fi
-			yum versionlock docker-ce-19.03.12-3.el7;
+			yum versionlock docker-ce-19.03.14-3.el7;
 			yum versionlock containerd.io-1.2.13-3.2.el7
 		} >> "$setup_log" 2>&1
 		
@@ -818,101 +911,81 @@ docker_registry() {
 
 	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
+	# This will get applied so docker can attempt to start
+	if [ -z "$DOCKERNET" ]; then
+            DOCKERNET=172.17.0.0
+	fi
 	# Make the host use the manager docker registry
+	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
 	printf '%s\n'\
 		"{"\
-		"  \"registry-mirrors\": [ \"$proxy:5000\" ]"\
+		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
+		"  \"bip\": \"$DNETBIP\","\
+		"  \"default-address-pools\": ["\
+		"    {"\
+		"      \"base\" : \"$DOCKERNET/24\","\
+		"      \"size\" : 24"\
+		"    }"\
+		"  ]"\
 		"}" > /etc/docker/daemon.json
 	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
 
+}
+
+docker_seed_update() {
+	local name=$1
+	local percent_delta=1
+	if [ "$install_type" == 'HELIXSENSOR' ]; then 
+		percent_delta=6
+	fi
+	((docker_seed_update_percent=docker_seed_update_percent+percent_delta))
+
+	set_progress_str "$docker_seed_update_percent" "Downloading $name"
 }
 
 docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
-	    if [ "$install_type" == 'IMPORT' ]; then
-		local TRUSTED_CONTAINERS=(\
-			"so-idstools:$VERSION" \
-			"so-nginx:$VERSION" \
-			"so-filebeat:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-soc:$VERSION" \
-			"so-steno:$VERSION" \
-			"so-elasticsearch:$VERSION" \
-			"so-kibana:$VERSION" \
-			"so-kratos:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-pcaptools:$VERSION" \
-			"so-zeek:$VERSION"
-		)
+		if [ "$install_type" == 'IMPORT' ]; then
+			container_list 'so-import'
+		elif [ "$install_type" == 'HELIXSENSOR' ]; then
+			container_list 'so-helix'
 		else
-		local TRUSTED_CONTAINERS=(\
-			"so-nginx:$VERSION" \
-			"so-filebeat:$VERSION" \
-			"so-logstash:$VERSION" \
-			"so-idstools:$VERSION" \
-			"so-redis:$VERSION" \
-			"so-steno:$VERSION" \
-			"so-suricata:$VERSION" \
-			"so-telegraf:$VERSION" \
-			"so-zeek:$VERSION"
-		)
+			container_list
 		fi
-		if [ "$install_type" != 'HELIXSENSOR' ] && [ "$install_type" != 'IMPORT' ]; then
-			TRUSTED_CONTAINERS=("${TRUSTED_CONTAINERS[@]}" \
-				"so-acng:$VERSION" \
-				"so-thehive-cortex:$VERSION" \
-				"so-curator:$VERSION" \
-				"so-domainstats:$VERSION" \
-				"so-elastalert:$VERSION" \
-				"so-elasticsearch:$VERSION" \
-				"so-fleet:$VERSION" \
-				"so-fleet-launcher:$VERSION" \
-				"so-freqserver:$VERSION" \
-				"so-grafana:$VERSION" \
-				"so-influxdb:$VERSION" \
-				"so-kibana:$VERSION" \
-				"so-minio:$VERSION" \
-				"so-mysql:$VERSION" \
-				"so-pcaptools:$VERSION" \
-				"so-playbook:$VERSION" \
-				"so-soc:$VERSION" \
-				"so-kratos:$VERSION" \
-				"so-soctopus:$VERSION" \
-				"so-steno:$VERSION" \
-				"so-strelka-frontend:$VERSION" \
-				"so-strelka-manager:$VERSION" \
-				"so-strelka-backend:$VERSION" \
-				"so-strelka-filestream:$VERSION" \
-				"so-thehive:$VERSION" \
-				"so-thehive-es:$VERSION" \
-				"so-wazuh:$VERSION"
-			)
-		fi
-		local percent=25
-		for i in "${TRUSTED_CONTAINERS[@]}"; do
-			if [ "$install_type" != 'HELIXSENSOR' ]; then ((percent=percent+1)); else ((percent=percent+6)); fi
-			# Pull down the trusted docker image
-			set_progress_str "$percent" "Downloading $i"
-			{
-				
-				if ! docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"; then
-					sleep 5
-					docker pull --disable-content-trust=false docker.io/$IMAGEREPO/"$i"
-				fi
-				# Tag it with the new registry destination
-				docker tag $IMAGEREPO/"$i" "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				docker push "$HOSTNAME":5000/$IMAGEREPO/"$i"
-				#docker rmi $IMAGEREPO/"$i"
-			} >> "$setup_log" 2>&1
-		done
+
+		docker_seed_update_percent=25
+
+		update_docker_containers 'netinstall' '' 'docker_seed_update' "$setup_log"
 	else
 		tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker >> "$setup_log" 2>&1
 		rm /nsm/docker-registry/docker/registry.tar >> "$setup_log" 2>&1
 	fi
 
+}
+
+download_repo_tarball() {
+	mkdir -p /root/manager_setup/securityonion
+	{
+		local manager_ver
+		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
+	} >> "$setup_log" 2>&1
+	
+	# Fail if the file doesn't download
+	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
+		rm /root/install_opt
+		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
+		echo "$message" | tee -a "$setup_log"
+		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+	fi
+	
+	{
+		tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
+		rm -rf /root/manager_setup/"$manager_ver".tar.gz
+	} >> "$setup_log" 2>&1
 }
 
 fireeye_pillar() {
@@ -923,8 +996,8 @@ fireeye_pillar() {
 	printf '%s\n'\
 		"fireeye:"\
 		"  helix:"\
-		"    api_key: $HELIXAPIKEY" 
-		"" > "$fireeye_pillar_path"/init.sls
+		"    api_key: '$HELIXAPIKEY'" \
+		"" > "$fireeye_pillar_path/init.sls"
 
 }
 
@@ -934,10 +1007,10 @@ firewall_generate_templates() {
 	local firewall_pillar_path=$local_salt_dir/salt/firewall
 	mkdir -p "$firewall_pillar_path"
    
-    cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
+	cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-    for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
-	  $default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
+	for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
+		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
 
 }
@@ -949,41 +1022,40 @@ fleet_pillar() {
 	# Create the fleet pillar
 	printf '%s\n'\
 		"fleet:"\
-		"  mainip: $MAINIP"\
-		"  manager: $MSRV"\
+		"  mainip: '$MAINIP'"\
+		"  manager: '$MSRV'"\
 		"" > "$pillar_file"
 }
 
 generate_passwords(){
   # Generate Random Passwords for Things
-  MYSQLPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  PLAYBOOKPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-  FLEETPASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  FLEETJWT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  MYSQLPASS=$(get_random_value)
+  PLAYBOOKDBPASS=$(get_random_value)
+  PLAYBOOKADMINPASS=$(get_random_value)
+  PLAYBOOKAUTOMATIONPASS=$(get_random_value)
+  FLEETPASS=$(get_random_value)
+  FLEETJWT=$(get_random_value)
+  GRAFANAPASS=$(get_random_value)
   if [[ "$THEHIVE" == "1" ]]; then
-  	HIVEKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	HIVEPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXORGUSERKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  	CORTEXPLAYSECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  	HIVEKEY=$(get_random_value)
+  	HIVEPLAYSECRET=$(get_random_value)
+  	CORTEXKEY=$(get_random_value)
+  	CORTEXORGUSERKEY=$(get_random_value)
+  	CORTEXPLAYSECRET=$(get_random_value)
   fi
-  SENSORONIKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
-  KRATOSKEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom  | fold -w 20 | head -n 1)
+  SENSORONIKEY=$(get_random_value)
+  KRATOSKEY=$(get_random_value)
+}
+
+generate_repo_tarball() {
+	mkdir /opt/so/repo
+	tar -czf /opt/so/repo/"$SOVERSION".tar.gz ../.
 }
 
 get_redirect() {
 	whiptail_set_redirect
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
 		whiptail_set_redirect_host
-	fi
-}
-
-got_root() {
-	# Make sure you are root
-	uid="$(id -u)"
-	if [ "$uid" -ne 0 ]; then
-		echo "This script must be run using sudo!"
-		exit 1
 	fi
 }
 
@@ -1010,20 +1082,35 @@ host_pillar() {
 	# Create the host pillar
 	printf '%s\n'\
 		"host:"\
-		"  mainint: $MNIC"\
+		"  mainint: '$MNIC'"\
+		"sensoroni:"\
+		"  node_address: '$MAINIP'"\
+		"  node_description: '$NODE_DESCRIPTION'"\
 		"" > "$pillar_file"
 }
 
 install_cleanup() {
-	echo "Installer removing the following files:"
-	ls -lR "$temp_install_dir"
+	if [ -f "$temp_install_dir" ]; then
+		echo "Installer removing the following files:"
+		ls -lR "$temp_install_dir"
 
-	# Clean up after ourselves
-	rm -rf "$temp_install_dir"
+		# Clean up after ourselves
+		rm -rf "$temp_install_dir"
+	fi
 	
-	# If Mysql is running stop it.
-	/usr/sbin/so-mysql-stop
+	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
+	# that will disrupt automated tests should be placed beneath this statement.
+	[ -n "$TESTING" ] && return
 
+	# If Mysql is running stop it
+	if docker ps --format "{{.Names}}" 2>&1 | grep -q "so-mysql"; then
+		/usr/sbin/so-mysql-stop
+	fi
+
+	if [[ $setup_type == 'iso' ]]; then
+		info "Removing so-setup permission entry from sudoers file"
+		sed -i '/so-setup/d' /etc/sudoers
+	fi
 }
 
 import_registry_docker() {
@@ -1042,9 +1129,9 @@ manager_pillar() {
 	# Create the manager pillar
 	printf '%s\n'\
 		"manager:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
 		"  freq: 0"\
 		"  domainstats: 0" >> "$pillar_file"
@@ -1066,26 +1153,25 @@ manager_pillar() {
 		"  playbook: $PLAYBOOK"\
 		""\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'"\
 		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		""\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: 125"\
 		"  ls_input_threads: 1"\
-		"  ls_batch_count: 125"\
 		"  lsheap: $LS_HEAP_SIZE"\
 		"  ls_pipeline_workers: $num_cpu_cores"\
 		""\
 		"idstools:"\
 		"  config:"\
-		"    ruleset: $RULESETUP"\
-		"    oinkcode: $OINKCODE"\
+		"    ruleset: '$RULESETUP'"\
+		"    oinkcode: '$OINKCODE'"\
 		"    urls:"\
 		"  sids:"\
 		"    enabled:"\
@@ -1096,34 +1182,40 @@ manager_pillar() {
 		
 
 	printf '%s\n'\
-		"  kratoskey: $KRATOSKEY"\
+		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
   }
 
 manager_global() {
 	local global_pillar="$local_salt_dir/pillar/global.sls"
 
-	if [ -z "$SENSOR_CHECKIN_INTERVAL_MS" ]; then
-		SENSOR_CHECKIN_INTERVAL_MS=10000
+	if [ -z "$NODE_CHECKIN_INTERVAL_MS" ]; then
+		NODE_CHECKIN_INTERVAL_MS=10000
 		if [ "$install_type" = 'EVAL' ] || [ "$install_type" = 'STANDALONE' ] || [ "$install_type" = 'IMPORT' ]; then
-			SENSOR_CHECKIN_INTERVAL_MS=1000
+			NODE_CHECKIN_INTERVAL_MS=1000
 		fi
+	fi
+
+	if [ -z "$DOCKERNET" ]; then
+            DOCKERNET=172.17.0.0
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+	else
+	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
         printf '%s\n'\
                 "global:"\
-                "  soversion: $SOVERSION"\
-                "  hnmanager: $HNMANAGER"\
-                "  ntpserver: $NTPSERVER"\
-                "  proxy: $PROXY"\
-                "  mdengine: $ZEEKVERSION"\
-                "  ids: $NIDS"\
-				"  url_base: $REDIRECTIT"\
-                "  managerip: $MAINIP" > "$global_pillar"
+                "  soversion: '$SOVERSION'"\
+                "  hnmanager: '$HNMANAGER'"\
+                "  ntpserver: '$NTPSERVER'"\
+				"  dockernet: '$DOCKERNET'"\
+                "  proxy: '$PROXY'"\
+                "  mdengine: '$ZEEKVERSION'"\
+                "  ids: '$NIDS'"\
+				"  url_base: '$REDIRECTIT'"\
+                "  managerip: '$MAINIP'" > "$global_pillar"
 		
         if [[ $is_airgap ]]; then
 		        printf '%s\n'\
@@ -1136,17 +1228,17 @@ manager_global() {
         # Check if TheHive is enabled.  If so, add creds and other details
         if [[ "$THEHIVE" == "1" ]]; then
                 printf '%s\n'\
-                        "  hiveuser: $WEBUSER"\
+                        "  hiveuser: '$WEBUSER'"\
                         "  hivepassword: '$WEBPASSWD1'"\
-                        "  hivekey: $HIVEKEY"\
-                        "  hiveplaysecret: $HIVEPLAYSECRET"\
-                        "  cortexuser: $WEBUSER"\
+                        "  hivekey: '$HIVEKEY'"\
+                        "  hiveplaysecret: '$HIVEPLAYSECRET'"\
+                        "  cortexuser: '$WEBUSER'"\
                         "  cortexpassword: '$WEBPASSWD1'"\
-                        "  cortexkey: $CORTEXKEY"\
-                        "  cortexorgname: SecurityOnion"\
-                        "  cortexorguser: soadmin"\
-                        "  cortexorguserkey: $CORTEXORGUSERKEY"\
-                        "  cortexplaysecret: $CORTEXPLAYSECRET" >> "$global_pillar"
+                        "  cortexkey: '$CORTEXKEY'"\
+                        "  cortexorgname: 'SecurityOnion'"\
+                        "  cortexorguser: 'soadmin'"\
+                        "  cortexorguserkey: '$CORTEXORGUSERKEY'"\
+                        "  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
         fi
 
         # Continue adding other details	
@@ -1154,17 +1246,17 @@ manager_global() {
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
 		"  fleet_node: False"\
-		"  fleet_packages-timestamp: N/A"\
+		"  fleet_packages-timestamp: 'N/A'"\
 		"  fleet_packages-version: 1"\
-		"  fleet_hostname: N/A"\
-		"  fleet_ip: N/A"\
-		"  sensoronikey: $SENSORONIKEY"\
+		"  fleet_hostname: 'N/A'"\
+		"  fleet_ip: 'N/A'"\
+		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
                 "  managerupdate: $MANAGERUPDATES"\
-		"  imagerepo: $IMAGEREPO"\
-		"  pipeline: redis"\
-		"pcap:"\
-		"  sensor_checkin_interval_ms: $SENSOR_CHECKIN_INTERVAL_MS"\
+		"  imagerepo: '$IMAGEREPO'"\
+		"  pipeline: 'redis'"\
+		"sensoroni:"\
+		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
 		"  rules: 1"\
@@ -1173,15 +1265,23 @@ manager_global() {
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
-		"  replicas: 0"\
-		"  true_cluster: False"\
-		"  true_cluster_name: so"\
+		"  replicas: 0" >> "$global_pillar"
+		if [ -n "$ESCLUSTERNAME" ]; then 
+		    printf '%s\n'\
+				   "  true_cluster: True"\
+		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+		else
+			printf '%s\n'\
+			       "  true_cluster: False"\
+				   "  true_cluster_name: 'so'" >> "$global_pillar"
+		fi
+		printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: 95%"\
-                "  cluster_routing_allocation_disk_watermark_high: 98%"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: 98%"\
+                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
+                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
+                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1240,8 +1340,21 @@ manager_global() {
 		"  size_file: 2048"\
 		"  time_file: 1"\
 		"  upload_queue_size: 4"\
-		"  encoding: gzip"\
-		"  interval: 5" >> "$global_pillar"
+		"  encoding: 'gzip'"\
+		"  interval: 5"\
+	        "backup:"\
+                "  locations:"\
+                "    - /opt/so/saltstack/local"\
+	        "soctopus:"\
+		"  playbook:"\
+		"    rulesets:"\
+		"      - windows"\
+		"docker:"\
+		"  range: '$DOCKERNET/24'"\
+		"  bip: '$DOCKERBIP'"\
+		"redis_settings:"\
+		"  redis_maxmemory: 812" >> "$global_pillar"
+
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
@@ -1250,8 +1363,8 @@ minio_generate_keys() {
 
 	local charSet="[:graph:]"
 
-	ACCESS_KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 20 | head -n 1)
-	ACCESS_SECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 40 | head -n 1)
+	ACCESS_KEY=$(get_random_value)
+	ACCESS_SECRET=$(get_random_value 40)
 
 }
 
@@ -1266,12 +1379,10 @@ network_setup() {
 		disable_misc_network_features;
 
 		echo "... Setting ONBOOT for management interface";
-		if ! netplan > /dev/null 2>&1; then
-			nmcli con mod "$MNIC" connection.autoconnect "yes";
-		fi
+		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
 
-        echo "... Copying 99-so-checksum-offload-disable";
-        cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+		echo "... Copying 99-so-checksum-offload-disable";
+		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
@@ -1285,31 +1396,36 @@ elasticsearch_pillar() {
 	# Create the node pillar
 	printf '%s\n'\
 		"elasticsearch:"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC"\
-		"  esheap: $NODE_ES_HEAP_SIZE"\
-		"  esclustername: {{ grains.host }}"\
-		"  node_type: $NODETYPE"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
+		if [ -n "$ESCLUSTERNAME" ]; then
+		printf '%s\n'\
+		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
+		else
+		printf '%s\n'\
+		"  esclustername: {{ grains.host }}" >> "$pillar_file"
+		fi
+		printf '%s\n'\
+		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: hot"\
+		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
 	
 	printf '%s\n'\
 		"logstash_settings:"\
 		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
 		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  ls_batch_count: $LSINPUTBATCHCOUNT"\
 		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
 		"" >> "$pillar_file"
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 parse_install_username() {
 	# parse out the install username so things copy correctly
-    INSTALLUSERNAME=$(pwd | sed -E 's/\// /g'  | awk '{ print $2 }')
+	INSTALLUSERNAME=${SUDO_USER:-${USER}}
 }
 
 patch_pillar() {
@@ -1319,13 +1435,10 @@ patch_pillar() {
 	printf '%s\n'\
 		"patch:"\
 		"  os:"\
-		"    schedule_name: $PATCHSCHEDULENAME"\
+		"    schedule_name: '$PATCHSCHEDULENAME'"\
 		"    enabled: True"\
 		"    splay: 300"\
 		"" >> "$pillar_file"
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 
 }
 
@@ -1349,8 +1462,6 @@ patch_schedule_os_new() {
 		done
 	done
 
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$OSPATCHSCHEDULE" >> "$setup_log" 2>&1
 }
 
 print_salt_state_apply() {
@@ -1374,14 +1485,110 @@ reserve_group_ids() {
 	groupadd -g 946 cyberchef
 }
 
+reinstall_init() {
+	info "Putting system in state to run setup again"
+	
+	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+		local salt_services=( "salt-master" "salt-minion" )
+	else
+		local salt_services=( "salt-minion" )
+	fi
+
+	local service_retry_count=20
+
+	{
+		if command -v salt-call &> /dev/null; then
+			# Disable schedule so highstate doesn't start running during the install
+			salt-call -l info schedule.disable
+
+			# Kill any currently running salt jobs, also to prevent issues with highstate.
+			salt-call -l info saltutil.kill_all_jobs
+		fi
+
+		# Kill any salt processes (safely)
+		for service in "${salt_services[@]}"; do
+			# Stop the service in the background so we can exit after a certain amount of time
+			systemctl stop "$service" &
+			local pid=$!
+
+			local count=0
+			while check_service_status "$service"; do
+				if [[ $count -gt $service_retry_count ]]; then
+					echo "Could not stop $service after 1 minute, exiting setup."
+
+					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
+					kill -9 $pid
+					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+				fi
+				
+				sleep 5
+				((count++))
+			done
+		done
+
+		# Remove all salt configs
+		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
+
+		if command -v docker &> /dev/null; then
+			# Stop and remove all so-* containers so files can be changed with more safety
+			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
+				docker stop $(docker ps -a -q --filter "name=so-")
+				docker rm -f $(docker ps -a -q --filter "name=so-")
+			fi
+		fi
+
+		local date_string
+		date_string=$(date +%s)
+
+		# Backup /opt/so since we'll be rebuilding this directory during setup
+		backup_dir /opt/so "$date_string"
+
+		# Backup directories in /nsm to prevent app errors
+		backup_dir /nsm/mysql "$date_string"
+		backup_dir /nsm/wazuh "$date_string"
+
+		# Remove the old launcher package in case the config changes
+		remove_package launcher-final
+
+	} >> "$setup_log" 2>&1
+}
+
+backup_dir() {
+	dir=$1
+	backup_suffix=$2
+
+	if [[ -d $dir ]]; then
+		mv "$dir" "${dir}_old_${backup_suffix}"
+	fi
+}
+
+remove_package() {
+	local package_name=$1
+	if [ $OS = 'centos' ]; then
+		if rpm -qa | grep -q "$package_name"; then
+			yum remove -y "$package_name"
+		fi
+	else
+		if dpkg -l | grep -q "$package_name"; then
+			apt purge -y "$package_name"
+		fi
+	fi
+}
+
 # When updating the salt version, also update the version in securityonion-builds/images/iso-task/Dockerfile and salt/salt/master.defaults.yaml and salt/salt/minion.defaults.yaml
+# CAUTION! SALT VERSION UDDATES - READ BELOW
+# When updating the salt version, also update the version in:
+# - securityonion-builds/iso-resources/build.sh
+# - securityonion-builds/iso-resources/packages.lst
+# - securityonion/salt/salt/master.defaults.yaml
+# - securityonion/salt/salt/minion.defaults.yaml
 saltify() {
 
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
 		set_progress_str 5 'Installing Salt repo'
 		{
-			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/archive/3001.1/SALTSTACK-GPG-KEY.pub;
+			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/archive/3002.2/SALTSTACK-GPG-KEY.pub;
 			cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
 		} >> "$setup_log" 2>&1
 		set_progress_str 6 'Installing various dependencies'
@@ -1398,14 +1605,14 @@ saltify() {
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				if [[ ! $is_airgap ]]; then
-				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 				  logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install salt-master-3001.1"
+				  logCmd "yum -y install salt-master-3002.2"
 				fi
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
@@ -1433,7 +1640,7 @@ saltify() {
 		{
 			if [[ ! $is_iso ]]; then
 			  yum -y install epel-release
-			  yum -y install salt-minion-3001.1\
+			  yum -y install salt-minion-3002.2\
 			   	python3\
 				python36-docker\
 				python36-dateutil\
@@ -1474,11 +1681,11 @@ saltify() {
 			'FLEET')
 				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
 				;;
-			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # TODO: should this also be HELIXSENSOR?
+			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3001.1 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -1486,7 +1693,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3001.1/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -1499,7 +1706,7 @@ saltify() {
 				set_progress_str 6 'Installing various dependencies'
 				apt-get -y install sqlite3 argon2 libssl-dev >> "$setup_log" 2>&1
 				set_progress_str 7 'Installing salt-master'
-				apt-get -y install salt-master=3001.1+ds-1 >> "$setup_log" 2>&1
+				apt-get -y install salt-master=3002.2+ds-1 >> "$setup_log" 2>&1
 				apt-mark hold salt-master >> "$setup_log" 2>&1
 				;;
 			*)
@@ -1510,26 +1717,25 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3001.1/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
-                ;;
+				;;
 		esac
 		apt-get update >> "$setup_log" 2>&1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		apt-get -y install salt-minion=3001.1+ds-1\
-					salt-common=3001.1+ds-1 >> "$setup_log" 2>&1
+		apt-get -y install salt-minion=3002.2+ds-1\
+					salt-common=3002.2+ds-1 >> "$setup_log" 2>&1
 		apt-mark hold salt-minion salt-common >> "$setup_log" 2>&1
 		if [ "$OSVER" != 'xenial' ]; then 
-			apt-get -y install python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
+			apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
 		else 
-			apt-get -y install python-dateutil python-m2crypto python-mysqldb  >> "$setup_log" 2>&1
+			apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb  >> "$setup_log" 2>&1
 		fi
 	fi
 
 }
 
 salt_checkin() {
-
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
 			{
@@ -1541,70 +1747,73 @@ salt_checkin() {
 				"salt-master" \
 				"salt-minion"
 				)
-				local LOOP_COUNT=0
+				local count=0
+
 				for service in "${SALT_SERVICES[@]}"; do
-					echo "Stopping service $service" >> "$setup_log" 2>&1
-					systemctl stop "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
-					while ! (( $(check_service_status $service) )); do
-						echo "$service still running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be stopped in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
+					{
+						echo "Restarting service $service"
+						systemctl restart "$service" &
+						local pid=$!
+					} >> "$setup_log" 2>&1 
+
+					count=0
+					while ! (check_service_status "$service"); do
+						# On final loop, kill the pid trying to restart service and try to manually kill then start it
+						if [ $count -eq 12 ]; then
+							{
+								kill -9 "$pid"
+								systemctl kill "$service"
+								systemctl start "$service" &
+								local pid=$!
+							} >> "$setup_log" 2>&1 
 						fi
-						sleep 1;
-						((LOOP_COUNT+=1))
+						
+						if [ $count -gt 12 ]; then
+							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
+							kill -9 "$pid"
+							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						fi
+						sleep 10;
+						((count++))
 					done
 				done
 
-				sleep 5;
-
-				for service in "${SALT_SERVICES[@]}"; do
-					echo "Starting service $service" >> "$setup_log" 2>&1
-					systemctl start "$service" >> "$setup_log" 2>&1
-					LOOP_COUNT=0
-					while (( $(check_service_status $service) )); do
-						echo "$service still not running" >> "$setup_log" 2>&1
-						if [ $LOOP_COUNT -gt 60 ]; then
-							echo "$service could not be started in 60 seconds, exiting" >> "$setup_log" 2>&1
-							exit 1
-						fi
-						sleep 1;
-						((LOOP_COUNT+=1))
-					done
-				done
-
-				sleep 5;
-
-				LOOP_COUNT=0
-				while (( $(check_salt_master_status) )); do
+				count=0
+				while ! (check_salt_master_status); do
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
-				LOOP_COUNT=0
-				while (( $(check_salt_minion_status) )); do
+				count=0
+				while ! (check_salt_minion_status); do
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					if [ $LOOP_COUNT -gt 30 ]; then
+					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
+						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
 					fi
+					systemctl kill salt-minion
+					systemctl start salt-minion
 					sleep 1;
-					((LOOP_COUNT+=1))
+					((count++))
 				done
 
 				echo " Confirming existence of the CA certificate"
-				cat /etc/pki/ca.crt
+				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 				echo " Applyng a mine hack";
 				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
 				salt "$MINION_ID" mine.update;
-				echo " Confirming salt mine now contain the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries;
+				echo "Confirming salt mine now contains the certificate";
+				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
+				if [ $? -eq 0 ]; then
+					echo "CA in mine"
+				else
+					echo "CA not in mine"
+				fi
 				echo " Applying SSL state";
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
@@ -1619,6 +1828,7 @@ salt_checkin() {
 	{
 		salt-call state.apply ca;
 		salt-call state.apply ssl;
+		salt-call saltutil.sync_modules;
 	} >> "$setup_log" 2>&1
 }
 
@@ -1639,11 +1849,24 @@ set_network_dev_status_list() {
 
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+}
+
+compare_main_nic_ip() {
+	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		read -r -d '' message <<- EOM
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+
+			This is not a supported configuration, please remediate and rerun setup.
+		EOM
+		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	fi
 }
 
 # Add /usr/sbin to everyone's path
 set_path() {
-	echo "PATH=\$PATH:/usr/sbin" > /etc/profile.d/securityonion.sh
+	echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
 }
 
 setup_salt_master_dirs() {
@@ -1657,10 +1880,12 @@ setup_salt_master_dirs() {
 	if [ "$setup_type" = 'iso' ]; then
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv /home/$INSTALLUSERNAME/SecurityOnion/files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	else
 		cp -Rv ../pillar/* $default_salt_dir/pillar/ >> "$setup_log" 2>&1
 		cp -Rv ../salt/* $default_salt_dir/salt/ >> "$setup_log" 2>&1
+		mkdir -p $local_salt_dir/salt/zeek/policy/intel >> "$setup_log" 2>&1
 		cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	fi
 
@@ -1693,9 +1918,9 @@ sensor_pillar() {
 	# Create the sensor pillar
 	printf '%s\n'\
 		"sensor:"\
-		"  interface: $INTERFACE"\
-		"  mainip: $MAINIP"\
-		"  mainint: $MNIC" >> "$pillar_file"
+		"  interface: '$INTERFACE'"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'" >> "$pillar_file"
 	
 	if [ "$NSMSETUP" = 'ADVANCED' ]; then
 		echo "  zeek_pins:" >> "$pillar_file"
@@ -1716,15 +1941,12 @@ sensor_pillar() {
 		echo "  suriprocs: $BASICSURI" >> "$pillar_file"
 	fi
 	printf '%s\n'\
-		"  manager: $MSRV"\
+		"  manager: '$MSRV'"\
 		"  mtu: $MTU"\
 		"  uniqueid: $(date '+%s')" >> "$pillar_file"
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$pillar_file" >> "$setup_log" 2>&1
 }
 
 set_default_log_size() {
@@ -1759,25 +1981,12 @@ set_default_log_size() {
 
 set_hostname() {
 
-	set_hostname_iso
-
-	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
-		if ! getent hosts "$MSRV"; then
-			echo "$MSRVIP   $MSRV" >> /etc/hosts
-		fi
-	fi
-
-}
-
-set_hostname_iso() {
-
 	hostnamectl set-hostname --static "$HOSTNAME"
 	echo "127.0.0.1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost4 localhost4.localdomain" > /etc/hosts
 	echo "::1   $HOSTNAME $HOSTNAME.localdomain localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
 	echo "$HOSTNAME" > /etc/hostname
 
 	hostname -F /etc/hostname
-
 }
 
 set_initial_firewall_policy() {
@@ -1828,7 +2037,7 @@ set_initial_firewall_policy() {
 					;;
 				'HEAVYNODE')
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
 					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
@@ -1913,7 +2122,18 @@ set_updates() {
 	fi
 }
 
-set_version() {
+steno_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the stenographer pillar
+	printf '%s\n'\
+		"steno:"\
+		"  enabled: True" >> "$pillar_file"
+
+}
+
+mark_version() {
 	# Drop a file with the current version
 	echo "$SOVERSION" > /etc/soversion
 }
@@ -2011,7 +2231,7 @@ es_heapsize() {
 zeek_logs_enabled() {
 	echo "Enabling Zeek Logs" >> "$setup_log" 2>&1
 
-	local zeeklogs_pillar=./pillar/zeeklogs.sls
+	local zeeklogs_pillar=$local_salt_dir/pillar/zeeklogs.sls
 
 	printf '%s\n'\
 		"zeeklogs:"\
@@ -2023,44 +2243,44 @@ zeek_logs_enabled() {
 		done
 	elif [ "$install_type" == "EVAL" ]  || [ "$install_type" == "IMPORT" ]; then
 		printf '%s\n'\
-                        "    - conn"\
-                        "    - dce_rpc"\
-                        "    - dhcp"\
-                        "    - dhcpv6"\
-                        "    - dnp3"\
-                        "    - dns"\
-                        "    - dpd"\
-                        "    - files"\
-                        "    - ftp"\
-                        "    - http"\
-                        "    - intel"\
-                        "    - irc"\
-                        "    - kerberos"\
-                        "    - modbus"\
-                        "    - mqtt"\
-                        "    - notice"\
-                        "    - ntlm"\
-                        "    - openvpn"\
-                        "    - pe"\
-                        "    - radius"\
-                        "    - rfb"\
-                        "    - rdp"\
-                        "    - signatures"\
-                        "    - sip"\
-                        "    - smb_files"\
-                        "    - smb_mapping"\
-                        "    - smtp"\
-                        "    - snmp"\
-                        "    - software"\
-                        "    - ssh"\
-                        "    - ssl"\
-                        "    - syslog"\
-                        "    - telnet"\
-                        "    - tunnel"\
-                        "    - weird"\
-                        "    - mysql"\
-                        "    - socks"\
-                        "    - x509" >> "$zeeklogs_pillar"
+			"    - conn"\
+			"    - dce_rpc"\
+			"    - dhcp"\
+			"    - dhcpv6"\
+			"    - dnp3"\
+			"    - dns"\
+			"    - dpd"\
+			"    - files"\
+			"    - ftp"\
+			"    - http"\
+			"    - intel"\
+			"    - irc"\
+			"    - kerberos"\
+			"    - modbus"\
+			"    - mqtt"\
+			"    - notice"\
+			"    - ntlm"\
+			"    - openvpn"\
+			"    - pe"\
+			"    - radius"\
+			"    - rfb"\
+			"    - rdp"\
+			"    - signatures"\
+			"    - sip"\
+			"    - smb_files"\
+			"    - smb_mapping"\
+			"    - smtp"\
+			"    - snmp"\
+			"    - software"\
+			"    - ssh"\
+			"    - ssl"\
+			"    - syslog"\
+			"    - telnet"\
+			"    - tunnel"\
+			"    - weird"\
+			"    - mysql"\
+			"    - socks"\
+			"    - x509" >> "$zeeklogs_pillar"
 	# Disable syslog log by default
 	else
 		printf '%s\n'\
@@ -2102,7 +2322,4 @@ zeek_logs_enabled() {
 			"    - socks"\
 			"    - x509" >> "$zeeklogs_pillar"
 	fi
-
-	printf '%s\n'  '----' >> "$setup_log" 2>&1
-	cat "$zeeklogs_pillar" >> "$setup_log" 2>&1
 }

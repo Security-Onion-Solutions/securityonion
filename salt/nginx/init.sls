@@ -31,7 +31,7 @@ nginxconf:
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://nginx/etc/nginx.conf.{{ grains.role }}
+    - source: salt://nginx/etc/nginx.conf
 
 nginxlogdir:
   file.directory:
@@ -97,6 +97,11 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+
+append_so-nginx_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-nginx
 
 {% else %}
 

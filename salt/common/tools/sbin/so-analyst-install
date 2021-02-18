@@ -1,0 +1,309 @@
+#!/bin/bash
+
+# Copyright 2014-2020 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+if [ "$(id -u)" -ne 0 ]; then
+	echo "This script must be run using sudo!"
+	exit 1
+fi
+
+INSTALL_LOG=/root/so-analyst-install.log
+exec &> >(tee -a "$INSTALL_LOG")
+
+log() {
+	msg=$1
+	level=${2:-I}
+	now=$(TZ=GMT date +"%Y-%m-%dT%H:%M:%SZ")
+	echo -e "$now | $level | $msg" >> "$INSTALL_LOG" 2>&1
+}
+
+error() {
+	log "$1" "E"
+}
+
+info() {
+	log "$1" "I"
+}
+
+title() {
+	echo -e "\n-----------------------------\n $1\n-----------------------------\n" >> "$INSTALL_LOG" 2>&1
+}
+
+logCmd() {
+	cmd=$1
+	info "Executing command: $cmd"
+	$cmd >> "$INSTALL_LOG" 2>&1
+}
+
+analyze_system() {
+	title "System Characteristics"
+	logCmd "uptime"
+	logCmd "uname -a"
+	logCmd "free -h"
+	logCmd "lscpu"
+	logCmd "df -h"
+	logCmd "ip a"
+}
+
+analyze_system
+
+OS=$(grep PRETTY_NAME /etc/os-release | grep 'CentOS Linux 7')
+if [ $? -ne 0 ]; then
+  echo "This is an unsupported OS. Please use CentOS 7 to install the analyst node."
+  exit 1
+fi
+
+if [[ "$manufacturer" == "Security Onion Solutions" && "$family" == "Automated" ]]; then
+  INSTALL=yes
+  CURLCONTINUE=no
+else
+  INSTALL=''
+  CURLCONTINUE=''
+fi
+
+FIRSTPASS=yes
+while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
+  if [[ "$FIRSTPASS" == "yes" ]]; then
+    clear
+    echo "###########################################"
+    echo "##          ** W A R N I N G **          ##"
+    echo "##    _______________________________    ##"
+    echo "##                                       ##"
+    echo "##    Installing the Security Onion      ##"
+    echo "##   analyst node on this device will    ##"
+    echo "##       make permanent changes to       ##"
+    echo "##              the system.              ##"
+    echo "##                                       ##"
+    echo "###########################################"
+    echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+    FIRSTPASS=no
+  else
+    echo "Please type 'yes' to continue or 'no' to exit."
+  fi      
+  read INSTALL
+done
+
+if [[ $INSTALL == "no" ]]; then
+  echo "Exiting analyst node installation."
+  exit 0
+fi
+
+echo "Testing for internet connection with curl https://securityonionsolutions.com/"
+CANCURL=$(curl -sI https://securityonionsolutions.com/ | grep "200 OK")
+  if [ $? -ne 0 ]; then
+    FIRSTPASS=yes
+    while [[ $CURLCONTINUE != "yes" ]] && [[ $CURLCONTINUE != "no" ]]; do
+      if [[ "$FIRSTPASS" == "yes" ]]; then
+        echo "We could not access https://securityonionsolutions.com/."
+        echo "Since packages are downloaded from the internet, internet acceess is required."
+        echo "If you would like to ignore this warning and continue anyway, please type 'yes'."
+        echo "Otherwise, type 'no' to exit."
+        FIRSTPASS=no
+      else
+        echo "Please type 'yes' to continue or 'no' to exit."
+      fi  
+      read CURLCONTINUE
+    done
+    if [[ "$CURLCONTINUE" == "no" ]]; then
+      echo "Exiting analyst node installation."
+      exit 0
+    fi
+  else
+    echo "We were able to curl https://securityonionsolutions.com/."
+    sleep 3
+  fi
+
+# Install a GUI text editor
+yum -y install gedit
+
+# Install misc utils
+yum -y install wget curl unzip epel-release yum-plugin-versionlock;
+
+# Install xWindows
+yum -y groupinstall "X Window System";
+yum -y install gnome-classic-session gnome-terminal nautilus-open-terminal control-center liberation-mono-fonts;
+unlink /etc/systemd/system/default.target;
+ln -sf /lib/systemd/system/graphical.target /etc/systemd/system/default.target;
+yum -y install file-roller
+
+# Install Mono - prereq for NetworkMiner
+yum -y install mono-core mono-basic mono-winforms expect
+
+# Install NetworkMiner
+yum -y install libcanberra-gtk2;
+wget https://www.netresec.com/?download=NetworkMiner -O /tmp/nm.zip;
+mkdir -p /opt/networkminer/
+unzip /tmp/nm.zip -d /opt/networkminer/;
+rm /tmp/nm.zip;
+mv /opt/networkminer/NetworkMiner_*/* /opt/networkminer/
+chmod +x /opt/networkminer/NetworkMiner.exe;
+chmod -R go+w /opt/networkminer/AssembledFiles/;
+chmod -R go+w /opt/networkminer/Captures/;
+# Create networkminer shim
+cat << EOF >> /bin/networkminer
+#!/bin/bash
+/bin/mono /opt/networkminer/NetworkMiner.exe --noupdatecheck "\$@"
+EOF
+chmod +x /bin/networkminer
+# Convert networkminer ico file to png format
+yum -y install ImageMagick
+convert /opt/networkminer/networkminericon.ico /opt/networkminer/networkminericon.png
+# Create menu entry
+cat << EOF >> /usr/share/applications/networkminer.desktop
+[Desktop Entry]
+Name=NetworkMiner
+Comment=NetworkMiner
+Encoding=UTF-8
+Exec=/bin/networkminer %f
+Icon=/opt/networkminer/networkminericon-4.png
+StartupNotify=true
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+MimeType=application/x-pcap;
+Categories=Network;
+EOF
+
+# Set default monospace font to Liberation
+cat << EOF >> /etc/fonts/local.conf
+ <match target="pattern">
+  <test name="family" qual="any">
+   <string>monospace</string>
+  </test>
+  <edit binding="strong" mode="prepend" name="family">
+   <string>Liberation Mono</string>
+  </edit>
+ </match>
+EOF
+
+# Install Wireshark for Gnome
+yum -y install wireshark-gnome; 
+
+# Install dnsiff
+yum -y install dsniff;
+
+# Install hping3
+yum -y install hping3;
+
+# Install netsed
+yum -y install netsed;
+
+# Install ngrep
+yum -y install ngrep;
+
+# Install scapy
+yum -y install python36-scapy;
+
+# Install ssldump
+yum -y install ssldump;
+
+# Install tcpdump
+yum -y install tcpdump;
+
+# Install tcpflow
+yum -y install tcpflow;
+
+# Install tcpxtract
+yum -y install tcpxtract;
+
+# Install whois
+yum -y install whois;
+
+# Install foremost
+yum -y install https://forensics.cert.org/centos/cert/7/x86_64//foremost-1.5.7-13.1.el7.x86_64.rpm;
+
+# Install chromium
+yum -y install chromium;
+
+# Install tcpstat
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-tcpstat-1.5.0/securityonion-tcpstat-1.5.0.rpm;
+
+# Install tcptrace
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-tcptrace-6.6.7/securityonion-tcptrace-6.6.7.rpm;
+
+# Install sslsplit
+yum -y install libevent;
+yum -y install sslsplit;
+
+# Install Bit-Twist
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-bittwist-2.0.0/securityonion-bittwist-2.0.0.rpm;
+
+# Install chaosreader
+yum -y install perl-IO-Compress perl-Net-DNS;
+yum -y install https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/securityonion-chaosreader-0.95.10/securityonion-chaosreader-0.95.10.rpm;
+chmod +x /bin/chaosreader;
+
+if [ -f ../../files/analyst/README ]; then
+  cp ../../files/analyst/README /;
+  cp ../../files/analyst/so-wallpaper.jpg /usr/share/backgrounds/;
+  cp ../../files/analyst/so-lockscreen.jpg /usr/share/backgrounds/;
+  cp ../../files/analyst/so-login-logo-dark.svg /usr/share/pixmaps/;
+else
+  cp /opt/so/saltstack/default/salt/common/files/analyst/README /;
+  cp /opt/so/saltstack/default/salt/common/files/analyst/so-wallpaper.jpg /usr/share/backgrounds/;
+  cp /opt/so/saltstack/default/salt/common/files/analyst/so-lockscreen.jpg /usr/share/backgrounds/;
+  cp /opt/so/saltstack/default/salt/common/files/analyst/so-login-logo-dark.svg /usr/share/pixmaps/;
+fi
+
+# Set background wallpaper
+cat << EOF >> /etc/dconf/db/local.d/00-background
+# Specify the dconf path
+[org/gnome/desktop/background]
+
+# Specify the path to the desktop background image file
+picture-uri='file:///usr/share/backgrounds/so-wallpaper.jpg'
+# Specify one of the rendering options for the background image:
+# 'none', 'wallpaper', 'centered', 'scaled', 'stretched', 'zoom', 'spanned'
+picture-options='zoom'
+# Specify the left or top color when drawing gradients or the solid color
+primary-color='000000'
+# Specify the right or bottom color when drawing gradients
+secondary-color='FFFFFF'
+EOF
+
+# Set lock screen
+cat << EOF >> /etc/dconf/db/local.d/00-screensaver
+[org/gnome/desktop/session]
+idle-delay=uint32 180
+
+[org/gnome/desktop/screensaver]
+lock-enabled=true
+lock-delay=uint32 120
+picture-options='zoom'
+picture-uri='file:///usr/share/backgrounds/so-lockscreen.jpg'
+EOF
+
+cat << EOF >> /etc/dconf/db/local.d/locks/screensaver
+/org/gnome/desktop/session/idle-delay
+/org/gnome/desktop/screensaver/lock-enabled
+/org/gnome/desktop/screensaver/lock-delay
+EOF
+
+# Do not show the user list at login screen
+cat << EOF >> /etc/dconf/db/local.d/00-login-screen
+[org/gnome/login-screen]
+logo='/usr/share/pixmaps/so-login-logo-dark.svg'
+disable-user-list=true
+EOF
+
+dconf update;
+
+echo
+echo "Analyst workstation has been installed!"
+echo "Press ENTER to reboot or Ctrl-C to cancel."
+read pause
+
+reboot;

@@ -5,13 +5,17 @@
 {%- endif %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
-  if "firewall" in [tags] {
+  if [dataset] =~ "firewall" {
     elasticsearch {
       hosts => "{{ ES }}"
-      index => "so-firewall-%{+YYYY.MM.dd}"
+      index => "so-firewall"
       template_name => "so-firewall"
       template => "/templates/so-firewall-template.json"
       template_overwrite => true
+      {%- if grains['role'] in ['so-node','so-heavynode'] %}
+      ssl => true
+      ssl_certificate_verification => false
+      {%- endif %}
     }
   }
 }

@@ -1,0 +1,181 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# NOTE: This script depends on so-common
+IMAGEREPO=securityonion
+
+container_list() {
+  MANAGERCHECK=$1
+  
+  if [ -z "$MANAGERCHECK" ]; then
+    MANAGERCHECK=so-unknown
+    if [ -f /etc/salt/grains ]; then
+      MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+    fi
+  fi
+
+  if [ $MANAGERCHECK == 'so-import' ]; then
+    TRUSTED_CONTAINERS=(
+      "so-elasticsearch"
+      "so-filebeat"
+      "so-idstools"
+      "so-kibana"
+      "so-kratos"
+      "so-nginx"
+      "so-pcaptools"
+      "so-soc"
+      "so-steno"
+      "so-suricata"
+      "so-zeek" 
+    )
+  elif [ $MANAGERCHECK != 'so-helix' ]; then
+    TRUSTED_CONTAINERS=(
+      "so-acng"
+      "so-curator"
+      "so-domainstats"
+      "so-elastalert"
+      "so-elasticsearch"
+      "so-filebeat"
+      "so-fleet"
+      "so-fleet-launcher"
+      "so-freqserver"
+      "so-grafana"
+      "so-idstools"
+      "so-influxdb"
+      "so-kibana"
+      "so-kratos"
+      "so-logstash"
+      "so-minio"
+      "so-mysql"
+      "so-nginx"
+      "so-pcaptools"
+      "so-playbook"
+      "so-redis"
+      "so-soc"
+      "so-soctopus"
+      "so-steno"
+      "so-strelka-backend"
+      "so-strelka-filestream"
+      "so-strelka-frontend"
+      "so-strelka-manager"
+      "so-suricata"
+      "so-telegraf"
+      "so-thehive"
+      "so-thehive-cortex"
+      "so-thehive-es"
+      "so-wazuh"
+      "so-zeek" 
+    )
+  else
+    TRUSTED_CONTAINERS=(
+      "so-filebeat"
+      "so-idstools"
+      "so-elasticsearch"
+      "so-logstash"
+      "so-nginx"
+      "so-redis"
+      "so-steno"
+      "so-suricata"
+      "so-soc"
+      "so-telegraf"
+      "so-zeek" 
+    )
+  fi
+}
+
+update_docker_containers() {
+  local CURLTYPE=$1
+  local IMAGE_TAG_SUFFIX=$2
+  local PROGRESS_CALLBACK=$3
+  local LOG_FILE=$4
+
+  local CONTAINER_REGISTRY=quay.io
+  local SIGNPATH=/root/sosigs
+  
+  if [ -z "$CURLTYPE" ]; then
+    CURLTYPE=unknown
+  fi
+
+  if [ -z "$LOG_FILE" ]; then
+    if [ -c /dev/tty ]; then
+      LOG_FILE=/dev/tty
+    else
+      LOG_FILE=/dev/null
+    fi
+  fi
+
+  # Recheck the version for scenarios were the VERSION wasn't known before this script was imported
+  set_version
+  set_os
+
+  if [ -z "$TRUSTED_CONTAINERS" ]; then
+    container_list
+  fi
+
+  # Let's make sure we have the public key
+  curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -  >> "$LOG_FILE" 2>&1
+  
+  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
+  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
+
+  # Download the containers from the interwebs
+  for i in "${TRUSTED_CONTAINERS[@]}"
+  do
+    if [ -z "$PROGRESS_CALLBACK" ]; then
+      echo "Downloading $i" >> "$LOG_FILE" 2>&1 
+    else
+      $PROGRESS_CALLBACK $i
+    fi
+
+    # Pull down the trusted docker image
+    local image=$i:$VERSION$IMAGE_TAG_SUFFIX
+    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+    
+    # Get signature
+    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig >> "$LOG_FILE" 2>&1 
+    if [[ $? -ne 0 ]]; then
+      echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
+      exit 1
+    fi
+    # Dump our hash values
+    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$image)
+       
+    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$image.txt
+    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$image.txt
+        
+    if [[ $? -ne 0 ]]; then
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1 
+      exit 1
+    fi
+    GPGTEST=$(gpg --verify $SIGNPATH/$image.sig $SIGNPATH/$image.txt 2>&1)
+    if [[ $? -eq 0 ]]; then
+      if [[ -z "$SKIP_TAGPUSH" ]]; then
+        # Tag it with the new registry destination
+        if [ -z "$HOSTNAME" ]; then
+          HOSTNAME=$(hostname)
+        fi
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+      fi
+    else
+      echo "There is a problem downloading the $image image. Details: " >> "$LOG_FILE" 2>&1 
+      echo "" >> "$LOG_FILE" 2>&1 
+      echo $GPGTEST >> "$LOG_FILE" 2>&1 
+      exit 1
+    fi
+  done
+}

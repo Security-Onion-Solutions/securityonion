@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{%- set MANAGER = salt['grains.get']('master') %}
+{%- set VERSION = salt['pillar.get']('global:soversion') %}
+{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+
+TESTRULE=$1
+TESTPCAP=$2
+
+. /usr/sbin/so-common
+
+echo ""
+echo "==============="
+echo "Running all.rules and $TESTRULE against the following pcap: $TESTPCAP" 
+echo ""
+sleep 3
+
+
+rm -rf /tmp/nids-testing/output
+mkdir -p /tmp/nids-testing/output
+chown suricata:socore /tmp/nids-testing/output
+mkdir -p /tmp/nids-testing/rules
+
+cp /opt/so/conf/suricata/rules/all.rules /tmp/nids-testing/rules/all.rules
+cat $TESTRULE >> /tmp/nids-testing/rules/all.rules
+
+echo "==== Begin Suricata Output ==="
+
+  docker run --rm \
+    -v /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro \
+    -v /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro \
+    -v /tmp/nids-testing/rules:/etc/suricata/rules:ro \
+    -v "$TESTPCAP:/input.pcap:ro" \
+    -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
+    -v /tmp/nids-testing/output/:/nsm/:rw \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }} \
+    --runmode single -v -k none -r /input.pcap -l /tmp --init-errors-fatal
+echo "==== End Suricata Output ==="
+
+echo ""
+echo "If any alerts hit, they will be displayed below:"
+echo ""
+
+cat /tmp/nids-testing/output/* | jq
+
+echo ""
+echo "End so-suricata-testrule"
+echo "==============="
+echo ""

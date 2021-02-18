@@ -91,14 +91,6 @@ elastasomodulesync:
     - group: 933
     - makedirs: True
 
-elastarulesync:
-  file.recurse:
-    - name: /opt/so/rules/elastalert
-    - source: salt://elastalert/files/rules/so
-    - user: 933
-    - group: 933
-    - template: jinja
-
 elastaconf:
   file.managed:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
@@ -129,6 +121,12 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - module: wait_for_elasticsearch
+
+append_so-elastalert_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-elastalert
+
 {% endif %}
 
 {% else %}

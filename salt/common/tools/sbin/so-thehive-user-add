@@ -31,7 +31,7 @@ fi
 USER=$1
 
 THEHIVE_KEY=$(lookup_pillar hivekey)
-THEHIVE_IP=$(lookup_pillar managerip)
+THEHVIE_API_URL="$(lookup_pillar url_base)/thehive/api"
 THEHIVE_USER=$USER
 
 # Read password for new user from stdin
@@ -39,14 +39,19 @@ test -t 0
 if [[ $? == 0 ]]; then
   echo "Enter new password:"
 fi
-read -s THEHIVE_PASS
+read -rs THEHIVE_PASS
+
+if ! check_password "$THEHIVE_PASS"; then
+  echo "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password."
+  exit 2
+fi
 
 # Create new user in TheHive
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" "https://$THEHIVE_IP/thehive/api/user" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASS\"}")
+resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -L "https://$THEHVIE_API_URL/user" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASS\"}")
 if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
-    echo "Successfully added user to TheHive."
+    echo "Successfully added user to TheHive"
 else
-    echo "Unable to add user to TheHive; user might already exist."
+    echo "Unable to add user to TheHive; user might already exist"
     echo $resp
     exit 2
 fi

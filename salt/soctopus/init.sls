@@ -73,6 +73,11 @@ so-soctopus:
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
 
+append_so-soctopus_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-soctopus
+
 {% else %}
 
 soctopus_state_not_allowed:

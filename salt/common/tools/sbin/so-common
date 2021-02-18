@@ -15,12 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-IMAGEREPO=securityonion
-
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run using sudo!"
-    exit 1
+  echo "This script must be run using sudo!"
+  exit 1
 fi
 
 # Define a banner to separate sections
@@ -31,17 +29,114 @@ header() {
     printf '%s\n' "$banner" "$*" "$banner"
 }
 
+lookup_salt_value() {
+  key=$1
+  group=$2
+  kind=$3
+
+  if [ -z "$kind" ]; then
+    kind=pillar
+  fi
+
+  if [ -n "$group" ]; then
+    group=${group}:
+  fi
+
+  salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
+}
+
 lookup_pillar() {
-    key=$1
-    cat /opt/so/saltstack/local/pillar/global.sls | grep $key | awk '{print $2}'
+  key=$1
+  pillar=$2
+  if [ -z "$pillar" ]; then
+    pillar=global
+  fi
+  lookup_salt_value "$key" "$pillar" "pillar"
 }
 
 lookup_pillar_secret() {
-    key=$1
-    cat /opt/so/saltstack/local/pillar/secrets.sls | grep $key | awk '{print $2}'
+  lookup_pillar "$1" "secrets"
+}
+
+lookup_grain() {
+  lookup_salt_value "$1" "" "grains"
+}
+
+lookup_role() {
+  id=$(lookup_grain id)
+  pieces=($(echo $id | tr '_' ' '))
+  echo ${pieces[1]}
 }
 
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
+}
+
+check_password() {
+  local password=$1
+  echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+  return $?
+}
+
+set_os() {
+  if [ -f /etc/redhat-release ]; then
+    OS=centos
+  else
+    OS=ubuntu
+  fi
+}
+
+set_minionid() {
+  MINIONID=$(lookup_grain id)
+}
+
+set_version() {
+  CURRENTVERSION=0.0.0
+  if [ -f /etc/soversion ]; then
+    CURRENTVERSION=$(cat /etc/soversion)
+  fi
+  if [ -z "$VERSION" ]; then
+    if [ -z "$NEWVERSION" ]; then
+      if [ "$CURRENTVERSION" == "0.0.0" ]; then
+        echo "ERROR: Unable to detect Security Onion version; terminating script."
+        exit 1
+      else
+        VERSION=$CURRENTVERSION
+      fi
+    else
+      VERSION="$NEWVERSION"
+    fi
+  fi
+}
+
+require_manager() {
+  # Check to see if this is a manager
+  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
+  if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
+    echo "This is a manager, We can proceed."
+  else
+    echo "Please run this command on the manager; the manager controls the grid."
+    exit 1
+  fi
+}
+
+is_single_node_grid() {
+  role=$(lookup_role)
+  if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
+    return 1
+  fi
+  return 0
+}
+
+fail() {
+  msg=$1
+  echo "ERROR: $msg"
+  echo "Exiting."
+  exit 1
+}
+
+get_random_value() {
+  length=${1:-20}
+  head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }

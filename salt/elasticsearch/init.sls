@@ -21,23 +21,26 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 
-
-{%- if FEATURES is sameas true %}
+{% if FEATURES is sameas true %}
   {% set FEATUREZ = "-features" %}
 {% else %}
   {% set FEATUREZ = '' %}
 {% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
-  {% set esclustername = salt['pillar.get']('manager:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('manager:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('manager:esclustername') %}
+  {% set esheap = salt['pillar.get']('manager:esheap') %}
   {% set ismanager = True %}
 {% elif grains['role'] in ['so-node','so-heavynode'] %}
-  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername', '') %}
-  {% set esheap = salt['pillar.get']('elasticsearch:esheap', '') %}
+  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
+  {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
   {% set ismanager = False %}
+{% elif grains['role'] == 'so-helix' %}
+  {% set ismanager = True %} {# Solely for the sake of running so-catrust #}
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
@@ -85,6 +88,8 @@ capemz:
     - source: salt://common/tls-ca-bundle.pem
     - user: 939
     - group: 939
+
+{% if grains['role'] != 'so-helix' %}
 
 # Add ES Group
 elasticsearchgroup:
@@ -150,6 +155,7 @@ sotls:
     - source: salt://elasticsearch/files/sotls.yml
     - user: 930
     - group: 939
+    - template: jinja
 
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
@@ -187,16 +193,21 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - extra_hosts: 
+      {% if ismanager %}
       - {{ grains.host }}:{{ NODEIP }}
-      {%- if ismanager %}
-      {%- if salt['pillar.get']('nodestab', {}) %}
-      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+        {% if salt['pillar.get']('nodestab', {}) %}
+          {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
-      {%- endfor %}
-      {%- endif %}
-      {%- endif %}
+          {% endfor %}
+        {% endif %}
+      {% else %}
+      - {{ grains.host }}:{{ NODEIP }}
+      - {{ MANAGER }}:{{ MANAGERIP }}
+      {% endif %}
     - environment:
+      {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
+      {% endif %}
       - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
       ulimits:
       - memlock=-1:-1
@@ -214,12 +225,16 @@ so-elasticsearch:
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
       - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
-
     - watch:
       - file: cacertz
       - file: esyml
       - file: esingestconf
       - file: so-elasticsearch-pipelines-file
+
+append_so-elasticsearch_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-elasticsearch
 
 so-elasticsearch-pipelines-file:
   file.managed:
@@ -228,6 +243,7 @@ so-elasticsearch-pipelines-file:
     - user: 930
     - group: 939
     - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines:
  cmd.run:
@@ -237,12 +253,15 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-searchnode', 'so-import'] and TEMPLATES %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-node', 'so-import'] and TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
-    - name: /usr/sbin/so-elasticsearch-templates
+    - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
+    - template: jinja
 {% endif %}
+
+{% endif %} {# if grains['role'] != 'so-helix' #}
 
 {% else %}
 
@@ -250,4 +269,4 @@ elasticsearch_state_not_allowed:
   test.fail_without_changes:
     - name: elasticsearch_state_not_allowed
 
-{% endif %}
+{% endif %} {# if 'elasticsearch' in top_states #}
