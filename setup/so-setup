@@ -708,30 +708,31 @@ set_redirect >> $setup_log 2>&1
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
 		salt-call state.apply -l info manager >> $setup_log 2>&1
-
-		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
-		create_local_nids_rules >> $setup_log 2>&1
-		salt-call state.apply -l info idstools >> $setup_log 2>&1
-
-		set_progress_str 61 "$(print_salt_state_apply 'suricata.manager')"
-		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
-
 	fi
 
-	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
+	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
 	if [ $OS = 'centos' ]; then
-		set_progress_str 63 'Installing Yum utilities'
+		set_progress_str 62 'Installing Yum utilities'
 		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
 	fi
 
-	set_progress_str 63 "$(print_salt_state_apply 'common')"
+	set_progress_str 62 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
 	if [[ ! $is_helix ]]; then
-		set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager || $is_helix || $is_import ]]; then
+		set_progress_str 63 "$(print_salt_state_apply 'idstools')"
+		create_local_nids_rules >> $setup_log 2>&1
+		salt-call state.apply -l info idstools >> $setup_log 2>&1
+
+		set_progress_str 63 "$(print_salt_state_apply 'suricata.manager')"
+		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager || $is_node || $is_import || $is_helix ]]; then

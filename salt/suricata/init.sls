@@ -74,6 +74,7 @@ surirulesync:
     - source: salt://suricata/rules/
     - user: 940
     - group: 940
+    - show_changes: False
 
 surilogscript:
   file.managed:
@@ -173,6 +174,27 @@ disable_so-suricata_so-status.conf:
     - user: root
     - minute: '11'
     - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+so-suricata-eve-clean:
+  file.managed:
+    - name: /usr/sbin/so-suricata-eve-clean
+    - user: root
+    - group: root
+    - mode: 755
+    - template: jinja
+    - source: salt://suricata/cron/so-suricata-eve-clean
+
+# Add eve clean cron
+clean_suricata_eve_files:
+  cron.present:
+    - name: /usr/sbin/so-suricata-eve-clean > /dev/null 2>&1
+    - identifier: clean_suricata_eve_files
+    - user: root
+    - minute: '10'
+    - hour: '0'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
