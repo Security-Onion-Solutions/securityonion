@@ -268,7 +268,7 @@ docker:
 # Reserve OS ports for Docker proxy in case boot settings are not already applied/present
 dockerapplyports:
     cmd.run:
-      - name: [ ! -s /etc/sysctl.d/99-reserved-ports.conf ] && sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"
+      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"; fi
 
 # Reserve OS ports for Docker proxy
 dockerreserveports:
