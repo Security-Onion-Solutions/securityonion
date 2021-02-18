@@ -190,6 +190,7 @@ so-suricata-eve-clean:
 clean_suricata_eve_files:
   cron.present:
     - name: /usr/sbin/so-suricata-eve-clean > /dev/null 2>&1
+    - identifier: clean_suricata_eve_files
     - user: root
     - minute: '*/5'
     - hour: '*'
