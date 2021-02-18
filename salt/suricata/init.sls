@@ -182,7 +182,7 @@ so-suricata-eve-clean:
     - name: /usr/sbin/so-suricata-eve-clean
     - user: root
     - group: root
-    - file_mode: 755
+    - mode: 755
     - template: jinja
     - source: salt://suricata/cron/so-suricata-eve-clean
 
