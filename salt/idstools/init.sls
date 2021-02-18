@@ -55,12 +55,14 @@ rulesdir:
     - group: 939
     - makedirs: True
 
+# Don't show changes because all.rules can be large
 synclocalnidsrules:
   file.recurse:
     - name: /opt/so/rules/nids/
     - source: salt://idstools/
     - user: 939
     - group: 939
+    - show_changes: False
     - include_pat: 'E@.rules'
 
 so-idstools:
