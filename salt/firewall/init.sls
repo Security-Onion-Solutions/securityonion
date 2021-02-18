@@ -34,7 +34,6 @@ iptables_allow_established:
     - jump: ACCEPT
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
-    - save: True
 
 # I like pings
 iptables_allow_pings:
@@ -43,7 +42,6 @@ iptables_allow_pings:
     - chain: INPUT
     - jump: ACCEPT
     - proto: icmp
-    - save: True
 
 # Create the chain for logging
 iptables_LOGGING_chain:
@@ -68,7 +66,6 @@ iptables_log_input_drops:
     - table: filter
     - chain: INPUT
     - jump: LOGGING
-    - save: True
 
 # Enable global DOCKER-USER block rule
 enable_docker_user_fw_policy:
@@ -79,7 +76,6 @@ enable_docker_user_fw_policy:
     - in-interface: '!docker0'
     - out-interface: docker0
     - position: 1
-    - save: True
 
 enable_docker_user_established:
   iptables.insert:
@@ -89,7 +85,6 @@ enable_docker_user_established:
     - in-interface: '!docker0'
     - out-interface: docker0
     - position: 1
-    - save: True
     - match: conntrack
     - ctstate: 'RELATED,ESTABLISHED'
 
@@ -115,7 +110,6 @@ enable_docker_user_established:
               {% if action == 'insert' %}
     - position: 1
               {% endif %}
-    - save: True
 
               {% endfor %}
             {% endfor %}
@@ -125,6 +119,15 @@ enable_docker_user_established:
     {% endfor %}
   {% endfor %}
 {% endfor %}
+
+# Block icmp timestamp response
+block_icmp_timestamp_reply:
+  iptables.append:
+    - table: filter
+    - chain: OUTPUT
+    - jump: DROP
+    - proto: icmp
+    - icmp-type: 'timestamp-reply'
 
 # Make the input policy send stuff that doesn't match to be logged and dropped
 iptables_drop_all_the_things:
