@@ -3,7 +3,9 @@
 {% from 'suricata/afpacket.map.jinja' import afpacket %}
 {% set suricata_pillar = salt['pillar.get']('suricata:config', {}) %}
 {% set default_evelog_index = [] %}
+{% set default_filestore_index = [] %}
 {% set surimeta_evelog_index = [] %}
+{% set surimeta_filestore_index = [] %}
 
 {% if salt['pillar.get']('sensor:hnsensor') %}
   {% load_yaml as homenet %}
@@ -33,19 +35,28 @@ HOME_NET: "[{{salt['pillar.get']('global:hnmanager', '')}}]"
   {% if 'eve-log' in li.keys() %}
     {% do default_evelog_index.append(loop.index0) %}
   {% endif %}
+  {% if 'file-store' in li.keys() %}
+    {% do default_filestore_index.append(loop.index0) %}
+  {% endif %}
 {% endfor %}
 {% set default_evelog_index = default_evelog_index[0]  %}
+{% set default_filestore_index = default_filestore_index[0]  %}
 
 {# Find the index of eve-log so it can be grabbed later #}
 {% for li in suricata_meta.suricata.config.outputs %}
   {% if 'eve-log' in li.keys() %}
     {% do surimeta_evelog_index.append(loop.index0) %}
   {% endif %}
+  {% if 'file-store' in li.keys() %}
+    {% do surimeta_filestore_index.append(loop.index0) %}
+  {% endif %}
 {% endfor %}
 {% set surimeta_evelog_index = surimeta_evelog_index[0] %}
+{% set surimeta_filestore_index = surimeta_filestore_index[0] %}
 
 {% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
   {% do suricata_defaults.suricata.config.outputs[default_evelog_index]['eve-log'].types.extend(suricata_meta.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
+  {% do suricata_defaults.suricata.config.outputs[default_filestore_index]['file-store'].update({'enabled':suricata_meta.suricata.config.outputs[surimeta_filestore_index]['file-store']['enabled']}) %}
 {% endif %}
 
 {% do suricata_defaults.suricata.config.update(default_packet_size) %}
