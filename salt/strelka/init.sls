@@ -195,7 +195,7 @@ strelka_suricata_extracted_sync:
   cron.present:
     - user: root
     - identifier: zeek-extracted-strelka-sync
-    - name: '[ -d /nsm/suricata/extracted/ ] && find /nsm/suriextract/* -not \( -path /nsm/suriextract/tmp -prune \) -type f -print0 | xargs -0 -I {} mv {} /tmp > /dev/null 2>&1'
+    - name: '[ -d /nsm/suricata/extracted/ ] && find /nsm/suricata/extracted/* -not \( -path /nsm/suriextract/tmp -prune \) -type f -print0 | xargs -0 -I {} mv {} /tmp > /dev/null 2>&1'
     - minute: '*'
 
 {% else %}
