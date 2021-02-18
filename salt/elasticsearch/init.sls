@@ -168,8 +168,6 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     {% endif %}
     - user: 930
     - group: 939
-    - onchanges_in:
-      - cmd: so-elasticsearch-templates
 {% endfor %}
 
 nsmesdir:
