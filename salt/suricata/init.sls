@@ -74,6 +74,7 @@ surirulesync:
     - source: salt://suricata/rules/
     - user: 940
     - group: 940
+    - show_changes: False
 
 surilogscript:
   file.managed:
