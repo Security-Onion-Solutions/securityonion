@@ -63,14 +63,7 @@ surilogdir:
 
 suridatadir:
   file.directory:
-    - name: /nsm/suricata
-    - user: 940
-    - group: 939
-    - makedirs: True
-
-surifiledir:
-  file.directory:
-    - name: /nsm/suriextract
+    - name: /nsm/suricata/extracted
     - user: 940
     - group: 939
     - makedirs: True
@@ -154,7 +147,7 @@ so-suricata:
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
-      - /nsm/suriextract:/var/log/suricata//filestore:rw
+      - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
