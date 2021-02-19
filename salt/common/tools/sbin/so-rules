@@ -361,7 +361,7 @@ def main():
       modify              Manage and list modified rules (add, remove, list)
     """
   )
-  subparsers = main_parser.add_subparsers(title='commands', description=subcommand_desc, metavar='')
+  subparsers = main_parser.add_subparsers(title='commands', description=subcommand_desc, metavar='', dest='command')
 
 
   # Disabled actions
@@ -424,7 +424,21 @@ def main():
 
   args.pillar = find_minion_pillar(args.minion_id)
   
+
+  if hasattr(args, 'func'):
   exit_code = args.func(args)
+  else:
+    if args.command is None:
+      main_parser.print_help()
+    else:
+      if args.command == 'disabled':
+        disabled.print_help()
+      elif args.command == 'enabled':
+        enabled.print_help()
+      elif args.command == 'modify':
+        modify.print_help()
+    sys.exit(0)
+  
   if isinstance(exit_code, subprocess.CompletedProcess):
     sys.exit(exit_code.returncode)
   else:
