@@ -16,7 +16,6 @@
 {% if sls in allowed_states %}
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -64,9 +63,10 @@ surilogdir:
 
 suridatadir:
   file.directory:
-    - name: /nsm/suricata
+    - name: /nsm/suricata/extracted
     - user: 940
     - group: 939
+    - makedirs: True
 
 surirulesync:
   file.recurse:
@@ -74,7 +74,6 @@ surirulesync:
     - source: salt://suricata/rules/
     - user: 940
     - group: 940
-    - show_changes: False
 
 surilogscript:
   file.managed:
@@ -148,6 +147,7 @@ so-suricata:
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
+      - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
@@ -174,27 +174,6 @@ disable_so-suricata_so-status.conf:
     - user: root
     - minute: '11'
     - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
-so-suricata-eve-clean:
-  file.managed:
-    - name: /usr/sbin/so-suricata-eve-clean
-    - user: root
-    - group: root
-    - mode: 755
-    - template: jinja
-    - source: salt://suricata/cron/so-suricata-eve-clean
-
-# Add eve clean cron
-clean_suricata_eve_files:
-  cron.present:
-    - name: /usr/sbin/so-suricata-eve-clean > /dev/null 2>&1
-    - identifier: clean_suricata_eve_files
-    - user: root
-    - minute: '10'
-    - hour: '0'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
