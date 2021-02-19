@@ -28,6 +28,20 @@ whiptail_airgap() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+whiptail_avoid_default_hostname() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	To prevent hostname conflicts, avoid using the default 'securityonion' hostname in a distributed environment.
+
+	You can choose to use this default hostname anyway, or change it to a new hostname.
+	EOM
+
+	whiptail --title "Security Onion Setup" \
+		--yesno "$message" 11 75 \
+		--yes-button "Use Anyway" --no-button "Change" --defaultno
+}
+
 whiptail_basic_suri() {
 
 	[ -n "$TESTING" ] && return
@@ -937,13 +951,25 @@ whiptail_metadata_tool() {
 
 	[ -n "$TESTING" ] && return
 
+	read -r -d '' message <<- EOM
+		What tool would you like to use to generate metadata?
+		
+		This question is asking specifically about metadata, which would be things like the connection log, DNS log, HTTP log, etc. This does not include NIDS alerts.
+		
+		If you choose Zeek for metadata, Suricata will still run to generate NIDS alerts.
+
+		If you choose Suricata for metadata, it will generate NIDS alerts and metadata, and Zeek will not run at all.
+	EOM
+
 	# Legacy variable naming
-	ZEEKVERSION=$(whiptail --title "Security Onion Setup" --radiolist "What tool would you like to use to generate metadata?" 20 75 4 \
-	"ZEEK" "Zeek (formerly known as Bro)"  ON \
-	"SURICATA" "Suricata" OFF 3>&1 1>&2 2>&3)
+	ZEEKVERSION=$(whiptail --title "Security Onion Setup" --menu "$message" 20 75 2 \
+	"Zeek      " "Use Zeek (Bro) for metadata and Suricata for NIDS alerts" \
+	"Suricata  " "Use Suricata for both metadata and NIDS alerts" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	ZEEKVERSION=$(echo "${ZEEKVERSION^^}" | tr -d ' ')
 }
 
 whiptail_nids() {

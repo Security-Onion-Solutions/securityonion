@@ -398,6 +398,13 @@ collect_hostname() {
 
 	whiptail_set_hostname "$HOSTNAME"
 
+
+	if [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
+		if ! (whiptail_avoid_default_hostname); then
+			whiptail_set_hostname
+		fi
+	fi
+
 	while ! valid_hostname "$HOSTNAME"; do
 		whiptail_invalid_hostname
 		whiptail_set_hostname "$HOSTNAME"
@@ -963,15 +970,16 @@ installer_prereq_packages() {
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
-			retry 50 10 "apt-get install -y network-manager" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
 				systemctl enable NetworkManager
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		retry 50 10 "apt-get install -y bc curl"  >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install bc curl"  >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
@@ -1487,50 +1495,50 @@ manager_global() {
 	fi
 
 	if [ -z "$DOCKERNET" ]; then
-            DOCKERNET=172.17.0.0
-	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKERNET=172.17.0.0
+		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	else
-	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
-        printf '%s\n'\
-                "global:"\
-                "  soversion: '$SOVERSION'"\
-                "  hnmanager: '$HNMANAGER'"\
-                "  ntpserver: '$NTPSERVER'"\
-				"  dockernet: '$DOCKERNET'"\
-                "  proxy: '$PROXY'"\
-                "  mdengine: '$ZEEKVERSION'"\
-                "  ids: '$NIDS'"\
-				"  url_base: '$REDIRECTIT'"\
-                "  managerip: '$MAINIP'" > "$global_pillar"
-		
-        if [[ $is_airgap ]]; then
-		        printf '%s\n'\
-                        "  airgap: True"\ >> "$global_pillar"
-		else 
-		        printf '%s\n'\
-                        "  airgap: False"\ >> "$global_pillar"
-		fi
+	printf '%s\n'\
+		"global:"\
+		"  soversion: '$SOVERSION'"\
+		"  hnmanager: '$HNMANAGER'"\
+		"  ntpserver: '$NTPSERVER'"\
+		"  dockernet: '$DOCKERNET'"\
+		"  proxy: '$PROXY'"\
+		"  mdengine: '$ZEEKVERSION'"\
+		"  ids: '$NIDS'"\
+		"  url_base: '$REDIRECTIT'"\
+		"  managerip: '$MAINIP'" > "$global_pillar"
+	
+	if [[ $is_airgap ]]; then
+		printf '%s\n'\
+			"  airgap: True"\ >> "$global_pillar"
+	else 
+		printf '%s\n'\
+			"  airgap: False"\ >> "$global_pillar"
+	fi
 
-        # Check if TheHive is enabled.  If so, add creds and other details
-        if [[ "$THEHIVE" == "1" ]]; then
-                printf '%s\n'\
-                        "  hiveuser: '$WEBUSER'"\
-                        "  hivepassword: '$WEBPASSWD1'"\
-                        "  hivekey: '$HIVEKEY'"\
-                        "  hiveplaysecret: '$HIVEPLAYSECRET'"\
-                        "  cortexuser: '$WEBUSER'"\
-                        "  cortexpassword: '$WEBPASSWD1'"\
-                        "  cortexkey: '$CORTEXKEY'"\
-                        "  cortexorgname: 'SecurityOnion'"\
-                        "  cortexorguser: 'soadmin'"\
-                        "  cortexorguserkey: '$CORTEXORGUSERKEY'"\
-                        "  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
-        fi
+	# Check if TheHive is enabled.  If so, add creds and other details
+	if [[ "$THEHIVE" == "1" ]]; then
+		printf '%s\n'\
+			"  hiveuser: '$WEBUSER'"\
+			"  hivepassword: '$WEBPASSWD1'"\
+			"  hivekey: '$HIVEKEY'"\
+			"  hiveplaysecret: '$HIVEPLAYSECRET'"\
+			"  cortexuser: '$WEBUSER'"\
+			"  cortexpassword: '$WEBPASSWD1'"\
+			"  cortexkey: '$CORTEXKEY'"\
+			"  cortexorgname: 'SecurityOnion'"\
+			"  cortexorguser: 'soadmin'"\
+			"  cortexorguserkey: '$CORTEXORGUSERKEY'"\
+			"  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
+	fi
 
-        # Continue adding other details	
+	# Continue adding other details	
 	printf '%s\n'\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
@@ -1541,7 +1549,7 @@ manager_global() {
 		"  fleet_ip: 'N/A'"\
 		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
-                "  managerupdate: $MANAGERUPDATES"\
+		"  managerupdate: $MANAGERUPDATES"\
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
 		"sensoroni:"\
@@ -1557,22 +1565,22 @@ manager_global() {
 		"  features: False"\
 		"elasticsearch:"\
 		"  replicas: 0" >> "$global_pillar"
-		if [ -n "$ESCLUSTERNAME" ]; then 
-		    printf '%s\n'\
-				   "  true_cluster: True"\
-		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
-		else
-			printf '%s\n'\
-			       "  true_cluster: False"\
-				   "  true_cluster_name: 'so'" >> "$global_pillar"
-		fi
+	if [ -n "$ESCLUSTERNAME" ]; then 
 		printf '%s\n'\
+			"  true_cluster: True"\
+			"  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+	else
+		printf '%s\n'\
+			"  true_cluster: False"\
+			"  true_cluster_name: 'so'" >> "$global_pillar"
+	fi
+	printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
-                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
+		"  cluster_routing_allocation_disk_watermark_low: '95%'"\
+		"  cluster_routing_allocation_disk_watermark_high: '98%'"\
+		"  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1633,10 +1641,10 @@ manager_global() {
 		"  upload_queue_size: 4"\
 		"  encoding: 'gzip'"\
 		"  interval: 5"\
-	        "backup:"\
-                "  locations:"\
-                "    - /opt/so/saltstack/local"\
-	        "soctopus:"\
+		"backup:"\
+		"  locations:"\
+		"    - /opt/so/saltstack/local"\
+		"soctopus:"\
 		"  playbook:"\
 		"    rulesets:"\
 		"      - windows"\
@@ -1790,7 +1798,7 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
-		if command -v salt-call &> /dev/null; then
+		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable
 
@@ -1950,9 +1958,7 @@ saltify() {
 		} >> "$setup_log" 2>&1
 		yum versionlock salt*
 	else
-		if ! (DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1); then
-			exit 1
-		fi
+		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
 		if [ $OSVER != "xenial" ]; then
 			# Switch to Python 3 as default if this is not xenial
@@ -2277,7 +2283,7 @@ sensor_pillar() {
 set_default_log_size() {
     local percentage
 
-	case $INSTALLTYPE in
+	case $install_type in
 		STANDALONE | EVAL | HEAVYNODE)
 			percentage=50
 			;;
