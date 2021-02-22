@@ -97,22 +97,20 @@ def write_pillar(pillar: str, content: dict):
     sys.exit(3)
 
 
-def check_sid_pattern(sid_pattern: str, sid_only: bool = False):
+def check_sid_pattern(sid_pattern: str):
   message = f'SID {sid_pattern} is not valid, did you forget the \"re:\" prefix for a regex pattern?'
 
-  if sid_pattern.startswith('re:') and not sid_only:
+  if sid_pattern.startswith('re:'):
     r_string = sid_pattern[3:]
     if not valid_regex(r_string):
       print_err('Invalid regex pattern.')
       return False
     else:
       return True
-  elif sid_pattern == '*':
-    return True 
   else:
     sid: int
     try:
-      sid = int(sid_pattern.replace('*', ''))
+      sid = int(sid_pattern)
     except:
       print_err(message)
       return False
@@ -350,7 +348,7 @@ def main():
   subparsers = main_parser.add_subparsers(title='commands', description=subcommand_desc, metavar='', dest='command')
 
 
-  sid_or_regex_help = 'A valid SID with optional wildcard (ex: "4321" or "432*") or a regular expression pattern (ex: "re:heartbleed|spectre")'
+  sid_or_regex_help = 'A valid SID (ex: "4321") or regular expression pattern (ex: "re:heartbleed|spectre")'
 
   # Disabled actions
   disabled = subparsers.add_parser('disabled')
