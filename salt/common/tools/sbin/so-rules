@@ -44,11 +44,8 @@ def check_apply(args: dict):
     return 0
 
 
-def find_minion_pillar(minion_id: str) -> str:
-  if minion_id == None:
-    regex = '^.*_(manager|standalone|import)\.sls$'
-  else:
-    regex = f'^{minion_id}\.sls$'
+def find_minion_pillar() -> str:
+  regex = '^.*_(manager|standalone|import|eval)\.sls$'
   
   result = []
   for root, _, files in os.walk(minion_pillar_dir):
@@ -57,22 +54,15 @@ def find_minion_pillar(minion_id: str) -> str:
         result.append(os.path.join(root, f_minion_id))
   
   if len(result) == 0:
-    if minion_id == None:
-      print_err('Could not find minion pillar with minion id matching *_manager or *_standalone')
-      sys.exit(3)
-    else:
-      print_err(f'Could not find minion pillar for minion id: {minion_id}')
-      sys.exit(3)
+    print_err('Could not find manager-type pillar (eval, standalone, manager, import.)')
+    print_err('Are you running this script on the manager?')
+    sys.exit(3)
   elif len(result) > 1:
     res_str = ', '.join(f'\"{result}\"')
-    if minion_id == None: 
-      print_err('(This should not happen, the system is in an error state if you see this message.)')
-      print_err('More than one manager or standalone pillar exists, minion id\'s listed below:')
-      print_err(f'  {res_str}')
-      sys.exit(3)
-    else:
-      print_err(f'Multiple minion pillars matched the minion id {minion_id}. Are you sure this is a complete minion id?')
-      sys.exit(3)
+    print_err('(This should not happen, the system is in an error state if you see this message.)')
+    print_err('More than one manager-type pillar exists, minion id\'s listed below:')
+    print_err(f'  {res_str}')
+    sys.exit(3)
   else:
     return result[0]
 
@@ -349,10 +339,6 @@ def main():
                            const=True,
                            required=False,
                            help="After updating rule configuration, apply the idstools state.")
-  main_parser.add_argument('--minion', 
-                           dest='minion_id', 
-                           required=False, 
-                           help='Defaults to manager (i.e. action applied to entire grid).')
 
   subcommand_desc = textwrap.dedent(
     """\
@@ -427,8 +413,7 @@ def main():
   if not hasattr(args, 'remove'):
     args.remove = False
 
-  args.pillar = find_minion_pillar(args.minion_id)
-  
+  args.pillar = find_minion_pillar()
 
   if hasattr(args, 'func'):
     exit_code = args.func(args)
