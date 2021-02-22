@@ -37,11 +37,20 @@ def print_err(string: str):
 
 
 def check_apply(args: dict):
+  cmd_arr = ['salt-call', 'state.apply', 'idstools', 'queue=True']
+  
   if args.apply:
     print('Applying idstools state...')
-    return subprocess.run(['salt-call', 'state.apply', 'idstools', 'queue=True'])
+    return subprocess.run(cmd_arr)
   else:
-    return 0
+    message = 'Would you like to apply your changes now? (y/N) '
+    answer = input(message)
+    while answer.lower() not in [ 'y', 'n', '' ]:
+      answer = input(message)
+    if answer.lower() in [ 'n', '' ]:
+      return subprocess.run(cmd_arr)
+    else:
+      return 0
 
 
 def find_minion_pillar() -> str:
