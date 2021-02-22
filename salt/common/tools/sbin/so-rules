@@ -364,17 +364,19 @@ def main():
   subparsers = main_parser.add_subparsers(title='commands', description=subcommand_desc, metavar='', dest='command')
 
 
+  sid_or_regex_help = 'A valid SID with optional wildcard (ex: "4321" or "432*") or a regular expression pattern (ex: "re:heartbleed|spectre")'
+
   # Disabled actions
   disabled = subparsers.add_parser('disabled')
   disabled_sub = disabled.add_subparsers()
 
   disabled_add = disabled_sub.add_parser('add')
   disabled_add.set_defaults(func=add_rem_disabled)
-  disabled_add.add_argument('sid_pattern', metavar='SID|REGEX', help='A valid SID (ex: "4321") or a regular expression pattern (ex: "re:heartbleed|spectre")')
+  disabled_add.add_argument('sid_pattern', metavar='SID|REGEX', help=sid_or_regex_help)
 
   disabled_rem = disabled_sub.add_parser('remove')
   disabled_rem.set_defaults(func=add_rem_disabled, remove=True)
-  disabled_rem.add_argument('sid_pattern', metavar='SID|REGEX', help='A valid SID (ex: "4321") or a regular expression pattern (ex: "re:heartbleed|spectre")')
+  disabled_rem.add_argument('sid_pattern', metavar='SID|REGEX', help=sid_or_regex_help)
 
   disabled_list = disabled_sub.add_parser('list')
   disabled_list.set_defaults(func=list_disabled_rules)
@@ -386,15 +388,18 @@ def main():
 
   enabled_add = enabled_sub.add_parser('add')
   enabled_add.set_defaults(func=add_rem_enabled)
-  enabled_add.add_argument('sid_pattern', metavar='SID|REGEX', help='A valid SID (ex: "4321") or a regular expression pattern (ex: "re:heartbleed|spectre")')
+  enabled_add.add_argument('sid_pattern', metavar='SID|REGEX', help=sid_or_regex_help)
 
   enabled_rem = enabled_sub.add_parser('remove')
   enabled_rem.set_defaults(func=add_rem_enabled, remove=True)
-  enabled_rem.add_argument('sid_pattern', metavar='SID|REGEX', help='A valid SID (ex: "4321") or a regular expression pattern (ex: "re:heartbleed|spectre")')
+  enabled_rem.add_argument('sid_pattern', metavar='SID|REGEX', help=sid_or_regex_help)
 
   enabled_list = enabled_sub.add_parser('list')
   enabled_list.set_defaults(func=list_enabled_rules)
   
+
+  search_term_help='A quoted regex search term (ex: "\$EXTERNAL_NET")'
+  replace_term_help='The text to replace the search term with'
 
   # Modify actions
   modify = subparsers.add_parser('modify')
@@ -402,15 +407,15 @@ def main():
 
   modify_add = modify_sub.add_parser('add')
   modify_add.set_defaults(func=add_rem_modify)
-  modify_add.add_argument('sid_pattern', metavar='SID', help='A valid SID (ex: "4321").')
-  modify_add.add_argument('search_term', metavar='SEARCH_TERM', help='A quoted regex search term (ex: "\$EXTERNAL_NET")')
-  modify_add.add_argument('replace_term', metavar='REPLACE_TERM', help='The text to replace the search term with')
+  modify_add.add_argument('sid_pattern', metavar='SID|REGEX', help=sid_or_regex_help)
+  modify_add.add_argument('search_term', metavar='SEARCH_TERM', help=search_term_help)
+  modify_add.add_argument('replace_term', metavar='REPLACE_TERM', help=replace_term_help)
 
   modify_rem = modify_sub.add_parser('remove')
   modify_rem.set_defaults(func=add_rem_modify, remove=True)
-  modify_rem.add_argument('sid_pattern', metavar='SID', help='A valid SID (ex: "4321").')
-  modify_rem.add_argument('search_term', metavar='SEARCH_TERM', help='A quoted regex search term (ex: "\$EXTERNAL_NET")')
-  modify_rem.add_argument('replace_term', metavar='REPLACE_TERM', help='The text to replace the search term with')
+  modify_rem.add_argument('sid_pattern', metavar='SID', help=sid_or_regex_help)
+  modify_rem.add_argument('search_term', metavar='SEARCH_TERM', help=search_term_help)
+  modify_rem.add_argument('replace_term', metavar='REPLACE_TERM', help=replace_term_help)
 
   modify_list = modify_sub.add_parser('list')
   modify_list.set_defaults(func=list_modified_rules)
