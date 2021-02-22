@@ -36,19 +36,22 @@ def print_err(string: str):
   print(string, file=sys.stderr)
 
 
-def check_apply(args: dict):
+def check_apply(args: dict, prompt: bool = True):
   cmd_arr = ['salt-call', 'state.apply', 'idstools', 'queue=True']
   
   if args.apply:
     print('Applying idstools state...')
     return subprocess.run(cmd_arr)
   else:
-    message = 'Would you like to apply your changes now? (y/N) '
-    answer = input(message)
-    while answer.lower() not in [ 'y', 'n', '' ]:
+    if prompt:
+      message = 'Would you like to apply your changes now? (y/N) '
       answer = input(message)
-    if answer.lower() in [ 'n', '' ]:
-      return subprocess.run(cmd_arr)
+      while answer.lower() not in [ 'y', 'n', '' ]:
+        answer = input(message)
+      if answer.lower() in [ 'n', '' ]:
+        return subprocess.run(cmd_arr)
+      else:
+        return 0
     else:
       return 0
 
@@ -181,7 +184,7 @@ def add_rem_disabled(args: dict):
     temp_pillar_dict = add_to_sids(pillar_dict, 'disabled', args.sid_pattern)
 
   if temp_pillar_dict['idstools']['sids']['disabled'] == pillar_dict['idstools']['sids']['disabled']:
-    salt_proc = check_apply(args)
+    salt_proc = check_apply(args, prompt=False)
     return salt_proc
   else:
     pillar_dict = temp_pillar_dict
@@ -245,8 +248,8 @@ def add_rem_enabled(args: dict):
   else:
     temp_pillar_dict = add_to_sids(pillar_dict, 'enabled', args.sid_pattern)
   
-  if temp_pillar_dict == pillar_dict:
-    salt_proc = check_apply(args)
+  if temp_pillar_dict['idstools']['sids']['enabled'] == pillar_dict['idstools']['sids']['enabled']:
+    salt_proc = check_apply(args, prompt=False)
     return salt_proc
   else:
     pillar_dict = temp_pillar_dict
@@ -296,8 +299,8 @@ def add_rem_modify(args: dict):
   else:
     temp_pillar_dict = add_to_sids(pillar_dict, 'modify', string_val)
     
-  if temp_pillar_dict == pillar_dict:
-    salt_proc = check_apply(args)
+  if temp_pillar_dict['idstools']['sids']['modify'] == pillar_dict['idstools']['sids']['modify']:
+    salt_proc = check_apply(args, prompt=False)
     return salt_proc
   else:
     pillar_dict = temp_pillar_dict
