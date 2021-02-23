@@ -37,6 +37,7 @@ if [ ! -z "$EVENTCOUNTCURRENT" ]; then
   fi
 
   echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+  # the division by 30 is because the agent interval is 30 seconds
   EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
   if [ "$EVENTS" -lt 0 ]; then
     EVENTS=0
