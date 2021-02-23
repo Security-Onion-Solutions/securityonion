@@ -126,6 +126,8 @@ so-fleet:
       - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/fleet/status.log
       - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
       - KOLIDE_SERVER_URL_PREFIX=/fleet
+      - KOLIDE_FILESYSTEM_ENABLE_LOG_ROTATION=true
+      - KOLIDE_FILESYSTEM_ENABLE_LOG_COMPRESSION=true
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
