@@ -379,6 +379,10 @@ unmount_update() {
   umount /tmp/soagupdate
 }
 
+update_airgap_rules() {
+  # Copy the rules over to update them for airgap.
+  rsync -av $UPDATE_DIR/SecurityOnion/agrules/* /nsm/repo/rules/
+}
 
 update_centos_repo() {
   # Update the files in the repo
@@ -587,6 +591,11 @@ fi
 echo "Making pillar changes."
 pillar_changes
 echo ""
+
+if [ $is_airgap -eq 0 ]; then
+  echo "Updating Rule Files to the Latest."
+  update_airgap_rules
+fi
 
 # Only update the repo if its airgap
 if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
