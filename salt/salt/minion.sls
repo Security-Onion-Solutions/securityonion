@@ -28,7 +28,7 @@ set_log_levels:
     - name: /etc/salt/minion
     - text:
       - "log_level: info"
-      - "log_level_log_file: info"
+      - "log_level_logfile: info"
     - listen_in:
       - service: salt_minion_service
 
