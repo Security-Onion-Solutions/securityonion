@@ -151,7 +151,7 @@ update_docker_containers() {
 
     # Pull down the trusted docker image
     local image=$i:$VERSION$IMAGE_TAG_SUFFIX
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+    retry 50 10 "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" >> "$LOG_FILE" 2>&1 
     
     # Get signature
     retry 50 10 "curl -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" >> "$LOG_FILE" 2>&1
