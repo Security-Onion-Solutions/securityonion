@@ -406,7 +406,12 @@ up_2.3.2X_to_2.3.30() {
   for pillar in "${minion_pillars[@]}"; do
     sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
   done
-  # Strelka rule repo pillar addition
+
+# Change the IMAGEREPO
+  sed -i "/  imagerepo: 'securityonion'/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls
+  sed -i "/  imagerepo: securityonion/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls 
+
+# Strelka rule repo pillar addition
   if [ $is_airgap -eq 0 ]; then
       # Add manager as default Strelka YARA rule repo
       sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;

@@ -1558,9 +1558,17 @@ manager_global() {
 		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
-		"  rules: 1"\
-		"  repos:"\
-		"    - https://github.com/Neo23x0/signature-base"\
+		"  rules: 1" >> "$global_pillar"
+		if [[ $is_airgap ]]; then
+		    printf '%s\n'\
+			    "  repos:"\
+			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
+	    else 
+		    printf '%s\n'\
+		        "  repos:"\
+			    "    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
+	    fi
+	printf '%s\n'\
 		"curator:"\
 		"  hot_warm: False"\
 		"elastic:"\
