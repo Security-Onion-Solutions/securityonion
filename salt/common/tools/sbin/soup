@@ -127,10 +127,12 @@ check_log_size_limit() {
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
   
   if [[ $num_minion_pillars -gt 1 ]]; then
-    wait_for_enter=true
-    echo "[INFO] The value of log_size_limit in the minion pillars may be incorrect."
-    echo " -> We recommend checking and adjusting the values as necessary."
-    echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+    if find /opt/so/saltstack/local/pillar/minions/ -type f | grep -q "_heavynode"; then
+      wait_for_enter=true
+      echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
+      echo " -> We recommend checking and adjusting the values as necessary."
+      echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+    fi
   else
     local minion_id
     minion_id=$(lookup_salt_value "id" "" "grains")
