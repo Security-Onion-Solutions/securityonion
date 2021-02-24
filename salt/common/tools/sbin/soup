@@ -196,6 +196,9 @@ playbook() {
     rm -f /opt/so/rules/elastalert/playbook/*.yaml
     so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   fi
+  if [[ "$INSTALLEDVERSION" != 2.3.30 ]]; then
+    so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+  fi
 }
 
 pillar_changes() {
@@ -379,6 +382,10 @@ unmount_update() {
   umount /tmp/soagupdate
 }
 
+update_airgap_rules() {
+  # Copy the rules over to update them for airgap.
+  rsync -av $UPDATE_DIR/agrules/* /nsm/repo/rules/
+}
 
 update_centos_repo() {
   # Update the files in the repo
@@ -587,6 +594,11 @@ fi
 echo "Making pillar changes."
 pillar_changes
 echo ""
+
+if [ $is_airgap -eq 0 ]; then
+  echo "Updating Rule Files to the Latest."
+  update_airgap_rules
+fi
 
 # Only update the repo if its airgap
 if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then

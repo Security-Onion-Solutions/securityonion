@@ -23,6 +23,15 @@ salt_minion_package:
     - hold: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
 
+set_log_levels:
+  file.append:
+    - name: /etc/salt/minion
+    - text:
+      - "log_level: info"
+      - "log_level_log_file: info"
+    - listen_in:
+      - service: salt_minion_service
+
 salt_minion_service:
   service.running:
     - name: salt-minion
