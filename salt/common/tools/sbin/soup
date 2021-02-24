@@ -404,8 +404,16 @@ up_2.3.2X_to_2.3.30() {
   # Replace any curly brace scalars with the same scalar in single quotes
   readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
   for pillar in "${minion_pillars[@]}"; do
-    sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar" 
+    sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
   done
+  # Strelka rule repo pillar addition
+  if [ $is_airgap -eq 0 ]; then
+      # Add manager as default Strelka YARA rule repo
+      sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;
+  else
+      # Add Github repo for Strelka YARA rules
+      sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
+  fi
   check_log_size_limit
 }
 
