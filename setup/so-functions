@@ -751,14 +751,18 @@ check_sos_appliance() {
 }
 
 compare_main_nic_ip() {
-	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
-		read -r -d '' message <<- EOM
-			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+	if [[ "$MNIC" =~ tun || "$MNIC" =~ wg || "$MNIC" =~ vpn]]; then
+	echo "This is a VPN"
+	else
+	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		  read -r -d '' message <<- EOM
+		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
 		EOM
-		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
-		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	  fi
 	fi
 }
 
