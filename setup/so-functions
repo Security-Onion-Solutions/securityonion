@@ -2283,28 +2283,29 @@ sensor_pillar() {
 }
 
 set_default_log_size() {
-    local percentage
+	local percentage
 
 	case $install_type in
 		STANDALONE | EVAL | HEAVYNODE)
 			percentage=50
-			;;
+		;;
 		*)
-            percentage=80
-			;;
-		esac
+			percentage=80
+		;;
+	esac
 
 	local disk_dir="/"
 	if [ -d /nsm ]; then
 		disk_dir="/nsm"
 	fi
+
 	local disk_size_1k
 	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
 
-    local ratio="1048576"
+	local ratio="1048576"
 
-    local disk_size_gb
-    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+	local disk_size_gb
+	disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
 
 	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }
