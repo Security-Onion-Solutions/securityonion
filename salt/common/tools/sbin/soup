@@ -120,6 +120,58 @@ check_sudoers() {
 	fi
 }
 
+check_log_size_limit() {
+  local num_minion_pillars
+  num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
+  
+  if [[ $num_minion_pillars -gt 1 ]]; then
+    echo "[INFO] The value of log_size_limit in the minion pillars may be incorrect."
+    echo " -> We recommend checking and adjusting the values as necessary."
+  else
+    local minion_id
+    minion_id=$(lookup_salt_value "id" "" "grains")
+
+    local minion_arr
+    IFS='_' read -ra minion_arr <<< "$minion_id"
+
+    local node_type="${minion_arr[0]}"
+    
+    local current_limit
+    current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
+    
+    local percent
+    case $node_type in
+      'standalone' | 'eval')
+        percent=50
+      ;;
+      *)
+        percent=80
+      ;;
+    esac
+
+    local disk_dir="/"
+    if [ -d /nsm ]; then
+      disk_dir="/nsm"
+    fi
+
+    local disk_size_1k
+    disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
+
+    local ratio="1048576"
+
+    local disk_size_gb
+    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+
+    local new_limit
+    new_limit=$( echo "$disk_size_gb" "$percent" | awk '{printf("%.0f", $1 * ($2/100))}')
+
+    if [[ $current_limit != "$new_limit" ]]; then
+      echo "[WARNING] The value of log_size_limit (${current_limit}) does not match the recommended value of ${new_limit}."
+      echo " -> We recommend checking and adjusting the value as necessary."
+    fi
+  fi
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
@@ -661,6 +713,8 @@ if [ "$UPGRADESALT" == "1" ]; then
 fi
 
 check_sudoers
+
+check_log_size_limit
 
 }
 
