@@ -1558,9 +1558,17 @@ manager_global() {
 		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
-		"  rules: 1"\
-		"  repos:"\
-		"    - https://github.com/Neo23x0/signature-base"\
+		"  rules: 1" >> "$global_pillar"
+		if [[ $is_airgap ]]; then
+		    printf '%s\n'\
+			    "  repos:"\
+			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
+	    else 
+		    printf '%s\n'\
+		        "  repos:"\
+			    "    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
+	    fi
+	printf '%s\n'\
 		"curator:"\
 		"  hot_warm: False"\
 		"elastic:"\
@@ -2283,28 +2291,32 @@ sensor_pillar() {
 }
 
 set_default_log_size() {
-    local percentage
+	local percentage
 
 	case $install_type in
 		STANDALONE | EVAL | HEAVYNODE)
 			percentage=50
-			;;
+		;;
 		*)
-            percentage=80
-			;;
-		esac
+			percentage=80
+		;;
+	esac
 
 	local disk_dir="/"
 	if [ -d /nsm ]; then
 		disk_dir="/nsm"
 	fi
+	if [ -d /nsm/elasticsearch ]; then
+		disk_dir="/nsm/elasticsearch"
+	fi
+	
 	local disk_size_1k
 	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
 
-    local ratio="1048576"
+	local ratio="1048576"
 
-    local disk_size_gb
-    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+	local disk_size_gb
+	disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
 
 	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }

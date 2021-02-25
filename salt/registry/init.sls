@@ -29,17 +29,6 @@ dockerregistryconf:
     - name: /opt/so/conf/docker-registry/etc/config.yml
     - source: salt://registry/etc/config.yml
 
-# Copy the registry script
-#dockerregistrybuild:
-#  file.managed:
-#    - name: /opt/so/conf/docker-registry/so-buildregistry
-#    - source: salt://registry/bin/so-buildregistry
-#    - mode: 755
-
-#dockerexpandregistry:
-# cmd.run:
-#   - name: /opt/so/conf/docker-registry/so-buildregistry
-
 # Install the registry container
 so-dockerregistry:
   docker_container.running:

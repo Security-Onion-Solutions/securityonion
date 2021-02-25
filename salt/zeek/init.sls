@@ -73,6 +73,14 @@ zeekpolicysync:
     - group: 939
     - template: jinja
 
+# Ensure the zeek spool tree (and state.db) ownership is correct
+zeekspoolownership:
+  file.directory:
+    - name: /nsm/zeek/spool
+    - user: 937
+    - recurse:
+      - user
+
 # Sync Intel
 zeekintelloadsync:
   file.managed:
