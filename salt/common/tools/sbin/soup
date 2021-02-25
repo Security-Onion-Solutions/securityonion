@@ -121,17 +121,13 @@ check_sudoers() {
 }
 
 check_log_size_limit() {
-  local wait_for_enter=false
 
   local num_minion_pillars
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
   
   if [[ $num_minion_pillars -gt 1 ]]; then
     if find /opt/so/saltstack/local/pillar/minions/ -type f | grep -q "_heavynode"; then
-      wait_for_enter=true
-      echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
-      echo " -> We recommend checking and adjusting the values as necessary."
-      echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+      lsl_msg='distributed'
     fi
   else
     local minion_id
@@ -172,16 +168,8 @@ check_log_size_limit() {
     new_limit=$( echo "$disk_size_gb" "$percent" | awk '{printf("%.0f", $1 * ($2/100))}')
 
     if [[ $current_limit != "$new_limit" ]]; then
-    wait_for_enter=true
-      echo "[WARNING] The value of log_size_limit (${current_limit}) does not match the recommended value of ${new_limit}."
-      echo " -> We recommend checking and adjusting the value as necessary."
-      echo " -> File: /opt/so/saltstack/local/pillar/minions/${minion_id}.sls"
-    fi
-
-    if [[ $wait_for_enter == true ]]; then
-      echo ""
-      read -n 1 -s -r -p "Press any key to continue..."
-      echo "" # Since read doesn't print a newline, print one for it
+      lsl_msg='single-node'
+      lsl_details=( "$current_limit" "$new_limit" "$minion_id" )
     fi
   fi
 }
@@ -742,7 +730,21 @@ fi
 
 check_sudoers
 
-
+if [[ -n $lsl_msg ]]; then
+  case $lsl_msg in
+    'distributed')
+      echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
+      echo " -> We recommend checking and adjusting the values as necessary."
+      echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+    ;;
+    'single-node')
+      # We can assume the lsl_details array has been set if lsl_msg has this value
+      echo "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
+      echo " -> We recommend checking and adjusting the value as necessary."
+      echo " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
+    ;;
+  esac
+fi
 
 }
 
