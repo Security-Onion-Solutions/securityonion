@@ -1012,33 +1012,38 @@ disable_ipv6() {
 		sysctl -w net.ipv6.conf.all.disable_ipv6=1
 		sysctl -w net.ipv6.conf.default.disable_ipv6=1
 	}  >> "$setup_log" 2>&1
+        {
+        echo "net.ipv6.conf.all.disable_ipv6 = 1"
+        echo "net.ipv6.conf.default.disable_ipv6 = 1"
+        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+        } >> /etc/sysctl.conf
 }
 
-disable_misc_network_features() {
-	filter_unused_nics
-	if [ ${#filtered_nics[@]} -ne 0 ]; then
-		for unused_nic in "${filtered_nics[@]}"; do
-			if [ -n "$unused_nic" ]; then
-				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
-
-				# Disable DHCPv4/v6 and autoconnect
-				nmcli con mod "$unused_nic" \
-					ipv4.method disabled \
-					ipv6.method ignore \
-					connection.autoconnect "no" >> "$setup_log" 2>&1
-
-				# Flush any existing IPs
-				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
-			fi
-		done
-	fi
-	# Disable IPv6
-	{ 
-		echo "net.ipv6.conf.all.disable_ipv6 = 1"
-		echo "net.ipv6.conf.default.disable_ipv6 = 1"
-		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-	} >> /etc/sysctl.conf
-}
+#disable_misc_network_features() {
+#	filter_unused_nics
+#	if [ ${#filtered_nics[@]} -ne 0 ]; then
+#		for unused_nic in "${filtered_nics[@]}"; do
+#			if [ -n "$unused_nic" ]; then
+#				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
+#
+#				# Disable DHCPv4/v6 and autoconnect
+#				nmcli con mod "$unused_nic" \
+#					ipv4.method disabled \
+#					ipv6.method ignore \
+#					connection.autoconnect "no" >> "$setup_log" 2>&1
+#
+#				# Flush any existing IPs
+#				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+#			fi
+#		done
+#	fi
+#	# Disable IPv6
+#	{ 
+#		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+#	} >> /etc/sysctl.conf
+#}
 
 docker_install() {
 
@@ -1719,17 +1724,11 @@ network_setup() {
 		echo "... Verifying all network devices are managed by Network Manager";
 		check_network_manager_conf;
 
-		#echo "... Disabling unused NICs";
-		#disable_misc_network_features;
-
-		echo "... Setting ONBOOT for management interface";
-		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
-
 		echo "... Copying 99-so-checksum-offload-disable";
 		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
-		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
 }
 
