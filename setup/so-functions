@@ -160,10 +160,10 @@ check_network_manager_conf() {
 		} >> "$setup_log" 2>&1
 	fi
 	
-	if test -f "$nmconf"; then
-		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
-		systemctl restart NetworkManager >> "$setup_log" 2>&1
-	fi
+	#if test -f "$nmconf"; then
+#		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
+#		systemctl restart NetworkManager >> "$setup_log" 2>&1
+#	fi
 
 	if [[ ! -d "$preupdir" ]]; then
 		mkdir "$preupdir" >> "$setup_log" 2>&1
@@ -751,15 +751,22 @@ check_sos_appliance() {
 }
 
 compare_main_nic_ip() {
-	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
-		read -r -d '' message <<- EOM
-			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
+	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		  read -r -d '' message <<- EOM
+		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
 		EOM
-		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
-		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	  fi
+	else
+		# Setup uses MAINIP, but since we ignore the equality condition when using a VPN 
+		# just set the variable to the IP of the VPN interface
+		MAINIP=$MNIC_IP
 	fi
+	
 }
 
 compare_versions() {
@@ -1005,33 +1012,38 @@ disable_ipv6() {
 		sysctl -w net.ipv6.conf.all.disable_ipv6=1
 		sysctl -w net.ipv6.conf.default.disable_ipv6=1
 	}  >> "$setup_log" 2>&1
+        {
+        echo "net.ipv6.conf.all.disable_ipv6 = 1"
+        echo "net.ipv6.conf.default.disable_ipv6 = 1"
+        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+        } >> /etc/sysctl.conf
 }
 
-disable_misc_network_features() {
-	filter_unused_nics
-	if [ ${#filtered_nics[@]} -ne 0 ]; then
-		for unused_nic in "${filtered_nics[@]}"; do
-			if [ -n "$unused_nic" ]; then
-				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
-
-				# Disable DHCPv4/v6 and autoconnect
-				nmcli con mod "$unused_nic" \
-					ipv4.method disabled \
-					ipv6.method ignore \
-					connection.autoconnect "no" >> "$setup_log" 2>&1
-
-				# Flush any existing IPs
-				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
-			fi
-		done
-	fi
-	# Disable IPv6
-	{ 
-		echo "net.ipv6.conf.all.disable_ipv6 = 1"
-		echo "net.ipv6.conf.default.disable_ipv6 = 1"
-		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-	} >> /etc/sysctl.conf
-}
+#disable_misc_network_features() {
+#	filter_unused_nics
+#	if [ ${#filtered_nics[@]} -ne 0 ]; then
+#		for unused_nic in "${filtered_nics[@]}"; do
+#			if [ -n "$unused_nic" ]; then
+#				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
+#
+#				# Disable DHCPv4/v6 and autoconnect
+#				nmcli con mod "$unused_nic" \
+#					ipv4.method disabled \
+#					ipv6.method ignore \
+#					connection.autoconnect "no" >> "$setup_log" 2>&1
+#
+#				# Flush any existing IPs
+#				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+#			fi
+#		done
+#	fi
+#	# Disable IPv6
+#	{ 
+#		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+#	} >> /etc/sysctl.conf
+#}
 
 docker_install() {
 
@@ -1223,7 +1235,7 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|tun|wg|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
@@ -1720,17 +1732,11 @@ network_setup() {
 		echo "... Verifying all network devices are managed by Network Manager";
 		check_network_manager_conf;
 
-		echo "... Disabling unused NICs";
-		disable_misc_network_features;
-
-		echo "... Setting ONBOOT for management interface";
-		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
-
 		echo "... Copying 99-so-checksum-offload-disable";
 		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
-		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
 }
 
@@ -2332,8 +2338,6 @@ set_hostname() {
 }
 
 set_initial_firewall_policy() {
-
-  set_main_ip
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
   if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
