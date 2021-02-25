@@ -86,8 +86,80 @@ add_interface_bond0() {
 	fi
 }
 
+check_container() {
+	docker ps | grep "$1:" > /dev/null 2>&1
+	return $?
+}
+
+check_password() {
+	local password=$1
+	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+	return $?
+}
+
+fail() {
+	msg=$1
+	echo "ERROR: $msg"
+	echo "Exiting."
+	exit 1
+}
+
+get_random_value() {
+	length=${1:-20}
+	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
 header() {
 	printf '%s\n' "" "$banner" " $*" "$banner" 
+}
+
+init_monitor() {
+	MONITORNIC=$1
+	
+	if [[ $MONITORNIC == "bond0" ]]; then 
+	  BIFACES=$(lookup_bond_interfaces)
+	else
+	  BIFACES=$MONITORNIC
+	fi
+
+	for DEVICE_IFACE in $BIFACES; do
+	  for i in rx tx sg tso ufo gso gro lro; do
+	    ethtool -K "$DEVICE_IFACE" "$i" off;
+  	  done
+	  ip link set dev "$DEVICE_IFACE" arp off multicast off allmulticast off promisc on
+	done
+}
+
+is_manager_node() {
+	# Check to see if this is a manager node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'manager' ] && return 0
+	[ $role == 'managersearch' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_sensor_node() {
+	# Check to see if this is a sensor (forward) node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'sensor' ] && return 0
+	[ $role == 'heavynode' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_single_node_grid() {
+	role=$(lookup_role)
+	[ $role == 'eval' ] && return 0
+	[ $role == 'standalone' ] && return 0
+	[ $role == 'import' ] && return 0
+	return 1
+}
+
+lookup_bond_interfaces() {
+	cat /proc/net/bonding/bond0 | grep "Slave Interface:" | sed -e "s/Slave Interface: //g"
 }
 
 lookup_salt_value() {
@@ -129,15 +201,41 @@ lookup_role() {
 	echo ${pieces[1]}
 }
 
-check_container() {
-	docker ps | grep "$1:" > /dev/null 2>&1
-	return $?
+require_manager() {
+	if is_manager_node; then
+		echo "This is a manager, We can proceed."
+	else
+		echo "Please run this command on the manager; the manager controls the grid."
+		exit 1
+	fi
 }
 
-check_password() {
-	local password=$1
-	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
-	return $?
+retry() {
+	maxAttempts=$1
+	sleepDelay=$2
+	cmd=$3
+	expectedOutput=$4
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do			
+		attempt=$((attempt+1))
+		echo "Executing command with retry support: $cmd"
+		output=$(eval "$cmd")
+		exitcode=$?
+		echo "Results: $output ($exitcode)"
+		if [ -n "$expectedOutput" ]; then
+			if [[ "$output" =~ "$expectedOutput" ]]; then
+				return $exitCode
+			else
+				echo "Expected '$expectedOutput' but got '$output'"
+			fi
+		elif [[ $exitcode -eq 0 ]]; then
+			return $exitCode
+		fi
+		echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+		sleep $sleepDelay
+	done
+	echo "Command continues to fail; giving up."
+	return 1
 }
 
 set_os() {
@@ -169,83 +267,6 @@ set_version() {
 			VERSION="$NEWVERSION"
 		fi
 	fi
-}
-
-require_manager() {
-	if is_manager_node; then
-		echo "This is a manager, We can proceed."
-	else
-		echo "Please run this command on the manager; the manager controls the grid."
-		exit 1
-	fi
-}
-
-is_manager_node() {
-	# Check to see if this is a manager node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'manager' ] && return 0
-	[ $role == 'managersearch' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
-}
-
-is_sensor_node() {
-	# Check to see if this is a sensor (forward) node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'sensor' ] && return 0
-	[ $role == 'heavynode' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
-}
-
-is_single_node_grid() {
-	role=$(lookup_role)
-	[ $role == 'eval' ] && return 0
-	[ $role == 'standalone' ] && return 0
-	[ $role == 'import' ] && return 0
-	return 1
-}
-
-fail() {
-	msg=$1
-	echo "ERROR: $msg"
-	echo "Exiting."
-	exit 1
-}
-
-get_random_value() {
-	length=${1:-20}
-	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
-}
-
-retry() {
-	maxAttempts=$1
-	sleepDelay=$2
-	cmd=$3
-	expectedOutput=$4
-	attempt=0
-	while [[ $attempt -lt $maxAttempts ]]; do			
-		attempt=$((attempt+1))
-		echo "Executing command with retry support: $cmd"
-		output=$(eval "$cmd")
-		exitcode=$?
-		echo "Results: $output ($exitcode)"
-		if [ -n "$expectedOutput" ]; then
-			if [[ "$output" =~ "$expectedOutput" ]]; then
-				return $exitCode
-			else
-				echo "Expected '$expectedOutput' but got '$output'"
-			fi
-		elif [[ $exitcode -eq 0 ]]; then
-			return $exitCode
-		fi
-		echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
-		sleep $sleepDelay
-	done
-	echo "Command continues to fail; giving up."
-	return 1
 }
 
 valid_cidr() {
