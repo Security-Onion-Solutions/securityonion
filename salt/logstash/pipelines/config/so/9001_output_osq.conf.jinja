@@ -1,0 +1,41 @@
+{%- if grains['role'] == 'so-eval' -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
+{%- else %}
+{%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+
+## TO DO - Add this to Logstash Pipeline Pillar - Search
+
+filter {
+  if [type] =~ "osq" {
+
+ split {
+   field => "rows"
+  }
+ mutate {
+   rename => { 
+      "[rows][cmdline]" => "[process][commandline]"
+      "[rows][name]" => "[process][name]" 
+    }
+    }
+ }
+}
+
+
+output {
+  if [type] =~ "osq" {
+    elasticsearch {
+      pipeline => "common" 
+      hosts => "{{ ES }}"
+      index => "so-osquery"
+      template_name => "so-osquery"
+      template => "/templates/so-osquery-template.json"
+      template_overwrite => true
+      {%- if grains['role'] in ['so-node','so-heavynode'] %}
+      ssl => true
+      ssl_certificate_verification => false
+      {%- endif %}
+    }
+  }
+}
