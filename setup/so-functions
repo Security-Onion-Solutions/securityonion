@@ -754,19 +754,23 @@ compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
 		  read -r -d '' message <<- EOM
-		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
-			This is not a supported configuration, please remediate and rerun setup.
-		EOM
-		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
-		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
-	  fi
+			This has been known to cause installs to fail in some scenarios.
+			
+			Please select whether to continue the install or exit setup to remediate any potential issues.
+			EOM
+			whiptail --title "Security Onion Setup" \
+				--yesno "$message" 10 75 \
+				--yes-button "Continue" --no-button "Exit" --defaultno
+
+			kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+			fi
 	else
 		# Setup uses MAINIP, but since we ignore the equality condition when using a VPN 
 		# just set the variable to the IP of the VPN interface
 		MAINIP=$MNIC_IP
 	fi
-	
 }
 
 compare_versions() {
