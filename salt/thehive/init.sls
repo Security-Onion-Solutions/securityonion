@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'thehive' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -123,7 +121,7 @@ cortexscript:
     - source: salt://thehive/scripts/cortex_init
     - cwd: /opt/so
     - template: jinja
-    - hide_output: True
+    - hide_output: False
 
 so-thehive:
   docker_container.running:
@@ -148,12 +146,12 @@ thehivescript:
     - source: salt://thehive/scripts/hive_init
     - cwd: /opt/so
     - template: jinja
-    - hide_output: True
+    - hide_output: False
 
 {% else %}
 
-thehive_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: thehive_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

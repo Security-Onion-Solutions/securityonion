@@ -1,9 +1,10 @@
 #!/bin/bash
 # {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-# {%- set URLBASE = salt['pillar.get']('global:url_base', '') %}
 # {%- set THEHIVEUSER = salt['pillar.get']('global:hiveuser', 'hiveadmin') %}
 # {%- set THEHIVEPASSWORD = salt['pillar.get']('global:hivepassword', 'hivechangeme') %}
 # {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
+
+. /usr/sbin/so-common
 
 thehive_clean(){
     sed -i '/^  hiveuser:/d' /opt/so/saltstack/local/pillar/global.sls
@@ -11,47 +12,30 @@ thehive_clean(){
 }
 
 thehive_init(){
-    sleep 120
-    THEHIVE_URL="{{URLBASE}}/thehive"
-    THEHIVE_API_URL="$THEHIVE_URL/api"
+    THEHIVE_URL="http://{{MANAGERIP}}:9000/thehive/"
+    THEHIVE_API_URL="${THEHIVE_URL}api"
     THEHIVE_USER="{{THEHIVEUSER}}"
     THEHIVE_PASSWORD="{{THEHIVEPASSWORD}}"
     THEHIVE_KEY="{{THEHIVEKEY}}"
     SOCTOPUS_CONFIG="/opt/so/saltstack/salt/soctopus/files/SOCtopus.conf"
 
     echo -n "Waiting for TheHive..."
-    COUNT=0
-    THEHIVE_CONNECTED="no"
-    while [[ "$COUNT" -le 240 ]]; do
-        curl --output /dev/null --silent --head --fail -k "https://$THEHIVE_URL"
-            if [ $? -eq 0 ]; then
-                THEHIVE_CONNECTED="yes"
-                echo "connected!"
-                break
-            else
-                ((COUNT+=1))
-                sleep 1
-                echo -n "."
-            fi
-    done
-    
-    if [ "$THEHIVE_CONNECTED" == "yes" ]; then
-    
+    if wait_for_web_response $THEHIVE_URL "TheHive"; then
         # Migrate DB
-        curl -v -k -XPOST -L "https://$THEHIVE_API_URL/maintenance/migrate"
+        curl -sk -XPOST -L "$THEHIVE_API_URL/maintenance/migrate"
 
         # Create intial TheHive user
-        curl -v -k -L "https://$THEHIVE_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
+        curl -sk -L "$THEHIVE_API_URL/user" -H "Content-Type: application/json" -d "{\"login\" : \"$THEHIVE_USER\",\"name\" : \"$THEHIVE_USER\",\"roles\" : [\"read\",\"alert\",\"write\",\"admin\"],\"preferences\" : \"{}\",\"password\" : \"$THEHIVE_PASSWORD\", \"key\": \"$THEHIVE_KEY\"}"
    
         # Pre-load custom fields
         #
         # reputation
-        curl -v -k -L "https://$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
-
+        curl -sk -L "$THEHIVE_API_URL/list/custom_fields" -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -d "{\"value\":{\"name\": \"reputation\", \"reference\": \"reputation\", \"description\": \"This field provides an overall reputation status for an address/domain.\", \"type\": \"string\", \"options\": []}}"
    
         touch /opt/so/state/thehive.txt
     else
         echo "We experienced an issue connecting to TheHive!"
+        exit 1
     fi
 }
 
@@ -59,15 +43,11 @@ if [ -f /opt/so/state/thehive.txt ]; then
     thehive_clean
     exit 0
 else
-    rm -f garbage_file
-    while ! wget -O garbage_file {{MANAGERIP}}:9400 2>/dev/null
-    do
-      echo "Waiting for Elasticsearch..."
-      rm -f garbage_file
-      sleep 1
-    done
-    rm -f garbage_file
-    sleep 5
-    thehive_init
-    thehive_clean
+    if wait_for_web_response http://{{MANAGERIP}}:9400/_cluster/health '"status":"green"'; then
+        thehive_init
+        thehive_clean
+    else
+        echo "TheHive Elasticsearch server is not ready; unable to proceed with TheHive init."
+        exit 1
+    fi
 fi

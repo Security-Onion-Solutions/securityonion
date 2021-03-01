@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'ca' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
@@ -44,6 +42,9 @@ pki_private_key:
     - replace: False
     - require:
       - file: /etc/pki
+    - timeout: 30
+    - retry: 5
+    - interval: 30
 
 x509_pem_entries:
   module.run:
@@ -60,8 +61,8 @@ cakeyperms:
 
 {% else %}
 
-ca_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: ca_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

@@ -23,7 +23,7 @@ if [ "$uid" -ne 0 ]; then
 fi
 
 # Save the original argument array since we modify it
-readarray -t original_args <<< "$@"
+original_args=("$@")
 
 cd "$(dirname "$0")" || exit 255
 
@@ -67,7 +67,11 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-if ! [ -f /root/install_opt ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
+if [[ "$setup_type" == 'iso' ]]; then
+  is_iso=true
+fi
+
+if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
 	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 fi
 
@@ -81,7 +85,7 @@ fi
 
 parse_install_username
 
-if ! [ -f /root/install_opt ]; then
+if ! [ -f $install_opt_file ]; then
 	# Begin Installation pre-processing
 	title "Initializing Setup"
 	info "Installing as the $INSTALLUSERNAME user"
@@ -99,6 +103,8 @@ function progress() {
 		cat >> $setup_log 2>&1
 	fi		
 }
+
+detect_os 
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
@@ -120,6 +126,15 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	done
 	echo "Network is up on $MNIC" >> $setup_log 2>&1
+
+	if [[ ! $is_iso ]]; then
+		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
+		if [ "$OS" == ubuntu ]; then
+			retry 50 10 "apt-get -y install sshpass" >> $setup_log 2>&1 || exit 1
+		else
+			yum -y install sshpass >> $setup_log 2>&1
+		fi
+	fi
 fi
 
 case "$setup_type" in
@@ -132,11 +147,14 @@ case "$setup_type" in
 		;;
 esac
 
+#set ssh commands that will be used based on if this is an automated test install or not
+set_ssh_cmds $automated
+
 # Allow execution of SO tools during setup
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
-detect_os && detect_cloud
+installer_prereq_packages && detect_cloud
 set_network_dev_status_list
 
 if [ "$OS" == ubuntu ]; then
@@ -164,17 +182,31 @@ if [ "$automated" == no ]; then
 	fi
 fi
 
-if ! [ -f /root/install_opt ]; then
+if ! [[ -f $install_opt_file ]]; then
 	if (whiptail_you_sure); then
 		true
 	else
 		echo "User cancelled setup." | tee -a "$setup_log"
 		whiptail_cancel
 	fi
-
-	whiptail_install_type
+	if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
+		whiptail_first_menu_iso
+		if [[ $option == "CONFIGURENETWORK" ]]; then
+			network_init_whiptail
+			whiptail_management_interface_setup
+			network_init
+			printf '%s\n' \
+				"MNIC=$MNIC" \
+				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			whiptail_net_setup_complete
+		else
+			whiptail_install_type
+		fi
+	else
+		whiptail_install_type
+	fi
 else
-	source /root/install_opt
+	source $install_opt_file
 fi
 
 if [ "$install_type" = 'EVAL' ]; then
@@ -217,11 +249,6 @@ elif [ "$install_type" = 'ANALYST' ]; then
 	is_analyst=true
 fi
 
-# Say yes to the dress if its an ISO install
-if [[ "$setup_type" == 'iso' ]]; then
-  is_iso=true
-fi
-
 # Check if this is an airgap install
 if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	whiptail_airgap
@@ -230,7 +257,7 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
-if ! [ -f /root/install_opt ]; then
+if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -243,43 +270,26 @@ if ! [ -f /root/install_opt ]; then
 		check_requirements "import"
 	fi
 
-	case "$setup_type" in
-		'iso')
-			whiptail_set_hostname
-			whiptail_management_nic
-			whiptail_dhcp_or_static
+	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
-			if [ "$address_type" != 'DHCP' ]; then
-				whiptail_management_interface_ip
-				whiptail_management_interface_mask
-				whiptail_management_interface_gateway
-				whiptail_management_interface_dns
-				whiptail_management_interface_dns_search
-			fi
-			;;
-		'network')
-			whiptail_network_notice
-			whiptail_dhcp_warn
-			whiptail_set_hostname
-			whiptail_management_nic
-			;;
-	esac
-
-	if [[ $is_minion ]]; then
-		whiptail_management_server
+	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init_whiptail
+	else
+		source "$net_init_file"
 	fi
 
-	if [[ $is_minion || $is_iso ]]; then
+	if [[ $is_minion ]]; then
+		collect_mngr_hostname
+	fi
+
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
 		whiptail_management_interface_setup
 	fi
 
-	# Init networking so rest of install works
-	disable_ipv6
-	set_hostname
-	if [[ "$setup_type" == 'iso' ]]; then
-		set_management_interface
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init
 	fi
-
+	
 	if [[ -n "$TURBO" ]]; then
 		use_turbo_proxy
 	fi
@@ -289,7 +299,7 @@ if ! [ -f /root/install_opt ]; then
 	fi
 
 	if [[ $is_minion ]]; then
-		[ "$automated" == no ] && copy_ssh_key >> $setup_log 2>&1
+		copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]] && ! (compare_versions); then
@@ -298,8 +308,8 @@ if ! [ -f /root/install_opt ]; then
 			"install_type=$install_type" \
 			"MNIC=$MNIC" \
 			"HOSTNAME=$HOSTNAME" \
-			"MSRV=$MSRV"\
-			"MSRVIP=$MSRVIP" > /root/install_opt
+			"MSRV=$MSRV" \
+			"MSRVIP=$MSRVIP" > "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
@@ -310,7 +320,7 @@ if ! [ -f /root/install_opt ]; then
 	fi
 
 else
-	rm -rf /root/install_opt >> "$setup_log" 2>&1
+	rm -rf $install_opt_file >> "$setup_log" 2>&1
 fi
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
@@ -326,50 +336,59 @@ minion_type=$(get_minion_type)
 set_default_log_size >> $setup_log 2>&1
 
 if [[ $is_helix ]]; then
-	RULESETUP=ETOPEN
-	NSMSETUP=BASIC
-	HNSENSOR=inherit
-	MANAGERUPDATES=0
+    RULESETUP=${RULESETUP:-ETOPEN}
+	NSMSETUP=${NSMSETUP:-BASIC}
+	HNSENSOR=${HNSENSOR:-inherit}
+	MANAGERUPDATES=${MANAGERUPDATES:-0}
 fi
 
 if [[ $is_helix || ( $is_manager && $is_node ) ]]; then
-	RULESETUP=ETOPEN
-	NSMSETUP=BASIC
+    RULESETUP=${RULESETUP:-ETOPEN}
+	NSMSETUP=${NSMSETUP:-BASIC}
 fi
 
 if [[ $is_manager && $is_node ]]; then
-	LSPIPELINEWORKERS=1
-	LSPIPELINEBATCH=125
-	LSINPUTTHREADS=1
-	LSPIPELINEBATCH=125
-	NIDS=Suricata
-	ZEEKVERSION=ZEEK
+	LSPIPELINEWORKERS=${LSPIPELINEWORKERS:-1}
+	LSPIPELINEBATCH=${LSPIPELINEBATCH:-125}
+	LSINPUTTHREADS=${LSINPUTTHREADS:-1}
+	LSPIPELINEWORKERS=${LSPIPELINEBATCH:-125}
+	NIDS=${NIDS:-Suricata}
+	ZEEKVERSION=${ZEEKVERSION:-ZEEK}
 fi
 
 if [[ $is_node ]]; then
-	CURCLOSEDAYS=30
+	CURCLOSEDAYS=${CURCLOSEDAYS:-30}
 fi
 
 if [[ $is_import ]]; then
-	PATCHSCHEDULENAME=auto
-	MTU=1500
-	RULESETUP=ETOPEN
-	NSMSETUP=BASIC
-	HNSENSOR=inherit
-	MANAGERUPDATES=0
-	MANAGERADV=BASIC
-	INTERFACE=bond0
-	ZEEKVERSION=ZEEK
-	NIDS=Suricata
-	RULESETUP=ETOPEN
-	GRAFANA=0
-	OSQUERY=0
-	WAZUH=0
-	THEHIVE=0
-	PLAYBOOK=0
+	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-auto}
+	MTU=${MTU:-1500}
+    RULESETUP=${RULESETUP:-ETOPEN}
+	NSMSETUP=${NSMSETUP:-BASIC}
+	HNSENSOR=${HNSENSOR:-inherit}
+	MANAGERUPDATES=${MANAGERUPDATES:-0}
+	MANAGERADV=${MANAGERADV:-BASIC}
+	INTERFACE=${INTERFACE:-bond0}
+	ZEEKVERSION=${ZEEKVERSION:-ZEEK}
+	NIDS=${NIDS:-Suricata}
+	RULESETUP=${RULESETUP:-ETOPEN}
+	GRAFANA=${GRAFANA:-0}
+	OSQUERY=${OSQUERY:-0}
+	WAZUH=${WAZUH:-0}
+	THEHIVE=${THEHIVE:-0}
+	PLAYBOOK=${PLAYBOOK:-0}
+fi
+
+if [[ $is_airgap ]]; then
+	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-manual}
+	MANAGERUPDATES=${MANAGERUPDATES:-0} 
 fi
 
 # Start user prompts
+
+if [[ $is_helix ]]; then
+	collect_helix_key
+fi
 
 if [[ $is_helix || $is_sensor ]]; then
 	whiptail_sensor_nics
@@ -379,11 +398,13 @@ if [[ $is_helix || $is_sensor || $is_import ]]; then
 	calculate_useable_cores
 fi
 
-if [[ ! $is_import ]]; then
-	whiptail_patch_schedule
+if [[ ! $is_airgap && ! $is_import ]]; then
+	collect_patch_schedule
 fi
 
-whiptail_homenet_manager
+if [[ $is_helix ||  $is_manager || $is_import ]]; then
+	collect_homenet_mngr
+fi
 
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
 	set_base_heapsizes
@@ -393,21 +414,21 @@ if [[ $is_manager && ! $is_eval ]]; then
 	whiptail_manager_adv
 	if [ "$MANAGERADV" = 'ADVANCED' ]; then
 	  if [ "$install_type" = 'MANAGER' ] || [ "$install_type" = 'MANAGERSEARCH' ]; then
-	  	whiptail_manager_adv_escluster
+	  	collect_es_cluster_name
 	  fi
 	fi
-	whiptail_zeek_version
+
+	whiptail_metadata_tool
+	
+	[[ $MANAGERADV == "ADVANCED" ]] && [[ $ZEEKVERSION == "ZEEK" ]] && whiptail_manager_adv_service_zeeklogs
+
 	# Don't run this function for now since Snort is not yet supported
 	# whiptail_nids
 	NIDS=Suricata
 	whiptail_rule_setup
 
 	if [ "$RULESETUP" != 'ETOPEN' ]; then
-		whiptail_oinkcode
-	fi
-
-	if [ "$MANAGERADV" = 'ADVANCED' ] && [ "$ZEEKVERSION" != 'SURICATA' ]; then
-		whiptail_manager_adv_service_zeeklogs
+		collect_oinkcode
 	fi
 fi
 
@@ -422,7 +443,7 @@ if [[ $is_manager ]]; then
 		info "Disabling Strelka rules: STRELKA='$STRELKA'"
 	fi
 
-	whiptail_dockernet_check
+	collect_dockernet
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -430,7 +451,7 @@ if [[ $is_manager || $is_import ]]; then
 	get_redirect
 fi
 
-if [[ $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ]]; then
+if [[ ! $is_airgap && ( $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ) ]]; then
 	whiptail_manager_updates
 	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
 		whiptail_manager_updates_warning
@@ -442,28 +463,45 @@ if [[ $is_distmanager ]]; then
 fi
 
 if [[ $is_sensor && ! $is_eval ]]; then
-	whiptail_homenet_sensor
+	[[ $is_manager ]] || collect_homenet_snsr
 	whiptail_sensor_config
 	if [ $NSMSETUP == 'ADVANCED' ]; then
-		whiptail_zeek_pins
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && whiptail_zeek_pins
+		else
+			whiptail_zeek_pins
+		fi
+		
 		whiptail_suricata_pins
-		whiptail_bond_nics_mtu
+		collect_mtu
 	else
-		whiptail_basic_zeek
-		whiptail_basic_suri
+		if [[ $is_node && $is_sensor && ! $is_eval ]]; then
+			PROCS=$(( lb_procs / 2 ))
+			if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		else
+			PROCS=$lb_procs
+		fi
+
+		if [[ $is_manager ]]; then
+			[[ $ZEEKVERSION == "ZEEK" ]] && collect_zeek
+		else
+			collect_zeek
+		fi
+
+		collect_suri
 	fi
 fi
 
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
-		whiptail_node_es_heap
-		whiptail_node_ls_heap
-		whiptail_node_ls_pipeline_worker
-		whiptail_node_ls_pipline_batchsize
-		whiptail_node_ls_input_threads
-		whiptail_cur_close_days
-		whiptail_log_size_limit
+		collect_node_es_heap
+		collect_node_ls_heap
+		collect_node_ls_pipeline_worker_count
+		collect_node_ls_pipeline_batch_size
+		collect_node_ls_input
+		collect_cur_close_days
+		collect_es_space_limit
 	else
 		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
@@ -482,7 +520,7 @@ else
 	FLEETNODEPASSWD1=$WEBPASSWD1
 fi
 
-if [[ $is_manager || $is_import ]]; then whiptail_so_allow; fi
+if [[ $is_manager || $is_import ]]; then collect_so_allow; fi
 
 whiptail_make_changes
 
@@ -547,7 +585,7 @@ set_redirect >> $setup_log 2>&1
 		set_updates >> $setup_log 2>&1
 	fi
 
-	if [[ $is_manager && $is_airgap ]]; then
+	if [[ ( $is_manager || $is_import ) && $is_airgap ]]; then
 		info "Creating airgap repo"
 		create_repo >> $setup_log 2>&1
 		airgap_rules >> $setup_log 2>&1
@@ -561,17 +599,18 @@ set_redirect >> $setup_log 2>&1
 	set_progress_str 2 'Updating packages'
 	update_packages >> $setup_log 2>&1
 
-	if [[ $is_sensor || $is_helix ]]; then
-		set_progress_str 3 'Configuring sensor interface'
-		configure_network_sensor >> $setup_log 2>&1
-	fi
-
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
-		set_progress_str 4 'Generating sensor pillar'
+		set_progress_str 3 'Generating sensor pillar'
+		generate_sensor_vars
 		sensor_pillar >> $setup_log 2>&1
 		if [[ $is_sensor || $is_helix ]]; then
 			steno_pillar >> $setup_log
 		fi
+	fi
+
+	if [[ $is_sensor || $is_helix ]]; then
+		set_progress_str 4 'Configuring sensor interface'
+		configure_network_sensor >> $setup_log 2>&1
 	fi
 
 	set_progress_str 5 'Installing Salt and dependencies'
@@ -585,6 +624,9 @@ set_redirect >> $setup_log 2>&1
 
 	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
+	check_sos_appliance >> $setup_log 2>&1
+
+	update_sudoers_for_testing >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 9 'Configuring Salt master'
@@ -628,12 +670,12 @@ set_redirect >> $setup_log 2>&1
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
-		accept_salt_key_remote >> $setup_log 2>&1
+		retry 20 10	accept_salt_key_remote "going to be accepted" >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager || $is_import || $is_helix ]]; then
 		set_progress_str 20 'Accepting Salt key'
-		salt-key -ya "$MINION_ID" >> $setup_log 2>&1
+		retry 20 10 "salt-key -ya $MINION_ID" "going to be accepted" >> $setup_log 2>&1
 	fi
 
 	set_progress_str 21 'Copying minion pillars to manager'
@@ -666,30 +708,31 @@ set_redirect >> $setup_log 2>&1
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
 		salt-call state.apply -l info manager >> $setup_log 2>&1
-
-		set_progress_str 61 "$(print_salt_state_apply 'idstools')"
-		create_local_nids_rules >> $setup_log 2>&1
-		salt-call state.apply -l info idstools >> $setup_log 2>&1
-
-		set_progress_str 61 "$(print_salt_state_apply 'suricata.manager')"
-		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
-
 	fi
 
-	set_progress_str 62 "$(print_salt_state_apply 'firewall')"
+	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
 	if [ $OS = 'centos' ]; then
-		set_progress_str 63 'Installing Yum utilities'
+		set_progress_str 61 'Installing Yum utilities'
 		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
 	fi
 
-	set_progress_str 63 "$(print_salt_state_apply 'common')"
+	set_progress_str 62 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
 	if [[ ! $is_helix ]]; then
-		set_progress_str 64 "$(print_salt_state_apply 'nginx')"
+		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
+	fi
+
+	if [[ $is_manager || $is_helix || $is_import ]]; then
+		set_progress_str 63 "$(print_salt_state_apply 'idstools')"
+		create_local_nids_rules >> $setup_log 2>&1
+		salt-call state.apply -l info idstools >> $setup_log 2>&1
+
+		set_progress_str 63 "$(print_salt_state_apply 'suricata.manager')"
+		salt-call state.apply -l info suricata.manager >> $setup_log 2>&1
 	fi
 
 	if [[ $is_manager || $is_node || $is_import || $is_helix ]]; then
@@ -706,7 +749,7 @@ set_redirect >> $setup_log 2>&1
 		set_progress_str 66 "$(print_salt_state_apply 'suricata')"
 		salt-call state.apply -l info suricata >> $setup_log 2>&1
 
-		if [[ $ZEEKVERSION == 'ZEEK' ]]; then
+		if [[ $(lookup_pillar "mdengine") == 'ZEEK' ]]; then
 			set_progress_str 67 "$(print_salt_state_apply 'zeek')"
 			salt-call state.apply -l info zeek >> $setup_log 2>&1
 		fi
@@ -844,6 +887,9 @@ else
 	{
 		export percentage=95 # set to last percentage used in previous subshell
 		if [[ -n $ALLOW_ROLE && -n $ALLOW_CIDR ]]; then 
+			set_progress_str 96 "Stopping SOC prior to adjusting firewall rules"
+			so-soc-stop # Stop SOC so it doesn't accept external requests prior to the reboot
+			
 			set_progress_str 97 "Running so-allow -${ALLOW_ROLE} for ${ALLOW_CIDR}"
 			IP=$ALLOW_CIDR so-allow -$ALLOW_ROLE >> $setup_log 2>&1
 		fi

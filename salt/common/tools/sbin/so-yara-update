@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ echo "Starting to check for yara rule updates at $(date)..."
 
 output_dir="/opt/so/saltstack/default/salt/strelka/rules"
 mkdir -p $output_dir
+
 repos="$output_dir/repos.txt"
 ignorefile="$output_dir/ignore.txt"
 
@@ -95,55 +96,56 @@ clone_dir="/tmp"
 if [ "$gh_status" == "200" ]  || [ "$gh_status" == "301" ]; then
 
   while IFS= read -r repo; do
+    if ! $(echo "$repo" | grep -qE '^#'); then
+      # Remove old repo if existing bc of previous error condition or unexpected disruption
+      repo_name=`echo $repo | awk -F '/' '{print $NF}'`
+      [ -d $repo_name ] && rm -rf $repo_name
 
-    # Remove old repo if existing bc of previous error condition or unexpected disruption
-    repo_name=`echo $repo | awk -F '/' '{print $NF}'`
-    [ -d $repo_name ] && rm -rf $repo_name
+      # Clone repo and make appropriate directories for rules
 
-    # Clone repo and make appropriate directories for rules
+      git clone $repo $clone_dir/$repo_name
+      echo "Analyzing rules from $clone_dir/$repo_name..."
+      mkdir -p $output_dir/$repo_name
+      [ -f $clone_dir/$repo_name/LICENSE ] && cp $clone_dir/$repo_name/LICENSE $output_dir/$repo_name
 
-    git clone $repo $clone_dir/$repo_name
-    echo "Analyzing rules from $clone_dir/$repo_name..."
-    mkdir -p $output_dir/$repo_name
-    [ -f $clone_dir/$repo_name/LICENSE ] && cp $clone_dir/$repo_name/LICENSE $output_dir/$repo_name
+      # Copy over rules
+      for i in $(find $clone_dir/$repo_name -name "*.yar*"); do
+        rule_name=$(echo $i | awk -F '/' '{print $NF}')
+        repo_sum=$(sha256sum $i | awk '{print $1}')
 
-    # Copy over rules
-    for i in $(find $clone_dir/$repo_name -name "*.yar*"); do
-      rule_name=$(echo $i | awk -F '/' '{print $NF}')
-      repo_sum=$(sha256sum $i | awk '{print $1}')
+        # Check rules against those in ignore list -- don't copy if ignored.
+        if ! grep -iq $rule_name $ignorefile; then
+          existing_rules=$(find $output_dir/$repo_name/ -name $rule_name | wc -l)
 
-      # Check rules against those in ignore list -- don't copy if ignored.
-      if ! grep -iq $rule_name $ignorefile; then
-        existing_rules=$(find $output_dir/$repo_name/ -name $rule_name | wc -l)
-
-        # For existing rules, check to see if they need to be updated, by comparing checksums
-        if [ $existing_rules -gt 0 ];then
-          local_sum=$(sha256sum $output_dir/$repo_name/$rule_name | awk '{print $1}')
-          if [ "$repo_sum" != "$local_sum" ]; then
-            echo "Checksums do not match!"
-            echo "Updating $rule_name..."
-            cp $i $output_dir/$repo_name;
-            ((updatecounter++))
+          # For existing rules, check to see if they need to be updated, by comparing checksums
+          if [ $existing_rules -gt 0 ];then
+            local_sum=$(sha256sum $output_dir/$repo_name/$rule_name | awk '{print $1}')
+            if [ "$repo_sum" != "$local_sum" ]; then
+              echo "Checksums do not match!"
+              echo "Updating $rule_name..."
+              cp $i $output_dir/$repo_name;
+              ((updatecounter++))
+            fi
+          else
+            # If rule doesn't exist already, we'll add it
+            echo "Adding new rule: $rule_name..."
+            cp $i $output_dir/$repo_name
+            ((newcounter++))
           fi
-        else
-          # If rule doesn't exist already, we'll add it
-          echo "Adding new rule: $rule_name..."
-          cp $i $output_dir/$repo_name
-          ((newcounter++))
-        fi
-      fi;
-    done
+        fi;
+        done
 
-    # Check to see if we have any old rules that need to be removed
-    for i in $(find $output_dir/$repo_name -name "*.yar*" | awk -F '/' '{print $NF}'); do
-      is_repo_rule=$(find $clone_dir/$repo_name -name "$i" | wc -l)
-      if [ $is_repo_rule -eq 0 ]; then
-        echo "Could not find $i in source $repo_name repo...removing from $output_dir/$repo_name..."
-        rm $output_dir/$repo_name/$i
-        ((deletecounter++))
-      fi
-    done
-    rm -rf $clone_dir/$repo_name
+        # Check to see if we have any old rules that need to be removed
+        for i in $(find $output_dir/$repo_name -name "*.yar*" | awk -F '/' '{print $NF}'); do
+          is_repo_rule=$(find $clone_dir/$repo_name -name "$i" | wc -l)
+          if [ $is_repo_rule -eq 0 ]; then
+            echo "Could not find $i in source $repo_name repo...removing from $output_dir/$repo_name..."
+            rm $output_dir/$repo_name/$i
+            ((deletecounter++))
+          fi
+      done
+      rm -rf $clone_dir/$repo_name
+  fi
   done < $repos
 
   echo "Done!"

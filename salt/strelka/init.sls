@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -12,16 +12,15 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
-{% if 'strelka' in top_states %}
-
-{%- set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% set MANAGER = salt['grains.get']('master') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
+{% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
 
 # Strelka config
 strelkaconfdir:
@@ -47,7 +46,7 @@ strelkasync:
     - group: 939
     - template: jinja
 
-{%- if STRELKA_RULES == 1 %}
+{% if STRELKA_RULES == 1 %}
 
 strelkarules:
   file.recurse:
@@ -55,8 +54,16 @@ strelkarules:
     - source: salt://strelka/rules
     - user: 939
     - group: 939
-    
-{%- endif %}
+
+{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
+strelkarepos:
+  file.managed:
+    - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
+    - source: salt://strelka/rules/repos.txt.jinja
+    - template: jinja
+
+{% endif %}
+{% endif %}
 
 strelkadatadir:
    file.directory:
@@ -85,6 +92,11 @@ strelkaunprocessed:
     - user: 939
     - group: 939
     - makedirs: True
+
+# Check to see if Strelka frontend port is available
+strelkaportavailable:
+    cmd.run:
+      - name: netstat -utanp | grep ":57314" | grep -qv docker && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
 
 strelka_coordinator:
   docker_container.running:
@@ -177,6 +189,16 @@ strelka_zeek_extracted_sync_old:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
     - minute: '*'
 
+{% if ENGINE == "SURICATA" %}
+
+strelka_suricata_extracted_sync:
+  cron.present:
+    - user: root
+    - identifier: zeek-extracted-strelka-sync
+    - name: '[ -d /nsm/suricata/extracted/ ] && find /nsm/suricata/extracted/* -not \( -path /nsm/suricata/extracted/tmp -prune \) -type f -print0 | xargs -0 -I {} mv {} /nsm/strelka/unprocessed/ > /dev/null 2>&1'
+    - minute: '*'
+
+{% else %}
 strelka_zeek_extracted_sync:
   cron.present:
     - user: root
@@ -184,10 +206,11 @@ strelka_zeek_extracted_sync:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
     - minute: '*'
 
+{% endif %}
 {% else %}
 
-strelka_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: strelka_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

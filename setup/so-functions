@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 # README - DO NOT DEFINE GLOBAL VARIABLES IN THIS FILE. Instead use so-variables.
 
+### Begin Logging Section ###
 log() {
 	msg=$1
 	level=${2:-I}
@@ -41,51 +42,7 @@ logCmd() {
 	info "Executing command: $cmd"
 	$cmd >> "$setup_log" 2>&1
 }
-
-filter_unused_nics() {
-
-	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
-
-	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
-	if [[ $BNICS ]]; then
-		grep_string="$grep_string"
-		for BONDNIC in "${BNICS[@]}"; do
-			grep_string="$grep_string\|$BONDNIC"
-		done
-	fi
-
-	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
-	readarray -t filtered_nics <<< "$filtered_nics"
-	
-	nic_list=()
-	for nic in "${filtered_nics[@]}"; do
-		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
-			1)
-				nic_list+=("$nic" "Link UP " "OFF")
-				;;
-			0)
-				nic_list+=("$nic" "Link DOWN " "OFF")
-				;;
-			*)
-				nic_list+=("$nic" "Link UNKNOWN " "OFF")
-				;;
-		esac
-	done
-
-	export nic_list
-}
-
-calculate_useable_cores() {
-
-	# Calculate reasonable core usage
-	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
-	local lb_procs_round
-	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
-
-	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
-    export lb_procs
-}
+### End Logging Section ###
 
 airgap_rules() {
 	# Copy the rules for suricata if using Airgap
@@ -97,18 +54,6 @@ airgap_rules() {
 
 	# Don't leave Strelka out
 	cp -Rv /root/SecurityOnion/agrules/strelka /nsm/repo/rules/
-
-
-}
-
-analyze_system() {
-	title "System Characteristics"
-	logCmd "uptime"
-	logCmd "uname -a"
-	logCmd "free -h"
-	logCmd "lscpu"
-	logCmd "df -h"
-	logCmd "ip a"
 }
 
 accept_salt_key_remote() {
@@ -116,12 +61,10 @@ accept_salt_key_remote() {
 	
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
 	# Delete the key just in case.
-	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
+	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
 	salt-call state.apply ca >> /dev/null 2>&1
-	ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
-
+	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 }
-
 
 add_admin_user() {
 	# Add an admin user with full sudo rights if this is an ISO install. 
@@ -131,19 +74,6 @@ add_admin_user() {
 		usermod -aG wheel "$ADMINUSER";
 	} >> "$setup_log" 2>&1
 	
-}
-
-add_manager_hostfile() {
-
-	[ -n "$TESTING" ] && return
-
-	echo "Checking if I can resolve manager. If not add to hosts file" >> "$setup_log" 2>&1
-	# Pop up an input to get the IP address
-	MSRVIP=$(whiptail --title "Security Onion Setup" --inputbox \
-	"Enter your Manager Server IP Address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
 }
 
 add_mngr_ip_to_hosts() {
@@ -163,53 +93,12 @@ addtotab_generate_templates() {
 
 }
 
-# $5 => (optional) password variable
-so_add_user() {
-	local username=$1
-	local uid=$2
-	local gid=$3
-	local home_dir=$4
-	if [ "$5" ]; then local pass=$5; fi
-
-	echo "Add $username user" >> "$setup_log" 2>&1
-	groupadd --gid "$gid" "$username"
-	useradd -m --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
-
-	# If a password has been passed in, set the password
-	if [ "$pass" ]; then
-		echo "$username":"$pass" | chpasswd --crypt-method=SHA512
-	fi
-}
-
 add_socore_user_manager() {
 	so_add_user "socore" "939" "939" "/opt/so" >> "$setup_log" 2>&1
 }
 
 add_soremote_user_manager() {
 	so_add_user "soremote" "947" "947" "/home/soremote" "$SOREMOTEPASS1" >> "$setup_log" 2>&1
-}
-
-wait_for_file() {
-	local filename=$1
-	local max_attempts=$2 # this is multiplied by the wait interval, so make sure it isn't too large
-	local cur_attempts=0
-	local wait_interval=$3
-	local total_time=$(( max_attempts * wait_interval ))
-	local date
-	date=$(date)
-
-	while [[ $cur_attempts -lt $max_attempts ]]; do
-		if [ -f "$filename" ]; then
-			echo "File $filename found at $date" >> "$setup_log" 2>&1
-			return 0
-		else
-			((cur_attempts++))
-			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
-			sleep "$wait_interval"
-		fi
-	done
-	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
-	return 1
 }
 
 add_web_user() {
@@ -221,22 +110,25 @@ add_web_user() {
 	} >> "/root/so-user-add.log" 2>&1
 }
 
-# Create an secrets pillar so that passwords survive re-install
-secrets_pillar(){
-  if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
-	echo "Creating Secrets Pillar" >> "$setup_log" 2>&1
-	mkdir -p $local_salt_dir/pillar
-	printf '%s\n'\
-		"secrets:"\
-		"  mysql: $MYSQLPASS"\
-		"  playbook_db: $PLAYBOOKDBPASS"\
-		"  playbook_admin: $PLAYBOOKADMINPASS"\
-		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
-		"  grafana_admin: $GRAFANAPASS"\
-		"  fleet: $FLEETPASS"\
-		"  fleet_jwt: $FLEETJWT"\
-		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
-  fi
+analyze_system() {
+	title "System Characteristics"
+	logCmd "uptime"
+	logCmd "uname -a"
+	logCmd "free -h"
+	logCmd "lscpu"
+	logCmd "df -h"
+	logCmd "ip a"
+}
+
+calculate_useable_cores() {
+
+	# Calculate reasonable core usage
+	local cores_for_zeek=$(( (num_cpu_cores/2) - 1 ))
+	local lb_procs_round
+	lb_procs_round=$(printf "%.0f\n" $cores_for_zeek)
+
+	if [ "$lb_procs_round" -lt 1 ]; then lb_procs=1; else lb_procs=$lb_procs_round; fi
+	export lb_procs
 }
 
 check_admin_pass() {
@@ -268,10 +160,10 @@ check_network_manager_conf() {
 		} >> "$setup_log" 2>&1
 	fi
 	
-	if test -f "$nmconf"; then
-		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
-		systemctl restart NetworkManager >> "$setup_log" 2>&1
-	fi
+	#if test -f "$nmconf"; then
+#		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
+#		systemctl restart NetworkManager >> "$setup_log" 2>&1
+#	fi
 
 	if [[ ! -d "$preupdir" ]]; then
 		mkdir "$preupdir" >> "$setup_log" 2>&1
@@ -360,18 +252,14 @@ clear_manager() {
 
 }
 
-collect_soremote_inputs() {
-	whiptail_create_soremote_user
-	SCMATCH=no
-	while [[ $SCMATCH != yes ]]; do
-		whiptail_create_soremote_user_password1
-		whiptail_create_soremote_user_password2
-		check_soremote_pass
-	done
-}
-
 collect_adminuser_inputs() {
 	whiptail_create_admin_user
+
+	while ! valid_username "$ADMINUSER"; do
+		whiptail_invalid_input
+		whiptail_create_admin_user "$ADMINUSER"
+	done
+
 	APMATCH=no
 	while [[ $APMATCH != yes ]]; do
 		whiptail_create_admin_user_password1
@@ -380,20 +268,82 @@ collect_adminuser_inputs() {
 	done
 }
 
-collect_fleet_custom_hostname_inputs() {
-	whiptail_fleet_custom_hostname
+collect_cur_close_days() {
+	whiptail_cur_close_days "$CURCLOSEDAYS"
+
+	while ! valid_int "$CURCLOSEDAYS"; do
+		whiptail_invalid_input
+		whiptail_cur_close_days "$CURCLOSEDAYS"
+	done
 }
 
+collect_dns() {
+	whiptail_management_interface_dns "8.8.8.8,8.8.4.4"
+
+	while ! valid_dns_list "$MDNS"; do
+		whiptail_invalid_input
+		whiptail_management_interface_dns "$MDNS"
+	done
+
+	MDNS=$(echo "$MDNS" | tr -s "," " ") # MDNS needs to be space separated, we prompt for comma separated for consistency
+}
+
+collect_dns_domain() {
+	whiptail_management_interface_dns_search "searchdomain.local"
+
+	while ! valid_fqdn "$MSEARCH"; do
+		whiptail_invalid_input
+		whiptail_management_interface_dns_search "$MSEARCH"
+	done
+}
+
+collect_dockernet() {
+	if ! whiptail_dockernet_check; then
+		whiptail_dockernet_net "172.17.0.0"
+
+		while ! valid_ip4 "$DOCKERNET"; do
+			whiptail_invalid_input
+			whiptail_dockernet_net "$DOCKERNET"
+		done
+	fi
+}
+
+collect_es_cluster_name() {
+	if whiptail_manager_adv_escluster; then
+		whiptail_manager_adv_escluster_name "securityonion"
+
+		while ! valid_string "$ESCLUSTERNAME"; do
+			whiptail_invalid_string "ES cluster name"
+			whiptail_manager_adv_escluster_name "$ESCLUSTERNAME"
+		done
+	fi
+}
+
+collect_es_space_limit() {
+	whiptail_log_size_limit "$log_size_limit"
+
+	while ! valid_int "$log_size_limit"; do # Upper/lower bounds?
+		whiptail_invalid_input
+		whiptail_log_size_limit "$log_size_limit"
+	done
+}
+
+collect_fleet_custom_hostname_inputs() {
+	whiptail_fleet_custom_hostname
+
+	while [[ -n $FLEETCUSTOMHOSTNAME ]] && ! valid_fqdn "$FLEETCUSTOMHOSTNAME"; do
+		whiptail_invalid_input
+		whiptail_fleet_custom_hostname "$FLEETCUSTOMHOSTNAME"
+	done
+}
+
+# Get a username & password for the Fleet admin user
 collect_fleetuser_inputs() {
-	# Get a username & password for the Fleet admin user
-	local valid_user=no
-	while [[ $valid_user != yes ]]; do
-		whiptail_create_fleet_node_user		
-		if so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; then
-			valid_user=yes
-		else
-			whiptail_invalid_user_warning
-		fi
+	whiptail_create_fleet_node_user
+	
+	while ! so-user valemail "$FLEETNODEUSER" >> "$setup_log" 2>&1; do
+		whiptail_invalid_user_warning
+		whiptail_create_fleet_node_user "$FLEETNODEUSER"
 	done
 
 	FPMATCH=no
@@ -408,23 +358,236 @@ collect_fleetuser_inputs() {
 	done
 }
 
+collect_gateway() {
+	whiptail_management_interface_gateway
 
-collect_webuser_inputs() {
-	# Get a password for the web admin user
-	local valid_user=no
-	while [[ $valid_user != yes ]]; do
-		whiptail_create_web_user		
-		if so-user valemail "$WEBUSER" >> "$setup_log" 2>&1; then
-			valid_user=yes
-		else
-			whiptail_invalid_user_warning
+	while ! valid_ip4 "$MGATEWAY"; do
+		whiptail_invalid_input
+		whiptail_management_interface_gateway "$MGATEWAY"
+	done
+}
+
+collect_helix_key() {
+	whiptail_helix_apikey
+}
+
+collect_homenet_mngr() {
+	whiptail_homenet_manager "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
+	
+	while ! valid_cidr_list "$HNMANAGER"; do
+		whiptail_invalid_input
+		whiptail_homenet_manager "$HNMANAGER"
+	done
+}
+
+collect_homenet_snsr() {
+	if whiptail_homenet_sensor_inherit; then
+		export HNSENSOR=inherit
+	else
+		whiptail_homenet_sensor "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
+		
+		while ! valid_cidr_list "$HNSENSOR"; do
+			whiptail_invalid_input
+			whiptail_homenet_sensor "$HNSENSOR"
+		done
+	fi
+}
+
+collect_hostname() {
+	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+
+	whiptail_set_hostname "$HOSTNAME"
+
+	if [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
+		if ! (whiptail_avoid_default_hostname); then
+			whiptail_set_hostname
 		fi
+	fi
+
+	while ! valid_hostname "$HOSTNAME"; do
+		whiptail_invalid_hostname
+		whiptail_set_hostname "$HOSTNAME"
+	done
+}
+
+collect_int_ip_mask() {
+	whiptail_management_interface_ip_mask
+
+	while ! valid_cidr "$manager_ip_mask"; do
+		whiptail_invalid_input
+		whiptail_management_interface_ip_mask "$manager_ip_mask"
+	done
+
+	MIP=$(echo "$manager_ip_mask" | sed 's/\/.*//' )
+	MMASK=$(echo "$manager_ip_mask" | sed 's/.*\///')
+}
+
+collect_mngr_hostname() {
+	whiptail_management_server
+
+	while ! valid_hostname "$MSRV"; do
+		whiptail_invalid_hostname
+		whiptail_management_server "$MSRV"
+	done
+
+	if ! getent hosts "$MSRV"; then
+		whiptail_manager_ip
+
+		while ! valid_ip4 "$MSRVIP"; do
+			whiptail_invalid_input
+			whiptail_manager_ip "$MSRVIP"
+		done
+	else
+		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
+	fi
+}
+
+collect_mtu() {
+	whiptail_bond_nics_mtu "1500"
+
+	while ! valid_int "$MTU" "68" "10000"; do
+		whiptail_invalid_input
+		whiptail_bond_nics_mtu "$MTU"
+	done
+}
+
+collect_node_es_heap() {
+	whiptail_node_es_heap "$ES_HEAP_SIZE"
+}
+
+collect_node_ls_heap() {
+	whiptail_node_ls_heap "$LS_HEAP_SIZE"
+}
+
+collect_node_ls_input() {
+	whiptail_node_ls_input_threads "1"
+
+	while ! valid_int "$LSINPUTTHREADS"; do
+		whiptail_invalid_input
+		whiptail_node_ls_input_threads "$LSINPUTTHREADS"
+	done
+}
+
+collect_node_ls_pipeline_batch_size() {
+	whiptail_node_ls_pipline_batchsize "125"
+
+	while ! valid_int "$LSPIPELINEBATCH"; do
+		whiptail_invalid_input
+		whiptail_node_ls_pipline_batchsize "$LSPIPELINEBATCH"
+	done
+}
+
+collect_node_ls_pipeline_worker_count() {
+	whiptail_node_ls_pipeline_worker "$num_cpu_cores"
+
+	while ! valid_int "$LSPIPELINEWORKERS"; do
+		whiptail_invalid_input
+		whiptail_node_ls_pipeline_worker "$LSPIPELINEWORKERS"
+	done
+}
+
+collect_oinkcode() {
+	whiptail_oinkcode
+
+	while ! valid_string "$OINKCODE" "" "128"; do
+		whiptail_invalid_input
+		whiptail_oinkcode "$OINKCODE"
+	done
+}
+
+collect_patch_schedule() {
+	whiptail_patch_schedule
+
+	case "$patch_schedule" in
+		'New Schedule')
+			whiptail_patch_schedule_select_days
+			whiptail_patch_schedule_select_hours
+			collect_patch_schedule_name_new
+			patch_schedule_os_new
+		;;
+		'Import Schedule')
+			collect_patch_schedule_name_import
+		;;
+		'Automatic')
+			PATCHSCHEDULENAME='auto'
+		;;
+		'Manual')
+			PATCHSCHEDULENAME='manual'
+		;;
+	esac
+}
+
+collect_patch_schedule_name_new() {
+	whiptail_patch_name_new_schedule
+
+	while ! valid_string "$PATCHSCHEDULENAME"; do
+		whiptail_invalid_string "schedule name"
+		whiptail_patch_name_new_schedule "$PATCHSCHEDULENAME"
+	done
+}
+
+collect_patch_schedule_name_import() {
+	whiptail_patch_schedule_import
+
+	while ! valid_string "$PATCHSCHEDULENAME"; do
+		whiptail_invalid_string "schedule name"
+		whiptail_patch_schedule_import "$PATCHSCHEDULENAME"
+	done
+}
+
+collect_redirect_host() {
+	whiptail_set_redirect_host "$HOSTNAME"
+
+	while ! valid_ip4 "$REDIRECTHOST" && ! valid_hostname "$REDIRECTHOST" && ! valid_fqdn "$REDIRECTHOST"; do
+		whiptail_invalid_input
+		whiptail_set_redirect_host "$REDIRECTHOST"
+	done
+}
+
+collect_so_allow() {
+	if whiptail_so_allow_yesno; then
+		whiptail_so_allow
+
+		while ! valid_cidr "$ALLOW_CIDR" && ! valid_ip4 "$ALLOW_CIDR"; do
+			whiptail_invalid_input
+			whiptail_so_allow "$ALLOW_CIDR"
+		done
+	fi
+}
+
+collect_soremote_inputs() {
+	whiptail_create_soremote_user
+	SCMATCH=no
+
+	while [[ $SCMATCH != yes ]]; do
+		whiptail_create_soremote_user_password1
+		whiptail_create_soremote_user_password2
+		check_soremote_pass
+	done
+}
+
+collect_suri() {
+	whiptail_basic_suri "$PROCS"
+
+	while ! valid_int "$BASICSURI"; do
+		whiptail_invalid_input
+		whiptail_basic_suri "$BASICSURI"
+	done
+}
+
+# Get an email & password for the web admin user
+collect_webuser_inputs() {
+	whiptail_create_web_user
+
+	while ! so-user valemail "$WEBUSER" >> "$setup_log" 2>&1; do
+		whiptail_invalid_user_warning
+		whiptail_create_web_user "$WEBUSER"
 	done
 
 	WPMATCH=no
 	while [[ $WPMATCH != yes ]]; do
-	    whiptail_create_web_user_password1
-	    while ! check_password "$WEBPASSWD1"; do
+		whiptail_create_web_user_password1
+		while ! check_password "$WEBPASSWD1"; do
 			whiptail_invalid_pass_characters_warning
 			whiptail_create_web_user_password1
 		done
@@ -434,6 +597,15 @@ collect_webuser_inputs() {
 		else
 			whiptail_invalid_pass_warning
 		fi
+	done
+}
+
+collect_zeek() {
+	whiptail_basic_zeek "$PROCS"
+
+	while ! valid_int "$BASICZEEK"; do
+		whiptail_invalid_input
+		whiptail_basic_zeek "$BASICZEEK"
 	done
 }
 
@@ -471,6 +643,8 @@ configure_minion() {
 	printf '%s\n'\
 		"use_superseded:"\
 		"  - module.run"\
+		"log_level: info"\
+		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
 	{
@@ -557,13 +731,40 @@ check_requirements() {
 	fi
 }
 
-compare_versions() {
-	manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+check_sos_appliance() {
+	# Lets see if this is a SOS Appliance
+	if [ -f "/etc/SOSMODEL" ]; then
+	  local MODEL=$(cat /etc/SOSMODEL)
+	  echo "Found SOS Model $MODEL"
+	  echo "sosmodel: $MODEL" >> /etc/salt/grains
+	fi
+}
 
-	if [[ $manager_ver == "" ]]; then
-		rm /root/install_opt
+compare_main_nic_ip() {
+	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
+	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+		  read -r -d '' message <<- EOM
+		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+
+			This is not a supported configuration, please remediate and rerun setup.
+		EOM
+		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+	  fi
+	else
+		# Setup uses MAINIP, but since we ignore the equality condition when using a VPN 
+		# just set the variable to the IP of the VPN interface
+		MAINIP=$MNIC_IP
+	fi
+	
+}
+
+compare_versions() {
+	manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
+
+	if [[ $manager_ver == '' ]]; then
 		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
-		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		exit 1
 	fi
 
 	[[ "$manager_ver" == "$SOVERSION" ]]
@@ -572,31 +773,22 @@ compare_versions() {
 
 configure_network_sensor() {
 	echo "Setting up sensor interface" >> "$setup_log" 2>&1
-	local nic_error=0
-
-	# Set the MTU
-	if [[ $NSMSETUP != 'ADVANCED' ]]; then
-		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
-	fi
 
 	if [[ $is_cloud ]]; then 
-		INTERFACE=${BNICS[0]}
-		local nmcli_con_arg="type ethernet"
+		local nmcli_con_args=( "type" "ethernet" )
 	else 
-		INTERFACE='bond0'
-		local nmcli_con_arg="type bond mode 0"
+		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
 	# Create the bond interface only if it doesn't already exist
-	
 	nmcli -f name,uuid -p con | grep -q "$INTERFACE" >> "$setup_log" 2>&1
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
-		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" $nmcli_con_arg -- \
+		nmcli con add ifname "$INTERFACE" con-name "$INTERFACE" "${nmcli_con_args[@]}" -- \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	else
 		local int_uuid
@@ -605,53 +797,17 @@ configure_network_sensor() {
 		nmcli con mod "$int_uuid" \
 			ipv4.method disabled \
 			ipv6.method ignore \
-			ethernet.mtu $MTU \
+			ethernet.mtu "$MTU" \
 			connection.autoconnect "yes" >> "$setup_log" 2>&1
 	fi
 
+	local err=0
 	for BNIC in "${BNICS[@]}"; do
-		# Check if specific offload features are able to be disabled
-		for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
-			if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
-				echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected." >> "$setup_log" 2>&1
-				nic_error=1
-				break
-			fi
-		done
-
-		# Turn off various offloading settings for the interface
-		for i in rx tx sg tso ufo gso gro lro; do
-			ethtool -K "$BNIC" $i off >> "$setup_log" 2>&1
-		done
-		
-		if [[ $is_cloud ]]; then
-			nmcli con up "$BNIC" >> "$setup_log" 2>&1
-		else
-			# Check if the bond slave connection has already been created
-			nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC" >> "$setup_log" 2>&1
-			local found_int=$?
-			
-			if [[ $found_int != 0 ]]; then
-				# Create the slave interface and assign it to the bond
-				nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			else
-				local int_uuid
-				int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
-
-				nmcli con mod "$int_uuid" \
-					ethernet.mtu $MTU \
-					connection.autoconnect "yes" >> "$setup_log" 2>&1
-			fi
-			
-			nmcli con up "bond0-slave-$BNIC" >> "$setup_log" 2>&1 # Bring the slave interface up
-		fi
+		add_interface_bond0 "$BNIC" --verbose >> "$setup_log" 2>&1
+		local ret=$?
+		[[ $ret -eq 0 ]] || err=$ret
 	done
-
-	if [ $nic_error != 0 ]; then
-		return 1
-	fi
+	return $err
 }
 
 copy_salt_master_config() {
@@ -671,6 +827,7 @@ copy_salt_master_config() {
 }
 
 copy_minion_tmp_files() {
+
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
@@ -682,15 +839,15 @@ copy_minion_tmp_files() {
 		*)
 			{
 				echo "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
-				scp -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
+				$scpcmd -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
 				if [ -d $temp_install_dir/salt/patch/os/schedules/ ]; then
 					if [ "$(ls -A $temp_install_dir/salt/patch/os/schedules/)" ]; then
-						scp -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
+						$scpcmd -prv -i /root/.ssh/so.key $temp_install_dir/salt/patch/os/schedules/* soremote@$MSRV:/tmp/$MINION_ID/schedules;
 					fi
 				fi
-				ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
+				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/manager/files/add_minion.sh "$MINION_ID";
 			} >> "$setup_log" 2>&1
 			;;
 	esac
@@ -709,7 +866,7 @@ copy_ssh_key() {
 
 	echo "Copying the SSH key to the manager"
 	#Copy the key over to the manager
-	ssh-copy-id -f -i /root/.ssh/so.key soremote@"$MSRV"
+	$sshcopyidcmd -f -i /root/.ssh/so.key soremote@"$MSRV"
 }
 
 create_local_directories() {
@@ -731,6 +888,7 @@ create_local_nids_rules() {
 	# Create a local.rules file so it doesn't get blasted on updates
 	mkdir -p /opt/so/saltstack/local/salt/idstools
 	echo "# Custom Suricata rules go in this file" > /opt/so/saltstack/local/salt/idstools/local.rules
+	salt-run fileserver.clear_file_list_cache
 }
 
 create_repo() {
@@ -744,9 +902,10 @@ detect_cloud() {
 }
 
 detect_os() {
+	local log=${1:-${setup_log}}
 
 	# Detect Base OS
-	echo "Detecting Base OS" >> "$setup_log" 2>&1
+	echo "Detecting Base OS" >> "$log" 2>&1
 	if [ -f /etc/redhat-release ]; then
 		OS=centos
 		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
@@ -760,6 +919,29 @@ detect_os() {
 			exit 1
 		fi
 
+	elif [ -f /etc/os-release ]; then
+		OS=ubuntu
+		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+			OSVER=bionic
+		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
+			OSVER=xenial
+		else
+			echo "We do not support your current version of Ubuntu."
+			exit 1
+		fi
+
+	else
+		echo "We were unable to determine if you are using a supported OS."
+		exit 1
+	fi
+
+	echo "Found OS: $OS $OSVER" >> "$log" 2>&1
+
+}
+
+installer_prereq_packages() {
+
+	if [ "$OS" == centos ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
 		# Install bind-utils so the host command exists
@@ -784,36 +966,20 @@ detect_os() {
 		  logCmd "systemctl enable NetworkManager"
 		  logCmd "systemctl start NetworkManager"
         fi
-	elif [ -f /etc/os-release ]; then
-		OS=ubuntu
-		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
-			OSVER=bionic
-		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
-			OSVER=xenial
-		else
-			echo "We do not support your current version of Ubuntu."
-			exit 1
-		fi
-
+	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		echo "Installing required packages to run installer..."
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
+			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
-				apt-get install -y network-manager;
-				systemctl enable NetworkManager;
-				systemctl start NetworkManager;
+				systemctl enable NetworkManager
+				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		apt-get install -y bc curl >> "$setup_log" 2>&1
-
-	else
-		echo "We were unable to determine if you are using a supported OS."
-		exit 1
+		retry 50 10 "apt-get -y install bc curl"  >> "$setup_log" 2>&1 || exit 1
 	fi
-
-	echo "Found OS: $OS $OSVER" >> "$setup_log" 2>&1
-
 }
 
 disable_auto_start() {
@@ -836,33 +1002,38 @@ disable_ipv6() {
 		sysctl -w net.ipv6.conf.all.disable_ipv6=1
 		sysctl -w net.ipv6.conf.default.disable_ipv6=1
 	}  >> "$setup_log" 2>&1
+        {
+        echo "net.ipv6.conf.all.disable_ipv6 = 1"
+        echo "net.ipv6.conf.default.disable_ipv6 = 1"
+        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+        } >> /etc/sysctl.conf
 }
 
-disable_misc_network_features() {
-	filter_unused_nics
-	if [ ${#filtered_nics[@]} -ne 0 ]; then
-		for unused_nic in "${filtered_nics[@]}"; do
-			if [ -n "$unused_nic" ]; then
-				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
-
-				# Disable DHCPv4/v6 and autoconnect
-				nmcli con mod "$unused_nic" \
-					ipv4.method disabled \
-					ipv6.method ignore \
-					connection.autoconnect "no" >> "$setup_log" 2>&1
-
-				# Flush any existing IPs
-				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
-			fi
-		done
-	fi
-	# Disable IPv6
-	{ 
-		echo "net.ipv6.conf.all.disable_ipv6 = 1"
-		echo "net.ipv6.conf.default.disable_ipv6 = 1"
-		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-	} >> /etc/sysctl.conf
-}
+#disable_misc_network_features() {
+#	filter_unused_nics
+#	if [ ${#filtered_nics[@]} -ne 0 ]; then
+#		for unused_nic in "${filtered_nics[@]}"; do
+#			if [ -n "$unused_nic" ]; then
+#				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
+#
+#				# Disable DHCPv4/v6 and autoconnect
+#				nmcli con mod "$unused_nic" \
+#					ipv4.method disabled \
+#					ipv6.method ignore \
+#					connection.autoconnect "no" >> "$setup_log" 2>&1
+#
+#				# Flush any existing IPs
+#				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
+#			fi
+#		done
+#	fi
+#	# Disable IPv6
+#	{ 
+#		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+#		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+#	} >> /etc/sysctl.conf
+#}
 
 docker_install() {
 
@@ -882,21 +1053,18 @@ docker_install() {
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				apt-get update >> "$setup_log" 2>&1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
-				{
-					apt-key add "$temp_install_dir"/gpg/docker.pub;
-					add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
-					apt-get update;
-				} >> "$setup_log" 2>&1
+				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || exit 1
+				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac 
-		
 		if [ $OSVER != "xenial" ]; then
-			apt-get -y install docker-ce python3-docker >> "$setup_log" 2>&1
+			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
 		else
-			apt-get -y install docker-ce python-docker >> "$setup_log" 2>&1
+			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 	docker_registry
@@ -939,7 +1107,7 @@ docker_seed_update() {
 	if [ "$install_type" == 'HELIXSENSOR' ]; then 
 		percent_delta=6
 	fi
-	((docker_seed_update_percent=docker_seed_update_percent+percent_delta))
+	((docker_seed_update_percent+=percent_delta))
 
 	set_progress_str "$docker_seed_update_percent" "Downloading $name"
 }
@@ -967,25 +1135,115 @@ docker_seed_registry() {
 }
 
 download_repo_tarball() {
-	mkdir -p /root/manager_setup/securityonion
-	{
-		local manager_ver
-		manager_ver=$(ssh -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
-		scp -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup
-	} >> "$setup_log" 2>&1
+
+	mkdir -p /root/manager_setup
+
+	local manager_ver
+	manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion) >> "$setup_log" 2>&1
+	$scpcmd -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/repo/"$manager_ver".tar.gz /root/manager_setup >> "$setup_log" 2>&1
 	
 	# Fail if the file doesn't download
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
-		rm /root/install_opt
+		rm -rf $install_opt_file
 		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
 		echo "$message" | tee -a "$setup_log"
-		kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+		exit 1
 	fi
-	
+
+	mkdir -p /root/manager_setup/securityonion
 	{
 		tar -xzf /root/manager_setup/"$manager_ver".tar.gz -C /root/manager_setup/securityonion
 		rm -rf /root/manager_setup/"$manager_ver".tar.gz
 	} >> "$setup_log" 2>&1
+}
+
+elasticsearch_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the node pillar
+	printf '%s\n'\
+		"elasticsearch:"\
+		"  mainip: '$MAINIP'"\
+		"  mainint: '$MNIC'"\
+		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
+		if [ -n "$ESCLUSTERNAME" ]; then
+		printf '%s\n'\
+		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
+		else
+		printf '%s\n'\
+		"  esclustername: '{{ grains.host }}'" >> "$pillar_file"
+		fi
+		printf '%s\n'\
+		"  node_type: '$NODETYPE'"\
+		"  es_port: $node_es_port"\
+		"  log_size_limit: $log_size_limit"\
+		"  node_route_type: 'hot'"\
+		"" >> "$pillar_file"
+	
+	printf '%s\n'\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
+		"  ls_input_threads: $LSINPUTTHREADS"\
+		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
+		"" >> "$pillar_file"
+
+}
+
+es_heapsize() {
+
+	# Determine ES Heap Size
+	if [ "$total_mem" -lt 8000 ] ; then
+		ES_HEAP_SIZE="600m"
+	elif [ "$total_mem" -ge 100000 ]; then
+		# Set a max of 25GB for heap size
+		# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
+		ES_HEAP_SIZE="25000m"
+	else
+		# Set heap size to 25% of available memory
+		ES_HEAP_SIZE=$(( total_mem / 4 ))"m"
+	fi
+	export ES_HEAP_SIZE
+
+	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
+		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
+		export NODE_ES_HEAP_SIZE
+	fi
+}
+
+filter_unused_nics() {
+
+	if [[ $MNIC ]]; then local grep_string="$MNIC\|bond0"; else local grep_string="bond0"; fi
+
+	# If we call this function and NICs have already been assigned to the bond interface then add them to the grep search string
+	if [[ $BNICS ]]; then
+		grep_string="$grep_string"
+		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+
+	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	readarray -t filtered_nics <<< "$filtered_nics"
+	
+	nic_list=()
+	for nic in "${filtered_nics[@]}"; do
+		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
+			1)
+				nic_list+=("$nic" "Link UP " "OFF")
+				;;
+			0)
+				nic_list+=("$nic" "Link DOWN " "OFF")
+				;;
+			*)
+				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				;;
+		esac
+	done
+
+	export nic_list
 }
 
 fireeye_pillar() {
@@ -1052,10 +1310,26 @@ generate_repo_tarball() {
 	tar -czf /opt/so/repo/"$SOVERSION".tar.gz ../.
 }
 
+generate_sensor_vars() {
+	# Set the MTU
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		if [[ $is_cloud ]]; then MTU=1575; else MTU=1500; fi
+	fi
+	export MTU
+
+	# Set interface variable
+	if [[ $is_cloud ]]; then 
+		INTERFACE=${BNICS[0]}
+	else 
+		INTERFACE='bond0'
+	fi
+	export INTERFACE
+}
+
 get_redirect() {
 	whiptail_set_redirect
 	if [ "$REDIRECTINFO" = "OTHER" ]; then
-		whiptail_set_redirect_host
+		collect_redirect_host
 	fi
 }
 
@@ -1122,6 +1396,33 @@ import_registry_docker() {
 	fi
 }
 
+# Set Logstash heap size based on total memory
+ls_heapsize() {
+
+	if [ "$total_mem" -ge 32000 ]; then
+		LS_HEAP_SIZE='1000m'
+		return
+	fi
+
+	case "$install_type" in
+		'MANAGERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR' | 'STANDALONE')
+			LS_HEAP_SIZE='1000m'
+			;;
+		'EVAL')
+			LS_HEAP_SIZE='700m'
+			;;
+		*)
+			LS_HEAP_SIZE='500m'
+			;;
+	esac
+	export LS_HEAP_SIZE
+
+	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE)$ ]]; then
+		NODE_LS_HEAP_SIZE=LS_HEAP_SIZE
+		export NODE_LS_HEAP_SIZE
+	fi
+}
+
 manager_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
@@ -1132,7 +1433,7 @@ manager_pillar() {
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
 		"  esheap: '$ES_HEAP_SIZE'"\
-		"  esclustername: {{ grains.host }}"\
+		"  esclustername: '{{ grains.host }}'"\
 		"  freq: 0"\
 		"  domainstats: 0" >> "$pillar_file"
 		
@@ -1156,7 +1457,7 @@ manager_pillar() {
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
 		"  esheap: '$NODE_ES_HEAP_SIZE'"\
-		"  esclustername: {{ grains.host }}"\
+		"  esclustername: '{{ grains.host }}'"\
 		"  node_type: '$NODETYPE'"\
 		"  es_port: $node_es_port"\
 		"  log_size_limit: $log_size_limit"\
@@ -1198,50 +1499,50 @@ manager_global() {
 	fi
 
 	if [ -z "$DOCKERNET" ]; then
-            DOCKERNET=172.17.0.0
-	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKERNET=172.17.0.0
+		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	else
-	    DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	fi
 
 	# Create a global file for global values
-        printf '%s\n'\
-                "global:"\
-                "  soversion: '$SOVERSION'"\
-                "  hnmanager: '$HNMANAGER'"\
-                "  ntpserver: '$NTPSERVER'"\
-				"  dockernet: '$DOCKERNET'"\
-                "  proxy: '$PROXY'"\
-                "  mdengine: '$ZEEKVERSION'"\
-                "  ids: '$NIDS'"\
-				"  url_base: '$REDIRECTIT'"\
-                "  managerip: '$MAINIP'" > "$global_pillar"
-		
-        if [[ $is_airgap ]]; then
-		        printf '%s\n'\
-                        "  airgap: True"\ >> "$global_pillar"
-		else 
-		        printf '%s\n'\
-                        "  airgap: False"\ >> "$global_pillar"
-		fi
+	printf '%s\n'\
+		"global:"\
+		"  soversion: '$SOVERSION'"\
+		"  hnmanager: '$HNMANAGER'"\
+		"  ntpserver: '$NTPSERVER'"\
+		"  dockernet: '$DOCKERNET'"\
+		"  proxy: '$PROXY'"\
+		"  mdengine: '$ZEEKVERSION'"\
+		"  ids: '$NIDS'"\
+		"  url_base: '$REDIRECTIT'"\
+		"  managerip: '$MAINIP'" > "$global_pillar"
+	
+	if [[ $is_airgap ]]; then
+		printf '%s\n'\
+			"  airgap: True"\ >> "$global_pillar"
+	else 
+		printf '%s\n'\
+			"  airgap: False"\ >> "$global_pillar"
+	fi
 
-        # Check if TheHive is enabled.  If so, add creds and other details
-        if [[ "$THEHIVE" == "1" ]]; then
-                printf '%s\n'\
-                        "  hiveuser: '$WEBUSER'"\
-                        "  hivepassword: '$WEBPASSWD1'"\
-                        "  hivekey: '$HIVEKEY'"\
-                        "  hiveplaysecret: '$HIVEPLAYSECRET'"\
-                        "  cortexuser: '$WEBUSER'"\
-                        "  cortexpassword: '$WEBPASSWD1'"\
-                        "  cortexkey: '$CORTEXKEY'"\
-                        "  cortexorgname: 'SecurityOnion'"\
-                        "  cortexorguser: 'soadmin'"\
-                        "  cortexorguserkey: '$CORTEXORGUSERKEY'"\
-                        "  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
-        fi
+	# Check if TheHive is enabled.  If so, add creds and other details
+	if [[ "$THEHIVE" == "1" ]]; then
+		printf '%s\n'\
+			"  hiveuser: '$WEBUSER'"\
+			"  hivepassword: '$WEBPASSWD1'"\
+			"  hivekey: '$HIVEKEY'"\
+			"  hiveplaysecret: '$HIVEPLAYSECRET'"\
+			"  cortexuser: '$WEBUSER'"\
+			"  cortexpassword: '$WEBPASSWD1'"\
+			"  cortexkey: '$CORTEXKEY'"\
+			"  cortexorgname: 'SecurityOnion'"\
+			"  cortexorguser: 'soadmin'"\
+			"  cortexorguserkey: '$CORTEXORGUSERKEY'"\
+			"  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
+	fi
 
-        # Continue adding other details	
+	# Continue adding other details	
 	printf '%s\n'\
 		"  fleet_custom_hostname: "\
 		"  fleet_manager: False"\
@@ -1252,36 +1553,46 @@ manager_global() {
 		"  fleet_ip: 'N/A'"\
 		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
-                "  managerupdate: $MANAGERUPDATES"\
+		"  managerupdate: $MANAGERUPDATES"\
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
 		"sensoroni:"\
 		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
 		"strelka:"\
 		"  enabled: $STRELKA"\
-		"  rules: 1"\
+		"  rules: 1" >> "$global_pillar"
+		if [[ $is_airgap ]]; then
+		    printf '%s\n'\
+			    "  repos:"\
+			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
+	    else 
+		    printf '%s\n'\
+		        "  repos:"\
+			    "    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
+	    fi
+	printf '%s\n'\
 		"curator:"\
 		"  hot_warm: False"\
 		"elastic:"\
 		"  features: False"\
 		"elasticsearch:"\
 		"  replicas: 0" >> "$global_pillar"
-		if [ -n "$ESCLUSTERNAME" ]; then 
-		    printf '%s\n'\
-				   "  true_cluster: True"\
-		           "  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
-		else
-			printf '%s\n'\
-			       "  true_cluster: False"\
-				   "  true_cluster_name: 'so'" >> "$global_pillar"
-		fi
+	if [ -n "$ESCLUSTERNAME" ]; then 
 		printf '%s\n'\
+			"  true_cluster: True"\
+			"  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+	else
+		printf '%s\n'\
+			"  true_cluster: False"\
+			"  true_cluster_name: 'so'" >> "$global_pillar"
+	fi
+	printf '%s\n'\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
-                "  cluster_routing_allocation_disk_watermark_low: '95%'"\
-                "  cluster_routing_allocation_disk_watermark_high: '98%'"\
-                "  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
+		"  cluster_routing_allocation_disk_watermark_low: '95%'"\
+		"  cluster_routing_allocation_disk_watermark_high: '98%'"\
+		"  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
 		"      shards: 1"\
@@ -1342,10 +1653,10 @@ manager_global() {
 		"  upload_queue_size: 4"\
 		"  encoding: 'gzip'"\
 		"  interval: 5"\
-	        "backup:"\
-                "  locations:"\
-                "    - /opt/so/saltstack/local"\
-	        "soctopus:"\
+		"backup:"\
+		"  locations:"\
+		"    - /opt/so/saltstack/local"\
+		"soctopus:"\
 		"  playbook:"\
 		"    rulesets:"\
 		"      - windows"\
@@ -1359,6 +1670,11 @@ manager_global() {
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
 
+mark_version() {
+	# Drop a file with the current version
+	echo "$SOVERSION" > /etc/soversion
+}
+
 minio_generate_keys() {
 
 	local charSet="[:graph:]"
@@ -1368,6 +1684,37 @@ minio_generate_keys() {
 
 }
 
+network_init() {
+	disable_ipv6
+	set_hostname
+	if [[ "$setup_type" == 'iso' ]]; then
+		set_management_interface
+	fi
+}
+
+network_init_whiptail() {
+	case "$setup_type" in
+		'iso')
+			collect_hostname
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+
+			if [ "$address_type" != 'DHCP' ]; then
+				collect_int_ip_mask
+				collect_gateway
+				collect_dns
+				collect_dns_domain
+			fi
+			;;
+		'network')
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			collect_hostname
+			whiptail_management_nic
+			;;
+	esac
+}
+
 network_setup() {
 	{
 		echo "Finishing up network setup";
@@ -1375,52 +1722,12 @@ network_setup() {
 		echo "... Verifying all network devices are managed by Network Manager";
 		check_network_manager_conf;
 
-		echo "... Disabling unused NICs";
-		disable_misc_network_features;
-
-		echo "... Setting ONBOOT for management interface";
-		command -v netplan &> /dev/null || nmcli con mod "$MNIC" connection.autoconnect "yes"
-
 		echo "... Copying 99-so-checksum-offload-disable";
 		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
 		echo "... Modifying 99-so-checksum-offload-disable";
-		sed -i "s/\$MNIC/${MNIC}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
+		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
-}
-
-elasticsearch_pillar() {
-
-	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
-
-	# Create the node pillar
-	printf '%s\n'\
-		"elasticsearch:"\
-		"  mainip: '$MAINIP'"\
-		"  mainint: '$MNIC'"\
-		"  esheap: '$NODE_ES_HEAP_SIZE'" >> "$pillar_file"
-		if [ -n "$ESCLUSTERNAME" ]; then
-		printf '%s\n'\
-		  "  esclustername: $ESCLUSTERNAME" >> "$pillar_file"
-		else
-		printf '%s\n'\
-		"  esclustername: {{ grains.host }}" >> "$pillar_file"
-		fi
-		printf '%s\n'\
-		"  node_type: '$NODETYPE'"\
-		"  es_port: $node_es_port"\
-		"  log_size_limit: $log_size_limit"\
-		"  node_route_type: 'hot'"\
-		"" >> "$pillar_file"
-	
-	printf '%s\n'\
-		"logstash_settings:"\
-		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
-		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
-		"" >> "$pillar_file"
-
 }
 
 parse_install_username() {
@@ -1497,7 +1804,7 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
-		if command -v salt-call &> /dev/null; then
+		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable
 
@@ -1518,7 +1825,7 @@ reinstall_init() {
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
-					kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+					exit 1
 				fi
 				
 				sleep 5
@@ -1570,7 +1877,7 @@ remove_package() {
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
-			apt purge -y "$package_name"
+			retry 50 10 "apt purge -y \"$package_name\""
 		fi
 	fi
 }
@@ -1588,7 +1895,7 @@ saltify() {
 	if [ $OS = 'centos' ]; then
 		set_progress_str 5 'Installing Salt repo'
 		{
-			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/archive/3002.2/SALTSTACK-GPG-KEY.pub;
+			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/archive/3002.5/SALTSTACK-GPG-KEY.pub;
 			cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
 		} >> "$setup_log" 2>&1
 		set_progress_str 6 'Installing various dependencies'
@@ -1605,14 +1912,14 @@ saltify() {
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				if [[ ! $is_airgap ]]; then
-				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 				  logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install salt-master-3002.2"
+				  logCmd "yum -y install salt-master-3002.5"
 				fi
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
@@ -1640,37 +1947,40 @@ saltify() {
 		{
 			if [[ ! $is_iso ]]; then
 			  yum -y install epel-release
-			  yum -y install salt-minion-3002.2\
+			  yum -y install salt-minion-3002.5\
 			   	python3\
-				python36-docker\
-				python36-dateutil\
-				python36-m2crypto\
-				python36-mysql\
-				yum-utils\
-				device-mapper-persistent-data\
-				lvm2\
-				openssl\
-				jq;
-			  yum -y update --exclude=salt*;
+					python36-docker\
+					python36-dateutil\
+					python36-m2crypto\
+					python36-mysql\
+					yum-utils\
+					device-mapper-persistent-data\
+					lvm2\
+					openssl\
+					jq;
+					yum -y update --exclude=salt*;
 			fi
 			systemctl enable salt-minion;
 		} >> "$setup_log" 2>&1
 		yum versionlock salt*
 	else
-		DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade >> "$setup_log" 2>&1
+		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
 		if [ $OSVER != "xenial" ]; then
 			# Switch to Python 3 as default if this is not xenial
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
 		fi
-		# Add the pre-requisites for installing docker-ce
-		apt-get -y install ca-certificates\
-			curl\
-			software-properties-common\
-			apt-transport-https\
-			openssl\
-			netcat\
-			jq >> "$setup_log" 2>&1
+		
+		local pkg_arr=(
+			'ca-certificates'
+			'curl'
+			'software-properties-common'
+			'apt-transport-https'
+			'openssl'
+			'netcat'
+			'jq'
+		)
+		retry 50 10 "apt-get -y install ${pkg_arr[*]}" >> "$setup_log" 2>&1 || exit 1
 
 		# Grab the version from the os-release file
 		local ubuntu_version
@@ -1679,13 +1989,17 @@ saltify() {
 
 		case "$install_type" in
 			'FLEET')
-				if [ "$OSVER" != 'xenial' ]; then apt-get -y install python3-mysqldb >> "$setup_log" 2>&1; else apt-get -y install python-mysqldb >> "$setup_log" 2>&1; fi
+				if [[ $OSVER != 'xenial' ]]; then
+					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
+				else
+					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || exit 1
+				fi
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.5 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -1693,7 +2007,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3002.2/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -1701,38 +2015,37 @@ saltify() {
 				curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - >> "$setup_log" 2>&1
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
-				# Initialize the new repos
-				apt-get update >> "$setup_log" 2>&1
+				
+				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
-				apt-get -y install sqlite3 argon2 libssl-dev >> "$setup_log" 2>&1
+				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
-				apt-get -y install salt-master=3002.2+ds-1 >> "$setup_log" 2>&1
-				apt-mark hold salt-master >> "$setup_log" 2>&1
+				retry 50 10 "apt-get -y install salt-master=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				# Copy down the gpg keys and install them from the manager
 				mkdir "$temp_install_dir"/gpg >> "$setup_log" 2>&1
 				echo "scp the gpg keys and install them from the manager" >> "$setup_log" 2>&1
-				scp -v -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/gpg/* "$temp_install_dir"/gpg >> "$setup_log" 2>&1
+				$scpcmd -v -i /root/.ssh/so.key soremote@"$MSRV":/opt/so/gpg/* "$temp_install_dir"/gpg >> "$setup_log" 2>&1
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.2/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.5/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
-		apt-get update >> "$setup_log" 2>&1
+
+		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		apt-get -y install salt-minion=3002.2+ds-1\
-					salt-common=3002.2+ds-1 >> "$setup_log" 2>&1
-		apt-mark hold salt-minion salt-common >> "$setup_log" 2>&1
-		if [ "$OSVER" != 'xenial' ]; then 
-			apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb >> "$setup_log" 2>&1
-		else 
-			apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb  >> "$setup_log" 2>&1
+		retry 50 10 "apt-get -y install salt-minion=3002.5+ds-1 salt-common=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
+		if [[ $OSVER != 'xenial' ]]; then
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
+		else
+			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
-
 }
 
 salt_checkin() {
@@ -1771,7 +2084,7 @@ salt_checkin() {
 						if [ $count -gt 12 ]; then
 							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
 							kill -9 "$pid"
-							kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+							exit 1
 						fi
 						sleep 10;
 						((count++))
@@ -1783,7 +2096,7 @@ salt_checkin() {
 					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						exit 1
 					fi
 					sleep 1;
 					((count++))
@@ -1794,7 +2107,7 @@ salt_checkin() {
 					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
 					if [ $count -gt 30 ]; then
 						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
-						kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1
+						exit 1
 					fi
 					systemctl kill salt-minion
 					systemctl start salt-minion
@@ -1837,6 +2150,24 @@ salt_firstcheckin() {
 	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
 }
 
+# Create an secrets pillar so that passwords survive re-install
+secrets_pillar(){
+  if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
+	echo "Creating Secrets Pillar" >> "$setup_log" 2>&1
+	mkdir -p $local_salt_dir/pillar
+	printf '%s\n'\
+		"secrets:"\
+		"  mysql: $MYSQLPASS"\
+		"  playbook_db: $PLAYBOOKDBPASS"\
+		"  playbook_admin: $PLAYBOOKADMINPASS"\
+		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
+		"  grafana_admin: $GRAFANAPASS"\
+		"  fleet: $FLEETPASS"\
+		"  fleet_jwt: $FLEETJWT"\
+		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
+  fi
+}
+
 set_base_heapsizes() {
 	es_heapsize
 	ls_heapsize
@@ -1850,18 +2181,6 @@ set_network_dev_status_list() {
 set_main_ip() {
 	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
-}
-
-compare_main_nic_ip() {
-	if [[ "$MAINIP" != "$MNIC_IP" ]]; then
-		read -r -d '' message <<- EOM
-			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
-
-			This is not a supported configuration, please remediate and rerun setup.
-		EOM
-		whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
-		kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
-	fi
 }
 
 # Add /usr/sbin to everyone's path
@@ -1895,7 +2214,8 @@ setup_salt_master_dirs() {
 
 set_progress_str() {
 	local percentage_input=$1
-	local progress_bar_text=$2
+	progress_bar_text=$2
+	export progress_bar_text
 
 	if (( "$percentage_input" >= "$percentage" )); then
 		percentage="$percentage_input"
@@ -1905,10 +2225,26 @@ set_progress_str() {
 
 	echo -e "$percentage_str"
 
+	info "Progressing ($percentage%): $progress_bar_text"
+
 	printf '%s\n' \
 	'----'\
 	"$percentage% - ${progress_bar_text^^}"\
 	"----" >> "$setup_log" 2>&1
+}
+
+set_ssh_cmds() {
+	local automated=$1
+
+	if [ $automated == yes ]; then
+		sshcmd="sshpass -p $SOREMOTEPASS1 ssh -o StrictHostKeyChecking=no"
+		sshcopyidcmd="sshpass -p $SOREMOTEPASS1 ssh-copy-id -o StrictHostKeyChecking=no"
+		scpcmd="sshpass -p $SOREMOTEPASS1 scp -o StrictHostKeyChecking=no"
+	else
+		sshcmd='ssh'
+		sshcopyidcmd='ssh-copy-id'
+		scpcmd='scp'
+	fi
 }
 
 sensor_pillar() {
@@ -1947,31 +2283,36 @@ sensor_pillar() {
 	if [ "$HNSENSOR" != 'inherit' ]; then
 		echo "  hnsensor: $HNSENSOR" >> "$pillar_file"
 	fi
+	
 }
 
 set_default_log_size() {
-    local percentage
+	local percentage
 
-	case $INSTALLTYPE in
+	case $install_type in
 		STANDALONE | EVAL | HEAVYNODE)
 			percentage=50
-			;;
+		;;
 		*)
-            percentage=80
-			;;
-		esac
+			percentage=80
+		;;
+	esac
 
 	local disk_dir="/"
 	if [ -d /nsm ]; then
 		disk_dir="/nsm"
 	fi
+	if [ -d /nsm/elasticsearch ]; then
+		disk_dir="/nsm/elasticsearch"
+	fi
+	
 	local disk_size_1k
 	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
 
-    local ratio="1048576"
+	local ratio="1048576"
 
-    local disk_size_gb
-    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+	local disk_size_gb
+	disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
 
 	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }
@@ -1987,8 +2328,6 @@ set_hostname() {
 }
 
 set_initial_firewall_policy() {
-
-  set_main_ip
 
   if [ -f $default_salt_dir/pillar/data/addtotab.sh ]; then chmod +x $default_salt_dir/pillar/data/addtotab.sh; fi
   if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
@@ -2022,24 +2361,24 @@ set_initial_firewall_policy() {
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
-			ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
 					;;
 				'SEARCHNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'HEAVYNODE')
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
-					ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost heavy_node "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh sensorstab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'FLEET')
-				    ssh -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
+				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
 			esac
 			;;
@@ -2119,6 +2458,24 @@ set_updates() {
 	fi
 }
 
+# $5 => (optional) password variable
+so_add_user() {
+	local username=$1
+	local uid=$2
+	local gid=$3
+	local home_dir=$4
+	if [ "$5" ]; then local pass=$5; fi
+
+	echo "Add $username user" >> "$setup_log" 2>&1
+	groupadd --gid "$gid" "$username"
+	useradd -m --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
+
+	# If a password has been passed in, set the password
+	if [ "$pass" ]; then
+		echo "$username":"$pass" | chpasswd --crypt-method=SHA512
+	fi
+}
+
 steno_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
@@ -2130,9 +2487,11 @@ steno_pillar() {
 
 }
 
-mark_version() {
-	# Drop a file with the current version
-	echo "$SOVERSION" > /etc/soversion
+update_sudoers_for_testing() {
+	if [ -n "$TESTING" ]; then
+		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
+		sed -i "s/^$INSTALLUSERNAME   ALL=(ALL)       ALL/$INSTALLUSERNAME   ALL=(ALL) NOPASSWD: ALL/" /etc/sudoers
+	fi
 }
 
 update_sudoers() {
@@ -2152,8 +2511,8 @@ update_packages() {
 	if [ "$OS" = 'centos' ]; then
 		yum -y update >> "$setup_log"
 	else
-		apt-get -y update >> "$setup_log"
-		apt-get -y upgrade >> "$setup_log"
+		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
@@ -2175,53 +2534,27 @@ use_turbo_proxy() {
 	fi
 }
 
-# Set Logstash heap size based on total memory
-ls_heapsize() {
+wait_for_file() {
+	local filename=$1
+	local max_attempts=$2 # this is multiplied by the wait interval, so make sure it isn't too large
+	local cur_attempts=0
+	local wait_interval=$3
+	local total_time=$(( max_attempts * wait_interval ))
+	local date
+	date=$(date)
 
-	if [ "$total_mem" -ge 32000 ]; then
-		LS_HEAP_SIZE='1000m'
-		return
-	fi
-
-	case "$install_type" in
-		'MANAGERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR' | 'STANDALONE')
-			LS_HEAP_SIZE='1000m'
-			;;
-		'EVAL')
-			LS_HEAP_SIZE='700m'
-			;;
-		*)
-			LS_HEAP_SIZE='500m'
-			;;
-	esac
-	export LS_HEAP_SIZE
-
-	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE)$ ]]; then
-		NODE_LS_HEAP_SIZE=LS_HEAP_SIZE
-		export NODE_LS_HEAP_SIZE
-	fi
-}
-
-
-es_heapsize() {
-
-	# Determine ES Heap Size
-	if [ "$total_mem" -lt 8000 ] ; then
-		ES_HEAP_SIZE="600m"
-	elif [ "$total_mem" -ge 100000 ]; then
-		# Set a max of 25GB for heap size
-		# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
-		ES_HEAP_SIZE="25000m"
-	else
-		# Set heap size to 25% of available memory
-		ES_HEAP_SIZE=$(( total_mem / 4 ))"m"
-	fi
-	export ES_HEAP_SIZE
-
-	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
-		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
-		export NODE_ES_HEAP_SIZE
-	fi
+	while [[ $cur_attempts -lt $max_attempts ]]; do
+		if [ -f "$filename" ]; then
+			echo "File $filename found at $date" >> "$setup_log" 2>&1
+			return 0
+		else
+			((cur_attempts++))
+			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
+			sleep "$wait_interval"
+		fi
+	done
+	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
+	return 1
 }
 
 # Enable Zeek Logs

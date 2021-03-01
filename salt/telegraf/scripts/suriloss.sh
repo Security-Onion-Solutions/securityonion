@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,16 +33,16 @@ if [ $CHECKIT == 2 ]; then
 
   CURRENTDROP=${RESULT[4]}
   PASTDROP=${RESULT[14]}
-  DROPPED=$(($CURRENTDROP - $PASTDROP))
+  DROPPED=$((CURRENTDROP - PASTDROP))
   if [ $DROPPED == 0 ]; then
     LOSS=0
     echo "suridrop drop=0"
   else
     CURRENTPACKETS=${RESULT[9]}
     PASTPACKETS=${RESULT[19]}
-    TOTALCURRENT=$(($CURRENTPACKETS + $CURRENTDROP))
-    TOTALPAST=$(($PASTPACKETS + $PASTDROP))
-    TOTAL=$(($TOTALCURRENT - $TOTALPAST))
+    TOTALCURRENT=$((CURRENTPACKETS + CURRENTDROP))
+    TOTALPAST=$((PASTPACKETS + PASTDROP))
+    TOTAL=$((TOTALCURRENT - TOTALPAST))
 
     LOSS=$(echo 4 k $DROPPED $TOTAL / p | dc)
     echo "suridrop drop=$LOSS"

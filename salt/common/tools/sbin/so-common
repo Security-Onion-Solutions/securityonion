@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,55 +17,73 @@
 
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
-  echo "This script must be run using sudo!"
-  exit 1
+	echo "This script must be run using sudo!"
+	exit 1
 fi
 
 # Define a banner to separate sections
 banner="========================================================================="
 
-header() {
-	echo
-    printf '%s\n' "$banner" "$*" "$banner"
-}
+add_interface_bond0() {
+	local BNIC=$1
+	if [[ -z $MTU ]]; then
+		local MTU
+		MTU=$(lookup_pillar "mtu" "sensor")
+	fi
+	local nic_error=0
 
-lookup_salt_value() {
-  key=$1
-  group=$2
-  kind=$3
+	# Check if specific offload features are able to be disabled
+	for string in "generic-segmentation-offload" "generic-receive-offload" "tcp-segmentation-offload"; do
+		if ethtool -k "$BNIC" | grep $string | grep -q "on [fixed]"; then
+			echo "The hardware or driver for interface ${BNIC} is not supported, packet capture may not work as expected."
+			((nic_error++))
+			break
+		fi
+	done
 
-  if [ -z "$kind" ]; then
-    kind=pillar
-  fi
+	case "$2" in
+		-v|--verbose)
+			local verbose=true
+		;;
+	esac
 
-  if [ -n "$group" ]; then
-    group=${group}:
-  fi
+	for i in rx tx sg tso ufo gso gro lro; do
+		if [[ $verbose == true ]]; then
+			ethtool -K "$BNIC" $i off
+		else
+			ethtool -K "$BNIC" $i off &>/dev/null
+		fi
+	done
+	# Check if the bond slave connection has already been created
+	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+	local found_int=$?
 
-  salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
-}
+	if [[ $found_int != 0 ]]; then
+		# Create the slave interface and assign it to the bond
+		nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	else
+		local int_uuid
+		int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
 
-lookup_pillar() {
-  key=$1
-  pillar=$2
-  if [ -z "$pillar" ]; then
-    pillar=global
-  fi
-  lookup_salt_value "$key" "$pillar" "pillar"
-}
+		nmcli con mod "$int_uuid" \
+			ethernet.mtu "$MTU" \
+			connection.autoconnect "yes"
+	fi
 
-lookup_pillar_secret() {
-  lookup_pillar "$1" "secrets"
-}
-
-lookup_grain() {
-  lookup_salt_value "$1" "" "grains"
-}
-
-lookup_role() {
-  id=$(lookup_grain id)
-  pieces=($(echo $id | tr '_' ' '))
-  echo ${pieces[1]}
+	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
+			
+	# Bring the slave interface up
+	if [[ $verbose == true ]]; then
+		nmcli con up "bond0-slave-$BNIC"
+	else
+		nmcli con up "bond0-slave-$BNIC" &>/dev/null
+	fi
+	 
+	if [ "$nic_error" != 0 ]; then
+		return "$nic_error"
+	fi
 }
 
 check_container() {
@@ -74,69 +92,295 @@ check_container() {
 }
 
 check_password() {
-  local password=$1
-  echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
-  return $?
-}
-
-set_os() {
-  if [ -f /etc/redhat-release ]; then
-    OS=centos
-  else
-    OS=ubuntu
-  fi
-}
-
-set_minionid() {
-  MINIONID=$(lookup_grain id)
-}
-
-set_version() {
-  CURRENTVERSION=0.0.0
-  if [ -f /etc/soversion ]; then
-    CURRENTVERSION=$(cat /etc/soversion)
-  fi
-  if [ -z "$VERSION" ]; then
-    if [ -z "$NEWVERSION" ]; then
-      if [ "$CURRENTVERSION" == "0.0.0" ]; then
-        echo "ERROR: Unable to detect Security Onion version; terminating script."
-        exit 1
-      else
-        VERSION=$CURRENTVERSION
-      fi
-    else
-      VERSION="$NEWVERSION"
-    fi
-  fi
-}
-
-require_manager() {
-  # Check to see if this is a manager
-  MANAGERCHECK=$(cat /etc/salt/grains | grep role | awk '{print $2}')
-  if [ $MANAGERCHECK == 'so-eval' ] || [ $MANAGERCHECK == 'so-manager' ] || [ $MANAGERCHECK == 'so-managersearch' ] || [ $MANAGERCHECK == 'so-standalone' ] || [ $MANAGERCHECK == 'so-helix' ] || [ $MANAGERCHECK == 'so-import' ]; then
-    echo "This is a manager, We can proceed."
-  else
-    echo "Please run this command on the manager; the manager controls the grid."
-    exit 1
-  fi
-}
-
-is_single_node_grid() {
-  role=$(lookup_role)
-  if [ "$role" != "eval" ] && [ "$role" != "standalone" ] && [ "$role" != "import" ]; then
-    return 1
-  fi
-  return 0
+	local password=$1
+	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+	return $?
 }
 
 fail() {
-  msg=$1
-  echo "ERROR: $msg"
-  echo "Exiting."
-  exit 1
+	msg=$1
+	echo "ERROR: $msg"
+	echo "Exiting."
+	exit 1
 }
 
 get_random_value() {
-  length=${1:-20}
-  head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+	length=${1:-20}
+	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
+header() {
+	printf '%s\n' "" "$banner" " $*" "$banner" 
+}
+
+init_monitor() {
+	MONITORNIC=$1
+	
+	if [[ $MONITORNIC == "bond0" ]]; then 
+	  BIFACES=$(lookup_bond_interfaces)
+	else
+	  BIFACES=$MONITORNIC
+	fi
+
+	for DEVICE_IFACE in $BIFACES; do
+	  for i in rx tx sg tso ufo gso gro lro; do
+	    ethtool -K "$DEVICE_IFACE" "$i" off;
+  	  done
+	  ip link set dev "$DEVICE_IFACE" arp off multicast off allmulticast off promisc on
+	done
+}
+
+is_manager_node() {
+	# Check to see if this is a manager node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'manager' ] && return 0
+	[ $role == 'managersearch' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_sensor_node() {
+	# Check to see if this is a sensor (forward) node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'sensor' ] && return 0
+	[ $role == 'heavynode' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_single_node_grid() {
+	role=$(lookup_role)
+	[ $role == 'eval' ] && return 0
+	[ $role == 'standalone' ] && return 0
+	[ $role == 'import' ] && return 0
+	return 1
+}
+
+lookup_bond_interfaces() {
+	cat /proc/net/bonding/bond0 | grep "Slave Interface:" | sed -e "s/Slave Interface: //g"
+}
+
+lookup_salt_value() {
+	key=$1
+	group=$2
+	kind=$3
+
+	if [ -z "$kind" ]; then
+		kind=pillar
+	fi
+
+	if [ -n "$group" ]; then
+		group=${group}:
+	fi
+
+	salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
+}
+
+lookup_pillar() {
+	key=$1
+	pillar=$2
+	if [ -z "$pillar" ]; then
+		pillar=global
+	fi
+	lookup_salt_value "$key" "$pillar" "pillar"
+}
+
+lookup_pillar_secret() {
+	lookup_pillar "$1" "secrets"
+}
+
+lookup_grain() {
+	lookup_salt_value "$1" "" "grains"
+}
+
+lookup_role() {
+	id=$(lookup_grain id)
+	pieces=($(echo $id | tr '_' ' '))
+	echo ${pieces[1]}
+}
+
+require_manager() {
+	if is_manager_node; then
+		echo "This is a manager, We can proceed."
+	else
+		echo "Please run this command on the manager; the manager controls the grid."
+		exit 1
+	fi
+}
+
+retry() {
+	maxAttempts=$1
+	sleepDelay=$2
+	cmd=$3
+	expectedOutput=$4
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do			
+		attempt=$((attempt+1))
+		echo "Executing command with retry support: $cmd"
+		output=$(eval "$cmd")
+		exitcode=$?
+		echo "Results: $output ($exitcode)"
+		if [ -n "$expectedOutput" ]; then
+			if [[ "$output" =~ "$expectedOutput" ]]; then
+				return $exitCode
+			else
+				echo "Expected '$expectedOutput' but got '$output'"
+			fi
+		elif [[ $exitcode -eq 0 ]]; then
+			return $exitCode
+		fi
+		echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+		sleep $sleepDelay
+	done
+	echo "Command continues to fail; giving up."
+	return 1
+}
+
+set_os() {
+	if [ -f /etc/redhat-release ]; then
+		OS=centos
+	else
+		OS=ubuntu
+	fi
+}
+
+set_minionid() {
+	MINIONID=$(lookup_grain id)
+}
+
+set_version() {
+	CURRENTVERSION=0.0.0
+	if [ -f /etc/soversion ]; then
+		CURRENTVERSION=$(cat /etc/soversion)
+	fi
+	if [ -z "$VERSION" ]; then
+		if [ -z "$NEWVERSION" ]; then
+			if [ "$CURRENTVERSION" == "0.0.0" ]; then
+				echo "ERROR: Unable to detect Security Onion version; terminating script."
+				exit 1
+			else
+				VERSION=$CURRENTVERSION
+			fi
+		else
+			VERSION="$NEWVERSION"
+		fi
+	fi
+}
+
+valid_cidr() {
+	# Verify there is a backslash in the string
+	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
+	
+	local cidr
+	local ip
+
+	cidr=$(echo "$1" | sed 's/.*\///')
+	ip=$(echo "$1" | sed 's/\/.*//' )
+	
+	if valid_ip4 "$ip"; then
+		[[ $cidr =~ ([0-9]|[1-2][0-9]|3[0-2]) ]] && return 0 || return 1
+	else
+		return 1
+	fi
+}
+
+valid_cidr_list() {
+	local all_valid=0
+
+	IFS="," read -r -a net_arr <<< "$1"
+
+	for net in "${net_arr[@]}"; do
+		valid_cidr "$net" || all_valid=1
+	done
+
+	return $all_valid
+}
+
+valid_dns_list() {
+	local all_valid=0
+
+	IFS="," read -r -a dns_arr <<< "$1"
+
+	for addr in "${dns_arr[@]}"; do
+		valid_ip4 "$addr" || all_valid=1
+	done
+
+	return $all_valid
+}
+
+valid_fqdn() {
+	local fqdn=$1
+
+	echo "$fqdn" | grep -qP '(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)' \
+		&& return 0 \
+		|| return 1
+}
+
+valid_hostname() {
+	local hostname=$1
+
+	[[ $hostname =~ ^[a-zA-Z0-9\-]+$ ]] && [[ $hostname != 'localhost' ]] && return 0 || return 1
+}
+
+valid_ip4() {
+	local ip=$1
+
+	echo "$ip" | grep -qP '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$' && return 0 || return 1
+}
+
+valid_int() {
+	local num=$1
+	local min=${2:-1}
+	local max=${3:-1000000000}
+
+	[[ $num =~ ^[0-9]*$ ]] && [[ $num -ge $min ]] && [[ $num -le $max ]] && return 0 || return 1
+}
+
+# {% raw %}
+
+valid_string() {
+	local str=$1
+	local min_length=${2:-1}
+	local max_length=${3:-64}
+
+	echo "$str" | grep -qP '^\S+$' && [[ ${#str} -ge $min_length ]] && [[ ${#str} -le $max_length ]] && return 0 || return 1
+}
+
+# {% endraw %}
+
+valid_username() {
+	local user=$1
+
+	echo "$user" | grep -qP '^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$' && return 0 || return 1
+}
+
+wait_for_web_response() {
+	url=$1
+	expected=$2
+	maxAttempts=${3:-300}
+	logfile=/root/wait_for_web_response.log
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do
+		attempt=$((attempt+1))
+		echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
+		result=$(curl -ks -L $url)
+		exitcode=$?
+
+		echo "--------------------------------------------------" >> $logfile
+		echo "$(date) - Checking web URL: $url ($attempt/$maxAttempts)" >> $logfile
+		echo "$result" >> $logfile
+		echo "exit code=$exitcode" >> $logfile
+		echo "" >> $logfile
+
+		if [[ $exitcode -eq 0 && "$result" =~ $expected ]]; then
+			echo "Received expected response; proceeding."
+			return 0
+		fi
+		echo "Server is not ready"
+		sleep 1
+	done
+	echo "Server still not ready after $maxAttempts attempts; giving up."
+	return 1
 }

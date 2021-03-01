@@ -12,10 +12,8 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'manager' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -88,6 +86,20 @@ append_so-aptcacherng_so-status.conf:
 
 {% endif %}
 
+strelka_yara_update_old_1:
+  cron.absent:
+    - user: root
+    - name: '[ -d /opt/so/saltstack/default/salt/strelka/rules/ ] && /usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
+
+strelka_yara_update_old_2:
+  cron.absent:
+    - user: root
+    - name: '/usr/sbin/so-yara-update > /dev/null 2>&1'
+    - hour: '7'
+    - minute: '1'
+
 strelka_yara_update:
   cron.present:
     - user: root
@@ -96,8 +108,8 @@ strelka_yara_update:
     - minute: '1'
 {% else %}
 
-manager_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: manager_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

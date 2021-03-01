@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'soc' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -46,6 +44,15 @@ socchanges:
     - mode: 600
     - template: jinja
 
+soccustom:
+  file.managed:
+    - name: /opt/so/conf/soc/custom.js
+    - source: salt://soc/files/soc/custom.js
+    - user: 939
+    - group: 939
+    - mode: 600
+    - template: jinja
+
 so-soc:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
@@ -55,6 +62,7 @@ so-soc:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
+      - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
@@ -131,8 +139,8 @@ append_so-kratos_so-status.conf:
 
 {% else %}
 
-soc_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: soc_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}
