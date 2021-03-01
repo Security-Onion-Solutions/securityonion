@@ -271,7 +271,7 @@ collect_adminuser_inputs() {
 collect_cur_close_days() {
 	whiptail_cur_close_days "$CURCLOSEDAYS"
 
-	while ! valid_int "$CURCLOSEDAYS" "1"; do
+	while ! valid_int "$CURCLOSEDAYS"; do
 		whiptail_invalid_input
 		whiptail_cur_close_days "$CURCLOSEDAYS"
 	done
@@ -322,7 +322,7 @@ collect_es_cluster_name() {
 collect_es_space_limit() {
 	whiptail_log_size_limit "$log_size_limit"
 
-	while ! valid_int "$log_size_limit" "1"; do # Upper/lower bounds?
+	while ! valid_int "$log_size_limit"; do # Upper/lower bounds?
 		whiptail_invalid_input
 		whiptail_log_size_limit "$log_size_limit"
 	done
@@ -368,7 +368,7 @@ collect_gateway() {
 }
 
 collect_helix_key() {
-	whiptail_helix_apikey # validate?
+	whiptail_helix_apikey
 }
 
 collect_homenet_mngr() {
@@ -397,7 +397,6 @@ collect_hostname() {
 	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
 
 	whiptail_set_hostname "$HOSTNAME"
-
 
 	if [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
 		if ! (whiptail_avoid_default_hostname); then
@@ -454,20 +453,10 @@ collect_mtu() {
 
 collect_node_es_heap() {
 	whiptail_node_es_heap "$ES_HEAP_SIZE"
-
-	while ! valid_int "$NODE_ES_HEAP_SIZE"; do
-		whiptail_invalid_input
-		whiptail_node_es_heap "$NODE_ES_HEAP_SIZE"
-	done
 }
 
 collect_node_ls_heap() {
 	whiptail_node_ls_heap "$LS_HEAP_SIZE"
-
-	while ! valid_int "$NODE_LS_HEAP_SIZE"; do
-		whiptail_invalid_input
-		whiptail_node_ls_heap "$NODE_LS_HEAP_SIZE"
-	done
 }
 
 collect_node_ls_input() {
@@ -500,7 +489,7 @@ collect_node_ls_pipeline_worker_count() {
 collect_oinkcode() {
 	whiptail_oinkcode
 
-	while ! valid_string "$OINKCODE" "" "128"; do #TODO: verify max length here
+	while ! valid_string "$OINKCODE" "" "128"; do
 		whiptail_invalid_input
 		whiptail_oinkcode "$OINKCODE"
 	done
@@ -569,6 +558,7 @@ collect_so_allow() {
 collect_soremote_inputs() {
 	whiptail_create_soremote_user
 	SCMATCH=no
+
 	while [[ $SCMATCH != yes ]]; do
 		whiptail_create_soremote_user_password1
 		whiptail_create_soremote_user_password2
@@ -596,11 +586,11 @@ collect_webuser_inputs() {
 
 	WPMATCH=no
 	while [[ $WPMATCH != yes ]]; do
-	    whiptail_create_web_user_password1
-	    while ! check_password "$WEBPASSWD1"; do
-				whiptail_invalid_pass_characters_warning
-				whiptail_create_web_user_password1
-			done
+		whiptail_create_web_user_password1
+		while ! check_password "$WEBPASSWD1"; do
+			whiptail_invalid_pass_characters_warning
+			whiptail_create_web_user_password1
+		done
 		if echo "$WEBPASSWD1" | so-user valpass >> "$setup_log" 2>&1; then
 			whiptail_create_web_user_password2
 			check_web_pass
