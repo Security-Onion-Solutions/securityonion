@@ -29,6 +29,9 @@ tgrafsyncscripts:
     - file_mode: 700
     - template: jinja
     - source: salt://telegraf/scripts
+{% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
+    - exclude_pat: zeekcaptureloss.sh
+{% endif %}
 
 tgrafconf:
   file.managed:
