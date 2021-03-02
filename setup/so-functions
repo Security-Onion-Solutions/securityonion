@@ -535,6 +535,17 @@ collect_patch_schedule_name_import() {
 	done
 }
 
+collect_proxy() {
+	if whiptail_proxy_ask; then
+		whiptail_proxy_addr
+
+		while ! valid_proxy "$proxy_addr"; do
+			whiptail_invalid_input
+			whiptail_proxy_addr
+		done
+	fi
+}
+
 collect_redirect_host() {
 	whiptail_set_redirect_host "$HOSTNAME"
 
@@ -1511,7 +1522,7 @@ manager_global() {
 		"  hnmanager: '$HNMANAGER'"\
 		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
-		"  proxy: '$PROXY'"\
+		"  proxy: '$proxy_addr'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
@@ -2184,7 +2195,46 @@ set_main_ip() {
 
 # Add /usr/sbin to everyone's path
 set_path() {
-	echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+	echo "complete -cf sudo" >> "$profile_d_config_file"
+}
+
+set_proxy() {
+	# Don't proxy localhost, local ip, and management ip
+	local no_proxy_string="localhost, 127.0.0.1, ${MAINIP}"
+
+	# Set proxy environment variables used by curl, wget, docker, and others
+	{
+		echo "export use_proxy=on"
+		echo "export http_proxy=\"${proxy_addr}\""
+		echo "export https_proxy=\"\$http_addr\""
+		echo "export ftp_proxy=\"\$http_addr\""
+		echo "export no_proxy=\"${no_proxy_string}\""
+	} >> "$profile_d_config_file"
+
+	# Create proxy config for dockerd 
+	printf '%s\n'\
+		"[Service]"\
+		"Environment=\"HTTP_PROXY=${proxy_addr}\""\
+		"Environment=\"HTTPS_PROXY=${proxy_addr}\""\
+		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
+
+	systemctl daemon-reload
+	systemctl restart docker
+
+	# Set proxy for package manager
+	if [ "$OS" = 'centos' ]; then
+		echo "proxy=$proxy_addr" >> /etc/yum.conf
+	else
+		# Set it up so the updates roll through the manager
+		printf '%s\n'\
+			"Acquire::http::Proxy \"$proxy_addr\";"\
+			"Acquire::https::Proxy \"$proxy_addr\";" > /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+
+	# Set global git proxy
+	printf '%s\n'\
+		"[http]"\
+		"  proxy = ${proxy_addr}" > /etc/gitconfig
 }
 
 setup_salt_master_dirs() {

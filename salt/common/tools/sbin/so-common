@@ -340,6 +340,26 @@ valid_int() {
 
 # {% raw %}
 
+valid_proxy() {
+	local proxy=$1
+	local url_prefixes=( 'http://' 'https://' )
+
+	local has_prefix=false
+	for prefix in "${url_prefixes[@]}"; do
+		echo "$proxy" | grep "$prefix" && has_prefix=true && proxy=${proxy#"$prefix"}
+	done
+	
+	local url
+	readarray -t url -d ':' <<< "$proxy"
+
+	local valid_url=true
+	if ! valid_ip4 "$proxy" && ! valid_fqdn "$proxy"; then
+		valid_url=false
+	fi
+
+	[[ $has_prefix == true ]] && [[ $valid_url ]] && return 0 || return 1
+}
+
 valid_string() {
 	local str=$1
 	local min_length=${2:-1}
