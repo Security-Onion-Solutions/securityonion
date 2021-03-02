@@ -104,7 +104,7 @@ elastaconf:
 wait_for_elasticsearch:
   module.run:
     - http.wait_for_successful_query:
-      - url: 'http://{{MANAGER}}:9200/_cat/indices/.kibana*'
+      - url: 'https://{{MANAGER}}:9200/_cat/indices/.kibana*'
       - wait_for: 180
 
 so-elastalert:
