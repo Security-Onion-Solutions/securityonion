@@ -12,14 +12,13 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'idstools' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
 # IDSTools Setup
 idstoolsdir:
   file.directory:
@@ -57,12 +56,14 @@ rulesdir:
     - group: 939
     - makedirs: True
 
+# Don't show changes because all.rules can be large
 synclocalnidsrules:
   file.recurse:
     - name: /opt/so/rules/nids/
     - source: salt://idstools/
     - user: 939
     - group: 939
+    - show_changes: False
     - include_pat: 'E@.rules'
 
 so-idstools:
@@ -83,8 +84,8 @@ append_so-idstools_so-status.conf:
 
 {% else %}
 
-idstools_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: idstools_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif%}

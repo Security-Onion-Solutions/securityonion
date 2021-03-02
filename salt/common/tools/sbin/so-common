@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,8 +41,18 @@ add_interface_bond0() {
 		fi
 	done
 
+	case "$2" in
+		-v|--verbose)
+			local verbose=true
+		;;
+	esac
+
 	for i in rx tx sg tso ufo gso gro lro; do
-		ethtool -K "$BNIC" $i off
+		if [[ $verbose == true ]]; then
+			ethtool -K "$BNIC" $i off
+		else
+			ethtool -K "$BNIC" $i off &>/dev/null
+		fi
 	done
 	# Check if the bond slave connection has already been created
 	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
@@ -64,15 +74,92 @@ add_interface_bond0() {
 
 	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
 			
-	nmcli con up "bond0-slave-$BNIC" # Bring the slave interface up
-
+	# Bring the slave interface up
+	if [[ $verbose == true ]]; then
+		nmcli con up "bond0-slave-$BNIC"
+	else
+		nmcli con up "bond0-slave-$BNIC" &>/dev/null
+	fi
+	 
 	if [ "$nic_error" != 0 ]; then
 		return "$nic_error"
 	fi
 }
 
+check_container() {
+	docker ps | grep "$1:" > /dev/null 2>&1
+	return $?
+}
+
+check_password() {
+	local password=$1
+	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
+	return $?
+}
+
+fail() {
+	msg=$1
+	echo "ERROR: $msg"
+	echo "Exiting."
+	exit 1
+}
+
+get_random_value() {
+	length=${1:-20}
+	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
 header() {
 	printf '%s\n' "" "$banner" " $*" "$banner" 
+}
+
+init_monitor() {
+	MONITORNIC=$1
+	
+	if [[ $MONITORNIC == "bond0" ]]; then 
+	  BIFACES=$(lookup_bond_interfaces)
+	else
+	  BIFACES=$MONITORNIC
+	fi
+
+	for DEVICE_IFACE in $BIFACES; do
+	  for i in rx tx sg tso ufo gso gro lro; do
+	    ethtool -K "$DEVICE_IFACE" "$i" off;
+  	  done
+	  ip link set dev "$DEVICE_IFACE" arp off multicast off allmulticast off promisc on
+	done
+}
+
+is_manager_node() {
+	# Check to see if this is a manager node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'manager' ] && return 0
+	[ $role == 'managersearch' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_sensor_node() {
+	# Check to see if this is a sensor (forward) node
+	role=$(lookup_role)
+	is_single_node_grid && return 0
+	[ $role == 'sensor' ] && return 0
+	[ $role == 'heavynode' ] && return 0
+	[ $role == 'helix' ] && return 0
+	return 1
+}
+
+is_single_node_grid() {
+	role=$(lookup_role)
+	[ $role == 'eval' ] && return 0
+	[ $role == 'standalone' ] && return 0
+	[ $role == 'import' ] && return 0
+	return 1
+}
+
+lookup_bond_interfaces() {
+	cat /proc/net/bonding/bond0 | grep "Slave Interface:" | sed -e "s/Slave Interface: //g"
 }
 
 lookup_salt_value() {
@@ -114,15 +201,41 @@ lookup_role() {
 	echo ${pieces[1]}
 }
 
-check_container() {
-	docker ps | grep "$1:" > /dev/null 2>&1
-	return $?
+require_manager() {
+	if is_manager_node; then
+		echo "This is a manager, We can proceed."
+	else
+		echo "Please run this command on the manager; the manager controls the grid."
+		exit 1
+	fi
 }
 
-check_password() {
-	local password=$1
-	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
-	return $?
+retry() {
+	maxAttempts=$1
+	sleepDelay=$2
+	cmd=$3
+	expectedOutput=$4
+	attempt=0
+	while [[ $attempt -lt $maxAttempts ]]; do			
+		attempt=$((attempt+1))
+		echo "Executing command with retry support: $cmd"
+		output=$(eval "$cmd")
+		exitcode=$?
+		echo "Results: $output ($exitcode)"
+		if [ -n "$expectedOutput" ]; then
+			if [[ "$output" =~ "$expectedOutput" ]]; then
+				return $exitCode
+			else
+				echo "Expected '$expectedOutput' but got '$output'"
+			fi
+		elif [[ $exitcode -eq 0 ]]; then
+			return $exitCode
+		fi
+		echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+		sleep $sleepDelay
+	done
+	echo "Command continues to fail; giving up."
+	return 1
 }
 
 set_os() {
@@ -154,128 +267,6 @@ set_version() {
 			VERSION="$NEWVERSION"
 		fi
 	fi
-}
-
-require_manager() {
-	if is_manager; then
-		echo "This is a manager, We can proceed."
-	else
-		echo "Please run this command on the manager; the manager controls the grid."
-		exit 1
-	fi
-}
-
-is_manager() {
-	# Check to see if this is a manager node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'manager' ] && return 0
-	[ $role == 'managersearch' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
-}
-
-is_sensor() {
-	# Check to see if this is a sensor (forward) node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'sensor' ] && return 0
-	[ $role == 'heavynode' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
-}
-
-is_single_node_grid() {
-	role=$(lookup_role)
-	[ $role == 'eval' ] && return 0
-	[ $role == 'standalone' ] && return 0
-	[ $role == 'import' ] && return 0
-	return 1
-}
-
-fail() {
-	msg=$1
-	echo "ERROR: $msg"
-	echo "Exiting."
-	exit 1
-}
-
-get_random_value() {
-	length=${1:-20}
-	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
-}
-
-retry() {
-	maxAttempts=$1
-	sleepDelay=$2
-	cmd=$3
-	expectedOutput=$4
-	attempt=0
-	while [[ $attempt -lt $maxAttempts ]]; do			
-		attempt=$((attempt+1))
-		info "Executing command with retry support: $cmd"
-		output=$($cmd)
-		info "Results: $output"
-		exitcode=$?
-		if [ -n "$expectedOutput" ]; then
-			if [[ "$output" =~ "$expectedOutput" ]]; then
-				return $exitCode
-			else
-				info "Expected '$expectedOutput' but got '$output'"
-			fi
-		elif [[ $exitcode -eq 0 ]]; then
-			return $exitCode
-		fi
-		info "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
-		sleep $sleepDelay
-	done
-	error "Command continues to fail; giving up."
-	return 1
-}
-
-wait_for_apt() {
-	local progress_callback=$1
-
-	local retry_count=30
-	local retry_timeout='10s'
-	local lock_msg="Could not acquire dpkg lock, waiting $retry_timeout for lock to release."
-	if [[ -z $progress_callback ]]; then
-		if [[ -z $progress_bar_text ]]; then
-			local old_text="Installing..."
-		else
-			local old_text="$progress_bar_text"
-		fi
-	fi
-	local count=0
-	while [[ "$count" -lt "$retry_count" ]]; do
-		((count++))
-		[[ -z $progress_callback ]] && echo "Attempting to acquire dpkg lock to run apt command... (Attempt $count/$retry_count)"
-		if __check_apt_lock; then
-			if [[ -z $progress_callback ]]; then
-				echo "  $lock_msg" | tee -a "$setup_log"
-			else
-				$progress_callback "Could not acquire dpkg lock, waiting $retry_timeout ($count/$retry_count)"
-			fi
-		else
-			[[ -z $progress_callback ]] || $progress_callback "$old_text"
-			return 0
-		fi
-		sleep "$retry_timeout"
-	done
-
-	if __check_apt_lock; then
-		[[ -z $progress_callback ]] &&	echo "Could not acquire lock after $retry_count attempts, aborting."
-		return 1
-	else
-		return 0
-	fi
-}
-
-__check_apt_lock() {
-	lsof /var/lib/dpkg/lock &> /dev/null
-	local lock=$?
-
-	return $lock
 }
 
 valid_cidr() {
@@ -342,10 +333,12 @@ valid_ip4() {
 valid_int() {
 	local num=$1
 	local min=${2:-1}
-	local max=${3:-1000}
+	local max=${3:-1000000000}
 
 	[[ $num =~ ^[0-9]*$ ]] && [[ $num -ge $min ]] && [[ $num -le $max ]] && return 0 || return 1
 }
+
+# {% raw %}
 
 valid_string() {
 	local str=$1
@@ -354,6 +347,8 @@ valid_string() {
 
 	echo "$str" | grep -qP '^\S+$' && [[ ${#str} -ge $min_length ]] && [[ ${#str} -le $max_length ]] && return 0 || return 1
 }
+
+# {% endraw %}
 
 valid_username() {
 	local user=$1

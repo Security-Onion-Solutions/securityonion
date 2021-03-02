@@ -1,3 +1,6 @@
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
+
 {% set MANAGER = salt['grains.get']('master') %}
 airgapyum:
   file.managed:
@@ -58,3 +61,11 @@ agssrepo:
 agwazrepo:
   file.absent:
     - name: /etc/yum.repos.d/wazuh.repo
+
+{% else %}
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
+{% endif %}

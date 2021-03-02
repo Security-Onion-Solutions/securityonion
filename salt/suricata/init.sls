@@ -12,13 +12,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'suricata' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -66,9 +63,10 @@ surilogdir:
 
 suridatadir:
   file.directory:
-    - name: /nsm/suricata
+    - name: /nsm/suricata/extracted
     - user: 940
     - group: 939
+    - makedirs: True
 
 surirulesync:
   file.recurse:
@@ -76,17 +74,12 @@ surirulesync:
     - source: salt://suricata/rules/
     - user: 940
     - group: 940
+    - show_changes: False
 
 surilogscript:
   file.managed:
     - name: /usr/local/bin/surilogcompress
     - source: salt://suricata/cron/surilogcompress
-    - mode: 755
-
-surirotatescript:
-  file.managed:
-    - name: /usr/local/bin/surirotate
-    - source: salt://suricata/cron/surirotate
     - mode: 755
 
 /usr/local/bin/surilogcompress:
@@ -141,7 +134,7 @@ suribpf:
     - contents:
       - ""
    {% endif %}
-    
+
 so-suricata:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
@@ -155,6 +148,7 @@ so-suricata:
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
+      - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
@@ -176,14 +170,8 @@ disable_so-suricata_so-status.conf:
     - regex: ^so-suricata$
 {% endif %}
 
-surilogrotate:
-  file.managed:
-    - name: /opt/so/conf/suricata/suri-rotate.conf
-    - source: salt://suricata/files/suri-rotate.conf
-    - mode: 644
-
 /usr/local/bin/surirotate:
-  cron.present:
+  cron.absent:
     - user: root
     - minute: '11'
     - hour: '*'
@@ -193,8 +181,8 @@ surilogrotate:
 
 {% else %}
 
-suricata_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: suricata_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

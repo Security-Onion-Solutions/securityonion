@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -47,25 +47,31 @@ if ! docker ps | grep -q so-tcpreplay; then
   echo "Replay functionality not enabled; attempting to enable now (may require Internet access)..."
   echo
 
-  if is_manager; then
-	  TRUSTED_CONTAINERS=("so-tcpreplay")
-	  mkdir -p /opt/so/log/tcpreplay
-	  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+  if is_manager_node; then
+  	set_version
+  	if ! docker images | grep so-tcpreplay | grep ":5000" | grep -q $VERSION ; then
+  		echo "Pulling so-tcpreplay image"
+		  TRUSTED_CONTAINERS=("so-tcpreplay")
+		  mkdir -p /opt/so/log/tcpreplay
+		  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+		else
+			echo "so-tcpreplay image exists."
+		fi
 	fi
-	if is_sensor; then
-		if ! is_manager; then
+	if is_sensor_node; then
+		if ! is_manager_node; then
 			echo "Attempting to start replay container. If this fails then you may need to run this command on the manager first."
 		fi
   	so-tcpreplay-start || fail "Unable to initialize tcpreplay"
   fi
 fi
 
-if is_sensor; then
+if is_sensor_node; then
 	echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
 	docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i ${REPLAYIFACE} -M${REPLAYSPEED} $@"
 
 	echo "Replay completed. Warnings shown above are typically expected."
-elif is_manager; then
+elif is_manager_node; then
 	echo "The sensor nodes in this grid can now replay traffic."
 else
 	echo "Unable to replay traffic since this node is not a sensor node."

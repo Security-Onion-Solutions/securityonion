@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,10 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import subprocess
 import sys
+import time
 import yaml
 
+lockFile = "/tmp/so-firewall.lock"
 hostgroupsFilename = "/opt/so/saltstack/local/salt/firewall/hostgroups.local.yaml"
 portgroupsFilename = "/opt/so/saltstack/local/salt/firewall/portgroups.local.yaml"
 defaultPortgroupsFilename = "/opt/so/saltstack/default/salt/firewall/portgroups.yaml"
@@ -329,7 +332,7 @@ def apply():
   proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
   return proc.returncode
 
-def main():
+def main():  
   options = []
   args = sys.argv[1:]
   for option in args:
@@ -356,8 +359,30 @@ def main():
     "addportgroup": addportgroup
   }
 
-  cmd = commands.get(args[0], showUsage)
-  code = cmd(options, args[1:])
+  code=1
+
+  try:
+    lockAttempts = 0
+    maxAttempts = 30
+    while lockAttempts < maxAttempts:
+      lockAttempts = lockAttempts + 1
+      try:
+        f = open(lockFile, "x")
+        f.close()
+        break
+      except:
+        time.sleep(2)
+
+    if lockAttempts == maxAttempts:
+      print("Lock file (" + lockFile + ") could not be created; proceeding without lock.")
+
+    cmd = commands.get(args[0], showUsage)
+    code = cmd(options, args[1:])
+  finally:
+    try:
+      os.remove(lockFile)
+    except:
+      print("Lock file (" + lockFile + ") already removed")
 
   sys.exit(code)
 
