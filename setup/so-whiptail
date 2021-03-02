@@ -631,23 +631,11 @@ whiptail_invalid_hostname() {
 whiptail_log_size_limit() {
 
 	[ -n "$TESTING" ] && return
-
-	case $install_type in
-		STANDALONE | EVAL | HEAVYNODE)
-			percentage=50
-		;;
-		*)
-			percentage=80
-		;;
-	esac
-
-	read -r -d '' message <<- EOM
-	Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage.
-
-	By default, this is set to ${percentage}% of the disk space allotted for /nsm.
-	EOM
 	
-	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox "$message" 11 75 "$1" 3>&1 1>&2 2>&3)
+
+	log_size_limit=$(whiptail --title "Security Onion Setup" --inputbox \
+	"Please specify the amount of disk space (in GB) you would like to allocate for Elasticsearch data storage: \n\
+	By default, this is set to 80% of the disk space allotted for /nsm." 10 75 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
