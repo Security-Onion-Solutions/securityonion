@@ -4,7 +4,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 30 ]]; do
-  curl --output /dev/null --silent --head --fail -L http://{{ ES }}:9200
+  curl --output /dev/null --silent --head --fail -L https://{{ ES }}:9200
   if [ $? -eq 0 ]; then
     ELASTICSEARCH_CONNECTED="yes"
     echo "connected!"

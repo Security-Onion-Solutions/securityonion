@@ -4,12 +4,6 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- if FEATURES is sameas true %}
-  {% set FEATURES = "-features" %}
-{% else %}
-  {% set FEATURES = '' %}
-{% endif %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -73,7 +67,7 @@ kibanabin:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}
     - hostname: kibana
     - user: kibana
     - environment:

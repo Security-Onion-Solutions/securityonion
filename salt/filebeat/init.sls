@@ -21,12 +21,7 @@
 {% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- if FEATURES is sameas true %}
-  {% set FEATURES = "-features" %}
-{% else %}
-  {% set FEATURES = '' %}
-{% endif %}
+
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
@@ -64,7 +59,7 @@ filebeatconfsync:
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 so-filebeat:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
