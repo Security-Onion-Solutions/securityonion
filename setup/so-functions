@@ -536,7 +536,8 @@ collect_patch_schedule_name_import() {
 }
 
 collect_proxy() {
-	if whiptail_proxy_ask; then
+	local ask=${1:-true}
+	if [[ $ask == true ]] && whiptail_proxy_ask; then
 
 		whiptail_proxy_addr
 
@@ -1748,7 +1749,6 @@ network_init_whiptail() {
 			whiptail_management_nic
 			;;
 	esac
-	collect_proxy
 }
 
 network_setup() {
@@ -1811,6 +1811,17 @@ print_salt_state_apply() {
 	local state=$1
 
 	echo "Applying $state Salt state"
+}
+
+proxy_validate() {
+	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
+	curl "$test_url" --proxy "$so_proxy" &> /dev/null
+	local ret=$?
+
+	if [[ $ret != 0 ]]; then
+		error "Could not reach $test_url using proxy $so_proxy"
+	fi
+	return $ret
 }
 
 reserve_group_ids() {
@@ -2225,6 +2236,7 @@ set_path() {
 }
 
 set_proxy() {
+
 	# Don't proxy localhost, local ip, and management ip
 	local no_proxy_string="localhost, 127.0.0.1, ${MAINIP}"
 
@@ -2236,6 +2248,8 @@ set_proxy() {
 		echo "export ftp_proxy=\"\$http_addr\""
 		echo "export no_proxy=\"${no_proxy_string}\""
 	} >> "$profile_d_config_file"
+
+	source "$profile_d_config_file"
 
 	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p '/etc/systemd/system/docker.service.d'
 

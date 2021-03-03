@@ -198,6 +198,14 @@ if ! [[ -f $install_opt_file ]]; then
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			if [[ $is_manager ]]; then
+				collect_proxy
+				while ! proxy_validate; do
+					whiptail_invalid_proxy
+					collect_proxy no_ask
+				done
+				[[ -n "$proxy_addr" ]] && set_proxy >> $setup_log 2>&1
+			fi
 			whiptail_net_setup_complete
 		else
 			whiptail_install_type
@@ -288,6 +296,15 @@ if ! [[ -f $install_opt_file ]]; then
 
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init
+	fi
+
+	if [[ $is_manager ]]; then
+		collect_proxy
+		while ! proxy_validate; do
+			whiptail_invalid_proxy
+			collect_proxy no_ask
+		done
+		[[ -n "$proxy_addr" ]] && set_proxy >> $setup_log 2>&1
 	fi
 	
 	if [[ -n "$TURBO" ]]; then
