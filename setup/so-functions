@@ -774,10 +774,10 @@ compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
 		  read -r -d '' message <<- EOM
-		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
-		EOM
+			EOM
 		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
@@ -1719,9 +1719,11 @@ network_init() {
 	if [[ "$setup_type" == 'iso' ]]; then
 		set_management_interface
 	fi
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
 	# Check if the proxy variable was set then set proxy for various apps if so
 	if [[ -n "$so_proxy" ]]; then
-		set_proxy
+		set_proxy >> $setup_log 2>&1
 	fi
 }
 
@@ -2235,6 +2237,8 @@ set_proxy() {
 		echo "export no_proxy=\"${no_proxy_string}\""
 	} >> "$profile_d_config_file"
 
+	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p '/etc/systemd/system/docker.service.d'
+
 	# Create proxy config for dockerd 
 	printf '%s\n'\
 		"[Service]"\
@@ -2243,7 +2247,7 @@ set_proxy() {
 		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
 
 	systemctl daemon-reload
-	systemctl restart docker
+	command -v docker &> /dev/null && systemctl restart docker
 
 	# Set proxy for package manager
 	if [ "$OS" = 'centos' ]; then
