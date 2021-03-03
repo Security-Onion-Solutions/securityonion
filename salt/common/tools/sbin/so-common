@@ -346,14 +346,14 @@ valid_proxy() {
 
 	local has_prefix=false
 	for prefix in "${url_prefixes[@]}"; do
-		echo "$proxy" | grep "$prefix" && has_prefix=true && proxy=${proxy#"$prefix"} && break
+		echo "$proxy" | grep -q "$prefix" && has_prefix=true && proxy=${proxy#"$prefix"} && break
 	done
 	
-	local url
-	readarray -t url -d ':' <<< "$proxy"
+	local url_arr
+	mapfile -t url_arr <<< "$(echo "$proxy" | tr ":" "\n")"
 
 	local valid_url=true
-	if ! valid_ip4 "$proxy" && ! valid_fqdn "$proxy"; then
+	if ! valid_ip4 "${url_arr[0]}" && ! valid_fqdn "${url_arr[0]}"; then
 		valid_url=false
 	fi
 
