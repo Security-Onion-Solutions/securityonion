@@ -537,12 +537,41 @@ collect_patch_schedule_name_import() {
 
 collect_proxy() {
 	if whiptail_proxy_ask; then
+
 		whiptail_proxy_addr
 
 		while ! valid_proxy "$proxy_addr"; do
 			whiptail_invalid_input
 			whiptail_proxy_addr
 		done
+
+		if whiptail_proxy_auth_ask; then
+			whiptail_proxy_auth_user
+
+			while ! valid_string "$proxy_user"; do
+				whiptail_invalid_input
+				whiptail_proxy_auth_user
+			done
+
+			whiptail_proxy_auth_pass
+
+			while ! valid_string "$proxy_pass"; do
+				whiptail_invalid_input
+				whiptail_proxy_auth_pass
+			done
+
+			local url_prefixes=( 'http://' 'https://' )
+			for prefix in "${url_prefixes[@]}"; do
+				if echo "$proxy_addr" | grep "$prefix"; then
+					proxy=${proxy_addr#"$prefix"}
+					proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
+					break
+				fi
+			done
+		else
+			proxy="$proxy_addr"
+		fi
+		export proxy
 	fi
 }
 
