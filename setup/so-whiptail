@@ -1224,8 +1224,14 @@ whiptail_proxy_ask() {
 
 whiptail_proxy_addr() {
 	[ -n "$TESTING" ] && return
+	local message
+	read -r -d '' message <<- EOM
+	Please input the proxy server you wish to use, including the URL prefix (ex: https://your.proxy.com:1234).
 
-	proxy_addr=$(whiptail --title "Security Onion Setup" --inputbox "Please input the proxy server you wish to use, including the URL prefix (ex: https://your.proxy.com:1234):" 8 60 3>&1 1>&2 2>&3)
+	If your proxy requires a username and password do not include them in your input. Setup will ask for those values next.
+	EOM
+
+	proxy_addr=$(whiptail --title "Security Onion Setup" --inputbox "$message" 13 60 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus

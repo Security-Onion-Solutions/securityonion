@@ -553,13 +553,13 @@ collect_proxy() {
 			local url_prefixes=( 'http://' 'https://' )
 			for prefix in "${url_prefixes[@]}"; do
 				if echo "$proxy_addr" | grep "$prefix"; then
-					proxy=${proxy_addr#"$prefix"}
-					proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
+					local proxy=${proxy_addr#"$prefix"}
+					so_proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
 					break
 				fi
 			done
 		else
-			proxy="$proxy_addr"
+			so_proxy="$proxy_addr"
 		fi
 		export proxy
 	fi
@@ -1541,7 +1541,7 @@ manager_global() {
 		"  hnmanager: '$HNMANAGER'"\
 		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
-		"  proxy: '$proxy'"\
+		"  proxy: '$so_proxy'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
@@ -1719,6 +1719,10 @@ network_init() {
 	if [[ "$setup_type" == 'iso' ]]; then
 		set_management_interface
 	fi
+	# Check if the proxy variable was set then set proxy for various apps if so
+	if [[ -n "$so_proxy" ]]; then
+		set_proxy
+	fi
 }
 
 network_init_whiptail() {
@@ -1742,6 +1746,7 @@ network_init_whiptail() {
 			whiptail_management_nic
 			;;
 	esac
+	collect_proxy
 }
 
 network_setup() {
@@ -2224,7 +2229,7 @@ set_proxy() {
 	# Set proxy environment variables used by curl, wget, docker, and others
 	{
 		echo "export use_proxy=on"
-		echo "export http_proxy=\"${proxy}\""
+		echo "export http_proxy=\"${so_proxy}\""
 		echo "export https_proxy=\"\$http_addr\""
 		echo "export ftp_proxy=\"\$http_addr\""
 		echo "export no_proxy=\"${no_proxy_string}\""
@@ -2233,8 +2238,8 @@ set_proxy() {
 	# Create proxy config for dockerd 
 	printf '%s\n'\
 		"[Service]"\
-		"Environment=\"HTTP_PROXY=${proxy}\""\
-		"Environment=\"HTTPS_PROXY=${proxy}\""\
+		"Environment=\"HTTP_PROXY=${so_proxy}\""\
+		"Environment=\"HTTPS_PROXY=${so_proxy}\""\
 		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
 
 	systemctl daemon-reload
@@ -2242,18 +2247,18 @@ set_proxy() {
 
 	# Set proxy for package manager
 	if [ "$OS" = 'centos' ]; then
-		echo "proxy=$proxy" >> /etc/yum.conf
+		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
 		printf '%s\n'\
-			"Acquire::http::Proxy \"$proxy\";"\
-			"Acquire::https::Proxy \"$proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
+			"Acquire::http::Proxy \"$so_proxy\";"\
+			"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
 	fi
 
 	# Set global git proxy
 	printf '%s\n'\
 		"[http]"\
-		"  proxy = ${proxy}" > /etc/gitconfig
+		"  proxy = ${so_proxy}" > /etc/gitconfig
 }
 
 setup_salt_master_dirs() {
