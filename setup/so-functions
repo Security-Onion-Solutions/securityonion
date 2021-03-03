@@ -548,17 +548,7 @@ collect_proxy() {
 		if whiptail_proxy_auth_ask; then
 			whiptail_proxy_auth_user
 
-			while ! valid_string "$proxy_user"; do
-				whiptail_invalid_input
-				whiptail_proxy_auth_user
-			done
-
 			whiptail_proxy_auth_pass
-
-			while ! valid_string "$proxy_pass"; do
-				whiptail_invalid_input
-				whiptail_proxy_auth_pass
-			done
 
 			local url_prefixes=( 'http://' 'https://' )
 			for prefix in "${url_prefixes[@]}"; do
@@ -1551,7 +1541,7 @@ manager_global() {
 		"  hnmanager: '$HNMANAGER'"\
 		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
-		"  proxy: '$proxy_addr'"\
+		"  proxy: '$proxy'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
@@ -2234,7 +2224,7 @@ set_proxy() {
 	# Set proxy environment variables used by curl, wget, docker, and others
 	{
 		echo "export use_proxy=on"
-		echo "export http_proxy=\"${proxy_addr}\""
+		echo "export http_proxy=\"${proxy}\""
 		echo "export https_proxy=\"\$http_addr\""
 		echo "export ftp_proxy=\"\$http_addr\""
 		echo "export no_proxy=\"${no_proxy_string}\""
@@ -2243,8 +2233,8 @@ set_proxy() {
 	# Create proxy config for dockerd 
 	printf '%s\n'\
 		"[Service]"\
-		"Environment=\"HTTP_PROXY=${proxy_addr}\""\
-		"Environment=\"HTTPS_PROXY=${proxy_addr}\""\
+		"Environment=\"HTTP_PROXY=${proxy}\""\
+		"Environment=\"HTTPS_PROXY=${proxy}\""\
 		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
 
 	systemctl daemon-reload
@@ -2252,18 +2242,18 @@ set_proxy() {
 
 	# Set proxy for package manager
 	if [ "$OS" = 'centos' ]; then
-		echo "proxy=$proxy_addr" >> /etc/yum.conf
+		echo "proxy=$proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
 		printf '%s\n'\
-			"Acquire::http::Proxy \"$proxy_addr\";"\
-			"Acquire::https::Proxy \"$proxy_addr\";" > /etc/apt/apt.conf.d/00-proxy.conf
+			"Acquire::http::Proxy \"$proxy\";"\
+			"Acquire::https::Proxy \"$proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
 	fi
 
 	# Set global git proxy
 	printf '%s\n'\
 		"[http]"\
-		"  proxy = ${proxy_addr}" > /etc/gitconfig
+		"  proxy = ${proxy}" > /etc/gitconfig
 }
 
 setup_salt_master_dirs() {
