@@ -5,28 +5,30 @@
 {%- endif %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
-## TO DO - Add this to Logstash Pipeline Pillar - Search
-
 filter {
-  if [type] =~ "osq" {
+  if [type] =~ "live_query" {
 
+    mutate {
+        rename => {
+            "[host][hostname]" => "computer_name"
+        }
+    }
+
+ prune {
+        blacklist_names => ["host"]
+      }
+    
  split {
    field => "rows"
   }
- mutate {
-   rename => { 
-      "[rows][cmdline]" => "[process][commandline]"
-      "[rows][name]" => "[process][name]" 
-    }
-    }
  }
 }
 
 
 output {
-  if [type] =~ "osq" {
+  if [type] =~ "live_query" {
     elasticsearch {
-      pipeline => "common" 
+      pipeline => "osquery.live_query" 
       hosts => "{{ ES }}"
       index => "so-osquery"
       template_name => "so-osquery"
