@@ -19,13 +19,6 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-
-{%- if FEATURES is sameas true %}
-  {% set FEATURES = "-features" %}
-{% else %}
-  {% set FEATURES = '' %}
-{% endif %}
 
 # Logstash Section - Decide which pillar to use
 {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
@@ -146,7 +139,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
