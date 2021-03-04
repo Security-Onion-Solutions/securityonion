@@ -200,11 +200,7 @@ if ! [[ -f $install_opt_file ]]; then
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
 			if [[ $is_manager ]]; then
 				collect_proxy
-				while ! proxy_validate; do
-					whiptail_invalid_proxy
-					collect_proxy no_ask
-				done
-				[[ -n "$proxy_addr" ]] && set_proxy >> $setup_log 2>&1
+				[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			fi
 			whiptail_net_setup_complete
 		else
@@ -300,14 +296,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 	if [[ $is_manager ]]; then
 		collect_proxy
-		while ! proxy_validate; do
-			if whiptail_invalid_proxy; then
-				collect_proxy no_ask
-			else
-				proxy_addr=""
-				break
-			fi
-		done
 	fi
 	
 	if [[ -n "$TURBO" ]]; then
@@ -559,7 +547,7 @@ catch() {
 
 # Set REDIRECTIT variable, which is used by a function outside the below subshell
 set_redirect >> $setup_log 2>&1
-[[ -n "$proxy_addr" ]] && set_proxy >> $setup_log 2>&1
+[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 
 
 # Begin install
