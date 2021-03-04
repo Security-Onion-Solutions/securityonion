@@ -301,8 +301,12 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager ]]; then
 		collect_proxy
 		while ! proxy_validate; do
-			whiptail_invalid_proxy
-			collect_proxy no_ask
+			if whiptail_invalid_proxy; then
+				collect_proxy no_ask
+			else
+				proxy_addr=""
+				break
+			fi
 		done
 		[[ -n "$proxy_addr" ]] && set_proxy >> $setup_log 2>&1
 	fi

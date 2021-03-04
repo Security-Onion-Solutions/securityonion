@@ -593,12 +593,12 @@ whiptail_invalid_proxy() {
 
 	local message
 	read -r -d '' message <<- EOM
-	Could not reach test url using proxy ${so_proxy}. 
+	Could not reach test url using proxy ${proxy_addr}. 
 	
 	Check log (${setup_log}) for details.
 	EOM
 
-	whiptail --title "Security Onion Setup" --msgbox "$message" 10 60
+	whiptail --title "Security Onion Setup" --yesno "$message" --yestext "Enter Again" --notext "Skip" 10 60
 }
 
 whiptail_invalid_string() {
@@ -1244,7 +1244,7 @@ whiptail_proxy_addr() {
 	If your proxy requires a username and password do not include them in your input. Setup will ask for those values next.
 	EOM
 
-	proxy_addr=$(whiptail --title "Security Onion Setup" --inputbox "$message" 13 60 3>&1 1>&2 2>&3)
+	proxy_addr=$(whiptail --title "Security Onion Setup" --inputbox "$message" 13 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1259,7 +1259,7 @@ whiptail_proxy_auth_ask() {
 whiptail_proxy_auth_user() {
 	[ -n "$TESTING" ] && return
 	
-	proxy_user=$(whiptail --title "Security Onion Setup" --inputbox "Please input the proxy user:" 8 60 3>&1 1>&2 2>&3)
+	proxy_user=$(whiptail --title "Security Onion Setup" --inputbox "Please input the proxy user:" 8 60 "$1" 3>&1 1>&2 2>&3)
 }
 
 whiptail_proxy_auth_pass() {
