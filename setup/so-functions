@@ -2265,7 +2265,7 @@ set_proxy() {
 
 	source /etc/profile.d/so-proxy.sh
 
-	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p '/etc/systemd/system/docker.service.d'
+	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p /etc/systemd/system/docker.service.d
 
 	# Create proxy config for dockerd 
 	printf '%s\n'\
@@ -2276,6 +2276,22 @@ set_proxy() {
 
 	systemctl daemon-reload
 	command -v docker &> /dev/null && systemctl restart docker
+
+	# Create config.json for docker containers
+	[[ -d /root/.docker ]] || mkdir /root/.docker
+	printf '%s\n'\
+		"{"\
+		"  \"proxies\":"\
+		"  {"\
+		"    \"default\":"\
+		"    {"\
+		"      \"httpProxy\":\"${so_proxy}\","\
+		"      \"httpsProxy\":\"${so_proxy}\","\
+		"      \"ftpProxy\":\"${so_proxy}\","\
+		"      \"noProxy\":\"${no_proxy_string}\""\
+		"    }"\
+		"  }"\
+		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
 	if [ "$OS" = 'centos' ]; then
