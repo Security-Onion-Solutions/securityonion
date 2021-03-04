@@ -18,16 +18,9 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-
-{% if FEATURES is sameas true %}
-  {% set FEATUREZ = "-features" %}
-{% else %}
-  {% set FEATUREZ = '' %}
-{% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -186,7 +179,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
