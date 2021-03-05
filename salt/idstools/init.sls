@@ -19,6 +19,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
+{% set proxy = salt['pillar.get']('manager:proxy') %}
 # IDSTools Setup
 idstoolsdir:
   file.directory:
@@ -71,6 +72,12 @@ so-idstools:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idstools:{{ VERSION }}
     - hostname: so-idstools
     - user: socore
+    {% if proxy is not none %}
+    - environment:
+      - http_proxy={{ proxy }}
+      - https_proxy={{ proxy }}
+      - no_proxy={{ salt['pillar.get']('manager:no_proxy') }}
+    {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw

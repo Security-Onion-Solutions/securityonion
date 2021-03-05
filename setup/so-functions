@@ -535,6 +535,55 @@ collect_patch_schedule_name_import() {
 	done
 }
 
+collect_proxy() {
+	collect_proxy_details
+	while ! proxy_validate; do
+		if whiptail_invalid_proxy; then
+			collect_proxy_details no_ask
+		else
+			so_proxy=""
+			break
+		fi
+	done
+}
+
+collect_proxy_details() {
+	local ask=${1:-true}
+	local use_proxy
+	if [[ $ask != true ]]; then
+		use_proxy=0
+	else
+		whiptail_proxy_ask
+		use_proxy=$?
+	fi
+
+	if [[ $use_proxy == 0 ]]; then
+		whiptail_proxy_addr "$proxy_addr"
+
+		while ! valid_proxy "$proxy_addr"; do
+			whiptail_invalid_input
+			whiptail_proxy_addr "$proxy_addr"
+		done
+
+		if whiptail_proxy_auth_ask; then
+			whiptail_proxy_auth_user "$proxy_user"
+			whiptail_proxy_auth_pass # Don't pass in existing pass since it's obfuscated
+
+			local url_prefixes=( 'http://' 'https://' )
+			for prefix in "${url_prefixes[@]}"; do
+				if echo "$proxy_addr" | grep "$prefix"; then
+					local proxy=${proxy_addr#"$prefix"}
+					so_proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
+					break
+				fi
+			done
+		else
+			so_proxy="$proxy_addr"
+		fi
+		export proxy
+	fi
+}
+
 collect_redirect_host() {
 	whiptail_set_redirect_host "$HOSTNAME"
 
@@ -744,10 +793,10 @@ compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
 		  read -r -d '' message <<- EOM
-		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
-		EOM
+			EOM
 		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
@@ -1432,6 +1481,8 @@ manager_pillar() {
 		"manager:"\
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
+		"  proxy: '$so_proxy'"\
+		"  no_proxy: '$no_proxy_string'"\
 		"  esheap: '$ES_HEAP_SIZE'"\
 		"  esclustername: '{{ grains.host }}'"\
 		"  freq: 0"\
@@ -1446,7 +1497,6 @@ manager_pillar() {
 	printf '%s\n'\
 		"  elastalert: 1"\
 		"  es_port: $node_es_port"\
-		"  log_size_limit: $log_size_limit"\
 		"  cur_close_days: $CURCLOSEDAYS"\
 		"  grafana: $GRAFANA"\
 		"  osquery: $OSQUERY"\
@@ -1512,7 +1562,6 @@ manager_global() {
 		"  hnmanager: '$HNMANAGER'"\
 		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
-		"  proxy: '$PROXY'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
@@ -1690,6 +1739,8 @@ network_init() {
 	if [[ "$setup_type" == 'iso' ]]; then
 		set_management_interface
 	fi
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
 }
 
 network_init_whiptail() {
@@ -1775,6 +1826,21 @@ print_salt_state_apply() {
 	local state=$1
 
 	echo "Applying $state Salt state"
+}
+
+proxy_validate() {
+	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
+	curl "$test_url" --proxy "$so_proxy" &> /dev/null
+	local ret=$?
+
+	if [[ $ret != 0 ]]; then
+		error "Could not reach $test_url using proxy $so_proxy"
+		if [[ -n $TESTING ]]; then
+			error "Exiting setup"
+			kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+		fi
+	fi
+	return $ret
 }
 
 reserve_group_ids() {
@@ -2195,7 +2261,67 @@ set_main_ip() {
 
 # Add /usr/sbin to everyone's path
 set_path() {
-	echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+	echo "complete -cf sudo" >> /etc/profile.d/securityonion.sh
+}
+
+set_proxy() {
+
+	# Don't proxy localhost, local ip, and management ip
+	no_proxy_string="localhost, 127.0.0.1, ${MAINIP}, ${HOSTNAME}"
+
+	# Set proxy environment variables used by curl, wget, docker, and others
+	{
+		echo "export use_proxy=on"
+		echo "export http_proxy=\"${so_proxy}\""
+		echo "export https_proxy=\"\$http_proxy\""
+		echo "export ftp_proxy=\"\$http_proxy\""
+		echo "export no_proxy=\"${no_proxy_string}\""
+	} > /etc/profile.d/so-proxy.sh
+
+	source /etc/profile.d/so-proxy.sh
+
+	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p /etc/systemd/system/docker.service.d
+
+	# Create proxy config for dockerd 
+	printf '%s\n'\
+		"[Service]"\
+		"Environment=\"HTTP_PROXY=${so_proxy}\""\
+		"Environment=\"HTTPS_PROXY=${so_proxy}\""\
+		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
+
+	systemctl daemon-reload
+	command -v docker &> /dev/null && systemctl restart docker
+
+	# Create config.json for docker containers
+	[[ -d /root/.docker ]] || mkdir /root/.docker
+	printf '%s\n'\
+		"{"\
+		"  \"proxies\":"\
+		"  {"\
+		"    \"default\":"\
+		"    {"\
+		"      \"httpProxy\":\"${so_proxy}\","\
+		"      \"httpsProxy\":\"${so_proxy}\","\
+		"      \"ftpProxy\":\"${so_proxy}\","\
+		"      \"noProxy\":\"${no_proxy_string}\""\
+		"    }"\
+		"  }"\
+		"}" > /root/.docker/config.json
+
+	# Set proxy for package manager
+	if [ "$OS" = 'centos' ]; then
+		echo "proxy=$so_proxy" >> /etc/yum.conf
+	else
+		# Set it up so the updates roll through the manager
+		printf '%s\n'\
+			"Acquire::http::Proxy \"$so_proxy\";"\
+			"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+
+	# Set global git proxy
+	printf '%s\n'\
+		"[http]"\
+		"  proxy = ${so_proxy}" > /etc/gitconfig
 }
 
 setup_salt_master_dirs() {

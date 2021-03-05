@@ -198,6 +198,10 @@ if ! [[ -f $install_opt_file ]]; then
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			if [[ $is_manager ]]; then
+				collect_proxy
+				[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
+			fi
 			whiptail_net_setup_complete
 		else
 			whiptail_install_type
@@ -289,6 +293,10 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init
 	fi
+
+	if [[ $is_manager ]]; then
+		collect_proxy
+	fi
 	
 	if [[ -n "$TURBO" ]]; then
 		use_turbo_proxy
@@ -336,14 +344,14 @@ minion_type=$(get_minion_type)
 set_default_log_size >> $setup_log 2>&1
 
 if [[ $is_helix ]]; then
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 	HNSENSOR=${HNSENSOR:-inherit}
 	MANAGERUPDATES=${MANAGERUPDATES:-0}
 fi
 
 if [[ $is_helix || ( $is_manager && $is_node ) ]]; then
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 fi
 
@@ -363,7 +371,7 @@ fi
 if [[ $is_import ]]; then
 	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-auto}
 	MTU=${MTU:-1500}
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 	HNSENSOR=${HNSENSOR:-inherit}
 	MANAGERUPDATES=${MANAGERUPDATES:-0}
@@ -537,10 +545,10 @@ catch() {
 	exit
 }
 
-# This block sets REDIRECTIT which is used by a function outside the below subshell
-set_main_ip >> $setup_log 2>&1
-compare_main_nic_ip
+# Set REDIRECTIT variable, which is used by a function outside the below subshell
 set_redirect >> $setup_log 2>&1
+[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
+
 
 # Begin install
 {
