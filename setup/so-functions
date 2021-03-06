@@ -792,12 +792,14 @@ check_sos_appliance() {
 compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+			error "[ERROR] Main gateway ($MAINIP) does not match ip address of managament NIC ($MNIC_IP)."
+
 		  read -r -d '' message <<- EOM
 			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
 			EOM
-		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+		  [[ -n $TESTING ]] || whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
 	else
@@ -1051,11 +1053,11 @@ disable_ipv6() {
 		sysctl -w net.ipv6.conf.all.disable_ipv6=1
 		sysctl -w net.ipv6.conf.default.disable_ipv6=1
 	}  >> "$setup_log" 2>&1
-        {
-        echo "net.ipv6.conf.all.disable_ipv6 = 1"
-        echo "net.ipv6.conf.default.disable_ipv6 = 1"
-        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-        } >> /etc/sysctl.conf
+	{
+		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+	} >> /etc/sysctl.conf
 }
 
 #disable_misc_network_features() {
