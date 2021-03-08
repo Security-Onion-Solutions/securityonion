@@ -21,7 +21,6 @@
 {% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
