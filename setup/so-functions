@@ -795,7 +795,7 @@ compare_main_nic_ip() {
 			error "[ERROR] Main gateway ($MAINIP) does not match ip address of managament NIC ($MNIC_IP)."
 
 		  read -r -d '' message <<- EOM
-			The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
+		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
 			EOM
@@ -1743,8 +1743,6 @@ network_init() {
 	if [[ "$setup_type" == 'iso' ]]; then
 		set_management_interface
 	fi
-	set_main_ip >> $setup_log 2>&1
-	compare_main_nic_ip
 }
 
 network_init_whiptail() {
@@ -2295,7 +2293,7 @@ set_proxy() {
 		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
 
 	systemctl daemon-reload
-	command -v docker &> /dev/null && systemctl restart docker
+	systemctl restart docker
 
 	# Create config.json for docker containers
 	[[ -d /root/.docker ]] || mkdir /root/.docker
