@@ -72,7 +72,7 @@ so-idstools:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idstools:{{ VERSION }}
     - hostname: so-idstools
     - user: socore
-    {% if proxy != '' and proxy is not none %}
+    {% if proxy %}
     - environment:
       - http_proxy={{ proxy }}
       - https_proxy={{ proxy }}
