@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys, argparse, re, docker
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 from itertools import groupby, chain
 
 
@@ -34,6 +34,11 @@ def get_image_version(string) -> str:
     # Version doesn't like "latest", so use a high semver
     return '999999.9.9'
   else:
+    try:
+      Version(ver)
+    except InvalidVersion:
+      # Strip the last substring following a hyphen for automated branches
+      ver = '-'.join(ver.split('-')[:-1])  
     return ver
 
 
@@ -54,16 +59,20 @@ def main(quiet):
 
   no_prunable = True
   for t_list in grouped_tag_lists:
-    # Keep the 2 most current images
-    t_list.sort(key=lambda x: Version(get_image_version(x)), reverse=True)
-    if len(t_list) <= 2:
-      continue
-    else:
-      no_prunable = False
-      for tag in t_list[2:]:
-        if not quiet: print(f'Removing image {tag}')
-        client.images.remove(tag)
-  
+    try:
+      # Keep the 2 most current images
+      t_list.sort(key=lambda x: Version(get_image_version(x)), reverse=True)
+      if len(t_list) <= 2:
+        continue
+      else:
+        no_prunable = False
+        for tag in t_list[2:]:
+          if not quiet: print(f'Removing image {tag}')
+          client.images.remove(tag)
+    except InvalidVersion as e:
+      print(f'so-{get_so_image_basename(t_list[0])}: {e.args[0]}')
+      exit(1)
+
   if no_prunable and not quiet:
     print('No Security Onion images to prune')
 
