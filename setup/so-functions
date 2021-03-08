@@ -536,6 +536,7 @@ collect_patch_schedule_name_import() {
 }
 
 collect_proxy() {
+	[[ -n $TESTING ]] && return
 	collect_proxy_details
 	while ! proxy_validate; do
 		if whiptail_invalid_proxy; then
@@ -571,7 +572,7 @@ collect_proxy_details() {
 
 			local url_prefixes=( 'http://' 'https://' )
 			for prefix in "${url_prefixes[@]}"; do
-				if echo "$proxy_addr" | grep "$prefix"; then
+				if echo "$proxy_addr" | grep -q "$prefix"; then
 					local proxy=${proxy_addr#"$prefix"}
 					so_proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
 					break
