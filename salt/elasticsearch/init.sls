@@ -191,7 +191,7 @@ so-elasticsearch:
       {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
       {% endif %}
-      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
+      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true
       ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
