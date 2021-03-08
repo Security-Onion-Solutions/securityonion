@@ -1,3 +1,4 @@
+{% set proxy = salt['pillar.get']('manager:proxy') -%}
 [main]
 cachedir=/var/cache/yum/$basearch/$releasever
 keepcache=0
@@ -11,9 +12,8 @@ installonly_limit={{ salt['pillar.get']('yum:config:installonly_limit', 2) }}
 bugtracker_url=http://bugs.centos.org/set_project.php?project_id=23&ref=http://bugs.centos.org/bug_report_page.php?category=yum
 distroverpkg=centos-release
 clean_requirements_on_remove=1
-
-{% if (grains['role'] not in ['so-eval','so-managersearch', 'so-manager', 'so-standalone']) and salt['pillar.get']('global:managerupdate', '0') %}
+{% if (grains['role'] not in ['so-eval','so-managersearch', 'so-manager', 'so-standalone']) and salt['pillar.get']('global:managerupdate', '0') -%}
 proxy=http://{{ salt['pillar.get']('yum:config:proxy', salt['config.get']('master')) }}:3142
-{% elif salt['pillar.get']('manager:proxy') is not none %}
-proxy={{salt['pillar.get']('manager:proxy')}}
+{% elif proxy != '' and proxy is not none -%}
+proxy={{ proxy }}
 {% endif %}
