@@ -1792,6 +1792,16 @@ reserve_group_ids() {
 	groupadd -g 946 cyberchef
 }
 
+reserve_ports() {
+	# These are also set via salt but need to be set pre-install to avoid conflicts before salt runs
+	if ! sysctl net.ipv4.ip_local_reserved_ports | grep 55000 | grep 57314; then
+		echo "Reserving ephemeral ports used by Security Onion components to avoid collisions"
+		sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"
+	else
+		echo "Ephemeral ports already reserved"
+	fi
+}
+
 reinstall_init() {
 	info "Putting system in state to run setup again"
 	
