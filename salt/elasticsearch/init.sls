@@ -140,14 +140,6 @@ esyml:
     - group: 939
     - template: jinja
 
-sotls:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/sotls.yml
-    - source: salt://elasticsearch/files/sotls.yml
-    - user: 930
-    - group: 939
-    - template: jinja
-
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
@@ -199,7 +191,7 @@ so-elasticsearch:
       {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
       {% endif %}
-      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
+      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true
       ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
@@ -221,7 +213,6 @@ so-elasticsearch:
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
-      - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
     - watch:
       - file: cacertz
       - file: esyml
