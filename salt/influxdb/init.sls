@@ -57,6 +57,31 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+set_autogen_retention_policy:
+  influxdb_retention_policy.present:
+    - name: autogen
+    - database: telegraf
+    - duration: 1h
+    - replication: 1
+    - default: True
+    - ssl: True
+    - unsafeSsl: True
+    - require:
+      - docker_container: so-influxdb
+
+set_so_long_term_retention_policy:
+  influxdb_retention_policy.present:
+    - name: so_long_term
+    - database: telegraf
+    - duration: 2h
+    - replication: 1
+    - default: False
+    - ssl: True
+    - unsafeSsl: True
+    - require:
+      - docker_container: so-influxdb
+
+
 {% endif %}
 
 {% else %}
@@ -66,3 +91,10 @@ append_so-influxdb_so-status.conf:
     - name: {{sls}}_state_not_allowed
 
 {% endif %}
+
+#influxdb:
+#  retention_policies:
+#    autogen:
+#      duration: 1h
+#    so_long_term:
+#      duration: 2h

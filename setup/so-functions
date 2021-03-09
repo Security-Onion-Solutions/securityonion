@@ -2022,6 +2022,7 @@ saltify() {
 				set_progress_str 7 'Installing salt-master'
 				retry 50 10 "apt-get -y install salt-master=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "pip3 install --user influxdb" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				# Copy down the gpg keys and install them from the manager
@@ -2041,7 +2042,7 @@ saltify() {
 		retry 50 10 "apt-get -y install salt-minion=3002.5+ds-1 salt-common=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-influxdb" >> "$setup_log" 2>&1 || exit 1
 		else
 			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || exit 1
 		fi
