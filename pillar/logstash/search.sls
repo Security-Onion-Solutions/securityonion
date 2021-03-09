@@ -8,6 +8,7 @@ logstash:
         - so/9002_output_import.conf.jinja
         - so/9034_output_syslog.conf.jinja
         - so/9100_output_osquery.conf.jinja
+        - so/9101_output_osquery_livequery.conf.jinja        
         - so/9400_output_suricata.conf.jinja
         - so/9500_output_beats.conf.jinja
         - so/9600_output_ossec.conf.jinja

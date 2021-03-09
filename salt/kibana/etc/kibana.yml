@@ -1,11 +1,11 @@
 ---
 # Default Kibana configuration from kibana-docker.
 {%- set ES = salt['pillar.get']('manager:mainip', '') -%}
-{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
 server.name: kibana
 server.host: "0"
 server.basePath: /kibana
-elasticsearch.hosts: [ "http://{{ ES }}:9200" ]
+elasticsearch.hosts: [ "https://{{ ES }}:9200" ]
+elasticsearch.ssl.verificationMode: none
 #kibana.index: ".kibana"
 #elasticsearch.username: elastic
 #elasticsearch.password: changeme
@@ -14,3 +14,7 @@ elasticsearch.requestTimeout: 90000
 logging.dest: /var/log/kibana/kibana.log
 telemetry.enabled: false
 security.showInsecureClusterWarning: false
+xpack.security.authc.providers:
+  anonymous.anonymous1:
+    order: 0
+    credentials: "elasticsearch_anonymous_user" 
