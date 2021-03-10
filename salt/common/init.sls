@@ -105,6 +105,8 @@ commonpkgs:
       - python3-m2crypto
       - python3-mysqldb
       - git
+      - patch
+
 heldpackages:
   pkg.installed:
     - pkgs:
@@ -140,6 +142,7 @@ commonpkgs:
       - lvm2
       - openssl
       - git
+      - patch
 
 heldpackages:
   pkg.installed:

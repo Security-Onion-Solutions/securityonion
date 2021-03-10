@@ -5,6 +5,8 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% import_yaml 'influxdb/defaults.yaml' as default_settings %}
+{% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -57,30 +59,31 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
-set_autogen_retention_policy:
+{% for rp in influxdb.retention_policies.keys() %}
+{{rp}}_retention_policy:
   influxdb_retention_policy.present:
-    - name: autogen
+    - name: {{rp}}
     - database: telegraf
-    - duration: 1h
+    - duration: {{influxdb.retention_policies[rp].duration}}
     - replication: 1
-    - default: True
+    - default: {{influxdb.retention_policies[rp].get('default', 'False')}}
     - ssl: True
-    - unsafeSsl: True
     - require:
       - docker_container: so-influxdb
+{% endfor %}
 
-set_so_long_term_retention_policy:
-  influxdb_retention_policy.present:
-    - name: so_long_term
+{% for dest_rp in influxdb.downsample.keys() %}
+  {% for measurement in influxdb.downsample[dest_rp].measurements %}
+so_downsample_{{measurement}}_cq:
+  influxdb_continuous_query.present:
+    - name: so_downsample_{{measurement}}_cq
     - database: telegraf
-    - duration: 2h
-    - replication: 1
-    - default: False
+    - query: SELECT mean(*) INTO "{{dest_rp}}"."{{measurement}}" FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}})
     - ssl: True
-    - unsafeSsl: True
     - require:
       - docker_container: so-influxdb
-
+  {% endfor %}
+{% endfor %}
 
 {% endif %}
 
@@ -92,9 +95,36 @@ set_so_long_term_retention_policy:
 
 {% endif %}
 
-#influxdb:
-#  retention_policies:
-#    autogen:
-#      duration: 1h
-#    so_long_term:
-#      duration: 2h
+influxdb:
+  retention_policies:
+    autogen:
+      default: True
+      duration: 1h
+    so_long_term:
+      default: False
+      duration: 2h
+  downsample:
+    so_long_term:
+      resolution: 30m
+      measurements:
+        - cpu
+        - disk
+        - diskio
+        - docker_container_cpu
+        - docker_container_mem
+        - docker_container_net
+        - elasticsearch_indices
+        - elasticsearch_jvm
+        - esteps
+        - healthcheck
+        - influxsize
+        - mem
+        - net
+        - pcapage
+        - processes
+        - redisqueue
+        - stenodrop
+        - suridrop
+        - system
+        - zeekcaptureloss
+        - zeekdrop
