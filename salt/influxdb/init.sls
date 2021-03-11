@@ -59,6 +59,17 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+telegraf_database:
+  influxdb_database.present:
+    - name: telegraf
+    - database: telegraf
+    - ssl: True
+    - verify_ssl: /etc/pki/ca.crt
+    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
+    - influxdb_host: {{ MANAGER }}
+    - require:
+      - docker_container: so-influxdb
+
 {% for rp in influxdb.retention_policies.keys() %}
 {{rp}}_retention_policy:
   influxdb_retention_policy.present:
@@ -73,6 +84,7 @@ append_so-influxdb_so-status.conf:
     - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
+      - influxdb_database: telegraf_database
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
@@ -88,6 +100,7 @@ so_downsample_{{measurement}}_cq:
     - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
+      - influxdb_database: telegraf_database
   {% endfor %}
 {% endfor %}
 
