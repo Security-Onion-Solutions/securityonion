@@ -281,7 +281,16 @@ fi
 
 percentage=0
 {
+	installer_progress_loop & # Run progress bar to 100 in ~8 minutes
+	progress_bg_proc=$!
 	installer_prereq_packages
+	install_success=$?
+	kill -9 "$progress_bg_proc"
+	wait "$progress_bg_proc" &> /dev/null # Kill just sends signal, redirect output of wait to catch stdout
+	if [[ $install_success -gt 0 ]]; then
+		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
+		kill -SIGUSR1 "$setup_proc"; exit 1
+	fi
 	set_progress_str 99 "Detecting whether setup is running in the cloud." nolog
 	detect_cloud
 } | progress '...'

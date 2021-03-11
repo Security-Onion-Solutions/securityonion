@@ -1007,9 +1007,6 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	installer_progress_loop & # Run progress bar to 100 in ~8 minutes
-	progress_bg_proc=$!
-
 	if [ "$OS" == centos ]; then
 		# Print message to stdout so the user knows setup is doing something
 		# Install bind-utils so the host command exists
@@ -1043,13 +1040,6 @@ installer_prereq_packages() {
 			} >> "$setup_log" 2<&1
 		fi
 		retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
-	fi
-
-	install_success=$?
-	kill -9 "$progress_bg_proc"  >> "$setup_log" 2>&1
-	if [[ $install_success -gt 0 ]]; then
-		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
-		kill -SIGUSR1 "$setup_proc"  >> "$setup_log" 2>&1; exit 1
 	fi
 }
 
