@@ -68,6 +68,9 @@ append_so-influxdb_so-status.conf:
     - replication: 1
     - default: {{influxdb.retention_policies[rp].get('default', 'False')}}
     - ssl: True
+    - verify_ssl: /etc/pki/ca.crt
+    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
+    - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
 {% endfor %}
@@ -80,6 +83,9 @@ so_downsample_{{measurement}}_cq:
     - database: telegraf
     - query: SELECT mean(*) INTO "{{dest_rp}}"."{{measurement}}" FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}})
     - ssl: True
+    - verify_ssl: /etc/pki/ca.crt
+    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
+    - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
   {% endfor %}
@@ -94,37 +100,3 @@ so_downsample_{{measurement}}_cq:
     - name: {{sls}}_state_not_allowed
 
 {% endif %}
-
-influxdb:
-  retention_policies:
-    autogen:
-      default: True
-      duration: 1h
-    so_long_term:
-      default: False
-      duration: 2h
-  downsample:
-    so_long_term:
-      resolution: 30m
-      measurements:
-        - cpu
-        - disk
-        - diskio
-        - docker_container_cpu
-        - docker_container_mem
-        - docker_container_net
-        - elasticsearch_indices
-        - elasticsearch_jvm
-        - esteps
-        - healthcheck
-        - influxsize
-        - mem
-        - net
-        - pcapage
-        - processes
-        - redisqueue
-        - stenodrop
-        - suridrop
-        - system
-        - zeekcaptureloss
-        - zeekdrop
