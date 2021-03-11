@@ -271,9 +271,15 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
-if [[ $is_airgap != true ]]; then
-	collect_proxy
+if [[ $is_minion ]]; then
+	collect_mngr_hostname
 fi
+
+if ! [[ -f $install_opt_file ]] && [[ -z $is_airgap ]]; then
+	collect_proxy_details
+	[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
+fi
+
 percentage=0
 {
 	installer_progress_loop & # Run progress bar to 100 in ~8 minutes
@@ -311,10 +317,6 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
-	if [[ $is_minion ]]; then
-		collect_mngr_hostname
-	fi
-
 	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
 		whiptail_management_interface_setup
 	fi
@@ -343,6 +345,7 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" > "$install_opt_file"
+		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
@@ -564,7 +567,6 @@ echo "1" > /root/accept_changes
 set_main_ip >> $setup_log 2>&1
 compare_main_nic_ip
 set_redirect >> $setup_log 2>&1
-[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 
 
 # Begin install
