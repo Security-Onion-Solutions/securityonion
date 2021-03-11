@@ -1267,9 +1267,15 @@ whiptail_proxy_auth_user() {
 }
 
 whiptail_proxy_auth_pass() {
+	local arg=$1
+
 	[ -n "$TESTING" ] && return
 
-	proxy_pass=$(whiptail --title "Security Onion Setup" --passwordbox "Please input the proxy password:" 8 60 3>&1 1>&2 2>&3)
+	if [[ $arg != 'confirm' ]]; then
+		proxy_pass=$(whiptail --title "Security Onion Setup" --passwordbox "Please input the proxy password:" 8 60 3>&1 1>&2 2>&3)
+	else
+		proxy_pass_confirm=$(whiptail --title "Security Onion Setup" --passwordbox "Please confirm the proxy password:" 8 60 3>&1 1>&2 2>&3)
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus

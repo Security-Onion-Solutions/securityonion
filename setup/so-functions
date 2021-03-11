@@ -568,7 +568,13 @@ collect_proxy_details() {
 
 		if whiptail_proxy_auth_ask; then
 			whiptail_proxy_auth_user "$proxy_user"
-			whiptail_proxy_auth_pass # Don't pass in existing pass since it's obfuscated
+			
+			local proxy_pass_match=no
+			while [[ $proxy_pass_match != yes ]]; do
+				whiptail_proxy_auth_pass # Don't pass in existing pass since it's obfuscated
+				whiptail_proxy_auth_pass confirm
+				check_pass_match "$proxy_pass" "$proxy_pass_confirm" "proxy_pass_match"
+			done
 
 			local url_prefixes=( 'http://' 'https://' )
 			for prefix in "${url_prefixes[@]}"; do
