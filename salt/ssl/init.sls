@@ -68,8 +68,9 @@ removeesp12dir:
       - x509: /etc/pki/influxdb.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Create a cert for the talking to influxdb
 /etc/pki/influxdb.crt:
@@ -86,8 +87,9 @@ removeesp12dir:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 influxkeyperms:
   file.managed:
@@ -111,8 +113,9 @@ influxkeyperms:
       - x509: /etc/pki/redis.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 /etc/pki/redis.crt:
   x509.certificate_managed:
@@ -153,8 +156,9 @@ rediskeyperms:
       - x509: /etc/pki/filebeat.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
 /etc/pki/filebeat.crt:
@@ -175,8 +179,9 @@ rediskeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
     - onchanges:
@@ -232,8 +237,9 @@ fbcrtlink:
       - x509: /etc/pki/registry.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Create a cert for the docker registry
 /etc/pki/registry.crt:
@@ -250,8 +256,9 @@ fbcrtlink:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/registry.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 regkeyperms:
   file.managed:
@@ -273,8 +280,9 @@ regkeyperms:
       - x509: /etc/pki/minio.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Create a cert for minio
 /etc/pki/minio.crt:
@@ -291,8 +299,9 @@ regkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/minio.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 miniokeyperms:
   file.managed:
@@ -332,8 +341,9 @@ miniokeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
   cmd.run:
     - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
     - onchanges:
@@ -366,8 +376,9 @@ elasticp12perms:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
@@ -385,8 +396,9 @@ elasticp12perms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 msslkeyperms:
   file.managed:
@@ -409,8 +421,9 @@ msslkeyperms:
       - x509: /etc/pki/fleet.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -425,8 +438,9 @@ msslkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 fleetkeyperms:
   file.managed:
@@ -456,8 +470,9 @@ fbcertdir:
       - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
 /opt/so/conf/filebeat/etc/pki/filebeat.crt:
@@ -478,8 +493,9 @@ fbcertdir:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Convert the key to pkcs#8 so logstash will work correctly.
 filebeatpkcs:
@@ -520,8 +536,9 @@ chownfilebeatp8:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 # Create a cert for the reverse proxy
 /etc/pki/managerssl.crt:
@@ -539,8 +556,9 @@ chownfilebeatp8:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 msslkeyperms:
   file.managed:
@@ -563,8 +581,9 @@ msslkeyperms:
       - x509: /etc/pki/fleet.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 /etc/pki/fleet.crt:
   x509.certificate_managed:
@@ -579,8 +598,9 @@ msslkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 fleetkeyperms:
   file.managed:
@@ -606,8 +626,9 @@ fleetkeyperms:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:
@@ -623,8 +644,9 @@ fleetkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
   cmd.run:
     - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
     - onchanges:
