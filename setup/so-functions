@@ -747,10 +747,10 @@ check_requirements() {
 			else
 				req_storage=100
 			fi
-			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			if [[ $free_space_root -lt $req_storage ]]; then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
-			if (( $(echo "$free_space_nsm < $req_storage" | bc -l) )); then
+			if [[ $free_space_nsm -lt $req_storage ]]; then
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
@@ -759,7 +759,7 @@ check_requirements() {
 			else
 				req_storage=200
 			fi
-			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			if [[ $free_space_root -lt $req_storage ]]; then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
 		fi	
@@ -1022,9 +1022,6 @@ installer_prereq_packages() {
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		  fi
-		  if ! command -v bc > /dev/null 2>&1; then
-				yum -y install bc >> "$setup_log" 2>&1
-		  fi
 		  if ! yum versionlock > /dev/null 2>&1; then
 				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
 		  fi
@@ -1043,7 +1040,7 @@ installer_prereq_packages() {
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		retry 50 10 "apt-get -y install bc curl"  >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
