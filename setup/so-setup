@@ -94,14 +94,25 @@ if ! [ -f $install_opt_file ]; then
 fi
 
 automated=no
-function progress() {
-	local title='Security Onion Install'
+progress() {
+	local title='Security Onion Setup'
+	local msg=${1:-'Please wait while installing...'}
 
 	if [ $automated == no ]; then
-		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
+		whiptail --title "$title" --gauge "$msg" 6 70 0 # append to text
 	else
 		cat >> $setup_log 2>&1
 	fi		
+}
+
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
+trap 'catch $LINENO' SIGUSR1
+setup_proc="$$"
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit 1
 }
 
 detect_os 
@@ -198,17 +209,14 @@ if ! [[ -f $install_opt_file ]]; then
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
-			if [[ $is_manager ]]; then
-				collect_proxy
-				[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-			fi
+			collect_proxy
+			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
-			whiptail_install_type
+			true
 		fi
-	else
-		whiptail_install_type
-	fi
+	fi	
+	whiptail_install_type
 else
 	source $install_opt_file
 fi
@@ -260,6 +268,24 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 		is_airgap=true
 	fi
 fi
+
+if [[ $is_airgap != true ]]; then
+	collect_proxy
+fi
+{
+	installer_progress_loop & # Run progress bar to 100 in ~8 minutes
+	progress_bg_proc=$!
+	installer_prereq_packages
+	install_success=$?
+	kill -9 $progress_bg_proc
+	if [[ $install_success -gt 0 ]]; then
+		error "Could not install packages required for setup, exiting now."
+		kill -SIGUSR1 "$setup_proc"; exit 1
+	fi
+	set_progress_str 99 "Detecting whether setup is running in the cloud."
+	detect_cloud
+} | progress '...'
+
 
 if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
@@ -534,16 +560,6 @@ whiptail_make_changes
 
 # From here on changes will be made.
 echo "1" > /root/accept_changes
-
-# Set up handler for setup to exit early (use `kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1` in child scripts)
-trap 'catch $LINENO' SIGUSR1
-
-catch() {
-	info "Fatal error occurred at $1 in so-setup, failing setup."
-	grep --color=never "ERROR" "$setup_log" > "$error_log"
-	whiptail_setup_failed
-	exit
-}
 
 # This block sets REDIRECTIT which is used by a function outside the below subshell
 set_main_ip >> $setup_log 2>&1

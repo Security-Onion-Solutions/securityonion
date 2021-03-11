@@ -997,36 +997,43 @@ detect_os() {
 
 }
 
+installer_progress_loop() {
+	local i=0
+	while true; do
+		((i++))
+		set_progress_str "$i" 'Checking that all required packages are installed and enabled...'
+		[[ $i -gt 0 ]] && sleep 5s
+	done
+}
+
 installer_prereq_packages() {
 
 	if [ "$OS" == centos ]; then
 		# Print message to stdout so the user knows setup is doing something
-		echo "Installing required packages to run installer..."
 		# Install bind-utils so the host command exists
 		if [[ ! $is_iso ]]; then
 		  if ! command -v host > /dev/null 2>&1; then
-			yum -y install bind-utils >> "$setup_log" 2>&1
+				yum -y install bind-utils >> "$setup_log" 2>&1
 		  fi
 		  if ! command -v nmcli > /dev/null 2>&1; then
 			{
-				yum -y install NetworkManager;
-				systemctl enable NetworkManager;
-				systemctl start NetworkManager;
+				yum -y install NetworkManager
+				systemctl enable NetworkManager
+				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		  fi
 		  if ! command -v bc > /dev/null 2>&1; then
-			yum -y install bc >> "$setup_log" 2>&1
+				yum -y install bc >> "$setup_log" 2>&1
 		  fi
 		  if ! yum versionlock > /dev/null 2>&1; then
-			yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
+				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
 		  fi
-        else
+		else
 		  logCmd "systemctl enable NetworkManager"
 		  logCmd "systemctl start NetworkManager"
-        fi
+		fi
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		echo "Installing required packages to run installer..."
 		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
