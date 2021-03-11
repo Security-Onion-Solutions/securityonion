@@ -95,6 +95,16 @@ if ! [ -f $install_opt_file ]; then
 	analyze_system
 fi
 
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
+trap 'catch $LINENO' SIGUSR1
+setup_proc="$$"
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit 1
+}
+
 automated=no
 progress() {
 	local title='Security Onion Setup'
@@ -105,16 +115,6 @@ progress() {
 	else
 		cat >> $setup_log 2>&1
 	fi		
-}
-
-# Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
-trap 'catch $LINENO' SIGUSR1
-setup_proc="$$"
-catch() {
-	info "Fatal error occurred at $1 in so-setup, failing setup."
-	grep --color=never "ERROR" "$setup_log" > "$error_log"
-	whiptail_setup_failed
-	exit 1
 }
 
 detect_os 
@@ -167,7 +167,6 @@ set_ssh_cmds $automated
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
-installer_prereq_packages && detect_cloud
 set_network_dev_status_list
 
 if [ "$OS" == ubuntu ]; then
@@ -282,16 +281,8 @@ fi
 
 percentage=0
 {
-	installer_progress_loop & # Run progress bar to 100 in ~8 minutes
-	progress_bg_proc=$!
 	installer_prereq_packages
-	install_success=$?
-	kill -9 $progress_bg_proc &> /dev/null
-	if [[ $install_success -gt 0 ]]; then
-		error "Could not install packages required for setup, exiting now."
-		kill -SIGUSR1 "$setup_proc" &> /dev/null; exit 1
-	fi
-	set_progress_str 99 "Detecting whether setup is running in the cloud."
+	set_progress_str 99 "Detecting whether setup is running in the cloud." nolog
 	detect_cloud
 } | progress '...'
 
