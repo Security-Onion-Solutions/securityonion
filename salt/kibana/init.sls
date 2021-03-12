@@ -94,21 +94,10 @@ kibanadashtemplate:
     - user: 932
     - group: 939
 
-wait_for_kibana:
-  module.run:
-    - http.wait_for_successful_query:
-      - url: "http://{{MANAGER}}:5601/api/saved_objects/_find?type=config"
-      - wait_for: 900
-    - onchanges:
-      - file: kibanadashtemplate
-
 so-kibana-config-load:
   cmd.run:
     - name: /usr/sbin/so-kibana-config-load
     - cwd: /opt/so
-    - onchanges:
-      - wait_for_kibana
-
 
 # Keep the setting correct
 #KibanaHappy:

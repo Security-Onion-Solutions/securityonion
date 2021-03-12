@@ -3,6 +3,8 @@
 # {%- set FLEET_NODE = salt['pillar.get']('global:fleet_node', False) -%}
 # {%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
 
+. /usr/sbin/so-common
+
 # Copy template file
 cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
 
@@ -14,9 +16,11 @@ cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_o
 # SOCtopus and Manager
 sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
+wait_for_web_response "http://localhost:5601/app/kibana" "Elastic"
 ## This hackery will be removed if using Elastic Auth ##
 
 # Let's snag a cookie from Kibana
 THECOOKIE=$(curl -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
 # Load saved objects
 curl -b "sid=$THECOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
