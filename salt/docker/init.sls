@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'docker' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 installdocker:
   pkg.installed:
@@ -14,8 +12,8 @@ docker:
 
 {% else %}
 
-docker_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: docker_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

@@ -9,3 +9,5 @@ logrotate:
     extension .log
     dateext
     dateyesterday
+  group_conf: |
+    su root socore

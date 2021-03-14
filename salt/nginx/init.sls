@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'nginx' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
 {% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
@@ -105,8 +103,8 @@ append_so-nginx_so-status.conf:
 
 {% else %}
 
-nginx_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: nginx_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

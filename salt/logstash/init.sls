@@ -12,22 +12,13 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'logstash' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
-
-{%- if FEATURES is sameas true %}
-  {% set FEATURES = "-features" %}
-{% else %}
-  {% set FEATURES = '' %}
-{% endif %}
 
 # Logstash Section - Decide which pillar to use
 {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
@@ -148,7 +139,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}{{ FEATURES }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -209,8 +200,8 @@ append_so-logstash_so-status.conf:
 
 {% else %}
 
-logstash_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: logstash_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

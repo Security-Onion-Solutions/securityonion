@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'telegraf' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
@@ -31,6 +29,9 @@ tgrafsyncscripts:
     - file_mode: 700
     - template: jinja
     - source: salt://telegraf/scripts
+{% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
+    - exclude_pat: zeekcaptureloss.sh
+{% endif %}
 
 tgrafconf:
   file.managed:
@@ -50,6 +51,7 @@ so-telegraf:
       - HOST_MOUNT_PREFIX=/host
       - GODEBUG=x509ignoreCN=0
     - network_mode: host
+    - init: True
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
@@ -81,8 +83,8 @@ append_so-telegraf_so-status.conf:
 
 {% else %}
 
-telegraf_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: telegraf_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

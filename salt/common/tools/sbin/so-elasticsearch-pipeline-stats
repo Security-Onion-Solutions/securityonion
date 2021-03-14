@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,15 +19,7 @@
 . /usr/sbin/so-common
 
 if [ "$1" == "" ]; then
-        {% if grains['role'] in ['so-node','so-heavynode'] %}
         curl -s -k -L https://{{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines"
-        {% else %}
-        curl -s -L {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines"
-        {% endif %}
 else
-        {% if grains['role'] in ['so-node','so-heavynode'] %}
         curl -s -k -L https://{{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines.\"$1\""
-        {% else %}
-        curl -s -L {{ NODEIP }}:9200/_nodes/stats | jq .nodes | jq ".[] | .ingest.pipelines.\"$1\""
-        {% endif %}
 fi

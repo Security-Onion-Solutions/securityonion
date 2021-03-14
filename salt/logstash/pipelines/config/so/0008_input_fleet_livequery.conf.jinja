@@ -1,0 +1,19 @@
+{%- set MANAGER = salt['grains.get']('master') %}
+{%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
+{% set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) %}
+
+input {
+	redis {
+		host => '{{ MANAGER }}'
+		port => 6379
+		data_type => 'pattern_channel'
+		key => 'results_*'
+		type => 'live_query'
+        add_field => {
+        "module" => "osquery"
+          "dataset" => "live_query"
+          }        
+		threads => {{ THREADS }}
+		batch_count => {{ BATCH }}
+	}
+}

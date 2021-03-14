@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'utility' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 # This state is for checking things
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
@@ -27,8 +25,8 @@ fixsearch:
 
 {% else %}
 
-utility_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: utility_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

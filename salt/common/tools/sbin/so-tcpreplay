@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -48,9 +48,15 @@ if ! docker ps | grep -q so-tcpreplay; then
   echo
 
   if is_manager_node; then
-	  TRUSTED_CONTAINERS=("so-tcpreplay")
-	  mkdir -p /opt/so/log/tcpreplay
-	  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+  	set_version
+  	if ! docker images | grep so-tcpreplay | grep ":5000" | grep -q $VERSION ; then
+  		echo "Pulling so-tcpreplay image"
+		  TRUSTED_CONTAINERS=("so-tcpreplay")
+		  mkdir -p /opt/so/log/tcpreplay
+		  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+		else
+			echo "so-tcpreplay image exists."
+		fi
 	fi
 	if is_sensor_node; then
 		if ! is_manager_node; then

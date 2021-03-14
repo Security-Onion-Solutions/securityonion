@@ -12,10 +12,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
-{% if 'elastalert' in top_states %}
+{% from 'elastalert/elastalert_config.map.jinja' import elastalert_defaults as elastalert_config with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -94,7 +94,9 @@ elastasomodulesync:
 elastaconf:
   file.managed:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml
-    - source: salt://elastalert/files/elastalert_config.yaml
+    - source: salt://elastalert/files/elastalert_config.yaml.jinja
+    - context:
+        elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
     - template: jinja
@@ -102,8 +104,9 @@ elastaconf:
 wait_for_elasticsearch:
   module.run:
     - http.wait_for_successful_query:
-      - url: 'http://{{MANAGER}}:9200/_cat/indices/.kibana*'
+      - url: 'https://{{MANAGER}}:9200/_cat/indices/.kibana*'
       - wait_for: 180
+      - verify_ssl: False
 
 so-elastalert:
   docker_container.running:
@@ -121,6 +124,8 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - module: wait_for_elasticsearch
+    - watch:
+      - file: elastaconf
 
 append_so-elastalert_so-status.conf:
   file.append:
@@ -131,8 +136,8 @@ append_so-elastalert_so-status.conf:
 
 {% else %}
 
-elastalert_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: elastalert_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

@@ -1,6 +1,20 @@
 suricata:
   config:
     outputs:
+      - file-store:
+          version: 2
+          enabled: "yes"
+          dir: /nsm/extracted
+          #write-fileinfo: "yes"
+          #force-filestore: "yes"
+          #stream-depth: 0
+          #max-open-files: 1000
+          #force-hash: [sha1, md5]
+          xff:
+              enabled: "no"
+              mode: extra-data
+              deployment: reverse
+              header: X-Forwarded-For
       - eve-log:
           types:
             - anomaly:
@@ -19,15 +33,15 @@ suricata:
                 enabled: "yes"
                 #requests: "no"
                 #responses: "no"
-                #formats: [detailed, grouped]
+                formats: [grouped]
                 #types: [a, aaaa, cname, mx, ns, ptr, txt]
             - tls:
                 extended: "yes"
                 #session-resumption: "no"
                 #custom: [subject, issuer, session_resumed, serial, fingerprint, sni, version, not_before, not_after, certificate, chain, ja3, ja3s]
             - files:
-                force-magic: "no"
-                #force-hash: [md5]
+                force-magic: "yes"
+                force-hash: [md5,sha1]
             #- drop:
             #    alerts: "yes"
             #    flows: all
@@ -47,7 +61,7 @@ suricata:
             - sip
             - dhcp:
                 enabled: "yes"
-            #    extended: "no"
+                extended: "yes"
             - ssh
             #- stats:
             #    totals: "yes"

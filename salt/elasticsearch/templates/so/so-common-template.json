@@ -12,20 +12,18 @@
       "analyzer": {
         "es_security_analyzer": {
           "type": "custom",
-          "filter": [ "path_hierarchy_pattern_filter", "lowercase" ],
-          "tokenizer": "whitespace"
-        },
-        "es_security_search_analyzer": {
-          "type": "custom",
-          "filter": [ "lowercase" ],
-          "tokenizer": "whitespace"
-        },
-        "es_security_search_quote_analyzer": {
-          "type": "custom",
-          "filter": [ "lowercase" ],
-          "tokenizer": "whitespace"
+          "char_filter": [ "whitespace_no_way" ],
+          "filter": [ "lowercase", "trim" ],
+          "tokenizer": "keyword"
         }
       },
+      "char_filter": {
+        "whitespace_no_way": {
+          "type": "pattern_replace",
+          "pattern": "(\\s)+",
+          "replacement": "$1"
+        }
+      },  
       "filter" : {
         "path_hierarchy_pattern_filter": {
           "type" : "pattern_capture",
@@ -34,6 +32,12 @@
             "((?:[^\\\\]*\\\\)*)(.*)",
             "((?:[^/]*/)*)(.*)"
           ]
+        }
+      },  
+      "tokenizer": {
+        "path_tokenizer": {
+          "type": "path_hierarchy",
+          "delimiter": "\\"
         }
       }
     }
@@ -67,13 +71,12 @@
               "type": "text",
               "fields": {
                 "keyword": {
+                "ignore_above": 32765,
                  "type": "keyword"
                },
                "security": {
                  "type": "text",
-                 "analyzer": "es_security_analyzer",
-                 "search_analyzer": "es_security_search_analyzer",
-                 "search_quote_analyzer": "es_security_search_quote_analyzer"
+                 "analyzer": "es_security_analyzer"
                }
              }
             }
@@ -360,6 +363,10 @@
           "dynamic": true
         },
 	      "request":{
+          "type":"object",
+          "dynamic": true
+        },
+	      "result":{
           "type":"object",
           "dynamic": true
         },

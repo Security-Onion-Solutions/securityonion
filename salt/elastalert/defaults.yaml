@@ -1,0 +1,48 @@
+elastalert:
+  config:
+    rules_folder: /opt/elastalert/rules/
+    scan_subdirectories: true
+    disable_rules_on_error: false
+    run_every:
+      minutes: 3
+    buffer_time:
+      minutes: 10
+    old_query_limit:
+      minutes: 5
+    es_host: {{salt['pillar.get']('manager:mainip', '')}}
+    es_port: {{salt['pillar.get']('manager:es_port', '')}}
+    es_conn_timeout: 55
+    max_query_size: 5000
+    #aws_region: us-east-1
+    #profile: test
+    #es_url_prefix: elasticsearch
+    use_ssl: true
+    verify_certs: false
+    #es_send_get_body_as: GET
+    #es_username: someusername
+    #es_password: somepassword
+    writeback_index: elastalert_status
+    alert_time_limit:
+      days: 2
+    index_settings:
+      shards: 1
+      replicas: 0
+    logging:
+      version: 1
+      incremental: false
+      disable_existing_loggers: false
+      formatters:
+        logline:
+          format: '%(asctime)s %(levelname)+8s %(name)+20s %(message)s'
+      handlers:
+        file:
+          class: logging.FileHandler
+          formatter: logline
+          level: INFO
+          filename: /var/log/elastalert/elastalert.log
+      loggers:
+        '':
+          level: INFO
+          handlers:
+            - file
+          propagate: false

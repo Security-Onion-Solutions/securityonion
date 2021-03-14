@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'soctopus' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -80,8 +78,8 @@ append_so-soctopus_so-status.conf:
 
 {% else %}
 
-soctopus_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: soctopus_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

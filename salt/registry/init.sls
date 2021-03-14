@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'registry' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 # Create the config directory for the docker registry
 dockerregistryconfdir:
@@ -31,17 +29,6 @@ dockerregistryconf:
     - name: /opt/so/conf/docker-registry/etc/config.yml
     - source: salt://registry/etc/config.yml
 
-# Copy the registry script
-#dockerregistrybuild:
-#  file.managed:
-#    - name: /opt/so/conf/docker-registry/so-buildregistry
-#    - source: salt://registry/bin/so-buildregistry
-#    - mode: 755
-
-#dockerexpandregistry:
-# cmd.run:
-#   - name: /opt/so/conf/docker-registry/so-buildregistry
-
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
@@ -64,8 +51,8 @@ append_so-dockerregistry_so-status.conf:
 
 {% else %}
 
-registry_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: registry_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

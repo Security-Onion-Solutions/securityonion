@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -120,6 +120,60 @@ check_sudoers() {
 	fi
 }
 
+check_log_size_limit() {
+
+  local num_minion_pillars
+  num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
+  
+  if [[ $num_minion_pillars -gt 1 ]]; then
+    if find /opt/so/saltstack/local/pillar/minions/ -type f | grep -q "_heavynode"; then
+      lsl_msg='distributed'
+    fi
+  else
+    local minion_id
+    minion_id=$(lookup_salt_value "id" "" "grains")
+
+    local minion_arr
+    IFS='_' read -ra minion_arr <<< "$minion_id"
+
+    local node_type="${minion_arr[0]}"
+    
+    local current_limit
+    current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
+    
+    local percent
+    case $node_type in
+      'standalone' | 'eval')
+        percent=50
+      ;;
+      *)
+        percent=80
+      ;;
+    esac
+
+    local disk_dir="/"
+    if [ -d /nsm ]; then
+      disk_dir="/nsm"
+    fi
+
+    local disk_size_1k
+    disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
+
+    local ratio="1048576"
+
+    local disk_size_gb
+    disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
+
+    local new_limit
+    new_limit=$( echo "$disk_size_gb" "$percent" | awk '{printf("%.0f", $1 * ($2/100))}')
+
+    if [[ $current_limit != "$new_limit" ]]; then
+      lsl_msg='single-node'
+      lsl_details=( "$current_limit" "$new_limit" "$minion_id" )
+    fi
+  fi
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
@@ -159,7 +213,7 @@ generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
   [ -d /opt/so/repo ] || mkdir -p /opt/so/repo
-  tar -cxf "/opt/so/repo/$new_version.tar.gz" "$UPDATE_DIR"
+  tar -czf "/opt/so/repo/$new_version.tar.gz" "$UPDATE_DIR"
   find "/opt/so/repo" -type f -not -name "$new_version.tar.gz" -exec rm -rf {} \;
 }
 
@@ -196,6 +250,9 @@ playbook() {
     rm -f /opt/so/rules/elastalert/playbook/*.yaml
     so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   fi
+  if [[ "$INSTALLEDVERSION" != 2.3.30 ]]; then
+    so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+  fi
 }
 
 pillar_changes() {
@@ -205,7 +262,8 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-    [[ "$INSTALLEDVERSION" == 2.3.0 ]] || [[ "$INSTALLEDVERSION" == 2.3.1 ]] || [[ "$INSTALLEDVERSION" == 2.3.2 ]] || [[ "$INSTALLEDVERSION" == 2.3.10 ]] && 2.3.0_to_2.3.20
+    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
+    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
 }
 
 rc1_to_rc2() {
@@ -291,7 +349,7 @@ rc3_to_2.3.0() {
   INSTALLEDVERSION=2.3.0
 }
 
-2.3.0_to_2.3.20(){
+up_2.3.0_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
   # Remove PCAP from global
   sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
@@ -328,6 +386,28 @@ rc3_to_2.3.0() {
 
   INSTALLEDVERSION=2.3.20
 
+}
+
+up_2.3.2X_to_2.3.30() {
+  # Replace any curly brace scalars with the same scalar in single quotes
+  readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
+  for pillar in "${minion_pillars[@]}"; do
+    sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
+  done
+
+# Change the IMAGEREPO
+  sed -i "/  imagerepo: 'securityonion'/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls
+  sed -i "/  imagerepo: securityonion/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls 
+
+# Strelka rule repo pillar addition
+  if [ $is_airgap -eq 0 ]; then
+      # Add manager as default Strelka YARA rule repo
+      sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;
+  else
+      # Add Github repo for Strelka YARA rules
+      sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
+  fi
+  check_log_size_limit
 }
 
 space_check() {
@@ -370,6 +450,10 @@ unmount_update() {
   umount /tmp/soagupdate
 }
 
+update_airgap_rules() {
+  # Copy the rules over to update them for airgap.
+  rsync -av $UPDATE_DIR/agrules/* /nsm/repo/rules/
+}
 
 update_centos_repo() {
   # Update the files in the repo
@@ -529,16 +613,6 @@ if [ $is_airgap -eq 0 ]; then
 else
   update_registry
   update_docker_containers "soup"
-  FEATURESCHECK=$(lookup_pillar features elastic)
-  if [[ "$FEATURESCHECK" == "True" ]]; then 
-    TRUSTED_CONTAINERS=(
-      "so-elasticsearch"
-      "so-filebeat"
-      "so-kibana"
-      "so-logstash" 
-    )
-    update_docker_containers "features" "-features"
-  fi
 fi
 echo ""
 echo "Stopping Salt Minion service."
@@ -578,6 +652,11 @@ fi
 echo "Making pillar changes."
 pillar_changes
 echo ""
+
+if [ $is_airgap -eq 0 ]; then
+  echo "Updating Rule Files to the Latest."
+  update_airgap_rules
+fi
 
 # Only update the repo if its airgap
 if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
@@ -640,6 +719,38 @@ if [ "$UPGRADESALT" == "1" ]; then
 fi
 
 check_sudoers
+
+if [[ -n $lsl_msg ]]; then
+  case $lsl_msg in
+    'distributed')
+      echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
+      echo " -> We recommend checking and adjusting the values as necessary."
+      echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+    ;;
+    'single-node')
+      # We can assume the lsl_details array has been set if lsl_msg has this value
+      echo "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
+      echo " -> We recommend checking and adjusting the value as necessary."
+      echo " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
+    ;;
+  esac
+fi
+
+NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+
+if [ $NUM_MINIONS -gt 1 ]; then
+
+	cat << EOF
+This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
+
+Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
+
+If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Forward nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
+
+For more information, please see https://docs.securityonion.net/en/2.3/soup.html#distributed-deployments.
+EOF
+
+fi
 
 }
 

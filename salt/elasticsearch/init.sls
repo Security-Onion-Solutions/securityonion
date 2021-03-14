@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -12,24 +12,15 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'elasticsearch' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-
-{% if FEATURES is sameas true %}
-  {% set FEATUREZ = "-features" %}
-{% else %}
-  {% set FEATUREZ = '' %}
-{% endif %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -149,14 +140,6 @@ esyml:
     - group: 939
     - template: jinja
 
-sotls:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/sotls.yml
-    - source: salt://elasticsearch/files/sotls.yml
-    - user: 930
-    - group: 939
-    - template: jinja
-
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
@@ -188,7 +171,7 @@ eslogdir:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}{{ FEATUREZ }}
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
@@ -208,7 +191,7 @@ so-elasticsearch:
       {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
       {% endif %}
-      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }}
+      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true
       ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
@@ -222,9 +205,14 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      {% if ismanager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      {% else %}
+      - /etc/ssl/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      {% endif %}
+      - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
+      - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
-      - /opt/so/conf/elasticsearch/sotls.yml:/usr/share/elasticsearch/config/sotls.yml:ro
     - watch:
       - file: cacertz
       - file: esyml
@@ -265,8 +253,8 @@ so-elasticsearch-templates:
 
 {% else %}
 
-elasticsearch_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: elasticsearch_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %} {# if 'elasticsearch' in top_states #}

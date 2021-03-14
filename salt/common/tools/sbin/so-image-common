@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # NOTE: This script depends on so-common
-IMAGEREPO=securityonion
+IMAGEREPO=security-onion-solutions
 
 container_list() {
   MANAGERCHECK=$1
@@ -30,6 +30,7 @@ container_list() {
 
   if [ $MANAGERCHECK == 'so-import' ]; then
     TRUSTED_CONTAINERS=(
+      "so-acng"
       "so-elasticsearch"
       "so-filebeat"
       "so-idstools"
@@ -103,7 +104,7 @@ update_docker_containers() {
   local PROGRESS_CALLBACK=$3
   local LOG_FILE=$4
 
-  local CONTAINER_REGISTRY=quay.io
+  local CONTAINER_REGISTRY=ghcr.io
   local SIGNPATH=/root/sosigs
   
   if [ -z "$CURLTYPE" ]; then
@@ -126,12 +127,19 @@ update_docker_containers() {
     container_list
   fi
 
-  # Let's make sure we have the public key
-  curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS | gpg --import -  >> "$LOG_FILE" 2>&1
-  
   rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
   mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
+  # Let's make sure we have the public key
+  retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
+  result=$?
+  if [[ $result -eq 0 ]]; then
+    cat $SIGNPATH/KEYS | gpg --import - >> "$LOG_FILE" 2>&1
+  else
+    echo "Failed to pull signature key file: $result"
+    exit 1
+  fi
+  
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
@@ -143,10 +151,10 @@ update_docker_containers() {
 
     # Pull down the trusted docker image
     local image=$i:$VERSION$IMAGE_TAG_SUFFIX
-    docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+    retry 50 10 "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" >> "$LOG_FILE" 2>&1 
     
     # Get signature
-    curl -A "$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)" https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig >> "$LOG_FILE" 2>&1 
+    retry 50 10 "curl -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" >> "$LOG_FILE" 2>&1
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
       exit 1

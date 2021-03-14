@@ -1,7 +1,5 @@
-{% set show_top = salt['state.show_top']() %}
-{% set top_states = show_top.values() | join(', ') %}
-
-{% if 'healthcheck' in top_states %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls in allowed_states %}
 
 {% set CHECKS = salt['pillar.get']('healthcheck:checks', {}) %}
 {% set ENABLED = salt['pillar.get']('healthcheck:enabled', False) %}
@@ -31,8 +29,8 @@ healthcheck_schedule_{{ STATUS[1] }}:
 
 {% else %}
 
-healthcheck_state_not_allowed:
+{{sls}}_state_not_allowed:
   test.fail_without_changes:
-    - name: healthcheck_state_not_allowed
+    - name: {{sls}}_state_not_allowed
 
 {% endif %}

@@ -1,8 +1,11 @@
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
-{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{%- set API_TIMEOUT = salt['pillar.get']('sensoroni:api_timeout_ms', 0) %}
+{%- set WEBSOCKET_TIMEOUT = salt['pillar.get']('sensoroni:websocket_timeout_ms', 0) %}
+{%- set TIP_TIMEOUT = salt['pillar.get']('sensoroni:tip_timeout_ms', 0) %}
+{%- set CACHE_EXPIRATION = salt['pillar.get']('sensoroni:cache_expiration_ms', 0) %}
 {%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
 {%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
@@ -31,7 +34,7 @@
         "hostUrl": "http://{{ MANAGERIP }}:4434/"
       },
       "elastic": {
-        "hostUrl": "http://{{ MANAGERIP }}:9200",
+        "hostUrl": "https://{{ MANAGERIP }}:9200",
         {%- if salt['pillar.get']('nodestab', {}) %}
         "remoteHostUrls": [
         {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
@@ -45,7 +48,7 @@
       },
       "sostatus": {
         "refreshIntervalMs": 30000,
-        "offlineThresholdMs": 60000
+        "offlineThresholdMs": 900000
       },
 {% if THEHIVEKEY != '' %}
       "thehive": {
@@ -67,6 +70,10 @@
       "docsUrl": "https://docs.securityonion.net/en/2.3/",
       "cheatsheetUrl": "https://github.com/Security-Onion-Solutions/securityonion-docs/raw/2.3/images/cheat-sheet/Security-Onion-Cheat-Sheet.pdf",
       {%- endif %}
+      "apiTimeoutMs": {{ API_TIMEOUT }},
+      "webSocketTimeoutMs": {{ WEBSOCKET_TIMEOUT }},
+      "tipTimeoutMs": {{ TIP_TIMEOUT }},
+      "cacheExpirationMs": {{ CACHE_EXPIRATION }},
       "hunt": {
         "advanced": true,
         "groupItemsPerPage": 10,

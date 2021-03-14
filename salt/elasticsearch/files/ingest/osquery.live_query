@@ -1,0 +1,16 @@
+{
+  "description" : "osquery live query",
+  "processors" : [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "def dict = ['columns': new HashMap()]; for (entry in ctx['rows'].entrySet()) { dict['columns'][entry.getKey()] = entry.getValue(); } ctx['result'] = dict; "
+      }
+    },
+    { "remove":      { "field": [ "rows" ], "ignore_missing": true, "ignore_failure": true } },
+    { "rename":      { "field": "distributed_query_execution_id",  "target_field": "result.query_id",       "ignore_missing": true  } },   
+    { "rename":      { "field": "computer_name",  "target_field": "host.hostname",       "ignore_missing": true  } },        
+    { "pipeline":    { "name": "osquery.normalize" } },
+    { "pipeline":    { "name": "common" } }
+  ]
+}
