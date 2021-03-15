@@ -156,10 +156,8 @@ export PATH=$PATH:$local_sbin
 
 installer_prereq_packages && detect_cloud
 set_network_dev_status_list
+set_palette >> $setup_log 2>&1
 
-if [ "$OS" == ubuntu ]; then
-	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
-fi
 
 # Kernel messages can overwrite whiptail screen #812
 # https://github.com/Security-Onion-Solutions/securityonion/issues/812
@@ -251,6 +249,7 @@ fi
 
 # Check if this is an airgap install
 if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
+    check_elastic_license
 	whiptail_airgap
 	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
 		is_airgap=true

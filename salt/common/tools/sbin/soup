@@ -102,19 +102,6 @@ update_registry() {
   salt-call state.apply registry queue=True
 }
 
-check_airgap() {
-  # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}')
-  if [[ "$AIRGAP" == "True" ]]; then
-      is_airgap=0
-      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
-      AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
-  else 
-      is_airgap=1
-  fi
-}
-
 check_sudoers() {
 	if grep -q "so-setup" /etc/sudoers; then
 		echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
@@ -591,6 +578,8 @@ check_airgap
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
 set_os
+set_palette
+check_elastic_license
 echo ""
 if [ $is_airgap -eq 0 ]; then
   # Let's mount the ISO since this is airgap
