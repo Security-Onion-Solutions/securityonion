@@ -735,6 +735,22 @@ if [[ -n $lsl_msg ]]; then
   esac
 fi
 
+NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+
+if [ $NUM_MINIONS -gt 1 ]; then
+
+	cat << EOF
+This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
+
+Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
+
+If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Forward nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
+
+For more information, please see https://docs.securityonion.net/en/2.3/soup.html#distributed-deployments.
+EOF
+
+fi
+
 }
 
 main "$@" | tee /dev/fd/3
