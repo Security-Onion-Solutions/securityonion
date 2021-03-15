@@ -274,23 +274,6 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
-percentage=0
-{
-	installer_progress_loop & # Run progress bar to 98 in ~8 minutes while waiting for package installs
-	progress_bg_proc=$!
-	installer_prereq_packages
-	install_success=$?
-	kill -9 "$progress_bg_proc"
-	wait "$progress_bg_proc" &> /dev/null # Kill just sends signal, redirect output of wait to catch stdout
-	if [[ $install_success -gt 0 ]]; then
-		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
-		kill -SIGUSR1 "$setup_proc"; exit 1
-	fi
-	set_progress_str 99 "Detecting whether setup is running in the cloud." nolog
-	detect_cloud
-} | progress '...'
-
-
 if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
@@ -333,10 +316,6 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_proxy_details
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
-	
-	if [[ -n "$TURBO" ]]; then
-		use_turbo_proxy
-	fi
 
 	if [[ $is_minion ]]; then
 		add_mngr_ip_to_hosts
@@ -367,6 +346,22 @@ if ! [[ -f $install_opt_file ]]; then
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
 fi
+
+percentage=0
+{
+	installer_progress_loop & # Run progress bar to 98 in ~8 minutes while waiting for package installs
+	progress_bg_proc=$!
+	installer_prereq_packages
+	install_success=$?
+	kill -9 "$progress_bg_proc"
+	wait "$progress_bg_proc" &> /dev/null # Kill just sends signal, redirect output of wait to catch stdout
+	if [[ $install_success -gt 0 ]]; then
+		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
+		kill -SIGUSR1 "$setup_proc"; exit 1
+	fi
+	set_progress_str 99 "Detecting whether setup is running in the cloud." nolog
+	detect_cloud
+} | progress '...'
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
