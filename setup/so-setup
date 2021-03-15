@@ -205,21 +205,22 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
 			collect_hostname
-			reset_prpxy >> $setup_log 2>&1
-			collect_proxy
-			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			network_init_whiptail
 			whiptail_management_interface_setup
 			network_init
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			set_main_ip >> $setup_log 2>&1
+			compare_main_nic_ip
+			reset_prpxy >> $setup_log 2>&1
+			collect_proxy
+			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
 			true
 		fi
 	fi
-	collect_hostname	
 	whiptail_install_type
 else
 	source $install_opt_file
@@ -273,19 +274,6 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
-if [[ $is_minion ]]; then
-	collect_mngr_hostname
-fi
-
-
-if ! [[ -f $install_opt_file ]]; then
-	reset_prpxy >> $setup_log 2>&1 # Always reset proxy when answer file doesn't exist
-	if [[ -z $is_airgap ]]; then
-		collect_proxy_details
-		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-fi
-
 percentage=0
 {
 	installer_progress_loop & # Run progress bar to 98 in ~8 minutes while waiting for package installs
@@ -319,6 +307,7 @@ if ! [[ -f $install_opt_file ]]; then
 	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
 	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		collect_hostname
 		network_init_whiptail
 	else
 		source "$net_init_file"
@@ -330,6 +319,19 @@ if ! [[ -f $install_opt_file ]]; then
 
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init
+	fi
+
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
+
+	if [[ $is_minion ]]; then
+		collect_mngr_hostname
+	fi
+
+	reset_prpxy >> $setup_log 2>&1
+	if [[ -z $is_airgap ]]; then
+		collect_proxy_details
+		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 	
 	if [[ -n "$TURBO" ]]; then
@@ -571,8 +573,6 @@ whiptail_make_changes
 echo "1" > /root/accept_changes
 
 # This block sets REDIRECTIT which is used by a function outside the below subshell
-set_main_ip >> $setup_log 2>&1
-compare_main_nic_ip
 set_redirect >> $setup_log 2>&1
 
 
