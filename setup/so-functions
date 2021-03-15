@@ -1946,6 +1946,24 @@ reinstall_init() {
 	} >> "$setup_log" 2>&1
 }
 
+reset_proxy() {
+	[[ -f /etc/profile.d/so-proxy.sh ]] && rm -f /etc/profile.d/so-proxy.sh
+	
+	[[ -f /etc/systemd/system/docker.service.d/http-proxy.conf ]] && rm -f /etc/systemd/system/docker.service.d/http-proxy.conf
+	systemctl daemon-reload
+	command -v docker &> /dev/null && systemctl restart docker
+	
+	[[ -f /root/.docker/config.json ]] && rm -f /root/.docker/config.json
+
+	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
+	
+	if [[ $OS == 'centos' ]]; then
+		sed -i "/proxy=/d" /etc/yum.conf
+	else
+		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+}
+
 backup_dir() {
 	dir=$1
 	backup_suffix=$2
