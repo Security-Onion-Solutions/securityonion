@@ -244,10 +244,10 @@ masterunlock() {
   fi
 }
 
-pillar_changes() {
+preupgrade_changes() {
     # This function is to add any new pillar items if needed.
-    echo "Checking to see if pillar changes are needed."
-    
+    echo "Checking to see if changes are needed."
+
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
@@ -255,9 +255,9 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
 }
 
-post_changes() {
+postupgrade_changes() {
     # This function is to add any new pillar items if needed.
-    echo "Checking to see if pillar changes are needed."
+    echo "Running post upgrade processes."
     
     [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
     [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
@@ -667,8 +667,7 @@ else
   echo ""
 fi
 
-echo "Making pillar changes."
-pillar_changes
+preupgrade_changes
 echo ""
 
 if [ $is_airgap -eq 0 ]; then
@@ -722,7 +721,7 @@ echo "Starting Salt Master service."
 systemctl start salt-master
 echo "Running a highstate. This could take several minutes."
 salt-call state.highstate -l info queue=True
-post_changes
+postupgrade_changes
 unmount_update
 thehive_maint
 
