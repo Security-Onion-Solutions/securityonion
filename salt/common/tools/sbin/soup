@@ -19,6 +19,7 @@
 
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
+POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
@@ -243,18 +244,6 @@ masterunlock() {
   fi
 }
 
-playbook() {
-  echo "Applying playbook settings"
-  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-    salt-call state.apply playbook.OLD_db_init
-    rm -f /opt/so/rules/elastalert/playbook/*.yaml
-    so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
-  fi
-  if [[ "$INSTALLEDVERSION" != 2.3.30 ]]; then
-    so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
-  fi
-}
-
 pillar_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if pillar changes are needed."
@@ -264,6 +253,26 @@ pillar_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
+}
+
+post_changes() {
+    # This function is to add any new pillar items if needed.
+    echo "Checking to see if pillar changes are needed."
+    
+    [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
+    [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
+}
+
+post_rc1_to_2.3.21() {
+  salt-call state.apply playbook.OLD_db_init
+  rm -f /opt/so/rules/elastalert/playbook/*.yaml
+  so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
+  POSTVERSION=2.3.21
+}
+
+post_2.3.2X_to_2.3.30() {
+  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+  POSTVERSION=2.3.30
 }
 
 rc1_to_rc2() {
@@ -410,16 +419,25 @@ up_2.3.2X_to_2.3.30() {
   check_log_size_limit
 }
 
-space_check() {
-  # Check to see if there is enough space
+verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
   if [ "$CURRENTSPACE" -lt "10" ]; then
-      echo "You are low on disk space. Upgrade will try and clean up space.";
-      clean_dockers
+      echo "You are low on disk space.";
+      return 1
   else
-      echo "Plenty of space for upgrading"
-  fi
-  
+      return 0
+}
+
+upgrade_space() {
+  if ! verify_upgradespace; then
+    clean_dockers
+    if ! verify_upgradespace; then
+      echo "There is not enough space to perform the upgrade. Please free up space and try again"
+      exit 1
+    fi
+  else
+      echo "You have enough space for upgrade. Proceeding with soup."
+  fi  
 }
 
 thehive_maint() {
@@ -599,7 +617,7 @@ fi
 
 echo "Let's see if we need to update Security Onion."
 upgrade_check
-space_check
+upgrade_space
 
 echo "Checking for Salt Master and Minion updates."
 upgrade_check_salt
@@ -704,7 +722,7 @@ echo "Starting Salt Master service."
 systemctl start salt-master
 echo "Running a highstate. This could take several minutes."
 salt-call state.highstate -l info queue=True
-playbook
+post_changes
 unmount_update
 thehive_maint
 
