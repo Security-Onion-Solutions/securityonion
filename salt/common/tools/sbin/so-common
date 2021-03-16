@@ -86,6 +86,19 @@ add_interface_bond0() {
 	fi
 }
 
+check_airgap() {
+  # See if this is an airgap install
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}')
+  if [[ "$AIRGAP" == "True" ]]; then
+      is_airgap=0
+      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
+      AGDOCKER=/tmp/soagupdate/docker
+      AGREPO=/tmp/soagupdate/Packages
+  else 
+      is_airgap=1
+  fi
+}
+
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
@@ -95,6 +108,46 @@ check_password() {
 	local password=$1
 	echo "$password" | egrep -v "'|\"|\\$|\\\\" > /dev/null 2>&1
 	return $?
+}
+
+check_elastic_license() {
+
+	[ -n "$TESTING" ] && return
+
+	# See if the user has already accepted the license
+	if [ ! -f /opt/so/state/yeselastic.txt ]; then
+	  elastic_license
+	else
+	  echo "Elastic License has already been accepted"
+	fi  
+}
+
+elastic_license() {
+
+read -r -d '' message <<- EOM
+\n
+Starting in Elastic Stack version 7.11, the Elastic Stack binaries are only available under the Elastic License:
+https://blog.securityonion.net/2021/02/elastic-license-changes-and-security.html
+
+Please review the Elastic License:
+https://www.elastic.co/licensing/elastic-license
+
+Do you agree to the terms of the Elastic License?
+
+If so, type AGREE to accept the Elastic License and continue.  Otherwise, press Enter to exit this program without making any changes.
+EOM
+
+AGREED=$(whiptail --title "Security Onion Setup" --inputbox \
+"$message" 20 75 3>&1 1>&2 2>&3)
+
+if [ "$AGREED" = 'AGREE' ]; then
+  mkdir -p /opt/so/state
+  touch /opt/so/state/yeselastic.txt 
+else
+  echo "Starting in 2.3.40 you must accept the Elastic license if you want to run Security Onion."
+  exit 1
+fi
+
 }
 
 fail() {
@@ -248,6 +301,12 @@ set_os() {
 
 set_minionid() {
 	MINIONID=$(lookup_grain id)
+}
+
+set_palette() {
+	if [ "$OS" == ubuntu ]; then
+	    update-alternatives --set newt-palette /etc/newt/palette.original
+    fi
 }
 
 set_version() {

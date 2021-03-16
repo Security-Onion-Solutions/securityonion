@@ -19,12 +19,11 @@
 
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
+POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
-
-exec 3>&1 1>${SOUP_LOG} 2>&1
 
 add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -99,19 +98,6 @@ update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
   salt-call state.apply registry queue=True
-}
-
-check_airgap() {
-  # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}')
-  if [[ "$AIRGAP" == "True" ]]; then
-      is_airgap=0
-      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
-      AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
-  else 
-      is_airgap=1
-  fi
 }
 
 check_sudoers() {
@@ -243,27 +229,35 @@ masterunlock() {
   fi
 }
 
-playbook() {
-  echo "Applying playbook settings"
-  if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
-    salt-call state.apply playbook.OLD_db_init
-    rm -f /opt/so/rules/elastalert/playbook/*.yaml
-    so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
-  fi
-  if [[ "$INSTALLEDVERSION" != 2.3.30 ]]; then
-    so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
-  fi
-}
-
-pillar_changes() {
+preupgrade_changes() {
     # This function is to add any new pillar items if needed.
-    echo "Checking to see if pillar changes are needed."
-    
+    echo "Checking to see if changes are needed."
+
     [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
     [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
+}
+
+postupgrade_changes() {
+    # This function is to add any new pillar items if needed.
+    echo "Running post upgrade processes."
+    
+    [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
+    [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
+}
+
+post_rc1_to_2.3.21() {
+  salt-call state.apply playbook.OLD_db_init
+  rm -f /opt/so/rules/elastalert/playbook/*.yaml
+  so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
+  POSTVERSION=2.3.21
+}
+
+post_2.3.2X_to_2.3.30() {
+  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+  POSTVERSION=2.3.30
 }
 
 rc1_to_rc2() {
@@ -410,16 +404,26 @@ up_2.3.2X_to_2.3.30() {
   check_log_size_limit
 }
 
-space_check() {
-  # Check to see if there is enough space
+verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
   if [ "$CURRENTSPACE" -lt "10" ]; then
-      echo "You are low on disk space. Upgrade will try and clean up space.";
-      clean_dockers
+      echo "You are low on disk space."
+      return 1
   else
-      echo "Plenty of space for upgrading"
+      return 0
   fi
-  
+}
+
+upgrade_space() {
+  if ! verify_upgradespace; then
+    clean_dockers
+    if ! verify_upgradespace; then
+      echo "There is not enough space to perform the upgrade. Please free up space and try again"
+      exit 1
+    fi
+  else
+      echo "You have enough space for upgrade. Proceeding with soup."
+  fi  
 }
 
 thehive_maint() {
@@ -548,6 +552,7 @@ verify_latest_update_script() {
 }
 
 main () {
+echo "### Preparing soup at `date` ###"
 while getopts ":b" opt; do
   case "$opt" in
     b ) # process option b
@@ -573,6 +578,8 @@ check_airgap
 echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
 echo ""
 set_os
+set_palette
+check_elastic_license
 echo ""
 if [ $is_airgap -eq 0 ]; then
   # Let's mount the ISO since this is airgap
@@ -599,7 +606,7 @@ fi
 
 echo "Let's see if we need to update Security Onion."
 upgrade_check
-space_check
+upgrade_space
 
 echo "Checking for Salt Master and Minion updates."
 upgrade_check_salt
@@ -649,8 +656,7 @@ else
   echo ""
 fi
 
-echo "Making pillar changes."
-pillar_changes
+preupgrade_changes
 echo ""
 
 if [ $is_airgap -eq 0 ]; then
@@ -704,7 +710,7 @@ echo "Starting Salt Master service."
 systemctl start salt-master
 echo "Running a highstate. This could take several minutes."
 salt-call state.highstate -l info queue=True
-playbook
+postupgrade_changes
 unmount_update
 thehive_maint
 
@@ -751,7 +757,7 @@ For more information, please see https://docs.securityonion.net/en/2.3/soup.html
 EOF
 
 fi
-
+echo "### soup has been served at `date` ###"
 }
 
-main "$@" | tee /dev/fd/3
+main "$@" | tee -a $SOUP_LOG
