@@ -1201,8 +1201,13 @@ es_heapsize() {
 		# https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html
 		ES_HEAP_SIZE="25000m"
 	else
-		# Set heap size to 25% of available memory
-		ES_HEAP_SIZE=$(( total_mem / 4 ))"m"
+		# Set heap size to 33% of available memory
+		ES_HEAP_SIZE=$(( total_mem / 3 ))"m"
+		if [ "$ES_HEAP_SIZE" -ge 25001 ] ; then
+		    ES_HEAP_SIZE="25000m"
+		else
+		    ES_HEAP_SIZE=$ES_HEAP_SIZE
+		fi
 	fi
 	export ES_HEAP_SIZE
 
