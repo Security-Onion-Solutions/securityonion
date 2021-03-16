@@ -103,7 +103,7 @@ strelkaunprocessed:
 # Check to see if Strelka frontend port is available
 strelkaportavailable:
     cmd.run:
-      - name: netstat -utanp | grep ":57314" | grep -qv docker && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
+      - name: netstat -utanp | grep ":57314" | grep -qvE 'docker|TIME_WAIT' && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
 
 strelka_coordinator:
   docker_container.running:
