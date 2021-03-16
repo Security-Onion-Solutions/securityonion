@@ -568,13 +568,7 @@ collect_proxy_details() {
 
 		if whiptail_proxy_auth_ask; then
 			whiptail_proxy_auth_user "$proxy_user"
-			
-			local proxy_pass_match=no
-			while [[ $proxy_pass_match != yes ]]; do
-				whiptail_proxy_auth_pass # Don't pass in existing pass since it's obfuscated
-				whiptail_proxy_auth_pass confirm
-				check_pass_match "$proxy_pass" "$proxy_pass_confirm" "proxy_pass_match"
-			done
+			whiptail_proxy_auth_pass "$proxy_pass"
 
 			local url_prefixes=( 'http://' 'https://' )
 			for prefix in "${url_prefixes[@]}"; do
@@ -1827,11 +1821,12 @@ print_salt_state_apply() {
 
 proxy_validate() {
 	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
-	curl "$test_url" --proxy "$so_proxy" &> /dev/null
+	proxy_test_err=$(curl -s "$test_url" --proxy "$so_proxy" 2>&1)
 	local ret=$?
 
 	if [[ $ret != 0 ]]; then
 		error "Could not reach $test_url using proxy $so_proxy"
+		error "Received error: $proxy_test_err"
 		if [[ -n $TESTING ]]; then
 			error "Exiting setup"
 			kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
