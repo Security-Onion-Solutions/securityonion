@@ -296,6 +296,10 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
+	if [[ $is_minion ]]; then
+		collect_mngr_hostname
+	fi
+
 	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
 		whiptail_management_interface_setup
 	fi
@@ -307,9 +311,7 @@ if ! [[ -f $install_opt_file ]]; then
 	set_main_ip >> $setup_log 2>&1
 	compare_main_nic_ip
 
-	if [[ $is_minion ]]; then
-		collect_mngr_hostname
-	fi
+	
 
 	reset_proxy >> $setup_log 2>&1
 	if [[ -z $is_airgap ]]; then
