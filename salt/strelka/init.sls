@@ -86,6 +86,13 @@ strelkaprocessed:
     - group: 939
     - makedirs: True
 
+strelkastaging:
+   file.directory:
+    - name: /nsm/strelka/staging
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 strelkaunprocessed:
    file.directory:
     - name: /nsm/strelka/unprocessed
