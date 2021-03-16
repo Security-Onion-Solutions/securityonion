@@ -25,8 +25,6 @@ DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
 
-exec 3>&1 1>${SOUP_LOG} 2>&1
-
 add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
   cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -554,6 +552,7 @@ verify_latest_update_script() {
 }
 
 main () {
+echo "### Preparing soup at `date` ###"
 while getopts ":b" opt; do
   case "$opt" in
     b ) # process option b
@@ -758,7 +757,7 @@ For more information, please see https://docs.securityonion.net/en/2.3/soup.html
 EOF
 
 fi
-
+echo "### soup has been served at `date` ###"
 }
 
-main "$@" | tee /dev/fd/3
+main "$@" | tee -a $SOUP_LOG
