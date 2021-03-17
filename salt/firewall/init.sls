@@ -102,7 +102,7 @@ enable_docker_user_fw_policy:
 
 # Allow related/established sessions
 iptables_allow_established:
-  iptables.append:
+  iptables.insert:
     - table: filter
     - chain: INPUT
     - jump: ACCEPT
