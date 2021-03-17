@@ -13,6 +13,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+idstoolsdir:
+  file.directory:
+    - name: /opt/so/conf/idstools/etc
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 idstoolsetcsync:
   file.recurse:
     - name: /opt/so/conf/idstools/etc
@@ -20,13 +27,6 @@ idstoolsetcsync:
     - user: 939
     - group: 939
     - template: jinja
-
-idstoolsdir:
-  file.directory:
-    - name: /opt/so/conf/idstools/etc
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 rulesdir:
   file.directory:
