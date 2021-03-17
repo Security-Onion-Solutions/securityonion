@@ -747,6 +747,7 @@ NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
 if [ $NUM_MINIONS -gt 1 ]; then
 
 	cat << EOF
+	
 This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
 Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
@@ -759,5 +760,21 @@ EOF
 fi
 echo "### soup has been served at `date` ###"
 }
+
+cat << EOF
+
+SOUP - Security Onion UPdater
+
+Please review the following for more information about the update process and recent updates:
+https://docs.securityonion.net/soup
+https://blog.securityonion.net
+
+Please note that soup only updates Security Onion components and does NOT update the underlying operating system (OS). When you installed Security Onion, there was an option to automatically update the OS packages. If you did not enable this option, then you will want to ensure that the OS is fully updated before running soup.
+
+Press Enter to continue or Ctrl-C to cancel.
+
+EOF
+
+read input
 
 main "$@" | tee -a $SOUP_LOG
