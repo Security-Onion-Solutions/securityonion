@@ -535,6 +535,56 @@ collect_patch_schedule_name_import() {
 	done
 }
 
+collect_proxy() {
+	[[ -n $TESTING ]] && return
+	collect_proxy_details
+	while ! proxy_validate; do
+		if whiptail_invalid_proxy; then
+			collect_proxy_details no_ask
+		else
+			so_proxy=""
+			break
+		fi
+	done
+}
+
+collect_proxy_details() {
+	local ask=${1:-true}
+	local use_proxy
+	if [[ $ask != true ]]; then
+		use_proxy=0
+	else
+		whiptail_proxy_ask
+		use_proxy=$?
+	fi
+
+	if [[ $use_proxy == 0 ]]; then
+		whiptail_proxy_addr "$proxy_addr"
+
+		while ! valid_proxy "$proxy_addr"; do
+			whiptail_invalid_input
+			whiptail_proxy_addr "$proxy_addr"
+		done
+
+		if whiptail_proxy_auth_ask; then
+			whiptail_proxy_auth_user "$proxy_user"
+			whiptail_proxy_auth_pass "$proxy_pass"
+
+			local url_prefixes=( 'http://' 'https://' )
+			for prefix in "${url_prefixes[@]}"; do
+				if echo "$proxy_addr" | grep -q "$prefix"; then
+					local proxy=${proxy_addr#"$prefix"}
+					so_proxy="${prefix}${proxy_user}:${proxy_pass}@${proxy}"
+					break
+				fi
+			done
+		else
+			so_proxy="$proxy_addr"
+		fi
+		export proxy
+	fi
+}
+
 collect_redirect_host() {
 	whiptail_set_redirect_host "$HOSTNAME"
 
@@ -691,10 +741,10 @@ check_requirements() {
 			else
 				req_storage=100
 			fi
-			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			if [[ $free_space_root -lt $req_storage ]]; then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
-			if (( $(echo "$free_space_nsm < $req_storage" | bc -l) )); then
+			if [[ $free_space_nsm -lt $req_storage ]]; then
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
@@ -703,7 +753,7 @@ check_requirements() {
 			else
 				req_storage=200
 			fi
-			if (( $(echo "$free_space_root < $req_storage" | bc -l) )); then
+			if [[ $free_space_root -lt $req_storage ]]; then
 				whiptail_storage_requirements "/" "${free_space_root} GB" "${req_storage} GB"
 			fi
 		fi	
@@ -743,12 +793,14 @@ check_sos_appliance() {
 compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
+			error "[ERROR] Main gateway ($MAINIP) does not match ip address of managament NIC ($MNIC_IP)."
+
 		  read -r -d '' message <<- EOM
 		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
 			This is not a supported configuration, please remediate and rerun setup.
-		EOM
-		  whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
+			EOM
+		  [[ -n $TESTING ]] || whiptail --title "Security Onion Setup" --msgbox "$message" 10 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
 	else
@@ -939,36 +991,26 @@ detect_os() {
 
 }
 
-installer_prereq_packages() {
+installer_progress_loop() {
+	local i=0
+	while true; do
+		[[ $i -lt 98 ]] && ((i++))
+		set_progress_str "$i" 'Checking that all required packages are installed and enabled...' nolog
+		[[ $i -gt 0 ]] && sleep 5s
+	done
+}
 
+installer_prereq_packages() {
 	if [ "$OS" == centos ]; then
-		# Print message to stdout so the user knows setup is doing something
-		echo "Installing required packages to run installer..."
-		# Install bind-utils so the host command exists
 		if [[ ! $is_iso ]]; then
-		  if ! command -v host > /dev/null 2>&1; then
-			yum -y install bind-utils >> "$setup_log" 2>&1
-		  fi
-		  if ! command -v nmcli > /dev/null 2>&1; then
-			{
-				yum -y install NetworkManager;
-				systemctl enable NetworkManager;
-				systemctl start NetworkManager;
-			} >> "$setup_log" 2<&1
-		  fi
-		  if ! command -v bc > /dev/null 2>&1; then
-			yum -y install bc >> "$setup_log" 2>&1
-		  fi
 		  if ! yum versionlock > /dev/null 2>&1; then
-			yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
+				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
 		  fi
-        else
-		  logCmd "systemctl enable NetworkManager"
-		  logCmd "systemctl start NetworkManager"
-        fi
+		fi
+		logCmd "systemctl enable NetworkManager"
+		logCmd "systemctl start NetworkManager"
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		echo "Installing required packages to run installer..."
 		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
@@ -978,7 +1020,7 @@ installer_prereq_packages() {
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		retry 50 10 "apt-get -y install bc curl"  >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
@@ -1002,11 +1044,11 @@ disable_ipv6() {
 		sysctl -w net.ipv6.conf.all.disable_ipv6=1
 		sysctl -w net.ipv6.conf.default.disable_ipv6=1
 	}  >> "$setup_log" 2>&1
-        {
-        echo "net.ipv6.conf.all.disable_ipv6 = 1"
-        echo "net.ipv6.conf.default.disable_ipv6 = 1"
-        echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-        } >> /etc/sysctl.conf
+	{
+		echo "net.ipv6.conf.all.disable_ipv6 = 1"
+		echo "net.ipv6.conf.default.disable_ipv6 = 1"
+		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
+	} >> /etc/sysctl.conf
 }
 
 #disable_misc_network_features() {
@@ -1390,6 +1432,8 @@ install_cleanup() {
 		info "Removing so-setup permission entry from sudoers file"
 		sed -i '/so-setup/d' /etc/sudoers
 	fi
+
+	so-ssh-harden -q
 }
 
 import_registry_docker() {
@@ -1437,6 +1481,8 @@ manager_pillar() {
 		"manager:"\
 		"  mainip: '$MAINIP'"\
 		"  mainint: '$MNIC'"\
+		"  proxy: '$so_proxy'"\
+		"  no_proxy: '$no_proxy_string'"\
 		"  esheap: '$ES_HEAP_SIZE'"\
 		"  esclustername: '{{ grains.host }}'"\
 		"  freq: 0"\
@@ -1451,7 +1497,6 @@ manager_pillar() {
 	printf '%s\n'\
 		"  elastalert: 1"\
 		"  es_port: $node_es_port"\
-		"  log_size_limit: $log_size_limit"\
 		"  cur_close_days: $CURCLOSEDAYS"\
 		"  grafana: $GRAFANA"\
 		"  osquery: $OSQUERY"\
@@ -1517,7 +1562,6 @@ manager_global() {
 		"  hnmanager: '$HNMANAGER'"\
 		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
-		"  proxy: '$PROXY'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
@@ -1700,7 +1744,6 @@ network_init() {
 network_init_whiptail() {
 	case "$setup_type" in
 		'iso')
-			collect_hostname
 			whiptail_management_nic
 			whiptail_dhcp_or_static
 
@@ -1714,7 +1757,6 @@ network_init_whiptail() {
 		'network')
 			whiptail_network_notice
 			whiptail_dhcp_warn
-			collect_hostname
 			whiptail_management_nic
 			;;
 	esac
@@ -1780,6 +1822,22 @@ print_salt_state_apply() {
 	local state=$1
 
 	echo "Applying $state Salt state"
+}
+
+proxy_validate() {
+	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
+	proxy_test_err=$(curl -sS "$test_url" --proxy "$so_proxy" 2>&1)
+	local ret=$?
+
+	if [[ $ret != 0 ]]; then
+		error "Could not reach $test_url using proxy $so_proxy"
+		error "Received error: $proxy_test_err"
+		if [[ -n $TESTING ]]; then
+			error "Exiting setup"
+			kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+		fi
+	fi
+	return $ret
 }
 
 reserve_group_ids() {
@@ -1875,6 +1933,24 @@ reinstall_init() {
 	} >> "$setup_log" 2>&1
 }
 
+reset_proxy() {
+	[[ -f /etc/profile.d/so-proxy.sh ]] && rm -f /etc/profile.d/so-proxy.sh
+	
+	[[ -f /etc/systemd/system/docker.service.d/http-proxy.conf ]] && rm -f /etc/systemd/system/docker.service.d/http-proxy.conf
+	systemctl daemon-reload
+	command -v docker &> /dev/null && systemctl restart docker
+	
+	[[ -f /root/.docker/config.json ]] && rm -f /root/.docker/config.json
+
+	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
+	
+	if [[ $OS == 'centos' ]]; then
+		sed -i "/proxy=/d" /etc/yum.conf
+	else
+		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+}
+
 backup_dir() {
 	dir=$1
 	backup_suffix=$2
@@ -1968,6 +2044,7 @@ saltify() {
 					python36-dateutil\
 					python36-m2crypto\
 					python36-mysql\
+					python36-packaging\
 					yum-utils\
 					device-mapper-persistent-data\
 					lvm2\
@@ -2056,9 +2133,9 @@ saltify() {
 		retry 50 10 "apt-get -y install salt-minion=3002.5+ds-1 salt-common=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging" >> "$setup_log" 2>&1 || exit 1
 		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb"  >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging"  >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 }
@@ -2200,7 +2277,70 @@ set_main_ip() {
 
 # Add /usr/sbin to everyone's path
 set_path() {
-	echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
+	echo "complete -cf sudo" >> /etc/profile.d/securityonion.sh
+}
+
+set_proxy() {
+
+	# Don't proxy localhost, local ip, and management ip
+	no_proxy_string="localhost, 127.0.0.1, ${MAINIP}, ${HOSTNAME}"
+	if [[ -n $MSRV ]] && [[ -n $MSRVIP ]];then
+		no_proxy_string="${no_proxy_string}, ${MSRVIP}, ${MSRV}"
+	fi
+
+	# Set proxy environment variables used by curl, wget, docker, and others
+	{
+		echo "export use_proxy=on"
+		echo "export http_proxy=\"${so_proxy}\""
+		echo "export https_proxy=\"\$http_proxy\""
+		echo "export ftp_proxy=\"\$http_proxy\""
+		echo "export no_proxy=\"${no_proxy_string}\""
+	} > /etc/profile.d/so-proxy.sh
+
+	source /etc/profile.d/so-proxy.sh
+
+	[[ -d '/etc/systemd/system/docker.service.d' ]] || mkdir -p /etc/systemd/system/docker.service.d
+
+	# Create proxy config for dockerd 
+	printf '%s\n'\
+		"[Service]"\
+		"Environment=\"HTTP_PROXY=${so_proxy}\""\
+		"Environment=\"HTTPS_PROXY=${so_proxy}\""\
+		"Environment=\"NO_PROXY=${no_proxy_string}\"" > /etc/systemd/system/docker.service.d/http-proxy.conf
+
+	systemctl daemon-reload
+	command -v docker &> /dev/null && systemctl restart docker
+
+	# Create config.json for docker containers
+	[[ -d /root/.docker ]] || mkdir /root/.docker
+	printf '%s\n'\
+		"{"\
+		"  \"proxies\":"\
+		"  {"\
+		"    \"default\":"\
+		"    {"\
+		"      \"httpProxy\":\"${so_proxy}\","\
+		"      \"httpsProxy\":\"${so_proxy}\","\
+		"      \"ftpProxy\":\"${so_proxy}\","\
+		"      \"noProxy\":\"${no_proxy_string}\""\
+		"    }"\
+		"  }"\
+		"}" > /root/.docker/config.json
+
+	# Set proxy for package manager
+	if [ "$OS" = 'centos' ]; then
+		echo "proxy=$so_proxy" >> /etc/yum.conf
+	else
+		# Set it up so the updates roll through the manager
+		printf '%s\n'\
+			"Acquire::http::Proxy \"$so_proxy\";"\
+			"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+
+	# Set global git proxy
+	printf '%s\n'\
+		"[http]"\
+		"  proxy = ${so_proxy}" > /etc/gitconfig
 }
 
 setup_salt_master_dirs() {
@@ -2231,6 +2371,7 @@ set_progress_str() {
 	local percentage_input=$1
 	progress_bar_text=$2
 	export progress_bar_text
+	local nolog=$2
 
 	if (( "$percentage_input" >= "$percentage" )); then
 		percentage="$percentage_input"
@@ -2240,12 +2381,14 @@ set_progress_str() {
 
 	echo -e "$percentage_str"
 
-	info "Progressing ($percentage%): $progress_bar_text"
+	if [[ -z $nolog ]]; then
+		info "Progressing ($percentage%): $progress_bar_text"
 
-	printf '%s\n' \
-	'----'\
-	"$percentage% - ${progress_bar_text^^}"\
-	"----" >> "$setup_log" 2>&1
+		# printf '%s\n' \
+		# 	'----'\
+		# 	"$percentage% - ${progress_bar_text^^}"\
+		# 	"----" >> "$setup_log" 2>&1
+	fi
 }
 
 set_ssh_cmds() {
