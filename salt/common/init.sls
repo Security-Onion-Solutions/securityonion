@@ -108,8 +108,10 @@ commonpkgs:
 heldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.2.13-2
-      - docker-ce: 5:19.03.14~3-0~ubuntu-bionic
+      - containerd.io: 1.4.4-1
+      - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
+      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
+      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -144,8 +146,9 @@ commonpkgs:
 heldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.14-3.el7
+      - containerd.io: 1.4.4-3.1.el7
+      - docker-ce: 20.10.5-3.el7
+      - docker-ce-cli: 20.10.5-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
