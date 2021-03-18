@@ -1003,9 +1003,12 @@ installer_progress_loop() {
 installer_prereq_packages() {
 	if [ "$OS" == centos ]; then
 		if [[ ! $is_iso ]]; then
-		  if ! yum versionlock > /dev/null 2>&1; then
+			if ! yum versionlock > /dev/null 2>&1; then
 				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
-		  fi
+			fi
+			if ! command -v nmcli > /dev/null 2>&1; then
+				yum -y install NetworkManager >> "$setup_log" 2>&1
+			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
 		logCmd "systemctl start NetworkManager"
