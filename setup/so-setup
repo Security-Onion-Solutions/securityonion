@@ -361,9 +361,9 @@ percentage=0
 		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
 		kill -SIGUSR1 "$setup_proc"; exit 1
 	fi
-	set_progress_str 99 "Detecting whether setup is running in the cloud." nolog
-	detect_cloud
 } | progress '...'
+
+detect_cloud
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
@@ -799,6 +799,9 @@ set_redirect >> $setup_log 2>&1
 
 		set_progress_str 70 "$(print_salt_state_apply 'kibana')"
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
+
+		set_progress_str 70 "Setting up default Space in Kibana"
+		so-kibana-space-defaults >> $setup_log 2>&1
 	fi
 
 	if [[ "$PLAYBOOK" = 1 ]]; then

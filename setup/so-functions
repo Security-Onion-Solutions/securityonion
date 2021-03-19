@@ -949,7 +949,7 @@ create_repo() {
 }
 
 detect_cloud() {
-  echo "Testing if setup is running on a cloud instance..." >> "$setup_log" 2>&1
+  echo "Testing if setup is running on a cloud instance..." | tee -a "$setup_log"
   if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null); then export is_cloud="true"; fi
 }
 
@@ -1942,7 +1942,7 @@ reset_proxy() {
 	
 	[[ -f /etc/systemd/system/docker.service.d/http-proxy.conf ]] && rm -f /etc/systemd/system/docker.service.d/http-proxy.conf
 	systemctl daemon-reload
-	command -v docker &> /dev/null && echo "Restarting Docker..." && systemctl restart docker
+	command -v docker &> /dev/null && echo "Restarting Docker..." | tee -a "$setup_log" && systemctl restart docker
 	
 	[[ -f /root/.docker/config.json ]] && rm -f /root/.docker/config.json
 
