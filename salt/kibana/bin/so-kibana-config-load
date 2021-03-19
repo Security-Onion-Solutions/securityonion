@@ -23,10 +23,4 @@ wait_for_web_response "http://localhost:5601/app/kibana" "Elastic"
 THECOOKIE=$(curl -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 
 # Load saved objects
-curl -b "sid=$THECOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson > /dev/null 2>&1
-
-# Disable certain Features from showing up in the Kibana UI
-
-echo
-echo "Setting up default Space:"
-curl -b "sid=$THECOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["enterpriseSearch","siem","logs","infrastructure","apm","uptime","monitoring","stackAlerts","actions","fleet"]} ' | jq
+curl -b "sid=$THECOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson >> /opt/so/log/kibana/misc.log

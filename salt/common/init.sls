@@ -104,6 +104,7 @@ commonpkgs:
       - python3-dateutil
       - python3-m2crypto
       - python3-mysqldb
+      - python3-packaging
       - git
 heldpackages:
   pkg.installed:
@@ -137,6 +138,7 @@ commonpkgs:
       - python36-dateutil
       - python36-m2crypto
       - python36-mysql
+      - python36-packaging
       - yum-utils
       - device-mapper-persistent-data
       - lvm2

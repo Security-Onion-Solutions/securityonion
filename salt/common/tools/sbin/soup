@@ -246,6 +246,7 @@ postupgrade_changes() {
     
     [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
     [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
+    [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
 }
 
 post_rc1_to_2.3.21() {
@@ -259,6 +260,13 @@ post_2.3.2X_to_2.3.30() {
   so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
   POSTVERSION=2.3.30
 }
+
+post_2.3.30_to_2.3.40() {
+  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+  so-kibana-space-defaults
+  POSTVERSION=2.3.40
+}
+
 
 rc1_to_rc2() {
 
@@ -290,15 +298,14 @@ rc1_to_rc2() {
   done </tmp/nodes.txt
   # Add the nodes back using hostname
   while read p; do
-      local NAME=$(echo $p | awk '{print $1}')
-      local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
-      local IP=$(echo $p | awk '{print $2}')
-      echo "Adding the new cross cluster config for $NAME"
-      curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
+    local NAME=$(echo $p | awk '{print $1}')
+    local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
+    local IP=$(echo $p | awk '{print $2}')
+    echo "Adding the new cross cluster config for $NAME"
+    curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
   done </tmp/nodes.txt
 
   INSTALLEDVERSION=rc.2
-
 }
 
 rc2_to_rc3() {
@@ -328,10 +335,10 @@ rc3_to_2.3.0() {
   fi
 
   {
-      echo "redis_settings:"
-      echo "  redis_maxmemory: 827"
-      echo "playbook:"
-      echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
+    echo "redis_settings:"
+    echo "  redis_maxmemory: 827"
+    echo "playbook:"
+    echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
   } >> /opt/so/saltstack/local/pillar/global.sls
 
   sed -i 's/playbook:/playbook_db:/' /opt/so/saltstack/local/pillar/secrets.sls
@@ -379,7 +386,6 @@ up_2.3.0_to_2.3.20(){
   fi
 
   INSTALLEDVERSION=2.3.20
-
 }
 
 up_2.3.2X_to_2.3.30() {
@@ -389,11 +395,11 @@ up_2.3.2X_to_2.3.30() {
     sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
   done
 
-# Change the IMAGEREPO
+  # Change the IMAGEREPO
   sed -i "/  imagerepo: 'securityonion'/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls
   sed -i "/  imagerepo: securityonion/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls 
 
-# Strelka rule repo pillar addition
+  # Strelka rule repo pillar addition
   if [ $is_airgap -eq 0 ]; then
       # Add manager as default Strelka YARA rule repo
       sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;
@@ -431,16 +437,16 @@ thehive_maint() {
   COUNT=0
   THEHIVE_CONNECTED="no"
   while [[ "$COUNT" -le 240 ]]; do
-      curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
-          if [ $? -eq 0 ]; then
-              THEHIVE_CONNECTED="yes"
-              echo "connected!"
-              break
-          else
-              ((COUNT+=1))
-              sleep 1
-              echo -n "."
-          fi
+    curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
+      if [ $? -eq 0 ]; then
+        THEHIVE_CONNECTED="yes"
+        echo "connected!"
+        break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
   done
   if [ "$THEHIVE_CONNECTED" == "yes" ]; then
     echo "Migrating thehive databases if needed."
@@ -475,80 +481,80 @@ update_version() {
 }
 
 upgrade_check() {
-    # Let's make sure we actually need to update.
-    NEWVERSION=$(cat $UPDATE_DIR/VERSION)
-    if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
-      echo "You are already running the latest version of Security Onion."
-      exit 0
-    fi 
+  # Let's make sure we actually need to update.
+  NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+  if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+    echo "You are already running the latest version of Security Onion."
+    exit 0
+  fi 
 }
 
 upgrade_check_salt() {
-    NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk {'print $2'})
-    if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
-      echo "You are already running the correct version of Salt for Security Onion."
-    else
-      UPGRADESALT=1
-    fi
+  NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk {'print $2'})
+  if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
+    echo "You are already running the correct version of Salt for Security Onion."
+  else
+    UPGRADESALT=1
+  fi
 }   
 upgrade_salt() {
-      SALTUPGRADED=True
-      echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
-      echo ""
-      # If CentOS
-      if [ "$OS" == "centos" ]; then
-        echo "Removing yum versionlock for Salt."
-        echo ""
-        yum versionlock delete "salt-*"
-        echo "Updating Salt packages and restarting services."
-        echo ""
-	if [ $is_airgap -eq 0 ]; then
-          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
-	else 
-          sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-	fi
-        echo "Applying yum versionlock for Salt."
-        echo ""
-        yum versionlock add "salt-*"
-      # Else do Ubuntu things
-      elif [ "$OS" == "ubuntu" ]; then
-        echo "Removing apt hold for Salt."
-        echo ""
-        apt-mark unhold "salt-common"
-        apt-mark unhold "salt-master"
-        apt-mark unhold "salt-minion"
-        echo "Updating Salt packages and restarting services."
-        echo ""
-        sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-        echo "Applying apt hold for Salt."
-        echo ""
-        apt-mark hold "salt-common"
-        apt-mark hold "salt-master"
-        apt-mark hold "salt-minion"
-      fi
+  SALTUPGRADED=True
+  echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
+  echo ""
+  # If CentOS
+  if [ "$OS" == "centos" ]; then
+    echo "Removing yum versionlock for Salt."
+    echo ""
+    yum versionlock delete "salt-*"
+    echo "Updating Salt packages and restarting services."
+    echo ""
+    if [ $is_airgap -eq 0 ]; then
+      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
+    else 
+      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+    fi
+    echo "Applying yum versionlock for Salt."
+    echo ""
+    yum versionlock add "salt-*"
+  # Else do Ubuntu things
+  elif [ "$OS" == "ubuntu" ]; then
+    echo "Removing apt hold for Salt."
+    echo ""
+    apt-mark unhold "salt-common"
+    apt-mark unhold "salt-master"
+    apt-mark unhold "salt-minion"
+    echo "Updating Salt packages and restarting services."
+    echo ""
+    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+    echo "Applying apt hold for Salt."
+    echo ""
+    apt-mark hold "salt-common"
+    apt-mark hold "salt-master"
+    apt-mark hold "salt-minion"
+  fi
 }
 
 verify_latest_update_script() {
-    # Check to see if the update scripts match. If not run the new one.
-    CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
-    GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
-    CURRENTCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-common | awk '{print $1}')
-    GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
-    CURRENTIMGCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common | awk '{print $1}')
-    GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+  # Check to see if the update scripts match. If not run the new one.
+  CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
+  CURRENTCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-common | awk '{print $1}')
+  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
+  CURRENTIMGCMN=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+  GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
 
-    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
-      echo "This version of the soup script is up to date. Proceeding."
-    else
-      echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
-      cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-      cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-      cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-      salt-call state.apply common queue=True
-      echo ""
-      echo "soup has been updated. Please run soup again."
-      exit 0
-    fi
+  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
+    echo "This version of the soup script is up to date. Proceeding."
+  else
+    echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
+    cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    salt-call state.apply common queue=True
+    echo ""
+    echo "soup has been updated. Please run soup again."
+    exit 0
+  fi
 }
 
 main () {
@@ -562,9 +568,10 @@ while getopts ":b" opt; do
          echo "Batch size must be a number greater than 0."
          exit 1
        fi
-      ;;
-    \? ) echo "Usage: cmd [-b]"
-      ;;
+    ;;
+    \? ) 
+      echo "Usage: cmd [-b]"
+    ;;
   esac
 done
 

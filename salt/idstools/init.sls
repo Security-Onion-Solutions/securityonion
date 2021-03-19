@@ -19,13 +19,12 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
+{% set proxy = salt['pillar.get']('manager:proxy') %}
+
+include:
+  - idstools.sync_files
+
 # IDSTools Setup
-idstoolsdir:
-  file.directory:
-    - name: /opt/so/conf/idstools/etc
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 idstoolslogdir:
   file.directory:
@@ -34,14 +33,6 @@ idstoolslogdir:
     - group: 939
     - makedirs: True
 
-idstoolsetcsync:
-  file.recurse:
-    - name: /opt/so/conf/idstools/etc
-    - source: salt://idstools/etc
-    - user: 939
-    - group: 939
-    - template: jinja
-
 so-ruleupdatecron:
   cron.present:
     - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1
@@ -49,28 +40,17 @@ so-ruleupdatecron:
     - minute: '1'
     - hour: '7'
 
-rulesdir:
-  file.directory:
-    - name: /opt/so/rules/nids
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-# Don't show changes because all.rules can be large
-synclocalnidsrules:
-  file.recurse:
-    - name: /opt/so/rules/nids/
-    - source: salt://idstools/
-    - user: 939
-    - group: 939
-    - show_changes: False
-    - include_pat: 'E@.rules'
-
 so-idstools:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idstools:{{ VERSION }}
     - hostname: so-idstools
     - user: socore
+    {% if proxy %}
+    - environment:
+      - http_proxy={{ proxy }}
+      - https_proxy={{ proxy }}
+      - no_proxy={{ salt['pillar.get']('manager:no_proxy') }}
+    {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
