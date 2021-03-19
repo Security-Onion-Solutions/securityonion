@@ -89,7 +89,7 @@ def run():
       
         # Update the Fleet host in the static pillar
       for line in fileinput.input(STATICFILE, inplace=True):
-        line = re.sub(r'fleet_custom_hostname:.*\n', f"fleet_custom_hostname: {CUSTOMHOSTNAME}", line.rstrip())
+        line = re.sub(r'fleet_custom_hostname:.*$', f"fleet_custom_hostname: {CUSTOMHOSTNAME}", line.rstrip())
         print(line)  
 
   return {}
