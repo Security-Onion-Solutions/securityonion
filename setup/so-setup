@@ -27,6 +27,8 @@ original_args=("$@")
 
 cd "$(dirname "$0")" || exit 255
 
+echo "Getting started..."
+
 # Source the generic function libraries that are also used by the product after
 # setup. These functions are intended to be reusable outside of the setup process.
 source ../salt/common/tools/sbin/so-common
@@ -93,12 +95,23 @@ if ! [ -f $install_opt_file ]; then
 	analyze_system
 fi
 
+# Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
+trap 'catch $LINENO' SIGUSR1
+setup_proc="$$"
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit 1
+}
+
 automated=no
-function progress() {
-	local title='Security Onion Install'
+progress() {
+	local title='Security Onion Setup'
+	local msg=${1:-'Please wait while installing...'}
 
 	if [ $automated == no ]; then
-		whiptail --title "$title" --gauge 'Please wait while installing...' 6 60 0 # append to text
+		whiptail --title "$title" --gauge "$msg" 6 70 0 # append to text
 	else
 		cat >> $setup_log 2>&1
 	fi		
@@ -154,12 +167,9 @@ set_ssh_cmds $automated
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
-installer_prereq_packages && detect_cloud
 set_network_dev_status_list
+set_palette >> $setup_log 2>&1
 
-if [ "$OS" == ubuntu ]; then
-	update-alternatives --set newt-palette /etc/newt/palette.original >> $setup_log 2>&1
-fi
 
 # Kernel messages can overwrite whiptail screen #812
 # https://github.com/Security-Onion-Solutions/securityonion/issues/812
@@ -192,19 +202,24 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
+			collect_hostname
 			network_init_whiptail
 			whiptail_management_interface_setup
 			network_init
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+			set_main_ip >> $setup_log 2>&1
+			compare_main_nic_ip
+			reset_proxy
+			collect_proxy
+			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
-			whiptail_install_type
+			true
 		fi
-	else
-		whiptail_install_type
 	fi
+	whiptail_install_type
 else
 	source $install_opt_file
 fi
@@ -257,6 +272,10 @@ if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
 	fi
 fi
 
+if [[ $is_manager || $is_import ]]; then
+	check_elastic_license
+fi
+
 if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
@@ -273,25 +292,31 @@ if ! [[ -f $install_opt_file ]]; then
 	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
 	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		collect_hostname
 		network_init_whiptail
 	else
 		source "$net_init_file"
 	fi
 
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		network_init
+	fi
+
+	set_main_ip >> $setup_log 2>&1
+	compare_main_nic_ip
+
 	if [[ $is_minion ]]; then
 		collect_mngr_hostname
 	fi
 
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
+	reset_proxy
+	if [[ -z $is_airgap ]]; then
+		collect_proxy
+		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 
-	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
-		network_init
-	fi
-	
-	if [[ -n "$TURBO" ]]; then
-		use_turbo_proxy
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
 	fi
 
 	if [[ $is_minion ]]; then
@@ -310,6 +335,7 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" > "$install_opt_file"
+		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
@@ -322,6 +348,22 @@ if ! [[ -f $install_opt_file ]]; then
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
 fi
+
+percentage=0
+{
+	installer_progress_loop & # Run progress bar to 98 in ~8 minutes while waiting for package installs
+	progress_bg_proc=$!
+	installer_prereq_packages
+	install_success=$?
+	kill -9 "$progress_bg_proc"
+	wait "$progress_bg_proc" &> /dev/null # Kill just sends signal, redirect output of wait to catch stdout
+	if [[ $install_success -gt 0 ]]; then
+		echo "Could not install packages required for setup, exiting now." >> "$setup_log" 2>&1
+		kill -SIGUSR1 "$setup_proc"; exit 1
+	fi
+} | progress '...'
+
+detect_cloud
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
@@ -336,14 +378,14 @@ minion_type=$(get_minion_type)
 set_default_log_size >> $setup_log 2>&1
 
 if [[ $is_helix ]]; then
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 	HNSENSOR=${HNSENSOR:-inherit}
 	MANAGERUPDATES=${MANAGERUPDATES:-0}
 fi
 
 if [[ $is_helix || ( $is_manager && $is_node ) ]]; then
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 fi
 
@@ -363,7 +405,7 @@ fi
 if [[ $is_import ]]; then
 	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-auto}
 	MTU=${MTU:-1500}
-    RULESETUP=${RULESETUP:-ETOPEN}
+	RULESETUP=${RULESETUP:-ETOPEN}
 	NSMSETUP=${NSMSETUP:-BASIC}
 	HNSENSOR=${HNSENSOR:-inherit}
 	MANAGERUPDATES=${MANAGERUPDATES:-0}
@@ -527,20 +569,9 @@ whiptail_make_changes
 # From here on changes will be made.
 echo "1" > /root/accept_changes
 
-# Set up handler for setup to exit early (use `kill -SIGUSR1 "$(ps --pid $$ -oppid=)"; exit 1` in child scripts)
-trap 'catch $LINENO' SIGUSR1
-
-catch() {
-	info "Fatal error occurred at $1 in so-setup, failing setup."
-	grep --color=never "ERROR" "$setup_log" > "$error_log"
-	whiptail_setup_failed
-	exit
-}
-
 # This block sets REDIRECTIT which is used by a function outside the below subshell
-set_main_ip >> $setup_log 2>&1
-compare_main_nic_ip
 set_redirect >> $setup_log 2>&1
+
 
 # Begin install
 {
@@ -550,6 +581,8 @@ set_redirect >> $setup_log 2>&1
 	# Show initial progress message
 	set_progress_str 0 'Running initial configuration steps'
 
+	reserve_ports
+	
 	set_path
 
 	if [[ $is_reinstall ]]; then
@@ -766,6 +799,9 @@ set_redirect >> $setup_log 2>&1
 
 		set_progress_str 70 "$(print_salt_state_apply 'kibana')"
 		salt-call state.apply -l info kibana >> $setup_log 2>&1
+
+		set_progress_str 70 "Setting up default Space in Kibana"
+		so-kibana-space-defaults >> $setup_log 2>&1
 	fi
 
 	if [[ "$PLAYBOOK" = 1 ]]; then

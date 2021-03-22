@@ -37,11 +37,9 @@ def print_err(string: str):
 
 
 def check_apply(args: dict, prompt: bool = True):
-  cmd_arr = ['salt-call', 'state.apply', 'idstools', 'queue=True']
-
   if args.apply:
-    print('Configuration updated. Applying idstools state...')
-    return subprocess.run(cmd_arr)
+    print('Configuration updated. Applying changes:')
+    return apply()
   else:
     if prompt:
       message = 'Configuration updated. Would you like to apply your changes now? (y/N) '
@@ -51,10 +49,22 @@ def check_apply(args: dict, prompt: bool = True):
       if answer.lower() in [ 'n', '' ]:
         return 0
       else:
-        print('Applying idstools state...')
-        return subprocess.run(cmd_arr)
+        print('Applying changes:')
+        return apply()
     else:
       return 0
+
+
+def apply():
+  salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', 'idstools.sync_files', 'queue=True']
+  update_cmd = ['so-rule-update']
+  print('Syncing config files...')
+  cmd = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
+  if cmd.returncode == 0:
+    print('Updating rules...')
+    return subprocess.run(update_cmd).returncode
+  else:
+    return cmd.returncode
 
 
 def find_minion_pillar() -> str:
@@ -442,10 +452,7 @@ def main():
         modify.print_help()
     sys.exit(0)
   
-  if isinstance(exit_code, subprocess.CompletedProcess):
-    sys.exit(exit_code.returncode)
-  else:
-    sys.exit(exit_code)
+  sys.exit(exit_code)
 
 
 if __name__ == '__main__':

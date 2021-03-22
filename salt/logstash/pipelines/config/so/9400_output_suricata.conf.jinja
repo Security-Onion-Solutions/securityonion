@@ -3,7 +3,6 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
-{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 output {
   if [module] =~ "suricata" and "import" not in [tags] {
     elasticsearch {
@@ -12,10 +11,8 @@ output {
       index => "so-ids"
       template_name => "so-ids" 
       template => "/templates/so-ids-template.json"
-      {%- if grains['role'] in ['so-node','so-heavynode'] %}
       ssl => true
       ssl_certificate_verification => false
-      {%- endif %}
     }
   }
 }

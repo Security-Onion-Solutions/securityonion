@@ -1,14 +1,23 @@
 {%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
-{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
+{%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
+{%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
+{%- set OSQUERY = salt['pillar.get']('manager:osquery', '0') %}
+{%- set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{%- set API_TIMEOUT = salt['pillar.get']('sensoroni:api_timeout_ms', 0) %}
+{%- set WEBSOCKET_TIMEOUT = salt['pillar.get']('sensoroni:websocket_timeout_ms', 0) %}
+{%- set TIP_TIMEOUT = salt['pillar.get']('sensoroni:tip_timeout_ms', 0) %}
+{%- set CACHE_EXPIRATION = salt['pillar.get']('sensoroni:cache_expiration_ms', 0) %}
+{%- set ES_FIELDCAPS_CACHE = salt['pillar.get']('sensoroni:es_fieldcaps_cache_ms', '300000') %}
 {%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
 {%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
 {%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
 {%- import_json "soc/files/soc/hunt.actions.json" as hunt_actions %}
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
+{%- import_json "soc/files/soc/tools.json" as tools %}
 {%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
 
 {
@@ -31,7 +40,7 @@
         "hostUrl": "http://{{ MANAGERIP }}:4434/"
       },
       "elastic": {
-        "hostUrl": "http://{{ MANAGERIP }}:9200",
+        "hostUrl": "https://{{ MANAGERIP }}:9200",
         {%- if salt['pillar.get']('nodestab', {}) %}
         "remoteHostUrls": [
         {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
@@ -41,11 +50,12 @@
         {%- endif %}
         "username": "",
         "password": "",
+        "cacheMs": {{ ES_FIELDCAPS_CACHE }},
         "verifyCert": false
       },
       "sostatus": {
         "refreshIntervalMs": 30000,
-        "offlineThresholdMs": 60000
+        "offlineThresholdMs": 900000
       },
 {% if THEHIVEKEY != '' %}
       "thehive": {
@@ -67,6 +77,26 @@
       "docsUrl": "https://docs.securityonion.net/en/2.3/",
       "cheatsheetUrl": "https://github.com/Security-Onion-Solutions/securityonion-docs/raw/2.3/images/cheat-sheet/Security-Onion-Cheat-Sheet.pdf",
       {%- endif %}
+      "apiTimeoutMs": {{ API_TIMEOUT }},
+      "webSocketTimeoutMs": {{ WEBSOCKET_TIMEOUT }},
+      "tipTimeoutMs": {{ TIP_TIMEOUT }},
+      "cacheExpirationMs": {{ CACHE_EXPIRATION }},
+      "inactiveTools": [
+        {%- if PLAYBOOK == 0 %}
+          "toolPlaybook",
+        {%- endif %}
+        {%- if THEHIVE == 0 %}
+          "toolTheHive",
+        {%- endif %}
+        {%- if OSQUERY == 0 %}
+          "toolFleet",
+        {%- endif %}
+        {%- if GRAFANA == 0 %}
+          "toolGrafana",
+        {%- endif %}
+          "toolUnused"
+      ],
+      "tools": {{ tools | json }},
       "hunt": {
         "advanced": true,
         "groupItemsPerPage": 10,

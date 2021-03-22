@@ -3,10 +3,32 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{% set FEATURES = salt['pillar.get']('elastic:features', False) %}
+
+filter {
+  if [type] =~ "live_query" {
+
+    mutate {
+        rename => {
+            "[host][hostname]" => "computer_name"
+        }
+    }
+
+ prune {
+        blacklist_names => ["host"]
+      }
+    
+ split {
+   field => "rows"
+  }
+ }
+}
+
+
 output {
-  if [module] =~ "osquery" and "live_query" not in [dataset] {
+  if [type] =~ "live_query" {
     elasticsearch {
-      pipeline => "%{module}.%{dataset}" 
+      pipeline => "osquery.live_query" 
       hosts => "{{ ES }}"
       index => "so-osquery"
       template_name => "so-osquery"

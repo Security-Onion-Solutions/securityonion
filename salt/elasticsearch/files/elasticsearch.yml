@@ -1,6 +1,5 @@
 {%- set NODE_ROUTE_TYPE = salt['pillar.get']('elasticsearch:node_route_type', 'hot') %}
 {%- set NODEIP = salt['pillar.get']('elasticsearch:mainip') %}
-{%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
 {%- set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {%- if TRUECLUSTER is sameas true %}
   {%- set ESCLUSTERNAME = salt['pillar.get']('elasticsearch:true_cluster_name') %}
@@ -10,12 +9,6 @@
 {%- set NODE_ROLES = salt['pillar.get']('elasticsearch:node_roles', ['data', 'ingest']) %}
 cluster.name: "{{ ESCLUSTERNAME }}"
 network.host: 0.0.0.0
-
-# minimum_master_nodes need to be explicitly set when bound on a public IP
-# set to 1 to allow single node clusters
-# Details: https://github.com/elastic/elasticsearch/pull/17288
-#discovery.zen.minimum_master_nodes: 1
-# This is a test -- if this is here, then the volume is mounted correctly.
 path.logs: /var/log/elasticsearch
 action.destructive_requires_name: true
 transport.bind_host: 0.0.0.0
@@ -25,27 +18,23 @@ cluster.routing.allocation.disk.threshold_enabled: true
 cluster.routing.allocation.disk.watermark.low: 95%
 cluster.routing.allocation.disk.watermark.high: 98%
 cluster.routing.allocation.disk.watermark.flood_stage: 98%
-{%- if FEATURES is sameas true %}
 xpack.ml.enabled: false
-#xpack.security.enabled: false
-#xpack.security.transport.ssl.enabled: true
-#xpack.security.transport.ssl.verification_mode: none
-#xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
-#xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
-#xpack.security.transport.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/ca.crt" ]
-#{%- if grains['role'] in ['so-node','so-heavynode'] %}
-#xpack.security.http.ssl.enabled: true
-#xpack.security.http.ssl.client_authentication: none
-#xpack.security.http.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
-#xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
-#xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
-#{%- endif %}
-#xpack.security.authc:
-#  anonymous:
-#    username: anonymous_user
-#    roles: superuser
-#    authz_exception: true
-{%- endif %}
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: none
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/ca.crt" ]
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.client_authentication: none
+xpack.security.http.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
+xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
+xpack.security.authc:
+  anonymous:
+    username: anonymous_user
+    roles: superuser
+    authz_exception: true
 node.name: {{ grains.host }}
 script.max_compilations_rate: 1000/1m
 {%- if TRUECLUSTER is sameas true %}
