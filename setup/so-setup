@@ -534,6 +534,9 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
+check_ntp_configured
+[[ -z $ntp_configured ]] || collect_ntp_servers
+
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
@@ -580,6 +583,8 @@ set_redirect >> $setup_log 2>&1
 
 	# Show initial progress message
 	set_progress_str 0 'Running initial configuration steps'
+
+	[[ -z $ntp_configured ]] || [[ -n $ntp_servers ]] && configure_ntp >> $setup_log 2>&1
 
 	reserve_ports
 	

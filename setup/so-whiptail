@@ -1105,6 +1105,24 @@ whiptail_node_ls_pipeline_worker() {
 
 }
 
+whiptail_ntp_ask() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "Would you like to configure ntp servers?" 7 44
+}
+
+whiptail_ntp_servers() {
+	[ -n "$TESTING" ] && return
+
+	ntp_string=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Input the NTP server(s) you would like to use, separated by commas:" 8 75 "$1" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
+}
+
 whiptail_oinkcode() {
 
 	[ -n "$TESTING" ] && return
