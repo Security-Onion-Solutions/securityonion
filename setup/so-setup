@@ -291,8 +291,13 @@ if ! [[ -f $install_opt_file ]]; then
 
 	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
-	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		collect_hostname
+	fi
+
+	whiptail_node_description
+
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init_whiptail
 	else
 		source "$net_init_file"
@@ -334,7 +339,8 @@ if ! [[ -f $install_opt_file ]]; then
 			"MNIC=$MNIC" \
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
-			"MSRVIP=$MSRVIP" > "$install_opt_file"
+			"MSRVIP=$MSRVIP" \
+			"NODE_DESCRIPTION=$NODE_DESCRIPTION" > "$install_opt_file"
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
