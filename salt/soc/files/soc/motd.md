@@ -10,8 +10,16 @@ The release notes have moved to the upper-right menu. Click on the [What's New](
 
 ## Customize This Space
 
-Make this area your own by customizing the content. The content is stored in the `motd.md` file, which uses the common Markdown (.md) format.
+Make this area your own by customizing the content. The content is stored in the `motd.md` file, which uses the common Markdown (.md) format. Visit [mardownguide.org](https://www.markdownguide.org/) to learn more about the simple Markdown format.
 
-To customize this content, copy `/opt/so/saltstack/default/salt/soc/files/soc/motd.md` to `/opt/so/saltstack/local/salt/soc/files/soc/motd.md` and edit it as desired.
+To customize this content, login to the manager via SSH and execute the following command:
 
-Visit [mardownguide.org](https://www.markdownguide.org/) to learn more about the simple Markdown format.
+```bash
+cp -f /opt/so/saltstack/default/salt/soc/files/soc/motd.md /opt/so/saltstack/local/salt/soc/files/soc/motd.md
+```
+
+Now, edit the new file as desired. Finally, run this command:
+
+```bash
+salt-call state.apply soc queue=True
+```
