@@ -90,7 +90,6 @@ commonpkgs:
       - ntpdate
       - jq
       - python3-docker
-      - docker-ce
       - curl
       - ca-certificates
       - software-properties-common
@@ -104,12 +103,15 @@ commonpkgs:
       - python3-dateutil
       - python3-m2crypto
       - python3-mysqldb
+      - python3-packaging
       - git
 heldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.2.13-2
-      - docker-ce: 5:19.03.14~3-0~ubuntu-bionic
+      - containerd.io: 1.4.4-1
+      - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
+      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
+      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
     - hold: True
     - update_holds: True
 
@@ -135,6 +137,7 @@ commonpkgs:
       - python36-dateutil
       - python36-m2crypto
       - python36-mysql
+      - python36-packaging
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
@@ -144,8 +147,10 @@ commonpkgs:
 heldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.2.13-3.2.el7
-      - docker-ce: 3:19.03.14-3.el7
+      - containerd.io: 1.4.4-3.1.el7
+      - docker-ce: 3:20.10.5-3.el7
+      - docker-ce-cli: 1:20.10.5-3.el7
+      - docker-ce-rootless-extras: 20.10.5-3.el7
     - hold: True
     - update_holds: True
 {% endif %}
