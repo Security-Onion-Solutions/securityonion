@@ -179,6 +179,26 @@ disable_so-suricata_so-status.conf:
     - month: '*'
     - dayweek: '*'
 
+so-suricata-eve-clean:
+  file.managed:
+    - name: /usr/sbin/so-suricata-eve-clean
+    - user: root
+    - group: root
+    - mode: 755
+    - template: jinja
+    - source: salt://suricata/cron/so-suricata-eve-clean
+
+# Add eve clean cron
+clean_suricata_eve_files:
+  cron.present:
+    - name: /usr/sbin/so-suricata-eve-clean > /dev/null 2>&1
+    - user: root
+    - minute: '*/5'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 {% else %}
 
 {{sls}}_state_not_allowed:

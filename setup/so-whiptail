@@ -215,7 +215,7 @@ whiptail_create_web_user() {
 	[ -n "$TESTING" ] && return
 
 	WEBUSER=$(whiptail --title "Security Onion Install" --inputbox \
-	"Please enter an email address to create an administrator account for the web interface: \nThis will also be used for TheHive, Cortex, and Fleet." 10 60 "$1" 3>&1 1>&2 2>&3)
+	"Please enter an email address to create an administrator account for the web interface.\n\nThis will also be used for TheHive, Cortex, and Fleet." 12 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -376,7 +376,7 @@ whiptail_dockernet_check(){
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "Security Onion Setup" --yesno \
-	"Do you want to keep the default Docker IP range? \n \n(Choose yes if you don't know what this means)" 10 75
+	"Do you want to keep the default Docker IP range?\n\nIf you are unsure, please accept the default option of Yes." 10 75
 
 }
 
@@ -588,8 +588,21 @@ whiptail_invalid_input() { # TODO: This should accept a list of arguments to spe
 
 }
 
+whiptail_invalid_proxy() {
+	[ -n "$TESTING" ] && return
+
+	local message
+	read -r -d '' message <<- EOM
+	Could not reach test url using proxy ${proxy_addr}. 
+	
+	Error was: ${proxy_test_err}
+	EOM
+
+	whiptail --title "Security Onion Setup" --yesno "$message" --yes-button "Enter Again" --no-button "Skip" 11 60
+}
+
 whiptail_invalid_string() {
-		[ -n "$TESTING" ] && return
+	[ -n "$TESTING" ] && return
 	
 	whiptail --title "Security Onion Setup" --msgbox "Invalid input, please try again.\n\nThe $1 cannot contain spaces." 9 45
 
@@ -1129,7 +1142,7 @@ whiptail_patch_schedule() {
 	[ -n "$TESTING" ] && return
 
 	patch_schedule=$(whiptail --title "Security Onion Setup" --radiolist \
-		"Choose OS patch schedule: \nThis will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 15 75 5 \
+		"Choose OS patch schedule.\n\nThis schedule will update the operating system packages but will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 20 75 5 \
 		"Automatic" "Updates installed every 8 hours if available" ON \
 		"Manual" "Updates will be installed manually" OFF \
 		"Import Schedule" "Import named schedule on following screen" OFF \
@@ -1214,6 +1227,58 @@ whiptail_patch_schedule_select_hours() {
 
     IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
+}
+
+whiptail_proxy_ask() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "Do you want to set a proxy server for this installation?" 7 60 --defaultno
+}
+
+whiptail_proxy_addr() {
+	[ -n "$TESTING" ] && return
+
+	local message
+	read -r -d '' message <<- EOM
+	Please input the proxy server you wish to use, including the URL prefix (ex: https://your.proxy.com:1234).
+
+	If your proxy requires a username and password do not include them in your input. Setup will ask for those values next.
+	EOM
+
+	proxy_addr=$(whiptail --title "Security Onion Setup" --inputbox "$message" 13 60 "$1" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_proxy_auth_ask() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "Does your proxy require authentication?" 7 60
+}
+
+whiptail_proxy_auth_user() {
+	[ -n "$TESTING" ] && return
+	
+	proxy_user=$(whiptail --title "Security Onion Setup" --inputbox "Please input the proxy user:" 8 60 "$1" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_proxy_auth_pass() {
+	local arg=$1
+
+	[ -n "$TESTING" ] && return
+
+	if [[ $arg != 'confirm' ]]; then
+		proxy_pass=$(whiptail --title "Security Onion Setup" --passwordbox "Please input the proxy password:" 8 60 3>&1 1>&2 2>&3)
+	else
+		proxy_pass_confirm=$(whiptail --title "Security Onion Setup" --passwordbox "Please confirm the proxy password:" 8 60 3>&1 1>&2 2>&3)
+	fi
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_requirements_error() {
@@ -1318,8 +1383,8 @@ whiptail_set_redirect() {
 	[ -n "$TESTING" ] && return
 
 	REDIRECTINFO=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose the access method for the web interface: \nNOTE: For security reasons, we use strict cookie enforcement" 20 75 4 \
-	"IP" "Use IP to access the web interface" ON  \
+	"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
+	"IP" "Use IP address to access the web interface" ON  \
 	"HOSTNAME" "Use hostname to access the web interface" OFF \
 	"OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
 	local exitstatus=$?

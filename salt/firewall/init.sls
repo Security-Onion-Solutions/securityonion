@@ -26,15 +26,6 @@ iptables_fix_fwd:
     - position: 1
     - target: DOCKER-USER
 
-# Allow related/established sessions
-iptables_allow_established:
-  iptables.append:
-    - table: filter
-    - chain: INPUT
-    - jump: ACCEPT
-    - match: conntrack
-    - ctstate: 'RELATED,ESTABLISHED'
-
 # I like pings
 iptables_allow_pings:
   iptables.append:
@@ -77,17 +68,6 @@ enable_docker_user_fw_policy:
     - out-interface: docker0
     - position: 1
 
-enable_docker_user_established:
-  iptables.insert:
-    - table: filter
-    - chain: DOCKER-USER
-    - jump: ACCEPT
-    - in-interface: '!docker0'
-    - out-interface: docker0
-    - position: 1
-    - match: conntrack
-    - ctstate: 'RELATED,ESTABLISHED'
-
 {% set count = namespace(value=0) %}
 {% for chain, hg in assigned_hostgroups.chain.items() %}
   {% for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
@@ -119,6 +99,27 @@ enable_docker_user_established:
     {% endfor %}
   {% endfor %}
 {% endfor %}
+
+# Allow related/established sessions
+iptables_allow_established:
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: ACCEPT
+    - position: 1
+    - match: conntrack
+    - ctstate: 'RELATED,ESTABLISHED'
+
+enable_docker_user_established:
+  iptables.insert:
+    - table: filter
+    - chain: DOCKER-USER
+    - jump: ACCEPT
+    - in-interface: '!docker0'
+    - out-interface: docker0
+    - position: 1
+    - match: conntrack
+    - ctstate: 'RELATED,ESTABLISHED'
 
 # Block icmp timestamp response
 block_icmp_timestamp_reply:

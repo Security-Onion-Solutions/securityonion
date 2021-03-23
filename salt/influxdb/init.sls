@@ -10,6 +10,9 @@
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
+include:
+  - salt.minion
+
 # Influx DB
 influxconfdir:
   file.directory:
@@ -85,6 +88,7 @@ telegraf_database:
     - require:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
+      - file: influxdb_retention_policy.present_patch
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
@@ -101,6 +105,7 @@ so_downsample_{{measurement}}_cq:
     - require:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
+      - file: influxdb_continuous_query.present_patch
   {% endfor %}
 {% endfor %}
 
