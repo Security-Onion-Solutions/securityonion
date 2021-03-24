@@ -6,7 +6,7 @@ If you're ready to dive-in, take a look at the [Alerts](/#/alerts) interface to 
 
 ## What's New 
 
-The release notes have moved to the upper-right menu. Click on the [What's New](/docs/release-notes.html) menu option to find all the latest fixes and features in this version of Security Onion!
+The release notes have moved to the upper-right menu. Click on the [What's New](/docs/#document-release-notes) menu option to find all the latest fixes and features in this version of Security Onion!
 
 ## Customize This Space
 
