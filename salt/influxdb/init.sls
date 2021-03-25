@@ -79,6 +79,7 @@ telegraf_database:
     - name: {{rp}}
     - database: telegraf
     - duration: {{influxdb.retention_policies[rp].duration}}
+    - shard_duration: {{influxdb.retention_policies[rp].shard_duration}}
     - replication: 1
     - default: {{influxdb.retention_policies[rp].get('default', 'False')}}
     - ssl: True
