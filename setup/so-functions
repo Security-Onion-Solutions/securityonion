@@ -717,7 +717,7 @@ configure_ntp() {
 	local chrony_conf=/etc/chrony.conf
 
 	# Install chrony if it isn't already installed
-	if command -v chronyc &> /dev/null; then
+	if ! command -v chronyc &> /dev/null; then
 		if [ "$OS" == centos ]; then
 			yum -y install chrony
 		else
@@ -743,6 +743,7 @@ configure_ntp() {
 
 	# Sync time & update the system time
 	chronyc -a 'burst 4/4'
+	sleep 20 # Wait for chrony to sync
 	chronyc -a makestep
 }
 
