@@ -54,3 +54,8 @@ influxdb_retention_policy.present_patch:
   file.patch:
     - name: /usr/lib/python3.6/site-packages/salt/states/influxdb_retention_policy.py
     - source: salt://salt/files/influxdb_retention_policy.py.patch
+
+influxdbmod.py_shard_duration_patch:
+  file.patch:
+    - name: /usr/lib/python3.6/site-packages/salt/modules/influxdbmod.py
+    - source: salt://salt/files/influxdbmod.py.patch
