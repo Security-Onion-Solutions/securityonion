@@ -489,10 +489,17 @@ collect_node_ls_pipeline_worker_count() {
 collect_ntp_servers() {
 	if [[ $is_airgap || "$NSMSETUP" = 'ADVANCED' || "$MANAGERADV" = 'ADVANCED' || -n $so_proxy ]]; then
 		if whiptail_ntp_ask; then
-			[[ $is_airgap ]] && ntp_servers=""
-			whiptail_ntp_servers "$ntp_servers"
+			[[ $is_airgap ]] && ntp_servers=()
+			whiptail_ntp_servers "$ntp_string"
+
+			while ! valid_ntp_list "$ntp_string"; do
+				whiptail_invalid_input
+				whiptail_ntp_servers "$ntp_string"
+			done
+
+			IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
 		else
-			ntp_servers=""
+			ntp_servers=()
 		fi
 	fi
 }
