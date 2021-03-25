@@ -1085,9 +1085,9 @@ docker_install() {
 	if [ $OS = 'centos' ]; then
 		{
 			yum clean expire-cache;
-			if [[ ! $is_airgap ]]; then
-			  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			fi
+			#if [[ ! $is_airgap ]]; then
+			#  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
+			#fi
 			if [[ ! $is_iso ]]; then
 			  yum -y install docker-ce-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7;
 			fi
@@ -1990,8 +1990,8 @@ saltify() {
 	if [ $OS = 'centos' ]; then
 		set_progress_str 5 'Installing Salt repo'
 		{
-			sudo rpm --import https://repo.saltstack.com/py3/redhat/7/x86_64/archive/3002.5/SALTSTACK-GPG-KEY.pub;
-			cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
+			sudo rpm --import https://repo.securityonion.net/file/securityonion-repo/keys/SALTSTACK-GPG-KEY.pub;
+			#cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
 		} >> "$setup_log" 2>&1
 		set_progress_str 6 'Installing various dependencies'
 		if [[ ! $is_iso ]]; then
@@ -2001,7 +2001,7 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install epel-release"
+				  #logCmd "yum -y install epel-release"
 				  logCmd "yum -y install sqlite argon2 curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
@@ -2010,7 +2010,7 @@ saltify() {
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-				  logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
+				  #logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
@@ -2019,29 +2019,29 @@ saltify() {
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
 			*)
-				if [ "$MANAGERUPDATES" = '1' ]; then
-					{
-						if [[ ! $is_airgap ]]; then
+				#if [ "$MANAGERUPDATES" = '1' ]; then
+				#	{
+				#		if [[ ! $is_airgap ]]; then
 						  # Create the GPG Public Key for the Salt Repo
-						  cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
+						  #cp ./public_keys/salt.pem /etc/pki/rpm-gpg/saltstack-signing-key;
 
 						  # Copy repo files over
-						  cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
-						else
-						  info "This is airgap"
-						fi
-					} >> "$setup_log" 2>&1
-				fi
+						  #cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
+				#		else
+				#		  info "This is airgap"
+				#		fi
+				#	} >> "$setup_log" 2>&1
+				#fi
 				;;
 		esac
 		if [[ ! $is_airgap ]]; then
-		  cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
+		  #cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
 		  yum clean expire-cache >> "$setup_log" 2>&1
 		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
 			if [[ ! $is_iso ]]; then
-			  yum -y install epel-release
+			  #yum -y install epel-release
 			  yum -y install salt-minion-3002.5\
 			   	python3\
 					python36-docker\
@@ -2262,6 +2262,17 @@ secrets_pillar(){
 		"  fleet_jwt: $FLEETJWT"\
 		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
   fi
+}
+
+securityonion_repo() {
+	# Remove all the current repos
+	if [ "$OS" = 'centos' ]; then
+	    mkdir -p /root/oldrepos
+	    mv /etc/yum.repos.d/* /root/oldrepos/
+	    cp -f ./yum_repos/securityonion.repo /etc/yum.repos.d/
+	else
+        echo "This is Ubuntu"
+	fi
 }
 
 set_base_heapsizes() {
