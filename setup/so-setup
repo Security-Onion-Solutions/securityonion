@@ -47,6 +47,7 @@ source ./so-variables
 # Parse command line arguments
 setup_type=$1
 automation=$2
+WHATWOULDYOUSAYYAHDOHERE=setup
 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
@@ -622,8 +623,6 @@ set_redirect >> $setup_log 2>&1
 		info "Creating airgap repo"
 		create_repo >> $setup_log 2>&1
 		airgap_rules >> $setup_log 2>&1
-	else
-	    securityonion_repo >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
@@ -632,7 +631,11 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 2 'Updating packages'
+	# Import the gpg keys
+	gpg_rpm_import
 	if [[ ! $is_airgap ]]
+	    securityonion_repo >> $setup_log 2>&1
+		gpg_rpm_import >> $setup_log 2>&1	
 	    update_packages >> $setup_log 2>&1
 	fi
 
