@@ -162,6 +162,23 @@ get_random_value() {
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
 
+gpg_rpm_import() {
+	if [ $OS = 'centos' ]; then
+	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
+	        local RPMKEYSLOC=$temp_install_dir/salt/common/keys
+	    else
+	        local RPMKEYSLOC=$UPDATEDIR/salt/common/keys
+	    fi
+	
+	    RPMKEYS=('RPM-GPG-KEY-EPEL-7' 'GPG-KEY-WAZUH' 'docker.pub' 'SALTSTACK-GPG-KEY.pub' 'securityonion.pub')
+
+	    for RPMKEY in "${RPMKEYS[@]}"; do
+    	    rpm --import $RPMKEYSLOC/$RPMKEY
+		    echo "Imported $RPMKEY"
+	    done
+	fi
+}
+
 header() {
 	printf '%s\n' "" "$banner" " $*" "$banner" 
 }

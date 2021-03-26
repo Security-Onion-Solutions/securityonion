@@ -159,11 +159,6 @@ check_network_manager_conf() {
 			systemctl restart NetworkManager
 		} >> "$setup_log" 2>&1
 	fi
-	
-	#if test -f "$nmconf"; then
-#		sed -i 's/managed=false/managed=true/g' "$nmconf" >> "$setup_log" 2>&1
-#		systemctl restart NetworkManager >> "$setup_log" 2>&1
-#	fi
 
 	if [[ ! -d "$preupdir" ]]; then
 		mkdir "$preupdir" >> "$setup_log" 2>&1
@@ -1054,40 +1049,11 @@ disable_ipv6() {
 	} >> /etc/sysctl.conf
 }
 
-#disable_misc_network_features() {
-#	filter_unused_nics
-#	if [ ${#filtered_nics[@]} -ne 0 ]; then
-#		for unused_nic in "${filtered_nics[@]}"; do
-#			if [ -n "$unused_nic" ]; then
-#				echo "Disabling unused NIC: $unused_nic" >> "$setup_log" 2>&1
-#
-#				# Disable DHCPv4/v6 and autoconnect
-#				nmcli con mod "$unused_nic" \
-#					ipv4.method disabled \
-#					ipv6.method ignore \
-#					connection.autoconnect "no" >> "$setup_log" 2>&1
-#
-#				# Flush any existing IPs
-#				ip addr flush "$unused_nic" >> "$setup_log" 2>&1
-#			fi
-#		done
-#	fi
-#	# Disable IPv6
-#	{ 
-#		echo "net.ipv6.conf.all.disable_ipv6 = 1"
-#		echo "net.ipv6.conf.default.disable_ipv6 = 1"
-#		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
-#	} >> /etc/sysctl.conf
-#}
-
 docker_install() {
 
 	if [ $OS = 'centos' ]; then
 		{
 			yum clean expire-cache;
-			#if [[ ! $is_airgap ]]; then
-			#  yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo;
-			#fi
 			if [[ ! $is_iso ]]; then
 			  yum -y install docker-ce-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7;
 			fi
@@ -1988,11 +1954,6 @@ saltify() {
 
 	# Install updates and Salt
 	if [ $OS = 'centos' ]; then
-		set_progress_str 5 'Installing Salt repo'
-		{
-			sudo rpm --import https://repo.securityonion.net/file/securityonion-repo/keys/SALTSTACK-GPG-KEY.pub;
-			#cp ./yum_repos/saltstack.repo /etc/yum.repos.d/saltstack.repo;
-		} >> "$setup_log" 2>&1
 		set_progress_str 6 'Installing various dependencies'
 		if [[ ! $is_iso ]]; then
 		  logCmd "yum -y install wget nmap-ncat"
@@ -2001,7 +1962,6 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
 				if [[ ! $is_iso ]]; then
-				  #logCmd "yum -y install epel-release"
 				  logCmd "yum -y install sqlite argon2 curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
@@ -2010,7 +1970,6 @@ saltify() {
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-				  #logCmd "cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
@@ -2035,13 +1994,11 @@ saltify() {
 				;;
 		esac
 		if [[ ! $is_airgap ]]; then
-		  #cp ./yum_repos/wazuh.repo /etc/yum.repos.d/wazuh.repo >> "$setup_log" 2>&1
 		  yum clean expire-cache >> "$setup_log" 2>&1
 		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
 			if [[ ! $is_iso ]]; then
-			  #yum -y install epel-release
 			  yum -y install salt-minion-3002.5\
 			   	python3\
 					python36-docker\
@@ -2266,10 +2223,14 @@ secrets_pillar(){
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [ "$OS" = 'centos' ]; then
+	if [[ "$OS" == "centos" ]]; then
 	    mkdir -p /root/oldrepos
 	    mv /etc/yum.repos.d/* /root/oldrepos/
-	    cp -f ./yum_repos/securityonion.repo /etc/yum.repos.d/
+		if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
+		    cp -f ./yum_repos/securityonioncache.repo /etc/yum.repos.d/
+		else
+		    cp -f ./yum_repos/securityonion.repo /etc/yum.repos.d/
+		fi
 	else
         echo "This is Ubuntu"
 	fi
