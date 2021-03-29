@@ -92,13 +92,14 @@ telegraf_database:
       - file: influxdb_retention_policy.present_patch
 {% endfor %}
 
+{#
 {% for dest_rp in influxdb.downsample.keys() %}
   {% for measurement in influxdb.downsample[dest_rp].measurements %}
 so_downsample_{{measurement}}_cq:
   influxdb_continuous_query.present:
     - name: so_downsample_{{measurement}}_cq
     - database: telegraf
-    - query: SELECT mean(*) INTO "{{dest_rp}}"."{{measurement}}" FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}})
+    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}}), *
     - ssl: True
     - verify_ssl: /etc/pki/ca.crt
     - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
@@ -109,6 +110,22 @@ so_downsample_{{measurement}}_cq:
       - file: influxdb_continuous_query.present_patch
   {% endfor %}
 {% endfor %}
+#}
+
+so_downsample_cq:
+  influxdb_continuous_query.present:
+    - name: so_downsample_cq
+    - database: telegraf
+    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM /.*/ GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
+    - ssl: True
+    - verify_ssl: /etc/pki/ca.crt
+    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
+    - influxdb_host: {{ MANAGER }}
+    - require:
+      - docker_container: so-influxdb
+      - influxdb_database: telegraf_database
+      - file: influxdb_continuous_query.present_patch
+
 
 {% endif %}
 
