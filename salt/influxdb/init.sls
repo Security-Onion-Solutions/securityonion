@@ -112,6 +112,7 @@ so_downsample_{{measurement}}_cq:
 {% endfor %}
 #}
 
+{% for dest_rp in influxdb.downsample.keys() %}
 so_downsample_cq:
   influxdb_continuous_query.present:
     - name: so_downsample_cq
@@ -125,7 +126,7 @@ so_downsample_cq:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
-
+{% endfor %}
 
 {% endif %}
 
