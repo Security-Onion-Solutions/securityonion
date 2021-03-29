@@ -35,10 +35,19 @@ socconfig:
     - mode: 600
     - template: jinja
 
-socchanges:
+socmotd:
   file.managed:
-    - name: /opt/so/conf/soc/changes.json
-    - source: salt://soc/files/soc/changes.json
+    - name: /opt/so/conf/soc/motd.md
+    - source: salt://soc/files/soc/motd.md
+    - user: 939
+    - group: 939
+    - mode: 600
+    - template: jinja
+
+socbanner:
+  file.managed:
+    - name: /opt/so/conf/soc/banner.md
+    - source: salt://soc/files/soc/banner.md
     - user: 939
     - group: 939
     - mode: 600
@@ -61,7 +70,8 @@ so-soc:
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
-      - /opt/so/conf/soc/changes.json:/opt/sensoroni/html/changes.json:ro
+      - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
+      - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
