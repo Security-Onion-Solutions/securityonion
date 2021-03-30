@@ -17,8 +17,5 @@
    suggested to avoid and/or minimize the extent of any
    content placed here so that upgrading to newer version of 
    Security Onion do not become a burden.
-
-	 Example:
-
-	   i18n.translations["en-US"].loginHeader = "Unauthorized use of this computer system is prohibited...";
+   
 */
