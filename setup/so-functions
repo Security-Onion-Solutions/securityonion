@@ -487,20 +487,18 @@ collect_node_ls_pipeline_worker_count() {
 }
 
 collect_ntp_servers() {
-	if [[ $is_airgap || "$NSMSETUP" = 'ADVANCED' || "$MANAGERADV" = 'ADVANCED' || -n $so_proxy ]]; then
-		if whiptail_ntp_ask; then
-			[[ $is_airgap ]] && ntp_string=""
+	if whiptail_ntp_ask; then
+		[[ $is_airgap ]] && ntp_string=""
+		whiptail_ntp_servers "$ntp_string"
+
+		while ! valid_ntp_list "$ntp_string"; do
+			whiptail_invalid_input
 			whiptail_ntp_servers "$ntp_string"
+		done
 
-			while ! valid_ntp_list "$ntp_string"; do
-				whiptail_invalid_input
-				whiptail_ntp_servers "$ntp_string"
-			done
-
-			IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
-		else
-			ntp_servers=()
-		fi
+		IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
+	else
+		ntp_servers=()
 	fi
 }
 
@@ -725,21 +723,19 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		if [ "$OS" == centos ]; then
-			yum -y install chrony
-		else
-			retry 50 10 "apt-get -y install chrony" || exit 1
-		fi
+		yum -y install chrony
 	fi
 
-	[[ -f $chrony_conf ]] && rm -f $chrony_conf
+	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
+
+	echo "# Config created by Security Onion" > $chrony_conf
 
 	# Build list of servers
 	for addr in "${ntp_servers[@]}"; do
 		echo "server $addr iburst" >> $chrony_conf
 	done
 
-	printf '%s\n' \
+	printf '%s\n\n' \
 		'driftfile /var/lib/chrony/drift' \
 		'makestep 1.0 3' \
 		'rtcsync' \
@@ -748,10 +744,10 @@ configure_ntp() {
 	systemctl enable chronyd
 	systemctl start chronyd
 
-	# Sync time & update the system time
-	chronyc -a 'burst 4/4'
-	sleep 20 # Wait for chrony to sync
-	chronyc -a makestep
+	# Tell the chrony daemon to sync time & update the system time
+	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
+	chronyc -a 'burst 4/4' && sleep 30
+	chronyc -a makestep && sleep 30
 }
 
 checkin_at_boot() {
@@ -759,12 +755,6 @@ checkin_at_boot() {
 
 	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
 	echo "startup_states: highstate" >> "$minion_config"
-}
-
-check_ntp_configured() {
-	if systemctl is-active --quiet chronyd || systemctl is-active --quiet ntpd; then
-		ntp_configured=true
-	fi
 }
 
 check_requirements() {
