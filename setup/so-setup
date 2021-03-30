@@ -298,6 +298,10 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
+	fi
+
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init
 	fi
@@ -313,10 +317,6 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ -z $is_airgap ]]; then
 		collect_proxy
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
 	fi
 
 	if [[ $is_minion ]]; then
