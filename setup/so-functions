@@ -728,14 +728,16 @@ configure_ntp() {
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
 
-	echo "# Config created by Security Onion" > $chrony_conf
+	printf '%s\n' "# NTP server list" > $chrony_conf
 
 	# Build list of servers
 	for addr in "${ntp_servers[@]}"; do
 		echo "server $addr iburst" >> $chrony_conf
 	done
 
-	printf '%s\n\n' \
+	printf '\n%s\n' "# Config options" >> $chrony_conf
+
+	printf '%s\n' \
 		'driftfile /var/lib/chrony/drift' \
 		'makestep 1.0 3' \
 		'rtcsync' \
