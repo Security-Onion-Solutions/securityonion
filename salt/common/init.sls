@@ -127,7 +127,7 @@ crwazrepo:
 
 crsecurityonionrepo:
   file.managed:
-    {% if role in ['eval', 'standalone', 'import', 'manager' 'managersearch'] or managerupdates == 0 %}
+    {% if role in ['eval', 'standalone', 'import', 'manager' 'managersearch'] %}
     - name: /etc/yum.repos.d/securityonion.repo
     - source: salt://common/yum_repos/securityonion.repo
     {% else %}
