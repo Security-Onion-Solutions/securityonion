@@ -64,13 +64,61 @@ salttmp:
     - group: 939
     - makedirs: True
 
-# Install epel
+# Remove default Repos
 {% if grains['os'] == 'CentOS' %}
 repair_yumdb:
   cmd.run:
     - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
     - onlyif:
       - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
+
+crbase:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Base.repo
+
+crcr:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-CR.repo
+
+crdebug:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Debuginfo.repo
+
+crfasttrack:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-fasttrack.repo
+
+crmedia:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Media.repo
+
+crsources:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Sources.repo
+
+crvault:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Vault.repo
+
+crkernel:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-x86_64-kernel.repo
+
+crepel:
+  file.absent:
+    - name: /etc/yum.repos.d/epel.repo
+
+crtesting:
+  file.absent:
+    - name: /etc/yum.repos.d/epel-testing.repo
+
+crssrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/saltstack.repo
+
+crwazrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/wazuh.repo
 
 {% endif %}
 
