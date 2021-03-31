@@ -129,7 +129,7 @@ crsecurityonionrepo:
   file.managed:
     {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
     - name: /etc/yum.repos/securityonion.repo
-    - source: salt://common/yum_repos.d/securityonion.repo
+    - source: salt://common/yum_repos/securityonion.repo
     {% else %}
     - name: /etc/yum.repos.d/securityonioncache.repo
     - source: salt://common/yum_repos/securityonioncache.repo
