@@ -1591,8 +1591,7 @@ manager_pillar() {
 	printf '%s\n'\
 		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
-
-  }
+}
 
 manager_global() {
 	local global_pillar="$local_salt_dir/pillar/global.sls"
@@ -1620,12 +1619,7 @@ manager_global() {
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
 		"  url_base: '$REDIRECTIT'"\
-		"  managerip: '$MAINIP'"\
-		"  ntp_servers:" > "$global_pillar"
-
-	for addr in "${ntp_servers[@]}"; do
-		echo "    - '$addr'" >> "$global_pillar"
-	done
+		"  managerip: '$MAINIP'" > "$global_pillar"
 	
 	if [[ $is_airgap ]]; then
 		printf '%s\n'\
@@ -1774,7 +1768,6 @@ manager_global() {
 		"  bip: '$DOCKERBIP'"\
 		"redis_settings:"\
 		"  redis_maxmemory: 812" >> "$global_pillar"
-
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
@@ -1835,6 +1828,19 @@ network_setup() {
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
+}
+
+ntp_pillar() {
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
+		printf '%s\n'\
+			"ntp:"\
+			"  servers:" >> "$global_pillar"
+			for addr in "${ntp_servers[@]}"; do
+				printf '%s\n' "    - '$addr'" >> "$pillar_file"
+			done
+	fi
 }
 
 parse_install_username() {
