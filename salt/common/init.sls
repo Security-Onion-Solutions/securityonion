@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
+{% set managerupdates = salt['pillar.get']('global:managerupdate', '0') %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -84,6 +85,10 @@ crdebug:
   file.absent:
     - name: /etc/yum.repos.d/CentOS-Debuginfo.repo
 
+crdockerce:
+  file.absent: 
+    - name: /etc/yum.repos.d/docker-ce.repo
+    
 crfasttrack:
   file.absent:
     - name: /etc/yum.repos.d/CentOS-fasttrack.repo
@@ -119,6 +124,17 @@ crssrepo:
 crwazrepo:
   file.absent:
     - name: /etc/yum.repos.d/wazuh.repo
+
+crsecurityonionrepo:
+  file.managed:
+    {% if role in ['eval', 'standalone', 'import', 'manager' 'managersearch'] or managerupdates == 0 %}
+    - name: /etc/yum.repos.d/securityonion.repo
+    - source: salt://common/yum_repos.d/securityonion.repo
+    {% else %}
+    - name: /etc/yum.repos.d/securityonioncache.repo
+    - source: salt://commmon/yum_repos/securityonioncache.repo
+    {% endif %}
+    - mode: 644
 
 {% endif %}
 
