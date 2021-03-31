@@ -132,7 +132,7 @@ crsecurityonionrepo:
     - source: salt://common/yum_repos/securityonion.repo
     {% else %}
     - name: /etc/yum.repos.d/securityonioncache.repo
-    - source: salt://commmon/yum_repos/securityonioncache.repo
+    - source: salt://common/yum_repos/securityonioncache.repo
     {% endif %}
     - mode: 644
 
