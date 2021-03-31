@@ -47,6 +47,7 @@ source ./so-variables
 # Parse command line arguments
 setup_type=$1
 automation=$2
+WHATWOULDYOUSAYYAHDOHERE=setup
 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
@@ -635,7 +636,12 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 2 'Updating packages'
-	update_packages >> $setup_log 2>&1
+	# Import the gpg keys
+	gpg_rpm_import >> $setup_log 2>&1
+	if [[ ! $is_airgap ]]; then
+	    securityonion_repo >> $setup_log 2>&1
+	    update_packages >> $setup_log 2>&1
+	fi
 
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 3 'Generating sensor pillar'
