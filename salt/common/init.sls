@@ -88,7 +88,7 @@ crdebug:
 crdockerce:
   file.absent: 
     - name: /etc/yum.repos.d/docker-ce.repo
-
+    
 crfasttrack:
   file.absent:
     - name: /etc/yum.repos.d/CentOS-fasttrack.repo
@@ -127,9 +127,9 @@ crwazrepo:
 
 crsecurityonionrepo:
   file.managed:
-    {% if role in ['eval', 'standalone', 'import', 'manager' 'managersearch'] %}
+    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
     - name: /etc/yum.repos.d/securityonion.repo
-    - source: salt://common/yum_repos/securityonion.repo
+    - source: salt://common/yum_repos.d/securityonion.repo
     {% else %}
     - name: /etc/yum.repos.d/securityonioncache.repo
     - source: salt://common/yum_repos/securityonioncache.repo
