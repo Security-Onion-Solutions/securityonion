@@ -47,6 +47,7 @@ source ./so-variables
 # Parse command line arguments
 setup_type=$1
 automation=$2
+WHATWOULDYOUSAYYAHDOHERE=setup
 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
@@ -298,6 +299,10 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
+	fi
+
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init
 	fi
@@ -313,10 +318,6 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ -z $is_airgap ]]; then
 		collect_proxy
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
 	fi
 
 	if [[ $is_minion ]]; then
@@ -534,6 +535,8 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
+[[ $is_iso ]] && collect_ntp_servers
+
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
@@ -581,6 +584,8 @@ set_redirect >> $setup_log 2>&1
 	# Show initial progress message
 	set_progress_str 0 'Running initial configuration steps'
 
+	[[ ${#ntp_servers[@]} -gt 0 ]] && configure_ntp >> $setup_log 2>&1
+
 	reserve_ports
 	
 	set_path
@@ -613,6 +618,8 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	host_pillar >> $setup_log 2>&1
+	ntp_pillar >> $setup_log 2>&1
+
 
 	if [[ $is_minion || $is_import ]]; then
 		set_updates >> $setup_log 2>&1
@@ -630,7 +637,12 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 2 'Updating packages'
-	update_packages >> $setup_log 2>&1
+	# Import the gpg keys
+	gpg_rpm_import >> $setup_log 2>&1
+	if [[ ! $is_airgap ]]; then
+	    securityonion_repo >> $setup_log 2>&1
+	    update_packages >> $setup_log 2>&1
+	fi
 
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 3 'Generating sensor pillar'

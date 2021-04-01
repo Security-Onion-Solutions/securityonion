@@ -72,11 +72,6 @@ repair_yumdb:
     - onlyif:
       - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
 
-epel:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - epel-release
 {% endif %}
 
 # Install common packages

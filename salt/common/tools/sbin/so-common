@@ -162,6 +162,23 @@ get_random_value() {
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
 
+gpg_rpm_import() {
+	if [[ "$OS" == "centos" ]]; then
+	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
+	        local RPMKEYSLOC="../salt/common/keys"
+	    else
+	        local RPMKEYSLOC="$UPDATEDIR/salt/common/keys"
+	    fi
+	
+	    RPMKEYS=('RPM-GPG-KEY-EPEL-7' 'GPG-KEY-WAZUH' 'docker.pub' 'SALTSTACK-GPG-KEY.pub' 'securityonion.pub')
+
+	    for RPMKEY in "${RPMKEYS[@]}"; do
+    	        rpm --import $RPMKEYSLOC/$RPMKEY
+	        echo "Imported $RPMKEY"
+	    done
+	fi
+}
+
 header() {
 	printf '%s\n' "" "$banner" " $*" "$banner" 
 }
@@ -417,6 +434,20 @@ valid_proxy() {
 	fi
 
 	[[ $has_prefix == true ]] && [[ $valid_url == true ]] && return 0 || return 1
+}
+
+valid_ntp_list() {
+	local string=$1
+	local ntp_arr
+	IFS="," read -r -a ntp_arr <<< "$string"
+
+	for ntp in "${ntp_arr[@]}"; do
+		if ! valid_ip4 "$ntp" && ! valid_hostname "$ntp" && ! valid_fqdn "$ntp"; then
+			return 1
+		fi
+	done
+
+	return 0
 }
 
 valid_string() {
