@@ -4,6 +4,8 @@
 
 if [[ $1 =~ ^(-q|--quiet) ]]; then
 	quiet=true
+elif [[ $1 =~ ^(-v|--verbose) ]]; then
+	verbose=true
 fi
 
 sshd_config=/etc/ssh/sshd_config
@@ -12,39 +14,27 @@ temp_config=/tmp/sshd_config
 before=
 after=
 reload_required=false
+change_header_printed=false
 
 check_sshd_t() {
 	local string=$1
-	local state=$2
 
 	local grep_out
 	grep_out=$(sshd -T | grep "^${string}")
 
-	if [[ $state == "Before" ]]; then
-		before=$grep_out
-	else
-		after=$grep_out
-	fi
+	before=$grep_out
 }
 
 print_diff() {
-	local type=$1
 	local diff
-	diff=$(diff -dqbB <(echo $before) <(echo $after))
+	diff=$(diff -dbB <(echo $before) <(echo $after) | awk 'NR>1')
 
 	if [[ -n $diff ]]; then
-		printf '%s\n' "$type" "$diff"
-		echo ""
-	fi
-}
-
-print_msg() {
-	local msg=$1
-	if ! [[ $quiet ]]; then
-	printf "%s\n" \
-		"----" \
-		"$msg" \
-		"----"
+		if [[ $change_header_printed == false ]]; then
+			printf '%s\n' '' "Changes" '-------' ''
+			change_header_printed=true
+		fi
+		echo -e "$diff\n"
 	fi
 }
 
@@ -77,65 +67,65 @@ main() {
 	echo "" >> $temp_config
 
 	# Ciphers
-	check_sshd_t "ciphers" "Before"
+	check_sshd_t "ciphers"
 	local cipher_string
 	cipher_string=$(echo "$before" | sed -e "s/\(3des-cbc\|aes128-cbc\|aes192-cbc\|aes256-cbc\|arcfour\|arcfour128\|arcfour256\|blowfish-cbc\|cast128-cbc\|rijndael-cbc@lysator.liu.se\)\,\?//g")
 
-	check_sshd_t "ciphers" "After"
+	after=$cipher_string
 
-	if ! [[ $quiet ]]; then print_diff "ciphers"; fi
+	if [[ $verbose ]]; then print_diff; fi
 
-	if [[ $before != $after ]]; then
+	if [[ $before != "$after" ]]; then
 		add_if_missing "$cipher_string" && test_config || exit 1
 	fi
 
 	# KexAlgorithms
-	check_sshd_t "kexalgorithms" "Before"
+	check_sshd_t "kexalgorithms"
 
 	local kexalg_string
 	kexalg_string=$(echo "$before" | sed -e "s/\(diffie-hellman-group14-sha1\|ecdh-sha2-nistp256\|diffie-hellman-group-exchange-sha256\|diffie-hellman-group1-sha1\|diffie-hellman-group-exchange-sha1\|ecdh-sha2-nistp521\|ecdh-sha2-nistp384\)\,\?//g")
 
-	check_sshd_t "kexalgorithms" "After"
+	after=$kexalg_string
 
-	if ! [[ $quiet ]]; then print_diff "kexalgorithms"; fi
+	if [[ $verbose ]]; then print_diff; fi
 
-	if [[ $before != $after ]]; then
+	if [[ $before != "$after" ]]; then
 		add_if_missing "$kexalg_string" && test_config || exit 1
 	fi
 
 	# Macs
-	check_sshd_t "macs" "Before"
+	check_sshd_t "macs"
 	local macs_string
 	macs_string=$(echo "$before" | sed -e "s/\(hmac-sha2-512,\|umac-128@openssh.com,\|hmac-sha2-256,\|umac-64@openssh.com,\|hmac-sha1,\|hmac-sha1-etm@openssh.com,\|umac-64-etm@openssh.com,\|hmac-sha1\)//g")
 
-	check_sshd_t "macs" "After"
+	after=$macs_string
 
-	if ! [[ $quiet ]]; then print_diff "macs"; fi
+	if [[ $verbose ]]; then print_diff; fi
 
-	if [[ $before != $after ]]; then
-		add_if_missing "$mac_string" && test_config || exit 1
+	if [[ $before != "$after" ]]; then
+		add_if_missing "$macs_string" && test_config || exit 1
 	fi
 
 	# HostKeyAlgorithms
-	check_sshd_t "hostkeyalgorithms" "Before"
+	check_sshd_t "hostkeyalgorithms"
 	local hostkeyalg_string
 	hostkeyalg_string=$(echo "$before" | sed "s|ecdsa-sha2-nistp256,||g" | sed "s|ssh-rsa,||g")
 
-	check_sshd_t "hostkeyalgorithms" "After"
+	after=$hostkeyalg_string
 	
-	if ! [[ $quiet ]]; then print_diff "hostkeyalgorithms"; fi
+	if [[ $verbose ]]; then print_diff; fi
 	
-	if [[ $before != $after ]]; then
+	if [[ $before != "$after" ]]; then
 		add_if_missing "$hostkeyalg_string" && test_config || exit 1
 	fi
 
 	if [[ $reload_required == true ]]; then
 		mv -f $temp_config $sshd_config
-		if ! [[ $quiet ]]; then echo "Reloading sshd to load config changes..."; fi
+		if ! [[ $quiet ]]; then echo "Reloading sshd to load config changes"; fi
 		systemctl reload sshd
-		print_msg "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
+		echo "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
 	else
-		if ! [[ $quiet ]]; then echo "No changes made to temp file, cleaning up."; fi
+		if ! [[ $quiet ]]; then echo "No changes made to temp file, cleaning up"; fi
 		rm -f $temp_config
 	fi
 }
