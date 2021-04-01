@@ -6,14 +6,16 @@ if [[ $1 =~ ^(-q|--quiet) ]]; then
 	quiet=true
 fi
 
+sshd_config=/etc/ssh/sshd_config
+temp_config=/tmp/sshd_config
+
 before=
 after=
 reload_required=false
 
-print_sshd_t() {
+check_sshd_t() {
 	local string=$1
 	local state=$2
-	echo "${state}:"
 
 	local grep_out
 	grep_out=$(sshd -T | grep "^${string}")
@@ -23,8 +25,17 @@ print_sshd_t() {
 	else
 		after=$grep_out
 	fi
+}
 
-	echo $grep_out
+print_diff() {
+	local type=$1
+	local diff
+	diff=$(diff -dqbB <(echo $before) <(echo $after))
+
+	if [[ -n $diff ]]; then
+		printf '%s\n' "$type" "$diff"
+		echo ""
+	fi
 }
 
 print_msg() {
@@ -33,61 +44,100 @@ print_msg() {
 	printf "%s\n" \
 		"----" \
 		"$msg" \
-		"----" \
-		""
+		"----"
 	fi
 }
 
-if ! [[ $quiet ]]; then print_sshd_t "ciphers" "Before"; fi
-sshd -T | grep "^ciphers" | sed -e "s/\(3des-cbc\|aes128-cbc\|aes192-cbc\|aes256-cbc\|arcfour\|arcfour128\|arcfour256\|blowfish-cbc\|cast128-cbc\|rijndael-cbc@lysator.liu.se\)\,\?//g" >> /etc/ssh/sshd_config
-if ! [[ $quiet ]]; then
-	print_sshd_t "ciphers" "After"
-	echo ""
-fi
+add_if_missing() {
+	local string=$1
+	if ! grep -q "$1" $temp_config; then
+		printf "%s\n\n" "$1" >> $temp_config
+		reload_required=true
+	fi
+}
 
-if [[ $before != $after ]]; then
-	reload_required=true
-fi
+test_config() {
+	local msg
+	msg=$(sshd -t -f $temp_config)
+	local ret=$?
 
-if ! [[ $quiet ]]; then print_sshd_t "kexalgorithms" "Before"; fi
-sshd -T | grep "^kexalgorithms" | sed -e "s/\(diffie-hellman-group14-sha1\|ecdh-sha2-nistp256\|diffie-hellman-group-exchange-sha256\|diffie-hellman-group1-sha1\|diffie-hellman-group-exchange-sha1\|ecdh-sha2-nistp521\|ecdh-sha2-nistp384\)\,\?//g" >> /etc/ssh/sshd_config
-if ! [[ $quiet ]]; then
-	print_sshd_t "kexalgorithms" "After"
-	echo ""
-fi
+	if [[ -n $msg ]]; then
+		echo "Error found in temp sshd config:"
+		echo $msg
+	fi
 
-if [[ $before != $after ]]; then
-	reload_required=true
-fi
+	return $ret
+}
 
-if ! [[ $quiet ]]; then print_sshd_t "macs" "Before"; fi
-sshd -T | grep "^macs" | sed -e "s/\(hmac-sha2-512,\|umac-128@openssh.com,\|hmac-sha2-256,\|umac-64@openssh.com,\|hmac-sha1,\|hmac-sha1-etm@openssh.com,\|umac-64-etm@openssh.com,\|hmac-sha1\)//g" >> /etc/ssh/sshd_config
-if ! [[ $quiet ]]; then
-	print_sshd_t "macs" "After"
-	echo ""
-fi
+main() {
+	if ! [[ $quiet ]]; then echo "Copying current config to $temp_config"; fi
+	cp $sshd_config $temp_config
 
-if [[ $before != $after ]]; then
-	reload_required=true
-fi
+	# Add newline to ssh for legibility
+	echo "" >> $temp_config
 
-if ! [[ $quiet ]]; then print_sshd_t "hostkeyalgorithms" "Before"; fi
-sshd -T | grep "^hostkeyalgorithms" | sed "s|ecdsa-sha2-nistp256,||g" | sed "s|ssh-rsa,||g" >> /etc/ssh/sshd_config
-if ! [[ $quiet ]]; then
-	print_sshd_t "hostkeyalgorithms" "After"
-	echo ""
-fi
+	# Ciphers
+	check_sshd_t "ciphers" "Before"
+	local cipher_string
+	cipher_string=$(echo "$before" | sed -e "s/\(3des-cbc\|aes128-cbc\|aes192-cbc\|aes256-cbc\|arcfour\|arcfour128\|arcfour256\|blowfish-cbc\|cast128-cbc\|rijndael-cbc@lysator.liu.se\)\,\?//g")
 
-if [[ $before != $after ]]; then
-	reload_required=true
-fi
+	check_sshd_t "ciphers" "After"
 
-if [[ $reload_required == true ]]; then
-	print_msg "Reloading sshd to load config changes..."
-	systemctl reload sshd
-fi
+	if ! [[ $quiet ]]; then print_diff "ciphers"; fi
 
-{% if grains['os'] != 'CentOS' %}
-print_msg "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
-{% endif %}
+	if [[ $before != $after ]]; then
+		add_if_missing "$cipher_string" && test_config || exit 1
+	fi
 
+	# KexAlgorithms
+	check_sshd_t "kexalgorithms" "Before"
+
+	local kexalg_string
+	kexalg_string=$(echo "$before" | sed -e "s/\(diffie-hellman-group14-sha1\|ecdh-sha2-nistp256\|diffie-hellman-group-exchange-sha256\|diffie-hellman-group1-sha1\|diffie-hellman-group-exchange-sha1\|ecdh-sha2-nistp521\|ecdh-sha2-nistp384\)\,\?//g")
+
+	check_sshd_t "kexalgorithms" "After"
+
+	if ! [[ $quiet ]]; then print_diff "kexalgorithms"; fi
+
+	if [[ $before != $after ]]; then
+		add_if_missing "$kexalg_string" && test_config || exit 1
+	fi
+
+	# Macs
+	check_sshd_t "macs" "Before"
+	local macs_string
+	macs_string=$(echo "$before" | sed -e "s/\(hmac-sha2-512,\|umac-128@openssh.com,\|hmac-sha2-256,\|umac-64@openssh.com,\|hmac-sha1,\|hmac-sha1-etm@openssh.com,\|umac-64-etm@openssh.com,\|hmac-sha1\)//g")
+
+	check_sshd_t "macs" "After"
+
+	if ! [[ $quiet ]]; then print_diff "macs"; fi
+
+	if [[ $before != $after ]]; then
+		add_if_missing "$mac_string" && test_config || exit 1
+	fi
+
+	# HostKeyAlgorithms
+	check_sshd_t "hostkeyalgorithms" "Before"
+	local hostkeyalg_string
+	hostkeyalg_string=$(echo "$before" | sed "s|ecdsa-sha2-nistp256,||g" | sed "s|ssh-rsa,||g")
+
+	check_sshd_t "hostkeyalgorithms" "After"
+	
+	if ! [[ $quiet ]]; then print_diff "hostkeyalgorithms"; fi
+	
+	if [[ $before != $after ]]; then
+		add_if_missing "$hostkeyalg_string" && test_config || exit 1
+	fi
+
+	if [[ $reload_required == true ]]; then
+		mv -f $temp_config $sshd_config
+		if ! [[ $quiet ]]; then echo "Reloading sshd to load config changes..."; fi
+		systemctl reload sshd
+		print_msg "[ WARNING ] Any new ssh sessions will need to remove and reaccept the ECDSA key for this server before reconnecting."
+	else
+		if ! [[ $quiet ]]; then echo "No changes made to temp file, cleaning up."; fi
+		rm -f $temp_config
+	fi
+}
+
+main
