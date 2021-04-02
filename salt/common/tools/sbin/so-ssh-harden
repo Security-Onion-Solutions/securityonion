@@ -70,8 +70,23 @@ main() {
 
 	# Ciphers
 	check_sshd_t "ciphers"
-	local cipher_string
-	cipher_string=$(echo "$before" | sed -e "s/\(3des-cbc\|aes128-cbc\|aes192-cbc\|aes256-cbc\|arcfour\|arcfour128\|arcfour256\|blowfish-cbc\|cast128-cbc\|rijndael-cbc@lysator.liu.se\)\,\?//g")
+
+	local bad_ciphers=(
+		"3des-cbc"
+		"aes128-cbc"
+		"aes192-cbc"
+		"aes256-cbc"
+		"arcfour"
+		"arcfour128"
+		"arcfour256"
+		"blowfish-cbc"
+		"cast128-cbc"
+	)
+
+	local cipher_string=$before
+	for cipher in "${bad_ciphers[@]}"; do
+		cipher_string=$(echo "$cipher_string" | sed "s/${cipher}\(,\|\$\)//g" | sed 's/,$//')
+	done
 
 	after=$cipher_string
 
@@ -84,8 +99,20 @@ main() {
 	# KexAlgorithms
 	check_sshd_t "kexalgorithms"
 
-	local kexalg_string
-	kexalg_string=$(echo "$before" | sed -e "s/\(diffie-hellman-group14-sha1\|ecdh-sha2-nistp256\|diffie-hellman-group-exchange-sha256\|diffie-hellman-group1-sha1\|diffie-hellman-group-exchange-sha1\|ecdh-sha2-nistp521\|ecdh-sha2-nistp384\)\,\?//g")
+	local bad_kexalgs=(
+		"diffie-hellman-group-exchange-sha1"
+		"diffie-hellman-group-exchange-sha256"
+		"diffie-hellman-group1-sha1"
+		"diffie-hellman-group14-sha1"
+		"ecdh-sha2-nistp256"
+		"ecdh-sha2-nistp521"
+		"ecdh-sha2-nistp384"
+	)
+
+	local kexalg_string=$before
+	for kexalg in "${bad_kexalgs[@]}"; do
+		kexalg_string=$(echo "$kexalg_string" | sed "s/${kexalg}\(,\|\$\)//g" | sed 's/,$//')
+	done
 
 	after=$kexalg_string
 
@@ -97,8 +124,21 @@ main() {
 
 	# Macs
 	check_sshd_t "macs"
-	local macs_string
-	macs_string=$(echo "$before" | sed -e "s/\(hmac-sha2-512,\|umac-128@openssh.com,\|hmac-sha2-256,\|umac-64@openssh.com,\|hmac-sha1,\|hmac-sha1-etm@openssh.com,\|umac-64-etm@openssh.com,\|hmac-sha1\)//g")
+	
+	local bad_macs=(
+		"hmac-sha2-512"
+		"umac-128@openssh.com"
+		"hmac-sha2-256"
+		"umac-64@openssh.com"
+		"hmac-sha1"
+		"hmac-sha1-etm@openssh.com"
+		"umac-64-etm@openssh.com"
+	)
+
+	local macs_string=$before
+	for mac in "${bad_macs[@]}"; do
+		macs_string=$(echo "$macs_string" | sed "s/${mac}\(,\|\$\)//g" | sed 's/,$//')
+	done
 
 	after=$macs_string
 
@@ -110,8 +150,20 @@ main() {
 
 	# HostKeyAlgorithms
 	check_sshd_t "hostkeyalgorithms"
-	local hostkeyalg_string
-	hostkeyalg_string=$(echo "$before" | sed "s|ecdsa-sha2-nistp256,||g" | sed "s|ssh-rsa,||g")
+	
+	local optional_suffix_regex_hka="\(-cert-v01@openssh.com\)\?"
+	local bad_hostkeyalg_list=(
+		"ecdsa-sha2-nistp256"
+		"ecdsa-sha2-nistp384"
+		"ecdsa-sha2-nistp521"
+		"ssh-rsa"
+		"ssh-dss"
+	)
+
+	local hostkeyalg_string=$before
+	for alg in "${bad_hostkeyalg_list[@]}"; do
+		hostkeyalg_string=$(echo "$hostkeyalg_string" | sed "s/${alg}${optional_suffix_regex_hka}\(,\|\$\)//g" | sed 's/,$//')
+	done
 
 	after=$hostkeyalg_string
 	
