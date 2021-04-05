@@ -2029,13 +2029,13 @@ saltify() {
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
 				if [[ ! $is_airgap ]]; then
-				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3003/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install salt-master-3002.5"
+				  logCmd "yum -y install salt-master-3003.1"
 				fi
 				systemctl enable salt-master >> "$setup_log" 2>&1
 				;;
@@ -2048,7 +2048,7 @@ saltify() {
 		set_progress_str 8 'Installing salt-minion & python modules'
 		{
 			if [[ ! $is_iso ]]; then
-			  yum -y install salt-minion-3002.5\
+			  yum -y install salt-minion-3003.1\
 			   	python3\
 					python36-docker\
 					python36-dateutil\
@@ -2100,8 +2100,8 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.5 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2109,7 +2109,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3002.5/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2122,7 +2122,7 @@ saltify() {
 				set_progress_str 6 'Installing various dependencies'
 				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
-				retry 50 10 "apt-get -y install salt-master=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get -y install salt-master=3003.1+ds-1" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
@@ -2133,14 +2133,14 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3002.5/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
 
 		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		retry 50 10 "apt-get -y install salt-minion=3002.5+ds-1 salt-common=3002.5+ds-1" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install salt-minion=3003.1+ds-1 salt-common=3003.1+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		if [[ $OSVER != 'xenial' ]]; then
 			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging" >> "$setup_log" 2>&1 || exit 1
