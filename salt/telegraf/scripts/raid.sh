@@ -27,7 +27,7 @@ RAIDLOG=/var/log/raid/status.log
 RAIDSTATUS=$(cat /var/log/raid/status.log)
 
 if [ -f "$RAIDLOG" ]; then
-    echo "raid raidstatus=$RAIDSTATUS "
+    echo "raid $RAIDSTATUS"
 else
     exit 0
 fi
