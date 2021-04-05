@@ -3,6 +3,7 @@
 
 {% set role = grains.id.split('_') | last %}
 {% set managerupdates = salt['pillar.get']('global:managerupdate', '0') %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -125,6 +126,7 @@ crwazrepo:
   file.absent:
     - name: /etc/yum.repos.d/wazuh.repo
 
+{% if not ISAIRGAP %}
 crsecurityonionrepo:
   file.managed:
     {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
@@ -136,6 +138,7 @@ crsecurityonionrepo:
     {% endif %}
     - mode: 644
 
+{% endif %}
 {% endif %}
 
 # Install common packages
