@@ -330,9 +330,10 @@ docker:
       - file: docker_daemon
 
 # Reserve OS ports for Docker proxy in case boot settings are not already applied/present
+# 55000 = Wazuh, 57314 = Strelka, 47760-47860 = Zeek
 dockerapplyports:
     cmd.run:
-      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"; fi
+      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314,47760-47860"; fi
 
 # Reserve OS ports for Docker proxy
 dockerreserveports:

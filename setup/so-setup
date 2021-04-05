@@ -292,11 +292,20 @@ if ! [[ -f $install_opt_file ]]; then
 
 	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
-	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		collect_hostname
+	fi
+
+	whiptail_node_description
+
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init_whiptail
 	else
 		source "$net_init_file"
+	fi
+
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
 	fi
 
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
@@ -316,10 +325,6 @@ if ! [[ -f $install_opt_file ]]; then
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
-	fi
-
 	if [[ $is_minion ]]; then
 		add_mngr_ip_to_hosts
 	fi
@@ -335,7 +340,8 @@ if ! [[ -f $install_opt_file ]]; then
 			"MNIC=$MNIC" \
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
-			"MSRVIP=$MSRVIP" > "$install_opt_file"
+			"MSRVIP=$MSRVIP" \
+			"NODE_DESCRIPTION=$NODE_DESCRIPTION" > "$install_opt_file"
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
@@ -535,6 +541,8 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
+[[ $is_iso ]] && collect_ntp_servers
+
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
@@ -582,6 +590,8 @@ set_redirect >> $setup_log 2>&1
 	# Show initial progress message
 	set_progress_str 0 'Running initial configuration steps'
 
+	[[ ${#ntp_servers[@]} -gt 0 ]] && configure_ntp >> $setup_log 2>&1
+
 	reserve_ports
 	
 	set_path
@@ -614,6 +624,8 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	host_pillar >> $setup_log 2>&1
+	ntp_pillar >> $setup_log 2>&1
+
 
 	if [[ $is_minion || $is_import ]]; then
 		set_updates >> $setup_log 2>&1

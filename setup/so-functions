@@ -395,7 +395,7 @@ collect_hostname() {
 
 	if [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
 		if ! (whiptail_avoid_default_hostname); then
-			whiptail_set_hostname
+			whiptail_set_hostname "$HOSTNAME"
 		fi
 	fi
 
@@ -479,6 +479,22 @@ collect_node_ls_pipeline_worker_count() {
 		whiptail_invalid_input
 		whiptail_node_ls_pipeline_worker "$LSPIPELINEWORKERS"
 	done
+}
+
+collect_ntp_servers() {
+	if whiptail_ntp_ask; then
+		[[ $is_airgap ]] && ntp_string=""
+		whiptail_ntp_servers "$ntp_string"
+
+		while ! valid_ntp_list "$ntp_string"; do
+			whiptail_invalid_input
+			whiptail_ntp_servers "$ntp_string"
+		done
+
+		IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
+	else
+		ntp_servers=()
+	fi
 }
 
 collect_oinkcode() {
@@ -576,7 +592,7 @@ collect_proxy_details() {
 		else
 			so_proxy="$proxy_addr"
 		fi
-		export proxy
+		export so_proxy
 	fi
 }
 
@@ -695,6 +711,42 @@ configure_minion() {
 	{
 		systemctl restart salt-minion;
 	} >> "$setup_log" 2>&1
+}
+
+configure_ntp() {
+	local chrony_conf=/etc/chrony.conf
+
+	# Install chrony if it isn't already installed
+	if ! command -v chronyc &> /dev/null; then
+		yum -y install chrony
+	fi
+
+	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
+
+	printf '%s\n' "# NTP server list" > $chrony_conf
+
+	# Build list of servers
+	for addr in "${ntp_servers[@]}"; do
+		echo "server $addr iburst" >> $chrony_conf
+	done
+
+	printf '\n%s\n' "# Config options" >> $chrony_conf
+
+	printf '%s\n' \
+		'driftfile /var/lib/chrony/drift' \
+		'makestep 1.0 3' \
+		'rtcsync' \
+		'logdir /var/log/chrony' >> $chrony_conf
+
+	systemctl enable chronyd
+	systemctl restart chronyd
+
+	# Tell the chrony daemon to sync time & update the system time
+	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
+	printf "Syncing chrony time to server: "
+	chronyc -a 'burst 4/4' && sleep 30
+	printf "Forcing chrony to update the time: "
+	chronyc -a makestep && sleep 30
 }
 
 checkin_at_boot() {
@@ -1505,8 +1557,7 @@ manager_pillar() {
 	printf '%s\n'\
 		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
-
-  }
+}
 
 manager_global() {
 	local global_pillar="$local_salt_dir/pillar/global.sls"
@@ -1530,7 +1581,6 @@ manager_global() {
 		"global:"\
 		"  soversion: '$SOVERSION'"\
 		"  hnmanager: '$HNMANAGER'"\
-		"  ntpserver: '$NTPSERVER'"\
 		"  dockernet: '$DOCKERNET'"\
 		"  mdengine: '$ZEEKVERSION'"\
 		"  ids: '$NIDS'"\
@@ -1684,7 +1734,6 @@ manager_global() {
 		"  bip: '$DOCKERBIP'"\
 		"redis_settings:"\
 		"  redis_maxmemory: 812" >> "$global_pillar"
-
 		
 	printf '%s\n'  '----' >> "$setup_log" 2>&1
 }
@@ -1745,6 +1794,19 @@ network_setup() {
 		echo "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
+}
+
+ntp_pillar() {
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
+		printf '%s\n'\
+			"ntp:"\
+			"  servers:" >> "$pillar_file"
+			for addr in "${ntp_servers[@]}"; do
+				printf '%s\n' "    - '$addr'" >> "$pillar_file"
+			done
+	fi
 }
 
 parse_install_username() {

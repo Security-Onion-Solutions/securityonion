@@ -18,14 +18,18 @@
 
 {# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}
 {% if salt['pillar.get']('firewall:assigned_hostgroups:chain') %}
+  {% set translated_pillar_assigned_hostgroups = {'chain': {}} %}
 
   {% for chain, hg in salt['pillar.get']('firewall:assigned_hostgroups:chain').items() %}
     {% for pillar_hostgroup, pillar_portgroups in salt['pillar.get']('firewall:assigned_hostgroups:chain')[chain].hostgroups.items() %}
-      {% do translated_pillar_assigned_hostgroups.update({"chain": {chain: {"hostgroups": {pillar_hostgroup: {"portgroups": []}}}}}) %}
+      {% if translated_pillar_assigned_hostgroups.chain[chain] is defined %}
+        {% do translated_pillar_assigned_hostgroups.chain[chain].hostgroups.update({pillar_hostgroup: {"portgroups": []}}) %}
+      {% else %}
+        {% do translated_pillar_assigned_hostgroups.chain.update({chain: {"hostgroups": {pillar_hostgroup: {"portgroups": []}}}}) %}
+      {% endif %}
       {% for pillar_portgroup in pillar_portgroups.portgroups %}
         {% set pillar_portgroup = pillar_portgroup.split('.') | last %}
         {% do translated_pillar_assigned_hostgroups.chain[chain].hostgroups[pillar_hostgroup].portgroups.append(defined_portgroups[pillar_portgroup]) %}
-
       {% endfor %}
     {% endfor %}
   {% endfor %}
@@ -38,7 +42,6 @@
 {% else %}
   {% set assigned_hostgroups = default_assigned_hostgroups.role[role] %}
 {% endif %}
-
 
 {% if translated_pillar_assigned_hostgroups %}
   {% do salt['defaults.merge'](assigned_hostgroups, translated_pillar_assigned_hostgroups, merge_lists=True, in_place=True) %}

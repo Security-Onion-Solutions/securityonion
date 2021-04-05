@@ -1044,6 +1044,16 @@ whiptail_node_advanced() {
 
 }
 
+whiptail_node_description() {
+	[ -n "$TESTING" ] && return
+
+	NODE_DESCRIPTION=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Enter a short description for the node or press ENTER to leave blank:" 10 75 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_node_es_heap() {
 
 	[ -n "$TESTING" ] && return
@@ -1103,6 +1113,22 @@ whiptail_node_ls_pipeline_worker() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_ntp_ask() {
+	[ -n "$TESTING" ] && return
+
+	whiptail --title "Security Onion Setup" --yesno "Would you like to configure ntp servers?" 7 44
+}
+
+whiptail_ntp_servers() {
+	[ -n "$TESTING" ] && return
+
+	ntp_string=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Input the NTP server(s) you would like to use, separated by commas:" 8 75 "$1" 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_oinkcode() {
@@ -1271,11 +1297,7 @@ whiptail_proxy_auth_pass() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ $arg != 'confirm' ]]; then
-		proxy_pass=$(whiptail --title "Security Onion Setup" --passwordbox "Please input the proxy password:" 8 60 3>&1 1>&2 2>&3)
-	else
-		proxy_pass_confirm=$(whiptail --title "Security Onion Setup" --passwordbox "Please confirm the proxy password:" 8 60 3>&1 1>&2 2>&3)
-	fi
+	proxy_pass=$(whiptail --title "Security Onion Setup" --passwordbox "Please input the proxy password:" 8 60 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus

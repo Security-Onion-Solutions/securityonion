@@ -436,6 +436,20 @@ valid_proxy() {
 	[[ $has_prefix == true ]] && [[ $valid_url == true ]] && return 0 || return 1
 }
 
+valid_ntp_list() {
+	local string=$1
+	local ntp_arr
+	IFS="," read -r -a ntp_arr <<< "$string"
+
+	for ntp in "${ntp_arr[@]}"; do
+		if ! valid_ip4 "$ntp" && ! valid_hostname "$ntp" && ! valid_fqdn "$ntp"; then
+			return 1
+		fi
+	done
+
+	return 0
+}
+
 valid_string() {
 	local str=$1
 	local min_length=${2:-1}
