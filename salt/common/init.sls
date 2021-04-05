@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
+{% set managerupdates = salt['pillar.get']('global:managerupdate', '0') %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -64,13 +65,76 @@ salttmp:
     - group: 939
     - makedirs: True
 
-# Install epel
+# Remove default Repos
 {% if grains['os'] == 'CentOS' %}
 repair_yumdb:
   cmd.run:
     - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
     - onlyif:
       - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
+
+crbase:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Base.repo
+
+crcr:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-CR.repo
+
+crdebug:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Debuginfo.repo
+
+crdockerce:
+  file.absent: 
+    - name: /etc/yum.repos.d/docker-ce.repo
+    
+crfasttrack:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-fasttrack.repo
+
+crmedia:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Media.repo
+
+crsources:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Sources.repo
+
+crvault:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-Vault.repo
+
+crkernel:
+  file.absent:
+    - name: /etc/yum.repos.d/CentOS-x86_64-kernel.repo
+
+crepel:
+  file.absent:
+    - name: /etc/yum.repos.d/epel.repo
+
+crtesting:
+  file.absent:
+    - name: /etc/yum.repos.d/epel-testing.repo
+
+crssrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/saltstack.repo
+
+crwazrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/wazuh.repo
+
+crsecurityonionrepo:
+  file.managed:
+    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
+    - name: /etc/yum.repos.d/securityonion.repo
+    - source: salt://common/yum_repos/securityonion.repo
+    {% else %}
+    - name: /etc/yum.repos.d/securityonioncache.repo
+    - source: salt://common/yum_repos/securityonioncache.repo
+    {% endif %}
+    - mode: 644
 
 {% endif %}
 
