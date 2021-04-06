@@ -74,6 +74,12 @@ repair_yumdb:
     - onlyif:
       - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
 
+crsynckeys:
+  file.recurse:
+    - name: /etc/pki/rpm_gpg
+    - source: salt://common/keys/
+
+
 crbase:
   file.absent:
     - name: /etc/yum.repos.d/CentOS-Base.repo
