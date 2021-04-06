@@ -168,9 +168,7 @@ set_ssh_cmds $automated
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
-set_network_dev_status_list
 set_palette >> $setup_log 2>&1
-
 
 # Kernel messages can overwrite whiptail screen #812
 # https://github.com/Security-Onion-Solutions/securityonion/issues/812
@@ -440,6 +438,7 @@ if [[ $is_helix ]]; then
 fi
 
 if [[ $is_helix || $is_sensor ]]; then
+	set_network_dev_status_list
 	whiptail_sensor_nics
 fi
 
@@ -648,6 +647,8 @@ set_redirect >> $setup_log 2>&1
 	if [[ ! $is_airgap ]]; then
 	    securityonion_repo >> $setup_log 2>&1
 	    update_packages >> $setup_log 2>&1
+	else
+	    airgap_repo >> $setup_log 2>&1
 	fi
 
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
