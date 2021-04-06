@@ -534,7 +534,11 @@ upgrade_salt() {
     yum versionlock delete "salt-*"
     echo "Updating Salt packages and restarting services."
     echo ""
-    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -R repo.securityonion.net/file/securityonion-repo/saltstack3003 -F -M -x python3 stable "$NEWSALTVERSION"
+    if [ $is_airgap -eq 0 ]; then
+      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
+    else
+      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+    fi
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
