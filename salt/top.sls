@@ -17,6 +17,7 @@
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
+{% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 base:
 
