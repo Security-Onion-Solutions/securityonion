@@ -423,6 +423,193 @@ whiptail_enable_components() {
 	done
 }
 
+whiptail_end_settings() {
+	[ -n "$TESTING" ] && return
+
+	# BASIC INFO (NETWORK, HOSTNAME, DESCRIPTION, ETC)
+
+	read -r -d '' end_msg <<- EOM
+	The following options have been set, would you like to proceed?
+
+	Node Type: $install_type
+	Hostname: $HOSTNAME
+	EOM
+
+	[[ -n $NODE_DESCRIPTION ]] && __append_end_msg "Description: $NODE_DESCRIPTION"
+
+	[[ $is_airgap ]] && __append_end_msg "Airgap: True"
+
+	if [[ $is_minion ]]; then 
+		__append_end_msg "Manager Hostname: $MSRV"
+		__append_end_msg "Manager IP: $MSRVIP"
+	fi
+
+
+	[[ $is_iso ]] && __append_end_msg "Network: $address_type"
+
+	__append_end_msg "Management NIC: $MNIC"
+	__append_end_msg "Management IP: $MAINIP"
+
+	if [[ $address_type == 'STATIC' ]]; then
+		__append_end_msg "Gateway: $MGATEWAY"
+		__append_end_msg "DNS: $MDNS"
+		__append_end_msg "DNS Domain: $MSEARCH"
+	fi
+
+	if [[ $is_sensor ]]; then
+		__append_end_msg "Bond NIC(s):"
+		for nic in "${BNICS[@]}"; do
+			__append_end_msg "  - $nic"
+		done
+	fi
+
+	local homenet_arr
+	if [[ -n $HNMANAGER ]]; then
+		__append_end_msg "Home Network(s):"
+		IFS="," read -r -a homenet_arr <<< "$HNMANAGER"
+		for net in "${homenet_arr[@]}"; do
+			__append_end_msg "  - $net"
+		done
+	elif [[ -n $HNSENSOR ]]; then
+		__append_end_msg "Home Network(s):"
+		IFS="," read -r -a homenet_arr <<< "$HNSENSOR"
+		for net in "${homenet_arr[@]}"; do
+			__append_end_msg "  - $net"
+		done
+	fi
+
+	[[ -n $REDIRECTIT ]] && __append_end_msg "Access URL: https://${REDIRECTIT}"
+
+	[[ -n $ALLOW_CIDR ]] && __append_end_msg "Allowed IP or Subnet: $ALLOW_CIDR"
+
+	[[ -n $WEBUSER ]] && __append_end_msg "Web User: $WEBUSER"
+
+	[[ -n $FLEETNODEUSER ]] && __append_end_msg "Fleet User: $FLEETNODEUSER"
+
+	if [[ $is_manager ]]; then
+		__append_end_msg "Enabled Optional Components:"
+		for component in "${COMPONENTS[@]}"; do
+			__append_end_msg "  - $component"
+		done
+	fi
+	
+	# METADATA / IDS
+
+	if [[ -n $ZEEKVERSION ]]; then
+		local md_tool_string=${ZEEKVERSION,;}
+		md_tool_string=${md_tool_string^}
+
+		__append_end_msg "Metadata Tool: $md_tool_string"
+	fi
+
+	[[ -n $RULESETUP ]] && __append_end_msg "IDS Ruleset: $RULESETUP"
+	[[ -n $OINKCODE ]] && __append_end_msg "Oinkcode: $OINKCODE"
+
+	# PATCH SCHEDULE
+
+	[[ -n $PATCHSCHEDULENAME ]] && __append_end_msg "Patch schedule: $PATCHSCHEDULENAME"
+	
+	if [[ ${#PATCHSCHEDULEDAYS[@]} -gt 0 ]]; then
+		__append_end_msg "Day(s):"
+		for day in "${PATCHSCHEDULEDAYS[@]}"; do
+			__append_end_msg "  - $day"
+		done
+	fi
+
+	if [[ ${#PATCHSCHEDULEHOURS[@]} -gt 0 ]]; then
+		__append_end_msg "Hours(s):"
+		for hour in "${PATCHSCHEDULEHOURS[@]}"; do
+			__append_end_msg "  - $hour"
+		done
+	fi
+
+	# MISC
+
+	[[ $is_helix ]] && __append_end_msg "Helix API key: $HELIXAPIKEY"
+	[[ -n $DOCKERNET ]] && __append_end_msg "Docker network: $DOCKERNET"
+	if [[ -n $MANAGERUPDATES ]]; then
+		__append_end_msg "OS Package Updates: Manager"
+	else
+		__append_end_msg "OS Package Updates: Open"
+	fi
+	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
+		__append_end_msg "NTP Servers:"
+		for server in "${ntp_servers[@]}"; do
+			__append_end_msg "  - $server"
+		done
+	fi
+
+	# ADVANCED OR REGULAR
+
+	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
+		__append_end_msg "Advanced Node Settings:"
+		__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		__append_end_msg "  Logstash Heap Size: $NODE_LS_HEAP_SIZE"
+		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
+		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
+		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
+		__append_end_msg "  Curator Day Cutoff: $CURCLOSEDAYS days"
+		__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
+	else
+		__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
+		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
+		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
+		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
+		__append_end_msg "Curator Close After: $CURCLOSEDAYS days"
+		__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+	fi
+
+
+	# ADVANCED
+	if [[ $MANAGERADV == 'ADVANCED' ]]; then
+		__append_end_msg "Advanced Manager Settings:"
+		__append_end_msg "  ES Cluster Name: $ESCLUSTERNAME"
+		if [[ ${#BLOGS[@]} -gt 0 ]]; then
+			__append_end_msg "  Zeek Logs Enabled:"
+			for log in "${BLOGS[@]}"; do
+				__append_end_msg "    - $log"
+			done
+		fi
+	fi
+
+	if [[ $NSMSETUP == 'ADVANCED' ]]; then
+		__append_end_msg "Advanced NSM Settings:"
+		if [[ ${#ZEEKPINS[@]} -gt 0 ]]; then
+			local zeek_pin_str
+			for core in "${ZEEKPINS[@]}"; do
+				zeek_pin_str="${zeek_pin_str}${core},"
+			done
+			zeek_pin_str=${zeek_pin_str%,}
+			__append_end_msg "  Zeek Pinned Cores: ${zeek_pin_str}"
+		fi
+		if [[ ${#SURIPINS[@]} -gt 0 ]]; then
+			local suri_pin_str
+			for core in "${SURIPINS[@]}"; do
+				suri_pin_str="${suri_pin_str}${core},"
+			done
+			suri_pin_str=${suri_pin_str%,}
+			__append_end_msg "  Suricata Pinned Cores: ${suri_pin_str}"
+		fi
+	else
+		[[ -n $BASICZEEK ]] && __append_end_msg "  Zeek Processes: $BASICZEEK"
+		[[ -n $BASICSURI ]] && __append_end_msg "  Suricata Processes: $BASICSURI"
+	fi
+
+	whiptail --yesno "$end_msg" 24 75 --scrolltext
+	local exitstatus=$?
+	whiptail_check_exitstatus
+}
+
+__append_end_msg() {
+	local newline=$1
+
+	read -r -d '' end_msg <<- EOM
+	$end_msg
+	$newline
+	EOM
+}
+
 whiptail_eval_adv() {
 
 	[ -n "$TESTING" ] && return
@@ -1489,6 +1676,22 @@ whiptail_so_allow() {
 	export ALLOW_CIDR
 
 	whiptail_check_exitstatus $exitstatus
+}
+
+whitpail_ssh_warning() {
+	[ -n "$TESTING" ] && return
+
+	local msg
+
+	read -r -d '' msg <<- EOM
+	NOTE: You will recceive a warning upon SSH reconnect that the host key has changed.
+
+	This is expected due to hardening of the OpenSSH server config.
+	
+	The host key algorithm will now be ED25519, follow the instructions given by your SSH client to remove the old key fingerprint then retry the connection.
+	EOM
+
+	whiptail --msgbox "$msg" 14 75
 }
 
 whiptail_storage_requirements() {
