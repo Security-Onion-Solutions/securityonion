@@ -421,18 +421,19 @@ up_2.3.2X_to_2.3.30() {
 }
 
 up_2.3.3X_to_2.3.50_repo() {
-  echo 'Performing 2.3.50 repo actions.'
+  echo "Performing 2.3.50 repo actions."
   if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
     gpg_rpm_import
 
     if [ $is_airgap -eq 1 ]; then
-      echo 'Deleting unneeded repo files.'
+      echo "Deleting unneeded repo files."
       DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
 
-      for DELREPO in ${DELREPOS[@]}; do
+      for DELREPO in "${DELREPOS[@]}"; do
         if [[ -f "$DELREPO" ]]; then
-          rm -f /etc/yum.repos.d/"$DELREPO".repo
+          echo "Deleting $DELREPO.repo"
+          rm -f "/etc/yum.repos.d/$DELREPO.repo"
         fi
       done
 
