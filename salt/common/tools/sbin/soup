@@ -414,16 +414,18 @@ up_2.3.2X_to_2.3.30() {
 }
 
 up_2.3.3X_to_2.3.50() {
-  if [[ $OS == 'centos' ]]; then
+  if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
     gpg_rpm_import
 
     if [ $is_airgap -eq 1 ]; then
 
-      DELREPOS=('CentOS-Base.repo' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
-    
+      DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+
       for DELREPO in ${DELREPOS[@]}; do
-        rm -f /etc/yum.repos.d/"$DELREPO".repo
+        if [[ -f "$DELREPO" ]]; then
+          rm -f /etc/yum.repos.d/"$DELREPO".repo
+        fi
       done
 
       # Copy the new repo file if not airgap
@@ -433,7 +435,6 @@ up_2.3.3X_to_2.3.50() {
     fi
   fi
   INSTALLEDVERSION=2.3.50
-  
 }
 
 verify_upgradespace() {
