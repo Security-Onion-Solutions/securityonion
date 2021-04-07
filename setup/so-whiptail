@@ -460,6 +460,7 @@ whiptail_end_settings() {
 		for nic in "${BNICS[@]}"; do
 			__append_end_msg "  - $nic"
 		done
+		__append_end_msg "MTU: $MTU"
 	fi
 
 	local homenet_arr
@@ -506,20 +507,25 @@ whiptail_end_settings() {
 
 	# PATCH SCHEDULE
 
-	[[ -n $PATCHSCHEDULENAME ]] && __append_end_msg "Patch schedule: $PATCHSCHEDULENAME"
-	
-	if [[ ${#PATCHSCHEDULEDAYS[@]} -gt 0 ]]; then
-		__append_end_msg "Day(s):"
-		for day in "${PATCHSCHEDULEDAYS[@]}"; do
-			__append_end_msg "  - $day"
-		done
-	fi
-
-	if [[ ${#PATCHSCHEDULEHOURS[@]} -gt 0 ]]; then
-		__append_end_msg "Hours(s):"
-		for hour in "${PATCHSCHEDULEHOURS[@]}"; do
-			__append_end_msg "  - $hour"
-		done
+	if [[ -n $PATCHSCHEDULENAME ]]; then
+		__append_end_msg "Patch Schedule:"
+		if [[ $PATCHSCHEDULENAME != 'auto' && $PATCHSCHEDULENAME != 'manual' ]]; then
+			__append_end_msg "  Type: $PATCHSCHEDULENAME"
+		else
+			__append_end_msg "  Name: $PATCHSCHEDULENAME"
+		fi
+		if [[ ${#PATCHSCHEDULEDAYS[@]} -gt 0 ]]; then
+			__append_end_msg "  Day(s):"
+			for day in "${PATCHSCHEDULEDAYS[@]}"; do
+				__append_end_msg "    - $day"
+			done
+		fi
+		if [[ ${#PATCHSCHEDULEHOURS[@]} -gt 0 ]]; then
+			__append_end_msg "  Hours(s):"
+			for hour in "${PATCHSCHEDULEHOURS[@]}"; do
+				__append_end_msg "    - $hour"
+			done
+		fi
 	fi
 
 	# MISC
