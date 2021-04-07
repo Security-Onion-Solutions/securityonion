@@ -72,6 +72,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/scripts:/scripts:ro
       - /opt/so/log/stenographer:/var/log/stenographer:ro
       - /opt/so/log/suricata:/var/log/suricata:ro
+      - /opt/so/log/raid:/var/log/raid:ro
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts
