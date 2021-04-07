@@ -2285,15 +2285,17 @@ secrets_pillar(){
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ "$OS" == "centos" && ! $is_airgap ]]; then
-	    mkdir -p /root/oldrepos
-	    mv /etc/yum.repos.d/* /root/oldrepos/
-		rm -f /etc/yum.repos.d/*
-		if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-		    cp -f ../salt/common/yum_repos/securityonioncache.repo /etc/yum.repos.d/
-		else
-		    cp -f ../salt/common/yum_repos/securityonion.repo /etc/yum.repos.d/
-		fi
+	if [[ "$OS" == "centos" ]]; then
+	    if [[ ! $is_airgap ]]; then
+	        mkdir -p /root/oldrepos
+	        mv /etc/yum.repos.d/* /root/oldrepos/
+		    rm -f /etc/yum.repos.d/*
+		    if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
+		        cp -f ../salt/common/yum_repos/securityonioncache.repo /etc/yum.repos.d/
+		    else
+		        cp -f ../salt/common/yum_repos/securityonion.repo /etc/yum.repos.d/
+		    fi
+	    fi
 	else
         echo "This is Ubuntu"
 	fi
