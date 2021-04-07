@@ -1872,12 +1872,13 @@ print_salt_state_apply() {
 }
 
 proxy_validate() {
+	echo "Testing proxy..."
 	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
-	proxy_test_err=$(curl -sS "$test_url" --proxy "$so_proxy" 2>&1)
+	proxy_test_err=$(curl -sS "$test_url" --proxy "$so_proxy" --connect-timeout 5 2>&1) # set short connection timeout so user doesn't sit waiting for proxy test to timeout
 	local ret=$?
 
 	if [[ $ret != 0 ]]; then
-		error "Could not reach $test_url using proxy $so_proxy"
+		error "Could not reach $test_url using proxy provided"
 		error "Received error: $proxy_test_err"
 		if [[ -n $TESTING ]]; then
 			error "Exiting setup"
