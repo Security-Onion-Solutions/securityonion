@@ -429,8 +429,6 @@ whiptail_end_settings() {
 	# BASIC INFO (NETWORK, HOSTNAME, DESCRIPTION, ETC)
 
 	read -r -d '' end_msg <<- EOM
-	The following options have been set, would you like to proceed?
-
 	Node Type: $install_type
 	Hostname: $HOSTNAME
 	EOM
@@ -539,6 +537,11 @@ whiptail_end_settings() {
 		done
 	fi
 
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		[[ -n $BASICZEEK ]] && __append_end_msg "Zeek Processes: $BASICZEEK"
+		[[ -n $BASICSURI ]] && __append_end_msg "Suricata Processes: $BASICSURI"
+	fi
+
 	# ADVANCED OR REGULAR
 
 	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
@@ -591,14 +594,12 @@ whiptail_end_settings() {
 			suri_pin_str=${suri_pin_str%,}
 			__append_end_msg "  Suricata Pinned Cores: ${suri_pin_str}"
 		fi
-	else
-		[[ -n $BASICZEEK ]] && __append_end_msg "  Zeek Processes: $BASICZEEK"
-		[[ -n $BASICSURI ]] && __append_end_msg "  Suricata Processes: $BASICSURI"
 	fi
 
-	whiptail --yesno "$end_msg" 24 75 --scrolltext
+	whiptail --title "The following options have been set, would you like to proceed?" --yesno "$end_msg" 24 75 --scrolltext
+
 	local exitstatus=$?
-	whiptail_check_exitstatus
+	whiptail_check_exitstatus $exitstatus
 }
 
 __append_end_msg() {
