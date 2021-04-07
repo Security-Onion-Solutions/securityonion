@@ -230,6 +230,13 @@ masterunlock() {
   fi
 }
 
+preupgrade_changes_2.3.50_repo() {
+    # We made repo changes in 2.3.50 and this prepares for that on upgrade
+    echo "Checking to see if 2.3.50 repo changes are needed."
+
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50_repo
+}
+
 preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
@@ -413,7 +420,7 @@ up_2.3.2X_to_2.3.30() {
   INSTALLEDVERSION=2.3.30
 }
 
-up_2.3.3X_to_2.3.50() {
+up_2.3.3X_to_2.3.50_repo() {
   if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
     gpg_rpm_import
@@ -434,6 +441,9 @@ up_2.3.3X_to_2.3.50() {
       yum repolist
     fi
   fi
+}
+
+up_2.3.3X_to_2.3.50() {
   INSTALLEDVERSION=2.3.50
 }
 
@@ -655,6 +665,7 @@ else
   update_registry
   update_docker_containers "soup"
 fi
+
 echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
@@ -664,6 +675,8 @@ echo ""
 echo "Stopping Salt Master service."
 systemctl stop salt-master
 echo ""
+
+preupgrade_changes_2.3.50_repo
 
 # Does salt need upgraded. If so update it.
 if [ "$UPGRADESALT" == "1" ]; then
