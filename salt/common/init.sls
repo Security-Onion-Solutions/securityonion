@@ -297,6 +297,25 @@ commonlogrotateconf:
     - month: '*'
     - dayweek: '*'
 
+# Create the status directory
+sostatusdir:
+  file.directory:
+    - name: /opt/so/log/sostatus
+    - user: 0
+    - group: 0
+    - makedirs: True
+    
+# Install sostatus check cron
+/usr/sbin/so-status -q && echo $? > /opt/so/log/sostatus/status.log 2>&1:
+  cron.present:
+    - user: root
+    - minute: '*/15'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
 # Lock permissions on the backup directory
 backupdir:
