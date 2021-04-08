@@ -1012,7 +1012,7 @@ create_repo() {
 
 detect_cloud() {
   echo "Testing if setup is running on a cloud instance..." | tee -a "$setup_log"
-  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null); then export is_cloud="true"; fi
+  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then export is_cloud="true"; fi
 }
 
 detect_os() {
@@ -2286,13 +2286,21 @@ secrets_pillar(){
 securityonion_repo() {
 	# Remove all the current repos
 	if [[ "$OS" == "centos" ]]; then
-	    mkdir -p /root/oldrepos
-	    mv /etc/yum.repos.d/* /root/oldrepos/
-		rm -f /etc/yum.repos.d/*
-		if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-		    cp -f ../salt/common/yum_repos/securityonioncache.repo /etc/yum.repos.d/
+	    if [[ "$INTERWEBS" == "AIRGAP" ]]; then
+		    echo "This is airgap I don't need to add this repo"
 		else
-		    cp -f ../salt/common/yum_repos/securityonion.repo /etc/yum.repos.d/
+	        mkdir -p /root/oldrepos
+	        mv -v /etc/yum.repos.d/* /root/oldrepos/
+			ls -la /etc/yum.repos.d/
+		    rm -rf /etc/yum.repos.d
+			yum clean all
+			yum repolist all
+			mkdir -p /etc/yum.repos.d
+		    if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
+		        cp -f ../salt/common/yum_repos/securityonioncache.repo /etc/yum.repos.d/
+		    else
+		        cp -f ../salt/common/yum_repos/securityonion.repo /etc/yum.repos.d/
+		    fi
 		fi
 	else
         echo "This is Ubuntu"
