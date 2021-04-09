@@ -304,6 +304,11 @@ sostatusdir:
     - user: 0
     - group: 0
     - makedirs: True
+
+sostatus_log:
+  file.managed:
+    - name: /opt/so/log/sostatus/status.log
+    - mode: 644
     
 # Install sostatus check cron
 /usr/sbin/so-status -q && echo $? > /opt/so/log/sostatus/status.log 2>&1:

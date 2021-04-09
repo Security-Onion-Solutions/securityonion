@@ -79,7 +79,7 @@ whiptail_bond_nics_mtu() {
 
 whiptail_cancel() {
 
-	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup." 8 75
 	if [ -d "/root/installtmp" ]; then
 		{
 			echo "/root/installtmp exists";
@@ -88,7 +88,7 @@ whiptail_cancel() {
 		} >> $setup_log 2>&1
 	fi
 
-	title "User cancelled setup, no changes made."
+	title "User cancelled setup."
 	
 	exit
 }
@@ -1138,6 +1138,19 @@ whiptail_manager_adv_service_zeeklogs() {
 
 	IFS=' ' read -ra BLOGS <<< "$BLOGS"
 
+}
+
+whiptail_manager_error() {
+	local msg
+	read -r -d '' <<- EOM
+	Setup could not determine if the manager $MSRV is in a good state.
+
+	Continuing without verifying all services on the manager are running may result in a failure.
+
+	Would you like to continue anyway?
+	EOM
+
+	whiptail --title "Security Onion Setup" --yesno "$msg" 13 75 || whiptail_check_exitstatus 1
 }
 
 whiptail_manager_updates() {

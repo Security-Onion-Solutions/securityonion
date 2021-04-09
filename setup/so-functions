@@ -162,6 +162,25 @@ check_hive_init() {
 	docker rm so-thehive
 }
 
+check_manager_state() {
+	echo "Checking state of manager services. This may take a moment..."
+	retry 2 15 "__check_so_status" && retry 2 15 "__check_salt_master" && return 0 || return 1
+}
+
+__check_so_status() {
+	local so_status_output
+	so_status_output=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /opt/so/log/sostatus/status.log)
+	[[ -z $so_status_output ]] && so_status_output=1
+	return $so_status_output
+}
+
+__check_salt_master() {
+	local salt_master_status
+	salt_master_status=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" systemctl is-active --quiet salt-master)
+	[[ -z $salt_master_status ]] && salt_master_status=1
+	return $salt_master_status
+}
+
 check_network_manager_conf() {
 	local gmdconf="/usr/lib/NetworkManager/conf.d/10-globally-managed-devices.conf"
 	local nmconf="/etc/NetworkManager/NetworkManager.conf"
