@@ -1,9 +1,6 @@
 {%- set URLBASE = salt['pillar.get']('global:url_base') %}
-{%- if salt['pillar.get']('sensoroni:node_description') %}
-{%-   set DESCRIPTION = salt['pillar.get']('sensoroni:node_description') %}
-{%- else %}
-{%-   set DESCRIPTION = salt['grains.get']('sosmodel', '') %}
-{%- endif %}
+{%- set DESCRIPTION = salt['pillar.get']('sensoroni:node_description', '') %}
+{%- set MODEL = salt['grains.get']('sosmodel', '') %}
 {%- set ADDRESS = salt['pillar.get']('sensoroni:node_address') %}
 {%- set SENSORONIKEY = salt['pillar.get']('global:sensoronikey', '') %}
 {%- set CHECKININTERVALMS = salt['pillar.get']('sensoroni:node_checkin_interval_ms', 10000) %}
@@ -21,6 +18,7 @@
     "role": "{{ grains.role }}",
     "description": "{{ DESCRIPTION }}",
     "address": "{{ ADDRESS }}",
+    "model": "{{ MODEL }}",
     "pollIntervalMs": {{ CHECKININTERVALMS if CHECKININTERVALMS else 10000 }},
     "serverUrl": "https://{{ URLBASE }}/sensoroniagents",
     "verifyCert": false,
