@@ -51,6 +51,11 @@ sosaltstackperms:
     - gid: 939
     - dir_mode: 770
 
+so_log_perms:
+  file.directory:
+    - name: /opt/so/log
+    - dir_mode: 755
+
 # Create a state directory
 statedir:
   file.directory:
