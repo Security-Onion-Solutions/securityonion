@@ -19,13 +19,18 @@ whiptail_airgap() {
 
 	[ -n "$TESTING" ] && return
 
-	INTERWEBS=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose your install conditions:" 20 75 4 \
-	"STANDARD" "This manager has internet accesss" ON  \
-	"AIRGAP" "This manager does not have internet access" OFF 3>&1 1>&2 2>&3 )
+	local node_str='node'
+	[[ $is_manager || $is_import ]] && node_str='manager'
+
+	INTERWEBS=$(whiptail --title "Security Onion Setup" --menu \
+	"How should this $node_str be installed?" 10 60 2 \
+	"Standard    " "This $node_str has internet accesss"  \
+	"Airgap      " "This $node_str does not have internet access" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	INTERWEBS=$(echo "${INTERWEBS^^}" | tr -d ' ')
 }
 
 whiptail_avoid_default_hostname() {
@@ -79,7 +84,7 @@ whiptail_bond_nics_mtu() {
 
 whiptail_cancel() {
 
-	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup." 8 75
 	if [ -d "/root/installtmp" ]; then
 		{
 			echo "/root/installtmp exists";
@@ -88,7 +93,7 @@ whiptail_cancel() {
 		} >> $setup_log 2>&1
 	fi
 
-	title "User cancelled setup, no changes made."
+	title "User cancelled setup."
 	
 	exit
 }
@@ -1138,6 +1143,22 @@ whiptail_manager_adv_service_zeeklogs() {
 
 	IFS=' ' read -ra BLOGS <<< "$BLOGS"
 
+}
+
+whiptail_manager_error() {
+
+	[ -n "$TESTING" ] && return
+
+	local msg
+	read -r -d '' msg <<- EOM
+	Setup could not determine if the manager $MSRV is in a good state.
+
+	Continuing without verifying all services on the manager are running may result in a failure.
+
+	Would you like to continue anyway?
+	EOM
+
+	whiptail --title "Security Onion Setup" --yesno "$msg" 13 75 || whiptail_check_exitstatus 1
 }
 
 whiptail_manager_updates() {
