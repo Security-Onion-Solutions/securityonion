@@ -316,7 +316,7 @@ sostatus_log:
     - mode: 644
     
 # Install sostatus check cron
-/usr/sbin/so-status -q && echo $? > /opt/so/log/sostatus/status.log 2>&1:
+'/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
   cron.present:
     - user: root
     - minute: '*/5'
