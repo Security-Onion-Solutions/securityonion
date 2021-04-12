@@ -26,7 +26,8 @@ airgap_repo:
 {{ file }}:
   file.absent:
     - name: {{ REPOPATH }}{{ file }}
-    - onchanges_in: cleanyum
+    - onchanges_in:
+      - module: cleanyum
   {% endfor %}
 {% endif %}
 
@@ -59,19 +60,22 @@ crsecurityonionrepo:
 yumconf:
   file.managed:
     - name: /etc/yum.conf
-    - source: salt:/repo/client/files/centos/yum.conf.jinja
+    - source: salt://repo/client/files/centos/yum.conf.jinja
     - mode: 644
     - template: jinja
 {% endif %}
 
 cleanyum:
   module.run:
-    - pkg.clean_metadata
+    - pkg.clean_metadata: []
     - onchanges:
+{% if ISAIRGAP %}
       - file: airgapyum
       - pkgrepo: airgap_repo
+{% else %}
       - file: crsecurityonionrepo
       - file: yumconf
+{% endif %}
 
 {% endif %}
 
