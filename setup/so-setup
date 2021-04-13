@@ -264,7 +264,7 @@ elif [ "$install_type" = 'ANALYST' ]; then
 fi
 
 # Check if this is an airgap install
-if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
+if [[ $is_iso || $is_minion ]]; then
 	whiptail_airgap
 	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
 		is_airgap=true
@@ -339,7 +339,7 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" \
-			"NODE_DESCRIPTION=$NODE_DESCRIPTION" > "$install_opt_file"
+			"NODE_DESCRIPTION=\"$NODE_DESCRIPTION\"" > "$install_opt_file"
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
@@ -573,6 +573,11 @@ if [[ $is_manager || $is_import ]]; then collect_so_allow; fi
 
 # This block sets REDIRECTIT which is used by a function outside the below subshell
 set_redirect >> $setup_log 2>&1
+
+if [[ $is_minion ]] && ! check_manager_state; then
+	echo "Manager was not in a good state" >> "$setup_log" 2>&1
+	whiptail_manager_error
+fi
 
 whiptail_end_settings
 
