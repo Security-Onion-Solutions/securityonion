@@ -74,7 +74,7 @@ so-filebeat:
     - port_bindings:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
-        - 0.0.0.0:5066/tcp
+        - 0.0.0.0:5066:5066/tcp
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
 
