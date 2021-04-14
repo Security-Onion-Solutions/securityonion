@@ -2,7 +2,8 @@
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
-{% from 'salt/minion.defaults.yaml' import salt.minion.service_start_delay as service_start_delay %}
+{% from 'salt/minion.defaults.yaml' import salt as SALTMINION %}
+{% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
 include:
   - salt
