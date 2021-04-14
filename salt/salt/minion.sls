@@ -2,9 +2,11 @@
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
+{% from 'salt/minion.defaults.yaml' import salt.minion.service_start_delay as service_start_delay %}
 
 include:
   - salt
+  - systemd.reload
 
 install_salt_minion:
   cmd.run:
@@ -32,8 +34,21 @@ set_log_levels:
     - listen_in:
       - service: salt_minion_service
 
+salt_minion_service_unit_file:
+  file.managed:
+    - name: /etc/systemd/system/multi-user.target.wants/salt-minion.service
+    - source: salt://salt/service/salt-minion.servic.jinja
+    - template: jinja
+    - defaults:
+      - service_start_delay: {{ service_start_delay }}
+    - onchanges_in:
+      - module: systemd_reload
+    - listen_in:
+      - service: salt_minion_service
+
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+
