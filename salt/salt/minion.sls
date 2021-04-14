@@ -41,7 +41,7 @@ salt_minion_service_unit_file:
     - source: salt://salt/service/salt-minion.servic.jinja
     - template: jinja
     - defaults:
-      - service_start_delay: {{ service_start_delay }}
+        service_start_delay: {{ service_start_delay }}
     - onchanges_in:
       - module: systemd_reload
     - listen_in:
