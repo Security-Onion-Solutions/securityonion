@@ -46,6 +46,7 @@ salt_minion_service_unit_file:
       - module: systemd_reload
     - listen_in:
       - service: salt_minion_service
+    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
 
 salt_minion_service:
   service.running:
