@@ -49,9 +49,11 @@ salt_minion_service_unit_file:
       - module: systemd_reload
     - listen_in:
       - service: salt_minion_service
+{% endif %}
 
+# this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
-{% endif %}
+    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
