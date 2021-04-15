@@ -9,6 +9,12 @@ include:
   - salt
   - systemd.reload
 
+{% if "{{INSTALLEDSALTVERSION}}" != "{{SALTVERSION}}" %}
+unhold_salt_packages:
+  module.run:
+    - pkg.unhold:
+      - 'salt-*'
+
 install_salt_minion:
   cmd.run:
     - name: |
@@ -16,15 +22,13 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" != "{{SALTVERSION}}"
+{% endif %}
 
-salt_minion_package:
-  pkg.installed:
-    - pkgs:
-      - {{ COMMON }}
-      - salt-minion
-    - hold: True
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+{% if "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}" %}
+hold_salt_packages:
+  module.run:
+    - pkg.hold:
+      - 'salt-*'
 
 set_log_levels:
   file.append:
@@ -46,11 +50,9 @@ salt_minion_service_unit_file:
       - module: systemd_reload
     - listen_in:
       - service: salt_minion_service
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
 
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
-
+{% endif %}
