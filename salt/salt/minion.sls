@@ -1,4 +1,3 @@
-{% from 'salt/map.jinja' import COMMON with context %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
