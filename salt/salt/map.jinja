@@ -3,8 +3,10 @@
 
 {% if grains.os == 'Ubuntu' %}
   {% set SPLITCHAR = '+' %}
+  {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep salt-* ; echo $?') %}
 {% else %}
   {% set SPLITCHAR = '-' %}
+  {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep salt-* ; echo $?') %}
 {% endif %}
 
 {% set INSTALLEDSALTVERSION = salt['pkg.version']('salt-minion').split(SPLITCHAR)[0] %}

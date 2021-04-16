@@ -1,6 +1,7 @@
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
+{% from 'salt/map.jinja' import SALTNOTHELD %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
 {% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
@@ -8,11 +9,14 @@ include:
   - salt
   - systemd.reload
 
-{% if "{{INSTALLEDSALTVERSION}}" != "{{SALTVERSION}}" %}
+{% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
+
+{% if SALTNOTHELD == 0 %}
 unhold_salt_packages:
   module.run:
     - pkg.unhold:
-      - 'salt-*'
+      - name: 'salt-*'
+{% endif %}
 
 install_salt_minion:
   cmd.run:
@@ -23,11 +27,14 @@ install_salt_minion:
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
 {% endif %}
 
-{% if "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}" %}
+{% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
+
+{% if SALTNOTHELD == 1 %}
 hold_salt_packages:
   module.run:
     - pkg.hold:
-      - 'salt-*'
+      - name: 'salt-*'
+{% endif %}
 
 set_log_levels:
   file.append:
