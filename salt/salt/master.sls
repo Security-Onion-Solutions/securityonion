@@ -1,13 +1,16 @@
+{% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
 include:
   - salt.minion
 
+{% if SALTNOTHELD == 1 %}
 hold_salt_master_package:
   module.run:
     - pkg.hold:
-      - 'salt-master'
+      - name: salt-master
+{% endif %}
 
 salt_master_service:
   service.running:
