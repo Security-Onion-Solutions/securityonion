@@ -40,6 +40,7 @@ if [ ! $THEGREP ]; then
     fi
 
     echo "fbstats eps=${EVENTS%%.*},failed=$FAILEDEVENTCOUNT"
+  fi
 
 else
     exit 0
