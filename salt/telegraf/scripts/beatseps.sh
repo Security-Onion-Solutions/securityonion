@@ -17,7 +17,7 @@
 
 THEGREP=$(ps -ef | grep $0 | grep -v grep)
 
-if [ ! $THEGREP ]; then
+if [ ! "$THEGREP" ]; then
 
   PREVCOUNTFILE='/tmp/beatseps.txt'
   EVENTCOUNTCURRENT="$(curl -s localhost:5066/stats | jq '.libbeat.output.events.acked')"
