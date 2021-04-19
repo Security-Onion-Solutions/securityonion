@@ -480,6 +480,21 @@ collect_mtu() {
 	done
 }
 
+collect_net_method() {
+	whiptail_net_method
+
+	[[ -n $network_traffic ]] && collect_proxy
+
+	if [[ "$network_traffic" == *"_MANAGER" ]]; then
+		whiptail_manager_updates_warning
+		MANAGERUPDATES=1
+	fi
+
+	if [[ "$network_traffic" == "PROXY"* ]]; then
+		collect_proxy no_ask
+	fi
+}
+
 collect_node_es_heap() {
 	whiptail_node_es_heap "$ES_HEAP_SIZE"
 }
@@ -582,7 +597,9 @@ collect_patch_schedule_name_import() {
 
 collect_proxy() {
 	[[ -n $TESTING ]] && return
-	collect_proxy_details || return
+	local ask=${1:-true}
+
+	collect_proxy_details "$ask" || return
 	while ! proxy_validate; do
 		if whiptail_invalid_proxy; then
 			collect_proxy_details no_ask
@@ -2671,10 +2688,10 @@ set_redirect() {
 set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
-		    if [[ ! $is_airgap ]]; then
-			    if ! grep -q "$MSRV" /etc/yum.conf; then
-				    echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
-			    fi
+			if [[ ! $is_airgap ]]; then
+				if ! grep -q "$MSRV" /etc/yum.conf; then
+					echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+				fi
 			fi
 		else
 			# Set it up so the updates roll through the manager

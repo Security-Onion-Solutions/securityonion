@@ -18,7 +18,6 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set managerproxy = salt['pillar.get']('global:managerupdate', '0') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 socore_own_saltstack:
@@ -34,8 +33,6 @@ socore_own_saltstack:
   file.managed:
     - mode: 750
     - replace: False
-
-{% if managerproxy == 1 %}
 
 # Create the directories for apt-cacher-ng
 aptcacherconfdir:
@@ -60,7 +57,6 @@ aptcacherlogdir:
     - makedirs: true
 
 # Copy the config
-
 acngcopyconf:
   file.managed:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
@@ -83,8 +79,6 @@ append_so-aptcacherng_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-aptcacherng
-
-{% endif %}
 
 strelka_yara_update_old_1:
   cron.absent:

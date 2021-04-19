@@ -211,7 +211,7 @@ if ! [[ -f $install_opt_file ]]; then
 			set_main_ip >> $setup_log 2>&1
 			compare_main_nic_ip
 			reset_proxy
-			collect_proxy
+			collect_net_method
 			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
@@ -319,7 +319,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	reset_proxy
 	if [[ -z $is_airgap ]]; then
-		collect_proxy
+		collect_net_method
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 
@@ -497,13 +497,6 @@ fi
 if [[ $is_manager || $is_import ]]; then
 	collect_webuser_inputs
 	get_redirect
-fi
-
-if [[ ! $is_airgap && ( $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ) ]]; then
-	whiptail_manager_updates
-	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
-		whiptail_manager_updates_warning
-	fi
 fi
 
 if [[ $is_distmanager ]]; then

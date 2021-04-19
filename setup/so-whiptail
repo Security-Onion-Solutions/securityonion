@@ -1027,6 +1027,68 @@ whiptail_management_interface_setup() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+whiptail_net_method() {
+	[ -n "$TESTING" ] && return
+
+	[[ $is_airgap ]] && return
+
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+
+	read -r -d '' options_msg <<- EOM
+	"Direct" - Internet requests connect directly to the Internet.
+
+	EOM
+	local options=(
+		" Direct" ""
+	)
+	local proxy_desc="proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment."
+
+	if [[ $is_minion ]]; then
+		local mngr_article
+		if [[ $is_distmanager ]]; then mngr_article="this"; else mngr_article="the"; fi
+
+		read -r -d '' options_msg <<- EOM
+		${options_msg}
+
+		"Direct + Manager" - all traffic passes to the Internet normally, but ${pkg_mngr} updates will instead be pulled from ${mngr_article} manager. 
+
+		"Proxy" - ${proxy_desc}
+
+		"Proxy + Manager" - proxy all traffic from the "Proxy" option except ${pkg_mngr} updates, which will instead pull from the manager.
+		EOM
+		
+		options+=(
+			" Direct + Manager" ""
+			" Proxy" ""
+			" Proxy + Manager" ""
+		)
+		local height=25
+	else
+		read -r -d '' options_msg <<- EOM
+			${options_msg}
+
+			"Proxy" - ${proxy_desc}
+		EOM
+		options+=(
+			" Proxy" ""
+		)
+		local height=17
+	fi
+
+	local msg
+	read -r -d '' msg <<- EOM
+	How would you like to connect to the Internet? 
+
+	$options_msg
+	EOM
+
+	local option_count=$(( ${#options[@]} / 2 ))
+
+	network_traffic=$(whiptail --title "Security Onion Setup" --menu "$msg" $height 75 $option_count "${options[@]}" 3>&1 1>&2 2>&3)
+	network_traffic=$(echo "${network_traffic^^}" | tr -d ' ' | tr '+' '_')
+}
+
 whiptail_net_setup_complete() {
 	[ -n "$TESTING" ] && return
 
@@ -1159,29 +1221,6 @@ whiptail_manager_error() {
 	EOM
 
 	whiptail --title "Security Onion Setup" --yesno "$msg" 13 75 || whiptail_check_exitstatus 1
-}
-
-whiptail_manager_updates() {
-
-	[ -n "$TESTING" ] && return
-
-	local update_string
-	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
-	"How would you like to download OS package updates for your grid?" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates" ON \
-	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	case "$update_string" in
-		'MANAGER')
-			export MANAGERUPDATES='1'
-			;;
-		*)
-			export MANAGERUPDATES='0'
-			;;
-	esac
-
 }
 
 whiptail_manager_updates_warning() {
@@ -1485,7 +1524,9 @@ whiptail_patch_schedule_select_hours() {
 whiptail_proxy_ask() {
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Do you want to set a proxy server for this installation?" 7 60 --defaultno
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+	whiptail --title "Security Onion Setup" --yesno "Do you want to proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment?" 9 65 --defaultno
 }
 
 whiptail_proxy_addr() {
