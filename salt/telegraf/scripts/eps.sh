@@ -15,36 +15,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-APP=eps
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
+THEGREP=$(ps -ef | grep $0 | grep -v grep)
 
-PREVCOUNTFILE='/tmp/eps.txt'
-EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.events.in')"
+if [ ! $THEGREP ]; then
 
-if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+    PREVCOUNTFILE='/tmp/eps.txt'
+    EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.events.in')"
 
-  if [ -f "$PREVCOUNTFILE" ]; then
-    EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
-  else
-    echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+    if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+
+      if [ -f "$PREVCOUNTFILE" ]; then
+        EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
+      else
+        echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+        exit 0
+      fi
+
+      echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+      # the division by 30 is because the agent interval is 30 seconds
+      EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
+      if [ "$EVENTS" -lt 0 ]; then
+        EVENTS=0
+      fi
+
+      echo "consumptioneps eps=${EVENTS%%.*}"
+
+else
     exit 0
-  fi
-
-  echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-  # the division by 30 is because the agent interval is 30 seconds
-  EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
-  if [ "$EVENTS" -lt 0 ]; then
-    EVENTS=0
-  fi
-
-  echo "esteps eps=${EVENTS%%.*}"
-
 fi
 
-exit 0

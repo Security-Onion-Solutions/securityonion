@@ -15,37 +15,33 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-APP=beatseps
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
+THEGREP=$(ps -ef | grep $0 | grep -v grep)
 
-PREVCOUNTFILE='/tmp/beatseps.txt'
-EVENTCOUNTCURRENT="$(curl -s localhost:5066/stats | jq '.libbeat.output.events.acked')"
-FAILEDEVENTCOUNT="$(curl -s localhost:5066/stats | jq '.libbeat.output.events.failed')"
+if [ ! $THEGREP ]; then
 
-if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+  PREVCOUNTFILE='/tmp/beatseps.txt'
+  EVENTCOUNTCURRENT="$(curl -s localhost:5066/stats | jq '.libbeat.output.events.acked')"
+  FAILEDEVENTCOUNT="$(curl -s localhost:5066/stats | jq '.libbeat.output.events.failed')"
 
-  if [ -f "$PREVCOUNTFILE" ]; then
-    EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
-  else
+  if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+
+    if [ -f "$PREVCOUNTFILE" ]; then
+      EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
+    else
+      echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+      exit 0
+    fi
+
     echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+    # the division by 30 is because the agent interval is 30 seconds
+    EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
+    if [ "$EVENTS" -lt 0 ]; then
+      EVENTS=0
+    fi
+
+    echo "fbstats eps=${EVENTS%%.*},failed=$FAILEDEVENTCOUNT"
+
+else
     exit 0
-  fi
-
-  echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-  # the division by 30 is because the agent interval is 30 seconds
-  EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
-  if [ "$EVENTS" -lt 0 ]; then
-    EVENTS=0
-  fi
-
-  echo "fbstats eps=${EVENTS%%.*},failed=$FAILEDEVENTCOUNT"
-
 fi
 
-exit 0
