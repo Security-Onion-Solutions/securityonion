@@ -16,9 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-THEGREP=$(ps -ef | grep $0 | grep -v grep)
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-if [ ! $THEGREP ]; then
+if [ ! "$THEGREP" ]; then
 
     SURILOG=$(tac /var/log/suricata/stats.log | grep kernel | head -4)
     CHECKIT=$(echo $SURILOG | grep -o 'drop' | wc -l)

@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-THEGREP=$(ps -ef | grep $0 | grep -v grep)
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-if [ ! $THEGREP ]; then
+if [ ! "$THEGREP" ]; then
 
     # Get the data
     OLDPCAP=$(find /host/nsm/pcap -type f -exec stat -c'%n %Z' {} + | sort | grep -v "\." | head -n 1 | awk {'print $2'})

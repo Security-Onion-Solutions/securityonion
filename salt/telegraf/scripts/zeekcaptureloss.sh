@@ -18,9 +18,9 @@
 
 # This script returns the average of all the workers average capture loss to telegraf / influxdb in influx format include nanosecond precision timestamp
 
-THEGREP=$(ps -ef | grep $0 | grep -v grep)
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-if [ ! $THEGREP ]; then
+if [ ! "$THEGREP" ]; then
 
     if [ -d "/host/nsm/zeek/spool/logger" ]; then
       WORKERS={{ salt['pillar.get']('sensor:zeek_lbprocs', salt['pillar.get']('sensor:zeek_pins') | length) }}

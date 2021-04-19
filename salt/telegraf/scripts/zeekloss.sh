@@ -17,9 +17,9 @@
 
 # This script returns the packets dropped by Zeek, but it isn't a percentage. $LOSS * 100 would be the percentage
 
-THEGREP=$(ps -ef | grep $0 | grep -v grep)
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-if [ ! $THEGREP ]; then
+if [ ! "$THEGREP" ]; then
 
   ZEEKLOG=$(tac /host/nsm/zeek/logs/packetloss.log | head -2)
   declare RESULT=($ZEEKLOG)
