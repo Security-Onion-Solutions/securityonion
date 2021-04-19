@@ -42,6 +42,7 @@ if [ ! "$THEGREP" ]; then
         LOSS=$(echo 4 k $DROPPED $TOTAL / p | dc)
         echo "suridrop drop=$LOSS"
       fi
+    fi
 else
   echo "suridrop drop=0"
 fi

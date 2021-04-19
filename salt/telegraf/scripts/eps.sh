@@ -39,7 +39,7 @@ if [ ! "$THEGREP" ]; then
       fi
 
       echo "consumptioneps eps=${EVENTS%%.*}"
-
+    fi
 else
     exit 0
 fi

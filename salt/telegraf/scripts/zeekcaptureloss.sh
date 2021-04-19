@@ -44,6 +44,7 @@ if [ ! "$THEGREP" ]; then
         fi
       fi
       echo "$CURRENTTS" > $LASTCAPTURELOSSLOG
+    fi
 else
     exit 0
 fi

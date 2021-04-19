@@ -42,6 +42,7 @@ if [ ! "$THEGREP" ]; then
     TOTAL=$((CURRENTPACKETS - PASTPACKETS))
     LOSS=$(echo 4 k $DROPPED $TOTAL / p | dc)
     echo "zeekdrop drop=$LOSS"
+  fi
 else
   exit 0
 fi

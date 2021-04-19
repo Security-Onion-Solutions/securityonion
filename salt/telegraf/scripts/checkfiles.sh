@@ -19,7 +19,7 @@ THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
 if [ ! "$THEGREP" ]; then
 
-    FILES=$(ls -1x /host/nsm/faf/complete/ | wc -l)
+    FILES=$(ls -1x /host/nsm/strelka/unprocessed | wc -l)
 
     echo "faffiles files=$FILES"
 else

@@ -38,6 +38,7 @@ if [ ! "$THEGREP" ]; then
     fi
 
     echo "helixeps eps=${EVENTS%%.*}"
+  fi
 else
     exit 0
 fi
