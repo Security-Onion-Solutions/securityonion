@@ -210,9 +210,6 @@ if ! [[ -f $install_opt_file ]]; then
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
 			set_main_ip >> $setup_log 2>&1
 			compare_main_nic_ip
-			reset_proxy
-			collect_net_method
-			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
 			true
@@ -428,7 +425,7 @@ fi
 
 if [[ $is_airgap ]]; then
 	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-manual}
-	MANAGERUPDATES=${MANAGERUPDATES:-0} 
+	[[ ! $is_minion ]] && MANAGERUPDATES=${MANAGERUPDATES:-0} || MANAGERUPDATES=${MANAGERUPDATES:-1}
 fi
 
 # Start user prompts
