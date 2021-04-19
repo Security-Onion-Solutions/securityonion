@@ -203,7 +203,7 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ $option == "CONFIGURENETWORK" ]]; then
 			collect_hostname
 			network_init_whiptail
-			whiptail_management_interface_setup
+			whiptail_network_init_notice
 			network_init
 			printf '%s\n' \
 				"MNIC=$MNIC" \
@@ -302,15 +302,8 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
-	if [[ $is_minion ]]; then
-		collect_mngr_hostname
-	fi
-
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
-	fi
-
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		whiptail_network_init_notice
 		network_init
 	fi
 
@@ -324,12 +317,19 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $is_minion ]]; then
+		collect_mngr_hostname
+	fi
+
+	if [[ $is_minion ]]; then
 		add_mngr_ip_to_hosts
 	fi
 
 	if [[ $is_minion ]]; then
+		whiptail_ssh_key_copy_notice
 		copy_ssh_key >> $setup_log 2>&1
 	fi
+
+	
 
 	if [[ $is_minion ]] && ! (compare_versions); then
 		info "Installer version mismatch, downloading correct version from manager"

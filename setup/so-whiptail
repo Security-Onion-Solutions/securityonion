@@ -987,46 +987,6 @@ whiptail_management_nic() {
 
 }
 
-whiptail_management_interface_setup() {
-	[ -n "$TESTING" ] && return
-
-	local minion_msg
-	local msg
-	local line_count
-
-	if [[ $is_minion ]]; then
-		line_count=11
-		minion_msg="copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote"
-	else
-		line_count=9
-		minion_msg=""
-	fi
-
-	if [[ $is_iso ]]; then
-		if [[ $minion_msg != "" ]]; then
-			if [[ -f $net_init_file ]]; then
-				msg=$minion_msg
-			else
-				msg="initialize networking and $minion_msg"
-			fi
-		else
-			msg="initialize networking"
-		fi
-	else
-		msg=$minion_msg
-	fi
-
-	read -r -d '' message <<- EOM
-		Setup will now $msg.
-
-		Select OK to continue.
-	EOM
-
-	whiptail --title "Security Onion Setup" --msgbox "$message" $line_count 75
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
 whiptail_net_method() {
 	[ -n "$TESTING" ] && return
 
@@ -1096,6 +1056,20 @@ whiptail_net_setup_complete() {
 	whiptail --title "Security Onion Setup" \
 		--msgbox "Successfully set up networking, setup will now exit." 7 75
 	exit 0
+}
+
+whiptail_network_init_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now initialize networking.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 9 75
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_server() {
@@ -1757,6 +1731,20 @@ whiptail_so_allow() {
 	export ALLOW_ROLE='a'
 	export ALLOW_CIDR
 
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_ssh_key_copy_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 11 75
+	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
 
