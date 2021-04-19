@@ -15,35 +15,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-APP=helixeps
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-PREVCOUNTFILE='/tmp/helixevents.txt'
-EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.helix.events.out')"
+if [ ! "$THEGREP" ]; then
 
-if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+  PREVCOUNTFILE='/tmp/helixevents.txt'
+  EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.helix.events.out')"
 
-  if [ -f "$PREVCOUNTFILE" ]; then
-    EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
-  else
+  if [ ! -z "$EVENTCOUNTCURRENT" ]; then
+
+    if [ -f "$PREVCOUNTFILE" ]; then
+      EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
+    else
+      echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+      exit 0
+    fi
+
     echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
+    EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
+    if [ "$EVENTS" -lt 0 ]; then
+      EVENTS=0
+    fi
+
+    echo "helixeps eps=${EVENTS%%.*}"
+  fi
+else
     exit 0
-  fi
-
-  echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-  EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
-  if [ "$EVENTS" -lt 0 ]; then
-    EVENTS=0
-  fi
-
-  echo "helixeps eps=${EVENTS%%.*}"
-
 fi
-
-exit 0
