@@ -47,6 +47,7 @@ source ./so-variables
 # Parse command line arguments
 setup_type=$1
 automation=$2
+WHATWOULDYOUSAYYAHDOHERE=setup
 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
@@ -167,9 +168,7 @@ set_ssh_cmds $automated
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 export PATH=$PATH:$local_sbin
 
-set_network_dev_status_list
 set_palette >> $setup_log 2>&1
-
 
 # Kernel messages can overwrite whiptail screen #812
 # https://github.com/Security-Onion-Solutions/securityonion/issues/812
@@ -265,7 +264,7 @@ elif [ "$install_type" = 'ANALYST' ]; then
 fi
 
 # Check if this is an airgap install
-if [[ ( $is_manager || $is_import ) && $is_iso ]]; then
+if [[ $is_iso || $is_minion ]]; then
 	whiptail_airgap
 	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
 		is_airgap=true
@@ -291,11 +290,20 @@ if ! [[ -f $install_opt_file ]]; then
 
 	[[ -f $net_init_file ]] && whiptail_net_reinit && reinit_networking=true
 
-	if 	[[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		collect_hostname
+	fi
+
+	whiptail_node_description
+
+	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init_whiptail
 	else
 		source "$net_init_file"
+	fi
+
+	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
+		whiptail_management_interface_setup
 	fi
 
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
@@ -315,10 +323,6 @@ if ! [[ -f $install_opt_file ]]; then
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
-	fi
-
 	if [[ $is_minion ]]; then
 		add_mngr_ip_to_hosts
 	fi
@@ -334,7 +338,8 @@ if ! [[ -f $install_opt_file ]]; then
 			"MNIC=$MNIC" \
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
-			"MSRVIP=$MSRVIP" > "$install_opt_file"
+			"MSRVIP=$MSRVIP" \
+			"NODE_DESCRIPTION=\"$NODE_DESCRIPTION\"" > "$install_opt_file"
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
@@ -433,6 +438,7 @@ if [[ $is_helix ]]; then
 fi
 
 if [[ $is_helix || $is_sensor ]]; then
+	set_network_dev_status_list
 	whiptail_sensor_nics
 fi
 
@@ -534,6 +540,8 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
+[[ $is_iso ]] && collect_ntp_servers
+
 if [[ $is_node && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
@@ -550,7 +558,6 @@ if [[ $is_node && ! $is_eval ]]; then
 		LSPIPELINEWORKERS=$num_cpu_cores
 		LSPIPELINEBATCH=125
 		LSINPUTTHREADS=1
-		LSPIPELINEBATCH=125
 	fi
 fi
 
@@ -564,13 +571,18 @@ fi
 
 if [[ $is_manager || $is_import ]]; then collect_so_allow; fi
 
-whiptail_make_changes
+# This block sets REDIRECTIT which is used by a function outside the below subshell
+set_redirect >> $setup_log 2>&1
+
+if [[ $is_minion ]] && ! check_manager_state; then
+	echo "Manager was not in a good state" >> "$setup_log" 2>&1
+	whiptail_manager_error
+fi
+
+whiptail_end_settings
 
 # From here on changes will be made.
 echo "1" > /root/accept_changes
-
-# This block sets REDIRECTIT which is used by a function outside the below subshell
-set_redirect >> $setup_log 2>&1
 
 
 # Begin install
@@ -580,6 +592,8 @@ set_redirect >> $setup_log 2>&1
 
 	# Show initial progress message
 	set_progress_str 0 'Running initial configuration steps'
+
+	[[ ${#ntp_servers[@]} -gt 0 ]] && configure_ntp >> $setup_log 2>&1
 
 	reserve_ports
 	
@@ -613,6 +627,8 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	host_pillar >> $setup_log 2>&1
+	ntp_pillar >> $setup_log 2>&1
+
 
 	if [[ $is_minion || $is_import ]]; then
 		set_updates >> $setup_log 2>&1
@@ -630,7 +646,14 @@ set_redirect >> $setup_log 2>&1
 	fi
 
 	set_progress_str 2 'Updating packages'
-	update_packages >> $setup_log 2>&1
+	# Import the gpg keys
+	gpg_rpm_import >> $setup_log 2>&1
+	if [[ ! $is_airgap ]]; then
+	    securityonion_repo >> $setup_log 2>&1
+	    update_packages >> $setup_log 2>&1
+	else
+	    airgap_repo >> $setup_log 2>&1
+	fi
 
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
 		set_progress_str 3 'Generating sensor pillar'
@@ -888,6 +911,7 @@ set_redirect >> $setup_log 2>&1
 	set_progress_str 85 'Applying finishing touches'
 	filter_unused_nics >> $setup_log 2>&1
 	network_setup >> $setup_log 2>&1
+	so-ssh-harden >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_import ]]; then
 		set_progress_str 87 'Adding user to SOC'
@@ -942,6 +966,7 @@ else
 	} | whiptail_gauge_post_setup "Running post-installation steps..."
 
 	whiptail_setup_complete
+	[[ $setup_type != 'iso' ]] && whitpail_ssh_warning
 	echo "Post-installation steps have completed." >> $setup_log 2>&1
 fi
 

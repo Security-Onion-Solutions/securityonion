@@ -24,6 +24,7 @@ INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+WHATWOULDYOUSAYYAHDOHERE=soup
 
 add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -229,6 +230,13 @@ masterunlock() {
   fi
 }
 
+preupgrade_changes_2.3.50_repo() {
+    # We made repo changes in 2.3.50 and this prepares for that on upgrade
+    echo "Checking to see if 2.3.50 repo changes are needed."
+
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50_repo
+}
+
 preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
@@ -238,6 +246,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
 }
 
 postupgrade_changes() {
@@ -408,6 +417,36 @@ up_2.3.2X_to_2.3.30() {
       sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
   fi
   check_log_size_limit
+  INSTALLEDVERSION=2.3.30
+}
+
+up_2.3.3X_to_2.3.50_repo() {
+  echo "Performing 2.3.50 repo actions."
+  if [[ "$OS" == "centos" ]]; then
+    # Import GPG Keys
+    gpg_rpm_import
+
+    if [ $is_airgap -eq 1 ]; then
+      echo "Deleting unneeded repo files."
+      DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+
+      for DELREPO in "${DELREPOS[@]}"; do
+        if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+          echo "Deleting $DELREPO.repo"
+          rm -f "/etc/yum.repos.d/$DELREPO.repo"
+        fi
+      done
+
+      # Copy the new repo file if not airgap
+      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+      yum clean all
+      yum repolist
+    fi
+  fi
+}
+
+up_2.3.3X_to_2.3.50() {
+  INSTALLEDVERSION=2.3.50
 }
 
 verify_upgradespace() {
@@ -502,22 +541,18 @@ upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
   # If CentOS
-  if [ "$OS" == "centos" ]; then
+  if [[ $OS == 'centos' ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages and restarting services."
     echo ""
-    if [ $is_airgap -eq 0 ]; then
-      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
-    else 
-      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-    fi
+    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
   # Else do Ubuntu things
-  elif [ "$OS" == "ubuntu" ]; then
+  elif [[ $OS == 'ubuntu' ]]; then
     echo "Removing apt hold for Salt."
     echo ""
     apt-mark unhold "salt-common"
@@ -628,6 +663,7 @@ else
   update_registry
   update_docker_containers "soup"
 fi
+
 echo ""
 echo "Stopping Salt Minion service."
 systemctl stop salt-minion
@@ -637,6 +673,8 @@ echo ""
 echo "Stopping Salt Master service."
 systemctl stop salt-master
 echo ""
+
+preupgrade_changes_2.3.50_repo
 
 # Does salt need upgraded. If so update it.
 if [ "$UPGRADESALT" == "1" ]; then
@@ -652,7 +690,8 @@ fi
 echo "Checking if Salt was upgraded."
 echo ""
 # Check that Salt was upgraded
-if [[ $(salt --versions-report | grep Salt: | awk {'print $2'}) != "$NEWSALTVERSION" ]]; then
+SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk {'print $2'})
+if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
   echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
   echo "Once the issue is resolved, run soup again."
   echo "Exiting."
