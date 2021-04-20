@@ -61,6 +61,8 @@ acngcopyconf:
   file.managed:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
     - source: salt://manager/files/acng/acng.conf
+    - template: jinja
+    - show_changes: False
 
 # Install the apt-cacher-ng container
 so-aptcacherng:

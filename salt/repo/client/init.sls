@@ -63,6 +63,7 @@ yumconf:
     - source: salt://repo/client/files/centos/yum.conf.jinja
     - mode: 644
     - template: jinja
+    - show_changes: False
 {% endif %}
 
 cleanyum:
