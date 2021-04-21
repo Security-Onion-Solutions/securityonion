@@ -2410,15 +2410,13 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $MANAGERUPDATES != 1 ]]; then
-		if [ "$OS" = 'centos' ]; then
-			echo "proxy=$so_proxy" >> /etc/yum.conf
-		else
-			# Set it up so the updates roll through the manager
-			printf '%s\n'\
-				"Acquire::http::Proxy \"$so_proxy\";"\
-				"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
-		fi
+	if [ "$OS" = 'centos' ]; then
+		echo "proxy=$so_proxy" >> /etc/yum.conf
+	else
+		# Set it up so the updates roll through the manager
+		printf '%s\n'\
+			"Acquire::http::Proxy \"$so_proxy\";"\
+			"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
 	fi
 
 	# Set global git proxy
@@ -2687,7 +2685,11 @@ set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
 			if [[ ! $is_airgap ]] && ! ( grep -q "$MSRV" /etc/yum.conf); then
-				echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+				if grep -q "proxy="; then
+					sed -i "s/proxy=.*/proxy=http:\/\/$MSRV:3142/"
+				else
+					echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+				fi
 			fi
 		else
 			# Set it up so the updates roll through the manager
