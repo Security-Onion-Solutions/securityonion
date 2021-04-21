@@ -13,6 +13,10 @@
 include:
   - salt.minion
 
+python3-influxdb:
+  pkg.installed:
+    - name: python3-influxdb
+
 # Influx DB
 influxconfdir:
   file.directory:
@@ -62,6 +66,7 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+
 telegraf_database:
   influxdb_database.present:
     - name: telegraf
@@ -72,6 +77,7 @@ telegraf_database:
     - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
+      - pkg: python3-influxdb
 
 {% for rp in influxdb.retention_policies.keys() %}
 {{rp}}_retention_policy:
@@ -90,27 +96,8 @@ telegraf_database:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_retention_policy.present_patch
+      - pkg: python3-influxdb
 {% endfor %}
-
-{#
-{% for dest_rp in influxdb.downsample.keys() %}
-  {% for measurement in influxdb.downsample[dest_rp].measurements %}
-so_downsample_{{measurement}}_cq:
-  influxdb_continuous_query.present:
-    - name: so_downsample_{{measurement}}_cq
-    - database: telegraf
-    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}}), *
-    - ssl: True
-    - verify_ssl: /etc/pki/ca.crt
-    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
-    - influxdb_host: {{ MANAGER }}
-    - require:
-      - docker_container: so-influxdb
-      - influxdb_database: telegraf_database
-      - file: influxdb_continuous_query.present_patch
-  {% endfor %}
-{% endfor %}
-#}
 
 {% for dest_rp in influxdb.downsample.keys() %}
 so_downsample_cq:
@@ -126,6 +113,7 @@ so_downsample_cq:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
+      - pkg: python3-influxdb
 {% endfor %}
 
 {% endif %}
