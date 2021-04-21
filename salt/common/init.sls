@@ -242,7 +242,7 @@ sostatus_log:
 '/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
   cron.present:
     - user: root
-    - minute: '*/5'
+    - minute: '*/1'
     - hour: '*'
     - daymonth: '*'
     - month: '*'

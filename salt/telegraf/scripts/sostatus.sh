@@ -14,20 +14,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-APP=sostatus
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
-SOSTATUSLOG=/var/log/sostatus/status.log
-SOSTATUSSTATUS=$(cat /var/log/sostatus/status.log)
+if [ ! "$THEGREP" ]; then
 
-if [ -f "$SOSTATUSLOG" ]; then
-    echo "sostatus status=$SOSTATUSSTATUS"
-else
+    SOSTATUSLOG=/var/log/sostatus/status.log
+    SOSTATUSSTATUS=$(cat /var/log/sostatus/status.log)
+
+    if [ -f "$SOSTATUSLOG" ]; then
+        echo "sostatus status=$SOSTATUSSTATUS"
+    else
+        exit 0
+    fi
+else 
     exit 0
 fi
