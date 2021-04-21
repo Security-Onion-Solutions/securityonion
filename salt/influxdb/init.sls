@@ -110,7 +110,7 @@ so_downsample_cq:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
-      - sls: python3-influxdb
+      - sls: salt.python3-influxdb
 {% endfor %}
 
 {% endif %}
