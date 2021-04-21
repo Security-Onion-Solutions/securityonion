@@ -12,10 +12,7 @@
 
 include:
   - salt.minion
-
-python3-influxdb:
-  pkg.installed:
-    - name: python3-influxdb
+  - salt.python3-influxdb
 
 # Influx DB
 influxconfdir:
@@ -77,7 +74,7 @@ telegraf_database:
     - influxdb_host: {{ MANAGER }}
     - require:
       - docker_container: so-influxdb
-      - pkg: python3-influxdb
+      - sls: salt.python3-influxdb
 
 {% for rp in influxdb.retention_policies.keys() %}
 {{rp}}_retention_policy:
@@ -96,7 +93,7 @@ telegraf_database:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_retention_policy.present_patch
-      - pkg: python3-influxdb
+      - sls: salt.python3-influxdb
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
@@ -113,7 +110,7 @@ so_downsample_cq:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
-      - pkg: python3-influxdb
+      - sls: python3-influxdb
 {% endfor %}
 
 {% endif %}
