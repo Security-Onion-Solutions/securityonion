@@ -1669,7 +1669,6 @@ manager_global() {
 		"  fleet_ip: 'N/A'"\
 		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
-		"  managerupdate: $MANAGERUPDATES"\
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
 		"sensoroni:"\
@@ -1865,9 +1864,16 @@ patch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	if [[ $MANAGERUPDATES == 1 ]]; then
+		local source="manager"
+	else
+		local source="direct"
+	fi
+
 	printf '%s\n'\
 		"patch:"\
 		"  os:"\
+		"    source: $source"\
 		"    schedule_name: '$PATCHSCHEDULENAME'"\
 		"    enabled: True"\
 		"    splay: 300"\
