@@ -616,7 +616,14 @@ whiptail_end_settings() {
 		fi
 	fi
 
-	whiptail --title "The following options have been set, would you like to proceed?" --yesno "$end_msg" 24 75 --scrolltext
+	local msg
+	read -r -d '' msg <<-EOM
+	$end_msg
+
+	Press TAB to select yes or no.
+	EOM
+
+	whiptail --title "The following options have been set, would you like to proceed?" --yesno "$msg" 24 75 --scrolltext
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -987,44 +994,65 @@ whiptail_management_nic() {
 
 }
 
-whiptail_management_interface_setup() {
+whiptail_net_method() {
 	[ -n "$TESTING" ] && return
 
-	local minion_msg
-	local msg
-	local line_count
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+
+	read -r -d '' options_msg <<- EOM
+	"Direct" - Internet requests connect directly to the Internet.
+
+	EOM
+	local options=(
+		" Direct " ""
+	)
+	local proxy_desc="proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment."
 
 	if [[ $is_minion ]]; then
-		line_count=11
-		minion_msg="copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote"
+		read -r -d '' options_msg <<- EOM
+		${options_msg}
+
+		"Direct + Manager" - all traffic passes to the Internet normally, but ${pkg_mngr} updates will instead be pulled from ${mngr_article} manager. 
+
+		"Proxy" - ${proxy_desc}
+
+		"Proxy + Manager" - proxy all traffic from the "Proxy" option except ${pkg_mngr} updates, which will instead pull from the manager.
+		EOM
+		
+		options+=(
+			" Direct + Manager " ""
+			" Proxy " ""
+			" Proxy + Manager " ""
+		)
+		local height=25
 	else
-		line_count=9
-		minion_msg=""
+		read -r -d '' options_msg <<- EOM
+			${options_msg}
+
+			"Proxy" - ${proxy_desc}
+		EOM
+		options+=(
+			" Proxy " ""
+		)
+		local height=17
 	fi
 
-	if [[ $is_iso ]]; then
-		if [[ $minion_msg != "" ]]; then
-			if [[ -f $net_init_file ]]; then
-				msg=$minion_msg
-			else
-				msg="initialize networking and $minion_msg"
-			fi
-		else
-			msg="initialize networking"
-		fi
-	else
-		msg=$minion_msg
-	fi
+	local msg
+	read -r -d '' msg <<- EOM
+	How would you like to connect to the Internet? 
 
-	read -r -d '' message <<- EOM
-		Setup will now $msg.
-
-		Select OK to continue.
+	$options_msg
 	EOM
 
-	whiptail --title "Security Onion Setup" --msgbox "$message" $line_count 75
+	local option_count=$(( ${#options[@]} / 2 ))
+
+	network_traffic=$(whiptail --title "Security Onion Setup" --menu "$msg" $height 75 $option_count "${options[@]}" 3>&1 1>&2 2>&3)
+
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+	
+	network_traffic=$(echo "${network_traffic^^}" | tr -d ' ' | tr '+' '_')
 }
 
 whiptail_net_setup_complete() {
@@ -1033,6 +1061,20 @@ whiptail_net_setup_complete() {
 	whiptail --title "Security Onion Setup" \
 		--msgbox "Successfully set up networking, setup will now exit." 7 75
 	exit 0
+}
+
+whiptail_network_init_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now initialize networking.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 9 75
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_server() {
@@ -1159,29 +1201,6 @@ whiptail_manager_error() {
 	EOM
 
 	whiptail --title "Security Onion Setup" --yesno "$msg" 13 75 || whiptail_check_exitstatus 1
-}
-
-whiptail_manager_updates() {
-
-	[ -n "$TESTING" ] && return
-
-	local update_string
-	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
-	"How would you like to download OS package updates for your grid?" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates" ON \
-	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	case "$update_string" in
-		'MANAGER')
-			export MANAGERUPDATES='1'
-			;;
-		*)
-			export MANAGERUPDATES='0'
-			;;
-	esac
-
 }
 
 whiptail_manager_updates_warning() {
@@ -1485,7 +1504,9 @@ whiptail_patch_schedule_select_hours() {
 whiptail_proxy_ask() {
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Do you want to set a proxy server for this installation?" 7 60 --defaultno
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+	whiptail --title "Security Onion Setup" --yesno "Do you want to proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment?" 9 65 --defaultno
 }
 
 whiptail_proxy_addr() {
@@ -1715,6 +1736,20 @@ whiptail_so_allow() {
 	export ALLOW_ROLE='a'
 	export ALLOW_CIDR
 
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_ssh_key_copy_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ED25519 certificate and enter the password for soremote.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 11 75
+	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
 

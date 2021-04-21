@@ -203,16 +203,13 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ $option == "CONFIGURENETWORK" ]]; then
 			collect_hostname
 			network_init_whiptail
-			whiptail_management_interface_setup
+			whiptail_network_init_notice
 			network_init
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
 			set_main_ip >> $setup_log 2>&1
 			compare_main_nic_ip
-			reset_proxy
-			collect_proxy
-			[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 			whiptail_net_setup_complete
 		else
 			true
@@ -263,19 +260,19 @@ elif [ "$install_type" = 'ANALYST' ]; then
 	is_analyst=true
 fi
 
-# Check if this is an airgap install
-if [[ $is_iso || $is_minion ]]; then
-	whiptail_airgap
-	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-		is_airgap=true
-	fi
-fi
-
 if [[ $is_manager || $is_import ]]; then
 	check_elastic_license
 fi
 
 if ! [[ -f $install_opt_file ]]; then
+	# Check if this is an airgap install
+	if [[ ( $is_manager || $is_import || $is_minion ) && $is_iso ]]; then
+		whiptail_airgap
+		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+			is_airgap=true
+		fi
+	fi
+
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -302,11 +299,8 @@ if ! [[ -f $install_opt_file ]]; then
 		source "$net_init_file"
 	fi
 
-	if [[ $is_minion ]] || [[ $reinit_networking ]] || [[ $is_iso ]] && ! [[ -f $net_init_file ]]; then
-		whiptail_management_interface_setup
-	fi
-
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
+		whiptail_network_init_notice
 		network_init
 	fi
 
@@ -315,19 +309,17 @@ if ! [[ -f $install_opt_file ]]; then
 
 	if [[ $is_minion ]]; then
 		collect_mngr_hostname
+		add_mngr_ip_to_hosts
 	fi
 
 	reset_proxy
 	if [[ -z $is_airgap ]]; then
-		collect_proxy
+		collect_net_method
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]]; then
-		add_mngr_ip_to_hosts
-	fi
-
-	if [[ $is_minion ]]; then
+		whiptail_ssh_key_copy_notice
 		copy_ssh_key >> $setup_log 2>&1
 	fi
 
@@ -339,6 +331,7 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" \
+			"is_airgap=$is_airgap" \
 			"NODE_DESCRIPTION=\"$NODE_DESCRIPTION\"" > "$install_opt_file"
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
@@ -428,7 +421,7 @@ fi
 
 if [[ $is_airgap ]]; then
 	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-manual}
-	MANAGERUPDATES=${MANAGERUPDATES:-0} 
+	[[ ! $is_minion ]] && MANAGERUPDATES=${MANAGERUPDATES:-0} || MANAGERUPDATES=${MANAGERUPDATES:-1}
 fi
 
 # Start user prompts
@@ -497,13 +490,6 @@ fi
 if [[ $is_manager || $is_import ]]; then
 	collect_webuser_inputs
 	get_redirect
-fi
-
-if [[ ! $is_airgap && ( $is_distmanager || ( $is_sensor || $is_node || $is_fleet_standalone ) && ! $is_eval ) ]]; then
-	whiptail_manager_updates
-	if [[ $setup_type == 'network' && $MANAGERUPDATES == 1 ]]; then
-		whiptail_manager_updates_warning
-	fi
 fi
 
 if [[ $is_distmanager ]]; then
@@ -648,6 +634,8 @@ echo "1" > /root/accept_changes
 	set_progress_str 2 'Updating packages'
 	# Import the gpg keys
 	gpg_rpm_import >> $setup_log 2>&1
+	info "Disabling fastestmirror"
+	[[ $OS == 'centos' ]] && disable_fastestmirror
 	if [[ ! $is_airgap ]]; then
 	    securityonion_repo >> $setup_log 2>&1
 	    update_packages >> $setup_log 2>&1
