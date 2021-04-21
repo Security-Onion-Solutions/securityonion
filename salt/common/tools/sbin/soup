@@ -161,6 +161,34 @@ check_log_size_limit() {
   fi
 }
 
+check_os_updates() {
+  # Check to see if there are OS updates
+  NEEDUPDATES="We have detected missing operating system (OS) updates. Do you want to install these OS updates now? This could take a while depending on the size of your grid and how many packages are missing, but it is recommended to keep your system updated."
+  if [[ $OS == 'ubuntu' ]]; then
+    OSUPDATES=$(apt list --upgradeable | grep -v "^Listing..." | grep -v "^docker-ce" | grep -v "^wazuh-" | grep -v "^salt-" | wc -l)
+  else
+    OSUPDATES=$(yum -q list updates | wc -l)
+  fi
+  if [[ "$OSUPDATES" -gt 0 ]]; then
+      echo $NEEDUPDATES
+      echo ""
+      read -p "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+
+      if [[ "$confirm" == [cC] ]]; then
+          echo "Continuing without updating packages"
+      elif [[ "$confirm" == [uU] ]]; then
+          echo "Applying Grid Updates"
+          salt \* -b 5 state.apply patch.os queue=True
+      else
+          echo "Exiting soup"
+          exit 0
+      fi
+  else
+      echo "Looks like you have an updated OS"
+  fi
+    
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
@@ -632,7 +660,7 @@ else
   rm -rf $UPDATE_DIR
   clone_to_tmp
 fi
-
+check_os_updates
 echo ""
 echo "Verifying we have the latest soup script."
 verify_latest_update_script
@@ -821,8 +849,6 @@ SOUP - Security Onion UPdater
 Please review the following for more information about the update process and recent updates:
 https://docs.securityonion.net/soup
 https://blog.securityonion.net
-
-Please note that soup only updates Security Onion components and does NOT update the underlying operating system (OS). When you installed Security Onion, there was an option to automatically update the OS packages. If you did not enable this option, then you will want to ensure that the OS is fully updated before running soup.
 
 Press Enter to continue or Ctrl-C to cancel.
 
