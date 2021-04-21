@@ -95,7 +95,6 @@ commonpkgs:
       - python3-mysqldb
       - python3-packaging
       - git
-      - patch
 
 heldpackages:
   pkg.installed:
@@ -135,7 +134,6 @@ commonpkgs:
       - lvm2
       - openssl
       - git
-      - patch
 
 heldpackages:
   pkg.installed:

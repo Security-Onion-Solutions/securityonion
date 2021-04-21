@@ -7,6 +7,7 @@
 
 include:
   - salt
+  - salt.helper_packages
   - systemd.reload
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
