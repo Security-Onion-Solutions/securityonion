@@ -278,6 +278,14 @@ backupdir:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+{% else %}
+sostatus_log:
+  file.managed:
+    - name: /etc/soversion
+    - source: salt://common/files/soversion
+    - mode: 644
+    - template: jinja
+    
 {% endif %}
 
 # Manager daemon.json
