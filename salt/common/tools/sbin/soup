@@ -818,13 +818,12 @@ unmount_update
 thehive_maint
 
 if [ "$UPGRADESALT" == "1" ]; then
-  echo ""
-  echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   if [ $is_airgap -eq 0 ]; then
-    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+    echo ""
+    echo "Cleaning repos on remote Security Onion nodes."
+    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+    echo ""
   fi
-  salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.highstate queue=True
-  echo ""
 fi
 
 check_sudoers
