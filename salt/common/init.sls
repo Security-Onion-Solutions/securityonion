@@ -69,6 +69,13 @@ salttmp:
     - group: 939
     - makedirs: True
 
+# VIM config
+vimconfig:
+  file.managed:
+    - name: /root/.vimrc
+    - source: salt://common/files/vimrc
+    - replace: False
+
 # Install common packages
 {% if grains['os'] != 'CentOS' %}     
 commonpkgs:
@@ -95,6 +102,8 @@ commonpkgs:
       - python3-mysqldb
       - python3-packaging
       - git
+      - vim
+
 heldpackages:
   pkg.installed:
     - pkgs:
@@ -133,6 +142,7 @@ commonpkgs:
       - lvm2
       - openssl
       - git
+      - vim-enhanced
 
 heldpackages:
   pkg.installed:
