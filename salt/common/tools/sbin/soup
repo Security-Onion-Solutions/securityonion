@@ -475,6 +475,34 @@ up_2.3.3X_to_2.3.50_repo() {
 }
 
 up_2.3.3X_to_2.3.50() {
+  
+  cat <<EOF > /tmp/supersed.txt
+/so-zeek:/ {
+  p;
+  n;
+  /shards:/ {
+    p;
+    n;
+    /warm:/ {
+      p;
+      n;
+      /close:/ {
+        s/close: 365/close: 45/;
+        p;
+        n;
+        /delete:/ {
+          s/delete: 45/delete: 365/;
+          p;
+          d;
+        }
+      }
+    }
+  }
+}
+p;
+EOF
+  sed -n -i -f /tmp/supersed.txt /opt/so/saltstack/local/global.sls
+  rm /tmp/supersed.txt
   INSTALLEDVERSION=2.3.50
 }
 
