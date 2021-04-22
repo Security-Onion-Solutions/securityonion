@@ -2,6 +2,7 @@
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
 {% from 'salt/map.jinja' import SALTNOTHELD %}
+{% from 'salt/map.jinja' import SALTPACKAGES %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
 {% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
@@ -15,7 +16,10 @@ include:
 unhold_salt_packages:
   module.run:
     - pkg.unhold:
-      - name: 'salt-*'
+      - pkgs:
+{% for package in SALTPACKAGES %}
+        - {{ package }}
+{% endfor %}
 {% endif %}
 
 install_salt_minion:
@@ -33,7 +37,10 @@ install_salt_minion:
 hold_salt_packages:
   module.run:
     - pkg.hold:
-      - name: 'salt-*'
+      - pkgs:
+{% for package in SALTPACKAGES %}
+        - {{ package }}
+{% endfor %}
 {% endif %}
 
 set_log_levels:
