@@ -11,7 +11,7 @@ include:
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
-{% if SALTNOTHELD == 0 %}
+{% if SALTNOTHELD | int == 0 %}
 unhold_salt_packages:
   module.run:
     - pkg.unhold:
@@ -29,7 +29,7 @@ install_salt_minion:
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
 
-{% if SALTNOTHELD == 1 %}
+{% if SALTNOTHELD | int == 1 %}
 hold_salt_packages:
   module.run:
     - pkg.hold:
