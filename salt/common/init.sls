@@ -279,7 +279,7 @@ backupdir:
     - month: '*'
     - dayweek: '*'
 {% else %}
-sostatus_log:
+soversionfile:
   file.managed:
     - name: /etc/soversion
     - source: salt://common/files/soversion
