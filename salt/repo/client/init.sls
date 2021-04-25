@@ -16,8 +16,9 @@ airgap_repo:
   pkgrepo.managed:
     - humanname: Airgap Repo
     - baseurl: https://{{ MANAGER }}/repo
-    - gpgcheck: 1
+    - gpgcheck: 0
     - sslverify: 0
+
 {% endif %}
 
 # from airgap and common
