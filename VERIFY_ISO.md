@@ -1,13 +1,13 @@
-### 2.3.50 ISO image built on 2021/04/25
+### 2.3.50 ISO image built on 2021/04/26
 
 ### Download and Verify
 
 2.3.50 ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-2.3.50.iso
 
-MD5: 8B74AF6F29DB156E3D467B25E1D46449  
-SHA1: 99A0A96C5F206471E4F1D26A8A2D577A8ECDAED5  
-SHA256: CA0EE3793FC1356FB5C50D36107FA3BB39DE6C40EBE6C7C90075D5C189BB3083 
+MD5: 1FF774520D3B1323D83BBF90BD9EFACE  
+SHA1: 0F323335459A11850B68BB82E062F581225303EE  
+SHA256: 2AACD535E0EACE17E8DC7B560353D43111A287C59C23827612B720D742DFD994 
 
 Signature for ISO image:  
 https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.50.iso.sig
@@ -39,7 +39,7 @@ gpg --verify securityonion-2.3.50.iso.sig securityonion-2.3.50.iso
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Sun 25 Apr 2021 01:01:35 PM EDT using RSA key ID FE507013
+gpg: Signature made Mon 26 Apr 2021 03:54:51 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
