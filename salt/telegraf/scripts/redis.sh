@@ -15,17 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
-APP=redis
-lf=/tmp/$APP-pidLockFile
-# create empty lock file if none exists
-cat /dev/null >> $lf
-read lastPID < $lf
-# if lastPID is not null and a process with that pid exists , exit
-[ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
-echo $$ > $lf
+if [ ! "$THEGREP" ]; then
 
-UNPARSED=$(redis-cli llen logstash:unparsed | awk '{print $1}')
-PARSED=$(redis-cli llen logstash:parsed | awk '{print $1}')
+    UNPARSED=$(redis-cli llen logstash:unparsed | awk '{print $1}')
+    PARSED=$(redis-cli llen logstash:parsed | awk '{print $1}')
 
-echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED"
+    echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED"
+else
+   exit 0
+fi

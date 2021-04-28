@@ -49,6 +49,11 @@ sosaltstackperms:
     - gid: 939
     - dir_mode: 770
 
+so_log_perms:
+  file.directory:
+    - name: /opt/so/log
+    - dir_mode: 755
+
 # Create a state directory
 statedir:
   file.directory:
@@ -64,20 +69,12 @@ salttmp:
     - group: 939
     - makedirs: True
 
-# Install epel
-{% if grains['os'] == 'CentOS' %}
-repair_yumdb:
-  cmd.run:
-    - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
-    - onlyif:
-      - 'yum check-update 2>&1 | grep "Error: rpmdb open failed"'
-
-epel:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - epel-release
-{% endif %}
+# VIM config
+vimconfig:
+  file.managed:
+    - name: /root/.vimrc
+    - source: salt://common/files/vimrc
+    - replace: False
 
 # Install common packages
 {% if grains['os'] != 'CentOS' %}     
@@ -105,6 +102,8 @@ commonpkgs:
       - python3-mysqldb
       - python3-packaging
       - git
+      - vim
+
 heldpackages:
   pkg.installed:
     - pkgs:
@@ -143,6 +142,7 @@ commonpkgs:
       - lvm2
       - openssl
       - git
+      - vim-enhanced
 
 heldpackages:
   pkg.installed:
@@ -235,6 +235,30 @@ commonlogrotateconf:
     - month: '*'
     - dayweek: '*'
 
+# Create the status directory
+sostatusdir:
+  file.directory:
+    - name: /opt/so/log/sostatus
+    - user: 0
+    - group: 0
+    - makedirs: True
+
+sostatus_log:
+  file.managed:
+    - name: /opt/so/log/sostatus/status.log
+    - mode: 644
+    
+# Install sostatus check cron
+'/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
+  cron.present:
+    - user: root
+    - minute: '*/1'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
 # Lock permissions on the backup directory
 backupdir:
@@ -254,6 +278,14 @@ backupdir:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+{% else %}
+soversionfile:
+  file.managed:
+    - name: /etc/soversion
+    - source: salt://common/files/soversion
+    - mode: 644
+    - template: jinja
+    
 {% endif %}
 
 # Manager daemon.json
@@ -271,9 +303,10 @@ docker:
       - file: docker_daemon
 
 # Reserve OS ports for Docker proxy in case boot settings are not already applied/present
+# 55000 = Wazuh, 57314 = Strelka, 47760-47860 = Zeek
 dockerapplyports:
     cmd.run:
-      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"; fi
+      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314,47760-47860"; fi
 
 # Reserve OS ports for Docker proxy
 dockerreserveports:
