@@ -478,6 +478,19 @@ collect_mtu() {
 	done
 }
 
+collect_net_method() {
+	whiptail_net_method
+
+	if [[ "$network_traffic" == *"_MANAGER" ]]; then
+		whiptail_manager_updates_warning
+		MANAGERUPDATES=1
+	fi
+
+	if [[ "$network_traffic" == "PROXY"* ]]; then
+		collect_proxy no_ask
+	fi
+}
+
 collect_node_es_heap() {
 	whiptail_node_es_heap "$ES_HEAP_SIZE"
 }
@@ -580,7 +593,9 @@ collect_patch_schedule_name_import() {
 
 collect_proxy() {
 	[[ -n $TESTING ]] && return
-	collect_proxy_details || return
+	local ask=${1:-true}
+
+	collect_proxy_details "$ask" || return
 	while ! proxy_validate; do
 		if whiptail_invalid_proxy; then
 			collect_proxy_details no_ask
@@ -1654,7 +1669,6 @@ manager_global() {
 		"  fleet_ip: 'N/A'"\
 		"  sensoronikey: '$SENSORONIKEY'"\
 		"  wazuh: $WAZUH"\
-		"  managerupdate: $MANAGERUPDATES"\
 		"  imagerepo: '$IMAGEREPO'"\
 		"  pipeline: 'redis'"\
 		"sensoroni:"\
@@ -1850,9 +1864,16 @@ patch_pillar() {
 
 	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
 
+	if [[ $MANAGERUPDATES == 1 ]]; then
+		local source="manager"
+	else
+		local source="direct"
+	fi
+
 	printf '%s\n'\
 		"patch:"\
 		"  os:"\
+		"    source: '$source'"\
 		"    schedule_name: '$PATCHSCHEDULENAME'"\
 		"    enabled: True"\
 		"    splay: 300"\
@@ -2306,24 +2327,25 @@ secrets_pillar(){
 securityonion_repo() {
 	# Remove all the current repos
 	if [[ "$OS" == "centos" ]]; then
-	    if [[ "$INTERWEBS" == "AIRGAP" ]]; then
-		    echo "This is airgap I don't need to add this repo"
+		if [[ "$INTERWEBS" == "AIRGAP" ]]; then
+			echo "This is airgap I don't need to add this repo"
 		else
-	        mkdir -p /root/oldrepos
-	        mv -v /etc/yum.repos.d/* /root/oldrepos/
+			mkdir -p /root/oldrepos
+			mv -v /etc/yum.repos.d/* /root/oldrepos/
 			ls -la /etc/yum.repos.d/
-		    rm -rf /etc/yum.repos.d
+			rm -rf /etc/yum.repos.d
 			yum clean all
 			yum repolist all
 			mkdir -p /etc/yum.repos.d
-		    if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-		        cp -f ../salt/repo/client/files/centos/securityonioncache.repo /etc/yum.repos.d/
-		    else
-		        cp -f ../salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
-		    fi
+			if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
+				cp -f ../salt/repo/client/files/centos/securityonioncache.repo /etc/yum.repos.d/
+			else
+				cp -f ../salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+			fi
+			yum repolist all
 		fi
 	else
-        echo "This is Ubuntu"
+		echo "This is Ubuntu"
 	fi
 }
 
@@ -2669,10 +2691,12 @@ set_redirect() {
 set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
 		if [ "$OS" = 'centos' ]; then
-		    if [[ ! $is_airgap ]]; then
-			    if ! grep -q "$MSRV" /etc/yum.conf; then
-				    echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
-			    fi
+			if [[ ! $is_airgap ]] && ! ( grep -q "$MSRV" /etc/yum.conf); then
+				if grep -q "proxy=" /etc/yum.conf; then
+					sed -i "s/proxy=.*/proxy=http:\/\/$MSRV:3142/" /etc/yum.conf
+				else
+					echo "proxy=http://$MSRV:3142" >> /etc/yum.conf
+				fi
 			fi
 		else
 			# Set it up so the updates roll through the manager

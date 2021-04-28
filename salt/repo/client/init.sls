@@ -16,8 +16,9 @@ airgap_repo:
   pkgrepo.managed:
     - humanname: Airgap Repo
     - baseurl: https://{{ MANAGER }}/repo
-    - gpgcheck: 1
+    - gpgcheck: 0
     - sslverify: 0
+
 {% endif %}
 
 # from airgap and common
@@ -63,6 +64,7 @@ yumconf:
     - source: salt://repo/client/files/centos/yum.conf.jinja
     - mode: 644
     - template: jinja
+    - show_changes: False
 {% endif %}
 
 cleanyum:

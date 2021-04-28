@@ -132,8 +132,9 @@ influxkeyperms:
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 rediskeyperms:
   file.managed:
@@ -325,8 +326,9 @@ miniokeyperms:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
     - timeout: 30
-    - retry: 5
-    - interval: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 /etc/pki/elasticsearch.crt:
   x509.certificate_managed:

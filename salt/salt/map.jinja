@@ -3,13 +3,15 @@
 
 {% if grains.os == 'Ubuntu' %}
   {% set SPLITCHAR = '+' %}
-  {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep salt-* ; echo $?', python_shell=True) %}
+  {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep -q salt ; echo $?', python_shell=True) %}
+  {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion'] %}
   {% set SALT_STATE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/states' %}
   {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/modules' %}
   {% set PYTHON3INFLUX= 'python3-influxdb' %}
 {% else %}
   {% set SPLITCHAR = '-' %}
-  {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep salt-* ; echo $?', python_shell=True) %}
+  {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep -q salt ; echo $?', python_shell=True) %}
+  {% set SALTPACKAGES = ['salt', 'salt-master', 'salt-minion'] %}
   {% set SALT_STATE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/states' %}
   {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/modules' %}
   {% set PYTHON3INFLUX= 'securityonion-python3-influxdb' %}
@@ -19,9 +21,9 @@
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower in ['centos', 'redhat'] %}
-      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -X -s 120 -r -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*"' %}
+      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -X -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
   {% elif grains.os|lower == 'ubuntu' %}
-    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION ~ ' && apt-mark hold salt-common && apt-mark hold salt-minion' %}
+    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION %}
   {% endif %}
 {% else %}
   {% set UPGRADECOMMAND = 'echo Already running Salt Minion version ' ~ SALTVERSION %}

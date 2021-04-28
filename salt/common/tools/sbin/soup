@@ -453,18 +453,18 @@ up_2.3.3X_to_2.3.50_repo() {
   if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
     gpg_rpm_import
+    echo "Disabling fastestmirror."
+    disable_fastestmirror
+    echo "Deleting unneeded repo files."
+    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
 
+    for DELREPO in "${DELREPOS[@]}"; do
+      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+        echo "Deleting $DELREPO.repo"
+        rm -f "/etc/yum.repos.d/$DELREPO.repo"
+      fi
+    done
     if [ $is_airgap -eq 1 ]; then
-      echo "Deleting unneeded repo files."
-      DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
-
-      for DELREPO in "${DELREPOS[@]}"; do
-        if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
-          echo "Deleting $DELREPO.repo"
-          rm -f "/etc/yum.repos.d/$DELREPO.repo"
-        fi
-      done
-
       # Copy the new repo file if not airgap
       cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
       yum clean all
@@ -474,6 +474,34 @@ up_2.3.3X_to_2.3.50_repo() {
 }
 
 up_2.3.3X_to_2.3.50() {
+  
+  cat <<EOF > /tmp/supersed.txt
+/so-zeek:/ {
+  p;
+  n;
+  /shards:/ {
+    p;
+    n;
+    /warm:/ {
+      p;
+      n;
+      /close:/ {
+        s/close: 365/close: 45/;
+        p;
+        n;
+        /delete:/ {
+          s/delete: 45/delete: 365/;
+          p;
+          d;
+        }
+      }
+    }
+  }
+}
+p;
+EOF
+  sed -n -i -f /tmp/supersed.txt /opt/so/saltstack/local/pillar/global.sls
+  rm /tmp/supersed.txt
   INSTALLEDVERSION=2.3.50
 }
 
@@ -687,6 +715,9 @@ echo ""
 echo "Updating dockers to $NEWVERSION."
 if [ $is_airgap -eq 0 ]; then
   airgap_update_dockers
+  update_centos_repo
+  yum clean all
+  check_os_updates
 else
   update_registry
   update_docker_containers "soup"
@@ -708,10 +739,6 @@ preupgrade_changes_2.3.50_repo
 if [ "$UPGRADESALT" == "1" ]; then
   echo "Upgrading Salt"
   # Update the repo files so it can actually upgrade
-  if [ $is_airgap -eq 0 ]; then
-    update_centos_repo
-    yum clean all
-  fi
   upgrade_salt
 fi
 
@@ -796,13 +823,12 @@ unmount_update
 thehive_maint
 
 if [ "$UPGRADESALT" == "1" ]; then
-  echo ""
-  echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   if [ $is_airgap -eq 0 ]; then
-    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+    echo ""
+    echo "Cleaning repos on remote Security Onion nodes."
+    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+    echo ""
   fi
-  salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion queue=True
-  echo ""
 fi
 
 check_sudoers
