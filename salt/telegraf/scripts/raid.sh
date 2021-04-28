@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
+RAIDLOG=/var/log/raid/status.log
+RAIDSTATUS=$(cat /var/log/raid/status.log)
 
 if [ ! "$THEGREP" ]; then
 
