@@ -1,9 +1,14 @@
 {% from "salt/map.jinja" import SALT_STATE_CODE_PATH with context %}
 {% from "salt/map.jinja" import SALT_MODULE_CODE_PATH with context %}
 {% from "salt/map.jinja" import PYTHON3INFLUX with context %}
+{% from "salt/map.jinja" import PYTHON3INFLUXDEPS with context %}
 
 include:
   - salt.helper-packages
+
+python3_influxdb_dependencies:
+  pkg.installed:
+    - pkgs: {{ PYTHON3INFLUXDEPS }}
 
 python3_influxdb:
   pkg.installed:
