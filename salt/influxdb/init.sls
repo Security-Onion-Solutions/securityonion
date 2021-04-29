@@ -63,6 +63,16 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+wait_for_influxdb:
+  http.query:
+    - name: 'https://{{MANAGER}}:8086/query?q=SHOW+DATABASES'
+    - ssl: True
+    - verify_ssl: False
+    - status: 200
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 60
 
 telegraf_database:
   influxdb_database.present:
@@ -75,10 +85,7 @@ telegraf_database:
     - require:
       - docker_container: so-influxdb
       - sls: salt.python3-influxdb
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
+      - http: wait_for_influxdb
 
 {% for rp in influxdb.retention_policies.keys() %}
 {{rp}}_retention_policy:
