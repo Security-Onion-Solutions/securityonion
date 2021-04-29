@@ -7,11 +7,9 @@
 include:
   - salt.helper-packages
 
-{#
 python3_influxdb_dependencies:
   {{PYTHONINSTALLER}}.installed:
     - pkgs: {{ PYTHON3INFLUXDEPS }}
-#}
 
 python3_influxdb:
   {{PYTHONINSTALLER}}.installed:
