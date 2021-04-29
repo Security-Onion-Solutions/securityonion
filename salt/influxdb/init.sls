@@ -75,6 +75,10 @@ telegraf_database:
     - require:
       - docker_container: so-influxdb
       - sls: salt.python3-influxdb
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
 
 {% for rp in influxdb.retention_policies.keys() %}
 {{rp}}_retention_policy:
