@@ -2,16 +2,19 @@
 {% from "salt/map.jinja" import SALT_MODULE_CODE_PATH with context %}
 {% from "salt/map.jinja" import PYTHON3INFLUX with context %}
 {% from "salt/map.jinja" import PYTHON3INFLUXDEPS with context %}
+{% from "salt/map.jinja" import PYTHONINSTALLER with context %}
 
 include:
   - salt.helper-packages
 
+{#
 python3_influxdb_dependencies:
-  pkg.installed:
+  {{PYTHONINSTALLER}}.installed:
     - pkgs: {{ PYTHON3INFLUXDEPS }}
+#}
 
 python3_influxdb:
-  pkg.installed:
+  {{PYTHONINSTALLER}}.installed:
     - name: {{ PYTHON3INFLUX }}
 
 #https://github.com/saltstack/salt/issues/59766
@@ -39,3 +42,4 @@ influxdbmod.py_shard_duration_patch:
     - require:
       - pkg: python3_influxdb
       - pkg: patch_package
+    - reload_modules: True
