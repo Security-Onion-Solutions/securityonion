@@ -23,7 +23,7 @@ influxdb_continuous_query.present_patch:
     - name: {{ SALT_STATE_CODE_PATH }}/influxdb_continuous_query.py
     - source: salt://salt/files/influxdb_continuous_query.py.patch
     - require:
-      - pkg: python3_influxdb
+      - {{PYTHONINSTALLER}}: python3_influxdb
       - pkg: patch_package
 
 #https://github.com/saltstack/salt/issues/59761
@@ -32,7 +32,7 @@ influxdb_retention_policy.present_patch:
     - name: {{ SALT_STATE_CODE_PATH }}/influxdb_retention_policy.py
     - source: salt://salt/files/influxdb_retention_policy.py.patch
     - require:
-      - pkg: python3_influxdb
+      - {{PYTHONINSTALLER}}: python3_influxdb
       - pkg: patch_package
 
 influxdbmod.py_shard_duration_patch:
@@ -40,6 +40,6 @@ influxdbmod.py_shard_duration_patch:
     - name: {{ SALT_MODULE_CODE_PATH }}/influxdbmod.py
     - source: salt://salt/files/influxdbmod.py.patch
     - require:
-      - pkg: python3_influxdb
+      - {{PYTHONINSTALLER}}: python3_influxdb
       - pkg: patch_package
     - reload_modules: True
