@@ -33,6 +33,8 @@ influxdb_retention_policy.present_patch:
       - {{PYTHONINSTALLER}}: python3_influxdb
       - pkg: patch_package
 
+# We should be able to set reload_modules: True in this state in order to tell salt to reload its python modules due to us possibly installing
+# and possibly modifying modules in this state. This is bugged according to https://github.com/saltstack/salt/issues/24925
 influxdbmod.py_shard_duration_patch:
   file.patch:
     - name: {{ SALT_MODULE_CODE_PATH }}/influxdbmod.py
@@ -40,4 +42,3 @@ influxdbmod.py_shard_duration_patch:
     - require:
       - {{PYTHONINSTALLER}}: python3_influxdb
       - pkg: patch_package
-    - reload_modules: True

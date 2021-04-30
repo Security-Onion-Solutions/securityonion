@@ -7,6 +7,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% import_yaml 'influxdb/defaults.yaml' as default_settings %}
 {% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
+{% from 'salt/map.jinja' import PYTHON3INFLUX with context %}
+{% set PYTHONINFLUXVERSION = PYTHON3INFLUX.split("==")[1] | trim %}
+{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c 'import influxdb; print (influxdb.__version__)'", python_shell=True) | trim %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
@@ -63,6 +66,8 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+# We have to make sure the influxdb module is the right version prior to state run since reload_modules is bugged
+{% if PYTHONINFLUXVERSIONINSTALLED == PYTHONINFLUXVERSION %}
 wait_for_influxdb:
   http.query:
     - name: 'https://{{MANAGER}}:8086/query?q=SHOW+DATABASES'
@@ -124,6 +129,7 @@ so_downsample_cq:
       - sls: salt.python3-influxdb
 {% endfor %}
 
+{% endif %}
 {% endif %}
 
 {% else %}
