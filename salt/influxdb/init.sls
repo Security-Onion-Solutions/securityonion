@@ -8,8 +8,8 @@
 {% import_yaml 'influxdb/defaults.yaml' as default_settings %}
 {% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 {% from 'salt/map.jinja' import PYTHON3INFLUX with context %}
-{% set PYTHONINFLUXVERSION = PYTHON3INFLUX.split("==")[1] | trim %}
-{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c 'import influxdb; print (influxdb.__version__)'", python_shell=True) | trim %}
+{% from 'salt/map.jinja' import  PYTHONINFLUXVERSION with context %}
+{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c 'import influxdb; print (influxdb.__version__)'", python_shell=True) %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
 
