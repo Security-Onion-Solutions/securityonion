@@ -21,7 +21,6 @@ UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
-DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
 WHATWOULDYOUSAYYAHDOHERE=soup
@@ -714,9 +713,7 @@ upgrade_check_salt
 
 if [[ $is_hotfix ]]; then
   echo "Applying $HOTFIXVERSION" 
-  cd $UPDATE_DIR
   copy_new_files
-  cd /tmp
   echo ""
   update_version
   salt-call state.highstate -l info queue=True
@@ -787,7 +784,6 @@ else
   echo ""
   echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
   copy_new_files
-  cd /tmp
   echo ""
   update_version
 

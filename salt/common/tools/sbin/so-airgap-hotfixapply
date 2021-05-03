@@ -17,7 +17,7 @@
 
 . /usr/sbin/so-common
 
-HOTFIXDIR=/tmp/sohotfixapply
+UPDATE_DIR=/tmp/sohotfixapply
 
 if [ -z "$1" ]; then
   echo "No tarball given. Please provide the filename so I can run the hotfix"
@@ -29,13 +29,13 @@ else
     exit 1
   else
     echo "Determining if we need to apply this hotfix"
-    rm -rf $HOTFIXDIR
-    mkdir -p $HOTFIXDIR
-    tar xvf $1 -C $HOTFIXDIR
+    rm -rf $UPDATE_DIR
+    mkdir -p $UPDATE_DIR
+    tar xvf $1 -C $UPDATE_DIR
 
     # Compare some versions
-    NEWVERSION=$(cat $HOTFIXDIR/VERSION)
-    HOTFIXVERSION=$(cat $HOTFIXDIR/HOTFIX)
+    NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+    HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
     CURRENTHOTFIX=$(cat /etc/sohotfix)
     INSTALLEDVERSION=$(cat /etc/soversion)
 
@@ -43,24 +43,21 @@ else
       echo "Checking to see if there are hotfixes needed"
       if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
         echo "You are already running the latest version of Security Onion."
-        rm -rf $HOTFIXDIR
+        rm -rf $UPDATE_DIR
         exit 1
       else
         echo "We need to apply a hotfix"
-        cd $HOTFIXDIR
-        DEFAULT_SALT_DIR=/opt/so/saltstack/default
         copy_new_files
         echo $HOTFIXVERSION > /etc/sohotfix
         salt-call state.highstate -l info queue=True
         echo "The Hotfix $HOTFIXVERSION has been applied"
         # Clean up 
-        cd /tmp
-        rm -rf $HOTFIXDIR
+        rm -rf $UPDATE_DIR
         exit 0
       fi
     else
       echo "This hotfix is not compatible with your current version. Download the latest ISO and run soup"
-      rm -rf $HOTFIXDIR
+      rm -rf $UPDATE_DIR
     fi
 
   fi
