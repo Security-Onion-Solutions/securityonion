@@ -47,14 +47,14 @@ else
         exit 1
       else
         echo "We need to apply a hotfix"
-        rsync -a $HOTFIXDIR/salt /opt/so/saltstack/default/
-        rsync -a $HOTFIXDIR/pillar /opt/so/saltstack/default/
-        chown -R socore:socore /opt/so/saltstack/default/
-        chmod 755 /opt/so/saltstack/default/pillar/firewall/addfirewall.sh
+        cd $HOTFIXDIR
+        DEFAULT_SALT_DIR=/opt/so/saltstack/default
+        copy_new_files
         echo $HOTFIXVERSION > /etc/sohotfix
         salt-call state.highstate -l info queue=True
         echo "The Hotfix $HOTFIXVERSION has been applied"
         # Clean up 
+        cd /tmp
         rm -rf $HOTFIXDIR
         exit 0
       fi

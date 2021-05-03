@@ -214,16 +214,6 @@ clone_to_tmp() {
   fi
 }
 
-copy_new_files() {
-  # Copy new files over to the salt dir
-  cd $UPDATE_DIR
-  rsync -a salt $DEFAULT_SALT_DIR/
-  rsync -a pillar $DEFAULT_SALT_DIR/
-  chown -R socore:socore $DEFAULT_SALT_DIR/
-  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
-  cd /tmp
-}
-
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -724,7 +714,9 @@ upgrade_check_salt
 
 if [[ $is_hotfix ]]; then
   echo "Applying $HOTFIXVERSION" 
+  cd $UPDATE_DIR
   copy_new_files
+  cd /tmp
   echo ""
   update_version
   salt-call state.highstate -l info queue=True
@@ -795,6 +787,7 @@ else
   echo ""
   echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
   copy_new_files
+  cd /tmp
   echo ""
   update_version
 
