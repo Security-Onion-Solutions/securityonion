@@ -309,7 +309,9 @@ post_2.3.30_to_2.3.40() {
 post_2.3.5X_to_2.3.60() {
   # These are post upgrade changes that need to take place after all the new states have been applied.
   echo ""
-  echo "Migrating InfluxDB data in the background. Depending on how much data is present, the process may take an hour or two to complete after soup finishes."
+  echo "Migrating InfluxDB data in the background. Depending on how much data is present, the process may take an hour or two to complete after soup finishes. Do not restart the so-influxdb container or server until this completes."
+  echo "The status can be checked in $INFLUXDB_MIGRATION_LOG"
+  read -p "Press enter to continue."
   docker exec -t so-influxdb /bin/bash -c 'influx -ssl -unsafeSsl -database telegraf -execute "SELECT mean(*) INTO "so_long_term".:MEASUREMENT FROM /.*/ GROUP BY time(5m),*"' >> "$INFLUXDB_MIGRATION_LOG" 2>&1 &
 
   POSTVERSION=2.3.60
