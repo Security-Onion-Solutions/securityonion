@@ -112,7 +112,7 @@ telegraf_database:
       - sls: salt.python3-influxdb
 {% endfor %}
 
-{% for dest_rp in influxdb.downsample.keys() %}
+{#% for dest_rp in influxdb.downsample.keys() %}
 so_downsample_cq:
   influxdb_continuous_query.present:
     - name: so_downsample_cq
@@ -127,7 +127,7 @@ so_downsample_cq:
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
       - sls: salt.python3-influxdb
-{% endfor %}
+{% endfor %#}
 
 {% endif %}
 {% endif %}
