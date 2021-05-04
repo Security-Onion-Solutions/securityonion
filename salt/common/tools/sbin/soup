@@ -24,6 +24,7 @@ INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 
 add_common() {
@@ -309,7 +310,7 @@ post_2.3.5X_to_2.3.60() {
   # These are post upgrade changes that need to take place after all the new states have been applied.
   echo ""
   echo "Migrating InfluxDB data in the background. Depending on how much data is present, the process may take an hour or two to complete after soup finishes."
-  docker exec -t so-influxdb /bin/bash -c 'influx -ssl -unsafeSsl -database telegraf -execute "SELECT mean(*) INTO "so_long_term".:MEASUREMENT FROM /.*/ GROUP BY time(5m),*"' >> "$SOUP_LOG" 2>&1 &
+  docker exec -t so-influxdb /bin/bash -c 'influx -ssl -unsafeSsl -database telegraf -execute "SELECT mean(*) INTO "so_long_term".:MEASUREMENT FROM /.*/ GROUP BY time(5m),*"' >> "$INFLUXDB_MIGRATION_LOG" 2>&1 &
 
   POSTVERSION=2.3.60
 }
