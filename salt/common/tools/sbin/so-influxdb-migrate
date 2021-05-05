@@ -14,3 +14,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+echo -e "\nThis script is used to reduce the size of InfluxDB by downsampling old data into the so_long_term retention policy."
+
+echo -e "\nInfluxDB will now be migrated. This could take a few hours depending on how large the database is and hardware resources available."
+read -r -p "Are you sure you want to continue? [y/N] " yorn
+if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  echo -e "\nMigrating InfluxDb started at `date`. This may take several hours depending on how much data needs to be moved."
+  day=0
+  startdate=`date`
+  
+  while docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"SELECT mean(*) INTO \"so_long_term\".:MEASUREMENT FROM /.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d GROUP BY time(5m),*\""; do
+    # why 2020-07-21? 
+    echo "Migration of 2020-07-21T00:00:00.0000000Z' + ${day}d started at $startdate and completed at `date`."
+
+    echo "Started cleaning 2020-07-21T00:00:00.0000000Z' + ${day}d at `date`"
+    if docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"DELETE FROM /.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d\""; then
+      echo -e "Completed cleaning 2020-07-21T00:00:00.0000000Z' + ${day}d at `date`\n"
+    else
+      echo -e "\nSomething went wrong with cleaning InfluxDB. Please verify that the so-influxdb Docker container is running, and check the log at /opt/so/log/influxdb/influxdb.log for any details."
+    fi
+
+    ((day=day+1))
+    startdate=`date`
+  done
+
+  echo -e "\nInfluxDb data migration complete."
+
+else
+  echo -e "\nExiting as requested."
+fi
