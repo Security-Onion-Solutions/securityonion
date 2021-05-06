@@ -4,12 +4,12 @@
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
 output {
-  if [module] =~ "suricata" and "import" not in [tags] {
+  if [event][module] =~ "suricata" and "import" not in [tags] {
     elasticsearch {
-      pipeline => "%{module}.%{dataset}"
+      pipeline => "filebeat-%{[agent][version]}-suricata-%{[fileset][name]}-pipeline"
       hosts => "{{ ES }}"
       index => "so-ids"
-      template_name => "so-ids" 
+      template_name => "so-ids"
       template => "/templates/so-ids-template.json"
       ssl => true
       ssl_certificate_verification => false
