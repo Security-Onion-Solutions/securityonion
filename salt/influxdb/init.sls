@@ -117,7 +117,7 @@ so_downsample_cq:
   influxdb_continuous_query.present:
     - name: so_downsample_cq
     - database: telegraf
-    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM /.*/ GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
+    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM \"so_short_term\"./.*/ GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
     - ssl: True
     - verify_ssl: /etc/pki/ca.crt
     - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']

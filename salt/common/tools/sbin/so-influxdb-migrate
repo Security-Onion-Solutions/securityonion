@@ -26,17 +26,18 @@ if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   
   while docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"SELECT mean(*) INTO \"so_long_term\".:MEASUREMENT FROM \"autogen\"./.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d GROUP BY time(5m),*\""; do
     # why 2020-07-21? 
-    echo "Migration of 2020-07-21T00:00:00.0000000Z' + ${day}d started at $startdate and completed at `date`."
+    migrationdate=`date -d "2020-07-21 + ${day} days" +"%y-%m-%d"`
+    echo "Migration of $migrationdate started at $startdate and completed at `date`."
 
-#    echo "Started cleaning 2020-07-21T00:00:00.0000000Z' + ${day}d at `date`"
-#    if docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"DELETE FROM /.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d\""; then
-#      echo -e "Completed cleaning 2020-07-21T00:00:00.0000000Z' + ${day}d at `date`\n"
-#    else
-#      echo -e "\nSomething went wrong with cleaning InfluxDB. Please verify that the so-influxdb Docker container is running, and check the log at /opt/so/log/influxdb/influxdb.log for any details."
-#    fi
-
-    ((day=day+1))
-    startdate=`date`
+    newdaytomigrate=$(date -d "$migrationdate + 1 days" +"%s")
+    today=$(date +"%s")
+    if [ $newdaytomigrate -ge $today ]; then
+      break
+    else
+      ((day=day+1))
+      startdate=`date`
+      echo -e "\nMigrating the next day's worth of data."
+    fi
   done
 
   echo -e "\nInfluxDb data migration complete."
