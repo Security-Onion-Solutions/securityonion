@@ -1,0 +1,10 @@
+{%- if grains['role'] in ['so-managersearch', 'so-heavynode', 'so-node'] %}
+{%- set MANAGER = salt['grains.get']('host' '') %}
+{%- else %}
+{%- set MANAGER = salt['grains.get']('master') %}
+{%- endif %}
+
+output.elasticsearch:
+  enabled: true
+  hosts: ["https://{{ MANAGER }}:9200"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
