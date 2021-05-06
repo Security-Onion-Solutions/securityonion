@@ -43,12 +43,18 @@ hold_salt_packages:
 {% endfor %}
 {% endif %}
 
+remove_info_log_level_logfile:
+  file.line:
+    - name: /etc/salt/minion
+    - match: "log_level_logfile: info"
+    - mode: delete
+
 set_log_levels:
   file.append:
     - name: /etc/salt/minion
     - text:
       - "log_level: info"
-      - "log_level_logfile: info"
+      - "log_level_logfile: error"
     - listen_in:
       - service: salt_minion_service
 
