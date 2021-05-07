@@ -20,10 +20,82 @@
 UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 POSTVERSION=$INSTALLEDVERSION
-INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
+INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
 WHATWOULDYOUSAYYAHDOHERE=soup
+
+set -e
+
+trap 'check_err $? $BASH_LINENO $BASH_COMMAND' EXIT
+
+check_err() {
+  local exit_code=$1
+  local lineno=$2
+  local cmd=$3
+  local err_msg="Unknown error occured, please check $SOUP_LOG for details."
+
+  if [[ $exit_code -ne 0 ]]; then
+    printf '%s' "Soup failed on line $lineno with error $exit_code: "
+    case $exit_code in
+      2)
+        echo 'No such file or directory'
+      ;;
+      5)
+        echo 'Interrupted system call'
+      ;;
+      12)
+        echo 'Out of memory'
+      ;;
+      28)
+        echo 'No space left on device'
+        echo 'Likely ran out of space on disk, please review hardware requirements for Security Onion: https://docs.securityonion.net/en/2.3/hardware.html'
+      ;;
+      30)
+        echo 'Read-only file system'
+      ;;
+      35)
+        echo 'Resource temporarily unavailable'
+      ;;
+      64)
+        echo 'Machine is not on the network'
+      ;;
+      67)
+        echo 'Link has been severed'
+      ;;
+      100)
+        echo 'Netowrk is down'
+      ;;
+      101)
+        echo 'Network is unreachable'
+      ;;
+      102)
+        echo 'Network reset'
+      ;;
+      110)
+        echo 'Connection timed out'
+      ;;
+      111)
+        echo 'Connection refused'
+      ;;
+      112)
+        echo 'Host is down'
+      ;;
+      113)
+        echo 'No route to host'
+      ;;
+      *)
+        echo ''
+        echo "$err_msg"
+      ;;
+    esac
+    if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
+      echo "$err_msg"
+    fi
+    exit $exit_code
+  fi
+
+}
 
 add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -87,9 +159,9 @@ airgap_update_dockers() {
       docker stop so-dockerregistry
       docker rm so-dockerregistry
       echo "Copying the new dockers over"
-      tar xvf $AGDOCKER/registry.tar -C /nsm/docker-registry/docker
+      tar xvf "$AGDOCKER/registry.tar" -C /nsm/docker-registry/docker
       echo "Add Registry back"
-      docker load -i $AGDOCKER/registry_image.tar
+      docker load -i "$AGDOCKER/registry_image.tar"
     fi
   fi
 }
@@ -101,9 +173,9 @@ update_registry() {
 }
 
 check_sudoers() {
-	if grep -q "so-setup" /etc/sudoers; then
-		echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
-	fi
+  if grep -q "so-setup" /etc/sudoers; then
+    echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
+  fi
 }
 
 check_log_size_limit() {
@@ -177,7 +249,7 @@ check_os_updates() {
           echo "Continuing without updating packages"
       elif [[ "$confirm" == [uU] ]]; then
           echo "Applying Grid Updates"
-          salt \* -b 5 state.apply patch.os queue=True
+          run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
       else
           echo "Exiting soup"
           exit 0
@@ -205,7 +277,7 @@ clone_to_tmp() {
   if [ -n "$BRANCH" ]; then
     SOUP_BRANCH="-b $BRANCH"
   fi
-  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
+  run_check_net_err "git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git" "Could not clone repo, please ensure network access to https://github.com"
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
@@ -586,13 +658,14 @@ upgrade_check() {
 }
 
 upgrade_check_salt() {
-  NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk {'print $2'})
+  NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk '{print $2}')
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
     echo "You are already running the correct version of Salt for Security Onion."
   else
     UPGRADESALT=1
   fi
 }   
+
 upgrade_salt() {
   SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
@@ -604,7 +677,9 @@ upgrade_salt() {
     yum versionlock delete "salt-*"
     echo "Updating Salt packages and restarting services."
     echo ""
-    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "Could not update soup, please check $SOUP_LOG for details."
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
@@ -617,7 +692,9 @@ upgrade_salt() {
     apt-mark unhold "salt-minion"
     echo "Updating Salt packages and restarting services."
     echo ""
-    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "Could not update soup, please check $SOUP_LOG for details."
     echo "Applying apt hold for Salt."
     echo ""
     apt-mark hold "salt-common"
@@ -650,7 +727,7 @@ verify_latest_update_script() {
 }
 
 main () {
-echo "### Preparing soup at `date` ###"
+echo "### Preparing soup at $(date) ###"
 while getopts ":b" opt; do
   case "$opt" in
     b ) # process option b
@@ -756,7 +833,7 @@ else
   echo "Checking if Salt was upgraded."
   echo ""
   # Check that Salt was upgraded
-  SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk {'print $2'})
+  SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
   if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
     echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
     echo "Once the issue is resolved, run soup again."
@@ -874,7 +951,7 @@ EOF
   fi
 fi
 
-echo "### soup has been served at `date` ###"
+echo "### soup has been served at $(date) ###"
 }
 
 cat << EOF
@@ -889,6 +966,6 @@ Press Enter to continue or Ctrl-C to cancel.
 
 EOF
 
-read input
+read -r input
 
 main "$@" | tee -a $SOUP_LOG

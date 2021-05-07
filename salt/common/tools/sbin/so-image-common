@@ -18,6 +18,7 @@
 # NOTE: This script depends on so-common
 IMAGEREPO=security-onion-solutions
 
+# shellcheck disable=SC2120
 container_list() {
   MANAGERCHECK=$1
   
@@ -128,7 +129,9 @@ update_docker_containers() {
   mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
   # Let's make sure we have the public key
-  retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
+  run_check_net_err \
+  "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" \
+  "Could not pull signature key file, please ensure connectivity to https://raw.gihubusercontent.com" >> "$LOG_FILE" 2>&1
   result=$?
   if [[ $result -eq 0 ]]; then
     cat $SIGNPATH/KEYS | gpg --import - >> "$LOG_FILE" 2>&1
@@ -148,10 +151,14 @@ update_docker_containers() {
 
     # Pull down the trusted docker image
     local image=$i:$VERSION$IMAGE_TAG_SUFFIX
-    retry 50 10 "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" >> "$LOG_FILE" 2>&1 
+    run_check_net_err \
+    "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" \
+    "Could not pull pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1 
     
     # Get signature
-    retry 50 10 "curl -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" >> "$LOG_FILE" 2>&1
+    run_check_net_err \
+    "curl -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" \
+    "Could not pull signature file, please ensure connectivity to https://sigs.securityonion.net " >> "$LOG_FILE" 2>&1
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
       exit 1

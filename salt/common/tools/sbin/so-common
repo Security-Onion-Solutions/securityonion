@@ -324,6 +324,21 @@ retry() {
 	return 1
 }
 
+run_check_net_err() {
+	local cmd=$1
+	local err_msg=${2:-"Unknown error occured, please check /root/$WHATWOULDYOUSAYYAHDOHERE.log for details."} # Really need to rename that variable
+
+	local exit_code
+	retry 50 10 "$cmd"
+	exit_code=$?
+	
+	if [[ $exit_code -ne 0 ]]; then
+		echo "Command failed with error $exit_code"
+		echo "$err_msg"
+		exit $exit_code
+	fi
+}
+
 set_os() {
 	if [ -f /etc/redhat-release ]; then
 		OS=centos
