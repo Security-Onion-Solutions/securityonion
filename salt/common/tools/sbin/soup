@@ -802,7 +802,7 @@ else
   systemctl start salt-master
 
   # Testing that that salt-master is up by checking that is it connected to itself
-  retry 50 10 "salt-call state.show_top -l error"
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
 
   echo ""
   echo "Ensuring python modules for Salt are installed and patched."
@@ -834,6 +834,10 @@ else
   echo ""
   echo "Starting Salt Master service."
   systemctl start salt-master
+
+  # Testing that that salt-master is up by checking that is it connected to itself
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
+
   echo "Running a highstate. This could take several minutes."
   salt-call state.highstate -l info queue=True
   postupgrade_changes
