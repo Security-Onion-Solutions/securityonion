@@ -23,6 +23,7 @@ POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 
 set -e
@@ -349,6 +350,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
     [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
     [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
+    [[ "$POSTVERSION" == 2.3.50 ]] && post_2.3.5X_to_2.3.60
 }
 
 post_rc1_to_2.3.21() {
@@ -367,6 +369,10 @@ post_2.3.30_to_2.3.40() {
   so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
   so-kibana-space-defaults
   POSTVERSION=2.3.40
+}
+
+post_2.3.5X_to_2.3.60() {
+  POSTVERSION=2.3.60
 }
 
 
@@ -882,6 +888,14 @@ else
   echo "Starting Salt Master service."
   systemctl start salt-master
 
+  # Testing that that salt-master is up by checking that is it connected to itself
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
+
+  echo ""
+  echo "Ensuring python modules for Salt are installed and patched."
+  salt-call state.apply salt.python3-influxdb -l info queue=True
+  echo ""
+
   # Only regenerate osquery packages if Fleet is enabled
   FLEET_MANAGER=$(lookup_pillar fleet_manager)
   FLEET_NODE=$(lookup_pillar fleet_node)
@@ -907,6 +921,10 @@ else
   echo ""
   echo "Starting Salt Master service."
   systemctl start salt-master
+
+  # Testing that that salt-master is up by checking that is it connected to itself
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
+
   echo "Running a highstate. This could take several minutes."
   salt-call state.highstate -l info queue=True
   postupgrade_changes

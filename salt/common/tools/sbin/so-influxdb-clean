@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+wdurregex="^[0-9]+w$"
+ddurregex="^[0-9]+d$"
+
+echo -e "\nThis script is used to reduce the size of InfluxDB by removing old data and retaining only the duration specified."
+echo "The duration will need to be specified as an integer followed by the duration unit without a space."
+echo -e "\nFor example, to purge all data but retain the past 12 weeks, specify 12w for the duration."
+echo "The duration units are as follows:"
+echo "  w  - week(s)"
+echo "  d  - day(s)"
+
+while true; do
+  echo ""
+  read -p 'Enter the duration of past data that you would like to retain: ' duration
+  duration=$(echo $duration | tr '[:upper:]' '[:lower:]')
+
+  if [[ "$duration" =~ $wdurregex ]] || [[ "$duration" =~ $ddurregex ]]; then
+    break
+  fi
+
+  echo -e "\nInvalid duration."
+done
+
+echo -e "\nInfluxDB will now be cleaned and leave only the past $duration worth of data."
+read -r -p "Are you sure you want to continue? [y/N] " yorn
+if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  echo -e "\nCleaning InfluxDb and saving only the past $duration. This may could take several minutes depending on how much data needs to be cleaned."
+    if docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"DELETE FROM /.*/ WHERE \"time\" >= '2020-01-01T00:00:00.0000000Z' AND \"time\" <= now() - $duration\""; then
+      echo -e "\nInfluxDb clean complete."
+    else
+      echo -e "\nSomething went wrong with cleaning InfluxDB. Please verify that the so-influxdb Docker container is running, and check the log at /opt/so/log/influxdb/influxdb.log for any details."
+    fi
+else
+  echo -e "\nExiting as requested."
+fi

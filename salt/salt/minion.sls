@@ -8,6 +8,7 @@
 
 include:
   - salt
+  - salt.helper-packages
   - systemd.reload
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
@@ -71,3 +72,7 @@ salt_minion_service:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+
+patch_pkg:
+  pkg.installed:
+    - name: patch
