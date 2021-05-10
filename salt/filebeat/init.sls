@@ -20,6 +20,8 @@
 {% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% from 'filebeat/map.jinja' import THIRDPARTY with context %}
+
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
@@ -98,6 +100,13 @@ so-filebeat:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
         - 0.0.0.0:5066:5066/tcp
+{% for module in THIRDPARTY.modules.keys() %}
+  {% for submodule in THIRDPARTY.modules[module] %}
+    {% if THIRDPARTY.modules[module][submodule].enabled %}
+        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/{{ THIRDPARTY.modules[module][submodule]["var.input"] }}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
 
