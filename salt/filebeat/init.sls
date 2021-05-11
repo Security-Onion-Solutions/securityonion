@@ -22,24 +22,28 @@
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 
+
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
     - user: 939
     - group: 939
     - makedirs: True
+
 filebeatmoduledir:
   file.directory:
     - name: /opt/so/conf/filebeat/modules
     - user: root
     - group: root
     - makedirs: True
+
 filebeatlogdir:
   file.directory:
     - name: /opt/so/log/filebeat
     - user: 939
     - group: 939
     - makedirs: True
+
 filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
@@ -52,6 +56,7 @@ fileregistrydir:
     - user: 939
     - group: 939
     - makedirs: True
+
 # This needs to be owned by root
 filebeatconfsync:
   file.managed:
@@ -63,6 +68,7 @@ filebeatconfsync:
     - defaults:
         INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
+
 # Filebeat module config file
 filebeatmoduleconfsync:
   file.managed:
@@ -71,6 +77,7 @@ filebeatmoduleconfsync:
     - user: root
     - group: root
     - template: jinja
+
 # Sync Filebeat modules
 filebeatmodules:
   file.recurse:
@@ -78,6 +85,15 @@ filebeatmodules:
     - source: salt://filebeat/modules
     - user: root
     - group: root
+
+thirdparty_module_conf:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/thirdparty.yml
+    - source: salt://filebeat/etc/thirdparty.yml.jinja
+    - template: jinja
+    - defaults:
+        THIRDPARTY: {{ THIRDPARTY }}
+    
 so-filebeat:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
