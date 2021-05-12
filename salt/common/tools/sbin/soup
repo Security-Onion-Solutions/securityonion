@@ -26,77 +26,6 @@ SOUP_LOG=/root/soup.log
 INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 
-set -e
-
-trap 'check_err $? $BASH_LINENO' EXIT
-
-check_err() {
-  local exit_code=$1
-  local lineno=$2
-  local err_msg="Unhandled error occured, please check $SOUP_LOG for details."
-
-  [[ $ERR_HANDLED == true ]] && exit $exit_code
-  if [[ $exit_code -ne 0 ]]; then
-    printf '%s' "Soup failed on line $lineno with error $exit_code: "
-    case $exit_code in
-      2)
-        echo 'No such file or directory'
-      ;;
-      5)
-        echo 'Interrupted system call'
-      ;;
-      12)
-        echo 'Out of memory'
-      ;;
-      28)
-        echo 'No space left on device'
-        echo 'Likely ran out of space on disk, please review hardware requirements for Security Onion: https://docs.securityonion.net/en/2.3/hardware.html'
-      ;;
-      30)
-        echo 'Read-only file system'
-      ;;
-      35)
-        echo 'Resource temporarily unavailable'
-      ;;
-      64)
-        echo 'Machine is not on the network'
-      ;;
-      67)
-        echo 'Link has been severed'
-      ;;
-      100)
-        echo 'Netowrk is down'
-      ;;
-      101)
-        echo 'Network is unreachable'
-      ;;
-      102)
-        echo 'Network reset'
-      ;;
-      110)
-        echo 'Connection timed out'
-      ;;
-      111)
-        echo 'Connection refused'
-      ;;
-      112)
-        echo 'Host is down'
-      ;;
-      113)
-        echo 'No route to host'
-      ;;
-      *)
-        echo 'Unhandled error'
-        echo "$err_msg"
-      ;;
-    esac
-    if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
-      echo "$err_msg"
-    fi
-    exit $exit_code
-  fi
-
-}
 
 add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -250,9 +179,7 @@ check_os_updates() {
           echo "Continuing without updating packages"
       elif [[ "$confirm" == [uU] ]]; then
           echo "Applying Grid Updates"
-          set +e
           run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
-          set -e
       else
           echo "Exiting soup"
           exit 0
@@ -280,9 +207,7 @@ clone_to_tmp() {
   if [ -n "$BRANCH" ]; then
     SOUP_BRANCH="-b $BRANCH"
   fi
-  set +e
   run_check_net_err "git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git" "Could not clone repo, please ensure network access to https://github.com"
-  set -e
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
@@ -688,11 +613,9 @@ upgrade_salt() {
     yum versionlock delete "salt-*"
     echo "Updating Salt packages and restarting services."
     echo ""
-    set +e
     run_check_net_err \
     "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update soup, please check $SOUP_LOG for details."
-    set -e
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
@@ -705,11 +628,9 @@ upgrade_salt() {
     apt-mark unhold "salt-minion"
     echo "Updating Salt packages and restarting services."
     echo ""
-    set +e
     run_check_net_err \
     "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update soup, please check $SOUP_LOG for details."
-    set -e
     echo "Applying apt hold for Salt."
     echo ""
     apt-mark hold "salt-common"
@@ -825,18 +746,14 @@ else
     check_os_updates
   else
     update_registry
-    set +e
     update_docker_containers "soup"
-    set -e
   fi
 
   echo ""
   echo "Stopping Salt Minion service."
   systemctl stop salt-minion
   echo "Killing any remaining Salt Minion processes."
-  set +e
   pkill -9 -ef /usr/bin/salt-minion
-  set -e
   echo ""
   echo "Stopping Salt Master service."
   systemctl stop salt-master
