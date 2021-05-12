@@ -28,11 +28,10 @@ WHATWOULDYOUSAYYAHDOHERE=soup
 
 check_err() {
   local exit_code=$1
-  local lineno=$2
   local err_msg="Unhandled error occured, please check $SOUP_LOG for details."
 
   if [[ $exit_code -ne 0 ]]; then
-    printf '%s' "Soup failed on line $lineno with error $exit_code: "
+    printf '%s' "Soup failed with error $exit_code: "
     case $exit_code in
       2)
         echo 'No such file or directory'
@@ -323,11 +322,8 @@ preupgrade_changes_2.3.50_repo() {
     # We made repo changes in 2.3.50 and this prepares for that on upgrade
     echo "Checking to see if 2.3.50 repo changes are needed."
 
-    if [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]]; then
-      up_2.3.3X_to_2.3.50_repo
-    else
-      echo "No changes needed."
-    fi
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50_repo
+    true
 }
 
 preupgrade_changes() {
@@ -340,6 +336,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
     [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
+    true
 }
 
 postupgrade_changes() {
@@ -350,6 +347,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
     [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
     [[ "$POSTVERSION" == 2.3.50 ]] && post_2.3.5X_to_2.3.60
+    true
 }
 
 post_rc1_to_2.3.21() {
@@ -661,7 +659,6 @@ upgrade_check() {
       is_hotfix=true
     fi
   else
-    echo "DEBUG: here"
     is_hotfix=false
   fi 
 
@@ -742,7 +739,7 @@ verify_latest_update_script() {
 
 main() {
   set -e
-  trap 'check_err $? $BASH_LINENO' EXIT
+  trap 'check_err $?' EXIT
   
   echo "### Preparing soup at $(date) ###"
   while getopts ":b" opt; do
@@ -876,7 +873,7 @@ main() {
     fi
 
     # Only update the repo if its airgap
-    if [[ $is_airgap -eq 0 ]] && [[ $UPGRADESALT -ne 1 ]]; then
+    if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
       update_centos_repo
     fi
 
