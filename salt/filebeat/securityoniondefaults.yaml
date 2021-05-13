@@ -1,17 +1,32 @@
-third_party_filebeat:
+securityonion_filebeat:
   modules:
-    fortinet:
-      firewall:
-        enabled: false 
-        var.input: udp
-        var.syslog_host: 0.0.0.0
-        var.syslog_port: 9004
-      clientendpoint:
+    elasticsearch:
+      server:
+        enabled: true
+        var.paths: ["/logs/elasticsearch/*.log"]
+    kibana:
+      log:
+        enabled: true
+        var.paths: ["/logs/kibana/kibana.log"]
+    logstash:
+      log:
+        enabled: true
+        var.paths: ["/logs/logstash.log"]
+    redis:
+      log:
+        enabled: true
+        var.paths: ["/logs/redis.log"]
+    suricata:
+      eve:
+        enabled: true
+        var.paths: ["/nsm/suricata/eve*.json"]
+    {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
+      {%- if ZEEKVER != 'SURICATA' %}
+    zeek:
+        {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
+      {{ LOGNAME }}:
         enabled: false
-        var.input: udp
-        var.syslog_host: 0.0.0.0
-        var.syslog_port: 9510
-      fortimail:
-        enabled: false
-        var.input: udp
-        var.syslog_port: 9350
+        var.paths: ["/nsm/zeek/logs/current/{{ LOGNAME }}.log"]
+        {%- endfor %}
+      {%- endif %}
+    {%- endif %}
