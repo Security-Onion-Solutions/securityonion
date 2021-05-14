@@ -34,7 +34,7 @@ influxdb_continuous_query.py.patched:
     - onchanges:
       - file: influxdb_continuous_query.present_patch
 
- #https://github.com/saltstack/salt/issues/59761
+#https://github.com/saltstack/salt/issues/59761
 influxdb_retention_policy.present_patch:
   file.patch:
     - name: {{ SALT_STATE_CODE_PATH }}/influxdb_retention_policy.py
