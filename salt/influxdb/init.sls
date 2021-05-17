@@ -2,6 +2,9 @@
 {% if sls in allowed_states %}
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
+
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
+
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -9,9 +12,7 @@
 {% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 {% from 'salt/map.jinja' import PYTHON3INFLUX with context %}
 {% from 'salt/map.jinja' import  PYTHONINFLUXVERSION with context %}
-{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c 'import influxdb; print (influxdb.__version__)'", python_shell=True) %}
-
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
+{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c \"exec('try:import influxdb; print (influxdb.__version__)\\nexcept:print(\\'Module Not Found\\')')\"", python_shell=True) %}
 
 include:
   - salt.minion
