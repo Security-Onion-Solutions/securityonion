@@ -1,4 +1,18 @@
-{% if salt['pillar.get']('sensor:suriprocs') %}
+{% if salt['pillar.get']('sensor:suripins') %}
+  {% load_yaml as cpu_affinity%}
+cpu-affinity:
+  - management-cpu-set:
+      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]  # include only these cpus in affinity settings
+  - receive-cpu-set:
+      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]  # include only these cpus in affinity settings
+  - worker-cpu-set:
+      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]
+      mode: "exclusive"
+      threads: {{ salt['pillar.get']('sensor:suripins')|length }}
+      prio:
+        default: "high"
+  {% endload %}
+{% elif salt['pillar.get']('sensor:suriprocs') %}
   {% load_yaml as cpu_affinity%}
 cpu-affinity:
   - management-cpu-set:
@@ -13,20 +27,6 @@ cpu-affinity:
         low: [ 0 ]
         medium: [ "1-2" ]
         high: [ 3 ]
-        default: "high"
-  {% endload %}
-{% elif salt['pillar.get']('sensor:suripins') %}
-  {% load_yaml as cpu_affinity%}
-cpu-affinity:
-  - management-cpu-set:
-      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]  # include only these cpus in affinity settings
-  - receive-cpu-set:
-      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]  # include only these cpus in affinity settings
-  - worker-cpu-set:
-      cpu: [ {{ salt['pillar.get']('sensor:suripins')|join(",") }} ]
-      mode: "exclusive"
-      threads: {{ salt['pillar.get']('sensor:suripins')|length }}
-      prio:
         default: "high"
   {% endload %}
 {% endif %}

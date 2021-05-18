@@ -21,9 +21,9 @@ UPDATE_DIR=/tmp/sogh/securityonion
 INSTALLEDVERSION=$(cat /etc/soversion)
 POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk {'print $2'})
-DEFAULT_SALT_DIR=/opt/so/saltstack/default
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 
 add_common() {
@@ -161,6 +161,34 @@ check_log_size_limit() {
   fi
 }
 
+check_os_updates() {
+  # Check to see if there are OS updates
+  NEEDUPDATES="We have detected missing operating system (OS) updates. Do you want to install these OS updates now? This could take a while depending on the size of your grid and how many packages are missing, but it is recommended to keep your system updated."
+  if [[ $OS == 'ubuntu' ]]; then
+    OSUPDATES=$(apt list --upgradeable | grep -v "^Listing..." | grep -v "^docker-ce" | grep -v "^wazuh-" | grep -v "^salt-" | wc -l)
+  else
+    OSUPDATES=$(yum -q list updates | wc -l)
+  fi
+  if [[ "$OSUPDATES" -gt 0 ]]; then
+      echo $NEEDUPDATES
+      echo ""
+      read -p "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+
+      if [[ "$confirm" == [cC] ]]; then
+          echo "Continuing without updating packages"
+      elif [[ "$confirm" == [uU] ]]; then
+          echo "Applying Grid Updates"
+          salt \* -b 5 state.apply patch.os queue=True
+      else
+          echo "Exiting soup"
+          exit 0
+      fi
+  else
+      echo "Looks like you have an updated OS"
+  fi
+    
+}
+
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
@@ -184,16 +212,6 @@ clone_to_tmp() {
     echo "Update was unable to pull from github. Please check your internet."
     exit 0
   fi
-}
-
-copy_new_files() {
-  # Copy new files over to the salt dir
-  cd $UPDATE_DIR
-  rsync -a salt $DEFAULT_SALT_DIR/
-  rsync -a pillar $DEFAULT_SALT_DIR/
-  chown -R socore:socore $DEFAULT_SALT_DIR/
-  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
-  cd /tmp
 }
 
 generate_and_clean_tarballs() {
@@ -230,6 +248,13 @@ masterunlock() {
   fi
 }
 
+preupgrade_changes_2.3.50_repo() {
+    # We made repo changes in 2.3.50 and this prepares for that on upgrade
+    echo "Checking to see if 2.3.50 repo changes are needed."
+
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50_repo
+}
+
 preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
@@ -239,6 +264,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
 }
 
 postupgrade_changes() {
@@ -248,6 +274,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
     [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
     [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
+    [[ "$POSTVERSION" == 2.3.50 ]] && post_2.3.5X_to_2.3.60
 }
 
 post_rc1_to_2.3.21() {
@@ -266,6 +293,10 @@ post_2.3.30_to_2.3.40() {
   so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
   so-kibana-space-defaults
   POSTVERSION=2.3.40
+}
+
+post_2.3.5X_to_2.3.60() {
+  POSTVERSION=2.3.60
 }
 
 
@@ -409,6 +440,64 @@ up_2.3.2X_to_2.3.30() {
       sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
   fi
   check_log_size_limit
+  INSTALLEDVERSION=2.3.30
+}
+
+up_2.3.3X_to_2.3.50_repo() {
+  echo "Performing 2.3.50 repo actions."
+  if [[ "$OS" == "centos" ]]; then
+    # Import GPG Keys
+    gpg_rpm_import
+    echo "Disabling fastestmirror."
+    disable_fastestmirror
+    echo "Deleting unneeded repo files."
+    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+
+    for DELREPO in "${DELREPOS[@]}"; do
+      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+        echo "Deleting $DELREPO.repo"
+        rm -f "/etc/yum.repos.d/$DELREPO.repo"
+      fi
+    done
+    if [ $is_airgap -eq 1 ]; then
+      # Copy the new repo file if not airgap
+      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+      yum clean all
+      yum repolist
+    fi
+  fi
+}
+
+up_2.3.3X_to_2.3.50() {
+  
+  cat <<EOF > /tmp/supersed.txt
+/so-zeek:/ {
+  p;
+  n;
+  /shards:/ {
+    p;
+    n;
+    /warm:/ {
+      p;
+      n;
+      /close:/ {
+        s/close: 365/close: 45/;
+        p;
+        n;
+        /delete:/ {
+          s/delete: 45/delete: 365/;
+          p;
+          d;
+        }
+      }
+    }
+  }
+}
+p;
+EOF
+  sed -n -i -f /tmp/supersed.txt /opt/so/saltstack/local/pillar/global.sls
+  rm /tmp/supersed.txt
+  INSTALLEDVERSION=2.3.50
 }
 
 verify_upgradespace() {
@@ -478,16 +567,28 @@ update_version() {
   # Update the version to the latest
   echo "Updating the Security Onion version file."
   echo $NEWVERSION > /etc/soversion
+  echo $HOTFIXVERSION > /etc/sohotfix
   sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global.sls
 }
 
 upgrade_check() {
   # Let's make sure we actually need to update.
   NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+  HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
+  CURRENTHOTFIX=$(cat /etc/sohotfix 2>/dev/null)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
-    echo "You are already running the latest version of Security Onion."
-    exit 0
+    echo "Checking to see if there are hotfixes needed"
+    if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
+      echo "You are already running the latest version of Security Onion."
+      exit 0
+    else
+      echo "We need to apply a hotfix"
+      is_hotfix=true
+    fi
+  else
+    is_hotfix=false
   fi 
+
 }
 
 upgrade_check_salt() {
@@ -503,22 +604,18 @@ upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
   # If CentOS
-  if [ "$OS" == "centos" ]; then
+  if [[ $OS == 'centos' ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages and restarting services."
     echo ""
-    if [ $is_airgap -eq 0 ]; then
-      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
-    else 
-      sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable "$NEWSALTVERSION"
-    fi
+    sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable "$NEWSALTVERSION"
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
   # Else do Ubuntu things
-  elif [ "$OS" == "ubuntu" ]; then
+  elif [[ $OS == 'ubuntu' ]]; then
     echo "Removing apt hold for Salt."
     echo ""
     apt-mark unhold "salt-common"
@@ -598,7 +695,7 @@ else
   rm -rf $UPDATE_DIR
   clone_to_tmp
 fi
-
+check_os_updates
 echo ""
 echo "Verifying we have the latest soup script."
 verify_latest_update_script
@@ -619,143 +716,169 @@ upgrade_space
 echo "Checking for Salt Master and Minion updates."
 upgrade_check_salt
 
-echo ""
-echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
-echo ""
-echo "Updating dockers to $NEWVERSION."
-if [ $is_airgap -eq 0 ]; then
-  airgap_update_dockers
-else
-  update_registry
-  update_docker_containers "soup"
-fi
-echo ""
-echo "Stopping Salt Minion service."
-systemctl stop salt-minion
-echo "Killing any remaining Salt Minion processes."
-pkill -9 -ef /usr/bin/salt-minion
-echo ""
-echo "Stopping Salt Master service."
-systemctl stop salt-master
-echo ""
 
-# Does salt need upgraded. If so update it.
-if [ "$UPGRADESALT" == "1" ]; then
-  echo "Upgrading Salt"
-  # Update the repo files so it can actually upgrade
+if [ "$is_hotfix" == "true" ]; then
+  echo "Applying $HOTFIXVERSION" 
+  copy_new_files
+  echo ""
+  update_version
+  salt-call state.highstate -l info queue=True
+  
+else
+  echo ""
+  echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
+  echo ""
+
+  echo "Updating dockers to $NEWVERSION."
   if [ $is_airgap -eq 0 ]; then
+    airgap_update_dockers
     update_centos_repo
     yum clean all
+    check_os_updates
+  else
+    update_registry
+    update_docker_containers "soup"
   fi
-  upgrade_salt
-fi
 
-echo "Checking if Salt was upgraded."
-echo ""
-# Check that Salt was upgraded
-if [[ $(salt --versions-report | grep Salt: | awk {'print $2'}) != "$NEWSALTVERSION" ]]; then
-  echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
-  echo "Once the issue is resolved, run soup again."
-  echo "Exiting."
   echo ""
-  exit 1
-else
-  echo "Salt upgrade success."
+  echo "Stopping Salt Minion service."
+  systemctl stop salt-minion
+  echo "Killing any remaining Salt Minion processes."
+  pkill -9 -ef /usr/bin/salt-minion
   echo ""
-fi
-
-preupgrade_changes
-echo ""
-
-if [ $is_airgap -eq 0 ]; then
-  echo "Updating Rule Files to the Latest."
-  update_airgap_rules
-fi
-
-# Only update the repo if its airgap
-if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
-update_centos_repo
-fi
-
-echo ""
-echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
-copy_new_files
-echo ""
-update_version
-
-echo ""
-echo "Locking down Salt Master for upgrade"
-masterlock
-
-echo ""
-echo "Starting Salt Master service."
-systemctl start salt-master
-
-# Only regenerate osquery packages if Fleet is enabled
-FLEET_MANAGER=$(lookup_pillar fleet_manager)
-FLEET_NODE=$(lookup_pillar fleet_node)
-if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
+  echo "Stopping Salt Master service."
+  systemctl stop salt-master
   echo ""
-  echo "Regenerating Osquery Packages.... This will take several minutes."
-  salt-call state.apply fleet.event_gen-packages -l info queue=True
+
+  preupgrade_changes_2.3.50_repo
+
+  # Does salt need upgraded. If so update it.
+  if [ "$UPGRADESALT" == "1" ]; then
+    echo "Upgrading Salt"
+    # Update the repo files so it can actually upgrade
+    upgrade_salt
+  fi
+
+  echo "Checking if Salt was upgraded."
   echo ""
-fi
+  # Check that Salt was upgraded
+  SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk {'print $2'})
+  if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
+    echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+    echo "Once the issue is resolved, run soup again."
+    echo "Exiting."
+    echo ""
+    exit 1
+  else
+    echo "Salt upgrade success."
+    echo ""
+  fi
 
-echo ""
-echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-salt-call state.highstate -l info queue=True
-echo ""
-echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
-
-echo ""
-echo "Stopping Salt Master to remove ACL"
-systemctl stop salt-master
-
-masterunlock
-
-echo ""
-echo "Starting Salt Master service."
-systemctl start salt-master
-echo "Running a highstate. This could take several minutes."
-salt-call state.highstate -l info queue=True
-postupgrade_changes
-unmount_update
-thehive_maint
-
-if [ "$UPGRADESALT" == "1" ]; then
+  preupgrade_changes
   echo ""
-  echo "Upgrading Salt on the remaining Security Onion nodes from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
+
   if [ $is_airgap -eq 0 ]; then
-    salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' cmd.run "yum clean all"
+    echo "Updating Rule Files to the Latest."
+    update_airgap_rules
   fi
-  salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone' -b $BATCHSIZE state.apply salt.minion queue=True
+
+  # Only update the repo if its airgap
+  if [[ $is_airgap -eq 0 ]] && [[ "$UPGRADESALT" != "1" ]]; then
+  update_centos_repo
+  fi
+
   echo ""
-fi
+  echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
+  copy_new_files
+  echo ""
+  update_version
 
-check_sudoers
+  echo ""
+  echo "Locking down Salt Master for upgrade"
+  masterlock
 
-if [[ -n $lsl_msg ]]; then
-  case $lsl_msg in
-    'distributed')
-      echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
-      echo " -> We recommend checking and adjusting the values as necessary."
-      echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
-    ;;
-    'single-node')
-      # We can assume the lsl_details array has been set if lsl_msg has this value
-      echo "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
-      echo " -> We recommend checking and adjusting the value as necessary."
-      echo " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
-    ;;
-  esac
-fi
+  echo ""
+  echo "Starting Salt Master service."
+  systemctl start salt-master
 
-NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+  # Testing that that salt-master is up by checking that is it connected to itself
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
 
-if [ $NUM_MINIONS -gt 1 ]; then
+  echo ""
+  echo "Ensuring python modules for Salt are installed and patched."
+  salt-call state.apply salt.python3-influxdb -l info queue=True
+  echo ""
 
-	cat << EOF
-	
+  # Only regenerate osquery packages if Fleet is enabled
+  FLEET_MANAGER=$(lookup_pillar fleet_manager)
+  FLEET_NODE=$(lookup_pillar fleet_node)
+  if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
+    echo ""
+    echo "Regenerating Osquery Packages.... This will take several minutes."
+    salt-call state.apply fleet.event_gen-packages -l info queue=True
+    echo ""
+  fi
+
+  echo ""
+  echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
+  salt-call state.highstate -l info queue=True
+  echo ""
+  echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
+
+  echo ""
+  echo "Stopping Salt Master to remove ACL"
+  systemctl stop salt-master
+
+  masterunlock
+
+  echo ""
+  echo "Starting Salt Master service."
+  systemctl start salt-master
+
+  # Testing that that salt-master is up by checking that is it connected to itself
+  retry 50 10 "salt-call state.show_top -l error" || exit 1
+
+  echo "Running a highstate. This could take several minutes."
+  salt-call state.highstate -l info queue=True
+  postupgrade_changes
+  unmount_update
+  thehive_maint
+
+  if [ "$UPGRADESALT" == "1" ]; then
+    if [ $is_airgap -eq 0 ]; then
+      echo ""
+      echo "Cleaning repos on remote Security Onion nodes."
+      salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+      echo ""
+    fi
+  fi
+
+  check_sudoers
+
+  if [[ -n $lsl_msg ]]; then
+    case $lsl_msg in
+      'distributed')
+        echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
+        echo " -> We recommend checking and adjusting the values as necessary."
+        echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+      ;;
+      'single-node')
+        # We can assume the lsl_details array has been set if lsl_msg has this value
+        echo "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
+        echo " -> We recommend checking and adjusting the value as necessary."
+        echo " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
+      ;;
+    esac
+  fi
+
+  NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+
+  if [ $NUM_MINIONS -gt 1 ]; then
+
+    cat << EOF
+    
+  
+  
 This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
 Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
@@ -763,9 +886,12 @@ Each minion is on a random 15 minute check-in period and things like network ban
 If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Forward nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
 For more information, please see https://docs.securityonion.net/en/2.3/soup.html#distributed-deployments.
+
 EOF
 
+  fi
 fi
+
 echo "### soup has been served at `date` ###"
 }
 
@@ -776,8 +902,6 @@ SOUP - Security Onion UPdater
 Please review the following for more information about the update process and recent updates:
 https://docs.securityonion.net/soup
 https://blog.securityonion.net
-
-Please note that soup only updates Security Onion components and does NOT update the underlying operating system (OS). When you installed Security Onion, there was an option to automatically update the OS packages. If you did not enable this option, then you will want to ensure that the OS is fully updated before running soup.
 
 Press Enter to continue or Ctrl-C to cancel.
 

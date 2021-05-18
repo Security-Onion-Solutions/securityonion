@@ -19,13 +19,18 @@ whiptail_airgap() {
 
 	[ -n "$TESTING" ] && return
 
-	INTERWEBS=$(whiptail --title "Security Onion Setup" --radiolist \
-	"Choose your install conditions:" 20 75 4 \
-	"STANDARD" "This manager has internet accesss" ON  \
-	"AIRGAP" "This manager does not have internet access" OFF 3>&1 1>&2 2>&3 )
+	local node_str='node'
+	[[ $is_manager || $is_import ]] && node_str='manager'
+
+	INTERWEBS=$(whiptail --title "Security Onion Setup" --menu \
+	"How should this $node_str be installed?" 10 60 2 \
+	"Standard    " "This $node_str has internet accesss"  \
+	"Airgap      " "This $node_str does not have internet access" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	INTERWEBS=$(echo "${INTERWEBS^^}" | tr -d ' ')
 }
 
 whiptail_avoid_default_hostname() {
@@ -79,7 +84,7 @@ whiptail_bond_nics_mtu() {
 
 whiptail_cancel() {
 
-	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup. No changes have been made." 8 75
+	whiptail --title "Security Onion Setup" --msgbox "Cancelling Setup." 8 75
 	if [ -d "/root/installtmp" ]; then
 		{
 			echo "/root/installtmp exists";
@@ -88,7 +93,7 @@ whiptail_cancel() {
 		} >> $setup_log 2>&1
 	fi
 
-	title "User cancelled setup, no changes made."
+	title "User cancelled setup."
 	
 	exit
 }
@@ -391,6 +396,7 @@ whiptail_dockernet_net() {
 	whiptail_check_exitstatus $exitstatus
 
 }
+
 whiptail_enable_components() {
 
 	[ -n "$TESTING" ] && return
@@ -421,6 +427,218 @@ whiptail_enable_components() {
 	for component in "${COMPONENTS[@]}"; do
     	export "$component=1"
 	done
+}
+
+whiptail_end_settings() {
+	[ -n "$TESTING" ] && return
+
+	# BASIC INFO (NETWORK, HOSTNAME, DESCRIPTION, ETC)
+
+	read -r -d '' end_msg <<- EOM
+	Node Type: $install_type
+	Hostname: $HOSTNAME
+	EOM
+
+	[[ -n $NODE_DESCRIPTION ]] && __append_end_msg "Description: $NODE_DESCRIPTION"
+
+	[[ $is_airgap ]] && __append_end_msg "Airgap: True"
+
+	if [[ $is_minion ]]; then 
+		__append_end_msg "Manager Hostname: $MSRV"
+		__append_end_msg "Manager IP: $MSRVIP"
+	fi
+
+
+	[[ $is_iso ]] && __append_end_msg "Network: $address_type"
+
+	__append_end_msg "Management NIC: $MNIC"
+	__append_end_msg "Management IP: $MAINIP"
+
+	if [[ $address_type == 'STATIC' ]]; then
+		__append_end_msg "Gateway: $MGATEWAY"
+		__append_end_msg "DNS: $MDNS"
+		__append_end_msg "DNS Domain: $MSEARCH"
+	fi
+
+	if [[ -n $so_proxy ]]; then
+		__append_end_msg "Proxy:"
+		__append_end_msg "  Server URL: $proxy_addr"
+		[[ -n $proxy_user ]] && __append_end_msg "  User: $proxy_user"
+	else
+		__append_end_msg "Proxy: N/A"
+	fi
+
+	if [[ $is_sensor ]]; then
+		__append_end_msg "Bond NIC(s):"
+		for nic in "${BNICS[@]}"; do
+			__append_end_msg "  - $nic"
+		done
+		[[ -n $MTU ]] && __append_end_msg "MTU: $MTU"
+	fi
+
+	local homenet_arr
+	if [[ -n $HNMANAGER ]]; then
+		__append_end_msg "Home Network(s):"
+		IFS="," read -r -a homenet_arr <<< "$HNMANAGER"
+		for net in "${homenet_arr[@]}"; do
+			__append_end_msg "  - $net"
+		done
+	elif [[ -n $HNSENSOR ]]; then
+		__append_end_msg "Home Network(s):"
+		IFS="," read -r -a homenet_arr <<< "$HNSENSOR"
+		for net in "${homenet_arr[@]}"; do
+			__append_end_msg "  - $net"
+		done
+	fi
+
+	[[ -n $REDIRECTIT ]] && __append_end_msg "Access URL: https://${REDIRECTIT}"
+
+	[[ -n $ALLOW_CIDR ]] && __append_end_msg "Allowed IP or Subnet: $ALLOW_CIDR"
+
+	[[ -n $WEBUSER ]] && __append_end_msg "Web User: $WEBUSER"
+
+	[[ -n $FLEETNODEUSER ]] && __append_end_msg "Fleet User: $FLEETNODEUSER"
+
+	if [[ $is_manager ]]; then
+		__append_end_msg "Enabled Optional Components:"
+		for component in "${COMPONENTS[@]}"; do
+			__append_end_msg "  - $component"
+		done
+	fi
+	
+	# METADATA / IDS
+
+	if [[ -n $ZEEKVERSION ]]; then
+		local md_tool_string=${ZEEKVERSION,;}
+		md_tool_string=${md_tool_string^}
+
+		__append_end_msg "Metadata Tool: $md_tool_string"
+	fi
+
+	[[ -n $RULESETUP ]] && __append_end_msg "IDS Ruleset: $RULESETUP"
+	[[ -n $OINKCODE ]] && __append_end_msg "Oinkcode: $OINKCODE"
+
+	# PATCH SCHEDULE
+
+	if [[ -n $PATCHSCHEDULENAME ]]; then
+		__append_end_msg "Patch Schedule:"
+		if [[ $PATCHSCHEDULENAME == 'auto'|| $PATCHSCHEDULENAME == 'manual' ]]; then
+			__append_end_msg "  Type: $PATCHSCHEDULENAME"
+		else
+			__append_end_msg "  Name: $PATCHSCHEDULENAME"
+		fi
+		if [[ ${#PATCHSCHEDULEDAYS[@]} -gt 0 ]]; then
+			__append_end_msg "  Day(s):"
+			for day in "${PATCHSCHEDULEDAYS[@]}"; do
+				__append_end_msg "    - $day"
+			done
+		fi
+		if [[ ${#PATCHSCHEDULEHOURS[@]} -gt 0 ]]; then
+			__append_end_msg "  Hours(s):"
+			for hour in "${PATCHSCHEDULEHOURS[@]}"; do
+				__append_end_msg "    - $hour"
+			done
+		fi
+	fi
+
+	# MISC
+
+	[[ $is_helix ]] && __append_end_msg "Helix API key: $HELIXAPIKEY"
+	[[ -n $DOCKERNET ]] && __append_end_msg "Docker network: $DOCKERNET"
+	if [[ -n $MANAGERUPDATES ]]; then
+		__append_end_msg "OS Package Updates: Manager"
+	else
+		__append_end_msg "OS Package Updates: Open"
+	fi
+	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
+		__append_end_msg "NTP Servers:"
+		for server in "${ntp_servers[@]}"; do
+			__append_end_msg "  - $server"
+		done
+	fi
+
+	if [[ $NSMSETUP != 'ADVANCED' ]]; then
+		[[ -n $BASICZEEK ]] && __append_end_msg "Zeek Processes: $BASICZEEK"
+		[[ -n $BASICSURI ]] && __append_end_msg "Suricata Processes: $BASICSURI"
+	fi
+
+	# ADVANCED OR REGULAR
+
+	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
+		__append_end_msg "Advanced Node Settings:"
+		__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		__append_end_msg "  Logstash Heap Size: $NODE_LS_HEAP_SIZE"
+		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
+		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
+		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
+		__append_end_msg "  Curator Day Cutoff: $CURCLOSEDAYS days"
+		__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
+	else
+		__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
+		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
+		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
+		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
+		__append_end_msg "Curator Close After: $CURCLOSEDAYS days"
+		__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+	fi
+
+
+	# ADVANCED
+	if [[ $MANAGERADV == 'ADVANCED' ]]; then
+		__append_end_msg "Advanced Manager Settings:"
+		[[ -n $ESCLUSTERNAME ]] && __append_end_msg "  ES Cluster Name: $ESCLUSTERNAME"
+		if [[ ${#BLOGS[@]} -gt 0 ]]; then
+			__append_end_msg "  Zeek Logs Enabled:"
+			for log in "${BLOGS[@]}"; do
+				__append_end_msg "    - $log"
+			done
+		fi
+	fi
+
+	if [[ $NSMSETUP == 'ADVANCED' ]]; then
+		__append_end_msg "Advanced NSM Settings:"
+		if [[ ${#ZEEKPINS[@]} -gt 0 ]]; then
+			local zeek_pin_str
+			for core in "${ZEEKPINS[@]}"; do
+				zeek_pin_str="${zeek_pin_str}${core},"
+			done
+			zeek_pin_str=${zeek_pin_str%,}
+			__append_end_msg "  Zeek Pinned Cores: ${zeek_pin_str}"
+		fi
+		if [[ ${#SURIPINS[@]} -gt 0 ]]; then
+			local suri_pin_str
+			for core in "${SURIPINS[@]}"; do
+				suri_pin_str="${suri_pin_str}${core},"
+			done
+			suri_pin_str=${suri_pin_str%,}
+			__append_end_msg "  Suricata Pinned Cores: ${suri_pin_str}"
+		fi
+	fi
+
+	local msg
+	read -r -d '' msg <<-EOM
+	$end_msg
+
+	Press TAB to select yes or no.
+	EOM
+
+	whiptail --title "The following options have been set, would you like to proceed?" --yesno "$msg" 24 75 --scrolltext
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	echo "$end_msg" > /root/install_summary
+	printf '%s\n' 'Install summary:' "$end_msg" >> "$setup_log"
+}
+
+__append_end_msg() {
+	local newline=$1
+
+	read -r -d '' end_msg <<- EOM
+	$end_msg
+	$newline
+	EOM
 }
 
 whiptail_eval_adv() {
@@ -776,44 +994,65 @@ whiptail_management_nic() {
 
 }
 
-whiptail_management_interface_setup() {
+whiptail_net_method() {
 	[ -n "$TESTING" ] && return
 
-	local minion_msg
-	local msg
-	local line_count
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+
+	read -r -d '' options_msg <<- EOM
+	"Direct" - Internet requests connect directly to the Internet.
+
+	EOM
+	local options=(
+		" Direct " ""
+	)
+	local proxy_desc="proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment."
 
 	if [[ $is_minion ]]; then
-		line_count=11
-		minion_msg="copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ECDSA certificate and enter the password for soremote"
+		read -r -d '' options_msg <<- EOM
+		${options_msg}
+
+		"Direct + Manager" - all traffic passes to the Internet normally, but ${pkg_mngr} updates will instead be pulled from ${mngr_article} manager. 
+
+		"Proxy" - ${proxy_desc}
+
+		"Proxy + Manager" - proxy all traffic from the "Proxy" option except ${pkg_mngr} updates, which will instead pull from the manager.
+		EOM
+		
+		options+=(
+			" Direct + Manager " ""
+			" Proxy " ""
+			" Proxy + Manager " ""
+		)
+		local height=25
 	else
-		line_count=9
-		minion_msg=""
+		read -r -d '' options_msg <<- EOM
+			${options_msg}
+
+			"Proxy" - ${proxy_desc}
+		EOM
+		options+=(
+			" Proxy " ""
+		)
+		local height=17
 	fi
 
-	if [[ $is_iso ]]; then
-		if [[ $minion_msg != "" ]]; then
-			if [[ -f $net_init_file ]]; then
-				msg=$minion_msg
-			else
-				msg="initialize networking and $minion_msg"
-			fi
-		else
-			msg="initialize networking"
-		fi
-	else
-		msg=$minion_msg
-	fi
+	local msg
+	read -r -d '' msg <<- EOM
+	How would you like to connect to the Internet? 
 
-	read -r -d '' message <<- EOM
-		Setup will now $msg.
-
-		Select OK to continue.
+	$options_msg
 	EOM
 
-	whiptail --title "Security Onion Setup" --msgbox "$message" $line_count 75
+	local option_count=$(( ${#options[@]} / 2 ))
+
+	network_traffic=$(whiptail --title "Security Onion Setup" --menu "$msg" $height 75 $option_count "${options[@]}" 3>&1 1>&2 2>&3)
+
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+	
+	network_traffic=$(echo "${network_traffic^^}" | tr -d ' ' | tr '+' '_')
 }
 
 whiptail_net_setup_complete() {
@@ -822,6 +1061,20 @@ whiptail_net_setup_complete() {
 	whiptail --title "Security Onion Setup" \
 		--msgbox "Successfully set up networking, setup will now exit." 7 75
 	exit 0
+}
+
+whiptail_network_init_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now initialize networking.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 9 75
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_server() {
@@ -934,27 +1187,20 @@ whiptail_manager_adv_service_zeeklogs() {
 
 }
 
-whiptail_manager_updates() {
+whiptail_manager_error() {
 
 	[ -n "$TESTING" ] && return
 
-	local update_string
-	update_string=$(whiptail --title "Security Onion Setup" --radiolist \
-	"How would you like to download OS package updates for your grid?" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates" ON \
-	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+	local msg
+	read -r -d '' msg <<- EOM
+	Setup could not determine if the manager $MSRV is in a good state.
 
-	case "$update_string" in
-		'MANAGER')
-			export MANAGERUPDATES='1'
-			;;
-		*)
-			export MANAGERUPDATES='0'
-			;;
-	esac
+	Continuing without verifying all services on the manager are running may result in a failure.
 
+	Would you like to continue anyway?
+	EOM
+
+	whiptail --title "Security Onion Setup" --yesno "$msg" 13 75 || whiptail_check_exitstatus 1
 }
 
 whiptail_manager_updates_warning() {
@@ -1042,6 +1288,16 @@ whiptail_node_advanced() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
+}
+
+whiptail_node_description() {
+	[ -n "$TESTING" ] && return
+
+	NODE_DESCRIPTION=$(whiptail --title "Security Onion Setup" \
+		--inputbox "Enter a short description for the node or press ENTER to leave blank:" 10 75 3>&1 1>&2 2>&3)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_node_es_heap() {
@@ -1248,7 +1504,9 @@ whiptail_patch_schedule_select_hours() {
 whiptail_proxy_ask() {
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "Security Onion Setup" --yesno "Do you want to set a proxy server for this installation?" 7 60 --defaultno
+	local pkg_mngr
+	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+	whiptail --title "Security Onion Setup" --yesno "Do you want to proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment?" 9 65 --defaultno
 }
 
 whiptail_proxy_addr() {
@@ -1479,6 +1737,36 @@ whiptail_so_allow() {
 	export ALLOW_CIDR
 
 	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_ssh_key_copy_notice() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+		Setup will now copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ED25519 certificate and enter the password for soremote.
+
+		Select OK to continue.
+	EOM
+
+	whiptail --title "Security Onion Setup" --msgbox "$message" 11 75
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whitpail_ssh_warning() {
+	[ -n "$TESTING" ] && return
+
+	local msg
+
+	read -r -d '' msg <<- EOM
+	NOTE: You will recceive a warning upon SSH reconnect that the host key has changed.
+
+	This is expected due to hardening of the OpenSSH server config.
+	
+	The host key algorithm will now be ED25519, follow the instructions given by your SSH client to remove the old key fingerprint then retry the connection.
+	EOM
+
+	whiptail --msgbox "$msg" 14 75
 }
 
 whiptail_storage_requirements() {

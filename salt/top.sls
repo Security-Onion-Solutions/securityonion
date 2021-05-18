@@ -14,27 +14,21 @@
 {% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
+{% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 base:
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test
-    {% if ISAIRGAP is sameas true %}
-    - airgap
-    {% endif %}
+    - repo.client
     - salt.minion
 
   'G@os:CentOS and G@saltversion:{{saltversion}}':
     - match: compound
-    {% if ISAIRGAP is sameas true %}
-    - airgap
-    {% else %}
-    - yum
-    {% endif %}
+    - repo.client
     - yum.packages
 
   '* and G@saltversion:{{saltversion}}':

@@ -1,10 +1,27 @@
-{% from 'salt/map.jinja' import COMMON with context %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
+{% from 'salt/map.jinja' import SALTNOTHELD %}
+{% from 'salt/map.jinja' import SALTPACKAGES %}
+{% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
+{% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
 include:
   - salt
+  - salt.helper-packages
+  - systemd.reload
+
+{% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
+
+{% if SALTNOTHELD | int == 0 %}
+unhold_salt_packages:
+  module.run:
+    - pkg.unhold:
+      - pkgs:
+{% for package in SALTPACKAGES %}
+        - {{ package }}
+{% endfor %}
+{% endif %}
 
 install_salt_minion:
   cmd.run:
@@ -13,15 +30,19 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" != "{{SALTVERSION}}"
+{% endif %}
 
-salt_minion_package:
-  pkg.installed:
-    - pkgs:
-      - {{ COMMON }}
-      - salt-minion
-    - hold: True
-    - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+{% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
+
+{% if SALTNOTHELD | int == 1 %}
+hold_salt_packages:
+  module.run:
+    - pkg.hold:
+      - pkgs:
+{% for package in SALTPACKAGES %}
+        - {{ package }}
+{% endfor %}
+{% endif %}
 
 set_log_levels:
   file.append:
@@ -32,8 +53,26 @@ set_log_levels:
     - listen_in:
       - service: salt_minion_service
 
+salt_minion_service_unit_file:
+  file.managed:
+    - name: /etc/systemd/system/multi-user.target.wants/salt-minion.service
+    - source: salt://salt/service/salt-minion.service.jinja
+    - template: jinja
+    - defaults:
+        service_start_delay: {{ service_start_delay }}
+    - onchanges_in:
+      - module: systemd_reload
+    - listen_in:
+      - service: salt_minion_service
+{% endif %}
+
+# this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+
+patch_pkg:
+  pkg.installed:
+    - name: patch

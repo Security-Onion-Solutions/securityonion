@@ -3,28 +3,33 @@
 
 {% if grains.os == 'Ubuntu' %}
   {% set SPLITCHAR = '+' %}
+  {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep -q salt ; echo $?', python_shell=True) %}
+  {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion'] %}
+  {% set SALT_STATE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/states' %}
+  {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/modules' %}
+  {% set PYTHONINFLUXVERSION = '5.3.1' %}
+  {% set PYTHON3INFLUX= 'influxdb == ' ~ PYTHONINFLUXVERSION  %}
+  {% set PYTHON3INFLUXDEPS= ['certifi', 'chardet', 'python-dateutil', 'pytz', 'requests'] %}
+  {% set PYTHONINSTALLER = 'pip' %}
 {% else %}
   {% set SPLITCHAR = '-' %}
+  {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep -q salt ; echo $?', python_shell=True) %}
+  {% set SALTPACKAGES = ['salt', 'salt-master', 'salt-minion'] %}
+  {% set SALT_STATE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/states' %}
+  {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/modules' %}
+  {% set PYTHONINFLUXVERSION = '5.3.1' %}
+  {% set PYTHON3INFLUX= 'securityonion-python3-influxdb' %}
+  {% set PYTHON3INFLUXDEPS= ['python36-certifi', 'python36-chardet', 'python36-dateutil', 'python36-pytz', 'python36-requests'] %}
+  {% set PYTHONINSTALLER = 'pkg' %}
 {% endif %}
 
 {% set INSTALLEDSALTVERSION = salt['pkg.version']('salt-minion').split(SPLITCHAR)[0] %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
-
-{% if grains.os|lower == 'ubuntu' %}
-  {% set COMMON = 'salt-common' %}
-{% elif grains.os|lower in ['centos', 'redhat'] %}
-  {% set COMMON = 'salt' %}
-{% endif %}
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower in ['centos', 'redhat'] %}
-    {% if ISAIRGAP is sameas true %}
-      {% set UPGRADECOMMAND = 'yum clean all && yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -X -s 120 -r -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*"' %}
-    {% else %}
-      {% set UPGRADECOMMAND = 'yum versionlock delete "salt-*" && /usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION ~ ' && yum versionlock add "salt-*"' %}
-    {% endif %}
+      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -X -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
   {% elif grains.os|lower == 'ubuntu' %}
-    {% set UPGRADECOMMAND = 'apt-mark unhold salt-common && apt-mark unhold salt-minion && /usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION ~ ' && apt-mark hold salt-common && apt-mark hold salt-minion' %}
+    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -X -s 120 -F -x python3 stable ' ~ SALTVERSION %}
   {% endif %}
 {% else %}
   {% set UPGRADECOMMAND = 'echo Already running Salt Minion version ' ~ SALTVERSION %}
