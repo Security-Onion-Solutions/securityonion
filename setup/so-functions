@@ -1348,15 +1348,16 @@ filter_unused_nics() {
 	
 	nic_list=()
 	for nic in "${filtered_nics[@]}"; do
+		local nic_mac=$(cat "/sys/class/net/${nic}/address")
 		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
 			1)
-				nic_list+=("$nic" "Link UP " "OFF")
+				nic_list+=("$nic" "$nic_mac" "Link UP " "OFF")
 				;;
 			0)
-				nic_list+=("$nic" "Link DOWN " "OFF")
+				nic_list+=("$nic" "$nic_mac" "Link DOWN " "OFF")
 				;;
 			*)
-				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				nic_list+=("$nic" "$nic_mac" "Link UNKNOWN " "OFF")
 				;;
 		esac
 	done
