@@ -78,6 +78,7 @@ zeekspoolownership:
   file.directory:
     - name: /nsm/zeek/spool
     - user: 937
+    - max_depth: 0
     - recurse:
       - user
 
