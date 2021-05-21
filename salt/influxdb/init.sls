@@ -17,7 +17,6 @@
 include:
   - salt.minion
   - salt.python3-influxdb
-
 # Influx DB
 influxconfdir:
   file.directory:
