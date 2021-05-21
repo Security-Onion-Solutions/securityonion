@@ -128,7 +128,7 @@ update_docker_containers() {
   mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
   # Let's make sure we have the public key
-  retry 50 10 "curl -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
+  retry 50 10 "curl -f -sSL https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS -o $SIGNPATH/KEYS" >> "$LOG_FILE" 2>&1
   result=$?
   if [[ $result -eq 0 ]]; then
     cat $SIGNPATH/KEYS | gpg --import - >> "$LOG_FILE" 2>&1
@@ -151,7 +151,7 @@ update_docker_containers() {
     retry 50 10 "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" >> "$LOG_FILE" 2>&1 
     
     # Get signature
-    retry 50 10 "curl -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" >> "$LOG_FILE" 2>&1
+    retry 50 10 "curl -f -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" >> "$LOG_FILE" 2>&1
     if [[ $? -ne 0 ]]; then
       echo "Unable to pull signature file for $image" >> "$LOG_FILE" 2>&1 
       exit 1
