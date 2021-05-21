@@ -3,7 +3,7 @@
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone'] and GRAFANA == 1 %}
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
 
 {% set MANAGER = salt['grains.get']('master') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
