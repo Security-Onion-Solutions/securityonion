@@ -35,6 +35,7 @@
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 vm.max_map_count:
   sysctl.present:
@@ -213,6 +214,10 @@ so-elasticsearch:
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
+      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+      - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
+      - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
+      {% endif %}
     - watch:
       - file: cacertz
       - file: esyml
