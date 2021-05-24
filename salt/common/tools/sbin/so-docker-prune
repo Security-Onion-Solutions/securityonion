@@ -37,8 +37,10 @@ def get_image_version(string) -> str:
     try:
       Version(ver)
     except InvalidVersion:
-      # Strip the last substring following a hyphen for automated branches
-      ver = '-'.join(ver.split('-')[:-1])
+      # Also return a very high (but less than 'latest') semver for automated branches 
+      # since the image will most likely be the latest version
+      if any(substr in ver for substr in ['bravo', 'delta', 'foxtrot', 'kilo']):
+        return '99999.9.9'   
     return ver
 
 
