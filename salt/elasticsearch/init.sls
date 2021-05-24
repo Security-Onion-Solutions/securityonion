@@ -237,6 +237,8 @@ so-elasticsearch-pipelines-file:
     - group: 939
     - mode: 754
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 so-elasticsearch-pipelines:
  cmd.run:
