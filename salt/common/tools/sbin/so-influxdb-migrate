@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+echo -e "\nThis script is used to reduce the size of InfluxDB by downsampling old data into the so_long_term retention policy."
+
+echo -e "\nInfluxDB will now be migrated. This could take a few hours depending on how large the database is and hardware resources available."
+read -r -p "Are you sure you want to continue? [y/N] " yorn
+if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  echo -e "\nMigrating InfluxDb started at `date`. This may take several hours depending on how much data needs to be moved."
+  day=0
+  startdate=`date`
+  
+  while docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"SELECT mean(*) INTO \"so_long_term\".:MEASUREMENT FROM \"autogen\"./.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d GROUP BY time(5m),*\""; do
+    # why 2020-07-21? 
+    migrationdate=`date -d "2020-07-21 + ${day} days" +"%y-%m-%d"`
+    echo "Migration of $migrationdate started at $startdate and completed at `date`."
+
+    newdaytomigrate=$(date -d "$migrationdate + 1 days" +"%s")
+    today=$(date +"%s")
+    if [ $newdaytomigrate -ge $today ]; then
+      break
+    else
+      ((day=day+1))
+      startdate=`date`
+      echo -e "\nMigrating the next day's worth of data."
+    fi
+  done
+
+  echo -e "\nInfluxDb data migration complete."
+
+else
+  echo -e "\nExiting as requested."
+fi

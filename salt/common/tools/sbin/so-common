@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+DEFAULT_SALT_DIR=/opt/so/saltstack/default
+
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
 	echo "This script must be run using sudo!"
@@ -120,6 +122,16 @@ check_elastic_license() {
 	else
 	  echo "Elastic License has already been accepted"
 	fi  
+}
+
+copy_new_files() {
+  # Copy new files over to the salt dir
+  cd $UPDATE_DIR
+  rsync -a salt $DEFAULT_SALT_DIR/
+  rsync -a pillar $DEFAULT_SALT_DIR/
+  chown -R socore:socore $DEFAULT_SALT_DIR/
+  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
+  cd /tmp
 }
 
 disable_fastestmirror() {
@@ -475,6 +487,7 @@ wait_for_web_response() {
 	expected=$2
 	maxAttempts=${3:-300}
 	logfile=/root/wait_for_web_response.log
+	truncate -s 0 "$logfile"
 	attempt=0
 	while [[ $attempt -lt $maxAttempts ]]; do
 		attempt=$((attempt+1))

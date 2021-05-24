@@ -1348,15 +1348,16 @@ filter_unused_nics() {
 	
 	nic_list=()
 	for nic in "${filtered_nics[@]}"; do
+		local nic_mac=$(cat "/sys/class/net/${nic}/address" 2>/dev/null)
 		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
 			1)
-				nic_list+=("$nic" "Link UP " "OFF")
+				nic_list+=("$nic" "$nic_mac  Link UP " "OFF")
 				;;
 			0)
-				nic_list+=("$nic" "Link DOWN " "OFF")
+				nic_list+=("$nic" "$nic_mac  Link DOWN " "OFF")
 				;;
 			*)
-				nic_list+=("$nic" "Link UNKNOWN " "OFF")
+				nic_list+=("$nic" "$nic_mac  Link UNKNOWN " "OFF")
 				;;
 		esac
 	done
@@ -2197,9 +2198,9 @@ saltify() {
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb" >> "$setup_log" 2>&1 || exit 1
 		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging"  >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging python-influxdb"  >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 }

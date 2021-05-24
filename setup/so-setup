@@ -837,6 +837,13 @@ echo "1" > /root/accept_changes
 			set_progress_str 73 "Update playbook rules"
 			so-playbook-ruleupdate >> /root/setup_playbook_rule_update.log 2>&1 &
 		fi
+
+		if [[ "$GRAFANA" = 1 ]]; then
+			set_progress_str 74 "Installing InfluxDB and Grafana"
+			salt-call state.apply -l info influxdb >> $setup_log 2>&1
+			salt-call state.apply -l info grafana >> $setup_log 2>&1
+		fi
+
 	fi
 	
 	if [[ "$OSQUERY" = 1 ]]; then
@@ -918,10 +925,11 @@ success=$(tail -10 $setup_log | grep Failed | awk '{ print $2}')
 if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
-if grep -q -E "ERROR|Result: False" $setup_log || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
+# Ignore "Status .* was not found" due to output from salt http.query or http.wait_for_successful_query states used with retry
+if grep -E "ERROR|Result: False" $setup_log | grep -qvE "Status .* was not found" || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
 	SO_ERROR=1
 
-	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	grep --color=never "ERROR" "$setup_log" | grep -qvE "Status .* was not found" > "$error_log"
 fi
 
 if [[ -n $SO_ERROR ]]; then 
