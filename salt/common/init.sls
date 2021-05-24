@@ -2,6 +2,8 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
+{% set ELASTICUSER = salt['pillar.get']('elasticsearch:auth:user', '' ) %}
+{% set ELASTICPASS = salt['pillar.get']('elasticsearch:auth:pass', '' ) %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -178,6 +180,13 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
+    - defaults:
+        ELASTICCURL: "curl"
+{% if salt['pillar.get']('elasticsearch:auth_enabled', False) %}
+    - context:
+        ELASTICCURL: "curl --user {{ELASTICUSER}}:{{ELASTICPASS}}"
+{% endif %}
+
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup
