@@ -27,7 +27,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
-    curl ${ELASTICSEARCH_AUTH} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+    {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
 	if [ $? -eq 0 ]; then
 		ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"
@@ -47,7 +47,7 @@ fi
 cd ${ELASTICSEARCH_INGEST_PIPELINES}
 
 echo "Loading pipelines..."
-for i in *; do echo $i; RESPONSE=$(curl ${ELASTICSEARCH_AUTH} -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
+for i in *; do echo $i; RESPONSE=$({{ ELASTICCURL }} -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
 echo
 
 cd - >/dev/null

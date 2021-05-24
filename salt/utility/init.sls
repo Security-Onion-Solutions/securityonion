@@ -1,8 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 
 {% if sls in allowed_states %}
-  {% set ELASTICUSER = salt['pillar.get']('elasticsearch:auth:user', '' ) %}
-  {% set ELASTICPASS = salt['pillar.get']('elasticsearch:auth:pass', '' ) %}
+  {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 # This state is for checking things
   {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
@@ -15,11 +14,7 @@ crossclusterson:
     - source: salt://utility/bin/crossthestreams
     - template: jinja
     - defaults:
-        ELASTICCURL: "curl"
-    {% if salt['pillar.get']('elasticsearch:auth_enabled', False) %}
-    - context:
-        ELASTICCURL: "curl --user {{ELASTICUSER}}:{{ELASTICPASS}}"
-    {% endif %}
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
   {% endif %}
   {% if grains['role'] in ['so-eval', 'so-import'] %}
@@ -31,11 +26,7 @@ fixsearch:
     - source: salt://utility/bin/eval
     - template: jinja
     - defaults:
-        ELASTICCURL: "curl"
-    {% if salt['pillar.get']('elasticsearch:auth_enabled', False) %}
-    - context:
-        ELASTICCURL: "curl --user {{ELASTICUSER}}:{{ELASTICPASS}}"
-    {% endif %}
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
   {% endif %}
 
 {% else %}
