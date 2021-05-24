@@ -40,6 +40,7 @@ email=$2
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
+extractedHashFile=${EXTRACTED_HASH_FILE:-/opt/so/conf/elasticsearch/users}
 
 function fail() {
   msg=$1
@@ -108,13 +109,17 @@ function updatePassword() {
 
   if [[ -n $identityId ]]; then
     # Generate password hash
-    passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER) | cut -c 11-
-    passwordHash="\$2a${passwordHash}
-
+    passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER)
+    passwordHash=$(echo "$passwordHash" | cut -c 11-)
+    passwordHash="\$2a${passwordHash}"
     # Update DB with new hash
     echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
+}
+
+function extractHashes() {
+  echo "select ici.identifier || ':' || json_extract(ic.config, '$.hashed_password') from identity_credential_identifiers ici, identity_credentials ic where ici.identity_credential_id=ic.id and json_extract(ic.config, '$.hashed_password') is not null order by ici.identifier" | sqlite3 "$databasePath" > "$extractedHashFile"
 }
 
 function listUsers() {
@@ -208,6 +213,7 @@ case "${operation}" in
     validateEmail "$email"
     updatePassword
     createUser "$email"
+    extractHashes
     echo "Successfully added new user to SOC"
     check_container thehive && echo $password | so-thehive-user-add "$email"
     check_container fleet && echo $password | so-fleet-user-add "$email"
@@ -223,6 +229,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateUser "$email"
+    extractHashes
     echo "Successfully updated user"
     ;;
 
@@ -231,6 +238,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'active'
+    extractHashes
     echo "Successfully enabled user"
     check_container thehive && so-thehive-user-enable "$email" true
     check_container fleet && so-fleet-user-enable "$email" true   
@@ -241,6 +249,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'locked'
+    extractHashes
     echo "Successfully disabled user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false   
@@ -251,9 +260,15 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     deleteUser "$email"
+    extractHashes
     echo "Successfully deleted user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false
+    ;;
+
+  "sync")
+    extractHashes
+    echo "Synchronization complete"
     ;;
 
   "validate")
