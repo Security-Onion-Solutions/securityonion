@@ -95,7 +95,6 @@ commonpkgs:
       - netcat
       - python3-mysqldb
       - sqlite3
-      - argon2
       - libssl-dev
       - python3-dateutil
       - python3-m2crypto
@@ -128,7 +127,6 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
-      - argon2
       - mariadb-devel
       - nmap-ncat
       - python3
