@@ -486,12 +486,13 @@ wait_for_web_response() {
 	url=$1
 	expected=$2
 	maxAttempts=${3:-300}
+	curlcmd=${4:-curl}
 	logfile=/root/wait_for_web_response.log
 	attempt=0
 	while [[ $attempt -lt $maxAttempts ]]; do
 		attempt=$((attempt+1))
 		echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
-		result=$(curl -ks -L $url)
+		result=$($curlcmd -ks -L $url)
 		exitcode=$?
 
 		echo "--------------------------------------------------" >> $logfile
