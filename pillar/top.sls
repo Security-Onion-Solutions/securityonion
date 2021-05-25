@@ -46,6 +46,9 @@ base:
     - logstash.manager
     - logstash.search
     - elasticsearch.search
+{% if salt['file.exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+    - elasticsearch.auth
+{% endif %}
     - data.*
     - zeeklogs
     - secrets

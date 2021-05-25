@@ -256,6 +256,14 @@ so-elasticsearch-templates:
     - template: jinja
 {% endif %}
 
+elastic_curl_config:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/curl.config
+    - mode: 600
+    # since we are generating a random password, and we don't want that to happen everytime
+    # a highstate runs, we only manage the file if it doesn't exist
+    - unless: ls /opt/so/conf/elasticsearch/curl.config
+
 {% endif %} {# if grains['role'] != 'so-helix' #}
 
 {% else %}
