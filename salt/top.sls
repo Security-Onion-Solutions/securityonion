@@ -238,6 +238,7 @@ base:
     {%- endif %}
     {%- if ELASTICSEARCH %}
     - elasticsearch
+    - elasticsearch.auth
     {%- endif %} 
     {%- if LOGSTASH %}
     - logstash
