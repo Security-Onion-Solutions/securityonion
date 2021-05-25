@@ -260,6 +260,7 @@ elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
     - mode: 600
+    - show_changes: False
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 
