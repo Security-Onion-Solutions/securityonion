@@ -32,15 +32,15 @@ def get_image_version(string) -> str:
   ver = string.split(':')[-1]
   if ver == 'latest':
     # Version doesn't like "latest", so use a high semver
-    return '999999.9.9'
+    return '99999.9.9'
   else:
     try:
       Version(ver)
     except InvalidVersion:
-      # Also return a very high (but less than 'latest') semver for automated branches 
-      # since the image will most likely be the latest version
-      if any(substr in ver for substr in ['bravo', 'delta', 'foxtrot', 'kilo']):
-        return '99999.9.9'   
+      # Also return a very high semver for any version 
+      # with a dash in it since it will likely be a dev version of some kind
+      if '-' in ver:
+        return '999999.9.9'
     return ver
 
 
