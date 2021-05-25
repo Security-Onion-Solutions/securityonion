@@ -80,7 +80,7 @@ filebeatmoduleconfsync:
 
 sodefaults_module_conf:
   file.managed:
-    - name: /opt/so/conf/filebeat/etc/securityonion.yml
+    - name: /opt/so/conf/filebeat/modules/securityonion.yml
     - source: salt://filebeat/etc/module_config.yml.jinja
     - template: jinja
     - defaults:
@@ -88,7 +88,7 @@ sodefaults_module_conf:
 
 thirdparty_module_conf:
   file.managed:
-    - name: /opt/so/conf/filebeat/etc/thirdparty.yml
+    - name: /opt/so/conf/filebeat/modules/thirdparty.yml
     - source: salt://filebeat/etc/module_config.yml.jinja
     - template: jinja
     - defaults:
