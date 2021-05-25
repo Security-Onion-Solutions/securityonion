@@ -1,4 +1,6 @@
 {%- set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
+{% from 'filebeat/map.jinja' import ZEEKLOGLOOKUP with context %}
+
 securityonion_filebeat:
   modules:
     elasticsearch:
@@ -25,7 +27,12 @@ securityonion_filebeat:
       {%- if ZEEKVER != 'SURICATA' %}
     zeek:
         {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
-      {{ LOGNAME }}:
+          {% if LOGNAME in ZEEKLOGLOOKUP.keys() %}
+            {% set FILESET = ZEEKLOGLOOKUP.get(LOGNAME) %}
+          {% else %}
+            {% set FILESET = LOGNAME %}
+          {% endif %}
+      {{ FILESET }}:
         enabled: false
         var.paths: ["/nsm/zeek/logs/current/{{ LOGNAME }}.log"]
         {%- endfor %}

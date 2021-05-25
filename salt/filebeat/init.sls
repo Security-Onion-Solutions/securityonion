@@ -23,7 +23,6 @@
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 {% from 'filebeat/map.jinja' import SO with context %}
 
-
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
