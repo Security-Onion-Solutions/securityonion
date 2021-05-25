@@ -40,7 +40,8 @@ email=$2
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
-extractedHashFile=${EXTRACTED_HASH_FILE:-/opt/so/conf/elasticsearch/users}
+elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/conf/elasticsearch/users}
+elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/conf/elasticsearch/users_roles}
 
 function fail() {
   msg=$1
@@ -93,6 +94,16 @@ function validateEmail() {
   fi
 }
 
+function hashPassword() {
+  password=$1
+
+  passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER)
+  passwordHash=$(echo "$passwordHash" | cut -c 11-)
+  passwordHash="\$2a${passwordHash}" # still waiting for https://github.com/elastic/elasticsearch/issues/51132
+  echo "$passwordHash"
+}
+
+
 function updatePassword() {
   identityId=$1
   
@@ -109,17 +120,54 @@ function updatePassword() {
 
   if [[ -n $identityId ]]; then
     # Generate password hash
-    passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER)
-    passwordHash=$(echo "$passwordHash" | cut -c 11-)
-    passwordHash="\$2a${passwordHash}"
+    passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
 }
 
-function extractHashes() {
-  echo "select ici.identifier || ':' || json_extract(ic.config, '$.hashed_password') from identity_credential_identifiers ici, identity_credentials ic where ici.identity_credential_id=ic.id and json_extract(ic.config, '$.hashed_password') is not null order by ici.identifier" | sqlite3 "$databasePath" > "$extractedHashFile"
+function createElasticTmpFile() {
+  filename=$1
+  tmpFile=${filename}.tmp
+  truncate -s 0 "$tmpFile"
+  chmod 600 "$tmpFile"
+  chown elasticsearch:elasticsearch "$tmpFile"
+  echo "$tmpFile"
+}
+
+function syncElastic() {
+  usersFileTmp=$(createElasticTmpFile "${elasticUsersFile}")
+  rolesFileTmp=$(createElasticTmpFile "${elasticRolesFile}")
+
+  sysUser=$(lookup_pillar "auth:user" "elasticsearch")
+  sysPass=$(lookup_pillar "auth:pass" "elasticsearch")
+  sysHash=$(hashPassword "$sysPass")
+
+  # Generate the new users file
+  echo "${sysUser}:${sysHash}" >> "$usersFileTmp"
+  echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
+    "from identity_credential_identifiers ici, identity_credentials ic " \
+    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+    "order by ici.identifier;" | \
+    sqlite3 "$databasePath" | \
+    jq -r '.user + ":" + .data.hashed_password' \
+    >> "$usersFileTmp"
+  mv -f "$usersFileTmp" "$elasticUsersFile"
+
+  # Generate the new users_roles file
+  echo "superuser:${sysUser}" >> "$rolesFileTmp"
+  echo "select 'superuser:' || ici.identifier " \
+    "from identity_credential_identifiers ici, identity_credentials ic " \
+    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+    "order by ici.identifier;" | \
+    sqlite3 "$databasePath" \
+    >> "$rolesFileTmp"
+  mv -f "$rolesFileTmp" "$elasticRolesFile"
+}
+
+function syncAll() {
+  syncElastic
 }
 
 function listUsers() {
@@ -213,7 +261,7 @@ case "${operation}" in
     validateEmail "$email"
     updatePassword
     createUser "$email"
-    extractHashes
+    syncAll
     echo "Successfully added new user to SOC"
     check_container thehive && echo $password | so-thehive-user-add "$email"
     check_container fleet && echo $password | so-fleet-user-add "$email"
@@ -229,7 +277,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateUser "$email"
-    extractHashes
+    syncAll
     echo "Successfully updated user"
     ;;
 
@@ -238,7 +286,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'active'
-    extractHashes
+    syncAll
     echo "Successfully enabled user"
     check_container thehive && so-thehive-user-enable "$email" true
     check_container fleet && so-fleet-user-enable "$email" true   
@@ -249,7 +297,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'locked'
-    extractHashes
+    syncAll
     echo "Successfully disabled user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false   
@@ -260,14 +308,14 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     deleteUser "$email"
-    extractHashes
+    syncAll
     echo "Successfully deleted user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false
     ;;
 
   "sync")
-    extractHashes
+    syncAll
     echo "Synchronization complete"
     ;;
 
