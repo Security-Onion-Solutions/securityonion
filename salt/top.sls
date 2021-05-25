@@ -38,7 +38,6 @@ base:
     - patch.os.schedule
     - motd
     - salt.minion-check
-    - sensoroni
     - salt.lasthighstate
   
   '*_helixsensor and G@saltversion:{{saltversion}}':
@@ -47,6 +46,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - telegraf
     - firewall
     - idstools
@@ -66,6 +66,7 @@ base:
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - telegraf
     - firewall
     - nginx
@@ -92,6 +93,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - telegraf
@@ -160,6 +162,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - nginx
     - telegraf
     - influxdb
@@ -220,6 +223,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - telegraf
@@ -290,6 +294,7 @@ base:
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -320,6 +325,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - nginx
     - telegraf
     - influxdb
@@ -382,6 +388,7 @@ base:
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -424,6 +431,7 @@ base:
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -441,6 +449,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - soc
