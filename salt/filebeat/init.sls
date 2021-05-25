@@ -21,6 +21,7 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
+{% from 'filebeat/map.jinja' import SO with context %}
 
 
 filebeatetcdir:
@@ -78,21 +79,21 @@ filebeatmoduleconfsync:
     - group: root
     - template: jinja
 
-# Sync Filebeat modules
-filebeatmodules:
-  file.recurse:
-    - name: /opt/so/conf/filebeat/modules
-    - source: salt://filebeat/modules
-    - user: root
-    - group: root
+sodefaults_module_conf:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/securityonion.yml
+    - source: salt://filebeat/etc/module_config.yml.jinja
+    - template: jinja
+    - defaults:
+        MODULES: {{ SO }}
 
 thirdparty_module_conf:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/thirdparty.yml
-    - source: salt://filebeat/etc/thirdparty.yml.jinja
+    - source: salt://filebeat/etc/module_config.yml.jinja
     - template: jinja
     - defaults:
-        THIRDPARTY: {{ THIRDPARTY }}
+        MODULES: {{ THIRDPARTY }}
     
 so-filebeat:
   docker_container.running:
