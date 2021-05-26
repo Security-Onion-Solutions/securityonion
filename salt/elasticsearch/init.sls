@@ -292,6 +292,7 @@ elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
     - mode: 600
+    - contents: user = "{{ salt['pillar.get']('elasticsearch:auth:user') }}:{{ salt['pillar.get']('elasticsearch:auth:pass') }}"
     - show_changes: False
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
