@@ -32,13 +32,15 @@ def get_image_version(string) -> str:
   ver = string.split(':')[-1]
   if ver == 'latest':
     # Version doesn't like "latest", so use a high semver
-    return '999999.9.9'
+    return '99999.9.9'
   else:
     try:
       Version(ver)
     except InvalidVersion:
-      # Strip the last substring following a hyphen for automated branches
-      ver = '-'.join(ver.split('-')[:-1])  
+      # Also return a very high semver for any version 
+      # with a dash in it since it will likely be a dev version of some kind
+      if '-' in ver:
+        return '999999.9.9'
     return ver
 
 
@@ -73,8 +75,12 @@ def main(quiet):
           for tag in group:
             if not quiet: print(f'Removing image {tag}')
             client.images.remove(tag)
-    except InvalidVersion as e:
-      print(f'so-{get_so_image_basename(t_list[0])}: {e.args[0]}', file=sys.stderr)
+    except (docker.errors.APIError, InvalidVersion) as e:
+      print(f'so-{get_so_image_basename(t_list[0])}: {e}', file=sys.stderr)
+      exit(1)
+    except Exception as e:
+      print('Unhandled exception occurred:')
+      print(f'so-{get_so_image_basename(t_list[0])}: {e}', file=sys.stderr)
       exit(1)
 
   if no_prunable and not quiet:
