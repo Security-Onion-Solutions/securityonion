@@ -174,8 +174,8 @@ syncesusers:
   cmd.run:
     - name: so-user sync
     - creates:
-      - /opt/so/conf/elasticsearch/users
-      - /opt/so/conf/elasticsearch/users_roles
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
 
 so-elasticsearch:
   docker_container.running:
