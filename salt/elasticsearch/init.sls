@@ -169,6 +169,14 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+# Must run before elasticsearch docker container is started!
+syncesusers:
+  cmd.run:
+    - name: so-user sync
+    - creates:
+      - /opt/so/conf/elasticsearch/users
+      - /opt/so/conf/elasticsearch/users_roles
+
 so-elasticsearch:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}

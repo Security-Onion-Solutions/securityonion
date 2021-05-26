@@ -142,6 +142,7 @@ function syncElastic() {
 
   sysUser=$(lookup_pillar "auth:user" "elasticsearch")
   sysPass=$(lookup_pillar "auth:pass" "elasticsearch")
+  [[ -z "$sysUser" || -z "$sysPass" ]] && fail "Elastic auth credentials for system user are missing"
   sysHash=$(hashPassword "$sysPass")
 
   # Generate the new users file
@@ -153,7 +154,9 @@ function syncElastic() {
     sqlite3 "$databasePath" | \
     jq -r '.user + ":" + .data.hashed_password' \
     >> "$usersFileTmp"
+  [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
   mv -f "$usersFileTmp" "$elasticUsersFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
 
   # Generate the new users_roles file
   echo "superuser:${sysUser}" >> "$rolesFileTmp"
@@ -163,7 +166,9 @@ function syncElastic() {
     "order by ici.identifier;" | \
     sqlite3 "$databasePath" \
     >> "$rolesFileTmp"
+  [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
   mv -f "$rolesFileTmp" "$elasticRolesFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
 }
 
 function syncAll() {
