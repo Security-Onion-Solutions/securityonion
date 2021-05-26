@@ -49,6 +49,12 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 fi
 
 echo "Setting up ingest pipeline(s)"
-docker exec -it so-filebeat filebeat setup modules -pipelines -modules activemq,apache,auditd,aws,azure,barracuda,bluecoat,cef,checkpoint,cisco,coredns,crowdstrike,cyberark,cylance,elasticsearch,envoyproxy,f5,fortinet,gcp,google_workspace,googlecloud,gsuite,haproxy,ibmmq,icinga,iis,imperva,infoblox,iptables,juniper,kafka,kibana,logstash,microsoft,misp,mondogb,mssql,mysql,mysqlenterprise,nats,netflow,netscout,nginx,o365,okta,osquery,panw,pensando,postgresql,rabbitmq,radware,redis,santa,snort,snyk,sonicwall,sophos,squid,suricata,system,threatintel,tomcat,traefik,zeek,zoom,zscaler -c $FB_MODULE_YML
+
+for MODULE in activemq apache auditd aws azure barracuda bluecoat cef checkpoint cisco coredns crowdstrike cyberark cylance elasticsearch envoyproxy f5 fortinet gcp google_workspace googlecloud gsuite haproxy ibmmq icinga iis imperva infoblox iptables juniper kafka kibana logstash microsoft misp mongodb mssql mysql nats netscout nginx o365 okta osquery panw postgresql rabbitmq radware redis santa snort snyk sonicwall sophos squid suricata system tomcat traefik zeek zscaler
+do
+  echo "Loading $MODULE"
+  docker exec -it so-filebeat filebeat setup modules -pipelines -modules $MODULE -c $FB_MODULE_YML
+  sleep 2
+done
 
 

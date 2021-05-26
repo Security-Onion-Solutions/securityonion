@@ -183,6 +183,8 @@ so-zeek:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
     - start: {{ START }}
     - privileged: True
+    - ulimits:
+      - core=0
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw
