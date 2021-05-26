@@ -22,6 +22,13 @@
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 {% from 'filebeat/map.jinja' import SO with context %}
+{% set ES_INCLUDED_NODES = ['so-standalone'] %}
+
+#only include elastic state for certain nodes
+{% if grains.role in ES_INCLUDED_NODES %}
+include:
+  - elasticsearch
+{% endif %}
 
 filebeatetcdir:
   file.directory:
@@ -125,6 +132,16 @@ so-filebeat:
 {% endfor %}
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
+
+{% if grains.role in ES_INCLUDED_NODES %}
+run_module_setup:
+  cmd.run:
+    - name: /usr/sbin/so-filebeat-module-setup
+    - require:
+      - docker_container: so-filebeat
+    - onchanges_in:
+      - docker_container: so-elasticsearch
+{% endif %}
 
 append_so-filebeat_so-status.conf:
   file.append:
