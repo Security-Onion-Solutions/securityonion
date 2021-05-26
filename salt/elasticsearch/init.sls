@@ -37,6 +37,8 @@
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+{% set ES_INCLUDED_NODES = ['so-standalone'] %}
+
 vm.max_map_count:
   sysctl.present:
     - value: 262144
@@ -169,6 +171,35 @@ eslogdir:
     - user: 930
     - group: 939
     - makedirs: True
+
+{% if grains.role in ES_INCLUDED_NODES %}
+# Must run before elasticsearch docker container is started!
+syncesusers:
+  cmd.run:
+    - name: so-user sync
+    - creates:
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
+{% endif %}
+
+auth_users:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users
+    - source: salt://elasticsearch/files/users
+    - require:
+{% if grains.role in ES_INCLUDED_NODES %}
+      - cmd: syncesusers
+{% endif %}
+
+auth_users_roles:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users_roles
+    - source: salt://elasticsearch/files/users_roles
+{% if grains.role in ES_INCLUDED_NODES %}
+    - require:
+      - cmd: syncesusers
+{% endif %}
+
 
 so-elasticsearch:
   docker_container.running:
