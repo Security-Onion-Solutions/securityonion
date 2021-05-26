@@ -37,6 +37,7 @@
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+# used in this state to control who can run the so-users script
 {% set ES_INCLUDED_NODES = ['so-standalone'] %}
 
 vm.max_map_count:
