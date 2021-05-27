@@ -138,6 +138,7 @@ run_module_setup:
   cmd.run:
     - name: /usr/sbin/so-filebeat-module-setup
     - require:
+      - file: filebeatmoduleconfsync
       - docker_container: so-filebeat
     - onchanges_in:
       - docker_container: so-elasticsearch
