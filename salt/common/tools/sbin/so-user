@@ -39,10 +39,9 @@ email=$2
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
-argon2Iterations=${ARGON2_ITERATIONS:-3}
-argon2Memory=${ARGON2_MEMORY:-14}
-argon2Parallelism=${ARGON2_PARALLELISM:-2}
-argon2HashSize=${ARGON2_HASH_SIZE:-32}
+bcryptRounds=${BCRYPT_ROUNDS:-12}
+elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
+elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
 
 function fail() {
   msg=$1
@@ -58,7 +57,7 @@ function require() {
 
 # Verify this environment is capable of running this script
 function verifyEnvironment() {
-  require "argon2"
+  require "htpasswd"
   require "jq"
   require "curl"
   require "openssl"
@@ -95,6 +94,16 @@ function validateEmail() {
   fi
 }
 
+function hashPassword() {
+  password=$1
+
+  passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER)
+  passwordHash=$(echo "$passwordHash" | cut -c 11-)
+  passwordHash="\$2a${passwordHash}" # still waiting for https://github.com/elastic/elasticsearch/issues/51132
+  echo "$passwordHash"
+}
+
+
 function updatePassword() {
   identityId=$1
   
@@ -111,13 +120,59 @@ function updatePassword() {
 
   if [[ -n $identityId ]]; then
     # Generate password hash
-    salt=$(openssl rand -hex 8)
-    passwordHash=$(echo "${password}" | argon2 ${salt} -id -t $argon2Iterations -m $argon2Memory -p $argon2Parallelism -l $argon2HashSize -e)
-
+    passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
+}
+
+function createElasticTmpFile() {
+  filename=$1
+  tmpFile=${filename}.tmp
+  truncate -s 0 "$tmpFile"
+  chmod 600 "$tmpFile"
+  chown elasticsearch:elasticsearch "$tmpFile"
+  echo "$tmpFile"
+}
+
+function syncElastic() {
+  usersFileTmp=$(createElasticTmpFile "${elasticUsersFile}")
+  rolesFileTmp=$(createElasticTmpFile "${elasticRolesFile}")
+
+  sysUser=$(lookup_pillar "auth:user" "elasticsearch")
+  sysPass=$(lookup_pillar "auth:pass" "elasticsearch")
+  [[ -z "$sysUser" || -z "$sysPass" ]] && fail "Elastic auth credentials for system user are missing"
+  sysHash=$(hashPassword "$sysPass")
+
+  # Generate the new users file
+  echo "${sysUser}:${sysHash}" >> "$usersFileTmp"
+  echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
+    "from identity_credential_identifiers ici, identity_credentials ic " \
+    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+    "order by ici.identifier;" | \
+    sqlite3 "$databasePath" | \
+    jq -r '.user + ":" + .data.hashed_password' \
+    >> "$usersFileTmp"
+  [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
+  mv -f "$usersFileTmp" "$elasticUsersFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
+
+  # Generate the new users_roles file
+  echo "superuser:${sysUser}" >> "$rolesFileTmp"
+  echo "select 'superuser:' || ici.identifier " \
+    "from identity_credential_identifiers ici, identity_credentials ic " \
+    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+    "order by ici.identifier;" | \
+    sqlite3 "$databasePath" \
+    >> "$rolesFileTmp"
+  [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
+  mv -f "$rolesFileTmp" "$elasticRolesFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
+}
+
+function syncAll() {
+  syncElastic
 }
 
 function listUsers() {
@@ -257,6 +312,11 @@ case "${operation}" in
     echo "Successfully deleted user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false
+    ;;
+
+  "sync")
+    syncAll
+    echo "Synchronization complete"
     ;;
 
   "validate")

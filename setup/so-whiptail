@@ -408,6 +408,7 @@ whiptail_enable_components() {
 	PLAYBOOK=0
 	STRELKA=0
 
+if [[ $is_eval ]]; then
 	COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
 	"Select Components to install:" 20 75 8 \
 	GRAFANA "Enable Grafana for system monitoring" ON \
@@ -416,6 +417,17 @@ whiptail_enable_components() {
 	THEHIVE "Enable TheHive" ON \
 	PLAYBOOK "Enable Playbook" ON \
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
+else
+	COMPONENTS=$(whiptail --title "Security Onion Setup" --checklist \
+	"Select Components to install:" 20 75 7 \
+	OSQUERY "Enable Fleet with osquery" ON \
+	WAZUH "Enable Wazuh" ON \
+	THEHIVE "Enable TheHive" ON \
+	PLAYBOOK "Enable Playbook" ON \
+	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
+	export "GRAFANA=1"
+fi
+
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
