@@ -5,6 +5,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
+  {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 # Curator
 # Create the group
 curatorgroup:
@@ -66,6 +67,8 @@ curcloseddeldel:
     - group: 939
     - mode: 755
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 curclose:
   file.managed:

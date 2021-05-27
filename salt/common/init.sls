@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -176,6 +177,9 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup

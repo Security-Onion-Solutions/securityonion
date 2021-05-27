@@ -1,8 +1,10 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
+
 {% if sls in allowed_states %}
+  {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 # This state is for checking things
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
+  {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
 # Make sure Cross Cluster is good. Will need some logic once we have hot/warm
 crossclusterson:
   cmd.script:
@@ -11,9 +13,11 @@ crossclusterson:
     - runas: socore
     - source: salt://utility/bin/crossthestreams
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
-{% endif %}
-{% if grains['role'] in ['so-eval', 'so-import'] %}
+  {% endif %}
+  {% if grains['role'] in ['so-eval', 'so-import'] %}
 fixsearch:
   cmd.script:
     - shell: /bin/bash
@@ -21,7 +25,9 @@ fixsearch:
     - runas: socore
     - source: salt://utility/bin/eval
     - template: jinja
-{% endif %}
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+  {% endif %}
 
 {% else %}
 

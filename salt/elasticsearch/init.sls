@@ -35,6 +35,10 @@
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+
+# used in this state to control who can run the so-users script
+{% set ES_INCLUDED_NODES = ['so-standalone'] %}
 
 vm.max_map_count:
   sysctl.present:
@@ -169,6 +173,7 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+{% if grains.role in ES_INCLUDED_NODES %}
 # Must run before elasticsearch docker container is started!
 syncesusers:
   cmd.run:
@@ -176,6 +181,25 @@ syncesusers:
     - creates:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
+{% endif %}
+
+auth_users:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users
+    - source: salt://elasticsearch/files/users
+    - require:
+{% if grains.role in ES_INCLUDED_NODES %}
+      - cmd: syncesusers
+{% endif %}
+
+auth_users_roles:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users_roles
+    - source: salt://elasticsearch/files/users_roles
+{% if grains.role in ES_INCLUDED_NODES %}
+    - require:
+      - cmd: syncesusers
+{% endif %}
 
 so-elasticsearch:
   docker_container.running:
@@ -223,6 +247,10 @@ so-elasticsearch:
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
+      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+      - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
+      - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
+      {% endif %}
     - watch:
       - file: cacertz
       - file: esyml
@@ -242,6 +270,8 @@ so-elasticsearch-pipelines-file:
     - group: 939
     - mode: 754
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 so-elasticsearch-pipelines:
  cmd.run:
@@ -258,6 +288,13 @@ so-elasticsearch-templates:
     - cwd: /opt/so
     - template: jinja
 {% endif %}
+
+elastic_curl_config:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/curl.config
+    - mode: 600
+    - contents: user = "{{ salt['pillar.get']('elasticsearch:auth:user') }}:{{ salt['pillar.get']('elasticsearch:auth:pass') }}"
+    - show_changes: False
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 
