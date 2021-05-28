@@ -20,6 +20,9 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
+include:
+  - elasticsearch.auth
+
 socore_own_saltstack:
   file.directory:
     - name: /opt/so/saltstack
