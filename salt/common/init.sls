@@ -8,7 +8,7 @@
 {% if grains.role in ES_INCLUDED_NODES %}
 include:
   - elasticsearch.auth
-{% %}
+{% endif %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
