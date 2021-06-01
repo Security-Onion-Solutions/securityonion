@@ -37,8 +37,6 @@
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
-# used in this state to control who can run the so-users script
-{% set ES_INCLUDED_NODES = ['so-standalone'] %}
 
 vm.max_map_count:
   sysctl.present:
@@ -173,33 +171,15 @@ eslogdir:
     - group: 939
     - makedirs: True
 
-{% if grains.role in ES_INCLUDED_NODES %}
-# Must run before elasticsearch docker container is started!
-syncesusers:
-  cmd.run:
-    - name: so-user sync
-    - creates:
-      - /opt/so/saltstack/local/salt/elasticsearch/files/users
-      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
-{% endif %}
-
 auth_users:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users
     - source: salt://elasticsearch/files/users
-    - require:
-{% if grains.role in ES_INCLUDED_NODES %}
-      - cmd: syncesusers
-{% endif %}
 
 auth_users_roles:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users_roles
     - source: salt://elasticsearch/files/users_roles
-{% if grains.role in ES_INCLUDED_NODES %}
-    - require:
-      - cmd: syncesusers
-{% endif %}
 
 so-elasticsearch:
   docker_container.running:
@@ -286,13 +266,6 @@ so-elasticsearch-templates:
     - cwd: /opt/so
     - template: jinja
 {% endif %}
-
-elastic_curl_config:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/curl.config
-    - mode: 600
-    - contents: user = "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user') }}:{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass') }}"
-    - show_changes: False
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 

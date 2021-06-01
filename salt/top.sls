@@ -238,7 +238,6 @@ base:
     {%- endif %}
     {%- if ELASTICSEARCH %}
     - elasticsearch
-    - elasticsearch.auth
     {%- endif %} 
     {%- if LOGSTASH %}
     - logstash
@@ -261,7 +260,7 @@ base:
     - filebeat
     {%- endif %}
     {%- if CURATOR %}
-    - curator
+    - curator0
     {%- endif %}
     {%- if ELASTALERT %}
     - elastalert

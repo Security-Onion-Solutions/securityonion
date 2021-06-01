@@ -105,6 +105,22 @@ strelka_yara_update:
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - hour: '7'
     - minute: '1'
+
+elastic_curl_config_distributed:
+  file.managed:
+    - name: /opt/so/saltstack/local/salt/elasticsearch/curl.config
+    - mode: 600
+    - contents: user = "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user') }}:{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass') }}"
+    - show_changes: False
+
+# Must run before elasticsearch docker container is started!
+syncesusers:
+  cmd.run:
+    - name: so-user sync
+    - creates:
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
+
 {% else %}
 
 {{sls}}_state_not_allowed:
