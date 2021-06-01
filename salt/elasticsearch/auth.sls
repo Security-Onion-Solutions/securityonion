@@ -31,9 +31,7 @@ elastic_auth_pillar:
     # a highstate runs, we only manage the file each user isn't present in the file. if the
     # pillar file doesn't exists, then the default vault provided to pillar.get should not
     # be within the file either, so it should then be created
-{% if salt['pillar.get']('elasticsearch:auth', False) %}
     - unless:
     {% for so_app_user, values in salt['pillar.get']('elasticsearch:auth:users', {'so_noapp_user': {'user': 'r@NDumu53Rd0NtDOoP'}}).items() %}
       - grep {{ values.user }} /opt/so/saltstack/local/pillar/elasticsearch/auth.sls
     {% endfor%}
-{% endif %}
