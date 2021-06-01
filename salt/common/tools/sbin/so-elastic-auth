@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+ES_AUTH_PILLAR=${ELASTIC_AUTH_PILLAR:-/opt/so/saltstack/local/pillar/elasticsearch/auth.sls}
+ES_USERS_FILE=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
+
+authEnable=${1:-true}
+
+if ! grep -q "enabled: " "$ES_AUTH_PILLAR"; then
+  echo "Elastic auth pillar file is invalid. Unable to proceed."
+  exit 1
+fi
+
+if [[ "$authEnable" == "true" ]]; then
+  if grep -q "enabled: False" "$ES_AUTH_PILLAR"; then
+    sed -i 's/enabled: False/enabled: True/g' "$ES_AUTH_PILLAR"
+    echo "Applying highstate - this may take a few minutes..."
+    salt-call state.highstate queue=True
+    echo "Elastic auth is now enabled."
+    if grep -q "argon" "$ES_USERS_FILE"; then
+      echo ""
+      echo "IMPORTANT: The following users will need to change their password, after logging into SOC, in order to access Kibana:"
+      grep argon "$ES_USERS" | cut -d ":" -f 1
+    fi
+  else
+    echo "Auth is already enabled."
+  fi
+elif [[ "$authEnable" == "false" ]]; then
+  if grep -q "enabled: True" "$ES_AUTH_PILLAR"; then
+    sed -i 's/enabled: True/enabled: False/g' "$ES_AUTH_PILLAR"
+    echo "Applying highstate - this may take a few minutes..."
+    salt-call state.highstate queue=True
+    echo "Elastic auth is now disabled."
+  else
+    echo "Auth is already disabled."
+  fi
+else
+  echo "Usage: $0 <true|false>"
+  echo ""
+  echo "Enables Elastic authentication. Defaults to true."
+  echo ""
+fi
