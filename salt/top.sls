@@ -260,7 +260,7 @@ base:
     - filebeat
     {%- endif %}
     {%- if CURATOR %}
-    - curator0
+    - curator
     {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
