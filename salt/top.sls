@@ -285,6 +285,7 @@ base:
     - domainstats
     {%- endif %}
     - docker_clean
+    - pipeline.load
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
