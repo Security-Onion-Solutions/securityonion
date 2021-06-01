@@ -136,39 +136,82 @@ function createElasticTmpFile() {
   echo "$tmpFile"
 }
 
+function syncElasticSystemUser() {
+  json=$1
+  userid=$2
+  usersFile=$3
+
+  user=$(echo "$json" | jq -r ".local.users.$userid.user")
+  pass=$(echo "$json" | jq -r ".local.users.$userid.pass")
+  
+  [[ -z "$user" || -z "$pass" ]] && fail "Elastic auth credentials for system user '$userid' are missing"
+  hash=$(hashPassword "$pass")
+
+  echo "${user}:${hash}" >> "$usersFile"
+}
+
+function syncElasticSystemRole() {
+  json=$1
+  userid=$2
+  role=$3
+  rolesFile=$4
+
+  user=$(echo "$json" | jq -r ".local.users.$userid.user")
+  
+  [[ -z "$user" ]] && fail "Elastic auth credentials for system user '$userid' are missing"
+
+  echo "${role}:${user}" >> "$rolesFile"
+}
+
 function syncElastic() {
   usersFileTmp=$(createElasticTmpFile "${elasticUsersFile}")
   rolesFileTmp=$(createElasticTmpFile "${elasticRolesFile}")
 
-  sysUser=$(lookup_pillar "auth:user" "elasticsearch")
-  sysPass=$(lookup_pillar "auth:pass" "elasticsearch")
-  [[ -z "$sysUser" || -z "$sysPass" ]] && fail "Elastic auth credentials for system user are missing"
-  sysHash=$(hashPassword "$sysPass")
+  authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
 
-  # Generate the new users file
-  echo "${sysUser}:${sysHash}" >> "$usersFileTmp"
-  echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
-    "from identity_credential_identifiers ici, identity_credentials ic " \
-    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
-    "order by ici.identifier;" | \
-    sqlite3 "$databasePath" | \
-    jq -r '.user + ":" + .data.hashed_password' \
-    >> "$usersFileTmp"
-  [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
-  mv -f "$usersFileTmp" "$elasticUsersFile"
-  [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
+  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$usersFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesFileTmp"
 
-  # Generate the new users_roles file
-  echo "superuser:${sysUser}" >> "$rolesFileTmp"
-  echo "select 'superuser:' || ici.identifier " \
-    "from identity_credential_identifiers ici, identity_credentials ic " \
-    "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
-    "order by ici.identifier;" | \
-    sqlite3 "$databasePath" \
-    >> "$rolesFileTmp"
-  [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
-  mv -f "$rolesFileTmp" "$elasticRolesFile"
-  [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$usersFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "kibana_system" "$rolesFileTmp"
+
+  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$usersFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "logstash_system" "$rolesFileTmp"
+
+  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$usersFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "beats_system" "$rolesFileTmp"
+
+  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesFileTmp"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesFileTmp"
+
+  if [[ -f "$databasePath" ]]; then
+    # Generate the new users file
+    echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
+      "from identity_credential_identifiers ici, identity_credentials ic " \
+      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "order by ici.identifier;" | \
+      sqlite3 "$databasePath" | \
+      jq -r '.user + ":" + .data.hashed_password' \
+      >> "$usersFileTmp"
+    [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
+    mv -f "$usersFileTmp" "$elasticUsersFile"
+    [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
+
+    # Generate the new users_roles file
+    
+    echo "select 'superuser:' || ici.identifier " \
+      "from identity_credential_identifiers ici, identity_credentials ic " \
+      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "order by ici.identifier;" | \
+      sqlite3 "$databasePath" \
+      >> "$rolesFileTmp"
+    [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
+    mv -f "$rolesFileTmp" "$elasticRolesFile"
+    [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
+  else
+    info "Database file does not exist yet, skipping users export"
+  fi
 }
 
 function syncAll() {
