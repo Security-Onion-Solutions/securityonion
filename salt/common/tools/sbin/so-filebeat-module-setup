@@ -47,14 +47,21 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
         echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
         echo
 fi
+echo "Testing to see if the pipelines are already applied"
+ESVER=$(curl -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT" |jq .version.number |tr -d \")
+PIPELINES=$(curl -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"_ingest/pipeline/filebeat-$ESVER-suricata-eve-pipeline | jq . | wc -c)
 
-echo "Setting up ingest pipeline(s)"
+if [[ "$PIPELINES" -lt 5 ]]; then
+  echo "Setting up ingest pipeline(s)"
 
-for MODULE in activemq apache auditd aws azure barracuda bluecoat cef checkpoint cisco coredns crowdstrike cyberark cylance elasticsearch envoyproxy f5 fortinet gcp google_workspace googlecloud gsuite haproxy ibmmq icinga iis imperva infoblox iptables juniper kafka kibana logstash microsoft misp mongodb mssql mysql nats netscout nginx o365 okta osquery panw postgresql rabbitmq radware redis santa snort snyk sonicwall sophos squid suricata system tomcat traefik zeek zscaler
-do
-  echo "Loading $MODULE"
-  docker exec -i so-filebeat filebeat setup modules -pipelines -modules $MODULE -c $FB_MODULE_YML
-  sleep 2
-done
+  for MODULE in activemq apache auditd aws azure barracuda bluecoat cef checkpoint cisco coredns crowdstrike cyberark cylance elasticsearch envoyproxy f5 fortinet gcp google_workspace googlecloud gsuite haproxy ibmmq icinga iis imperva infoblox iptables juniper kafka kibana logstash microsoft misp mongodb mssql mysql nats netscout nginx o365 okta osquery panw postgresql rabbitmq radware redis santa snort snyk sonicwall sophos squid suricata system tomcat traefik zeek zscaler
+  do
+    echo "Loading $MODULE"
+    docker exec -i so-filebeat filebeat setup modules -pipelines -modules $MODULE -c $FB_MODULE_YML
+    sleep 2
+  done
+else
+  exit 0
+fi
 
 
