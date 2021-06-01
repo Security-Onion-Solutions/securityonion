@@ -42,6 +42,8 @@ databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
 elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
 elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
+esUID=${ELASTIC_UID:-930}
+esGID=${ELASTIC_GID:-930}
 
 function fail() {
   msg=$1
@@ -132,7 +134,7 @@ function createElasticTmpFile() {
   tmpFile=${filename}.tmp
   truncate -s 0 "$tmpFile"
   chmod 600 "$tmpFile"
-  chown elasticsearch:elasticsearch "$tmpFile"
+  chown "${esUID}:${esGID}" "$tmpFile"
   echo "$tmpFile"
 }
 
@@ -195,8 +197,6 @@ function syncElastic() {
       jq -r '.user + ":" + .data.hashed_password' \
       >> "$usersFileTmp"
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
-    mv -f "$usersFileTmp" "$elasticUsersFile"
-    [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
 
     # Generate the new users_roles file
     
@@ -207,11 +207,16 @@ function syncElastic() {
       sqlite3 "$databasePath" \
       >> "$rolesFileTmp"
     [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
-    mv -f "$rolesFileTmp" "$elasticRolesFile"
-    [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
   else
     info "Database file does not exist yet, skipping users export"
   fi
+
+  # Move the temp files over onto the final files
+  mv -f "$usersFileTmp" "$elasticUsersFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
+
+  mv -f "$rolesFileTmp" "$elasticRolesFile"
+  [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
 }
 
 function syncAll() {
