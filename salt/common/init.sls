@@ -174,6 +174,7 @@ elastic_curl_config:
     - source: salt://elasticsearch/curl.config
     - mode: 600
     - show_changes: False
+    - makedirs: True
 
 # Sync some Utilities
 utilsyncscripts:
