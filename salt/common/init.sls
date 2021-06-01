@@ -3,12 +3,6 @@
 
 {% set role = grains.id.split('_') | last %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
-{% set ES_INCLUDED_NODES = ['so-standalone'] %}
-
-{% if grains.role in ES_INCLUDED_NODES %}
-include:
-  - elasticsearch.auth
-{% %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -174,6 +168,13 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+elastic_curl_config:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/curl.config
+    - source: salt://elasticsearch/curl.config
+    - mode: 600
+    - show_changes: False
+
 # Sync some Utilities
 utilsyncscripts:
   file.recurse:
@@ -185,10 +186,6 @@ utilsyncscripts:
     - source: salt://common/tools/sbin
     - defaults:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
-{% if grains.role in ES_INCLUDED_NODES %}
-    - require:
-      - file: elastic_auth_pillar
-{% endif %}
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup
