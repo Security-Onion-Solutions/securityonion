@@ -121,6 +121,11 @@ syncesusers:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
 
+beacons_config:
+  file.managed:
+    - name: /etc/salt/minion.d/beacons.conf
+    - source: salt://manager/files/beacons.conf
+
 {% else %}
 
 {{sls}}_state_not_allowed:
