@@ -33,7 +33,7 @@ elastic_auth_pillar:
     # be within the file either, so it should then be created
 {% if salt['pillar.get']('elasticsearch:auth', False) %}
     - unless:
-    {% for so_app_user in salt['pillar.get']('elasticsearch:auth:users') %}
-      - grep {{ so_app_user.user }} /opt/so/saltstack/local/pillar/elasticsearch/auth.sls
+    {% for so_app_user, values in salt['pillar.get']('elasticsearch:auth:users', {'so_noapp_user': {'user': 'r@NDumu53Rd0NtDOoP'}}).items() %}
+      - grep {{ values.user }} /opt/so/saltstack/local/pillar/elasticsearch/auth.sls
     {% endfor%}
 {% endif %}
