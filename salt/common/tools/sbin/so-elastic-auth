@@ -30,8 +30,10 @@ fi
 if [[ "$authEnable" == "true" ]]; then
   if grep -q "enabled: False" "$ES_AUTH_PILLAR"; then
     sed -i 's/enabled: False/enabled: True/g' "$ES_AUTH_PILLAR"
-    echo "Applying highstate - this may take a few minutes..."
-    salt-call state.highstate queue=True
+    if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
+      echo "Applying highstate - this may take a few minutes..."
+      salt-call state.highstate queue=True
+    fi
     echo "Elastic auth is now enabled."
     if grep -q "argon" "$ES_USERS_FILE"; then
       echo ""
@@ -44,8 +46,10 @@ if [[ "$authEnable" == "true" ]]; then
 elif [[ "$authEnable" == "false" ]]; then
   if grep -q "enabled: True" "$ES_AUTH_PILLAR"; then
     sed -i 's/enabled: True/enabled: False/g' "$ES_AUTH_PILLAR"
-    echo "Applying highstate - this may take a few minutes..."
-    salt-call state.highstate queue=True
+    if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
+      echo "Applying highstate - this may take a few minutes..."
+      salt-call state.highstate queue=True
+    fi
     echo "Elastic auth is now disabled."
   else
     echo "Auth is already disabled."
