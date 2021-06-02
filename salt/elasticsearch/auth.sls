@@ -7,7 +7,7 @@
 elastic_auth_pillar:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/elasticsearch/auth.sls
-    - mode 600
+    - mode: 600
     - reload_pillar: True
     - contents: |
         elasticsearch:
