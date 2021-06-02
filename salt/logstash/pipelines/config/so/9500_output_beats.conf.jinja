@@ -3,11 +3,15 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:user', '') %})
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:pass', '') %})
 output {
   if "beat-ext" in [tags] and "import" not in [tags] {
     elasticsearch {
       pipeline => "beats.common" 
       hosts => "{{ ES }}"
+      username => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
       index => "so-beats"
       template_name => "so-beats"
       template => "/templates/so-beats-template.json"
