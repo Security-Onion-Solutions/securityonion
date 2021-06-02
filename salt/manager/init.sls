@@ -110,8 +110,9 @@ strelka_yara_update:
 elastic_curl_config_distributed:
   file.managed:
     - name: /opt/so/saltstack/local/salt/elasticsearch/curl.config
+    - source: salt://elasticsearch/files/curl.config.template
+    - template: jinja
     - mode: 600
-    - contents: user = "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user') }}:{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass') }}"
     - show_changes: False
 
 # Must run before elasticsearch docker container is started!
