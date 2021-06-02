@@ -175,11 +175,17 @@ auth_users:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users
     - source: salt://elasticsearch/files/users
+    - user: 930
+    - group: 930
+    - mode: 600
 
 auth_users_roles:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users_roles
     - source: salt://elasticsearch/files/users_roles
+    - user: 930
+    - group: 930
+    - mode: 600
 
 so-elasticsearch:
   docker_container.running:
