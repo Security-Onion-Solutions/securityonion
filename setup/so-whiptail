@@ -1640,13 +1640,15 @@ whiptail_sensor_nics() {
 	IFS=' ' read -ra BNICS <<< "$BNICS"
 
 	for bond_nic in "${BNICS[@]}"; do
-		if [[ "${nmcli_dev_status_list}" =~ $bond_nic\:unmanaged ]]; then
-			whiptail \
-				--title "$whiptail_title" \
-				--msgbox "$bond_nic is unmanaged by Network Manager. Please remove it from other network management tools then re-run setup." \
-				8 75
-			exit
-		fi
+		for dev_status in "${nmcli_dev_status_list[@]}"; do
+			if [[ $dev_status == "${bond_nic}:unmanaged" ]]; then
+				whiptail \
+					--title "$whiptail_title" \
+					--msgbox "$bond_nic is unmanaged by Network Manager. Please remove it from other network management tools then re-run setup." \
+					8 75
+				exit
+			fi
+		done
 	done
 }
 
