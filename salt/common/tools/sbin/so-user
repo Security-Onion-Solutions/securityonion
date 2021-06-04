@@ -220,6 +220,13 @@ function syncElastic() {
 }
 
 function syncAll() {
+  if [[ -n "$STALE_MIN" ]]; then
+    staleCount=$(echo "select  from identity_credentials where updated_at >= Datetime('now', '-${STALE_MIN} minutes');" \
+      | sqlite3 "$databasePath")
+    if [[ "$staleCount" == "0" ]]; then
+      return 1
+    fi
+  fi
   syncElastic
 }
 
@@ -368,8 +375,7 @@ case "${operation}" in
     ;;
 
   "sync")
-    syncAll
-    echo "Synchronization complete"
+    syncAll && echo "Synchronization completed at $(date)"
     ;;
 
   "validate")
