@@ -119,6 +119,8 @@ elastic_curl_config_distributed:
 syncesusers:
   cmd.run:
     - name: so-user sync
+    - env:
+      - SKIP_STATE_APPLY: 'true'
     - creates:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
