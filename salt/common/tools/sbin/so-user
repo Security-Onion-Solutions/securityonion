@@ -129,13 +129,12 @@ function updatePassword() {
   fi
 }
 
-function createElasticTmpFile() {
+function createElasticFile() {
   filename=$1
-  tmpFile=${filename}.tmp
+  tmpFile=${filename}
   truncate -s 0 "$tmpFile"
   chmod 600 "$tmpFile"
   chown "${esUID}:${esGID}" "$tmpFile"
-  echo "$tmpFile"
 }
 
 function syncElasticSystemUser() {
@@ -166,26 +165,27 @@ function syncElasticSystemRole() {
 }
 
 function syncElastic() {
-  usersFileTmp=$(createElasticTmpFile "${elasticUsersFile}")
-  rolesFileTmp=$(createElasticTmpFile "${elasticRolesFile}")
+  createElasticFile "${elasticUsersFile}"
+  createElasticFile "${elasticRolesFile}"
 
   authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
 
-  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$usersFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesFileTmp"
+  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$elasticUsersFile"
+  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$elasticRolesFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$usersFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "kibana_system" "$rolesFileTmp"
+  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$elasticUsersFile"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$elasticRolesFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$usersFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "logstash_system" "$rolesFileTmp"
+  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$elasticUsersFile"
+  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$elasticRolesFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$usersFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "beats_system" "$rolesFileTmp"
+  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$elasticUsersFile"
+  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$elasticRolesFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesFileTmp"
-  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesFileTmp"
+  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$elasticUsersFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$elasticRolesFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$elasticRolesFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$elasticRolesFile"
 
   if [[ -f "$databasePath" ]]; then
     # Generate the new users file
@@ -195,7 +195,7 @@ function syncElastic() {
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
-      >> "$usersFileTmp"
+      >> "$elasticUsersFile"
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
 
     # Generate the new users_roles file
@@ -205,29 +205,26 @@ function syncElastic() {
       "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" \
-      >> "$rolesFileTmp"
+      >> "$elasticRolesFile"
     [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
   else
     echo "Database file does not exist yet, skipping users export"
   fi
 
-  # Move the temp files over onto the final files
-  mv -f "$usersFileTmp" "$elasticUsersFile"
-  [[ $? != 0 ]] && fail "Unable to create users file: $elasticUsersFile"
-
-  mv -f "$rolesFileTmp" "$elasticRolesFile"
-  [[ $? != 0 ]] && fail "Unable to create users file: $elasticRolesFile"
+  echo "Applying elastic state..."
+  salt-call state.apply elasticsearch queue=True
 }
 
 function syncAll() {
   if [[ -n "$STALE_MIN" ]]; then
-    staleCount=$(echo "select  from identity_credentials where updated_at >= Datetime('now', '-${STALE_MIN} minutes');" \
+    staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${STALE_MIN} minutes');" \
       | sqlite3 "$databasePath")
     if [[ "$staleCount" == "0" ]]; then
       return 1
     fi
   fi
   syncElastic
+  return 0
 }
 
 function listUsers() {

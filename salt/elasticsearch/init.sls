@@ -173,7 +173,7 @@ eslogdir:
 
 auth_users:
   file.managed:
-    - name: /opt/so/conf/elasticsearch/users
+    - name: /opt/so/conf/elasticsearch/users.tmp
     - source: salt://elasticsearch/files/users
     - user: 930
     - group: 930
@@ -181,11 +181,27 @@ auth_users:
 
 auth_users_roles:
   file.managed:
-    - name: /opt/so/conf/elasticsearch/users_roles
+    - name: /opt/so/conf/elasticsearch/users_roles.tmp
     - source: salt://elasticsearch/files/users_roles
     - user: 930
     - group: 930
     - mode: 600
+
+auth_users_inode:
+  require:
+    - file: auth_users
+  cmd.run:
+    - name: cat /opt/so/conf/elasticsearch/users.tmp > /opt/so/conf/elasticsearch/users && chown 930:930 /opt/so/conf/elasticsearch/users && chmod 600 /opt/so/conf/elasticsearch/users
+    - onchanges:
+      - file: /opt/so/conf/elasticsearch/users.tmp
+
+auth_users_roles_inode:
+  require:
+    - file: auth_users_roles
+  cmd.run:
+    - name: cat /opt/so/conf/elasticsearch/users_roles.tmp > /opt/so/conf/elasticsearch/users_roles && chown 930:930 /opt/so/conf/elasticsearch/users_roles && chmod 600 /opt/so/conf/elasticsearch/users_roles
+    - onchanges:
+      - file: /opt/so/conf/elasticsearch/users_roles.tmp
 
 so-elasticsearch:
   docker_container.running:
