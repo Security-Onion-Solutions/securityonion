@@ -113,6 +113,8 @@ elastic_curl_config_distributed:
     - source: salt://elasticsearch/files/curl.config.template
     - template: jinja
     - mode: 600
+    - user: 939
+    - group: 939
     - show_changes: False
 
 # Must run before elasticsearch docker container is started!
