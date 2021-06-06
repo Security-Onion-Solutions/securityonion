@@ -173,6 +173,8 @@ elastic_curl_config:
     - name: /opt/so/conf/elasticsearch/curl.config
     - source: salt://elasticsearch/curl.config
     - mode: 600
+    - user: 939
+    - group: 939
     - show_changes: False
     - makedirs: True
 
