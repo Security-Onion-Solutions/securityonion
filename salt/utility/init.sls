@@ -10,7 +10,6 @@ crossclusterson:
   cmd.script:
     - shell: /bin/bash
     - cwd: /opt/so
-    - runas: socore
     - source: salt://utility/bin/crossthestreams
     - template: jinja
     - defaults:
@@ -22,7 +21,6 @@ fixsearch:
   cmd.script:
     - shell: /bin/bash
     - cwd: /opt/so
-    - runas: socore
     - source: salt://utility/bin/eval
     - template: jinja
     - defaults:
