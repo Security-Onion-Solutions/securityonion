@@ -111,7 +111,84 @@ filebeat.inputs:
   fields_under_root: true
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
+  {%- if ZEEKVER != 'SURICATA' %}
+    {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
+- type: log
+  paths:
+    - /nsm/zeek/logs/current/{{ LOGNAME }}.log
+  fields:
+      module: zeek 
+      dataset: {{ LOGNAME }}
+      category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+ 
+  fields_under_root: true
+  clean_removed: true
+  close_removed: false
 
+- type: log
+  paths:
+    - /nsm/import/*/zeek/logs/{{ LOGNAME }}.log
+  fields:
+      module: zeek 
+      dataset: {{ LOGNAME }}
+      category: network
+      imported: true
+  processors:
+  - add_tags:
+      tags: ["import"]
+  - dissect:
+      tokenizer: "/nsm/import/%{import.id}/zeek/logs/%{import.file}"
+      field: "log.file.path"
+      target_prefix: ""
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+ 
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+    {%- endfor %}
+  {%- endif %}
+
+- type: log
+  paths:
+    - /nsm/suricata/eve*.json
+  fields:
+    module: suricata
+    dataset: common
+    category: network
+
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+
+- type: log
+  paths:
+    - /nsm/import/*/suricata/eve*.json
+  fields:
+    module: suricata
+    dataset: common
+    category: network
+    imported: true 
+  processors:
+  - add_tags:
+      tags: ["import"]
+  - dissect:
+      tokenizer: "/nsm/import/%{import.id}/suricata/%{import.file}"
+      field: "log.file.path"
+      target_prefix: ""
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
   {%- if STRELKAENABLED == 1 %}
 - type: log
   paths:

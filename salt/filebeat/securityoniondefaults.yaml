@@ -23,22 +23,4 @@ securityonion_filebeat:
         var.paths: ["/logs/redis.log"]
       slowlog:
         enabled: false
-    suricata:
-      eve:
-        enabled: true
-        var.paths: ["/nsm/suricata/eve*.json"]
-    {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
-      {%- if ZEEKVER != 'SURICATA' %}
-    zeek:
-        {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
-          {% if LOGNAME in ZEEKLOGLOOKUP.keys() %}
-            {% set FILESET = ZEEKLOGLOOKUP.get(LOGNAME) %}
-          {% else %}
-            {% set FILESET = LOGNAME %}
-          {% endif %}
-      {{ FILESET }}:
-        enabled: true
-        var.paths: ["/nsm/zeek/logs/current/{{ LOGNAME }}.log"]
-        {%- endfor %}
-      {%- endif %}
-    {%- endif %}
+        
