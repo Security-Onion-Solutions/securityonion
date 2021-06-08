@@ -165,27 +165,29 @@ function syncElasticSystemRole() {
 }
 
 function syncElastic() {
-  createElasticFile "${elasticUsersFile}"
-  createElasticFile "${elasticRolesFile}"
+  usersTmpFile="${elasticUsersFile}.tmp"
+  rolesTmpFile="${elasticRolesFile}.tmp"
+  createElasticFile "${usersTmpFile}"
+  createElasticFile "${rolesTmpFile}"
 
   authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
 
-  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$elasticUsersFile"
-  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$elasticUsersFile"
-  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$elasticUsersFile"
-  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$elasticUsersFile"
-  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
 
-  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$elasticUsersFile"
-  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$elasticRolesFile"
-  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$elasticRolesFile"
-  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$elasticRolesFile"
+  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$rolesTmpFile"
 
   if [[ -f "$databasePath" ]]; then
     # Generate the new users file
@@ -195,7 +197,7 @@ function syncElastic() {
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
-      >> "$elasticUsersFile"
+      >> "$usersTmpFile"
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
 
     # Generate the new users_roles file
@@ -205,15 +207,22 @@ function syncElastic() {
       "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" \
-      >> "$elasticRolesFile"
+      >> "$rolesTmpFile"
     [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
   else
     echo "Database file does not exist yet, skipping users export"
   fi
 
-  if [[ -z "$SKIP_STATE_APPLY" ]]; then
-    echo "Applying elastic state..."
-    salt-call state.apply elasticsearch queue=True
+  if [[ -s "${usersTmpFile}" ]]; then
+    mv "${usersTmpFile}" "${elasticUsersFile}"
+    mv "${rolesTmpFile}" "${elasticRolesFile}"
+
+    if [[ -z "$SKIP_STATE_APPLY" ]]; then
+      echo "Applying elastic state..."
+      salt-call state.apply elasticsearch queue=True
+    fi
+  else
+    echo "Generated users/roles files are incomplete; aborting."
   fi
 }
 
