@@ -4,12 +4,12 @@
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
 output {
- if [event][module] == 'redis' {
+ if [metadata][pipeline] {
    elasticsearch {
-     id => "redis_logs"
-     pipeline => "filebeat-%{[agent][version]}-redis-%{[fileset][name]}-pipeline"
+     id => "filebeat_modules_metadata_pipeline"
+     pipeline => "%{[metadata][pipeline]}"
      hosts => "{{ ES }}"
-     index => "so-grid-%{+YYYY.MM.dd}"
+     index => "so-%{[event][module]}-%{+YYYY.MM.dd}"
      template_name => "so-common"
      template => "/templates/so-common-template.json"
      template_overwrite => true
