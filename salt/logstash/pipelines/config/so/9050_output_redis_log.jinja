@@ -1,0 +1,20 @@
+{%- if grains['role'] == 'so-eval' -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
+{%- else %}
+{%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{%- endif %}
+output {
+ if [event][module] == 'redis' {
+   elasticsearch {
+     id => "redis_logs"
+     pipeline => "filebeat-%{[agent][version]}-redis-%{[fileset][name]}-pipeline"
+     hosts => "{{ ES }}"
+     index => "so-grid-%{+YYYY.MM.dd}"
+     template_name => "so-common"
+     template => "/templates/so-common-template.json"
+     template_overwrite => true
+     ssl => true
+     ssl_certificate_verification => false
+   }
+ }
+}
