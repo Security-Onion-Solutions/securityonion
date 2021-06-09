@@ -119,6 +119,7 @@ so-filebeat:
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /opt/so/conf/filebeat/registry:/usr/share/filebeat/data/registry:rw
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
+      - /opt/so/log:/logs:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
