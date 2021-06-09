@@ -219,12 +219,15 @@ function syncElastic() {
     mv "${rolesTmpFile}" "${elasticRolesFile}"
 
     if [[ -z "$SKIP_STATE_APPLY" ]]; then
-      echo "Applying elastic state..."
-      salt-call state.apply elasticsearch queue=True
-      salt -C 'G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True
+      echo "Applying elastic state locally; This can take a few minutes..."
+      echo "Applying elastic state locally at $(date)" >> /opt/so/log/soc/sync.log 2>&1
+      salt-call state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+      echo "Applying elastic state to elastic minions; This can take a few minutes..."
+      echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
+      salt -C 'G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
     fi
   else
-    echo "Generated users/roles files are incomplete; aborting."
+    echo "Newly generated users/roles files are incomplete; aborting."
   fi
 }
 

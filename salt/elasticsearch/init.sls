@@ -178,6 +178,7 @@ auth_users:
     - user: 930
     - group: 930
     - mode: 600
+    - show_changes: False
 
 auth_users_roles:
   file.managed:
@@ -186,6 +187,7 @@ auth_users_roles:
     - user: 930
     - group: 930
     - mode: 600
+    - show_changes: False
 
 auth_users_inode:
   require:
