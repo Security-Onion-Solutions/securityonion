@@ -319,14 +319,6 @@ masterunlock() {
   fi
 }
 
-preupgrade_changes_2.3.50_repo() {
-    # We made repo changes in 2.3.50 and this prepares for that on upgrade
-    echo "Checking to see if 2.3.50 repo changes are needed."
-
-    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50_repo
-    true
-}
-
 preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
@@ -517,8 +509,8 @@ up_2.3.2X_to_2.3.30() {
   INSTALLEDVERSION=2.3.30
 }
 
-up_2.3.3X_to_2.3.50_repo() {
-  echo "Performing 2.3.50 repo actions."
+upgrade_to_2.3.50_repo() {
+  echo "Performing repo changes."
   if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
     gpg_rpm_import
@@ -786,6 +778,12 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   echo ""
+
+  echo "Stopping Salt Master service."
+  systemctl stop salt-master
+  echo ""
+
+  upgrade_to_2.3.50_repo
 
   echo "Generating new repo archive"
   generate_and_clean_tarballs
