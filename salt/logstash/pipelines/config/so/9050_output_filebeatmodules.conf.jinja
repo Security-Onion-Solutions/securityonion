@@ -1,0 +1,20 @@
+{%- if grains['role'] == 'so-eval' -%}
+{%- set ES = salt['pillar.get']('manager:mainip', '') -%}
+{%- else %}
+{%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
+{%- endif %}
+output {
+ if [metadata][pipeline] {
+   elasticsearch {
+     id => "filebeat_modules_metadata_pipeline"
+     pipeline => "%{[metadata][pipeline]}"
+     hosts => "{{ ES }}"
+     index => "so-%{[event][module]}-%{+YYYY.MM.dd}"
+     template_name => "so-common"
+     template => "/templates/so-common-template.json"
+     template_overwrite => true
+     ssl => true
+     ssl_certificate_verification => false
+   }
+ }
+}
