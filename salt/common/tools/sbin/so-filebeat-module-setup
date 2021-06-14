@@ -31,7 +31,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
-        curl -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+        {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
         if [ $? -eq 0 ]; then
                 ELASTICSEARCH_CONNECTED="yes"
                 echo "connected!"
@@ -48,8 +48,8 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
         echo
 fi
 echo "Testing to see if the pipelines are already applied"
-ESVER=$(curl -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT" |jq .version.number |tr -d \")
-PIPELINES=$(curl -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"/_ingest/pipeline/filebeat-$ESVER-suricata-eve-pipeline | jq . | wc -c)
+ESVER=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT" |jq .version.number |tr -d \")
+PIPELINES=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"/_ingest/pipeline/filebeat-$ESVER-suricata-eve-pipeline | jq . | wc -c)
 
 if [[ "$PIPELINES" -lt 5 ]]; then
   echo "Setting up ingest pipeline(s)"
