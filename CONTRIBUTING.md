@@ -1,4 +1,4 @@
-# Contributing to Security Onion - DRAFT
+# Contributing to Security Onion
 
 ### Questions, suggestions, and general comments
 * Security Onion uses GitHub's [Discussions](https://github.com/Security-Onion-Solutions/securityonion/discussions) to provide a forum where the community and developers can interact as well as ask and answer questions.
