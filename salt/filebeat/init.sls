@@ -126,7 +126,7 @@ so-filebeat:
         - 0.0.0.0:5066:5066/tcp
 {% for module in THIRDPARTY.modules.keys() %}
   {% for submodule in THIRDPARTY.modules[module] %}
-    {% if THIRDPARTY.modules[module][submodule].enabled %}
+    {% if THIRDPARTY.modules[module][submodule].enabled and THIRDPARTY.modules[module][submodule]["var.syslog_port"] is defined %}
         - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/{{ THIRDPARTY.modules[module][submodule]["var.input"] }}
     {% endif %}
   {% endfor %}
@@ -141,7 +141,7 @@ run_module_setup:
     - require:
       - file: filebeatmoduleconfsync
       - docker_container: so-filebeat
-    - onchanges_in:
+    - onchanges:
       - docker_container: so-elasticsearch
 {% endif %}
 
