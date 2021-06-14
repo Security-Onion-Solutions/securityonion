@@ -21,6 +21,8 @@
 
 * If an issue does not already exist for the bug or feature for which you are submitting a pull request, [create one](https://github.com/Security-Onion-Solutions/securityonion/issues/new) with the relevant prefix. (**`FIX:`** for bug fixes, **`FEATURE:`** for new features.)
 
+* Link the PR to the related issue, either using [keywords](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword) in the PR description, or [manually](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issues/linking-a-pull-request-to-an-issue#manually-linking-a-pull-request-to-an-issue).
+
 * **Pull requests should be opened against the `dev` branch of this repo**, and should clearly describe the problem and solution.
 
 * Be sure you have tested your changes and are confident they will not break other parts of the product.
