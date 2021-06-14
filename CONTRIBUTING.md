@@ -17,7 +17,7 @@
 
 * **All commits must be signed** with a valid key that has been added to your GitHub account. The commits should have all the "**Verified**" tag when viewed on GitHub as shown below:
   
-  <img src="./assets/images/verified-commit-1.png" width="400">
+  <img src="./assets/images/verified-commit-1.png" width="450">
 
 * If an issue does not already exist for the bug or feature for which you are submitting a pull request, [create one](https://github.com/Security-Onion-Solutions/securityonion/issues/new) with the relevant prefix. (**`FIX:`** for bug fixes, **`FEATURE:`** for new features.)
 
