@@ -22,7 +22,7 @@
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 {% from 'filebeat/map.jinja' import SO with context %}
-{% set ES_INCLUDED_NODES = ['so-standalone'] %}
+{% set ES_INCLUDED_NODES = ['so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
 
 #only include elastic state for certain nodes
 {% if grains.role in ES_INCLUDED_NODES %}
