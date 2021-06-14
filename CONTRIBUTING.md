@@ -8,7 +8,7 @@
 
 *  **If you are familiar with the current version of Security Onion and are confident you've discovered a bug**, first ensure there is not already an issue present by searching the open [issues](https://github.com/Security-Onion-Solutions/securityonion/issues). If there is, a thumbs up :+1: is a great way to show this bug is affecting you too.
 
-* If an issue doesn't exist, [open a new one](https://github.com/Security-Onion-Solutions/securityonion/issues/new), following the directions in the issue template. These boil down to including:
+* If an issue doesn't exist, [open a new one](https://github.com/Security-Onion-Solutions/securityonion/issues/new), following the directions in the issue template. This means including:
   * **System information** and how Security Onion was installed
   * **Log files** relevant to the bug report
   * **Reproduction steps** 
@@ -35,7 +35,3 @@
 * All new Bash code should pass [ShellCheck](https://www.shellcheck.net/) analysis. Where errors can be *safely* [ignored](https://github.com/koalaman/shellcheck/wiki/Ignore), the relevant disable directive should be accompanied by a brief explanation as to why the error is being ignored.
 
 * **Ensure all YAML (this includes Salt states and pillars) is properly formatted**. The spec for YAML v1.2 can be found [here](https://yaml.org/spec/1.2/spec.html), however there are numerous online resources with simpler descriptions of its formatting rules. 
-
-* **Python** - TBD
-
-* **Golang** - TBD
