@@ -5,10 +5,10 @@ Security Onion 2.3.52 is here!
 ## Screenshots
 
 Alerts
-![Alerts](https://raw.githubusercontent.com/security-onion-solutions/securityonion/master/screenshots/alerts-1.png)
+![Alerts](./assets/images/screenshots/alerts-1.png)
 
 Hunt
-![Hunt](https://raw.githubusercontent.com/security-onion-solutions/securityonion/master/screenshots/hunt-1.png)
+![Hunt](./assets/images/screenshots/hunt-1.png)
 
 ### Release Notes
 
