@@ -21,6 +21,7 @@ soctopus-sync:
     - source: salt://soctopus/files/templates
     - user: 939
     - group: 939
+    - mode: 600
     - template: jinja
 
 soctopusconf:
