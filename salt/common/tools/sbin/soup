@@ -392,7 +392,7 @@ rc1_to_rc2() {
   local NAME=$(echo $p | awk '{print $1}')
   local IP=$(echo $p | awk '{print $2}')
   echo "Removing the old cross cluster config for $NAME"
-  curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
+  {{ ELASTICCURL }} -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
   done </tmp/nodes.txt
   # Add the nodes back using hostname
   while read p; do
@@ -400,7 +400,7 @@ rc1_to_rc2() {
     local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
     local IP=$(echo $p | awk '{print $2}')
     echo "Adding the new cross cluster config for $NAME"
-    curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
+    {{ ELASTICCURL }} -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
   done </tmp/nodes.txt
 
   INSTALLEDVERSION=rc.2

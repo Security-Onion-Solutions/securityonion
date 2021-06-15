@@ -14,12 +14,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
-
 . /usr/sbin/so-common
 
-if [ "$1" == "" ]; then
-        {{ ELASTICCURL }} -s -k -L https://{{ NODEIP }}:9200/_template/* | jq .
-else
-        {{ ELASTICCURL }} -s -k -L https://{{ NODEIP }}:9200/_template/$1 | jq .
+if [[ $# -lt 1 ]]; then
+	echo "Submit a cURL request to the local Security Onion Elasticsearch host."
+	echo ""
+	echo "Usage: $0 <PATH> [ARGS,...]"
+	echo ""
+  echo "Where "
+  echo "   PATH represents the elastic function being requested."
+  echo "   ARGS is used to specify additional, optional curl parameters."
+  echo ""
+  echo "Examples:"
+  echo "   $0 /"
+  echo "   $0 '*:so-*/_search' -d '{\"query\": {\"match_all\": {}},\"size\": 1}' | jq"
+  exit 1
 fi
+
+QUERYPATH=$1
+shift
+
+{{ ELASTICCURL }} -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${QUERYPATH}" "$@"

@@ -30,7 +30,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
-    curl -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+    {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
 	if [ $? -eq 0 ]; then
 		ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"
@@ -51,7 +51,7 @@ cd ${ELASTICSEARCH_TEMPLATES}
 
 
 echo "Loading templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; curl -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
 echo
 
 cd - >/dev/null

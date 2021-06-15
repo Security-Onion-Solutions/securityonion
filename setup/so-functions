@@ -120,7 +120,9 @@ add_web_user() {
 	wait_for_file /opt/so/conf/kratos/db/db.sqlite 30 5
 	{
 		echo "Attempting to add administrator user for web interface...";
+		export SKIP_STATE_APPLY=true
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER";
+		unset SKIP_STATE_APPLY
 		echo "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
 }
@@ -2080,7 +2082,7 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
 				reserve_group_ids >> "$setup_log" 2>&1
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install sqlite argon2 curl mariadb-devel"
+				  logCmd "yum -y install sqlite curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
@@ -2176,7 +2178,7 @@ saltify() {
 				
 				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
-				retry 50 10 "apt-get -y install sqlite3 argon2 libssl-dev" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get -y install sqlite3 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
 				retry 50 10 "apt-get -y install salt-master=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1

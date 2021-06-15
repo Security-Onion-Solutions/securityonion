@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -95,7 +96,6 @@ commonpkgs:
       - netcat
       - python3-mysqldb
       - sqlite3
-      - argon2
       - libssl-dev
       - python3-dateutil
       - python3-m2crypto
@@ -128,7 +128,6 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
-      - argon2
       - mariadb-devel
       - nmap-ncat
       - python3
@@ -169,6 +168,14 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+elastic_curl_config:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/curl.config
+    - source: salt://elasticsearch/curl.config
+    - mode: 600
+    - show_changes: False
+    - makedirs: True
+
 # Sync some Utilities
 utilsyncscripts:
   file.recurse:
@@ -178,6 +185,8 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup

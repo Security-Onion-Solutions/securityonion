@@ -3,6 +3,8 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:pass', '') %}
 {% set FEATURES = salt['pillar.get']('elastic:features', False) %}
 
 filter {
@@ -30,6 +32,8 @@ output {
     elasticsearch {
       pipeline => "osquery.live_query" 
       hosts => "{{ ES }}"
+      user => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
       index => "so-osquery"
       template_name => "so-osquery"
       template => "/templates/so-osquery-template.json"

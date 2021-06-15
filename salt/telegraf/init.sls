@@ -38,6 +38,7 @@ tgrafconf:
     - name: /opt/so/conf/telegraf/etc/telegraf.conf
     - user: 939
     - group: 939
+    - mode: 660
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
 

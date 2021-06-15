@@ -62,6 +62,11 @@ soccustom:
     - mode: 600
     - template: jinja
 
+sosyncusers:
+  cron.present:
+    - user: root
+    - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin STALE_MIN=1 /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
+
 so-soc:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}

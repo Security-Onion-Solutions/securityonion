@@ -3,8 +3,12 @@
 {%- else %}
 {%- set MANAGER = salt['grains.get']('master') %}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_beats_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_beats_user:pass', '') %}
 
 output.elasticsearch:
   enabled: true
   hosts: ["https://{{ MANAGER }}:9200"]
+  username: "{{ ES_USER }}"
+  password: "{{ ES_PASS }}"
   ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]

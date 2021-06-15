@@ -1,13 +1,13 @@
 . /usr/sbin/so-common
 
-wait_for_web_response "http://localhost:5601/app/kibana" "Elastic"
+wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
 ## This hackery will be removed if using Elastic Auth ##
 
 # Let's snag a cookie from Kibana
-THECOOKIE=$(curl -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+THECOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 
 # Disable certain Features from showing up in the Kibana UI
 echo
 echo "Setting up default Space:"
-curl -b "sid=$THECOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["ml","enterpriseSearch","siem","logs","infrastructure","apm","uptime","monitoring","stackAlerts","actions","fleet"]} ' >> /opt/so/log/kibana/misc.log
+{{ ELASTICCURL }} -b "sid=$THECOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["ml","enterpriseSearch","siem","logs","infrastructure","apm","uptime","monitoring","stackAlerts","actions","fleet"]} ' >> /opt/so/log/kibana/misc.log
 echo

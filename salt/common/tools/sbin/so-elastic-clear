@@ -50,7 +50,7 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        curl -k -L https://{{ NODEIP }}:9200/_cat/indices?v
+        {{ ELASTICCURL }} -k -L https://{{ NODEIP }}:9200/_cat/indices?v
         echo
         # Inform user we are about to delete all data
         echo
@@ -89,10 +89,10 @@ fi
 # Delete data
 echo "Deleting data..."
 
-INDXS=$(curl -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+INDXS=$({{ ELASTICCURL }} -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 for INDX in ${INDXS}
 do
-    curl -XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    {{ ELASTICCURL }} -XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
 #Start Logstash/Filebeat
