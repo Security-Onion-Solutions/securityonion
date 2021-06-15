@@ -3,18 +3,22 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:pass', '') %}
 output {
- if [metadata][pipeline] {
-   elasticsearch {
-     id => "filebeat_modules_metadata_pipeline"
-     pipeline => "%{[metadata][pipeline]}"
-     hosts => "{{ ES }}"
-     index => "so-%{[event][module]}-%{+YYYY.MM.dd}"
-     template_name => "so-common"
-     template => "/templates/so-common-template.json"
-     template_overwrite => true
-     ssl => true
-     ssl_certificate_verification => false
-   }
- }
+  if [metadata][pipeline] {
+    elasticsearch {
+      id => "filebeat_modules_metadata_pipeline"
+      pipeline => "%{[metadata][pipeline]}"
+      hosts => "{{ ES }}"
+      user => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
+      index => "so-%{[event][module]}-%{+YYYY.MM.dd}"
+      template_name => "so-common"
+      template => "/templates/so-common-template.json"
+      template_overwrite => true
+      ssl => true
+      ssl_certificate_verification => false
+    }
+  }
 }

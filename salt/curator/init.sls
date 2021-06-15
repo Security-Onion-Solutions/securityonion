@@ -49,6 +49,7 @@ curconf:
     - source: salt://curator/files/curator.yml
     - user: 934
     - group: 939
+    - mode: 660
     - template: jinja
 
 curcloseddel:

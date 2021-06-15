@@ -44,6 +44,7 @@ playbookrulesdir:
     - name: /opt/so/rules/elastalert/playbook
     - user: 939
     - group: 939
+    - mode: 660
     - makedirs: True
 
 playbookrulessync:

@@ -99,6 +99,7 @@ elastaconf:
         elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
+    - mode: 660
     - template: jinja
 
 wait_for_elasticsearch:

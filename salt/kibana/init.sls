@@ -35,6 +35,7 @@ synckibanaconfig:
     - source: salt://kibana/etc
     - user: 932
     - group: 939
+    - file_mode: 660
     - template: jinja
 
 kibanalogdir:

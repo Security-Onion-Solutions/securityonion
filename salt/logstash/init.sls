@@ -78,6 +78,7 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
     {% endif %}
     - user: 931
     - group: 939
+    - mode: 660
     - makedirs: True
   {% endfor %}
 

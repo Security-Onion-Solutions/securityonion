@@ -1,3 +1,4 @@
+
 # Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -83,6 +84,7 @@ filebeatmoduleconfsync:
     - source: salt://filebeat/etc/module-setup.yml
     - user: root
     - group: root
+    - mode: 660
     - template: jinja
 
 sodefaults_module_conf:
