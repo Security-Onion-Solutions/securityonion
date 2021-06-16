@@ -18,8 +18,13 @@
 {%- import_json "soc/files/soc/menu.actions.json" as menu_actions %}
 {%- import_json "soc/files/soc/tools.json" as tools %}
 {%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
-{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %} 
-{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+{%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %} 
+{%-   set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{%- else %}
+{%-   set ES_USER = '' %}
+{%-   set ES_PASS = '' %}
+{%- endif %}
 
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
