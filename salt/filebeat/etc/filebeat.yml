@@ -3,7 +3,13 @@
 {%- else %}
 {%- set MANAGER = salt['grains.get']('master') %}
 {%- endif %}
-
+{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+{%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%-   set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{%- else %}
+{%-   set ES_USER = '' %}
+{%-   set ES_PASS = '' %}
+{%- endif %}
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
 {%- set ZEEKVER = salt['pillar.get']('global:mdengine', 'COMMUNITY') %}
@@ -71,7 +77,13 @@ logging.files:
 # Set to true to log messages in json format.
 #logging.json: false
 
+
+
 #==========================  Modules configuration ============================
+filebeat.config.modules:
+  enabled: true
+  path: ${path.config}/modules.d/*.yml
+
 filebeat.modules:
 #=========================== Filebeat prospectors =============================
 
@@ -183,7 +195,6 @@ filebeat.inputs:
   fields_under_root: true
   clean_removed: false
   close_removed: false
-
   {%- if STRELKAENABLED == 1 %}
 - type: log
   paths:
@@ -261,6 +272,8 @@ output.{{ type }}:
 output.elasticsearch:
   enabled: true
   hosts: ["https://{{ MANAGER }}:9200"]
+  username: "{{ ES_USER }}"
+  password: "{{ ES_PASS }}"
   ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"

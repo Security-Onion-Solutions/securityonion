@@ -39,10 +39,11 @@ email=$2
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
-argon2Iterations=${ARGON2_ITERATIONS:-3}
-argon2Memory=${ARGON2_MEMORY:-14}
-argon2Parallelism=${ARGON2_PARALLELISM:-2}
-argon2HashSize=${ARGON2_HASH_SIZE:-32}
+bcryptRounds=${BCRYPT_ROUNDS:-12}
+elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
+elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
+esUID=${ELASTIC_UID:-930}
+esGID=${ELASTIC_GID:-930}
 
 function fail() {
   msg=$1
@@ -58,7 +59,7 @@ function require() {
 
 # Verify this environment is capable of running this script
 function verifyEnvironment() {
-  require "argon2"
+  require "htpasswd"
   require "jq"
   require "curl"
   require "openssl"
@@ -95,6 +96,16 @@ function validateEmail() {
   fi
 }
 
+function hashPassword() {
+  password=$1
+
+  passwordHash=$(echo "${password}" | htpasswd -niBC $bcryptRounds SOUSER)
+  passwordHash=$(echo "$passwordHash" | cut -c 11-)
+  passwordHash="\$2a${passwordHash}" # still waiting for https://github.com/elastic/elasticsearch/issues/51132
+  echo "$passwordHash"
+}
+
+
 function updatePassword() {
   identityId=$1
   
@@ -111,13 +122,125 @@ function updatePassword() {
 
   if [[ -n $identityId ]]; then
     # Generate password hash
-    salt=$(openssl rand -hex 8)
-    passwordHash=$(echo "${password}" | argon2 ${salt} -id -t $argon2Iterations -m $argon2Memory -p $argon2Parallelism -l $argon2HashSize -e)
-
+    passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"${passwordHash}\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
+}
+
+function createElasticFile() {
+  filename=$1
+  tmpFile=${filename}
+  truncate -s 0 "$tmpFile"
+  chmod 600 "$tmpFile"
+  chown "${esUID}:${esGID}" "$tmpFile"
+}
+
+function syncElasticSystemUser() {
+  json=$1
+  userid=$2
+  usersFile=$3
+
+  user=$(echo "$json" | jq -r ".local.users.$userid.user")
+  pass=$(echo "$json" | jq -r ".local.users.$userid.pass")
+  
+  [[ -z "$user" || -z "$pass" ]] && fail "Elastic auth credentials for system user '$userid' are missing"
+  hash=$(hashPassword "$pass")
+
+  echo "${user}:${hash}" >> "$usersFile"
+}
+
+function syncElasticSystemRole() {
+  json=$1
+  userid=$2
+  role=$3
+  rolesFile=$4
+
+  user=$(echo "$json" | jq -r ".local.users.$userid.user")
+  
+  [[ -z "$user" ]] && fail "Elastic auth credentials for system user '$userid' are missing"
+
+  echo "${role}:${user}" >> "$rolesFile"
+}
+
+function syncElastic() {
+  echo "Syncing users between SOC and Elastic..."
+  usersTmpFile="${elasticUsersFile}.tmp"
+  rolesTmpFile="${elasticRolesFile}.tmp"
+  createElasticFile "${usersTmpFile}"
+  createElasticFile "${rolesTmpFile}"
+
+  authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
+
+  syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
+
+  syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
+
+  syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
+
+  syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
+
+  syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$rolesTmpFile"
+
+  if [[ -f "$databasePath" ]]; then
+    # Generate the new users file
+    echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
+      "from identity_credential_identifiers ici, identity_credentials ic " \
+      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "order by ici.identifier;" | \
+      sqlite3 "$databasePath" | \
+      jq -r '.user + ":" + .data.hashed_password' \
+      >> "$usersTmpFile"
+    [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
+
+    # Generate the new users_roles file
+    
+    echo "select 'superuser:' || ici.identifier " \
+      "from identity_credential_identifiers ici, identity_credentials ic " \
+      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "order by ici.identifier;" | \
+      sqlite3 "$databasePath" \
+      >> "$rolesTmpFile"
+    [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
+  else
+    echo "Database file does not exist yet, skipping users export"
+  fi
+
+  if [[ -s "${usersTmpFile}" ]]; then
+    mv "${usersTmpFile}" "${elasticUsersFile}"
+    mv "${rolesTmpFile}" "${elasticRolesFile}"
+
+    if [[ -z "$SKIP_STATE_APPLY" ]]; then
+      echo "Applying elastic state locally; This can take a few minutes..."
+      echo "Applying elastic state locally at $(date)" >> /opt/so/log/soc/sync.log 2>&1
+      salt-call state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+      echo "Applying elastic state to elastic minions; This can take a few minutes..."
+      echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
+      salt -C 'G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+    fi
+  else
+    echo "Newly generated users/roles files are incomplete; aborting."
+  fi
+}
+
+function syncAll() {
+  if [[ -n "$STALE_MIN" && -f "$databasePath" ]]; then
+    staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${STALE_MIN} minutes');" \
+      | sqlite3 "$databasePath")
+    if [[ "$staleCount" == "0" ]]; then
+      return 1
+    fi
+  fi
+  syncElastic
+  return 0
 }
 
 function listUsers() {
@@ -211,9 +334,10 @@ case "${operation}" in
     validateEmail "$email"
     updatePassword
     createUser "$email"
+    syncAll
     echo "Successfully added new user to SOC"
-    check_container thehive && echo $password | so-thehive-user-add "$email"
-    check_container fleet && echo $password | so-fleet-user-add "$email"
+    check_container thehive && echo "$password" | so-thehive-user-add "$email"
+    check_container fleet && echo "$password" | so-fleet-user-add "$email"
     ;;
 
   "list")
@@ -226,6 +350,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateUser "$email"
+    syncAll
     echo "Successfully updated user"
     ;;
 
@@ -234,6 +359,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'active'
+    syncAll
     echo "Successfully enabled user"
     check_container thehive && so-thehive-user-enable "$email" true
     check_container fleet && so-fleet-user-enable "$email" true   
@@ -244,6 +370,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     updateStatus "$email" 'locked'
+    syncAll
     echo "Successfully disabled user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false   
@@ -254,9 +381,14 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     deleteUser "$email"
+    syncAll
     echo "Successfully deleted user"
     check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-enable "$email" false
+    ;;
+
+  "sync")
+    syncAll && echo "Synchronization completed at $(date)"
     ;;
 
   "validate")

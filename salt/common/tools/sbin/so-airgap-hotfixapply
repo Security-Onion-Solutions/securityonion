@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+UPDATE_DIR=/tmp/sohotfixapply
+
+if [ -z "$1" ]; then
+  echo "No tarball given. Please provide the filename so I can run the hotfix"
+  echo "so-airgap-hotfixapply /path/to/sohotfix.tar" 
+  exit 1
+else
+  if [ ! -f "$1" ]; then
+    echo "Unable to find $1. Make sure your path is correct and retry."
+    exit 1
+  else
+    echo "Determining if we need to apply this hotfix"
+    rm -rf $UPDATE_DIR
+    mkdir -p $UPDATE_DIR
+    tar xvf $1 -C $UPDATE_DIR
+
+    # Compare some versions
+    NEWVERSION=$(cat $UPDATE_DIR/VERSION)
+    HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
+    CURRENTHOTFIX=$(cat /etc/sohotfix)
+    INSTALLEDVERSION=$(cat /etc/soversion)
+
+    if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+      echo "Checking to see if there are hotfixes needed"
+      if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
+        echo "You are already running the latest version of Security Onion."
+        rm -rf $UPDATE_DIR
+        exit 1
+      else
+        echo "We need to apply a hotfix"
+        copy_new_files
+        echo $HOTFIXVERSION > /etc/sohotfix
+        salt-call state.highstate -l info queue=True
+        echo "The Hotfix $HOTFIXVERSION has been applied"
+        # Clean up 
+        rm -rf $UPDATE_DIR
+        exit 0
+      fi
+    else
+      echo "This hotfix is not compatible with your current version. Download the latest ISO and run soup"
+      rm -rf $UPDATE_DIR
+    fi
+
+  fi
+fi

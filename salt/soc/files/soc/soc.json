@@ -12,13 +12,19 @@
 {%- set CACHE_EXPIRATION = salt['pillar.get']('sensoroni:cache_expiration_ms', 0) %}
 {%- set ES_FIELDCAPS_CACHE = salt['pillar.get']('sensoroni:es_fieldcaps_cache_ms', '300000') %}
 {%- import_json "soc/files/soc/alerts.queries.json" as alerts_queries %}
-{%- import_json "soc/files/soc/alerts.actions.json" as alerts_actions %}
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
 {%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
-{%- import_json "soc/files/soc/hunt.actions.json" as hunt_actions %}
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
+{%- import_json "soc/files/soc/menu.actions.json" as menu_actions %}
 {%- import_json "soc/files/soc/tools.json" as tools %}
 {%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+{%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %} 
+{%-   set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{%- else %}
+{%-   set ES_USER = '' %}
+{%-   set ES_PASS = '' %}
+{%- endif %}
 
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
@@ -48,13 +54,14 @@
         {%- endfor %}
         ],
         {%- endif %}
-        "username": "",
-        "password": "",
+        "username": "{{ ES_USER }}",
+        "password": "{{ ES_PASS }}",
         "cacheMs": {{ ES_FIELDCAPS_CACHE }},
-        "verifyCert": false
+        "verifyCert": false,
+        "timeoutMs": {{ API_TIMEOUT }}
       },
       "influxdb": {
-{%- if grains['role'] in ['so-import'] %}
+{%- if grains['role'] in ['so-import'] or (grains['role'] == 'so-eval' and GRAFANA == 0) %}
         "hostUrl": "",
 {%- else %}
         "hostUrl": "https://{{ MANAGERIP }}:8086",
@@ -123,8 +130,11 @@
         "queryBaseFilter": "",
         "queryToggleFilters": [],
         "queries": {{ hunt_queries | json }},
-        "actions": {{ hunt_actions | json }}           
+        "actions": {{ menu_actions | json }}           
       },
+      "job": {
+        "actions": {{ menu_actions | json }}        
+      }, 
       "alerts": {
         "advanced": false,
         "groupItemsPerPage": 50,
@@ -143,7 +153,7 @@
           { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true, "enablesToggles":["acknowledged"] }
         ],
         "queries": {{ alerts_queries | json }},
-        "actions": {{ alerts_actions | json }}        
+        "actions": {{ menu_actions | json }}        
       }        
     }
   }

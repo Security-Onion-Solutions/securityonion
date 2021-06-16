@@ -52,5 +52,4 @@ zeek:
       - frameworks/signatures/detect-windows-shells
     redef:
       - LogAscii::use_json = T;
-      - LogAscii::json_timestamps = JSON::TS_ISO8601;
       - CaptureLoss::watch_interval = 5 mins;

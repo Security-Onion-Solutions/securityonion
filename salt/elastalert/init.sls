@@ -99,6 +99,7 @@ elastaconf:
         elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
+    - mode: 660
     - template: jinja
 
 wait_for_elasticsearch:
@@ -106,6 +107,10 @@ wait_for_elasticsearch:
     - http.wait_for_successful_query:
       - url: 'https://{{MANAGER}}:9200/_cat/indices/.kibana*'
       - wait_for: 180
+      - status:
+          - 200
+          - 401
+      - status_type: list
       - verify_ssl: False
 
 so-elastalert:

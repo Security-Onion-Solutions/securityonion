@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+DEFAULT_SALT_DIR=/opt/so/saltstack/default
+
 # Check for prerequisites
 if [ "$(id -u)" -ne 0 ]; then
 	echo "This script must be run using sudo!"
@@ -122,6 +124,16 @@ check_elastic_license() {
 	fi  
 }
 
+copy_new_files() {
+  # Copy new files over to the salt dir
+  cd $UPDATE_DIR
+  rsync -a salt $DEFAULT_SALT_DIR/
+  rsync -a pillar $DEFAULT_SALT_DIR/
+  chown -R socore:socore $DEFAULT_SALT_DIR/
+  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
+  cd /tmp
+}
+
 disable_fastestmirror() {
 	sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 }
@@ -141,16 +153,16 @@ Do you agree to the terms of the Elastic License?
 If so, type AGREE to accept the Elastic License and continue.  Otherwise, press Enter to exit this program without making any changes.
 EOM
 
-AGREED=$(whiptail --title "Security Onion Setup" --inputbox \
-"$message" 20 75 3>&1 1>&2 2>&3)
+	AGREED=$(whiptail --title "$whiptail_title" --inputbox \
+	"$message" 20 75 3>&1 1>&2 2>&3)
 
-if [ "${AGREED^^}" = 'AGREE' ]; then
-  mkdir -p /opt/so/state
-  touch /opt/so/state/yeselastic.txt 
-else
-  echo "Starting in 2.3.40 you must accept the Elastic license if you want to run Security Onion."
-  exit 1
-fi
+	if [ "${AGREED^^}" = 'AGREE' ]; then
+		mkdir -p /opt/so/state
+		touch /opt/so/state/yeselastic.txt 
+	else
+		echo "Starting in 2.3.40 you must accept the Elastic license if you want to run Security Onion."
+		exit 1
+	fi
 
 }
 
@@ -240,6 +252,7 @@ lookup_salt_value() {
 	key=$1
 	group=$2
 	kind=$3
+	output=${4:-newline_values_only}
 
 	if [ -z "$kind" ]; then
 		kind=pillar
@@ -249,7 +262,7 @@ lookup_salt_value() {
 		group=${group}:
 	fi
 
-	salt-call --no-color  ${kind}.get ${group}${key} --out=newline_values_only
+	salt-call --no-color  ${kind}.get ${group}${key} --out=${output}
 }
 
 lookup_pillar() {
@@ -290,6 +303,7 @@ retry() {
 	cmd=$3
 	expectedOutput=$4
 	attempt=0
+	local exitcode=0
 	while [[ $attempt -lt $maxAttempts ]]; do			
 		attempt=$((attempt+1))
 		echo "Executing command with retry support: $cmd"
@@ -309,7 +323,29 @@ retry() {
 		sleep $sleepDelay
 	done
 	echo "Command continues to fail; giving up."
-	return 1
+	return $exitcode
+}
+
+run_check_net_err() {
+	local cmd=$1
+	local err_msg=${2:-"Unknown error occured, please check /root/$WHATWOULDYOUSAYYAHDOHERE.log for details."} # Really need to rename that variable
+	local no_retry=$3
+
+	local exit_code
+	if [[ -z $no_retry ]]; then
+		retry 5 60 "$cmd"
+		exit_code=$?
+	else
+		eval "$cmd"
+		exit_code=$?
+	fi
+	
+	if [[ $exit_code -ne 0 ]]; then
+		ERR_HANDLED=true
+		[[ -z $no_retry ]] || echo "Command failed with error $exit_code"
+		echo "$err_msg"
+		exit $exit_code
+	fi
 }
 
 set_os() {
@@ -474,12 +510,14 @@ wait_for_web_response() {
 	url=$1
 	expected=$2
 	maxAttempts=${3:-300}
+	curlcmd=${4:-curl}
 	logfile=/root/wait_for_web_response.log
+	truncate -s 0 "$logfile"
 	attempt=0
 	while [[ $attempt -lt $maxAttempts ]]; do
 		attempt=$((attempt+1))
 		echo "Waiting for value '$expected' at '$url' ($attempt/$maxAttempts)"
-		result=$(curl -ks -L $url)
+		result=$($curlcmd -ks -L $url)
 		exitcode=$?
 
 		echo "--------------------------------------------------" >> $logfile

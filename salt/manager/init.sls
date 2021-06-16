@@ -20,6 +20,10 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
+include:
+  - elasticsearch.auth
+  - salt.minion
+
 socore_own_saltstack:
   file.directory:
     - name: /opt/so/saltstack
@@ -102,6 +106,26 @@ strelka_yara_update:
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - hour: '7'
     - minute: '1'
+
+elastic_curl_config_distributed:
+  file.managed:
+    - name: /opt/so/saltstack/local/salt/elasticsearch/curl.config
+    - source: salt://elasticsearch/files/curl.config.template
+    - template: jinja
+    - mode: 600
+    - show_changes: False
+
+# Must run before elasticsearch docker container is started!
+syncesusers:
+  cmd.run:
+    - name: so-user sync
+    - env:
+      - SKIP_STATE_APPLY: 'true'
+    - creates:
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users
+      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
+    - show_changes: False
+
 {% else %}
 
 {{sls}}_state_not_allowed:

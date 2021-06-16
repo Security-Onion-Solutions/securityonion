@@ -4,6 +4,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -34,6 +35,7 @@ synckibanaconfig:
     - source: salt://kibana/etc
     - user: 932
     - group: 939
+    - file_mode: 660
     - template: jinja
 
 kibanalogdir:
@@ -63,6 +65,8 @@ kibanabin:
     - source: salt://kibana/bin/so-kibana-config-load
     - mode: 755
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 # Start the kibana docker
 so-kibana:

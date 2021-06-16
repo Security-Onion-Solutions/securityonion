@@ -8,7 +8,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 30 ]]; do
-  curl -k --output /dev/null --silent --head --fail -L https://{{ ES }}:9200
+  {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://{{ ES }}:9200
   if [ $? -eq 0 ]; then
     ELASTICSEARCH_CONNECTED="yes"
     echo "connected!"
@@ -28,7 +28,7 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 fi
 
 echo "Applying cross cluster search config..."
-    curl -s -k -XPUT -L https://{{ ES }}:9200/_cluster/settings \
+    {{ ELASTICCURL }} -s -k -XPUT -L https://{{ ES }}:9200/_cluster/settings \
          -H 'Content-Type: application/json' \
          -d "{\"persistent\": {\"search\": {\"remote\": {\"{{ MANAGER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}"
 
@@ -36,7 +36,7 @@ echo "Applying cross cluster search config..."
 {%- if TRUECLUSTER is sameas false %}
   {%- if salt['pillar.get']('nodestab', {}) %}
     {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-curl -s -k -XPUT -L https://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
+{{ ELASTICCURL }} -s -k -XPUT -L https://{{ ES }}:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"{{ SN }}": {"skip_unavailable": "true", "seeds": ["{{ SN.split('_')|first }}:9300"]}}}}}'
     {%- endfor %}
   {%- endif %}
 {%- endif %}
