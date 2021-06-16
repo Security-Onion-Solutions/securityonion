@@ -29,12 +29,17 @@ if ! grep -q "enabled: " "$ES_AUTH_PILLAR"; then
   exit 1
 fi
 
+function restart() {
+  so-elastic-stop
+  salt-call state.highstate queue=True
+}
+
 if [[ "$authEnable" == "true" ]]; then
   if grep -q "enabled: False" "$ES_AUTH_PILLAR"; then
     sed -i 's/enabled: False/enabled: True/g' "$ES_AUTH_PILLAR"
     if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
       echo "Applying highstate - this may take a few minutes..."
-      salt-call state.highstate queue=True
+      restart
     fi
     echo "Elastic auth is now enabled."
     if grep -q "argon" "$ES_USERS_FILE"; then
@@ -50,7 +55,7 @@ elif [[ "$authEnable" == "false" ]]; then
     sed -i 's/enabled: True/enabled: False/g' "$ES_AUTH_PILLAR"
     if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
       echo "Applying highstate - this may take a few minutes..."
-      salt-call state.highstate queue=True
+      restart
     fi
     echo "Elastic auth is now disabled."
   else
