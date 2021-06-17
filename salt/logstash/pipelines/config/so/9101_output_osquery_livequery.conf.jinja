@@ -4,13 +4,8 @@
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
 {%- set FEATURES = salt['pillar.get']('elastic:features', False) %}
-{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
-{%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
-{%-   set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
-{%- else %}
-{%-   set ES_USER = '' %}
-{%-   set ES_PASS = '' %}
-{%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 filter {
   if [type] =~ "live_query" {
@@ -37,8 +32,10 @@ output {
     elasticsearch {
       pipeline => "osquery.live_query" 
       hosts => "{{ ES }}"
+{% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
       user => "{{ ES_USER }}"
       password => "{{ ES_PASS }}"
+{% endif %}
       index => "so-osquery"
       template_name => "so-osquery"
       template => "/templates/so-osquery-template.json"
