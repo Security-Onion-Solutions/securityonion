@@ -84,7 +84,7 @@ filebeatmoduleconfsync:
     - source: salt://filebeat/etc/module-setup.yml
     - user: root
     - group: root
-    - mode: 660
+    - mode: 640
     - template: jinja
 
 sodefaults_module_conf:
