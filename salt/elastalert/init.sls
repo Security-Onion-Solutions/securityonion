@@ -121,7 +121,7 @@ so-elastalert:
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
-      - module: wait_for_elasticsearch
+      - cmd: wait_for_elasticsearch
     - watch:
       - file: elastaconf
 
