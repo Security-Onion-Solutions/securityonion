@@ -45,6 +45,13 @@ elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearc
 esUID=${ELASTIC_UID:-930}
 esGID=${ELASTIC_GID:-930}
 
+function lock() {
+  # Obtain file descriptor lock
+  exec 99>/var/tmp/so-user.lock || fail "Unable to create lock descriptor; if the system was not shutdown gracefully you may need to remove /var/tmp/so-user.lock manually."
+  flock -w 10 99 || fail "Another process is using so-user; if the system was not shutdown gracefully you may need to remove /var/tmp/so-user.lock manually."
+  trap 'rm -f /var/tmp/so-user.lock' EXIT
+}
+
 function fail() {
   msg=$1
   echo "$1"
@@ -219,12 +226,9 @@ function syncElastic() {
     mv "${rolesTmpFile}" "${elasticRolesFile}"
 
     if [[ -z "$SKIP_STATE_APPLY" ]]; then
-      echo "Applying elastic state locally; This can take a few minutes..."
-      echo "Applying elastic state locally at $(date)" >> /opt/so/log/soc/sync.log 2>&1
-      salt-call state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
-      echo "Applying elastic state to elastic minions; This can take a few minutes..."
+      echo "Elastic state will be re-applied to affected minions in the background."
       echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
-      salt -C 'G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+      salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1 &
     fi
   else
     echo "Newly generated users/roles files are incomplete; aborting."
@@ -331,6 +335,7 @@ case "${operation}" in
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
+    lock
     validateEmail "$email"
     updatePassword
     createUser "$email"
@@ -349,6 +354,7 @@ case "${operation}" in
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
+    lock
     updateUser "$email"
     syncAll
     echo "Successfully updated user"
@@ -358,6 +364,7 @@ case "${operation}" in
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
+    lock
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
@@ -369,6 +376,7 @@ case "${operation}" in
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
+    lock
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
@@ -380,6 +388,7 @@ case "${operation}" in
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
+    lock
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
@@ -388,7 +397,8 @@ case "${operation}" in
     ;;
 
   "sync")
-    syncAll && echo "Synchronization completed at $(date)"
+    lock
+    syncAll
     ;;
 
   "validate")

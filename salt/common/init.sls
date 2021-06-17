@@ -186,6 +186,8 @@ utilsyncscripts:
     - template: jinja
     - source: salt://common/tools/sbin
     - defaults:
+        ELASTICCURL: 'curl'
+    - context:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
