@@ -1,12 +1,13 @@
-{% if salt['pillar.get']('patch:os:schedule_name') and salt['service.status']('salt-minion', True) %}
-  {% set patch_os_pillar = salt['pillar.get']('patch:os') %}
-  {% set schedule_name = patch_os_pillar.schedule_name %}
-  {% set splay = patch_os_pillar.get('splay', 300) %}
+{% if salt['pillar.get']('patch:os:schedule_name') %}
+  {% if salt['service.status']('salt-minion', True) %}
+    {% set patch_os_pillar = salt['pillar.get']('patch:os') %}
+    {% set schedule_name = patch_os_pillar.schedule_name %}
+    {% set splay = patch_os_pillar.get('splay', 300) %}
 
-  {% if schedule_name != 'manual' and schedule_name != 'auto' %}
-    {% import_yaml "patch/os/schedules/"~schedule_name~".yml" as os_schedule %}
+    {% if schedule_name != 'manual' and schedule_name != 'auto' %}
+      {% import_yaml "patch/os/schedules/"~schedule_name~".yml" as os_schedule %}
 
-    {% if patch_os_pillar.enabled %}
+      {% if patch_os_pillar.enabled %}
 
 patch_os_schedule:
   schedule.present:
@@ -14,28 +15,28 @@ patch_os_schedule:
     - job_args:
       - patch.os
     - when:
-      {% for days in os_schedule.patch.os.schedule %}
-        {% for day, times in days.items() %}
-          {% for time in times %}
+        {% for days in os_schedule.patch.os.schedule %}
+          {% for day, times in days.items() %}
+            {% for time in times %}
         - {{day}} {{time}}
+            {% endfor %}
           {% endfor %}
         {% endfor %}
-      {% endfor %}
     - splay: {{splay}}
     - return_job: True
 
-    {% else %}
+      {% else %}
 
 disable_patch_os_schedule:
   schedule.disabled:
     - name: patch_os_schedule
 
-    {% endif %}
+      {% endif %}
 
 
-  {% elif schedule_name == 'auto' %}
+    {% elif schedule_name == 'auto' %}
 
-    {% if patch_os_pillar.enabled %}
+      {% if patch_os_pillar.enabled %}
 
 patch_os_schedule:
   schedule.present:
@@ -46,22 +47,23 @@ patch_os_schedule:
     - splay: {{splay}}
     - return_job: True
 
-    {% else %}
+      {% else %}
 
 disable_patch_os_schedule:
   schedule.disabled:
     - name: patch_os_schedule
 
-    {% endif %}
+      {% endif %}
 
-  {% elif schedule_name == 'manual' %}
+    {% elif schedule_name == 'manual' %}
 
 remove_patch_os_schedule:
   schedule.absent:
     - name: patch_os_schedule
 
-  {% endif %}
+    {% endif %}
 
+  {% endif %}
 {% else %}
 
 no_patch_os_schedule_name_set:
