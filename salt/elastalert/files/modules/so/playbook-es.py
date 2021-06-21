@@ -12,7 +12,7 @@ class PlaybookESAlerter(Alerter):
     Use matched data to create alerts in elasticsearch
     """
 
-    required_options = set(['play_title','play_url','sigma_level','elasticsearch_host'])
+    required_options = set(['play_title','play_url','sigma_level'])
 
     def alert(self, matches):
        for match in matches:
@@ -21,11 +21,11 @@ class PlaybookESAlerter(Alerter):
             headers = {"Content-Type": "application/json"}
 
             creds = None
-            if 'elasticsearch_user' in self.rule and 'elasticsearch_pass' in self.rule:
-                creds = (self.rule['elasticsearch_user'], self.rule['elasticsearch_pass'])
+            if 'es_username' in self.rule and 'es_password' in self.rule:
+                creds = (self.rule['es_username'], self.rule['es_password'])
 
             payload = {"rule": { "name": self.rule['play_title'],"case_template": self.rule['play_id'],"uuid": self.rule['play_id'],"category": self.rule['rule.category']},"event":{ "severity": self.rule['event.severity'],"module": self.rule['event.module'],"dataset": self.rule['event.dataset'],"severity_label": self.rule['sigma_level']},"kibana_pivot": self.rule['kibana_pivot'],"soc_pivot": self.rule['soc_pivot'],"play_url": self.rule['play_url'],"sigma_level": self.rule['sigma_level'],"event_data": match, "@timestamp": timestamp}
-            url = f"https://{self.rule['elasticsearch_host']}/so-playbook-alerts-{today}/_doc/"
+            url = f"https://{self.rule['es_host']}:{self.rule['es_port']}/so-playbook-alerts-{today}/_doc/"
             requests.post(url, data=json.dumps(payload), headers=headers, verify=False, auth=creds)
                             
     def get_info(self):
