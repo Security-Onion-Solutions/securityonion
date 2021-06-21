@@ -201,7 +201,7 @@ function syncElastic() {
     # Generate the new users file
     echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
       "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
@@ -212,7 +212,7 @@ function syncElastic() {
     
     echo "select 'superuser:' || ici.identifier " \
       "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" \
       >> "$rolesTmpFile"
