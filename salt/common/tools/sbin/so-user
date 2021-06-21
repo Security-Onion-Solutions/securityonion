@@ -236,12 +236,12 @@ function syncElastic() {
 }
 
 function syncAll() {
-  if [[ -f "$databasePath" && -f "$elasticUsersFile" ]]; then
-    usersFileAgeSecs=$((echo $(date +%s) - $(date +%s -r "$elasticUsersFile")))
+  if [[ -z "$FORCE_SYNC" && -f "$databasePath" && -f "$elasticUsersFile" ]]; then
+    usersFileAgeSecs=$(echo $(($(date +%s) - $(date +%s -r "$elasticUsersFile"))))
     staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${usersFileAgeSecs} seconds');" \
       | sqlite3 "$databasePath")
     if [[ "$staleCount" == "0" ]]; then
-      return 1
+      fail "Users are already in sync. Run 'FORCE_SYNC=1 $0 sync' to force a full sync anyway."
     fi
   fi
   syncElastic
