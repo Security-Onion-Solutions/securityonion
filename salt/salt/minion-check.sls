@@ -1,7 +1,6 @@
 include:
   - salt.minion-state-apply-test
 
-{% if salt['service.status']('salt-minion', True) %}
 state-apply-test:
   schedule.present:
     - name: salt-minion-state-apply-test
@@ -18,4 +17,3 @@ state-apply-test:
     - identifier: so-salt-minion-check
     - user: root
     - minute: '*/5'
-{% endif %}
