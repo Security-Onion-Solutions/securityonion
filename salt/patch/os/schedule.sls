@@ -1,5 +1,4 @@
 {% if salt['pillar.get']('patch:os:schedule_name') %}
-  {% if salt['service.status']('salt-minion', True) %}
     {% set patch_os_pillar = salt['pillar.get']('patch:os') %}
     {% set schedule_name = patch_os_pillar.schedule_name %}
     {% set splay = patch_os_pillar.get('splay', 300) %}
@@ -63,7 +62,6 @@ remove_patch_os_schedule:
 
     {% endif %}
 
-  {% endif %}
 {% else %}
 
 no_patch_os_schedule_name_set:
