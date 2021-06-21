@@ -68,6 +68,7 @@ base:
 
   '*_heavynode':
     - zeeklogs
+    - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
 
@@ -89,6 +90,7 @@ base:
     - logstash
     - logstash.search
     - elasticsearch.search
+    - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
     - data.nodestab
