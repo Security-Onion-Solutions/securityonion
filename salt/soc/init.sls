@@ -62,10 +62,13 @@ soccustom:
     - mode: 600
     - template: jinja
 
+# we dont want this added to early in setup, so we add the onlyif to verify 'startup_states: highstate'
+# is in the minion config. that is added before the final highstate during setup
 sosyncusers:
   cron.present:
     - user: root
     - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
+    - onlyif: "grep 'startup_states: highstate' /etc/salt/minion"
 
 so-soc:
   docker_container.running:
