@@ -931,7 +931,8 @@ main() {
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
-    if [[ $UPGRADESALT -eq 1 ]]; then
+    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
         echo "Cleaning repos on remote Security Onion nodes."
@@ -957,8 +958,6 @@ main() {
         ;;
       esac
     fi
-
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
