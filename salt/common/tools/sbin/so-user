@@ -201,7 +201,7 @@ function syncElastic() {
     # Generate the new users file
     echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
       "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
@@ -212,7 +212,7 @@ function syncElastic() {
     
     echo "select 'superuser:' || ici.identifier " \
       "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and ic.config like '%hashed_password%' " \
+      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" \
       >> "$rolesTmpFile"
@@ -226,9 +226,9 @@ function syncElastic() {
     mv "${rolesTmpFile}" "${elasticRolesFile}"
 
     if [[ -z "$SKIP_STATE_APPLY" ]]; then
-      echo "Elastic state will be re-applied to affected minions in the background."
+      echo "Elastic state will be re-applied to affected minions. This may take several minutes..."
       echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
-      salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1 &
+      salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
     fi
   else
     echo "Newly generated users/roles files are incomplete; aborting."
@@ -236,8 +236,9 @@ function syncElastic() {
 }
 
 function syncAll() {
-  if [[ -n "$STALE_MIN" && -f "$databasePath" ]]; then
-    staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${STALE_MIN} minutes');" \
+  if [[ -z "$FORCE_SYNC" && -f "$databasePath" && -f "$elasticUsersFile" ]]; then
+    usersFileAgeSecs=$(echo $(($(date +%s) - $(date +%s -r "$elasticUsersFile"))))
+    staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${usersFileAgeSecs} seconds');" \
       | sqlite3 "$databasePath")
     if [[ "$staleCount" == "0" ]]; then
       return 1
