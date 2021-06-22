@@ -884,7 +884,8 @@ main() {
 
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
-    retry 50 10 "salt-call state.show_top -l error" || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    echo "Waiting on the Salt Master service to be ready."
+    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
 
     echo ""
@@ -920,9 +921,9 @@ main() {
     echo "Starting Salt Master service."
     systemctl start salt-master
 
-    # Testing that salt-master is up by checking that is it connected to itself
     set +e
-    retry 50 10 "salt-call state.show_top -l error" || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    echo "Waiting on the Salt Master service to be ready."
+    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
     
     echo "Running a highstate. This could take several minutes."
