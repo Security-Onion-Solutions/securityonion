@@ -62,8 +62,8 @@ soccustom:
     - mode: 600
     - template: jinja
 
-# we dont want this added to early in setup, so we add the onlyif to verify 'startup_states: highstate'
-# is in the minion config. that is added before the final highstate during setup
+# we dont want this added too early in setup, so we add the onlyif to verify 'startup_states: highstate'
+# is in the minion config. That line is added before the final highstate during setup
 sosyncusers:
   cron.present:
     - user: root
