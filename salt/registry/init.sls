@@ -43,7 +43,7 @@ so-dockerregistry:
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
-    - timeout: 180
+    - client_timeout: 180
     - retry:
         attempts: 5
         interval: 30
