@@ -2,6 +2,7 @@ base:
   '*':
     - patch.needs_restarting
     - logrotate
+    - users
 
   '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound

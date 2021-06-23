@@ -35,6 +35,7 @@ base:
     - match: compound
     - salt.minion
     - common
+    - users
     - patch.os.schedule
     - motd
     - salt.minion-check
