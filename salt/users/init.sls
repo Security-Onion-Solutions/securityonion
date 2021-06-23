@@ -22,14 +22,12 @@ remove_user_{{username}}:
     {% if 'node_access' in userdeets %}
       {% if grains.role in userdeets.node_access or grains.id.split('_')|last in userdeets.node_access %}
 
-{% for group in userdeets.get('groups', []) %}
-add_user_groups_{{username}}_{{group}}:
+add_user_group_{{username}}:
   group.present:
-    - name: {{ group }}
-    {% if group == 'sudo' %}
-    - system: True
-    {% endif %}
-{% endfor %}
+    - name: {{ username }}
+        {% if 'uid' in userdeets %}
+    - gid: {{ userdeets.uid }}
+        {% endif %}
 
 add_user_{{username}}:
   user.present:
