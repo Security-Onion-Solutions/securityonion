@@ -22,7 +22,7 @@ fi
 ES_AUTH_PILLAR=${ELASTIC_AUTH_PILLAR:-/opt/so/saltstack/local/pillar/elasticsearch/auth.sls}
 ES_USERS_FILE=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
 
-authEnable=${1:-true}
+authEnable=$1
 
 if ! grep -q "enabled: " "$ES_AUTH_PILLAR"; then
   echo "Elastic auth pillar file is invalid. Unable to proceed."
@@ -30,17 +30,18 @@ if ! grep -q "enabled: " "$ES_AUTH_PILLAR"; then
 fi
 
 function restart() {
-  so-elastic-stop
-  salt-call state.highstate queue=True
+  if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
+    echo "Elasticsearch on all affected minions will now be stopped and then restarted..."
+    salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' cmd.run so-elastic-stop queue=True
+    echo "Applying highstate to all affected minions..."
+    salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.highstate queue=True
+  fi
 }
 
 if [[ "$authEnable" == "true" ]]; then
   if grep -q "enabled: False" "$ES_AUTH_PILLAR"; then
     sed -i 's/enabled: False/enabled: True/g' "$ES_AUTH_PILLAR"
-    if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
-      echo "Applying highstate - this may take a few minutes..."
-      restart
-    fi
+    restart
     echo "Elastic auth is now enabled."
     if grep -q "argon" "$ES_USERS_FILE"; then
       echo ""
@@ -53,10 +54,7 @@ if [[ "$authEnable" == "true" ]]; then
 elif [[ "$authEnable" == "false" ]]; then
   if grep -q "enabled: True" "$ES_AUTH_PILLAR"; then
     sed -i 's/enabled: True/enabled: False/g' "$ES_AUTH_PILLAR"
-    if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
-      echo "Applying highstate - this may take a few minutes..."
-      restart
-    fi
+    restart
     echo "Elastic auth is now disabled."
   else
     echo "Auth is already disabled."
@@ -64,6 +62,6 @@ elif [[ "$authEnable" == "false" ]]; then
 else
   echo "Usage: $0 <true|false>"
   echo ""
-  echo "Enables Elastic authentication. Defaults to true."
+  echo "Toggles Elastic authentication. Elasticsearch will be restarted on each affected minion."
   echo ""
 fi

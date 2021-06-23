@@ -884,7 +884,8 @@ main() {
 
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
-    retry 50 10 "salt-call state.show_top -l error" || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    echo "Waiting on the Salt Master service to be ready."
+    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
 
     echo ""
@@ -904,7 +905,9 @@ main() {
 
     echo ""
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
+    set +e
     salt-call state.highstate -l info queue=True
+    set -e
     echo ""
     echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
@@ -918,9 +921,9 @@ main() {
     echo "Starting Salt Master service."
     systemctl start salt-master
 
-    # Testing that salt-master is up by checking that is it connected to itself
     set +e
-    retry 50 10 "salt-call state.show_top -l error" || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    echo "Waiting on the Salt Master service to be ready."
+    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
     
     echo "Running a highstate. This could take several minutes."
@@ -929,7 +932,8 @@ main() {
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
-    if [[ $UPGRADESALT -eq 1 ]]; then
+    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
         echo "Cleaning repos on remote Security Onion nodes."
@@ -955,8 +959,6 @@ main() {
         ;;
       esac
     fi
-
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
