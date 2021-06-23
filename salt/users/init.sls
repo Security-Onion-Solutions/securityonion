@@ -3,7 +3,9 @@
 # If a user is changed from present to absent, their usergroup will be removed, but any additional usergroups that were created
 # for that user will remain.
 
-{% for username, userdeets in pillar.get('users', {}).items() %}
+{% from 'users/map.jinja' import reserved_usernames with context %}
+
+{% for username, userdeets in pillar.get('users', {}).items() if username not in reserved_usernames %}
   {% if 'status' in userdeets %}
     {% if userdeets.status == 'absent' %}
 
