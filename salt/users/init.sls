@@ -65,10 +65,6 @@ add_user_{{username}}:
           {% for group in userdeets.groups %}
       - {{ group }}
           {% endfor %}
-    - require:
-          {% for group in userdeets.groups %}
-      - group: {{ group }}
-          {% endfor %}
         {% endif %}
 
 {{username}}_authorized_keys:
@@ -82,9 +78,6 @@ add_user_{{username}}:
     - makedirs: True
     - require:
       - user: add_user_{{username}}
-      {% for group in userdeets.get('groups', []) %}
-      - group: {{ group }}
-      {% endfor %}
 
       {% endif %}
     {% endif %}
