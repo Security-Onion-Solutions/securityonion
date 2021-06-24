@@ -18,6 +18,7 @@
 . /usr/sbin/so-common
 
 UPDATE_DIR=/tmp/sogh/securityonion
+DEFAULT_SALT_DIR=/opt/so/saltstack/default
 INSTALLEDVERSION=$(cat /etc/soversion)
 POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
@@ -288,9 +289,7 @@ clone_to_tmp() {
   if [ -n "$BRANCH" ]; then
     SOUP_BRANCH="-b $BRANCH"
   fi
-  set +e
-  run_check_net_err "git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git" "Could not clone repo, please ensure network access to https://github.com"
-  set -e
+  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
@@ -733,6 +732,7 @@ verify_latest_update_script() {
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
+    echo "Can I see $UPDATE_DIR"
     cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
@@ -745,6 +745,7 @@ verify_latest_update_script() {
 
 main() {
   set -e
+  set +e
   trap 'check_err $?' EXIT
   
   echo "### Preparing soup at $(date) ###"
@@ -771,9 +772,20 @@ main() {
   echo "Checking to see if this is an airgap install"
   echo ""
   check_airgap
+  echo "Update dir is $UPDATEDIR"
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
-  echo ""
+  if [[ $is_airgap -eq 0 ]]; then
+    # Let's mount the ISO since this is airgap
+    echo "This is airgap. Ask for a location."
+    airgap_mounted
+  else
+    echo "Cloning Security Onion github repo into $UPDATE_DIR."
+    echo "Removing previous upgrade sources."
+    rm -rf $UPDATE_DIR
+    echo "Cloning the Security Onion Repo."
+    clone_to_tmp
+  fi
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   echo ""
@@ -781,15 +793,6 @@ main() {
   set_palette
   check_elastic_license
   echo ""
-  if [[ $is_airgap -eq 0 ]]; then
-    # Let's mount the ISO since this is airgap
-    airgap_mounted
-  else
-    echo "Cloning Security Onion github repo into $UPDATE_DIR."
-    echo "Removing previous upgrade sources."
-    rm -rf $UPDATE_DIR
-    clone_to_tmp
-  fi
   check_os_updates
 
   echo "Generating new repo archive"
@@ -806,7 +809,7 @@ main() {
 
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
-
+  set -e
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION" 
