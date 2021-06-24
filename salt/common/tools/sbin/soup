@@ -771,26 +771,28 @@ main() {
   echo "Checking to see if this is an airgap install"
   echo ""
   check_airgap
+  echo "Update dir is $UPDATEDIR"
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
-  echo ""
-  set_os
-  set_palette
-  check_elastic_license
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
+    echo "This is airgap. Ask for a location."
     airgap_mounted
   else
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
     echo "Removing previous upgrade sources."
     rm -rf $UPDATE_DIR
+    echo "Cloning the Security Onion Repo."
     clone_to_tmp
   fi
-  check_os_updates
-  echo ""
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   echo ""
+  set_os
+  set_palette
+  check_elastic_license
+  echo ""
+  check_os_updates
 
   echo "Generating new repo archive"
   generate_and_clean_tarballs
