@@ -17,7 +17,7 @@
   "gnetId": 2381,
   "graphTooltip": 0,
   "id": 6,
-  "iteration": 1614088867725,
+  "iteration": 1624648744739,
   "links": [],
   "panels": [
     {
@@ -29,36 +29,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "N/A",
-              "type": 1,
-              "value": "null"
-            }
-          ],
-          "max": 100,
-          "min": 0,
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "rgba(50, 172, 45, 0.97)",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 60
-              },
-              {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": 80
-              }
-            ]
-          },
           "unit": "percent"
         },
         "overrides": []
@@ -90,7 +60,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -136,6 +106,45 @@
               {
                 "params": [
                   "* -1 + 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_idle\" *-1+100 FROM \"so_long_term\".\"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_idle"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "*-1+100"
                 ],
                 "type": "math"
               }
@@ -201,7 +210,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "decimals": 2,
           "mappings": [],
           "thresholds": {
@@ -236,9 +244,10 @@
           "fields": "",
           "values": false
         },
+        "text": {},
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "targets": [
         {
           "groupBy": [
@@ -297,7 +306,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -329,7 +337,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -373,7 +381,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-elasticsearch"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-elasticsearch') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/16"
                 ],
                 "type": "math"
               }
@@ -443,7 +490,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -474,7 +520,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -517,7 +563,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-kibana"
+            },
+            {
+              "condition": "AND",
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"container_name\" = 'so-kibana' AND \"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/16"
                 ],
                 "type": "math"
               }
@@ -589,7 +674,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -621,7 +705,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -666,6 +750,40 @@
               {
                 "params": [
                   "* 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "suridrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_drop\"  * 100 FROM \"so_long_term\".\"suridrop\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  " * 100"
                 ],
                 "type": "math"
               }
@@ -730,7 +848,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -762,7 +879,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -803,6 +920,34 @@
               {
                 "params": [],
                 "type": "last"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "stenodrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_drop\" FROM \"so_long_term\".\"stenodrop\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -864,9 +1009,7 @@
       "dashes": false,
       "datasource": "InfluxDB",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -895,7 +1038,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -936,6 +1079,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "path",
+              "operator": "=",
+              "value": "/"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "disk",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_used_percent\" FROM \"so_long_term\".\"disk\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"path\" = '/') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used_percent"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -1002,9 +1178,7 @@
       "dashes": false,
       "datasource": "InfluxDB",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -1033,7 +1207,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1074,6 +1248,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "path",
+              "operator": "=",
+              "value": "/nsm"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "disk",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_used_percent\" FROM \"so_long_term\".\"disk\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"path\" = '/nsm') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used_percent"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -1141,7 +1348,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1172,7 +1378,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1215,7 +1421,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\"  / 8 FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-influxdb') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  " / 8"
                 ],
                 "type": "math"
               }
@@ -1286,7 +1531,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1317,7 +1561,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1360,7 +1604,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-logstash') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/16"
                 ],
                 "type": "math"
               }
@@ -1432,7 +1715,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1464,7 +1746,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1508,7 +1790,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-suricata"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\"  / 8 FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-suricata') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  " / 8"
                 ],
                 "type": "math"
               }
@@ -1579,7 +1900,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1611,7 +1931,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1655,7 +1975,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-steno"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-steno') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/16"
                 ],
                 "type": "math"
               }
@@ -1736,7 +2095,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1770,7 +2128,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2126,7 +2484,7 @@
       "aliasColors": {
         "InBound": "#629E51",
         "OutBound": "#5195CE",
-        "net.non_negative_derivative": "#1F78C1"
+        "net.non_negative_derivative": "super-light-blue"
       },
       "bars": false,
       "dashLength": 10,
@@ -2136,7 +2494,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2170,7 +2527,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2239,7 +2596,7 @@
               "condition": "AND",
               "key": "interface",
               "operator": "=",
-              "value": "{{ MANINT }}"
+              "value": "eth0"
             }
           ]
         },
@@ -2303,7 +2660,97 @@
               "condition": "AND",
               "key": "interface",
               "operator": "=",
-              "value": "{{ MANINT }}"
+              "value": "eth0"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_bytes_recv\", 1s) *8 FROM \"so_long_term\".\"net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"interface\" = 'eth0') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_recv"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "eth0"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_bytes_sent\", 1s) *8 FROM \"so_long_term\".\"net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"interface\" = 'eth0') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_sent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "eth0"
             }
           ]
         }
@@ -2359,7 +2806,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2391,7 +2837,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2432,6 +2878,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-suricata"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage\" FROM \"so_long_term\".\"docker_container_mem\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-suricata') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -2500,7 +2979,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2532,7 +3010,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2573,6 +3051,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-steno"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage\" FROM \"so_long_term\".\"docker_container_mem\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-steno') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -2648,7 +3159,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2682,7 +3192,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2918,7 +3428,7 @@
       "aliasColors": {
         "InBound": "#629E51",
         "OutBound": "#5195CE",
-        "net.non_negative_derivative": "#1F78C1"
+        "net.non_negative_derivative": "light-orange"
       },
       "bars": false,
       "dashLength": 10,
@@ -2928,7 +3438,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2962,7 +3471,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3031,7 +3540,52 @@
               "condition": "AND",
               "key": "interface",
               "operator": "=",
-              "value": "{{ MONINT }}"
+              "value": "/{{ MONINT }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_bytes_recv\", 1s) *8 FROM \"so_long_term\".\"net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"interface\" = '/{{ MONINT }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_recv"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "/{{ MONINT }}"
             }
           ]
         }
@@ -3082,7 +3636,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -3119,9 +3672,10 @@
           "fields": "",
           "values": false
         },
+        "text": {},
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "targets": [
         {
           "groupBy": [
@@ -3180,37 +3734,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "decimals": 2,
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "N/A",
-              "type": 1,
-              "value": "null"
-            }
-          ],
-          "max": null,
-          "min": 0,
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 259200
-              },
-              {
-                "color": "rgba(50, 172, 45, 0.97)",
-                "value": 432000
-              }
-            ]
-          },
           "unit": "s"
         },
         "overrides": []
@@ -3242,7 +3765,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -3284,6 +3807,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "pcapage",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_seconds\" FROM \"so_long_term\".\"pcapage\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_seconds"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -3351,7 +3901,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3385,7 +3934,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3575,7 +4124,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3607,7 +4155,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -3737,6 +4285,100 @@
               "value": "so-logstash"
             }
           ]
+        },
+        {
+          "alias": "ds_Inbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_rx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-logstash') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
+        },
+        {
+          "alias": "ds_Outbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_tx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-logstash') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "10s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -3789,7 +4431,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3821,7 +4462,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -3865,7 +4506,46 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " / 8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-zeek"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-zeek') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/16"
                 ],
                 "type": "math"
               }
@@ -3936,7 +4616,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3968,7 +4647,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -4009,6 +4688,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-zeek"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage\" FROM \"so_long_term\".\"docker_container_mem\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-zeek') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -4078,7 +4790,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4112,7 +4823,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -4139,6 +4850,7 @@
             }
           ],
           "measurement": "processes",
+          "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
           "resultFormat": "time_series",
@@ -4153,6 +4865,34 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "processes",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_total_threads\" FROM \"so_long_term\".\"processes\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_total_threads"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -4216,7 +4956,6 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4248,7 +4987,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -4350,6 +5089,100 @@
               {
                 "params": [],
                 "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "alias": "ds_Inbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_rx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-influxdb') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "alias": "ds_Outbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_tx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-influxdb') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
+                ],
+                "type": "field"
               },
               {
                 "params": [
@@ -4429,7 +5262,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4460,7 +5292,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": true,
       "renderer": "flot",
@@ -4500,6 +5332,34 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "zeekcaptureloss",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_loss\" FROM \"so_long_term\".\"zeekcaptureloss\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_loss"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -4563,7 +5423,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4595,7 +5454,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -4640,6 +5499,40 @@
               {
                 "params": [
                   "* 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "zeekdrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_drop\"  * 100 FROM \"so_long_term\".\"zeekdrop\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  " * 100"
                 ],
                 "type": "math"
               }
@@ -4704,7 +5597,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4735,7 +5627,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -4775,6 +5667,34 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_iowait\" FROM \"so_long_term\".\"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_iowait"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -4837,7 +5757,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4869,7 +5788,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -4999,6 +5918,100 @@
               "value": "so-aptcacherng"
             }
           ]
+        },
+        {
+          "alias": "ds_Inbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_rx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-aptcacherng') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-aptcacherng"
+            }
+          ]
+        },
+        {
+          "alias": "ds_Outbound",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT non_negative_derivative(\"mean_tx_bytes\", 1s) *8 FROM \"so_long_term\".\"docker_container_net\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-aptcacherng') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-aptcacherng"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -5050,7 +6063,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5081,7 +6093,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -5121,6 +6133,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "influxsize",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_kbytes\" FROM \"so_long_term\".\"influxsize\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_kbytes"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -5183,7 +6222,6 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5214,7 +6252,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -5254,6 +6292,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "redisqueue",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_unparsed\" FROM \"so_long_term\".\"redisqueue\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_unparsed"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -5317,7 +6382,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5350,7 +6414,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -5506,9 +6570,7 @@
       "datasource": "InfluxDB",
       "description": "",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -5537,7 +6599,7 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -5579,6 +6641,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "consumptioneps",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_eps\" FROM \"so_long_term\".\"consumptioneps\" WHERE (\"host\" = '{{ SERVERNAME }}') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_eps"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -5640,7 +6729,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5671,7 +6759,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -5711,6 +6799,39 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-redis"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage\" FROM \"so_long_term\".\"docker_container_mem\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-redis') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -5779,7 +6900,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5810,7 +6930,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -5837,6 +6957,8 @@
           "measurement": "docker_container_cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_percent\") / 8 FROM \"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-redis') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -5853,7 +6975,46 @@
               },
               {
                 "params": [
-                  "/ 16"
+                  "/{{ CPU }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-redis"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_usage_percent\" /{{ CPU }} FROM \"so_long_term\".\"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-redis') AND time <= (now()-24h) and time <= now()",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [
+                  "/{{ CPU }}"
                 ],
                 "type": "math"
               }
@@ -5932,7 +7093,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5968,7 +7128,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -5995,7 +7155,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"used\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -6038,7 +7201,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"buffered\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "B",
           "resultFormat": "time_series",
           "select": [
@@ -6081,7 +7247,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"cached\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "C",
           "resultFormat": "time_series",
           "select": [
@@ -6124,7 +7293,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"free\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "D",
           "resultFormat": "time_series",
           "select": [
@@ -6148,6 +7320,152 @@
               "value": "{{ SERVERNAME }}"
             }
           ]
+        },
+        {
+          "alias": "ds_Used",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_used\" FROM \"so_long_term\".\"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "E",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used"
+                ],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "ds_Buffered",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"mean_buffered\" FROM \"so_long_term\".\"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "F",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "alias": "ds_Cached",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"mean_cached\" FROM \"so_long_term\".\"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "G",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "alias": "ds_Free",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"mean_free\" FROM \"so_long_term\".\"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "H",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "thresholds": [],
@@ -6205,9 +7523,7 @@
       "editable": true,
       "error": false,
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "format": "none",
@@ -6326,7 +7642,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6358,7 +7673,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -6399,6 +7714,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "elasticsearch_indices",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_store_size_in_bytes\" FROM \"so_long_term\".\"elasticsearch_indices\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_store_size_in_bytes"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -6460,7 +7802,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6491,7 +7832,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -6531,6 +7872,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "elasticsearch_jvm",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_threads_count\" FROM \"so_long_term\".\"elasticsearch_jvm\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_threads_count"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -6593,7 +7961,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6624,7 +7991,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -6664,6 +8031,33 @@
               {
                 "params": [],
                 "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "groupBy": [],
+          "measurement": "elasticsearch_indices",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT \"mean_fielddata_memory_size_in_bytes\" FROM \"so_long_term\".\"elasticsearch_indices\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_fielddata_memory_size_in_bytes"
+                ],
+                "type": "field"
               }
             ]
           ],
@@ -6725,7 +8119,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6756,7 +8149,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -6850,6 +8243,33 @@
               "value": "{{ SERVERNAME }}"
             }
           ]
+        },
+        {
+          "alias": "ds_Used",
+          "groupBy": [],
+          "hide": false,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used"
+                ],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -6895,7 +8315,7 @@
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 26,
+  "schemaVersion": 27,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -6909,6 +8329,7 @@
           "text": "10s",
           "value": "10s"
         },
+        "description": null,
         "error": null,
         "hide": 0,
         "label": null,
@@ -6983,7 +8404,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -7014,5 +8435,5 @@
   "timezone": "browser",
   "title": "Standalone Mode - {{ SERVERNAME }} Overview",
   "uid": "so_overview",
-  "version": 1
+  "version": 5
 }
