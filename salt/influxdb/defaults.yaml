@@ -11,3 +11,7 @@ influxdb:
   downsample:
     so_long_term:
       resolution: 5m
+      measurements:
+{% for measurement in salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" | jq -r .results[0].series[0].values[][0]').splitlines() %}
+        - {{ measurement }}
+{% endfor %}
