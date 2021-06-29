@@ -1,3 +1,5 @@
+{% set measurements = salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" | jq -r .results[0].series[0].values[][0]') %}
+
 influxdb:
   retention_policies:
     so_short_term:
@@ -11,7 +13,9 @@ influxdb:
   downsample:
     so_long_term:
       resolution: 5m
+{% if measurements is defined %}
       measurements:
-{% for measurement in salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" | jq -r .results[0].series[0].values[][0]').splitlines() %}
+  {% for measurement in measurements.splitlines() %}
         - {{ measurement }}
-{% endfor %}
+  {% endfor %}
+{% endif %}
