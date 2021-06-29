@@ -113,7 +113,7 @@ telegraf_database:
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
-  {% for measurement in influxdb.downsample[dest_rp].measurements %}
+  {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) %}
 so_downsample_{{measurement}}_cq:
   influxdb_continuous_query.present:
     - name: so_downsample_{{measurement}}_cq
