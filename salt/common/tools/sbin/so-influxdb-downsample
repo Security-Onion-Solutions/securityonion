@@ -14,6 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{-% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 
 . /usr/sbin/so-common
 
@@ -25,11 +26,15 @@ if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   echo -e "\nMigrating InfluxDb started at `date`. This may take several hours depending on how much data needs to be downsampled."
   day=0
   startdate=`date`
-  
-  while docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"SELECT mean(*) INTO \"so_long_term\".:MEASUREMENT FROM \"autogen\"./.*/ WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d GROUP BY time(5m),*\""; do
+
+{% for dest_rp in influxdb.downsample.keys() %}
+  {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) %}
+
+  while docker exec -t so-influxdb /bin/bash -c "influx -ssl -unsafeSsl -database telegraf -execute \"SELECT mean(*) INTO \"so_long_term\".\"{{measurement}}\" FROM \"autogen\".\"{{measurement}}\" WHERE \"time\" >= '2020-07-21T00:00:00.0000000Z' + ${day}d AND \"time\" <= '2020-07-21T00:00:00.0000000Z' + $((day+1))d GROUP BY time(5m),*\""; do
     # why 2020-07-21? 
     migrationdate=`date -d "2020-07-21 + ${day} days" +"%y-%m-%d"`
-    echo "Downsampling of $migrationdate started at $startdate and completed at `date`."
+
+    echo "Downsampling of measurement: {{measurement}} from $migrationdate started at $startdate and completed at `date`."
 
     newdaytomigrate=$(date -d "$migrationdate + 1 days" +"%s")
     today=$(date +"%s")
@@ -38,9 +43,12 @@ if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     else
       ((day=day+1))
       startdate=`date`
-      echo -e "\nDownsampling the next day's worth of data."
+      echo -e "\nDownsampling the next day's worth of data for measurement: {{measurement}}."
     fi
   done
+
+  {% endfor %}
+{% endfor %}
 
   echo -e "\nInfluxDb data downsampling complete."
 
