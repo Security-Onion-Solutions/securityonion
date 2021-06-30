@@ -129,7 +129,8 @@ so-filebeat:
 {% for module in THIRDPARTY.modules.keys() %}
   {% for submodule in THIRDPARTY.modules[module] %}
     {% if THIRDPARTY.modules[module][submodule].enabled and THIRDPARTY.modules[module][submodule]["var.syslog_port"] is defined %}
-        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/{{ THIRDPARTY.modules[module][submodule]["var.input"] }}
+        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/tcp
+        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/udp
     {% endif %}
   {% endfor %}
 {% endfor %}

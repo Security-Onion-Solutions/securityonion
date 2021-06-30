@@ -113,11 +113,12 @@ telegraf_database:
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
-so_downsample_cq:
+  {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) %}
+so_downsample_{{measurement}}_cq:
   influxdb_continuous_query.present:
-    - name: so_downsample_cq
+    - name: so_downsample_{{measurement}}_cq
     - database: telegraf
-    - query: SELECT mean(*) INTO "{{dest_rp}}".:MEASUREMENT FROM /.*/ GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
+    - query: SELECT mean(*) INTO "{{dest_rp}}"."{{measurement}}" FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
     - ssl: True
     - verify_ssl: /etc/pki/ca.crt
     - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
@@ -126,7 +127,7 @@ so_downsample_cq:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_continuous_query.present_patch
-      - sls: salt.python3-influxdb
+  {% endfor %}
 {% endfor %}
 
 {% endif %}
