@@ -17,7 +17,7 @@
   "gnetId": 2381,
   "graphTooltip": 0,
   "id": 6,
-  "iteration": 1614088867725,
+  "iteration": 1625018989654,
   "links": [],
   "panels": [
     {
@@ -29,36 +29,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "N/A",
-              "type": 1,
-              "value": "null"
-            }
-          ],
-          "max": 100,
-          "min": 0,
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "rgba(50, 172, 45, 0.97)",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 60
-              },
-              {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": 80
-              }
-            ]
-          },
           "unit": "percent"
         },
         "overrides": []
@@ -90,17 +60,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Usage",
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -126,6 +104,63 @@
               {
                 "params": [
                   "usage_idle"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "* -1 + 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_idle"
                 ],
                 "type": "field"
               },
@@ -201,7 +236,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "decimals": 2,
           "mappings": [],
           "thresholds": {
@@ -236,9 +270,10 @@
           "fields": "",
           "values": false
         },
+        "text": {},
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "targets": [
         {
           "groupBy": [
@@ -297,7 +332,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -329,16 +363,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -373,7 +416,64 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-elasticsearch"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -443,7 +543,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -474,16 +573,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "groupBy": [
             {
               "params": [
@@ -517,7 +625,63 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-kibana"
+            },
+            {
+              "condition": "AND",
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -542,7 +706,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "{{ SERVERNAME }} - Kibana CPU",
+      "title": "{{ SERVERNAME }} - Kibana CPU Usage",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -589,7 +753,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -621,16 +784,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Loss Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -656,6 +828,57 @@
               {
                 "params": [
                   "drop"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              },
+              {
+                "params": [
+                  "* 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Loss Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "suridrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
                 ],
                 "type": "field"
               },
@@ -730,7 +953,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -762,16 +984,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Loss Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -797,6 +1028,51 @@
               {
                 "params": [
                   "drop"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Loss Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "stenodrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
                 ],
                 "type": "field"
               },
@@ -864,9 +1140,7 @@
       "dashes": false,
       "datasource": "InfluxDB",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -895,17 +1169,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Used",
+          "alias": "Used Current",
           "groupBy": [
             {
               "params": [
@@ -930,6 +1212,56 @@
               {
                 "params": [
                   "used_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "path",
+              "operator": "=",
+              "value": "/"
+            }
+          ]
+        },
+        {
+          "alias": "Used Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "disk",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used_percent"
                 ],
                 "type": "field"
               },
@@ -1002,9 +1334,7 @@
       "dashes": false,
       "datasource": "InfluxDB",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -1033,17 +1363,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Used",
+          "alias": "Used Current",
           "groupBy": [
             {
               "params": [
@@ -1068,6 +1406,56 @@
               {
                 "params": [
                   "used_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "path",
+              "operator": "=",
+              "value": "/nsm"
+            }
+          ]
+        },
+        {
+          "alias": "Used Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "disk",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used_percent"
                 ],
                 "type": "field"
               },
@@ -1141,7 +1529,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1172,16 +1559,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "groupBy": [
             {
               "params": [
@@ -1215,7 +1611,63 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -1286,7 +1738,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1317,16 +1768,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "groupBy": [
             {
               "params": [
@@ -1360,7 +1820,63 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -1432,7 +1948,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1464,16 +1979,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1508,7 +2032,64 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-suricata"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -1579,7 +2160,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1611,16 +2191,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1655,7 +2244,64 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-steno"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -1736,7 +2382,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -1770,17 +2415,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "System",
+          "alias": "System Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1799,6 +2452,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_system\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1830,7 +2485,7 @@
           ]
         },
         {
-          "alias": "User",
+          "alias": "User Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1849,6 +2504,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_user\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "B",
           "resultFormat": "time_series",
           "select": [
@@ -1880,7 +2537,7 @@
           ]
         },
         {
-          "alias": "Nice",
+          "alias": "Nice Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1899,6 +2556,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_nice\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "C",
           "resultFormat": "time_series",
           "select": [
@@ -1930,7 +2589,7 @@
           ]
         },
         {
-          "alias": "Interrupt",
+          "alias": "Interrupt Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1949,6 +2608,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_irq\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "D",
           "resultFormat": "time_series",
           "select": [
@@ -1980,7 +2641,7 @@
           ]
         },
         {
-          "alias": "Wait",
+          "alias": "Wait Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -1999,6 +2660,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_iowait\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "E",
           "resultFormat": "time_series",
           "select": [
@@ -2030,7 +2693,7 @@
           ]
         },
         {
-          "alias": "SoftIRQ",
+          "alias": "SoftIRQ Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2049,6 +2712,8 @@
           "measurement": "cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_softirq\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "F",
           "resultFormat": "time_series",
           "select": [
@@ -2056,6 +2721,324 @@
               {
                 "params": [
                   "usage_softirq"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "System Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_system\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "G",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_system"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "User Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_user\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "H",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_user"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "Nice Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_nice\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "I",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_nice"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "Interrupt Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_irq\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "J",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_irq"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "Wait Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_iowait\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "K",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_iowait"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "cpu",
+              "operator": "=",
+              "value": "cpu-total"
+            }
+          ]
+        },
+        {
+          "alias": "SoftIRQ Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_softirq\") FROM \"cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "L",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_softirq"
                 ],
                 "type": "field"
               },
@@ -2126,7 +3109,7 @@
       "aliasColors": {
         "InBound": "#629E51",
         "OutBound": "#5195CE",
-        "net.non_negative_derivative": "#1F78C1"
+        "net.non_negative_derivative": "super-light-blue"
       },
       "bars": false,
       "dashLength": 10,
@@ -2136,7 +3119,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2170,17 +3152,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Inbound",
+          "alias": "Inbound Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2199,7 +3189,7 @@
           "measurement": "net",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = 'eth0' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
           "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
@@ -2244,7 +3234,7 @@
           ]
         },
         {
-          "alias": "Outbound",
+          "alias": "Outbound Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2263,7 +3253,7 @@
           "measurement": "net",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_sent\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = 'eth0' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_sent\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
           "rawQuery": false,
           "refId": "B",
           "resultFormat": "time_series",
@@ -2272,6 +3262,136 @@
               {
                 "params": [
                   "bytes_sent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "{{ MANINT }}"
+            }
+          ]
+        },
+        {
+          "alias": "Inbound Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "rawQuery": false,
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_recv"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "{{ MANINT }}"
+            }
+          ]
+        },
+        {
+          "alias": "Outbound Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_sent\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "rawQuery": false,
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_sent"
                 ],
                 "type": "field"
               },
@@ -2359,7 +3479,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2391,16 +3510,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2426,6 +3554,57 @@
               {
                 "params": [
                   "usage"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-suricata"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
                 ],
                 "type": "field"
               },
@@ -2500,7 +3679,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2532,16 +3710,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2567,6 +3754,57 @@
               {
                 "params": [
                   "usage"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-steno"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
                 ],
                 "type": "field"
               },
@@ -2648,7 +3886,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2682,13 +3919,20 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "#cpu",
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        },
+        {
+          "alias": "#cpu Current",
           "fill": 0
         }
       ],
@@ -2697,7 +3941,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "#cpu",
+          "alias": "#cpu Current",
           "groupBy": [
             {
               "params": [
@@ -2740,7 +3984,7 @@
           ]
         },
         {
-          "alias": "1 Minute Average",
+          "alias": "1 Minute Average Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2784,7 +4028,7 @@
           ]
         },
         {
-          "alias": "5 Minute Average",
+          "alias": "5 Minute Average Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2828,7 +4072,7 @@
           ]
         },
         {
-          "alias": "15 Minute Average",
+          "alias": "15 Minute Average Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2854,6 +4098,185 @@
               {
                 "params": [
                   "load15"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "#cpu Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "system",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "E",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_n_cpus"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "1 Minute Average Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "system",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "F",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_load1"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "5 Minute Average Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "system",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "G",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_load5"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "15 Minute Average Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "system",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "H",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_load15"
                 ],
                 "type": "field"
               },
@@ -2918,7 +4341,7 @@
       "aliasColors": {
         "InBound": "#629E51",
         "OutBound": "#5195CE",
-        "net.non_negative_derivative": "#1F78C1"
+        "net.non_negative_derivative": "light-orange"
       },
       "bars": false,
       "dashLength": 10,
@@ -2928,7 +4351,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -2962,17 +4384,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Inbound",
+          "alias": "Inbound Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -2991,7 +4421,7 @@
           "measurement": "net",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = 'eth0' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
           "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
@@ -3000,6 +4430,71 @@
               {
                 "params": [
                   "bytes_recv"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "interface",
+              "operator": "=",
+              "value": "{{ MONINT }}"
+            }
+          ]
+        },
+        {
+          "alias": "Inbound Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT 8 * non_negative_derivative(mean(\"bytes_recv\"),1s) FROM \"net\" WHERE \"host\" = 'JumpHost' AND \"interface\" = '{{ MANINT }}' AND $timeFilter GROUP BY time($interval) fill(null)",
+          "rawQuery": false,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_bytes_recv"
                 ],
                 "type": "field"
               },
@@ -3082,7 +4577,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -3119,9 +4613,10 @@
           "fields": "",
           "values": false
         },
+        "text": {},
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "targets": [
         {
           "groupBy": [
@@ -3180,37 +4675,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "decimals": 2,
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "N/A",
-              "type": 1,
-              "value": "null"
-            }
-          ],
-          "max": null,
-          "min": 0,
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 259200
-              },
-              {
-                "color": "rgba(50, 172, 45, 0.97)",
-                "value": 432000
-              }
-            ]
-          },
           "unit": "s"
         },
         "overrides": []
@@ -3242,17 +4706,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Oldest Pcap",
+          "alias": "Oldest Pcap Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -3278,6 +4750,51 @@
               {
                 "params": [
                   "seconds"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Oldest Pcap Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "pcapage",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_seconds"
                 ],
                 "type": "field"
               },
@@ -3351,7 +4868,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3385,17 +4901,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": true,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Blocked",
+          "alias": "Blocked Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -3413,6 +4937,7 @@
           ],
           "hide": false,
           "measurement": "processes",
+          "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
           "resultFormat": "time_series",
@@ -3439,7 +4964,7 @@
           ]
         },
         {
-          "alias": "Running",
+          "alias": "Running Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -3456,6 +4981,7 @@
             }
           ],
           "measurement": "processes",
+          "orderByTime": "ASC",
           "policy": "default",
           "refId": "B",
           "resultFormat": "time_series",
@@ -3482,7 +5008,7 @@
           ]
         },
         {
-          "alias": "Sleep",
+          "alias": "Sleep Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -3499,6 +5025,7 @@
             }
           ],
           "measurement": "processes",
+          "orderByTime": "ASC",
           "policy": "default",
           "refId": "C",
           "resultFormat": "time_series",
@@ -3507,6 +5034,141 @@
               {
                 "params": [
                   "sleeping"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Blocked Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "processes",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_blocked"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Running Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "processes",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "E",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_running"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Sleep Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "processes",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "F",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_sleeping"
                 ],
                 "type": "field"
               },
@@ -3575,7 +5237,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3607,17 +5268,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Inbound",
+          "alias": "Inbound Current",
           "groupBy": [
             {
               "params": [
@@ -3678,7 +5347,7 @@
           ]
         },
         {
-          "alias": "Outbound",
+          "alias": "Outbound Current",
           "groupBy": [
             {
               "params": [
@@ -3703,6 +5372,130 @@
               {
                 "params": [
                   "tx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
+        },
+        {
+          "alias": "Inbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-logstash"
+            }
+          ]
+        },
+        {
+          "alias": "Outbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
                 ],
                 "type": "field"
               },
@@ -3789,7 +5582,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3821,16 +5613,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -3865,7 +5666,64 @@
               },
               {
                 "params": [
-                  " / {{ CPUS }}"
+                  " /{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-zeek"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  " /{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -3936,7 +5794,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -3968,16 +5825,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -4003,6 +5869,57 @@
               {
                 "params": [
                   "usage"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-zeek"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
                 ],
                 "type": "field"
               },
@@ -4078,7 +5995,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4112,17 +6028,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Threads",
+          "alias": "Threads Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -4139,6 +6063,7 @@
             }
           ],
           "measurement": "processes",
+          "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
           "resultFormat": "time_series",
@@ -4147,6 +6072,51 @@
               {
                 "params": [
                   "total_threads"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Threads Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "processes",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_total_threads"
                 ],
                 "type": "field"
               },
@@ -4216,7 +6186,6 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4248,17 +6217,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Inbound",
+          "alias": "Inbound Current",
           "groupBy": [
             {
               "params": [
@@ -4319,7 +6296,7 @@
           ]
         },
         {
-          "alias": "Outbound",
+          "alias": "Outbound Current",
           "groupBy": [
             {
               "params": [
@@ -4344,6 +6321,130 @@
               {
                 "params": [
                   "tx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "alias": "Inbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-influxdb"
+            }
+          ]
+        },
+        {
+          "alias": "Outbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
                 ],
                 "type": "field"
               },
@@ -4423,13 +6524,12 @@
     },
     {
       "aliasColors": {},
-      "bars": true,
+      "bars": false,
       "dashLength": 10,
       "dashes": false,
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4453,23 +6553,32 @@
         "total": false,
         "values": false
       },
-      "lines": false,
+      "lines": true,
       "linewidth": 1,
-      "nullPointMode": "null",
+      "nullPointMode": "connected",
       "options": {
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": true,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Loss Current",
           "groupBy": [
             {
               "params": [
@@ -4494,6 +6603,50 @@
               {
                 "params": [
                   "loss"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Loss Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "zeekcaptureloss",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_loss"
                 ],
                 "type": "field"
               },
@@ -4563,7 +6716,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4595,16 +6747,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Loss Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -4630,6 +6791,57 @@
               {
                 "params": [
                   "drop"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              },
+              {
+                "params": [
+                  "* 100"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Loss Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "zeekdrop",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_drop"
                 ],
                 "type": "field"
               },
@@ -4704,7 +6916,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4735,16 +6946,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Wait Current",
           "groupBy": [
             {
               "params": [
@@ -4769,6 +6989,50 @@
               {
                 "params": [
                   "usage_iowait"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Wait Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_iowait"
                 ],
                 "type": "field"
               },
@@ -4837,7 +7101,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -4869,17 +7132,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Inbound",
+          "alias": "Inbound Current",
           "groupBy": [
             {
               "params": [
@@ -4940,7 +7211,7 @@
           ]
         },
         {
-          "alias": "Outbound",
+          "alias": "Outbound Current",
           "groupBy": [
             {
               "params": [
@@ -4965,6 +7236,130 @@
               {
                 "params": [
                   "tx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-aptcacherng"
+            }
+          ]
+        },
+        {
+          "alias": "Inbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_rx_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "1s"
+                ],
+                "type": "non_negative_derivative"
+              },
+              {
+                "params": [
+                  "*8"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-aptcacherng"
+            }
+          ]
+        },
+        {
+          "alias": "Outbound Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_net",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_tx_bytes"
                 ],
                 "type": "field"
               },
@@ -5050,7 +7445,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5081,16 +7475,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Size Current",
           "groupBy": [
             {
               "params": [
@@ -5115,6 +7518,50 @@
               {
                 "params": [
                   "kbytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Size Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "influxsize",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_kbytes"
                 ],
                 "type": "field"
               },
@@ -5183,7 +7630,6 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5214,16 +7660,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Queue Current",
           "groupBy": [
             {
               "params": [
@@ -5248,6 +7703,50 @@
               {
                 "params": [
                   "unparsed"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Queue Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "redisqueue",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_unparsed"
                 ],
                 "type": "field"
               },
@@ -5317,7 +7816,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5350,17 +7848,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Read",
+          "alias": "Read Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -5408,7 +7914,7 @@
           ]
         },
         {
-          "alias": "Write",
+          "alias": "Write Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -5434,6 +7940,104 @@
               {
                 "params": [
                   "write_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [],
+                "type": "non_negative_difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Read Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "diskio",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_read_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [],
+                "type": "non_negative_difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Write Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "diskio",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_write_bytes"
                 ],
                 "type": "field"
               },
@@ -5506,9 +8110,7 @@
       "datasource": "InfluxDB",
       "description": "",
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -5537,17 +8139,25 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "EPS",
+          "alias": "EPS Current",
           "groupBy": [
             {
               "params": [
@@ -5573,6 +8183,51 @@
               {
                 "params": [
                   "eps"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "EPS Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "consumptioneps",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "queryType": "randomWalk",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_eps"
                 ],
                 "type": "field"
               },
@@ -5640,7 +8295,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5671,16 +8325,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "groupBy": [
             {
               "params": [
@@ -5705,6 +8368,56 @@
               {
                 "params": [
                   "usage"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-redis"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage"
                 ],
                 "type": "field"
               },
@@ -5779,7 +8492,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5810,16 +8522,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Usage Current",
           "groupBy": [
             {
               "params": [
@@ -5837,6 +8558,8 @@
           "measurement": "docker_container_cpu",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"usage_percent\") /{{ CPUS }} FROM \"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-redis') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -5853,7 +8576,65 @@
               },
               {
                 "params": [
-                  "/ 16"
+                  "/{{ CPUS }}"
+                ],
+                "type": "math"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            },
+            {
+              "condition": "AND",
+              "key": "container_name",
+              "operator": "=",
+              "value": "so-redis"
+            }
+          ]
+        },
+        {
+          "alias": "Usage Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "docker_container_cpu",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"usage_percent\") /{{ CPUS }} FROM \"docker_container_cpu\" WHERE (\"host\" = '{{ SERVERNAME }}' AND \"container_name\" = 'so-redis') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_usage_percent"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "/{{ CPUS }}"
                 ],
                 "type": "math"
               }
@@ -5932,7 +8713,6 @@
       "error": false,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -5968,17 +8748,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": true,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Used",
+          "alias": "Used Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -5995,7 +8783,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"used\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -6021,7 +8812,7 @@
           ]
         },
         {
-          "alias": "Buffered",
+          "alias": "Buffered Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -6038,7 +8829,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"buffered\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "B",
           "resultFormat": "time_series",
           "select": [
@@ -6064,7 +8858,7 @@
           ]
         },
         {
-          "alias": "Cached",
+          "alias": "Cached Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -6081,7 +8875,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"cached\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "C",
           "resultFormat": "time_series",
           "select": [
@@ -6107,7 +8904,7 @@
           ]
         },
         {
-          "alias": "Free",
+          "alias": "Free Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -6124,7 +8921,10 @@
             }
           ],
           "measurement": "mem",
+          "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"free\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
           "refId": "D",
           "resultFormat": "time_series",
           "select": [
@@ -6132,6 +8932,194 @@
               {
                 "params": [
                   "free"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Used Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"used\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "E",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Buffered Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"buffered\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "F",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_buffered"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Cached Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"cached\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "G",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_cached"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Free Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "query": "SELECT mean(\"free\") FROM \"mem\" WHERE (\"host\" = '{{ SERVERNAME }}') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": false,
+          "refId": "H",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_free"
                 ],
                 "type": "field"
               },
@@ -6205,9 +9193,7 @@
       "editable": true,
       "error": false,
       "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
+        "defaults": {},
         "overrides": []
       },
       "format": "none",
@@ -6326,7 +9312,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6358,16 +9343,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Size Current",
           "dsType": "influxdb",
           "groupBy": [
             {
@@ -6393,6 +9387,51 @@
               {
                 "params": [
                   "store_size_in_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Size Trend",
+          "dsType": "influxdb",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "elasticsearch_indices",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_store_size_in_bytes"
                 ],
                 "type": "field"
               },
@@ -6460,7 +9499,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6491,16 +9529,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Count Current",
           "groupBy": [
             {
               "params": [
@@ -6525,6 +9572,50 @@
               {
                 "params": [
                   "threads_count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Count Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "elasticsearch_jvm",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_threads_count"
                 ],
                 "type": "field"
               },
@@ -6593,7 +9684,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6624,16 +9714,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
+          "alias": "Size Current",
           "groupBy": [
             {
               "params": [
@@ -6658,6 +9757,50 @@
               {
                 "params": [
                   "fielddata_memory_size_in_bytes"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Size Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "elasticsearch_indices",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_fielddata_memory_size_in_bytes"
                 ],
                 "type": "field"
               },
@@ -6725,7 +9868,6 @@
       "datasource": "InfluxDB",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
           "links": []
         },
         "overrides": []
@@ -6756,17 +9898,25 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.5.4",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/Trend/",
+          "dashLength": 4,
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 4
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Total",
+          "alias": "Total Current",
           "groupBy": [
             {
               "params": [
@@ -6809,7 +9959,7 @@
           ]
         },
         {
-          "alias": "Used",
+          "alias": "Used Current",
           "groupBy": [
             {
               "params": [
@@ -6834,6 +9984,94 @@
               {
                 "params": [
                   "used"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Total Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_total"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "host",
+              "operator": "=",
+              "value": "{{ SERVERNAME }}"
+            }
+          ]
+        },
+        {
+          "alias": "Used Trend",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": false,
+          "measurement": "mem",
+          "orderByTime": "ASC",
+          "policy": "so_long_term",
+          "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "mean_used"
                 ],
                 "type": "field"
               },
@@ -6895,7 +10133,7 @@
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 26,
+  "schemaVersion": 27,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -6909,6 +10147,7 @@
           "text": "10s",
           "value": "10s"
         },
+        "description": null,
         "error": null,
         "hide": 0,
         "label": null,
@@ -6976,7 +10215,7 @@
           }
         ],
         "query": "10s, 1m,10m,30m,1h,6h,12h,1d,7d,14d,30d",
-        "refresh": 2,
+        "refresh": 3,
         "skipUrlSync": false,
         "type": "interval"
       }
@@ -7013,6 +10252,6 @@
   },
   "timezone": "browser",
   "title": "Standalone Mode - {{ SERVERNAME }} Overview",
-  "uid": "so_overview",
-  "version": 1
+  "uid": "{{ UID }}",
+  "version": 17
 }
