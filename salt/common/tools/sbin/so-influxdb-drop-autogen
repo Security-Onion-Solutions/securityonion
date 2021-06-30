@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+echo -e "\nThis script is used to reduce the size of InfluxDB by dropping the autogen retention policy."
+echo "If you want to retain historical data prior to 2.3.60, then this should only be run after you have downsampled your data using so-influxdb-downsample."
+
+echo -e "\nThe autogen retention policy will now be dropped from InfluxDB."
+read -r -p "Are you sure you want to continue? [y/N] " yorn
+if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  echo -e "\nDropping autogen retention policy."
+    if docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -execute "drop retention policy autogen on telegraf"; then
+      echo -e "\nAutogen retention policy dropped from InfluxDb."
+    else
+      echo -e "\nSomething went wrong dropping then autogen retention policy from InfluxDB. Please verify that the so-influxdb Docker container is running, and check the log at /opt/so/log/influxdb/influxdb.log for any details."
+    fi
+else
+  echo -e "\nExiting as requested."
+fi
