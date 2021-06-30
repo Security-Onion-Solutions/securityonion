@@ -47,6 +47,10 @@ def get_image_version(string) -> str:
 def main(quiet):
   client = docker.from_env()
 
+  # Prune old/stopped containers
+  if not quiet: print('Pruning old containers')
+  client.containers.prune()
+
   image_list = client.images.list(filters={ 'dangling': False })
 
   # Map list of image objects to flattened list of tags (format: "name:version")
@@ -74,7 +78,10 @@ def main(quiet):
         for group in grouped_t_list[2:]:
           for tag in group:
             if not quiet: print(f'Removing image {tag}')
-            client.images.remove(tag)
+            try:
+              client.images.remove(tag, force=True)
+            except docker.errors.ClientError as e:
+              print(f'Could not remove image {tag}, continuing...')
     except (docker.errors.APIError, InvalidVersion) as e:
       print(f'so-{get_so_image_basename(t_list[0])}: {e}', file=sys.stderr)
       exit(1)
