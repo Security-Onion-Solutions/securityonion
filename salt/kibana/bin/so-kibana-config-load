@@ -11,5 +11,7 @@ sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
 
 wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
 
+SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
 # Load saved objects
-{{ ELASTICCURL }} -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson >> /opt/so/log/kibana/misc.log
+{{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson >> /opt/so/log/kibana/misc.log
