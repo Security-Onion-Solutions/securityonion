@@ -14,8 +14,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- import_yaml 'influxdb/defaults.yaml' as default_settings %}
-{%- set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
+{%- set role = grains.id.split('_') | last %}
+{%- if role in ['manager', 'managersearch', 'eval', 'standalone'] %}
+  {%- import_yaml 'influxdb/defaults.yaml' as default_settings %}
+  {%- set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 
 . /usr/sbin/so-common
 
@@ -26,9 +28,8 @@ read -r -p "Are you sure you want to continue? [y/N] " yorn
 if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   echo -e "\nDownsampling InfluxDb started at `date`. This may take several hours depending on how much data needs to be downsampled."
 
-
-{% for dest_rp in influxdb.downsample.keys() %}
-  {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) %}
+  {% for dest_rp in influxdb.downsample.keys() -%}
+    {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) -%}
 
   day=0
   startdate=`date`
@@ -49,11 +50,14 @@ if [[ "$yorn" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     fi
   done
 
-  {% endfor %}
-{% endfor %}
+    {% endfor -%}
+  {% endfor -%}
 
   echo -e "\nInfluxDb data downsampling complete."
 
 else
   echo -e "\nExiting as requested."
 fi
+{%- else %}
+echo -e "\nThis script can only be run on a node running InfluxDB."
+{%- endif %}
