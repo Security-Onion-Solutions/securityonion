@@ -35,6 +35,8 @@
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+
 
 vm.max_map_count:
   sysctl.present:
@@ -169,6 +171,40 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+auth_users:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users.tmp
+    - source: salt://elasticsearch/files/users
+    - user: 930
+    - group: 930
+    - mode: 600
+    - show_changes: False
+
+auth_users_roles:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/users_roles.tmp
+    - source: salt://elasticsearch/files/users_roles
+    - user: 930
+    - group: 930
+    - mode: 600
+    - show_changes: False
+
+auth_users_inode:
+  require:
+    - file: auth_users
+  cmd.run:
+    - name: cat /opt/so/conf/elasticsearch/users.tmp > /opt/so/conf/elasticsearch/users && chown 930:930 /opt/so/conf/elasticsearch/users && chmod 600 /opt/so/conf/elasticsearch/users
+    - onchanges:
+      - file: /opt/so/conf/elasticsearch/users.tmp
+
+auth_users_roles_inode:
+  require:
+    - file: auth_users_roles
+  cmd.run:
+    - name: cat /opt/so/conf/elasticsearch/users_roles.tmp > /opt/so/conf/elasticsearch/users_roles && chown 930:930 /opt/so/conf/elasticsearch/users_roles && chmod 600 /opt/so/conf/elasticsearch/users_roles
+    - onchanges:
+      - file: /opt/so/conf/elasticsearch/users_roles.tmp
+
 so-elasticsearch:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}
@@ -213,6 +249,10 @@ so-elasticsearch:
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
+      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+      - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
+      - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
+      {% endif %}
     - watch:
       - file: cacertz
       - file: esyml
@@ -232,6 +272,8 @@ so-elasticsearch-pipelines-file:
     - group: 939
     - mode: 754
     - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 so-elasticsearch-pipelines:
  cmd.run:

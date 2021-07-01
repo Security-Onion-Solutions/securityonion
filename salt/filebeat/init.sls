@@ -1,3 +1,4 @@
+
 # Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -20,18 +21,37 @@
 {% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
+{% from 'filebeat/map.jinja' import THIRDPARTY with context %}
+{% from 'filebeat/map.jinja' import SO with context %}
+{% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
+
+#only include elastic state for certain nodes
+{% if grains.role in ES_INCLUDED_NODES %}
+include:
+  - elasticsearch
+{% endif %}
+
 filebeatetcdir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc
     - user: 939
     - group: 939
     - makedirs: True
+
+filebeatmoduledir:
+  file.directory:
+    - name: /opt/so/conf/filebeat/modules
+    - user: root
+    - group: root
+    - makedirs: True
+
 filebeatlogdir:
   file.directory:
     - name: /opt/so/log/filebeat
     - user: 939
     - group: 939
     - makedirs: True
+
 filebeatpkidir:
   file.directory:
     - name: /opt/so/conf/filebeat/etc/pki
@@ -44,6 +64,7 @@ fileregistrydir:
     - user: 939
     - group: 939
     - makedirs: True
+
 # This needs to be owned by root
 filebeatconfsync:
   file.managed:
@@ -55,6 +76,33 @@ filebeatconfsync:
     - defaults:
         INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
+
+# Filebeat module config file
+filebeatmoduleconfsync:
+  file.managed:
+    - name: /opt/so/conf/filebeat/etc/module-setup.yml
+    - source: salt://filebeat/etc/module-setup.yml
+    - user: root
+    - group: root
+    - mode: 640
+    - template: jinja
+
+sodefaults_module_conf:
+  file.managed:
+    - name: /opt/so/conf/filebeat/modules/securityonion.yml
+    - source: salt://filebeat/etc/module_config.yml.jinja
+    - template: jinja
+    - defaults:
+        MODULES: {{ SO }}
+
+thirdparty_module_conf:
+  file.managed:
+    - name: /opt/so/conf/filebeat/modules/thirdparty.yml
+    - source: salt://filebeat/etc/module_config.yml.jinja
+    - template: jinja
+    - defaults:
+        MODULES: {{ THIRDPARTY }}
+    
 so-filebeat:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
@@ -65,18 +113,40 @@ so-filebeat:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
       - /opt/so/conf/filebeat/etc/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /opt/so/conf/filebeat/etc/module-setup.yml:/usr/share/filebeat/module-setup.yml:ro
       - /nsm/wazuh/logs/alerts:/wazuh/alerts:ro
       - /nsm/wazuh/logs/archives:/wazuh/archives:ro
+      - /opt/so/conf/filebeat/modules:/usr/share/filebeat/modules.d
       - /opt/so/conf/filebeat/etc/pki/filebeat.crt:/usr/share/filebeat/filebeat.crt:ro
       - /opt/so/conf/filebeat/etc/pki/filebeat.key:/usr/share/filebeat/filebeat.key:ro
       - /opt/so/conf/filebeat/registry:/usr/share/filebeat/data/registry:rw
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
+      - /opt/so/log:/logs:ro
     - port_bindings:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
         - 0.0.0.0:5066:5066/tcp
+{% for module in THIRDPARTY.modules.keys() %}
+  {% for submodule in THIRDPARTY.modules[module] %}
+    {% if THIRDPARTY.modules[module][submodule].enabled and THIRDPARTY.modules[module][submodule]["var.syslog_port"] is defined %}
+        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/tcp
+        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/udp
+    {% endif %}
+  {% endfor %}
+{% endfor %}
     - watch:
       - file: /opt/so/conf/filebeat/etc/filebeat.yml
+
+{% if grains.role in ES_INCLUDED_NODES %}
+run_module_setup:
+  cmd.run:
+    - name: /usr/sbin/so-filebeat-module-setup
+    - require:
+      - file: filebeatmoduleconfsync
+      - docker_container: so-filebeat
+    - onchanges:
+      - docker_container: so-elasticsearch
+{% endif %}
 
 append_so-filebeat_so-status.conf:
   file.append:

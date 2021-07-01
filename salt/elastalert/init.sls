@@ -99,14 +99,12 @@ elastaconf:
         elastalert_config: {{ elastalert_config.elastalert.config }}
     - user: 933
     - group: 933
+    - mode: 660
     - template: jinja
 
 wait_for_elasticsearch:
-  module.run:
-    - http.wait_for_successful_query:
-      - url: 'https://{{MANAGER}}:9200/_cat/indices/.kibana*'
-      - wait_for: 180
-      - verify_ssl: False
+  cmd.run:
+    - name: so-elasticsearch-wait
 
 so-elastalert:
   docker_container.running:
@@ -123,7 +121,7 @@ so-elastalert:
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
-      - module: wait_for_elasticsearch
+      - cmd: wait_for_elasticsearch
     - watch:
       - file: elastaconf
 

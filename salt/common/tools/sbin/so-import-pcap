@@ -132,6 +132,8 @@ for PCAP in "$@"; do
     PCAP_FIXED=`mktemp /tmp/so-import-pcap-XXXXXXXXXX.pcap`
     echo "- attempting to recover corrupted PCAP file"
     pcapfix "${PCAP}" "${PCAP_FIXED}"
+    # Make fixed file world readable since the Suricata docker container will runas a non-root user
+    chmod a+r "${PCAP_FIXED}"
     PCAP="${PCAP_FIXED}"
     TEMP_PCAPS+=(${PCAP_FIXED})
   fi

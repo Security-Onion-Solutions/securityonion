@@ -76,9 +76,9 @@ zeekpolicysync:
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
   file.directory:
-    - name: /nsm/zeek/spool
+    - name: /nsm/zeek
     - user: 937
-    - max_depth: 0
+    - max_depth: 1
     - recurse:
       - user
 
@@ -183,6 +183,8 @@ so-zeek:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
     - start: {{ START }}
     - privileged: True
+    - ulimits:
+      - core=0
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw

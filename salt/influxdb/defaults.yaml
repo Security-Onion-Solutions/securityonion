@@ -1,0 +1,21 @@
+{% set measurements = salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" 2> /root/measurement_query.log | jq -r .results[0].series[0].values[]?[0] 2>> /root/measurement_query.log') %}
+
+influxdb:
+  retention_policies:
+    so_short_term:
+      default: True
+      duration: 30d
+      shard_duration: 1d
+    so_long_term:
+      default: False
+      duration: 0d
+      shard_duration: 7d
+  downsample:
+    so_long_term:
+      resolution: 5m
+{% if measurements|length > 0 %}
+      measurements:
+  {% for measurement in measurements.splitlines() %}
+        - {{ measurement }}
+  {% endfor %}
+{% endif %}

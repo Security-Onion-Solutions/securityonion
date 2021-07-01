@@ -22,6 +22,9 @@ base:
   '*_manager or *_managersearch':
     - match: compound
     - data.*
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+    - elasticsearch.auth
+{% endif %}
     - secrets
     - global
     - minions.{{ grains.id }}
@@ -38,6 +41,9 @@ base:
     - secrets
     - healthcheck.eval
     - elasticsearch.eval
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+    - elasticsearch.auth
+{% endif %}
     - global
     - minions.{{ grains.id }}
 
@@ -46,6 +52,9 @@ base:
     - logstash.manager
     - logstash.search
     - elasticsearch.search
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+    - elasticsearch.auth
+{% endif %}
     - data.*
     - zeeklogs
     - secrets
@@ -59,6 +68,7 @@ base:
 
   '*_heavynode':
     - zeeklogs
+    - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
 
@@ -80,6 +90,7 @@ base:
     - logstash
     - logstash.search
     - elasticsearch.search
+    - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
     - data.nodestab
@@ -88,5 +99,8 @@ base:
     - zeeklogs
     - secrets
     - elasticsearch.eval
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+    - elasticsearch.auth
+{% endif %}
     - global
     - minions.{{ grains.id }}

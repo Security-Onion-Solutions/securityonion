@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>
+. /usr/sbin/so-common
+
+if [[ $# -lt 1 ]]; then
+	echo "Submit a cURL request to the local Security Onion Elasticsearch host."
+	echo ""
+	echo "Usage: $0 <PATH> [ARGS,...]"
+	echo ""
+  echo "Where "
+  echo "   PATH represents the elastic function being requested."
+  echo "   ARGS is used to specify additional, optional curl parameters."
+  echo ""
+  echo "Examples:"
+  echo "   $0 /"
+  echo "   $0 '*:so-*/_search' -d '{\"query\": {\"match_all\": {}},\"size\": 1}' | jq"
+  exit 1
+fi
+
+QUERYPATH=$1
+shift
+
+{{ ELASTICCURL }} -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${QUERYPATH}" "$@"

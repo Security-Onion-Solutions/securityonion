@@ -3,10 +3,16 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 output {
   if [event_type] == "ids" and "import" not in [tags] {
     elasticsearch {
       hosts => "{{ ES }}"
+{% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+      user => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
+{% endif %}
       index => "so-ids"
       template_name => "so-ids"
       template => "/templates/so-ids-template.json"

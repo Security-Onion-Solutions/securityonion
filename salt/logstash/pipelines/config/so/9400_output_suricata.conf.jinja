@@ -3,11 +3,17 @@
 {%- else %}
 {%- set ES = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {%- endif %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 output {
   if [module] =~ "suricata" and "import" not in [tags] {
     elasticsearch {
       pipeline => "%{module}.%{dataset}"
       hosts => "{{ ES }}"
+{% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+      user => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
+{% endif %}
       index => "so-ids"
       template_name => "so-ids" 
       template => "/templates/so-ids-template.json"

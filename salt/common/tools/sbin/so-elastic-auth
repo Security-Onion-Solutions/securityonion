@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+if [ -f "/usr/sbin/so-common" ]; then
+  . /usr/sbin/so-common
+fi
+
+ES_AUTH_PILLAR=${ELASTIC_AUTH_PILLAR:-/opt/so/saltstack/local/pillar/elasticsearch/auth.sls}
+ES_USERS_FILE=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
+
+authEnable=$1
+
+if ! grep -q "enabled: " "$ES_AUTH_PILLAR"; then
+  echo "Elastic auth pillar file is invalid. Unable to proceed."
+  exit 1
+fi
+
+function restart() {
+  if [[ -z "$ELASTIC_AUTH_SKIP_HIGHSTATE" ]]; then
+    echo "Elasticsearch on all affected minions will now be stopped and then restarted..."
+    salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' cmd.run so-elastic-stop queue=True
+    echo "Applying highstate to all affected minions..."
+    salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.highstate queue=True
+  fi
+}
+
+if [[ "$authEnable" == "true" ]]; then
+  if grep -q "enabled: False" "$ES_AUTH_PILLAR"; then
+    sed -i 's/enabled: False/enabled: True/g' "$ES_AUTH_PILLAR"
+    restart
+    echo "Elastic auth is now enabled."
+    if grep -q "argon" "$ES_USERS_FILE"; then
+      echo ""
+      echo "IMPORTANT: The following users will need to change their password, after logging into SOC, in order to access Kibana:"
+      grep argon "$ES_USERS_FILE" | cut -d ":" -f 1
+    fi
+  else
+    echo "Auth is already enabled."
+  fi
+elif [[ "$authEnable" == "false" ]]; then
+  if grep -q "enabled: True" "$ES_AUTH_PILLAR"; then
+    sed -i 's/enabled: True/enabled: False/g' "$ES_AUTH_PILLAR"
+    restart
+    echo "Elastic auth is now disabled."
+  else
+    echo "Auth is already disabled."
+  fi
+else
+  echo "Usage: $0 <true|false>"
+  echo ""
+  echo "Toggles Elastic authentication. Elasticsearch will be restarted on each affected minion."
+  echo ""
+fi

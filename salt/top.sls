@@ -38,7 +38,6 @@ base:
     - patch.os.schedule
     - motd
     - salt.minion-check
-    - sensoroni
     - salt.lasthighstate
   
   '*_helixsensor and G@saltversion:{{saltversion}}':
@@ -47,6 +46,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - telegraf
     - firewall
     - idstools
@@ -66,6 +66,7 @@ base:
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - telegraf
     - firewall
     - nginx
@@ -92,6 +93,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - telegraf
@@ -153,6 +155,7 @@ base:
     - domainstats
     {%- endif %}
     - docker_clean
+    - pipeline.load
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -160,6 +163,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - nginx
     - telegraf
     - influxdb
@@ -213,6 +217,7 @@ base:
     - domainstats
     {%- endif %}
     - docker_clean
+    - pipeline.load
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -220,6 +225,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - telegraf
@@ -285,11 +291,13 @@ base:
     - domainstats
     {%- endif %}
     - docker_clean
+    - pipeline.load
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -313,6 +321,7 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
+    - pipeline.load
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -320,6 +329,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - nginx
     - telegraf
     - influxdb
@@ -377,11 +387,13 @@ base:
     - domainstats
     {%- endif %}
     - docker_clean
+    - pipeline.load
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -419,11 +431,13 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
+    - pipeline.load
   
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
     - ca
     - ssl
+    - sensoroni
     - nginx
     - telegraf
     - firewall
@@ -441,6 +455,7 @@ base:
     - ca
     - ssl
     - registry
+    - sensoroni
     - manager
     - nginx
     - soc
@@ -462,3 +477,4 @@ base:
     - zeek
     - schedule
     - docker_clean
+    - pipeline.load
