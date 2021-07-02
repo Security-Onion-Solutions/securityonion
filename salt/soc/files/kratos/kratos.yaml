@@ -1,10 +1,16 @@
 {%- set WEBACCESS = salt['pillar.get']('global:url_base', '') -%}
 {%- set KRATOSKEY = salt['pillar.get']('kratos:kratoskey', '') -%}
+{%- set SESSIONTIMEOUT = salt['pillar.get']('kratos:sessiontimeout', '24h') -%}
+
+session:
+  lifespan: {{ SESSIONTIMEOUT }}
 
 selfservice:
   methods:
     password:
       enabled: true
+      config:
+        haveibeenpwned_enabled: false
 
   flows:
     settings:
@@ -41,12 +47,8 @@ serve:
     base_url: https://{{ WEBACCESS }}/kratos/
 
 hashers:
-  argon2:
-    parallelism: 2
-    memory: 16384
-    iterations: 3
-    salt_length: 16
-    key_length: 32
+  bcrypt:
+    cost: 12
 
 identity:
   default_schema_url: file:///kratos-conf/schema.json

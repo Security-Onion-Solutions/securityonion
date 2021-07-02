@@ -1,0 +1,31 @@
+{%- set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
+{% set ZEEKLOGLOOKUP = {
+    'conn': 'connection',
+} %}
+securityonion_filebeat:
+  modules:
+  {%- if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone','so-node', 'so-hotnode', 'so-warmnode', 'so-heavynode']   %}
+    elasticsearch:
+      server:
+        enabled: true
+        var.paths: ["/logs/elasticsearch/*.log"]
+    logstash:
+      log:
+        enabled: true
+        var.paths: ["/logs/logstash.log"]
+  {%- endif %}
+  {%- if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone'] %}
+    kibana:
+      log:
+        enabled: true
+        var.paths: ["/logs/kibana/kibana.log"]
+  {%- endif %}
+  {%- if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode'] %}
+    redis:
+      log:
+        enabled: true
+        var.paths: ["/logs/redis.log"]
+      slowlog:
+        enabled: false
+  {%- endif %}
+        

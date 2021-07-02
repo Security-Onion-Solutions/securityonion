@@ -13,7 +13,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
+{% if sls in allowed_states and grains.role not in ['so-manager', 'so-managersearch'] %}
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}

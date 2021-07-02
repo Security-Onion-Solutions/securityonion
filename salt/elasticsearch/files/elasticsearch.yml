@@ -30,13 +30,15 @@ xpack.security.http.ssl.client_authentication: none
 xpack.security.http.ssl.key: /usr/share/elasticsearch/config/elasticsearch.key
 xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/elasticsearch.crt
 xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/ca.crt
+{% if not salt['pillar.get']('elasticsearch:auth:enabled', False) %}
 xpack.security.authc:
   anonymous:
     username: anonymous_user
     roles: superuser
     authz_exception: true
+{% endif %}
 node.name: {{ grains.host }}
-script.max_compilations_rate: 1000/1m
+script.max_compilations_rate: 20000/1m
 {%- if TRUECLUSTER is sameas true %}
   {%- if grains.role == 'so-manager' %}
     {%- if salt['pillar.get']('nodestab', {}) %}
