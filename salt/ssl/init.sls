@@ -9,6 +9,9 @@
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
+{% if grains.role in ['so-heavynode'] %}
+{% set heavynode = salt['grains.get']('host') %}
+{% endif %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import', 'helixsensor'] %}
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -103,7 +106,11 @@ influxkeyperms:
 # Create a cert for Redis encryption
 /etc/pki/redis.key:
   x509.private_key_managed:
+    {% if grains.role in ['so-heavynode'] %}
+    - CN: {{ heavynode }}
+    {% else %} 
     - CN: {{ manager }}
+    {% endif %}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -123,7 +130,11 @@ influxkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
+    {% if grains.role in ['so-heavynode'] %}
+    - CN: {{ heavynode }}
+    {% else %} 
     - CN: {{ manager }}
+    {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -315,7 +326,11 @@ miniokeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
+    {% if grains.role in ['so-heavynode'] %}
+    - CN: {{ heavynode }}
+    {% else %} 
     - CN: {{ manager }}
+    {% endif %}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -335,7 +350,11 @@ miniokeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
+    {% if grains.role in ['so-heavynode'] %}
+    - CN: {{ heavynode }}
+    {% else %} 
     - CN: {{ manager }}
+    {% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
