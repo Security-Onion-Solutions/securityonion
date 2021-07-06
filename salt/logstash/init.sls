@@ -146,7 +146,7 @@ so-logstash:
     - user: logstash
     - extra_hosts:
       {% if grains.role in ['so-heavynode'] %}
-      {% set MANAGER = salt['grains.get']('nodename') %}
+      {% set MANAGER = salt['grains.get']('host') %}
       {% set MANAGERIP = salt['pillar.get']('sensor:mainip') %}
       {% else %}
       - {{ MANAGER }}:{{ MANAGERIP }}
