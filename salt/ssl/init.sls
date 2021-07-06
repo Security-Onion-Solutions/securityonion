@@ -9,6 +9,11 @@
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
+{% if grains.role in ['so-heavynode'] %}
+  {% set COMMONNAME = salt['grains.get']('host') %}
+{% else %}
+  {% set COMMONNAME = manager %}
+{% endif %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import', 'helixsensor'] %}
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -57,7 +62,7 @@ removeesp12dir:
     
 /etc/pki/influxdb.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -78,7 +83,7 @@ removeesp12dir:
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}
     - days_remaining: 0
     - days_valid: 820
@@ -103,7 +108,7 @@ influxkeyperms:
 # Create a cert for Redis encryption
 /etc/pki/redis.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -123,7 +128,7 @@ influxkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -147,7 +152,7 @@ rediskeyperms:
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
 /etc/pki/filebeat.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -168,11 +173,7 @@ rediskeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-{% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.host}}
-{% else %}
-    - CN: {{manager}}
-{% endif %}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -228,7 +229,7 @@ fbcrtlink:
 
 /etc/pki/registry.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -249,7 +250,7 @@ fbcrtlink:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -271,7 +272,7 @@ regkeyperms:
 
 /etc/pki/minio.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -292,7 +293,7 @@ regkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/minio.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -315,7 +316,7 @@ miniokeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -335,7 +336,7 @@ miniokeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -368,7 +369,7 @@ elasticp12perms:
 
 /etc/pki/managerssl.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -389,7 +390,7 @@ elasticp12perms:
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
@@ -413,7 +414,7 @@ msslkeyperms:
 # Create a private key and cert for OSQuery
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -431,7 +432,7 @@ msslkeyperms:
 /etc/pki/fleet.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
     - days_remaining: 0
     - days_valid: 820
@@ -462,7 +463,7 @@ fbcertdir:
 
 /opt/so/conf/filebeat/etc/pki/filebeat.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -483,11 +484,7 @@ fbcertdir:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
-{% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.id}}
-{% else %}
-    - CN: {{manager}}
-{% endif %}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -528,7 +525,7 @@ chownfilebeatp8:
 
 /etc/pki/managerssl.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -573,7 +570,7 @@ msslkeyperms:
 # Create a private key and cert for Fleet
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -618,7 +615,7 @@ fleetkeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
