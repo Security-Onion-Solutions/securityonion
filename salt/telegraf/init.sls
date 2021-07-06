@@ -42,6 +42,7 @@ tgrafconf:
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
 
+{% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval'] %}
 #this file will be read by telegraf to send node details(management interface, monitor interface, etc)
 # into influx so that grafan can build dashboards using queries
 node_tab:
@@ -49,6 +50,7 @@ node_tab:
     - name: /opt/so/conf/telegraf/node_tab.json
     - source: salt://telegraf/node_tab.json.jinja
     - template: jinja
+{% endif %}
 
 so-telegraf:
   docker_container.running:
