@@ -119,7 +119,7 @@ grafana-config-files:
 {% for SN, SNDATA in salt['pillar.get']('standalonetab', {}).items() %}
 {% set NODETYPE = SN.split('_')|last %}
 {% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}    
-common--standalone-dashboard:
+common-standalone-dashboard:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/standalone/common_standalone.json
     - user: 939
