@@ -47,8 +47,8 @@ tgrafconf:
 # into influx so that grafan can build dashboards using queries
 node_tab:
   file.managed:
-    - name: /opt/so/conf/telegraf/node_tab.json
-    - source: salt://telegraf/node_tab.json.jinja
+    - name: /opt/so/conf/telegraf/nodes_config.json
+    - source: salt://telegraf/nodes_config.json.jinja
     - template: jinja
 {% endif %}
 
