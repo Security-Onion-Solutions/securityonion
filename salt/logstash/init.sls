@@ -145,7 +145,12 @@ so-logstash:
     - name: so-logstash
     - user: logstash
     - extra_hosts:
+      {% if grains.role in ['so-heavynode'] %}
+      {% set MANAGER = salt['grains.get']('nodename') %}
+      {% set MANAGERIP = salt['pillar.get']('sensor:mainip') %}
+      {% else %}
       - {{ MANAGER }}:{{ MANAGERIP }}
+      {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
