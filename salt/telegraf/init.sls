@@ -66,6 +66,9 @@ so-telegraf:
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+{% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval'] %}
+      - /opt/so/conf/telegraf/nodes_config.json:/etc/telegraf/nodes_config.json:ro
+{% endif %}
       - /var/run/utmp:/var/run/utmp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host/root:ro
