@@ -62,7 +62,7 @@ removeesp12dir:
     
 /etc/pki/influxdb.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -83,15 +83,17 @@ removeesp12dir:
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - subjectAltName: DNS:{{ HOSTNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -132,10 +134,12 @@ influxkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -177,10 +181,12 @@ rediskeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -229,7 +235,7 @@ fbcrtlink:
 
 /etc/pki/registry.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -250,7 +256,7 @@ fbcrtlink:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -272,7 +278,7 @@ regkeyperms:
 
 /etc/pki/minio.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -293,7 +299,7 @@ regkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/minio.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -340,10 +346,12 @@ miniokeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -369,7 +377,7 @@ elasticp12perms:
 
 /etc/pki/managerssl.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -390,7 +398,7 @@ elasticp12perms:
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
@@ -414,7 +422,7 @@ msslkeyperms:
 # Create a private key and cert for OSQuery
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -432,7 +440,7 @@ msslkeyperms:
 /etc/pki/fleet.crt:
   x509.certificate_managed:
     - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
     - days_remaining: 0
     - days_valid: 820
@@ -488,10 +496,12 @@ fbcertdir:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -525,7 +535,7 @@ chownfilebeatp8:
 
 /etc/pki/managerssl.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -570,7 +580,7 @@ msslkeyperms:
 # Create a private key and cert for Fleet
 /etc/pki/fleet.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -615,7 +625,7 @@ fleetkeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
+    - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
