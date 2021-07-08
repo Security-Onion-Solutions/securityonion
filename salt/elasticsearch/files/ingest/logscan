@@ -1,0 +1,21 @@
+{
+    "description": "logscan",
+    "processors": [
+        { "set": { "target_field": "event.severity", "value": 2 } },
+        { "rename": { "field": "@timestamp", "target_field": "event.ingested", "ignore_missing": true } },
+        { "date": { "field": "timestamp", "target_field": "event.created", "formats": [ "ISO8601", "UNIX" ], "ignore_failures": true } },
+        { "date": { "field": "start_time", "target_field": "@timestamp", "formats": [ "ISO8601", "UNIX" ], "ignore_failures": true } },
+        { "date": { "field": "start_time", "target_field": "event.start", "formats": [ "ISO8601", "UNIX" ], "ignore_failures": true } },
+        { "date": { "field": "end_time", "target_field": "event.end", "formats": [ "ISO8601", "UNIX" ], "ignore_failures": true } },
+        { "rename": { "field": "source_ip", "target_field": "source.ip" } },
+        { "set": { "if": "model == kff", "field": "rule.name", "value": "LOGSCAN KFF MODEL THRESHOLD" } },
+        { "set": { "if": "model == kff", "field": "rule.description", "value": "High ratio of login failures in 5 minute window" } },
+        { "set": { "if": "model == kl", "field": "rule.name", "value": "LOGSCAN KL MODEL THRESHOLD" } },
+        { "set": { "if": "model == kl", "field": "rule.description", "value": "Large number of login failures in 1 hour window" } },
+        { "rename": { "field": "num_attempts", "target_field": "logscan.attempts.total.amount", "ignore_missing": true } },
+        { "rename": { "field": "num_failed", "target_field": "logscan.attempts.failed.amount", "ignore_missing": true } },
+        { "script": { "lang": "painless", "source": "logscan.attempts.succeeded.amount = logscan.attempts.total.amount - logscan.attempts.failed.amount" , "ignore_failure": true} },
+        { "rename": { "field": "avg_failure_interval", "target_field": "logscan.attempts.failed.avg_interval", "ignore_missing": true } },
+        { "pipeline": { "name": "common" } }
+    ]
+}

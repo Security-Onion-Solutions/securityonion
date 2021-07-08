@@ -111,6 +111,19 @@ filebeat.inputs:
       fields: ["source", "prospector", "input", "offset", "beat"]
   fields_under_root: true
 
+- type: log
+  paths:
+    - /opt/so/log/logscan/alerts.log
+  fields:
+    module: logscan
+    dataset: alert
+  processors:
+    - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  clean_removed: true
+  close_removed: false
+
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
