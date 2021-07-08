@@ -36,6 +36,14 @@
 {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
+{% if grains.role in ['so-heavynode'] %}
+  {% set EXTRAHOSTHOSTNAME = salt['grains.get']('host') %}
+  {% set EXTRAHOSTIP = salt['pillar.get']('sensor:mainip') %}
+{% else %}
+  {% set EXTRAHOSTHOSTNAME = MANAGER %}
+  {% set EXTRAHOSTIP = MANAGERIP %}
+{% endif %}
+
 include:
   - elasticsearch
 
@@ -145,7 +153,7 @@ so-logstash:
     - name: so-logstash
     - user: logstash
     - extra_hosts:
-      - {{ MANAGER }}:{{ MANAGERIP }}
+      - {{ EXTRAHOSTHOSTNAME }}:{{ EXTRAHOSTIP }}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
