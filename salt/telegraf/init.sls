@@ -42,15 +42,13 @@ tgrafconf:
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
 
-{% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval'] %}
 #this file will be read by telegraf to send node details(management interface, monitor interface, etc)
 # into influx so that grafan can build dashboards using queries
-node_tab:
+node_config:
   file.managed:
-    - name: /opt/so/conf/telegraf/nodes_config.json
-    - source: salt://telegraf/nodes_config.json.jinja
+    - name: /opt/so/conf/telegraf/node_config.json
+    - source: salt://telegraf/node_config.json.jinja
     - template: jinja
-{% endif %}
 
 so-telegraf:
   docker_container.running:
@@ -66,9 +64,7 @@ so-telegraf:
     - binds:
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-{% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval'] %}
-      - /opt/so/conf/telegraf/nodes_config.json:/etc/telegraf/nodes_config.json:ro
-{% endif %}
+      - /opt/so/conf/telegraf/node_config.json:/etc/telegraf/node_config.json:ro
       - /var/run/utmp:/var/run/utmp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host/root:ro
@@ -91,6 +87,7 @@ so-telegraf:
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts
+      - file: node_config
 
 append_so-telegraf_so-status.conf:
   file.append:
