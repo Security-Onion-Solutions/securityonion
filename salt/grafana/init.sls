@@ -125,15 +125,11 @@ common-standalone-dashboard:
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/dashboards/standalone/common_standalone.json.jinja
+    - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: so_overview
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-      PANELS: {{GRAFANA_SETTINGS.dashboards.standalone.panels}}
+        UID: so_overview
+        PANELS: {{GRAFANA_SETTINGS.dashboards.standalone.panels}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards.standalone.templates}}
 {% endfor %}
 {% endif %}
 
