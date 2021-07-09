@@ -1,0 +1,155 @@
+{
+  "type": "graph",
+  "title": "Container CPU Usage Current",
+  "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 10
+  },
+  "id": 4,
+  "targets": [
+    {
+      "refId": "A",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "container_name"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "usage_percent"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "math",
+            "params": [
+              " / $cpucount"
+            ]
+          }
+        ]
+      ],
+      "measurement": "docker_container_cpu",
+      "alias": "$tag_container_name"
+    }
+  ],
+  "options": {
+    "alertThreshold": true
+  },
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "pluginVersion": "7.5.4",
+  "renderer": "flot",
+  "yaxes": [
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "percent",
+      "$$hashKey": "object:315"
+    },
+    {
+      "label": null,
+      "show": false,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "short",
+      "$$hashKey": "object:316"
+    }
+  ],
+  "xaxis": {
+    "show": true,
+    "mode": "time",
+    "name": null,
+    "values": [],
+    "buckets": null
+  },
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "lines": true,
+  "fill": 1,
+  "linewidth": 1,
+  "dashLength": 10,
+  "spaceLength": 10,
+  "pointradius": 2,
+  "legend": {
+    "show": true,
+    "values": false,
+    "min": false,
+    "max": false,
+    "current": false,
+    "total": false,
+    "avg": false,
+    "alignAsTable": false,
+    "rightSide": false,
+    "hideZero": false
+  },
+  "nullPointMode": "connected",
+  "tooltip": {
+    "value_type": "individual",
+    "shared": true,
+    "sort": 0
+  },
+  "aliasColors": {},
+  "seriesOverrides": [],
+  "thresholds": [],
+  "timeRegions": [],
+  "decimals": null,
+  "fillGradient": 0,
+  "dashes": false,
+  "hiddenSeries": false,
+  "points": false,
+  "bars": false,
+  "stack": false,
+  "percentage": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
+}

@@ -114,11 +114,7 @@ grafana-config-files:
     - group: 939
     - source: salt://grafana/etc/files
     - makedirs: True
-    
-{% if salt['pillar.get']('standalonetab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('standalonetab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}    
+       
 common-standalone-dashboard:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/standalone/common_standalone.json
@@ -130,9 +126,6 @@ common-standalone-dashboard:
         UID: so_overview
         PANELS: {{GRAFANA_SETTINGS.dashboards.standalone.panels}}
         TEMPLATES: {{GRAFANA_SETTINGS.dashboards.standalone.templating.list}}
-{% endfor %}
-{% endif %}
-
 
 so-grafana:
   docker_container.running:
