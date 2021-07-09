@@ -1,20 +1,40 @@
 {
-  "colorValue": true,
-  "colors": [
-    "rgba(50, 172, 45, 0.97)",
-    "rgba(237, 129, 40, 0.89)",
-    "rgba(245, 54, 54, 0.9)"
-  ],
   "datasource": "InfluxDB",
-  "decimals": 1,
-  "editable": true,
-  "format": "none",
-  "gauge": {
-    "maxValue": 100,
-    "minValue": 0,
-    "show": false,
-    "thresholdLabels": false,
-    "thresholdMarkers": true
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "rgba(50, 172, 45, 0.97)",
+            "value": $cpucount / 2
+          },
+          {
+            "color": "rgba(237, 129, 40, 0.89)",
+            "value": $cpucount / 1.5
+          },
+          {
+            "color": "rgba(245, 54, 54, 0.9)",
+            "value": $cpucount
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null",
+          "id": 0,
+          "type": 2
+        }
+      ],
+      "unit": "none",
+      "decimals": 1,
+      "color": {
+        "mode": "thresholds"
+      }
+    },
+    "overrides": []
   },
   "gridPos": {
     "x": {{ PANELS.load_average_5_minute.gridPos.x }},
@@ -22,37 +42,9 @@
     "w": {{ PANELS.load_average_5_minute.gridPos.w }},
     "h": {{ PANELS.load_average_5_minute.gridPos.h }}
   },
-  "height": "150",
   "id": 61859,
   "links": [],
-  "mappingType": 1,
-  "mappingTypes": [
-    {
-      "name": "value to text",
-      "value": 1
-    },
-    {
-      "name": "range to text",
-      "value": 2
-    }
-  ],
   "maxDataPoints": 100,
-  "nullPointMode": "connected",
-  "postfixFontSize": "50%",
-  "prefixFontSize": "50%",
-  "rangeMaps": [
-    {
-      "from": "null",
-      "text": "N/A",
-      "to": "null"
-    }
-  ],
-  "sparkline": {
-    "fillColor": "rgba(31, 118, 189, 0.18)",
-    "full": false,
-    "lineColor": "rgb(31, 120, 193)",
-    "show": true
-  },
   "targets": [
     {
       "dsType": "influxdb",
@@ -71,6 +63,7 @@
         }
       ],
       "measurement": "system",
+      "orderByTime": "ASC",
       "policy": "default",
       "refId": "A",
       "resultFormat": "time_series",
@@ -94,32 +87,27 @@
           "operator": "=~",
           "value": "/^$servername$/"
         }
-      ],
-      "orderByTime": "ASC"
+      ]
     }
   ],
-  "thresholds": "$cpucount/2, $cpucount/1.5, $cpucount",
   "title": "5 Minute Load Average",
-  "type": "singlestat",
-  "valueFontSize": "80%",
-  "valueMaps": [
-    {
-      "op": "=",
-      "text": "N/A",
-      "value": "null"
-    }
-  ],
-  "valueName": "current",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
+  "type": "stat",
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "auto",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
   },
+  "pluginVersion": "7.5.4",
   "cacheTimeout": null,
-  "colorBackground": false,
-  "error": false,
-  "interval": null,
-  "nullText": null,
-  "postfix": "",
-  "prefix": "",
-  "tableColumn": ""
+  "interval": null
 }
