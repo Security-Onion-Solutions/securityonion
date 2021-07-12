@@ -1,0 +1,132 @@
+{
+  "cacheTimeout": null,
+  "colorBackground": false,
+  "colorValue": false,
+  "colors": [
+    "rgba(245, 54, 54, 0.9)",
+    "rgba(237, 129, 40, 0.89)",
+    "rgba(50, 172, 45, 0.97)"
+  ],
+  "datasource": "InfluxDB",
+  "decimals": 2,
+  "editable": true,
+  "error": false,
+  "format": "percent",
+  "gauge": {
+    "maxValue": 100,
+    "minValue": 0,
+    "show": false,
+    "thresholdLabels": false,
+    "thresholdMarkers": true
+  },
+  "gridPos": {
+    "x": {{ PANELS.io_wait_singlestat.gridPos.x }},
+    "y": {{ PANELS.io_wait_singlestat.gridPos.y }},
+    "w": {{ PANELS.io_wait_singlestat.gridPos.w }},
+    "h": {{ PANELS.io_wait_singlestat.gridPos.h }}
+  },
+  "height": "150",
+  "id": 61867,
+  "interval": null,
+  "links": [],
+  "mappingType": 1,
+  "mappingTypes": [
+    {
+      "name": "value to text",
+      "value": 1
+    },
+    {
+      "name": "range to text",
+      "value": 2
+    }
+  ],
+  "maxDataPoints": 100,
+  "nullPointMode": "connected",
+  "nullText": null,
+  "postfix": "",
+  "postfixFontSize": "50%",
+  "prefix": "",
+  "prefixFontSize": "50%",
+  "rangeMaps": [
+    {
+      "from": "null",
+      "text": "N/A",
+      "to": "null"
+    }
+  ],
+  "sparkline": {
+    "fillColor": "rgba(31, 118, 189, 0.18)",
+    "full": false,
+    "lineColor": "rgb(31, 120, 193)",
+    "show": true
+  },
+  "tableColumn": "",
+  "targets": [
+    {
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "cpu",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"usage_iowait\"), 1s) FROM \"cpu\" WHERE \"host\" =~ /^$servername$/ AND \"cpu\" = 'cpu-total' AND $timeFilter GROUP BY time($interval) fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "usage_iowait"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "cpu",
+          "operator": "=",
+          "value": "cpu-total"
+        }
+      ]
+    }
+  ],
+  "thresholds": "30,40,50",
+  "title": "IOWait",
+  "type": "singlestat",
+  "valueFontSize": "100%",
+  "valueMaps": [
+    {
+      "op": "=",
+      "text": "N/A",
+      "value": "null"
+    }
+  ],
+  "valueName": "current",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  }
+}
