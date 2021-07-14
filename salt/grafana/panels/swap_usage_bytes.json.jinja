@@ -1,0 +1,182 @@
+{
+  "type": "graph",
+  "title": "Swap Usage - bytes",
+  "gridPos": {
+    "x": {{ PANELS.swap_usage_bytes_graph.gridPos.x }},
+    "y": {{ PANELS.swap_usage_bytes_graph.gridPos.y }},
+    "w": {{ PANELS.swap_usage_bytes_graph.gridPos.w }},
+    "h": {{ PANELS.swap_usage_bytes_graph.gridPos.h }}
+  },
+  "id": 68892,
+  "targets": [
+    {
+      "refId": "A",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "query": "SELECT mean(used) as \"used\", mean(total) as \"total\" FROM \"swap\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "alias": "$tag_host: $col"
+    },
+    {
+      "refId": "B",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "query": "SELECT mean(mean_used) as \"trend_used\", mean(mean_total) as \"trend_total\" FROM \"so_long_term\".\"swap\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "alias": "$tag_host: $col",
+      "hide": false
+    }
+  ],
+  "options": {
+    "alertThreshold": true
+  },
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "pluginVersion": "7.5.4",
+  "renderer": "flot",
+  "yaxes": [
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": "0",
+      "max": null,
+      "format": "bytes",
+      "$$hashKey": "object:515"
+    },
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "short",
+      "$$hashKey": "object:516"
+    }
+  ],
+  "xaxis": {
+    "show": true,
+    "mode": "time",
+    "name": null,
+    "values": [],
+    "buckets": null
+  },
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "lines": true,
+  "fill": 1,
+  "linewidth": 1,
+  "dashLength": 10,
+  "spaceLength": 10,
+  "pointradius": 2,
+  "legend": {
+    "show": true,
+    "values": true,
+    "min": false,
+    "max": true,
+    "current": true,
+    "total": false,
+    "avg": true,
+    "alignAsTable": true
+  },
+  "nullPointMode": "connected",
+  "tooltip": {
+    "value_type": "individual",
+    "shared": true,
+    "sort": 0
+  },
+  "aliasColors": {},
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:575",
+      "alias": "/total/",
+      "fill": 0,
+      "color": "#C4162A"
+    },
+    {
+      "$$hashKey": "object:596",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "fillGradient": 0,
+  "dashes": false,
+  "hiddenSeries": false,
+  "points": false,
+  "bars": false,
+  "stack": false,
+  "percentage": false,
+  "steppedLine": false
+}
