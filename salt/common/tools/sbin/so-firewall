@@ -35,6 +35,7 @@ def showUsage(options, args):
   print('')
   print('  General commands:')
   print('    help           - Prints this usage information.')
+  print('    apply          - Apply the firewall state.')
   print('')
   print('  Host commands:')
   print('    listhostgroups - Lists the known host groups.')
@@ -66,7 +67,7 @@ def checkDefaultPortsOption(options):
 
 def checkApplyOption(options):
   if "--apply" in options:
-    return apply()
+    return apply(None, None)
 
 def loadYaml(filename):
   file = open(filename, "r")
@@ -328,7 +329,7 @@ def removehost(options, args):
     code = checkApplyOption(options)
   return code
 
-def apply():
+def apply(options, args):
   proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
   return proc.returncode
 
@@ -356,7 +357,8 @@ def main():
     "addport": addport,
     "removeport": removeport,
     "addhostgroup": addhostgroup,
-    "addportgroup": addportgroup
+    "addportgroup": addportgroup,
+    "apply": apply
   }
 
   code=1
