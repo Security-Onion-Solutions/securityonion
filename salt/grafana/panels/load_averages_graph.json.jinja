@@ -1,127 +1,178 @@
 {
-  "type": "graph",
-  "title": "Load Averages",
-    "gridPos": {
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "gridPos": {
     "x": {{ PANELS.load_averages_graph.gridPos.x }},
     "y": {{ PANELS.load_averages_graph.gridPos.y }},
     "w": {{ PANELS.load_averages_graph.gridPos.w }},
     "h": {{ PANELS.load_averages_graph.gridPos.h }}
   },
   "id": 61869,
-  "targets": [
-    {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [],
-      "groupBy": [
-        {
-          "type": "time",
-          "params": [
-            "$__interval"
-          ]
-        },
-        {
-          "type": "fill",
-          "params": [
-            "null"
-          ]
-        }
-      ],
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "value"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          }
-        ]
-      ],
-      "query": "SELECT mean(load1) as \"1 minute\", mean(load5) as \"5 minutes\", mean(load15) as \"15 minutes\" FROM \"system\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), * ORDER BY asc",
-      "rawQuery": true,
-      "alias": "$tag_host: $col"
-    }
-  ],
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": true,
+    "min": true,
+    "show": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "nullPointMode": "connected",
   "options": {
     "alertThreshold": true
   },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
   "pluginVersion": "7.5.4",
+  "pointradius": 2,
   "renderer": "flot",
-  "yaxes": [
+  "seriesOverrides": [
     {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:287"
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:288"
+      "$$hashKey": "object:364",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
     }
   ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(load1) as \"1 minute\", mean(load5) as \"5 minutes\", mean(load15) as \"15 minutes\" FROM \"system\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), * ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(mean_load1) as \"trend_1 minute\", mean(mean_load5) as \"trend_5 minutes\", mean(mean_load15) as \"trend_15 minutes\" FROM \"so_long_term\".\"system\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), * ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [],
+      "hide": false
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Load Averages - $cpucount Cores",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
   "xaxis": {
-    "show": true,
+    "buckets": null,
     "mode": "time",
     "name": null,
-    "values": [],
-    "buckets": null
+    "show": true,
+    "values": []
   },
+  "yaxes": [
+    {
+      "$$hashKey": "object:287",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    },
+    {
+      "$$hashKey": "object:288",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
   "yaxis": {
     "align": false,
     "alignLevel": null
   },
-  "lines": true,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": true,
-    "max": true,
-    "current": true,
-    "total": false,
-    "avg": true,
-    "alignAsTable": true
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 0
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
+  "bars": false,
+  "dashes": false,
   "fill": 0,
   "fillGradient": 0,
-  "dashes": false,
   "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
   "percentage": false,
-  "steppedLine": false
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
 }

@@ -1,14 +1,16 @@
 {
   "aliasColors": {},
-  "bars": false,
   "dashLength": 10,
-  "dashes": false,
   "datasource": "InfluxDB",
   "editable": true,
-  "error": false,
+  "fieldConfig": {
+    "defaults": {
+      "links": []
+    },
+    "overrides": []
+  },
   "fill": 1,
-  "fillGradient": 0,
-    "gridPos": {
+  "gridPos": {
     "x": {{ PANELS.process_status_graph.gridPos.x }},
     "y": {{ PANELS.process_status_graph.gridPos.y }},
     "w": {{ PANELS.process_status_graph.gridPos.w }},
@@ -36,14 +38,20 @@
   "options": {
     "alertThreshold": true
   },
-  "percentage": false,
+  "pluginVersion": "7.5.4",
   "pointradius": 5,
-  "points": false,
   "renderer": "flot",
-  "seriesOverrides": [],
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:549",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
   "spaceLength": 10,
-  "stack": false,
-  "steppedLine": false,
   "targets": [
     {
       "alias": "$tag_host: $col",
@@ -88,13 +96,59 @@
           "operator": "=~",
           "value": "/^$server$/"
         }
-      ]
+      ],
+      "orderByTime": "ASC"
+    },
+    {
+      "alias": "$tag_host: $col",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "processes",
+      "policy": "default",
+      "query": "SELECT mean(mean_running) as trend_running, mean(mean_blocked) as trend_blocked, mean(mean_sleeping) as trend_sleeping, mean(mean_stopped) as trend_stopped, mean(mean_zombies) as trend_zombies, mean(mean_paging) as trend_paging, mean(mean_unknown) as trend_unknown FROM \"so_long_term\".\"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), host ORDER BY asc",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "blocked"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$server$/"
+        }
+      ],
+      "orderByTime": "ASC",
+      "hide": false
     }
   ],
   "thresholds": [],
-  "timeFrom": null,
   "timeRegions": [],
-  "timeShift": null,
   "title": "Process Status",
   "tooltip": {
     "msResolution": false,
@@ -117,7 +171,8 @@
       "logBase": 1,
       "max": null,
       "min": null,
-      "show": true
+      "show": true,
+      "$$hashKey": "object:512"
     },
     {
       "format": "short",
@@ -125,19 +180,23 @@
       "logBase": 1,
       "max": null,
       "min": null,
-      "show": true
+      "show": true,
+      "$$hashKey": "object:513"
     }
   ],
   "yaxis": {
     "align": false,
     "alignLevel": null
   },
-  "fieldConfig": {
-    "defaults": {
-      "links": []
-    },
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "hiddenSeries": false
+  "bars": false,
+  "dashes": false,
+  "error": false,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
 }
