@@ -1,130 +1,181 @@
 {
-  "type": "graph",
-  "title": "CPU Usage",
-    "gridPos": {
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "fill": 1,
+  "gridPos": {
     "x": {{ PANELS.cpu_usage_tasks_graph.gridPos.x }},
     "y": {{ PANELS.cpu_usage_tasks_graph.gridPos.y }},
     "w": {{ PANELS.cpu_usage_tasks_graph.gridPos.w }},
     "h": {{ PANELS.cpu_usage_tasks_graph.gridPos.h }}
   },
   "id": 61871,
-  "targets": [
-    {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [],
-      "groupBy": [
-        {
-          "type": "time",
-          "params": [
-            "$__interval"
-          ]
-        },
-        {
-          "type": "fill",
-          "params": [
-            "null"
-          ]
-        }
-      ],
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "value"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          }
-        ]
-      ],
-      "query": "SELECT mean(usage_user) as \"user\", mean(usage_system) as \"system\", mean(usage_softirq) as \"softirq\", mean(usage_steal) as \"steal\", mean(usage_nice) as \"nice\", mean(usage_irq) as \"irq\", mean(usage_iowait) as \"iowait\", mean(usage_guest) as \"guest\", mean(usage_guest_nice) as \"guest_nice\"  FROM \"cpu\" WHERE \"host\" =~ /^$servername$/ and cpu = 'cpu-total' AND $timeFilter GROUP BY time($interval), *",
-      "rawQuery": true,
-      "alias": "$tag_host: $col"
-    }
-  ],
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "hideEmpty": true,
+    "hideZero": true,
+    "max": true,
+    "min": true,
+    "show": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "nullPointMode": "connected",
   "options": {
     "alertThreshold": true
   },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
   "pluginVersion": "7.5.4",
+  "pointradius": 2,
   "renderer": "flot",
-  "yaxes": [
+  "seriesOverrides": [
     {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": "0",
-      "max": "100",
-      "format": "percent",
-      "$$hashKey": "object:202",
-      "decimals": null
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:203"
+      "$$hashKey": "object:266",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
     }
   ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(usage_user) as \"user\", mean(usage_system) as \"system\", mean(usage_softirq) as \"softirq\", mean(usage_steal) as \"steal\", mean(usage_nice) as \"nice\", mean(usage_irq) as \"irq\", mean(usage_iowait) as \"iowait\", mean(usage_guest) as \"guest\", mean(usage_guest_nice) as \"guest_nice\"  FROM \"cpu\" WHERE \"host\" =~ /^$servername$/ and cpu = 'cpu-total' AND $timeFilter GROUP BY time($interval), *",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(mean_usage_user) as \"trend_user\", mean(mean_usage_system) as \"trend_system\", mean(mean_usage_softirq) as \"trend_softirq\", mean(mean_usage_steal) as \"trend_steal\", mean(mean_usage_nice) as \"trend_nice\", mean(mean_usage_irq) as \"trend_irq\", mean(mean_usage_iowait) as \"trend_iowait\", mean(mean_usage_guest) as \"trend_guest\", mean(mean_usage_guest_nice) as \"trend_guest_nice\"  FROM \"so_long_term\".\"cpu\" WHERE \"host\" =~ /^$servername$/ and cpu = 'cpu-total' AND $timeFilter GROUP BY time($interval), *",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [],
+      "hide": false
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "CPU Usage",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
   "xaxis": {
-    "show": true,
+    "buckets": null,
     "mode": "time",
     "name": null,
-    "values": [],
-    "buckets": null
+    "show": true,
+    "values": []
   },
+  "yaxes": [
+    {
+      "$$hashKey": "object:202",
+      "decimals": null,
+      "format": "percent",
+      "label": null,
+      "logBase": 1,
+      "max": "100",
+      "min": "0",
+      "show": true
+    },
+    {
+      "$$hashKey": "object:203",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
   "yaxis": {
     "align": false,
     "alignLevel": null
   },
-  "lines": true,
-  "fill": 1,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": true,
-    "max": true,
-    "current": true,
-    "total": false,
-    "avg": true,
-    "alignAsTable": true,
-    "hideEmpty": true,
-    "hideZero": true
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 0
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
   "bars": false,
-  "stack": false,
+  "dashes": false,
+  "fillGradient": 0,
+  "hiddenSeries": false,
   "percentage": false,
-  "steppedLine": false
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
 }
