@@ -1,135 +1,185 @@
 {
-  "type": "graph",
-  "title": "Memory Usage",
-  "gridPos": {
-        "x": {{ PANELS.memory_usage_graph.gridPos.x }},
-        "y": {{ PANELS.memory_usage_graph.gridPos.y }},
-        "w": {{ PANELS.memory_usage_graph.gridPos.w }},
-        "h": {{ PANELS.memory_usage_graph.gridPos.h }}
-    },
-  "id": 61873,
-  "targets": [
-    {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [],
-      "groupBy": [
-        {
-          "type": "time",
-          "params": [
-            "$__interval"
-          ]
-        },
-        {
-          "type": "fill",
-          "params": [
-            "null"
-          ]
-        }
-      ],
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "value"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          }
-        ]
-      ],
-      "query": "SELECT mean(total) as total, mean(used) as used, mean(cached) as cached, mean(free) as free, mean(buffered) as buffered  FROM \"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), host ORDER BY asc",
-      "rawQuery": true,
-      "alias": "$tag_host: $col"
-    }
-  ],
-  "options": {
-    "alertThreshold": true
-  },
+  "aliasColors": {},
+  "dashLength": 10,
   "datasource": "InfluxDB",
   "fieldConfig": {
     "defaults": {},
     "overrides": []
   },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": "0",
-      "max": null,
-      "format": "bytes",
-      "$$hashKey": "object:235"
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:236"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
+  "fill": 1,
+  "gridPos": {
+    "x": {{ PANELS.memory_usage_graph.gridPos.x }},
+    "y": {{ PANELS.memory_usage_graph.gridPos.y }},
+    "w": {{ PANELS.memory_usage_graph.gridPos.w }},
+    "h": {{ PANELS.memory_usage_graph.gridPos.h }}
   },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
+  "id": 61873,
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": true,
+    "min": true,
+    "show": true,
+    "total": false,
+    "values": true
   },
   "lines": true,
-  "fill": 1,
   "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": true,
-    "max": true,
-    "current": true,
-    "total": false,
-    "avg": true,
-    "alignAsTable": true
-  },
   "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 0
+  "options": {
+    "alertThreshold": true
   },
-  "aliasColors": {},
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
   "seriesOverrides": [
     {
       "$$hashKey": "object:295",
       "alias": "/total/",
+      "color": "#C4162A",
+      "fill": 0
+    },
+    {
+      "$$hashKey": "object:164",
+      "alias": "/trend/",
       "fill": 0,
-      "color": "#C4162A"
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(total) as total, mean(used) as used, mean(cached) as cached, mean(free) as free, mean(buffered) as buffered  FROM \"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), host ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(mean_total) as trend_total, mean(mean_used) as trend_used, mean(mean_cached) as trean_cached, mean(mean_free) as trend_free, mean(mean_buffered) as trend_buffered  FROM \"so_long_term\".\"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($interval), host ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [],
+      "hide": false
     }
   ],
   "thresholds": [],
   "timeRegions": [],
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
+  "title": "Memory Usage",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:235",
+      "format": "bytes",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": "0",
+      "show": true
+    },
+    {
+      "$$hashKey": "object:236",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
   "bars": false,
-  "stack": false,
+  "dashes": false,
+  "description": "",
+  "fillGradient": 0,
+  "hiddenSeries": false,
   "percentage": false,
+  "points": false,
+  "stack": false,
   "steppedLine": false,
-  "description": ""
+  "timeFrom": null,
+  "timeShift": null
 }
