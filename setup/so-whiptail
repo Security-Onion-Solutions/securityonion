@@ -1661,11 +1661,16 @@ whiptail_set_redirect() {
 
 	[ -n "$TESTING" ] && return
 
+	local options=()
+	options+=( "IP" "Use IP address to access the web interface" ON )
+	[[ $no_use_hostname != true ]] && options+=( "HOSTNAME" "Use hostname to access the web interface" OFF )
+	options+=("OTHER" "Use a different name like a FQDN or Load Balancer" OFF)
+
 	REDIRECTINFO=$(whiptail --title "$whiptail_title" --radiolist \
-	"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
-	"IP" "Use IP address to access the web interface" ON  \
-	"HOSTNAME" "Use hostname to access the web interface" OFF \
-	"OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
+		"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
+		"${options[@]}" \
+		3>&1 1>&2 2>&3 
+	)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }

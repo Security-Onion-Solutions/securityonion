@@ -423,14 +423,28 @@ collect_homenet_snsr() {
 }
 
 collect_hostname() {
+	collect_hostname_validate
+
+	while ! hostname_lowercase "$HOSTNAME"; do
+		if ! (whiptail_uppercase_warning); then
+			collect_hostname_validate
+		else
+			no_use_hostname=true
+			break
+		fi
+	done
+}
+
+collect_hostname_validate() {
 	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
 
 	whiptail_set_hostname "$HOSTNAME"
 
-	if [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
+	if [[ -z $default_hostname_flag ]] && [[ $HOSTNAME == 'securityonion' ]]; then # Will only check HOSTNAME=securityonion once
 		if ! (whiptail_avoid_default_hostname); then
 			whiptail_set_hostname "$HOSTNAME"
 		fi
+		default_hostname_flag=true
 	fi
 
 	while ! valid_hostname "$HOSTNAME"; do
@@ -648,7 +662,23 @@ collect_proxy_details() {
 }
 
 collect_redirect_host() {
-	whiptail_set_redirect_host "$HOSTNAME"
+	collect_redirect_host_validate
+
+	while ! hostname_lowercase "$REDIRECTHOST" && ! fqdn_lowercase "$REDIRECTHOST"; do
+		local text
+		! valid_hostname "$REDIRECTHOST" && text="domain name" || text="hostname"
+		if ! (whiptail_uppercase_warning "$text"); then
+			collect_redirect_host_validate "$REDIRECTHOST"
+		else
+			break
+		fi
+	done
+}
+
+collect_redirect_host_validate() {
+	local prefill=${1:-$HOSTNAME}
+
+	whiptail_set_redirect_host "$prefill"
 
 	while ! valid_ip4 "$REDIRECTHOST" && ! valid_hostname "$REDIRECTHOST" && ! valid_fqdn "$REDIRECTHOST"; do
 		whiptail_invalid_input
