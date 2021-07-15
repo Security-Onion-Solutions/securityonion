@@ -1844,6 +1844,36 @@ whiptail_suricata_pins() {
 
 }
 
+# shellcheck disable=2120
+whiptail_uppercase_warning() {
+	local type=${1:-hostname}
+
+	local HOSTNAME='TestHostname'
+	local REDIRECTIT='my.TestDomain.com'
+
+	local msg
+	if [[ $type == 'hostname' ]]; then
+		read -r -d '' msg <<- EOM
+		The value "$HOSTNAME" contains non-lowercase characters. 
+		
+		Continuing with this hostname could render the system unusable in certain cases, and will also disable the option later in setup to access Security Onion's web interface via the hostname.
+		EOM
+	else
+		read -r -d '' msg <<- EOM
+		The value "$REDIRECTIT" contains non-lowercase characters. 
+		
+		Continuing with this value could render the system unusable in certain cases.
+		EOM
+	fi
+
+	read -r -d '' msg <<- EOM
+	$msg
+
+	For best results, it is recommended to only use lowercase ${type}s with Security Onion. For more information see https://docs.securityonion.com/uppercase (URL TBD)
+	EOM
+
+	whiptail --title "$whiptail_title" --yesno "$msg" --yes-button "Continue anyway" --no-button "Go back" 16 75
+}
 
 whiptail_you_sure() {
 
