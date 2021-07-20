@@ -132,7 +132,7 @@ common-standalone-dashboard:
     - defaults:
         UID: so_overview
         PANELS: {{GRAFANA_SETTINGS.dashboards[nodeType].panels}}
-        TEMPLATES: {{GRAFANA_SETTINGS.dashboards[nodeType]templating.list}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards[nodeType].templating.list}}
         NODETYPE: {{ nodeType | capitalize }}
         ID: {{ loop.index }}
 {% endfor %}
