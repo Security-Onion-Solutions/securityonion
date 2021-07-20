@@ -1,0 +1,159 @@
+{
+  "type": "graph",
+  "title": "Container Uptime Trend",
+  "gridPos": {
+    "x": {{ PANELS.uptime_docker_combined_trend_graph.gridPos.x }},
+    "y": {{ PANELS.uptime_docker_combined_trend_graph.gridPos.y }},
+    "w": {{ PANELS.uptime_docker_combined_trend_graph.gridPos.w }},
+    "h": {{ PANELS.uptime_docker_combined_trend_graph.gridPos.h }}
+  },
+  "id": 68999,
+  "targets": [
+    {
+      "refId": "A",
+      "queryType": "randomWalk",
+      "policy": "so_long_term",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "container_name"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "mean_uptime_ns"
+            ]
+          },
+          {
+            "type": "last",
+            "params": []
+          }
+        ]
+      ],
+      "measurement": "docker_container_status",
+      "alias": "$tag_container_name"
+    }
+  ],
+  "options": {
+    "alertThreshold": true
+  },
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "pluginVersion": "7.5.4",
+  "renderer": "flot",
+  "yaxes": [
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "ns",
+      "$$hashKey": "object:192"
+    },
+    {
+      "label": "",
+      "show": true,
+      "logBase": 1,
+      "min": "0",
+      "max": null,
+      "format": "short",
+      "$$hashKey": "object:193",
+      "decimals": 2
+    }
+  ],
+  "xaxis": {
+    "show": true,
+    "mode": "time",
+    "name": null,
+    "values": [],
+    "buckets": null
+  },
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "lines": true,
+  "linewidth": 1,
+  "dashLength": 10,
+  "spaceLength": 10,
+  "pointradius": 2,
+  "legend": {
+    "show": true,
+    "values": true,
+    "min": false,
+    "max": false,
+    "current": true,
+    "total": false,
+    "avg": false,
+    "alignAsTable": true,
+    "rightSide": true
+  },
+  "nullPointMode": "connected",
+  "tooltip": {
+    "value_type": "individual",
+    "shared": true,
+    "sort": 1
+  },
+  "aliasColors": {},
+  "seriesOverrides": [],
+  "thresholds": [
+    {
+      "value": 4500000000000,
+      "colorMode": "critical",
+      "op": "lt",
+      "fill": false,
+      "line": true,
+      "yaxis": "left",
+      "$$hashKey": "object:1299"
+    }
+  ],
+  "timeRegions": [],
+  "decimals": 2,
+  "fill": 0,
+  "timeFrom": null,
+  "timeShift": null,
+  "fillGradient": 0,
+  "dashes": false,
+  "hiddenSeries": false,
+  "points": false,
+  "bars": false,
+  "stack": false,
+  "percentage": false,
+  "steppedLine": false
+}
