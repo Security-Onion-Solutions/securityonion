@@ -10,6 +10,12 @@
 {% import_yaml 'grafana/defaults.yaml' as default_settings %}
 {% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
 
+{% if grains.role == 'so-eval' %}
+  {% set nodeTypes = ['eval'] %}
+{% else %}
+  {#% set nodeTypes = ['standalone', 'manager', 'managersearch', 'sensortab', 'searchnode'] %#}
+  {% set nodeTypes = ['standalone'] %}
+{% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
 
@@ -114,18 +120,22 @@ grafana-config-files:
     - group: 939
     - source: salt://grafana/etc/files
     - makedirs: True
-       
+
+{% for nodeType in nodeTypes %}       
 common-standalone-dashboard:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/standalone/common_standalone.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/detailed/{{nodeType}}.json
     - user: 939
     - group: 939
     - template: jinja
     - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
         UID: so_overview
-        PANELS: {{GRAFANA_SETTINGS.dashboards.standalone.panels}}
-        TEMPLATES: {{GRAFANA_SETTINGS.dashboards.standalone.templating.list}}
+        PANELS: {{GRAFANA_SETTINGS.dashboards.{{nodeType}}.panels}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards.{{nodeType}}.templating.list}}
+        NODETYPE: {{ nodeType | capitalize }}
+        ID: {{ loop.index }}
+{% endfor %}
 
 so-grafana:
   docker_container.running:
