@@ -131,8 +131,8 @@ common-standalone-dashboard:
     - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
         UID: so_overview
-        PANELS: {{GRAFANA_SETTINGS.dashboards.{{nodeType}}.panels}}
-        TEMPLATES: {{GRAFANA_SETTINGS.dashboards.{{nodeType}}.templating.list}}
+        PANELS: {{GRAFANA_SETTINGS.dashboards.nodeType.panels}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards.nodeType.templating.list}}
         NODETYPE: {{ nodeType | capitalize }}
         ID: {{ loop.index }}
 {% endfor %}
