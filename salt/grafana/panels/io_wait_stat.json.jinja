@@ -1,0 +1,122 @@
+{
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "dark-green",
+            "value": null
+          },
+          {
+            "color": "rgba(237, 129, 40, 0.89)",
+            "value": 40
+          },
+          {
+            "color": "dark-red",
+            "value": 50
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null",
+          "$$hashKey": "object:1217",
+          "id": 0,
+          "type": 1
+        }
+      ],
+      "unit": "percent",
+      "decimals": 2,
+      "color": {
+        "mode": "thresholds"
+      }
+    },
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.io_wait_stat.gridPos.x }},
+    "y": {{ PANELS.io_wait_stat.gridPos.y }},
+    "w": {{ PANELS.io_wait_stat.gridPos.w }},
+    "h": {{ PANELS.io_wait_stat.gridPos.h }}
+  },
+  "id": 61867,
+  "links": [],
+  "maxDataPoints": 100,
+  "targets": [
+    {
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "cpu",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"usage_iowait\"), 1s) FROM \"cpu\" WHERE \"host\" =~ /^$servername$/ AND \"cpu\" = 'cpu-total' AND $timeFilter GROUP BY time($interval) fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "usage_iowait"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "cpu",
+          "operator": "=",
+          "value": "cpu-total"
+        }
+      ],
+      "orderByTime": "ASC"
+    }
+  ],
+  "title": "IOWait",
+  "type": "stat",
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "last"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "auto",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
+  },
+  "cacheTimeout": null,
+  "interval": null,
+  "pluginVersion": "7.5.4"
+}
