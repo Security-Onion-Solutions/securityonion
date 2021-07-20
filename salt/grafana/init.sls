@@ -87,7 +87,7 @@ grafana-config-files:
     - makedirs: True
 
 {% for nodeType in nodeTypes %}       
-common-standalone-dashboard:
+detailed-{{nodeType}}-dashboard:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/detailed/{{nodeType}}.json
     - user: 939
