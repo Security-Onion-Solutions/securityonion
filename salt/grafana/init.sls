@@ -41,44 +41,9 @@ grafanadashdir:
     - group: 939
     - makedirs: True
 
-grafanadashmdir:
+detailed-dash-dir:
   file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/manager
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashmsdir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashsadir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/standalone
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashevaldir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/eval
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashfndir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashsndir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes
+    - name: /opt/so/conf/grafana/grafana_dashboards/detailed
     - user: 939
     - group: 939
     - makedirs: True
