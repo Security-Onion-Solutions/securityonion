@@ -1,18 +1,18 @@
-### 2.3.60-FBPIPELINE ISO image built on 2021/07/13
+### 2.3.60-CURATORAUTH ISO image built on 2021/07/19
 
 
 
 ### Download and Verify
 
-2.3.60-FBPIPELINE ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.3.60-FBPIPELINE.iso
+2.3.60-CURATORAUTH ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.3.60-CURATORAUTH.iso
 
-MD5: 2EA2B337289D0CFF0C7488E8E88FE7BE  
-SHA1: 7C22F16AD395E079F4C5345093AF26C105E36D4C  
-SHA256: 3B685BBD19711229C5FCD5D254BA5024AF0C36A3E379790B5E83037CE2668724 
+MD5: 953DD42AB3A3560BB35F4E9F69212AE3  
+SHA1: 5D18B98B19FD7F8C799E88FC28ABC46990FC6B9B  
+SHA256: E26F43F969241985DC74915842492F876EC7B8CBAF5F2F52405554E7C92408C2 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.60-FBPIPELINE.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.60-CURATORAUTH.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
@@ -26,22 +26,22 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.60-FBPIPELINE.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.60-CURATORAUTH.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.3.60-FBPIPELINE.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.3.60-CURATORAUTH.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.3.60-FBPIPELINE.iso.sig securityonion-2.3.60-FBPIPELINE.iso
+gpg --verify securityonion-2.3.60-CURATORAUTH.iso.sig securityonion-2.3.60-CURATORAUTH.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Tue 13 Jul 2021 04:12:08 PM EDT using RSA key ID FE507013
+gpg: Signature made Mon 19 Jul 2021 01:25:34 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
