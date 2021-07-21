@@ -14,7 +14,7 @@
   {% set nodeTypes = ['eval'] %}
 {% else %}
   {#% set nodeTypes = ['standalone', 'manager', 'managersearch', 'sensortab', 'searchnode'] %#}
-  {% set nodeTypes = ['standalone', 'sensor', 'searchnode', 'manager', 'managersearch', 'heavynode'] %}
+  {% set nodeTypes = ['overview', 'standalone', 'sensor', 'searchnode', 'manager', 'managersearch', 'heavynode'] %}
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
@@ -95,7 +95,6 @@ detailed-{{nodeType}}-dashboard:
     - template: jinja
     - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
-        UID: so_overview
         PANELS: {{GRAFANA_SETTINGS.dashboards[nodeType].panels}}
         TEMPLATES: {{GRAFANA_SETTINGS.dashboards[nodeType].templating.list}}
         NODETYPE: {{ nodeType | capitalize }}
