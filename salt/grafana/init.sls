@@ -14,7 +14,7 @@
   {% set nodeTypes = ['eval'] %}
 {% else %}
   {#% set nodeTypes = ['standalone', 'manager', 'managersearch', 'sensortab', 'searchnode'] %#}
-  {% set nodeTypes = ['standalone', 'heavynode', 'sensor'] %}
+  {% set nodeTypes = ['standalone', 'sensor', 'searchnode', 'heavynode'] %}
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
