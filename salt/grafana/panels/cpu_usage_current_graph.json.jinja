@@ -1,6 +1,14 @@
 {
-  "type": "graph",
-  "title": "CPU Usage",
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "decimals": 1,
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent"
+    },
+    "overrides": []
+  },
   "gridPos": {
     "x": {{ PANELS.cpu_usage_current_graph.gridPos.x }},
     "y": {{ PANELS.cpu_usage_current_graph.gridPos.y }},
@@ -8,46 +16,67 @@
     "h": {{ PANELS.cpu_usage_current_graph.gridPos.h }}
   },
   "id": 69001,
+  "interval": "30",
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": true,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sort": "current",
+    "sortDesc": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": true
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "spaceLength": 10,
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [
-        {
-          "key": "host",
-          "operator": "=~",
-          "value": "/^$servername$/"
-        },
-        {
-          "condition": "AND",
-          "key": "cpu",
-          "operator": "=",
-          "value": "cpu-total"
-        }
-      ],
+      "alias": "$tag_host $tag_role",
       "groupBy": [
         {
-          "type": "time",
           "params": [
             "$__interval"
-          ]
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
         },
         {
           "type": "tag",
           "params": [
-            "host"
+            "role"
           ]
         },
         {
-          "type": "fill",
           "params": [
             "null"
-          ]
+          ],
+          "type": "fill"
         }
       ],
+      "measurement": "cpu",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
       "select": [
         [
           {
@@ -68,93 +97,76 @@
           }
         ]
       ],
-      "measurement": "cpu",
-      "alias": "$tag_host"
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "cpu",
+          "operator": "=",
+          "value": "cpu-total"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
+        }
+      ]
     }
   ],
-  "options": {
-    "alertThreshold": true
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "CPU Usage",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
   },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {
-      "unit": "percent"
-    },
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": "0",
-      "max": null,
-      "format": "percent",
-      "$$hashKey": "object:933"
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:934"
-    }
-  ],
+  "type": "graph",
   "xaxis": {
-    "show": true,
+    "buckets": null,
     "mode": "time",
     "name": null,
-    "values": [],
-    "buckets": null
+    "show": true,
+    "values": []
   },
+  "yaxes": [
+    {
+      "$$hashKey": "object:933",
+      "format": "percent",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": "0",
+      "show": true
+    },
+    {
+      "$$hashKey": "object:934",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
   "yaxis": {
     "align": false,
     "alignLevel": null
   },
-  "lines": true,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": false,
-    "max": true,
-    "current": true,
-    "sort": "current",
-    "sortDesc": true,
-    "total": false,
-    "avg": true,
-    "alignAsTable": true,
-    "rightSide": true
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "decimals": 1,
+  "bars": false,
+  "dashes": false,
   "fill": 0,
   "fillGradient": 0,
-  "dashes": false,
   "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
   "percentage": false,
+  "points": false,
+  "stack": false,
   "steppedLine": false,
   "timeFrom": null,
-  "timeShift": null,
-  "interval": "30",
-  "maxDataPoints": 750
+  "timeShift": null
 }
