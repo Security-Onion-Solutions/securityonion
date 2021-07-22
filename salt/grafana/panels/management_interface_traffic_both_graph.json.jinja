@@ -2,11 +2,11 @@
   "aliasColors": {
     "InBound": "#629E51",
     "OutBound": "#5195CE",
-    "net.non_negative_derivative": "light-orange"
+    "net.non_negative_derivative": "super-light-blue"
   },
-  "bars": false,
   "maxDataPoints": 750,
   "interval": "30s",
+  "bars": false,
   "dashLength": 10,
   "dashes": false,
   "datasource": "InfluxDB",
@@ -21,13 +21,13 @@
   "fill": 1,
   "fillGradient": 0,
   "gridPos": {
-    "x": {{ PANELS.monitor_interface_traffic_graph.gridPos.x }},
-    "y": {{ PANELS.monitor_interface_traffic_graph.gridPos.y }},
-    "w": {{ PANELS.monitor_interface_traffic_graph.gridPos.w }},
-    "h": {{ PANELS.monitor_interface_traffic_graph.gridPos.h }}
+    "x": {{ PANELS.management_interface_traffic_both_graph.gridPos.x }},
+    "y": {{ PANELS.management_interface_traffic_both_graph.gridPos.y }},
+    "w": {{ PANELS.management_interface_traffic_both_graph.gridPos.w }},
+    "h": {{ PANELS.management_interface_traffic_both_graph.gridPos.h }}
   },
   "hiddenSeries": false,
-  "id": 10,
+  "id": 18,
   "legend": {
     "alignAsTable": true,
     "avg": true,
@@ -121,7 +121,69 @@
           "condition": "AND",
           "key": "interface",
           "operator": "=",
-          "value": "$monint"
+          "value": "$manint"
+        }
+      ]
+    },
+    {
+      "alias": "Outbound Current",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "bytes_sent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$servername"
+        },
+        {
+          "condition": "AND",
+          "key": "interface",
+          "operator": "=",
+          "value": "$manint"
         }
       ]
     },
@@ -146,7 +208,7 @@
       "measurement": "net",
       "orderByTime": "ASC",
       "policy": "so_long_term",
-      "refId": "B",
+      "refId": "C",
       "resultFormat": "time_series",
       "select": [
         [
@@ -184,7 +246,70 @@
           "condition": "AND",
           "key": "interface",
           "operator": "=",
-          "value": "$monint"
+          "value": "$manint"
+        }
+      ]
+    },
+    {
+      "alias": "Outbound Trend",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "net",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "refId": "D",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_bytes_sent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$servername"
+        },
+        {
+          "condition": "AND",
+          "key": "interface",
+          "operator": "=",
+          "value": "$manint"
         }
       ]
     }
@@ -193,7 +318,7 @@
   "timeFrom": null,
   "timeRegions": [],
   "timeShift": null,
-  "title": "Monitor Interface Traffic - $monint",
+  "title": "Management Interface Traffic - $manint",
   "tooltip": {
     "msResolution": true,
     "shared": true,
