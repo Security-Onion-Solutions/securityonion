@@ -1,0 +1,141 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.monitor_interface_drops_inbound_graph.gridPos.x }},
+    "y": {{ PANELS.monitor_interface_drops_inbound_graph.gridPos.y }},
+    "w": {{ PANELS.monitor_interface_drops_inbound_graph.gridPos.w }},
+    "h": {{ PANELS.monitor_interface_drops_inbound_graph.gridPos.h }}
+  },
+  "id": 188190,
+  "interval": "30s",
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": false,
+    "min": false,
+    "show": true,
+    "total": false,
+    "values": true,
+    "rightSide": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": false
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:592",
+      "alias": "/veth/",
+      "hiddenSeries": true,
+      "legend": false
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_role",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(drop_in), 1s) as \"in\" FROM \"net\" WHERE host =~ /$servername/ AND interface =~ /$monint/ AND role =~ /$role/ AND $timeFilter GROUP BY time($__interval), host,role fill(none)",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Monitor Interface Drops - Inbound",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:500",
+      "format": "pps",
+      "label": "Drops per second",
+      "logBase": 1,
+      "max": null,
+      "min": 0,
+      "show": true
+    },
+    {
+      "$$hashKey": "object:501",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true,
+      "decimals": 0
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "fill": 0,
+  "bars": false,
+  "dashes": false,
+  "decimals": 0,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
+}
