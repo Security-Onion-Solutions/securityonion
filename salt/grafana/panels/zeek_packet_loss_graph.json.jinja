@@ -8,7 +8,6 @@
     },
     "overrides": []
   },
-  "fill": 1,
   "gridPos": {
     "x": {{ PANELS.zeek_packet_loss_graph.gridPos.x }},
     "y": {{ PANELS.zeek_packet_loss_graph.gridPos.y }},
@@ -22,9 +21,9 @@
     "avg": true,
     "current": true,
     "hideEmpty": true,
-    "max": true,
+    "max": false,
     "min": false,
-    "rightSide": false,
+    "rightSide": true,
     "show": true,
     "sort": "current",
     "sortDesc": true,
@@ -44,18 +43,18 @@
   "renderer": "flot",
   "seriesOverrides": [
     {
+      "$$hashKey": "object:314",
       "alias": "/Trend/",
       "dashLength": 4,
       "dashes": true,
       "fill": 0,
-      "linewidth": 4,
-      "$$hashKey": "object:314"
+      "linewidth": 4
     }
   ],
   "spaceLength": 10,
   "targets": [
     {
-      "alias": "Loss Current",
+      "alias": "Current $tag_host $tag_role",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -63,6 +62,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
         },
         {
           "params": [
@@ -86,7 +97,7 @@
           },
           {
             "params": [],
-            "type": "last"
+            "type": "mean"
           },
           {
             "params": [
@@ -101,11 +112,17 @@
           "key": "host",
           "operator": "=~",
           "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
         }
       ]
     },
     {
-      "alias": "Loss Trend",
+      "alias": "Trend  $tag_host $tag_role",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -115,13 +132,25 @@
           "type": "time"
         },
         {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
           "params": [
             "null"
           ],
           "type": "fill"
         }
       ],
-      "hide": {{ PANELS.zeek_packet_loss_graph.get('hideTrend', false) }},
+      "hide": {{ PANELS.zeek_packet_loss_graph.get('hideTrend', false)|json }},
       "measurement": "zeekdrop",
       "orderByTime": "ASC",
       "policy": "so_long_term",
@@ -137,7 +166,7 @@
           },
           {
             "params": [],
-            "type": "last"
+            "type": "mean"
           },
           {
             "params": [
@@ -152,6 +181,12 @@
           "key": "host",
           "operator": "=~",
           "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
         }
       ]
     }
@@ -161,7 +196,7 @@
   "title": "Zeek Packet Loss",
   "tooltip": {
     "shared": true,
-    "sort": 0,
+    "sort": 2,
     "value_type": "individual"
   },
   "type": "graph",
@@ -174,23 +209,23 @@
   },
   "yaxes": [
     {
+      "$$hashKey": "object:327",
       "decimals": null,
       "format": "percent",
       "label": null,
       "logBase": 1,
       "max": null,
       "min": 0,
-      "show": true,
-      "$$hashKey": "object:327"
+      "show": true
     },
     {
+      "$$hashKey": "object:328",
       "format": "short",
       "label": null,
       "logBase": 1,
       "max": null,
       "min": null,
-      "show": false,
-      "$$hashKey": "object:328"
+      "show": false
     }
   ],
   "yaxis": {
@@ -200,6 +235,7 @@
   "bars": false,
   "cacheTimeout": null,
   "dashes": false,
+  "fill": 0,
   "fillGradient": 0,
   "hiddenSeries": false,
   "percentage": false,

@@ -1,11 +1,6 @@
 {
   "aliasColors": {},
-  "bars": false,
-  "maxDataPoints": 750,
-  "interval": "30s",
-  "cacheTimeout": null,
   "dashLength": 10,
-  "dashes": false,
   "datasource": "InfluxDB",
   "fieldConfig": {
     "defaults": {
@@ -13,24 +8,22 @@
     },
     "overrides": []
   },
-  "fill": 1,
-  "fillGradient": 0,
   "gridPos": {
     "x": {{ PANELS.suricata_packet_loss_graph.gridPos.x }},
     "y": {{ PANELS.suricata_packet_loss_graph.gridPos.y }},
     "w": {{ PANELS.suricata_packet_loss_graph.gridPos.w }},
     "h": {{ PANELS.suricata_packet_loss_graph.gridPos.h }}
   },
-  "hiddenSeries": false,
   "id": 21,
+  "interval": "30s",
   "legend": {
     "alignAsTable": true,
     "avg": true,
     "current": true,
     "hideEmpty": true,
-    "max": true,
+    "max": false,
     "min": false,
-    "rightSide": false,
+    "rightSide": true,
     "show": true,
     "sort": "current",
     "sortDesc": true,
@@ -40,14 +33,13 @@
   "lines": true,
   "linewidth": 1,
   "links": [],
+  "maxDataPoints": 750,
   "nullPointMode": "connected",
   "options": {
     "alertThreshold": true
   },
-  "percentage": false,
   "pluginVersion": "7.5.4",
   "pointradius": 2,
-  "points": false,
   "renderer": "flot",
   "seriesOverrides": [
     {
@@ -55,15 +47,14 @@
       "dashLength": 4,
       "dashes": true,
       "fill": 0,
-      "linewidth": 4
+      "linewidth": 4,
+      "$$hashKey": "object:1059"
     }
   ],
   "spaceLength": 10,
-  "stack": false,
-  "steppedLine": false,
   "targets": [
     {
-      "alias": "Loss Current",
+      "alias": "Current $tag_host $tag_role",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -71,6 +62,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
         },
         {
           "params": [
@@ -94,7 +97,7 @@
           },
           {
             "params": [],
-            "type": "last"
+            "type": "mean"
           },
           {
             "params": [
@@ -107,13 +110,19 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
         }
       ]
     },
     {
-      "alias": "Loss Trend",
+      "alias": "Trend $tag_host $tag_role",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -123,13 +132,25 @@
           "type": "time"
         },
         {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
           "params": [
             "null"
           ],
           "type": "fill"
         }
       ],
-      "hide": false,
+      "hide": {{ PANELS.suricata_packet_loss_graph.get('hideTrend', false)|json }},
       "measurement": "suridrop",
       "orderByTime": "ASC",
       "policy": "so_long_term",
@@ -145,7 +166,7 @@
           },
           {
             "params": [],
-            "type": "last"
+            "type": "mean"
           },
           {
             "params": [
@@ -158,20 +179,24 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
         }
       ]
     }
   ],
   "thresholds": [],
-  "timeFrom": null,
   "timeRegions": [],
-  "timeShift": null,
   "title": "Suricata Packet Loss",
   "tooltip": {
     "shared": true,
-    "sort": 0,
+    "sort": 2,
     "value_type": "individual"
   },
   "type": "graph",
@@ -189,7 +214,8 @@
       "logBase": 1,
       "max": null,
       "min": 0,
-      "show": true
+      "show": true,
+      "$$hashKey": "object:1072"
     },
     {
       "format": "short",
@@ -197,11 +223,24 @@
       "logBase": 1,
       "max": null,
       "min": null,
-      "show": false
+      "show": false,
+      "$$hashKey": "object:1073"
     }
   ],
   "yaxis": {
     "align": false,
     "alignLevel": null
-  }
+  },
+  "bars": false,
+  "cacheTimeout": null,
+  "dashes": false,
+  "fill": 0,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
 }
