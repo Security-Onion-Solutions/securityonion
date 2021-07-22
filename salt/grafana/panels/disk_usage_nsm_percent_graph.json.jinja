@@ -1,0 +1,167 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.disk_usage_nsm_percent_graph.gridPos.x }},
+    "y": {{ PANELS.disk_usage_nsm_percent_graph.gridPos.y }},
+    "w": {{ PANELS.disk_usage_nsm_percent_graph.gridPos.w }},
+    "h": {{ PANELS.disk_usage_nsm_percent_graph.gridPos.h }}
+  },
+  "id": 47230,
+  "interval": "30s",
+  "legend": {
+    "alignAsTable": true,
+    "avg": false,
+    "current": true,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sort": "current",
+    "sortDesc": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": false
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "spaceLength": 10,
+  "steppedLine": true,
+  "targets": [
+    {
+      "alias": "$tag_host $tag_role",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(total) AS \"total\", mean(used) as \"used\" FROM \"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/nsm' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\"",
+      "queryType": "randomWalk",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "used_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "role",
+          "operator": "=~",
+          "value": "/^$role$/"
+        },
+        {
+          "condition": "AND",
+          "key": "path",
+          "operator": "=",
+          "value": "/nsm"
+        }
+      ],
+      "measurement": "disk"
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Disk Usage /nsm",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:235",
+      "format": "percent",
+      "label": "",
+      "logBase": 1,
+      "max": "100",
+      "min": "0",
+      "show": true,
+      "decimals": 1
+    },
+    {
+      "$$hashKey": "object:236",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "fill": 0,
+  "bars": false,
+  "dashes": false,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "timeFrom": null,
+  "timeShift": null,
+  "decimals": 1
+}
