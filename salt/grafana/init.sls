@@ -41,13 +41,6 @@ grafanadashdir:
     - group: 939
     - makedirs: True
 
-detailed-dash-dir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/detailed
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 grafana-dashboard-config:
   file.managed:
     - name: /opt/so/conf/grafana/etc/dashboards/dashboard.yml
@@ -87,7 +80,7 @@ grafana-config-files:
     - makedirs: True
 
 {% for nodeType in nodeTypes %}       
-detailed-{{nodeType}}-dashboard:
+{{nodeType}}-dashboard:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/{{nodeType}}.json
     - user: 939
