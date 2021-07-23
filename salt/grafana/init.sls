@@ -10,14 +10,16 @@
 {% import_yaml 'grafana/defaults.yaml' as default_settings %}
 {% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
 
-{% if grains.role == 'so-eval' %}
-  {% set nodeTypes = ['eval'] %}
-{% else %}
-  {#% set nodeTypes = ['standalone', 'manager', 'managersearch', 'sensortab', 'searchnode'] %#}
-  {% set nodeTypes = ['overview', 'standalone', 'sensor', 'searchnode', 'manager', 'managersearch', 'heavynode', 'eval' ] %}
-{% endif %}
-
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
+
+{% set DASHBOARDS = ['overview' %}
+{% if grains.role == 'so-eval' %}
+  {% do DASHBOARDS.append('eval') %}
+{% else %}
+  {% for dashboard in salt['cmd.run']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}|uniq") %}
+    {% do DASHBOARDS.append(dashboard) %}
+  {% endfor %}
+{% endif %}
 
 # Grafana all the things
 grafanadir:
@@ -79,18 +81,18 @@ grafana-config-files:
     - source: salt://grafana/etc/files
     - makedirs: True
 
-{% for nodeType in nodeTypes %}       
-{{nodeType}}-dashboard:
+{% for dashboard in DASHBOARDS %}
+{{dashboard}}-dashboard:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/{{nodeType}}.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{dashboard}}.json
     - user: 939
     - group: 939
     - template: jinja
     - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
-        PANELS: {{GRAFANA_SETTINGS.dashboards[nodeType].panels}}
-        TEMPLATES: {{GRAFANA_SETTINGS.dashboards[nodeType].templating.list}}
-        NODETYPE: {{ nodeType | capitalize }}
+        PANELS: {{GRAFANA_SETTINGS.dashboards[dashboard].panels}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards[dashboard].templating.list}}
+        TITLE: {{ GRAFANA_SETTINGS.dashboards[dashboard].get('title', dashboard| capitalize) }}
         ID: {{ loop.index }}
 {% endfor %}
 
