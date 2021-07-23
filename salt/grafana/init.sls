@@ -91,6 +91,7 @@ grafana-config-files:
     - template: jinja
     - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
+        DASHBOARD: {{ dashboard }}
         PANELS: {{GRAFANA_SETTINGS.dashboards[dashboard].panels}}
         TEMPLATES: {{GRAFANA_SETTINGS.dashboards[dashboard].templating.list}}
         TITLE: {{ GRAFANA_SETTINGS.dashboards[dashboard].get('title', dashboard| capitalize) }}
