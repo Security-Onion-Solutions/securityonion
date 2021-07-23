@@ -12,7 +12,7 @@
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
 
-{% set DASHBOARDS = ['overview' %}
+{% set DASHBOARDS = ['overview'] %}
 {% if grains.role == 'so-eval' %}
   {% do DASHBOARDS.append('eval') %}
 {% else %}
