@@ -89,7 +89,7 @@ grafana-config-files:
 {% for nodeType in nodeTypes %}       
 detailed-{{nodeType}}-dashboard:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/detailed/{{nodeType}}.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{nodeType}}.json
     - user: 939
     - group: 939
     - template: jinja
