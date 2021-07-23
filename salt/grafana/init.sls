@@ -16,7 +16,7 @@
 {% if grains.role == 'so-eval' %}
   {% do DASHBOARDS.append('eval') %}
 {% else %}
-  {% for dashboard in salt['cmd.run']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}|uniq") %}
+  {% for dashboard in salt['cmd.run']("ls /opt/so/saltstack/local/pillar/minions/").split('_').last().split('.')[0]| unique %}
     {% do DASHBOARDS.append(dashboard) %}
   {% endfor %}
 {% endif %}
