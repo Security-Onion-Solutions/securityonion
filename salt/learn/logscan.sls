@@ -1,6 +1,3 @@
-{% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
-
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -46,12 +43,3 @@ so-logscan:
       - /opt/so/log/logscan:/logscan/output:rw
       - /opt/so/log:/logscan/logs:ro
     - cpu_period: {{ logscan_cpu_period }}
-    
-
-{% else %}
-
-{{sls}}_state_not_allowed:
-  test.fail_without_changes:
-    - name: {{sls}}_state_not_allowed
-
-{% endif %}
