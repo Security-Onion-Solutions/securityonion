@@ -1,0 +1,182 @@
+{
+  "aliasColors": {
+    "InBound": "#629E51",
+    "OutBound": "#5195CE",
+    "net.non_negative_derivative": "super-light-blue"
+  },
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "decimals": 1,
+  "editable": true,
+  "fieldConfig": {
+    "defaults": {
+      "links": []
+    },
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.x }},
+    "y": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.y }},
+    "w": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.w }},
+    "h": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.h }}
+  },
+  "id": 18,
+  "interval": "30s",
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sort": "current",
+    "sortDesc": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 2,
+  "links": [],
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": false
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 5,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "role"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"bytes_recv\"), 1s) *8 FROM \"net\" WHERE (\"host\" = '$servername' AND \"interface\" = '$manint') AND $timeFilter GROUP BY time($__interval) fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "bytes_recv"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "interface",
+          "operator": "=~",
+          "value": "/^$manint$/"
+        }
+      ]
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Management Interface Traffic - Inbound",
+  "tooltip": {
+    "msResolution": true,
+    "shared": true,
+    "sort": 2,
+    "value_type": "cumulative"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:353",
+      "decimals": 1,
+      "format": "bps",
+      "logBase": 1,
+      "max": null,
+      "min": 0,
+      "show": true
+    },
+    {
+      "$$hashKey": "object:354",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "bars": false,
+  "dashes": false,
+  "error": false,
+  "fill": 0,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
+}

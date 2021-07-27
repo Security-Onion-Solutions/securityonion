@@ -1,0 +1,187 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "fill": 1,
+  "gridPos": {
+    "x": {{ PANELS.memory_usage_graph.gridPos.x }},
+    "y": {{ PANELS.memory_usage_graph.gridPos.y }},
+    "w": {{ PANELS.memory_usage_graph.gridPos.w }},
+    "h": {{ PANELS.memory_usage_graph.gridPos.h }}
+  },
+  "id": 61873,
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "max": true,
+    "min": true,
+    "show": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": true
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:295",
+      "alias": "/total/",
+      "color": "#C4162A",
+      "fill": 0
+    },
+    {
+      "$$hashKey": "object:164",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(total) as total, mean(used) as used, mean(cached) as cached, mean(free) as free, mean(buffered) as buffered  FROM \"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(mean_total) as trend_total, mean(mean_used) as trend_used, mean(mean_cached) as trend_cached, mean(mean_free) as trend_free, mean(mean_buffered) as trend_buffered  FROM \"so_long_term\".\"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [],
+      "hide": false
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Memory Usage",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:235",
+      "format": "bytes",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": "0",
+      "show": true
+    },
+    {
+      "$$hashKey": "object:236",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "bars": false,
+  "dashes": false,
+  "description": "",
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null,
+  "maxDataPoints": 750,
+  "interval": "30s"
+}

@@ -10,8 +10,17 @@
 {% import_yaml 'grafana/defaults.yaml' as default_settings %}
 {% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
 
-
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
+
+{% set DASHBOARDS = ['overview'] %}
+{% if grains.role == 'so-eval' %}
+  {% do DASHBOARDS.append('eval') %}
+{% else %}
+  {# Grab a unique listing of nodetypes that exists so that we create only the needed dashboards #}
+  {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}|uniq").split() %}
+    {% do DASHBOARDS.append(dashboard) %}
+  {% endfor %}
+{% endif %}
 
 # Grafana all the things
 grafanadir:
@@ -31,48 +40,6 @@ grafanaconfdir:
 grafanadashdir:
   file.directory:
     - name: /opt/so/conf/grafana/grafana_dashboards
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashmdir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/manager
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashmsdir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashsadir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/standalone
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashevaldir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/eval
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashfndir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-grafanadashsndir:
-  file.directory:
-    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes
     - user: 939
     - group: 939
     - makedirs: True
@@ -114,142 +81,22 @@ grafana-config-files:
     - group: 939
     - source: salt://grafana/etc/files
     - makedirs: True
-    
 
-{% if salt['pillar.get']('managertab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('managertab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-manager:
+{% for dashboard in DASHBOARDS %}
+{{dashboard}}-dashboard:
   file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/manager/{{ SN }}-Manager.json
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{dashboard}}.json
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://grafana/dashboards/manager/manager.json
+    - source: salt://grafana/dashboards/common_template.json.jinja
     - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: so_overview
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
+        DASHBOARD: {{ dashboard }}
+        PANELS: {{GRAFANA_SETTINGS.dashboards[dashboard].panels}}
+        TEMPLATES: {{GRAFANA_SETTINGS.dashboards[dashboard].templating.list}}
+        TITLE: {{ GRAFANA_SETTINGS.dashboards[dashboard].get('title', dashboard| capitalize) }}
+        ID: {{ loop.index }}
 {% endfor %}
-{% endif %}
-
-{% if salt['pillar.get']('managersearchtab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('managersearchtab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-managersearch:
-  file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/managersearch/{{ SN }}-ManagerSearch.json
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://grafana/dashboards/managersearch/managersearch.json
-    - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: so_overview
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
-{% endfor %}
-{% endif %}
-
-{% if salt['pillar.get']('standalonetab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('standalonetab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-standalone:
-  file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/standalone/{{ SN }}-Standalone.json
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://grafana/dashboards/standalone/standalone.json
-    - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: so_overview
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
-{% endfor %}
-{% endif %}
-
-{% if salt['pillar.get']('sensorstab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('sensorstab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-{{ SN }}:
-  file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/sensor_nodes/{{ SN }}-Sensor.json
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://grafana/dashboards/sensor_nodes/sensor.json
-    - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
-{% endfor %}
-{% endif %}
-
-{% if salt['pillar.get']('nodestab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboardsearch-{{ SN }}:
-  file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/search_nodes/{{ SN }}-Node.json
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://grafana/dashboards/search_nodes/searchnode.json
-    - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: {{ SNDATA.guid }}
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
-{% endfor %}
-{% endif %}
-
-{% if salt['pillar.get']('evaltab', False) %}
-{% for SN, SNDATA in salt['pillar.get']('evaltab', {}).items() %}
-{% set NODETYPE = SN.split('_')|last %}
-{% set SN = SN | regex_replace('_' ~ NODETYPE, '') %}
-dashboard-{{ SN }}:
-  file.managed:
-    - name: /opt/so/conf/grafana/grafana_dashboards/eval/{{ SN }}-Node.json
-    - user: 939
-    - group: 939
-    - template: jinja
-    - source: salt://grafana/dashboards/eval/eval.json
-    - defaults:
-      SERVERNAME: {{ SN }}
-      MANINT: {{ SNDATA.manint }}
-      MONINT: {{ SNDATA.monint }}
-      CPUS: {{ SNDATA.totalcpus }}
-      UID: so_overview
-      ROOTFS: {{ SNDATA.rootfs }}
-      NSMFS: {{ SNDATA.nsmfs }}
-
-{% endfor %}
-{% endif %}
 
 so-grafana:
   docker_container.running:
