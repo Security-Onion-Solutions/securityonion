@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from typing import List
 
 import signal
 import sys
@@ -23,12 +24,10 @@ import re
 import subprocess
 import argparse
 import textwrap
-from typing import List
-
 import yaml
 
 minion_pillar_dir = '/opt/so/saltstack/local/pillar/minions'
-salt_proc = subprocess.CompletedProcess = None
+salt_proc: subprocess.CompletedProcess = None
 
 # Temp store of modules, will likely be broken out into salt
 learn_modules = [
@@ -80,19 +79,21 @@ def read_pillar(pillar: str):
 def write_pillar(pillar: str, content: dict):
   try:
     with open(pillar, 'w') as f:
-      return yaml.dump(content, f, default_flow_style=False)
+      yaml.dump(content, f, default_flow_style=False, sort_keys=False)
   except:
     print(f'Could not open {pillar}', file=sys.stderr)
     sys.exit(3)
 
 
 def create_pillar_if_not_exist(pillar:str, content: dict):
-  if content.get('learn', {}).get('modules') is None:
-      content['learn'] = {}
-      content['learn']['modules'] = learn_modules
-  write_pillar(pillar, content)
+  pillar_dict = content
+
+  if pillar_dict.get('learn', {}).get('modules') is None:
+    pillar_dict['learn'] = {}
+    pillar_dict['learn']['modules'] = learn_modules
+    content.update()
+    write_pillar(pillar, content)
   
-  content.update()
   return content
 
 
@@ -100,11 +101,11 @@ def apply(module_list: List):
   return_code = 0
   for module in module_list:
     salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', f'learn.{module}', 'queue=True']
-    print(f'Applying salt state for {module} module...')
-    cmd = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
-    if cmd.returncode != 0:
-      print(f'[ERROR] Failed to apply salt state for {module} module.')
-      return_code = cmd.returncode
+    print(f'  Applying salt state for {module} module...')
+    salt_proc = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
+    if salt_proc.returncode != 0:
+      print(f'  [ERROR] Failed to apply salt state for {module} module.')
+      return_code = salt_proc.returncode
   return return_code
 
 
@@ -113,18 +114,15 @@ def check_apply(args: dict):
     print('Configuration updated. Applying changes:')
     return apply(args.modules)
   else:
-    if not hasattr(args, 'yes'):
-      message = 'Configuration updated. Would you like to apply your changes now? (y/N) '
+    message = 'Configuration updated. Would you like to apply your changes now? (y/N) '
+    answer = input(message)
+    while answer.lower() not in [ 'y', 'n', '' ]:
       answer = input(message)
-      while answer.lower() not in [ 'y', 'n', '' ]:
-        answer = input(message)
-      if answer.lower() in [ 'n', '' ]:
-        return 0
-      else:
-        print('Applying changes:')
-        return apply(args.modules)
-    else:
+    if answer.lower() in [ 'n', '' ]:
       return 0
+    else:
+      print('Applying changes:')
+      return apply(args.modules)
 
 
 def enable_disable_modules(args, enable: bool):
@@ -149,8 +147,8 @@ def enable_disable_modules(args, enable: bool):
       args.pillar_dict.update()
       write_pillar(args.pillarm, args.pillar_dict)
   
-  salt_proc = check_apply(args)
-  return salt_proc
+  cmd_ret = check_apply(args)
+  return cmd_ret
 
 
 def enable_modules(args):
@@ -174,8 +172,6 @@ def main():
   apply_help='After ACTION the chosen modules, apply any necessary salt states.'
   enable_apply_help = apply_help.replace('ACTION', 'enabling')
   disable_apply_help = apply_help.replace('ACTION', 'disabling')
-
-  yes_help = 'Accept apply prompt.'
 
   signal.signal(signal.SIGINT, sigint_handler)
 
@@ -201,13 +197,11 @@ def main():
   enable.set_defaults(func=enable_modules)
   enable.add_argument('modules', metavar='ML_MODULES', nargs='+', help=module_help_str)
   enable.add_argument('--apply', action='store_const', const=True, required=False, help=enable_apply_help)
-  enable.add_argument('--yes', '-y', action='store_const', const=True, required=False, help=yes_help)
 
   disable = subparsers.add_parser('disable')
   disable.set_defaults(func=disable_modules)
   disable.add_argument('modules', metavar='ML_MODULES', nargs='+', help=module_help_str)
   disable.add_argument('--apply', action='store_const', const=True, required=False, help=disable_apply_help)
-  disable.add_argument('--yes', '-y', action='store_const', const=True, required=False, help=yes_help)
 
   list = subparsers.add_parser('list')
   list.set_defaults(func=list_modules)
