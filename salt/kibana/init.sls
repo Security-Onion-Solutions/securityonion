@@ -101,7 +101,7 @@ kibanadashtemplate:
     - user: 932
     - group: 939
     - defaults:
-      - DASHBOARD: {{ KIBANA_SETTINGS.kibana.dashboard }}
+        DASHBOARD: {{ KIBANA_SETTINGS.kibana.dashboard }}
 
 so-kibana-config-load:
   cmd.run:
