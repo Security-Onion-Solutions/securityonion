@@ -97,9 +97,10 @@ append_so-kibana_so-status.conf:
 kibanadashtemplate:
   file.managed:
     - name: /opt/so/conf/kibana/saved_objects.ndjson.template
-    - source: salt://kibana/files/saved_objects.ndjson
+    - source: salt://kibana/files/saved_objects.ndjson.jinja
     - user: 932
     - group: 939
+    - template: jinja
     - defaults:
         DASHBOARD: {{ KIBANA_SETTINGS.kibana.dashboard }}
 
