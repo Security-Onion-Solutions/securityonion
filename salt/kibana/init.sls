@@ -7,7 +7,7 @@
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
-{% set KIBANA_SETTINGS = salt['pillar.get']('kibana', default=default_settings, merge=True) %}
+{% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -102,7 +102,7 @@ kibanadashtemplate:
     - group: 939
     - template: jinja
     - defaults:
-        DASHBOARD: {{ KIBANA_SETTINGS.kibana.dashboard }}
+        DASHBOARD: {{ KIBANA_SETTINGS.dashboard }}
 
 so-kibana-config-load:
   cmd.run:
