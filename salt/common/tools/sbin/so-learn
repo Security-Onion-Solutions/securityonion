@@ -88,8 +88,12 @@ def write_pillar(pillar: str, content: dict):
 
 def create_pillar_if_not_exist(pillar:str, content: dict):
   if content.get('learn', {}).get('modules') is None:
+      content['learn'] = {}
       content['learn']['modules'] = learn_modules
   write_pillar(pillar, content)
+  
+  content.update()
+  return content
 
 
 def apply(module_list: List):
@@ -99,7 +103,7 @@ def apply(module_list: List):
     print(f'Applying salt state for {module} module...')
     cmd = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
     if cmd.returncode != 0:
-      print(f'[ERROR] Failed to apply salt state for {module}')
+      print(f'[ERROR] Failed to apply salt state for {module} module.')
       return_code = cmd.returncode
   return return_code
 
@@ -135,13 +139,18 @@ def enable_disable_modules(args, enable: bool):
     write_needed = False
     for module in args.modules:
       if module in pillar_modules:
-        pillar_modules[module]['enabled'] = enable
-        write_needed = enable
+        if pillar_modules[module]['enabled'] == enable:
+          action_str = 'enabled' if enable else 'disabled'
+          print(f'{module} module already {action_str}.', file=sys.stderr)
+        else:
+          pillar_modules[module]['enabled'] = enable
+          write_needed = enable
     if write_needed:
       args.pillar_dict.update()
       write_pillar(args.pillarm, args.pillar_dict)
   
-  check_apply(args)
+  salt_proc = check_apply(args)
+  return salt_proc
 
 
 def enable_modules(args):
@@ -155,8 +164,8 @@ def disable_modules(args):
 def list_modules(*_):
   print('Available ML modules:')
   for module in learn_modules:
-  
     print(f'  - { module["name"] } : {module["description"]}')
+  return 0
 
 
 def main():
@@ -194,25 +203,18 @@ def main():
   enable.add_argument('--apply', action='store_const', const=True, required=False, help=enable_apply_help)
   enable.add_argument('--yes', '-y', action='store_const', const=True, required=False, help=yes_help)
 
-
   disable = subparsers.add_parser('disable')
   disable.set_defaults(func=disable_modules)
   disable.add_argument('modules', metavar='ML_MODULES', nargs='+', help=module_help_str)
   disable.add_argument('--apply', action='store_const', const=True, required=False, help=disable_apply_help)
   disable.add_argument('--yes', '-y', action='store_const', const=True, required=False, help=yes_help)
 
-
-
   list = subparsers.add_parser('list')
   list.set_defaults(func=list_modules)
 
   args = main_parser.parse_args(sys.argv[1:])
-
   args.pillar = find_minion_pillar()
-
-  args.pillar_dict = read_pillar(args.pillar)
-
-  create_pillar_if_not_exist(args.pillar, args.pillar_dict)
+  args.pillar_dict = create_pillar_if_not_exist(args.pillar, read_pillar(args.pillar))
 
   if hasattr(args, 'func'):
     exit_code = args.func(args)
