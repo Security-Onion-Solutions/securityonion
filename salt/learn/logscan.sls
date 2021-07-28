@@ -20,7 +20,7 @@ logscan_conf_dir:
 logscan_conf:
   file.managed:
     - name: /opt/so/conf/logscan/logscan.conf
-    - source: salt://logscan/files/logscan.conf
+    - source: salt://learn/files/logscan.conf
     - user: 939
     - group: 939
     - mode: 600
