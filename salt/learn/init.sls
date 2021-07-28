@@ -3,7 +3,7 @@
 
 {% set module_list = salt['pillar.get']('learn:modules', [] ) %}
 
-{% if len(module_list) != 0 %}}
+{% if module_list|length != 0 %}}
 include:
 {% for module in module_list %}
   - .{{ module }}
