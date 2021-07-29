@@ -2,6 +2,14 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set logscan_cpu_period = salt['pillar.get']('learn:modules:logscan:cpu_period', 20000) %}
+{% set enabled = salt['pillar.get']('learn:modules:logscan:enabled', False) %}
+
+{% if enabled %}
+  {% set container_action = 'running' %}
+{% else %}
+  {% set container_action = 'absent'%}
+{% endif %}
+
 
 logscan_data_dir:
   file.directory:
@@ -32,7 +40,8 @@ logscan_log_dir:
     - group: 939
 
 so-logscan:
-  docker_container.running:
+  docker_container.{{ container_action }}:
+    {% if container_action == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logscan:{{ VERSION }}
     - hostname: logscan
     - name: so-logscan
@@ -42,3 +51,6 @@ so-logscan:
       - /opt/so/log/logscan:/logscan/output:rw
       - /opt/so/log:/logscan/logs:ro
     - cpu_period: {{ logscan_cpu_period }}
+    {% else %}
+    - force: true
+    {% endif %}
