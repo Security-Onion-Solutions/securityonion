@@ -42,7 +42,7 @@ patch_os_schedule:
     - function: state.sls
     - job_args:
       - patch.os
-    - hours: {{ salt['pillar.get']('patch_os_pillar:hours', 8) }} 
+    - hours: {{ patch_os_pillar.get('hours', 8) }} 
     - splay: {{splay}}
     - return_job: True
 
