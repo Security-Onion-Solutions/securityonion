@@ -111,6 +111,7 @@ stenolog:
 
 so-steno:
   docker_container.{{ STENOOPTIONS.status }}:
+  {% if STENOOPTIONS.status == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
@@ -126,13 +127,15 @@ so-steno:
       - /opt/so/log/stenographer:/var/log/stenographer:rw
     - watch:
       - file: /opt/so/conf/steno/config
+  {% else %} {# if stenographer isn't enabled, then stop and remove the container #}
+    - force: True
+  {% endif %}
 
 append_so-steno_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-steno
     - unless: grep -q so-steno /opt/so/conf/so-status/so-status.conf
-
 
   {% if not STENOOPTIONS.start %}
 so-steno_so-status.disabled:
