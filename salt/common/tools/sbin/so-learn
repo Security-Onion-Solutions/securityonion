@@ -106,12 +106,12 @@ def mod_so_status(action: str, items: str):
     containers = conf.readlines()
 
     for item in items:
-      if f'so-{item}' in containers:
-        if action == 'remove': containers.remove(f'so-{item}')
+      if f'so-{item}\n' in containers:
+        if action == 'remove': containers.remove(f'so-{item}\n')
         if action == 'add': pass
       else:
         if action == 'remove': pass
-        if action == 'add': containers.append(f'so-{item}')
+        if action == 'add': containers.append(f'so-{item}\n')
     
     conf.seek(0)
     conf.truncate(0)
@@ -180,7 +180,7 @@ def enable_disable_modules(args, enable: bool):
         else:
           pillar_modules[module]['enabled'] = enable
           mod_so_status(action_str, module)
-          write_needed = enable
+          write_needed = True
     if write_needed:
       args.pillar_dict.update()
       write_pillar(args.pillar, args.pillar_dict)
