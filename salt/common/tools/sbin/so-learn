@@ -28,6 +28,7 @@ import yaml
 import multiprocessing
 
 minion_pillar_dir = '/opt/so/saltstack/local/pillar/minions'
+so_status_conf = '/opt/so/conf/so-status/so-status.conf'
 salt_proc: subprocess.CompletedProcess = None
 
 # Temp store of modules, will likely be broken out into salt
@@ -79,8 +80,8 @@ def find_minion_pillar() -> str:
 
 def read_pillar(pillar: str):
   try:
-    with open(pillar, 'r') as f:
-      loaded_yaml = yaml.safe_load(f.read())
+    with open(pillar, 'r') as pillar_file:
+      loaded_yaml = yaml.safe_load(pillar_file.read())
       if loaded_yaml is None:
         print(f'Could not parse {pillar}', file=sys.stderr)
         sys.exit(3)
@@ -92,11 +93,29 @@ def read_pillar(pillar: str):
 
 def write_pillar(pillar: str, content: dict):
   try:
-    with open(pillar, 'w') as f:
-      yaml.dump(content, f, default_flow_style=False)
+    with open(pillar, 'w') as pillar_file:
+      yaml.dump(content, pillar_file, default_flow_style=False)
   except:
     print(f'Could not open {pillar}', file=sys.stderr)
     sys.exit(3)
+
+
+def mod_so_status(action: str, items: str):
+  with open(so_status_conf, 'a+') as conf:
+    conf.seek(0)
+    containers = conf.readlines()
+
+    for item in items:
+      if f'so-{item}' in containers:
+        if action == 'remove': containers.remove(f'so-{item}')
+        if action == 'add': pass
+      else:
+        if action == 'remove': pass
+        if action == 'add': containers.append(f'so-{item}')
+    
+    conf.seek(0)
+    conf.truncate(0)
+    conf.writelines(containers)
 
 
 def create_pillar_if_not_exist(pillar:str, content: dict):
@@ -141,21 +160,26 @@ def check_apply(args: dict):
 
 def enable_disable_modules(args, enable: bool):
   pillar_modules = args.pillar_dict.get('learn', {}).get('modules')
+  pillar_mod_names = args.pillar_dict.get('learn', {}).get('modules').keys()
   
+  action_str = 'add' if enable else 'remove'
+
   if 'all' in args.modules:
-    for module in pillar_modules:
-      module['enabled'] = enable
+    for module, details in pillar_modules.items():
+      details['enabled'] = enable
+      mod_so_status(action_str, module)
     args.pillar_dict.update()
     write_pillar(args.pillar, args.pillar_dict)
   else:
     write_needed = False
     for module in args.modules:
-      if module in pillar_modules:
+      if module in pillar_mod_names:
         if pillar_modules[module]['enabled'] == enable:
-          action_str = 'enabled' if enable else 'disabled'
-          print(f'{module} module already {action_str}.', file=sys.stderr)
+          state_str = 'enabled' if enable else 'disabled'
+          print(f'{module} module already {state_str}.', file=sys.stderr)
         else:
           pillar_modules[module]['enabled'] = enable
+          mod_so_status(action_str, module)
           write_needed = enable
     if write_needed:
       args.pillar_dict.update()
@@ -167,10 +191,12 @@ def enable_disable_modules(args, enable: bool):
 
 def enable_modules(args):
   enable_disable_modules(args, enable=True)
+  mod_so_status('add', args.modules)
 
 
 def disable_modules(args):
   enable_disable_modules(args, enable=False)
+  mod_so_status('remove', args.modules)
 
 
 def list_modules(*_):
