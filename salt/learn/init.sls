@@ -1,12 +1,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set module_list = salt['pillar.get']('learn:modules', [] ) %}
+{% set module_dict = salt['pillar.get']('learn:modules', [] ) %}
 
 {% if module_list|length != 0 %}}
 include:
-{% for module in module_list %}
-  - .{{ module }}
+{% for module, _ in module_dict %}
+  - 'learn.{{ module }}'
 {% endfor %}
 {% endif %}
 
