@@ -25,14 +25,28 @@ import subprocess
 import argparse
 import textwrap
 import yaml
+import multiprocessing
 
 minion_pillar_dir = '/opt/so/saltstack/local/pillar/minions'
 salt_proc: subprocess.CompletedProcess = None
 
 # Temp store of modules, will likely be broken out into salt
-learn_modules = [
-  { 'name': 'logscan', 'enabled': False, 'description': 'Scan log files against pre-trained models to alert on anomalies.' }
-]
+def get_learn_modules():
+  return [
+    { 'name': 'logscan', 'cpu_period': get_cpu_period(fraction=0.25), 'enabled': False, 'description': 'Scan log files against pre-trained models to alert on anomalies.' }
+  ]
+
+
+def get_cpu_period(fraction: float):
+  multiplier = 10000
+  
+  num_cores = multiprocessing.cpu_count()
+  if num_cores <= 2:
+    fraction = 1.
+  
+  num_used_cores = int(num_cores * fraction)
+  cpu_period = num_used_cores * multiplier
+  return cpu_period
 
 
 def sigint_handler(*_):
@@ -90,7 +104,7 @@ def create_pillar_if_not_exist(pillar:str, content: dict):
 
   if pillar_dict.get('learn', {}).get('modules') is None:
     pillar_dict['learn'] = {}
-    pillar_dict['learn']['modules'] = learn_modules
+    pillar_dict['learn']['modules'] = get_learn_modules()
     content.update()
     write_pillar(pillar, content)
   
