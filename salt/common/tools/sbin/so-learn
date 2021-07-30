@@ -100,7 +100,7 @@ def write_pillar(pillar: str, content: dict):
     sys.exit(3)
 
 
-def mod_so_status(action: str, items: str):
+def mod_so_status(action: str, items: List):
   with open(so_status_conf, 'a+') as conf:
     conf.seek(0)
     containers = conf.readlines()
@@ -112,6 +112,8 @@ def mod_so_status(action: str, items: str):
       else:
         if action == 'remove': pass
         if action == 'add': containers.append(f'so-{item}\n')
+
+    [containers.remove(c_name) for c_name in containers if c_name == '\n'] # remove extra newlines
     
     conf.seek(0)
     conf.truncate(0)
