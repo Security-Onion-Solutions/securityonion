@@ -100,18 +100,18 @@ def write_pillar(pillar: str, content: dict):
     sys.exit(3)
 
 
-def mod_so_status(action: str, items: List):
+def mod_so_status(action: str, item: str):
   with open(so_status_conf, 'a+') as conf:
     conf.seek(0)
     containers = conf.readlines()
-
-    for item in items:
-      if f'so-{item}\n' in containers:
-        if action == 'remove': containers.remove(f'so-{item}\n')
-        if action == 'add': pass
-      else:
-        if action == 'remove': pass
-        if action == 'add': containers.append(f'so-{item}\n')
+    
+    if f'so-{item}\n' in containers:
+      if action == 'remove': containers.remove(f'so-{item}\n')
+      if action == 'add': pass
+    else:
+      if action == 'remove': pass
+      if action == 'add': containers.append(f'so-{item}\n')
+      
 
     [containers.remove(c_name) for c_name in containers if c_name == '\n'] # remove extra newlines
     
@@ -193,12 +193,10 @@ def enable_disable_modules(args, enable: bool):
 
 def enable_modules(args):
   enable_disable_modules(args, enable=True)
-  mod_so_status('add', args.modules)
 
 
 def disable_modules(args):
   enable_disable_modules(args, enable=False)
-  mod_so_status('remove', args.modules)
 
 
 def list_modules(*_):
