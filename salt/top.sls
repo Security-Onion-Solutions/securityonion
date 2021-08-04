@@ -11,7 +11,6 @@
 {% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
-{% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
@@ -127,9 +126,7 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
@@ -265,9 +262,7 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
@@ -310,9 +305,7 @@ base:
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
@@ -354,9 +347,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if KIBANA %}
     - kibana
     {%- endif %}
@@ -409,9 +400,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
