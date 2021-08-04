@@ -49,6 +49,16 @@ discovery.seed_hosts:
    - {{ SN.split('_')|first }}
       {%- endfor %}
     {%- endif %}
+  {%- elif grains.role == 'so-managersearch' %}
+      {%- if salt['pillar.get']('nodestab', {}) %}
+node.roles: [ master, data, remote_cluster_client ]
+discovery.seed_hosts:
+   - {{ grains.master }}
+      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+   - {{ SN.split('_')|first }}
+      {%- endfor %}
+    {%- endif %}
+node.attr.box_type: {{ NODE_ROUTE_TYPE }}
   {%- else %}
 node.roles: {{ NODE_ROLES }}
 node.attr.box_type: {{ NODE_ROUTE_TYPE }}

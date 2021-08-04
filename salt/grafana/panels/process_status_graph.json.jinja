@@ -1,0 +1,204 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "editable": true,
+  "fieldConfig": {
+    "defaults": {
+      "links": []
+    },
+    "overrides": []
+  },
+  "fill": 1,
+  "gridPos": {
+    "x": {{ PANELS.process_status_graph.gridPos.x }},
+    "y": {{ PANELS.process_status_graph.gridPos.y }},
+    "w": {{ PANELS.process_status_graph.gridPos.w }},
+    "h": {{ PANELS.process_status_graph.gridPos.h }}
+  },
+  "height": "350",
+  "id": 61852,
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "hideEmpty": true,
+    "hideZero": true,
+    "max": true,
+    "min": false,
+    "rightSide": false,
+    "show": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": true
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 5,
+  "renderer": "flot",
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:549",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "$tag_host: $col",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "processes",
+      "policy": "default",
+      "query": "SELECT mean(running) as running, mean(blocked) as blocked, mean(sleeping) as sleeping, mean(stopped) as stopped, mean(zombies) as zombies, mean(paging) as paging, mean(unknown) as unknown FROM \"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "blocked"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$server$/"
+        }
+      ],
+      "orderByTime": "ASC"
+    },
+    {
+      "alias": "$tag_host: $col",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "processes",
+      "policy": "default",
+      "query": "SELECT mean(mean_running) as trend_running, mean(mean_blocked) as trend_blocked, mean(mean_sleeping) as trend_sleeping, mean(mean_stopped) as trend_stopped, mean(mean_zombies) as trend_zombies, mean(mean_paging) as trend_paging, mean(mean_unknown) as trend_unknown FROM \"so_long_term\".\"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "blocked"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$server$/"
+        }
+      ],
+      "orderByTime": "ASC",
+      "hide": false
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Process Status",
+  "tooltip": {
+    "msResolution": false,
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true,
+      "$$hashKey": "object:512"
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true,
+      "$$hashKey": "object:513"
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "bars": false,
+  "dashes": false,
+  "error": false,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null,
+  "maxDataPoints": 750,
+  "interval": "30s"
+}

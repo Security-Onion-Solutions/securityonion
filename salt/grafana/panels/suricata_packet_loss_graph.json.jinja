@@ -1,0 +1,234 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {
+      "links": []
+    },
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.suricata_packet_loss_graph.gridPos.x }},
+    "y": {{ PANELS.suricata_packet_loss_graph.gridPos.y }},
+    "w": {{ PANELS.suricata_packet_loss_graph.gridPos.w }},
+    "h": {{ PANELS.suricata_packet_loss_graph.gridPos.h }}
+  },
+  "id": 21,
+  "interval": "30s",
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "hideEmpty": true,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sort": "current",
+    "sortDesc": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": true
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [
+    {
+      "alias": "/Trend/",
+      "dashLength": 4,
+      "dashes": true,
+      "fill": 0,
+      "linewidth": 4,
+      "$$hashKey": "object:1059"
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "Current $tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "suridrop",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "drop"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "* 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    },
+    {
+      "alias": "Trend $tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": {{ PANELS.suricata_packet_loss_graph.get('hideTrend', false)|json }},
+      "measurement": "suridrop",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_drop"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "* 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Suricata Packet Loss",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "percent",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": 0,
+      "show": true,
+      "$$hashKey": "object:1072"
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": false,
+      "$$hashKey": "object:1073"
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "bars": false,
+  "cacheTimeout": null,
+  "dashes": false,
+  "fill": 0,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
+}

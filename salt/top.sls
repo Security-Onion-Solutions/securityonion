@@ -156,6 +156,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -218,6 +219,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -292,6 +294,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -366,7 +369,6 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -388,6 +390,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -478,3 +481,4 @@ base:
     - schedule
     - docker_clean
     - pipeline.load
+    - learn
