@@ -4,7 +4,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
   {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
   {% from "curator/map.jinja" import CURATOROPTIONS with context %}
 # Curator
