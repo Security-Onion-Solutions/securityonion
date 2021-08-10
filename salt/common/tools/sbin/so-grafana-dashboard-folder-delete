@@ -1,0 +1,17 @@
+# this script is used to delete the default Grafana dashboard folders that existed prior to Grafana dashboard and Salt management changes in 2.3.70
+
+folders=$(curl -X GET http://admin:{{salt['pillar.get'('secrets:grafana_admin')]}}@localhost:3000/api/folders | jq -r '.[] | @base64')
+delfolder=("Manager" "Manager Search" "Sensor Nodes" "Search Nodes" "Standalone" "Eval Mode")
+
+for row in $folders; do
+   title=$(echo ${row} | base64 --decode | jq -r '.title')
+   uid=$(echo ${row} | base64 --decode | jq -r '.uid')
+
+  if [[ " ${delfolder[@]} " =~ " ${title} " ]]; then
+   curl -X DELETE http://admin:{{salt['pillar.get'('secrets:grafana_admin')]}}@localhost:3000/api/folders/$uid
+  fi
+done
+
+echo "so-grafana-dashboard-folder-delete has been run to delete default Grafana dashboard folders that existed prior to 2.3.70" > /opt/so/state/so-grafana-dashboard-folder-delete-complete
+
+exit 0
