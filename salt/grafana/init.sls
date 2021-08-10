@@ -88,6 +88,11 @@ grafana-config-files:
     - source: salt://grafana/etc/files
     - makedirs: True
 
+so-grafana-dashboard-folder-delete:
+  cmd.run:
+    - name: /usr/sbin/so-grafana-dashboard-folder-delete
+    - unless: ls /opt/so/state/so-grafana-dashboard-folder-delete-complete
+
 {% for dashboard in DASHBOARDS %}
 {{dashboard}}-dashboard:
   file.managed:
