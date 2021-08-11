@@ -32,6 +32,12 @@ usage() {
 	exit 1
 }
 
+for arg; do
+	shift
+	[[ "$arg" = "--quiet" || "$arg" = "-q" ]] && quiet=true && continue
+	set -- "$@" "$arg"
+done
+
 if [[ $# -eq 0 || $# -gt 1 ]] || [[ $1 == '-h' || $1 == '--help' ]]; then
 	usage
 fi
@@ -41,8 +47,12 @@ set_version
 
 for image in "${TRUSTED_CONTAINERS[@]}"; do
 	if ! docker images | grep "$image" | grep ":5000" | grep -q "$VERSION"; then
-		update_docker_containers "$image" "" "" ""
+		if [[ $quiet == true ]]; then
+			update_docker_containers "$image" "" "" "/dev/null"
+		else
+			update_docker_containers "$image" "" "" "" 
+		fi
 	else
-		echo "$image:$VERSION image exists." 1>&2
+		echo "$image:$VERSION image exists."
 	fi
 done

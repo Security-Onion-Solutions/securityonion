@@ -28,10 +28,11 @@ import textwrap
 import yaml
 import multiprocessing
 import docker
+import pty
 
 minion_pillar_dir = '/opt/so/saltstack/local/pillar/minions'
 so_status_conf = '/opt/so/conf/so-status/so-status.conf'
-salt_proc: subprocess.CompletedProcess = None
+proc: subprocess.CompletedProcess = None
 
 # Temp store of modules, will likely be broken out into salt
 def get_learn_modules():
@@ -54,8 +55,8 @@ def get_cpu_period(fraction: float):
 
 def sigint_handler(*_):
   print('Exiting gracefully on Ctrl-C')
-  if salt_proc is not None: salt_proc.send_signal(signal.SIGINT)
-  sys.exit(0)
+  if proc is not None: proc.send_signal(signal.SIGINT)
+  sys.exit(1)
 
 
 def find_minion_pillar() -> str:
@@ -134,14 +135,13 @@ def create_pillar_if_not_exist(pillar:str, content: dict):
 
 
 def salt_call(module: str):
-  return_code = 0
   salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', f'learn.{module}', 'queue=True']
 
   print(f'  Applying salt state for {module} module...')
-  return_code = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL).returncode
+  proc = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  return_code = proc.returncode
   if return_code != 0:
     print(f'  [ERROR] Failed to apply salt state for {module} module.')
-    return_code = salt_proc.returncode
 
   return return_code
 
@@ -155,35 +155,31 @@ def pull_image(module: str):
   basename_match = list(filter(lambda x: f'{container_basename}' in x, tag_list))
   local_registry_match = list(filter(lambda x: ':5000' in x, basename_match))
 
-  if len(local_registry_match) > 0:
-    print(f'  Pulling missing image for {module}:')
-    pull_command = ['so-image-pull', container_basename]
+  if len(local_registry_match) == 0:
+    print(f'Pulling missing image for {module} (may take several minutes) ...')
+    pull_command = ['so-image-pull', '--quiet', container_basename]
   
-  return_code = subprocess.run(pull_command, stdout=subprocess.DEVNULL).returncode
-  if return_code != 0:
-    print(f'  [ERROR] Failed to pull image so-{module}, skipping state.')
-  
+    proc = subprocess.run(pull_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return_code = proc.returncode
+    if return_code != 0:
+      print(f'  [ERROR] Failed to pull image so-{module}, skipping state.')
+  else:
+    return_code = 0
   return return_code
 
 
-def apply(module_list: List, enable: bool):
+def apply(module_list: List):
   return_code = 0
   for module in module_list:
-    if enable:
-      temp_return = pull_image(module)
-      if temp_return == 0:
-        temp_return = salt_call(module)
-    else:
-      temp_return = salt_call(module)
-    
-    # Only update return_code if a command returned a non-zero return
-    if temp_return != 0:
-      return_code = temp_return
+    salt_ret = salt_call(module)
+    # Only update return_code if the command returned a non-zero return
+    if salt_ret != 0:
+      return_code = salt_ret
     
   return return_code
 
 
-def check_apply(args: dict, enable: bool):
+def check_apply(args: dict):
   if args.apply:
     print('Configuration updated. Applying changes:')
     return apply(args.modules)
@@ -196,7 +192,7 @@ def check_apply(args: dict, enable: bool):
       return 0
     else:
       print('Applying changes:')
-      return apply(args.modules, enable)
+      return apply(args.modules)
 
 
 def enable_disable_modules(args, enable: bool):
@@ -220,6 +216,8 @@ def enable_disable_modules(args, enable: bool):
           state_str = 'enabled' if enable else 'disabled'
           print(f'{module} module already {state_str}.', file=sys.stderr)
         else:
+          if enable and pull_image(module) != 0:
+            continue
           pillar_modules[module]['enabled'] = enable
           mod_so_status(action_str, module)
           write_needed = True
@@ -227,7 +225,7 @@ def enable_disable_modules(args, enable: bool):
       args.pillar_dict.update()
       write_pillar(args.pillar, args.pillar_dict)
   
-  cmd_ret = check_apply(args, enable)
+  cmd_ret = check_apply(args)
   return cmd_ret
 
 
