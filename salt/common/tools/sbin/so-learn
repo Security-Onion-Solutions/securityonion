@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from itertools import chain
 from typing import List
 
 import signal
@@ -26,6 +27,7 @@ import argparse
 import textwrap
 import yaml
 import multiprocessing
+import docker
 
 minion_pillar_dir = '/opt/so/saltstack/local/pillar/minions'
 so_status_conf = '/opt/so/conf/so-status/so-status.conf'
@@ -112,7 +114,6 @@ def mod_so_status(action: str, item: str):
       if action == 'remove': pass
       if action == 'add': containers.append(f'so-{item}\n')
       
-
     [containers.remove(c_name) for c_name in containers if c_name == '\n'] # remove extra newlines
     
     conf.seek(0)
@@ -132,19 +133,57 @@ def create_pillar_if_not_exist(pillar:str, content: dict):
   return content
 
 
-def apply(module_list: List):
+def salt_call(module: str):
   return_code = 0
-  for module in module_list:
-    salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', f'learn.{module}', 'queue=True']
-    print(f'  Applying salt state for {module} module...')
-    salt_proc = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
-    if salt_proc.returncode != 0:
-      print(f'  [ERROR] Failed to apply salt state for {module} module.')
-      return_code = salt_proc.returncode
+  salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', f'learn.{module}', 'queue=True']
+
+  print(f'  Applying salt state for {module} module...')
+  return_code = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL).returncode
+  if return_code != 0:
+    print(f'  [ERROR] Failed to apply salt state for {module} module.')
+    return_code = salt_proc.returncode
+
   return return_code
 
 
-def check_apply(args: dict):
+def pull_image(module: str):
+  container_basename = f'so-{module}'
+
+  client = docker.from_env()
+  image_list = client.images.list(filters={ 'dangling': False })  
+  tag_list = list(chain.from_iterable(list(map(lambda x: x.attrs.get('RepoTags'), image_list))))
+  basename_match = list(filter(lambda x: f'{container_basename}' in x, tag_list))
+  local_registry_match = list(filter(lambda x: ':5000' in x, basename_match))
+
+  if len(local_registry_match) > 0:
+    print(f'  Pulling missing image for {module}:')
+    pull_command = ['so-image-pull', container_basename]
+  
+  return_code = subprocess.run(pull_command, stdout=subprocess.DEVNULL).returncode
+  if return_code != 0:
+    print(f'  [ERROR] Failed to pull image so-{module}, skipping state.')
+  
+  return return_code
+
+
+def apply(module_list: List, enable: bool):
+  return_code = 0
+  for module in module_list:
+    if enable:
+      temp_return = pull_image(module)
+      if temp_return == 0:
+        temp_return = salt_call(module)
+    else:
+      temp_return = salt_call(module)
+    
+    # Only update return_code if a command returned a non-zero return
+    if temp_return != 0:
+      return_code = temp_return
+    
+  return return_code
+
+
+def check_apply(args: dict, enable: bool):
   if args.apply:
     print('Configuration updated. Applying changes:')
     return apply(args.modules)
@@ -157,7 +196,7 @@ def check_apply(args: dict):
       return 0
     else:
       print('Applying changes:')
-      return apply(args.modules)
+      return apply(args.modules, enable)
 
 
 def enable_disable_modules(args, enable: bool):
@@ -170,6 +209,7 @@ def enable_disable_modules(args, enable: bool):
     for module, details in pillar_modules.items():
       details['enabled'] = enable
       mod_so_status(action_str, module)
+      if enable: pull_image(module)
     args.pillar_dict.update()
     write_pillar(args.pillar, args.pillar_dict)
   else:
@@ -187,7 +227,7 @@ def enable_disable_modules(args, enable: bool):
       args.pillar_dict.update()
       write_pillar(args.pillar, args.pillar_dict)
   
-  cmd_ret = check_apply(args)
+  cmd_ret = check_apply(args, enable)
   return cmd_ret
 
 
