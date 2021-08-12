@@ -959,33 +959,18 @@ whiptail_management_interface_gateway() {
 whiptail_management_interface_ip_mask() {
 	[ -n "$TESTING" ] && return
 
-	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter your IPv4 address with CIDR mask (e.g. 192.168.1.2/24):" 10 60 "$1" 3>&1 1>&2 2>&3)
+	local msg
+	read -r -d '' msg <<- EOM
+	What IPv4 address would you like to assign to this Security Onion installation?
+
+	Please enter the IPv4 address with CIDR mask
+	(e.g. 192.168.1.2/24):
+	EOM
+
+	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox "$msg" 12 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_management_interface_ip() {
-
-	[ -n "$TESTING" ] && return
-
-	MIP=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter your IP address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_management_interface_mask() {
-
-	[ -n "$TESTING" ] && return
-
-	MMASK=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the bit mask for your subnet:" 10 60 24 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+	# whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_nic() {
@@ -1734,7 +1719,7 @@ whiptail_so_allow_yesno() {
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "$whiptail_title" \
-		--yesno "Do you want to run so-allow to allow access to the web tools?" \
+		--yesno "Do you want to run so-allow to allow other machines to access this Security Onion installation via the web interface?" \
 		8 75
 }
 
