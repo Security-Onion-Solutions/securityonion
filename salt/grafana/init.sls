@@ -44,6 +44,12 @@ grafanadashdir:
     - group: 939
     - makedirs: True
 
+{% for type in ['eval','manager','managersearch','search_nodes','sensor_nodes','standalone'] %}
+remove_dashboard_dir_{{type}}:
+  file.absent:
+    - name: /opt/so/conf/grafana/grafana_dashboards/{{type}}
+{% endfor %}
+
 grafana-dashboard-config:
   file.managed:
     - name: /opt/so/conf/grafana/etc/dashboards/dashboard.yml
@@ -81,6 +87,11 @@ grafana-config-files:
     - group: 939
     - source: salt://grafana/etc/files
     - makedirs: True
+
+so-grafana-dashboard-folder-delete:
+  cmd.run:
+    - name: /usr/sbin/so-grafana-dashboard-folder-delete
+    - unless: ls /opt/so/state/so-grafana-dashboard-folder-delete-complete
 
 {% for dashboard in DASHBOARDS %}
 {{dashboard}}-dashboard:
