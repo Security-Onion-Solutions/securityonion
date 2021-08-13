@@ -326,6 +326,16 @@ dockerreserveports:
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
 {% if salt['grains.get']('sosmodel', '') %}
+  {% if grains['os'] == 'CentOS' %}     
+# Install Raid tools
+raidpkgs:
+  pkg.installed:
+    - skip_suggestions: True
+    - pkgs:
+      - securityonion-raidtools
+      - securityonion-megactl
+  {% endif %}
+
 # Install raid check cron
 /usr/sbin/so-raid-status > /dev/null 2>&1:
   cron.present:
