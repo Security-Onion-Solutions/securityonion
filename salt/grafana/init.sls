@@ -17,7 +17,7 @@
   {% do DASHBOARDS.append('eval') %}
 {% else %}
   {# Grab a unique listing of nodetypes that exists so that we create only the needed dashboards #}
-  {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}|uniq").split() %}
+  {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
     {% do DASHBOARDS.append(dashboard) %}
   {% endfor %}
 {% endif %}
@@ -93,7 +93,7 @@ so-grafana-dashboard-folder-delete:
     - name: /usr/sbin/so-grafana-dashboard-folder-delete
     - unless: ls /opt/so/state/so-grafana-dashboard-folder-delete-complete
 
-{% for dashboard in DASHBOARDS %}
+{% for dashboard in DASHBOARDS | unique %}
 {{dashboard}}-dashboard:
   file.managed:
     - name: /opt/so/conf/grafana/grafana_dashboards/{{dashboard}}.json
