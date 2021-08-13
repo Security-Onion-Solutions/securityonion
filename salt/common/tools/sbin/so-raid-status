@@ -17,53 +17,96 @@
 
 . /usr/sbin/so-common
 
-check_lsi_raid() {
-    # For use for LSI on Ubuntu
-    #MEGA=/opt/MegaRAID/MegeCli/MegaCli64
-    #LSIRC=$($MEGA -LDInfo -Lall -aALL | grep Optimal)
-    # Open Source Centos
-    MEGA=/opt/mega/megasasctl
-    LSIRC=$($MEGA | grep optimal)
+appliance_check() {
+  {%- if salt['grains.get']('sosmodel', '') %}
+  APPLIANCE=1
+  DUDEYOUGOTADELL=$(dmidecode |grep Dell)
+  if [[ -n $DUDEYOUGOTADELL ]]; then
+  APPTYPE=dell
+  else
+  APPTYPE=sm
+  fi
+  mkdir -p /opt/so/log/raid
 
-    if [[ $LSIRC ]]; then
-        # Raid is good
-        LSIRAID=0
+  {%- else %}
+  echo "This is not an appliance"
+  exit 0
+  {%- endif %}
+}
+
+check_nsm_raid() {
+  PERCCLI=$(/opt/raidtools/perccli/perccli64 /c0/v0 show|grep Raid|grep Optl)
+  MEGACTL=$(/opt/raidtools/megasasctl |grep optimal)
+
+  if [[ $APPLIANCE == '1' ]]; then
+    if [[ -n $PERCCLI ]]; then
+      HWRAID=0
+    elif [[ -n $MEGACTL ]]; then
+      HWRAID=0
     else
-        LSIRAID=1
+      HWRAID=1
     fi
+
+  fi
 
 }
 
+check_boss_raid() {
+  MVCLI=$(/opt/raidtools/megasasctl |grep optimal)
+
+  if [[ -n $DUDEYOUGOTADELL ]]; then
+    if [[ -n $MVCLI ]]; then
+      BOSSRAID=0
+    else
+      BOSSRAID=1
+    fi
+  fi
+}
+
 check_software_raid() {
+  if [[ -n $DUDEYOUGOTADELL ]]; then
     SWRC=$(grep "_" /proc/mdstat)
 
-    if [[ $SWRC ]]; then
+    if [[ -n $SWRC ]]; then
         # RAID is failed in some way
         SWRAID=1
     else
         SWRAID=0
     fi
+  fi
 }
 
 # This script checks raid status if you use SO appliances
 
 # See if this is an appliance
 
-{%- if salt['grains.get']('sosmodel', '') %}
-mkdir -p /opt/so/log/raid
-  {%- if grains['sosmodel'] in ['SOSMN', 'SOSSNNV'] %}
-#check_boss_raid
+appliance_check
+check_nsm_raid
+check_boss_raid
+{%- if grains['sosmodel'] in ['SOSMN', 'SOSSNNV'] %}
 check_software_raid
-echo "nsmraid=$SWRAID" > /opt/so/log/raid/status.log
-  {%- elif grains['sosmodel'] in ['SOS1000F', 'SOS1000', 'SOSSN7200', 'SOS10K', 'SOS4000'] %}
-#check_boss_raid
-check_lsi_raid
-echo "nsmraid=$LSIRAID" > /opt/so/log/raid/status.log
-  {%- else %}
-exit 0
-  {%- endif %}
-{%- else %}
-exit 0
 {%- endif %}
+
+if [[ -n $SWRAID ]]; then
+  if [[ $SWRAID == '0' && BOSSRAID == '0' ]]; then
+    RAIDSTATUS=0
+  else
+    RAIDSTATUS=1
+  fi
+elif [[ -n $DUDEYOUGOTADELL ]]; then
+  if [[ $BOSSRAID == '0' && $HWRAID == '0' ]]; then
+    RAIDSTATUS=0
+  else
+    RAIDSTATUS=1
+  fi
+elif [[ "$APPTYPE" == 'sm' ]]; then
+  if [[ -n "$HWRAID" ]]; then
+    RAIDSTATUS=0
+  else
+    RAIDSTATUS=1
+  fi
+fi
+
+echo "nsmraid=$RAIDSTATUS" > /opt/so/log/raid/status.log
 
 
