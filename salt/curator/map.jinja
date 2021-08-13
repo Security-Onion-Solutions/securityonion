@@ -1,14 +1,14 @@
 {% set CURATOROPTIONS = {} %}
 {% set ENABLED = salt['pillar.get']('curator:enabled', True) %}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
-{% do CURATOROPTIONS.update({'manage_so-status': True}) %}
+{% do CURATOROPTIONS.update({'manage_sostatus': True}) %}
 
 # don't start the docker container if searchnode and true clustering is enabled or curator disabled via pillar or true cluster not enabled and manager
 {% if not ENABLED or (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}
   {% do CURATOROPTIONS.update({'start': False}) %}
   {% do CURATOROPTIONS.update({'status': 'absent'}) %}
   {% if (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}
-    {% do CURATOROPTIONS.update({'manage_so-status': False}) %}
+    {% do CURATOROPTIONS.update({'manage_sostatus': False}) %}
   {% endif %}%}
 {% else %}
   {% do CURATOROPTIONS.update({'start': True}) %}

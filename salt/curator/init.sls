@@ -140,7 +140,7 @@ so-curator:
     - force: True
   {% endif %}
 
-  {% if CURATOROPTIONS.manage_so-status %}
+  {% if CURATOROPTIONS.manage_sostatus %}
 append_so-curator_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
