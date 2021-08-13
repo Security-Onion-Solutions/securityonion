@@ -140,22 +140,24 @@ so-curator:
     - force: True
   {% endif %}
 
+  {% if CURATOROPTIONS.manage_so-status %}
 append_so-curator_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-curator
     - unless: grep -q so-curator /opt/so/conf/so-status/so-status.conf
 
-  {% if not CURATOROPTIONS.start %}
+    {% if not CURATOROPTIONS.start %}
 so-curator_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-curator$
-  {% else %}
+    {% else %}
 delete_so-curator_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-curator$
+    {% endif %}
   {% endif %}
 
 # Begin Curator Cron Jobs
