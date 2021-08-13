@@ -34,6 +34,16 @@ MYSQL_PASS=$(lookup_pillar_secret mysql)
 FLEET_IP=$(lookup_pillar fleet_ip)
 FLEET_USER=$USER
 
+# test existence of user
+MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PASS fleet -e \
+    "SELECT count(1) FROM users WHERE username='$FLEET_USER'" 2>/dev/null | tail -1)
+if [[ $? -ne 0 ]] || [[ $MYSQL_OUTPUT -ne 1 ]] ; then
+    echo "Test for username [${FLEET_USER}] failed"
+    echo "    expect 1 hit in users database, return $MYSQL_OUTPUT hit(s)."
+    echo "Unable to update Fleet user password."
+    exit 2
+fi
+
 # Read password for new user from stdin
 test -t 0
 if [[ $? == 0 ]]; then
@@ -51,6 +61,7 @@ if [[ $? -ne 0 ]]; then
 	echo "Failed to generate Fleet password hash"
 	exit 2
 fi
+
 
 MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PASS fleet -e \
     "UPDATE users SET password='$FLEET_HASH', salt='' where username='$FLEET_USER'" 2>&1)
