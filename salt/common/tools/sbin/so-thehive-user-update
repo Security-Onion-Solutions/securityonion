@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+usage() {
+    echo "Usage: $0 <user-name>"
+    echo ""
+    echo "Update password for an existing TheHive user. The new password will be read from STDIN."
+    exit 1
+}
+
+if [ $# -ne 1 ]; then
+  usage
+fi
+
+USER=$1
+
+THEHIVE_KEY=$(lookup_pillar hivekey)
+THEHVIE_API_URL="$(lookup_pillar url_base)/thehive/api"
+THEHIVE_USER=$USER
+
+# Read password for new user from stdin
+test -t 0
+if [[ $? == 0 ]]; then
+  echo "Enter new password:"
+fi
+read -rs THEHIVE_PASS
+
+if ! check_password "$THEHIVE_PASS"; then
+  echo "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password."
+  exit 2
+fi
+
+# Change password for user in TheHive
+resp=$(curl -sk -XPOST -H "Authorization: Bearer $THEHIVE_KEY" -H "Content-Type: application/json" -L "https://$THEHVIE_API_URL/user/${THEHIVE_USER}/password/set" -d "{\"password\" : \"$THEHIVE_PASS\"}")
+if [[ -z "$resp" ]]; then
+    echo "Successfully updated TheHive user password"
+else
+    echo "Unable to update TheHive user password"
+    echo $resp
+    exit 2
+fi
