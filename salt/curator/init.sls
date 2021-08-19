@@ -158,6 +158,13 @@ delete_so-curator_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-curator$
     {% endif %}
+
+  {% else %}
+delete_so-curator_so-status:
+  file.line:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - match: ^so-curator$
+    - mode: delete
   {% endif %}
 
 # Begin Curator Cron Jobs

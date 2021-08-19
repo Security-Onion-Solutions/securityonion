@@ -4,9 +4,12 @@
 {% do CURATOROPTIONS.update({'manage_sostatus': True}) %}
 
 # don't start the docker container if curator is disabled via pillar
-{% if not ENABLED %}
+{% if not ENABLED or grains.id.split('_')|last == 'manager'%}
   {% do CURATOROPTIONS.update({'start': False}) %}
   {% do CURATOROPTIONS.update({'status': 'absent'}) %}
+  {% if grains.id.split('_')|last == 'manager' %}
+    {% do CURATOROPTIONS.update({'manage_sostatus': False}) %}
+  {% endif %}
 {% else %}
   {% do CURATOROPTIONS.update({'start': True}) %}
   {% do CURATOROPTIONS.update({'status': 'running'}) %}
