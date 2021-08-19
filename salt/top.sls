@@ -189,7 +189,6 @@ base:
     {%- if KIBANA %}
     - kibana
     {%- endif %}
-    - curator
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
