@@ -6,6 +6,9 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+{% import_yaml 'kibana/defaults.yaml' as default_settings %}
+{% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
+
 # Add ES Group
 kibanasearchgroup:
   group.present:
@@ -94,9 +97,12 @@ append_so-kibana_so-status.conf:
 kibanadashtemplate:
   file.managed:
     - name: /opt/so/conf/kibana/saved_objects.ndjson.template
-    - source: salt://kibana/files/saved_objects.ndjson
+    - source: salt://kibana/files/saved_objects.ndjson.jinja
     - user: 932
     - group: 939
+    - template: jinja
+    - defaults:
+        DASHBOARD: {{ KIBANA_SETTINGS.dashboard }}
 
 so-kibana-config-load:
   cmd.run:

@@ -1,0 +1,235 @@
+{
+  "aliasColors": {},
+  "dashLength": 10,
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {
+      "links": []
+    },
+    "overrides": []
+  },
+  "gridPos": {
+    "x": {{ PANELS.zeek_packet_loss_graph.gridPos.x }},
+    "y": {{ PANELS.zeek_packet_loss_graph.gridPos.y }},
+    "w": {{ PANELS.zeek_packet_loss_graph.gridPos.w }},
+    "h": {{ PANELS.zeek_packet_loss_graph.gridPos.h }}
+  },
+  "id": 2022,
+  "interval": "30s",
+  "legend": {
+    "alignAsTable": true,
+    "avg": true,
+    "current": true,
+    "hideEmpty": true,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sort": "current",
+    "sortDesc": true,
+    "total": false,
+    "values": true
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "maxDataPoints": 750,
+  "nullPointMode": "connected",
+  "options": {
+    "alertThreshold": true
+  },
+  "pluginVersion": "7.5.4",
+  "pointradius": 2,
+  "renderer": "flot",
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:314",
+      "alias": "/Trend/",
+      "dashLength": 4,
+      "dashes": true,
+      "fill": 0,
+      "linewidth": 4
+    }
+  ],
+  "spaceLength": 10,
+  "targets": [
+    {
+      "alias": "Current $tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "zeekdrop",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "drop"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "* 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    },
+    {
+      "alias": "Trend  $tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "role"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": {{ PANELS.zeek_packet_loss_graph.get('hideTrend', false)|json }},
+      "measurement": "zeekdrop",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_drop"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "* 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "title": "Zeek Packet Loss",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "$$hashKey": "object:327",
+      "decimals": null,
+      "format": "percent",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": 0,
+      "show": true
+    },
+    {
+      "$$hashKey": "object:328",
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": false
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "bars": false,
+  "cacheTimeout": null,
+  "dashes": false,
+  "fill": 0,
+  "fillGradient": 0,
+  "hiddenSeries": false,
+  "percentage": false,
+  "points": false,
+  "stack": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null
+}

@@ -4,8 +4,9 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone'] %}
+{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
   {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+  {% from "curator/map.jinja" import CURATOROPTIONS with context %}
 # Curator
 # Create the group
 curatorgroup:
@@ -118,8 +119,10 @@ so-curatordeletecron:
    - dayweek: '*'
 
 so-curator:
-  docker_container.running:
+  docker_container.{{ CURATOROPTIONS.status }}:
+  {% if CURATOROPTIONS.status == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-curator:{{ VERSION }}
+    - start: {{ CURATOROPTIONS.start }}
     - hostname: curator
     - name: so-curator
     - user: curator
@@ -129,11 +132,33 @@ so-curator:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
       - /opt/so/log/curator:/var/log/curator:rw
+    - require:
+      - file: actionconfs
+      - file: curconf
+      - file: curlogdir
+  {% else %}
+    - force: True
+  {% endif %}
 
+  {% if CURATOROPTIONS.manage_sostatus %}
 append_so-curator_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-curator
+    - unless: grep -q so-curator /opt/so/conf/so-status/so-status.conf
+
+    {% if not CURATOROPTIONS.start %}
+so-curator_so-status.disabled:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-curator$
+    {% else %}
+delete_so-curator_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-curator$
+    {% endif %}
+  {% endif %}
 
 # Begin Curator Cron Jobs
 

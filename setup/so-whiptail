@@ -959,33 +959,18 @@ whiptail_management_interface_gateway() {
 whiptail_management_interface_ip_mask() {
 	[ -n "$TESTING" ] && return
 
-	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter your IPv4 address with CIDR mask (e.g. 192.168.1.2/24):" 10 60 "$1" 3>&1 1>&2 2>&3)
+	local msg
+	read -r -d '' msg <<- EOM
+	What IPv4 address would you like to assign to this Security Onion installation?
+
+	Please enter the IPv4 address with CIDR mask
+	(e.g. 192.168.1.2/24):
+	EOM
+
+	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox "$msg" 12 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_management_interface_ip() {
-
-	[ -n "$TESTING" ] && return
-
-	MIP=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter your IP address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_management_interface_mask() {
-
-	[ -n "$TESTING" ] && return
-
-	MMASK=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the bit mask for your subnet:" 10 60 24 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+	# whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_management_nic() {
@@ -1661,11 +1646,16 @@ whiptail_set_redirect() {
 
 	[ -n "$TESTING" ] && return
 
+	local options=()
+	options+=( "IP" "Use IP address to access the web interface" ON )
+	[[ $no_use_hostname != true ]] && options+=( "HOSTNAME" "Use hostname to access the web interface" OFF )
+	options+=("OTHER" "Use a different name like a FQDN or Load Balancer" OFF)
+
 	REDIRECTINFO=$(whiptail --title "$whiptail_title" --radiolist \
-	"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
-	"IP" "Use IP address to access the web interface" ON  \
-	"HOSTNAME" "Use hostname to access the web interface" OFF \
-	"OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
+		"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
+		"${options[@]}" \
+		3>&1 1>&2 2>&3 
+	)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
@@ -1729,7 +1719,7 @@ whiptail_so_allow_yesno() {
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "$whiptail_title" \
-		--yesno "Do you want to run so-allow to allow access to the web tools?" \
+		--yesno "Do you want to run so-allow to allow other machines to access this Security Onion installation via the web interface?" \
 		8 75
 }
 
@@ -1844,18 +1834,36 @@ whiptail_suricata_pins() {
 
 }
 
-whiptail_node_updates() {
+# shellcheck disable=2120
+whiptail_uppercase_warning() {
 
 	[ -n "$TESTING" ] && return
+	
+	local type=$1
 
-	NODEUPDATES=$(whiptail --title "$whiptail_title" --radiolist \
-	"How would you like to download OS package updates for your grid?" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates." ON \
-	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+	local msg
+	if [[ -z $type ]]; then
+		type="hostname"
+		read -r -d '' msg <<- EOM
+		The value "$HOSTNAME" contains uppercase characters.
+		
+		Continuing with this hostname could render the system unusable in certain cases, and will also disable the option later in setup to access Security Onion's web interface via the hostname.
+		EOM
+	else
+		read -r -d '' msg <<- EOM
+		The value "$REDIRECTHOST" contains uppercase characters.
+		
+		Continuing with this value could render the system unusable in certain cases.
+		EOM
+	fi
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+	read -r -d '' msg <<- EOM
+	$msg
 
+	For best results, it is recommended to only use lowercase ${type}s with Security Onion. For more information see https://docs.securityonion.com/uppercase (URL TBD)
+	EOM
+
+	whiptail --title "$whiptail_title" --yesno "$msg" --yes-button "Continue anyway" --no-button "Go back" --defaultno 16 75
 }
 
 whiptail_you_sure() {

@@ -182,6 +182,37 @@ check_airgap() {
   fi
 }
 
+# {% raw %}
+
+check_local_mods() {
+  local salt_local=/opt/so/saltstack/local
+
+  local_mod_arr=()
+
+  while IFS= read -r -d '' local_file; do
+    stripped_path=${local_file#"$salt_local"}
+    default_file="${DEFAULT_SALT_DIR}${stripped_path}"
+    if [[ -f $default_file ]]; then
+      file_diff=$(diff "$default_file" "$local_file" )
+      if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
+        local_mod_arr+=( "$local_file" )
+      fi
+    fi
+  done< <(find $salt_local -type f -print0)
+
+  if [[ ${#local_mod_arr} -gt 0 ]]; then
+    echo "Potentially breaking changes found in the following files (check ${DEFAULT_SALT_DIR} for original copy):"
+    for file_str in "${local_mod_arr[@]}"; do
+      echo "  $file_str"
+    done
+    echo ""
+    echo "To reference this list later, check $SOUP_LOG"
+    sleep 10
+  fi
+}
+
+# {% endraw %}
+
 check_sudoers() {
   if grep -q "so-setup" /etc/sudoers; then
     echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
@@ -955,6 +986,8 @@ main() {
         echo ""
       fi
     fi
+
+    check_local_mods
 
     check_sudoers
 

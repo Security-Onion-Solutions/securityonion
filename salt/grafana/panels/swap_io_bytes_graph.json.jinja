@@ -1,0 +1,180 @@
+{
+  "type": "graph",
+  "title": "Swap I/O Bytes",
+  "gridPos": {
+    "x": {{ PANELS.swap_io_bytes_graph.gridPos.x }},
+    "y": {{ PANELS.swap_io_bytes_graph.gridPos.y }},
+    "w": {{ PANELS.swap_io_bytes_graph.gridPos.w }},
+    "h": {{ PANELS.swap_io_bytes_graph.gridPos.h }}
+  },
+  "id": 68890,
+  "targets": [
+    {
+      "refId": "A",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "query": "SELECT non_negative_derivative(mean(\"in\")) as \"in\", non_negative_derivative(mean(\"out\")) as \"out\" FROM \"swap\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "alias": "$tag_host: $col"
+    },
+    {
+      "refId": "B",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "query": "SELECT non_negative_derivative(mean(\"mean_in\")) as \"trend_in\", non_negative_derivative(mean(\"mean_out\")) as \"trend_out\" FROM \"so_long_term\".\"swap\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "rawQuery": true,
+      "alias": "$tag_host: $col",
+      "hide": false
+    }
+  ],
+  "options": {
+    "alertThreshold": true
+  },
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "pluginVersion": "7.5.4",
+  "renderer": "flot",
+  "yaxes": [
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "bytes",
+      "$$hashKey": "object:156"
+    },
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "short",
+      "$$hashKey": "object:157"
+    }
+  ],
+  "xaxis": {
+    "show": true,
+    "mode": "time",
+    "name": null,
+    "values": [],
+    "buckets": null
+  },
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "lines": true,
+  "fill": 1,
+  "linewidth": 1,
+  "dashLength": 10,
+  "spaceLength": 10,
+  "pointradius": 2,
+  "legend": {
+    "show": true,
+    "values": true,
+    "min": false,
+    "max": true,
+    "current": true,
+    "total": false,
+    "avg": true,
+    "alignAsTable": true
+  },
+  "nullPointMode": "connected",
+  "tooltip": {
+    "value_type": "individual",
+    "shared": true,
+    "sort": 0
+  },
+  "aliasColors": {},
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:322",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "fillGradient": 0,
+  "dashes": false,
+  "hiddenSeries": false,
+  "points": false,
+  "bars": false,
+  "stack": false,
+  "percentage": false,
+  "steppedLine": false,
+  "timeFrom": null,
+  "timeShift": null,
+  "maxDataPoints": 750,
+  "interval": "30s"
+}
