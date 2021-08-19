@@ -195,6 +195,7 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
+    - curator
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
