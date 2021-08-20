@@ -7,9 +7,9 @@
 2.3.70-CURATOR ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-2.3.70-CURATOR.iso
 
-MD5: FECB0156F1E3BC9BD1E074FF8C6B2B6D  
-SHA1: 38C1AF89C2CFFD7777E4E7A7C8DA1FEC5BB163D5  
-SHA256: 38835C6096E859E3FDD1253678312AEC15BD95A08F681B86D84990A4094B48DC 
+MD5: E0F7882E37B1B6BC4F9A6C8FD6F213F6  
+SHA1: 82E1204BAD9489B275A083A642F175E352F9A332  
+SHA256: 147CA7F5082273EDCC32EF6322D86A04CCB2E96B3A7F0B01EFA8A029BD84C3D7 
 
 Signature for ISO image:  
 https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.70-CURATOR.iso.sig
@@ -41,7 +41,7 @@ gpg --verify securityonion-2.3.70-CURATOR.iso.sig securityonion-2.3.70-CURATOR.i
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Fri 20 Aug 2021 11:26:28 AM EDT using RSA key ID FE507013
+gpg: Signature made Fri 20 Aug 2021 01:23:59 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
