@@ -189,13 +189,13 @@ base:
     {%- if KIBANA %}
     - kibana
     {%- endif %}
-    - curator
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
+    - curator
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}

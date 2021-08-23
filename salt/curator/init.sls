@@ -4,6 +4,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% set REMOVECURATORCRON = False %}
 {% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
   {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
   {% from "curator/map.jinja" import CURATOROPTIONS with context %}
@@ -88,36 +89,6 @@ curdel:
     - group: 939
     - mode: 755
 
-so-curatorcloseddeletecron:
- cron.present:
-   - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
-   - user: root
-   - minute: '*'
-   - hour: '*'
-   - daymonth: '*'
-   - month: '*'
-   - dayweek: '*'
-
-so-curatorclosecron:
- cron.present:
-   - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
-   - user: root
-   - minute: '*'
-   - hour: '*'
-   - daymonth: '*'
-   - month: '*'
-   - dayweek: '*'
-
-so-curatordeletecron:
- cron.present:
-   - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
-   - user: root
-   - minute: '*'
-   - hour: '*'
-   - daymonth: '*'
-   - month: '*'
-   - dayweek: '*'
-
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
   {% if CURATOROPTIONS.status == 'running' %}
@@ -152,12 +123,77 @@ so-curator_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-curator$
+
+      # need to remove cronjobs here since curator is disabled
+      {% set REMOVECURATORCRON = True %}    
     {% else %}
 delete_so-curator_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-curator$
+
     {% endif %}
+
+  {% else %}
+delete_so-curator_so-status:
+  file.line:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - match: ^so-curator$
+    - mode: delete
+
+    # need to remove cronjobs here since curator is disabled
+    {% set REMOVECURATORCRON = True %}
+
+  {% endif %}
+
+  {% if REMOVECURATORCRON %}
+so-curatorcloseddeletecron:
+ cron.absent:
+   - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
+   - user: root
+
+so-curatorclosecron:
+ cron.absent:
+   - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
+   - user: root
+
+so-curatordeletecron:
+ cron.absent:
+   - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
+   - user: root
+
+  {% else %}
+
+so-curatorcloseddeletecron:
+ cron.present:
+   - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
+   - user: root
+   - minute: '*'
+   - hour: '*'
+   - daymonth: '*'
+   - month: '*'
+   - dayweek: '*'
+
+so-curatorclosecron:
+ cron.present:
+   - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
+   - user: root
+   - minute: '*'
+   - hour: '*'
+   - daymonth: '*'
+   - month: '*'
+   - dayweek: '*'
+
+so-curatordeletecron:
+ cron.present:
+   - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
+   - user: root
+   - minute: '*'
+   - hour: '*'
+   - daymonth: '*'
+   - month: '*'
+   - dayweek: '*'
+
   {% endif %}
 
 # Begin Curator Cron Jobs
