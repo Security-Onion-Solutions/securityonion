@@ -12,15 +12,20 @@
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
 
+{% set ALLOWED_DASHBOARDS = ['overview', 'standalone', 'manager', 'managersearch', 'sensor', 'searchnode', 'heavynode', 'eval'] %}
 {% set DASHBOARDS = ['overview'] %}
 {% if grains.role == 'so-eval' %}
   {% do DASHBOARDS.append('eval') %}
 {% else %}
   {# Grab a unique listing of nodetypes that exists so that we create only the needed dashboards #}
   {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
-    {% do DASHBOARDS.append(dashboard) %}
+    {% if dashboard id ALLOWED_DASHBOARDS %}
+      {% do DASHBOARDS.append(dashboard) %}
+    {% endif %}
   {% endfor %}
 {% endif %}
+
+
 
 # Grafana all the things
 grafanadir:
