@@ -10,7 +10,7 @@
 
 soctopusdir:
   file.directory:
-    - name: /opt/so/conf/soctopus
+    - name: /opt/so/conf/soctopus/sigma-import
     - user: 939
     - group: 939
     - makedirs: True
@@ -63,6 +63,7 @@ so-soctopus:
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
       - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
+      - /opt/so/conf/soctopus/sigma-import/:/SOCtopus/sigma-import/:rw    
       {% if ISAIRGAP is sameas true %}
       - /nsm/repo/rules/sigma:/soctopus/sigma
       {% endif %}
