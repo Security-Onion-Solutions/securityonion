@@ -107,10 +107,10 @@ commonpkgs:
 heldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.4.4-1
-      - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
+      - containerd.io: 1.4.9-1
+      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
+      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
+      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
     - hold: True
     - update_holds: True
 

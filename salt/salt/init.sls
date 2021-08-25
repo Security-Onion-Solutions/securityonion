@@ -2,8 +2,8 @@
 saltpymodules:
   pkg.installed:
     - pkgs:
-      - python-docker
-      - python-m2crypto
+      - python3-docker
+      - python3-m2crypto
 {% endif %}
 
 salt_bootstrap:

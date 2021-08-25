@@ -3080,15 +3080,12 @@ install_ubuntu_git_deps() {
 
             if [ -n "$_PY_EXE" ] && [ "$_PY_MAJOR_VERSION" -eq 3 ]; then
                 __PACKAGES="${__PACKAGES} python3-setuptools"
-            else
-                # There is no m2crypto package for Py3 at this time - only install for Py2
-                __PACKAGES="${__PACKAGES} python-m2crypto"
             fi
 
             __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-crypto python${PY_PKG_VER}-jinja2"
             __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-msgpack python${PY_PKG_VER}-requests"
             __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-tornado python${PY_PKG_VER}-yaml"
-            __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-zmq"
+            __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-zmq python${PY_PKG_VER}-m2crypto"
             __PACKAGES="${__PACKAGES} python-concurrent.futures"
 
             if [ "$_INSTALL_CLOUD" -eq $BS_TRUE ]; then

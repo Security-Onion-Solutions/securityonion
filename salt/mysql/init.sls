@@ -22,7 +22,7 @@ mysqlpkgs:
     - skip_suggestions: False
     - pkgs:
       {% if grains['os'] != 'CentOS' %}
-      - python-mysqldb
+      - python3-mysqldb
       {% else %}
       - MySQL-python
       {% endif %}
