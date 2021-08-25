@@ -15,6 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -36,6 +38,7 @@
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+{% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 
 
 vm.max_map_count:
@@ -141,6 +144,14 @@ esyml:
     - user: 930
     - group: 939
     - template: jinja
+
+esyml_test:
+  file.managed:
+    - name: /tmp/elasticsearch.yml
+    - source: salt://elasticsearch/files/elasticsearch.yml
+    - user: 930
+    - group: 939
+    - contents: {{ ESCONFIG | yaml }}
 
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
