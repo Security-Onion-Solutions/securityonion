@@ -148,7 +148,6 @@ esyml:
 esyml_test:
   file.managed:
     - name: /tmp/elasticsearch.yml
-    - source: salt://elasticsearch/files/elasticsearch.yml
     - user: 930
     - group: 939
     - contents: {{ ESCONFIG | yaml }}
