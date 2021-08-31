@@ -167,22 +167,7 @@ so-curatordeletecron:
 
   {% else %}
 
-    {% if TRUECLUSTER is sameas true %}
-so-curatorcloseddeletecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
-    - user: root
-
-so-curatorclosecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
-    - user: root
-
-so-curatordeletecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
-    - user: root
-   
+    {% if TRUECLUSTER is sameas true %}  
 so-curatorclusterclose:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
