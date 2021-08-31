@@ -1,4 +1,4 @@
-{%- set cur_close_days = salt['pillar.get']('elasticsearch:index_settings:so-radware:close', 30) -%}
+{%- set DELETE_DAYS = salt['pillar.get']('elasticsearch:index_settings:so-kibana:delete', 365) -%}
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
 # not a Python "NoneType"
@@ -8,22 +8,22 @@
 # copying it.
 actions:
   1:
-    action: close
+    action: delete_indices
     description: >-
-      Close radware indices older than {{cur_close_days}} days.
+      Delete kibana indices when older than {{ DELETE_DAYS }} days.
     options:
-      delete_aliases: False
-      timeout_override:
-      continue_if_exception: False
+      ignore_empty_list: True
       disable_action: False
     filters:
     - filtertype: pattern
-      kind: regex 
-      value: '^(logstash-radware.*|so-radware.*)$'
+      kind: regex
+      value: '^(logstash-kibana.*|so-kibana.*)$'
     - filtertype: age
       source: name
       direction: older
       timestring: '%Y.%m.%d'
       unit: days
-      unit_count: {{cur_close_days}}
+      unit_count: {{ DELETE_DAYS }}
       exclude:
+  
+      
