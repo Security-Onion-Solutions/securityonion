@@ -1,4 +1,4 @@
-### 2.3.70-WAZUH ISO image built on 2021/08/23
+### 2.3.70-WAZUH ISO image built on 2021/08/30
 
 
 
