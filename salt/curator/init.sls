@@ -92,6 +92,30 @@ curdel:
     - group: 939
     - mode: 755
 
+curclusterclose: 
+  file.managed:
+    - name: /usr/sbin/so-curator-cluster-close
+    - source: salt://curator/files/bin/so-curator-cluster-close
+    - user: 934
+    - group: 939
+    - mode: 755
+
+curclusterdelete: 
+  file.managed:
+    - name: /usr/sbin/so-curator-cluster-delete
+    - source: salt://curator/files/bin/so-curator-cluster-delete
+    - user: 934
+    - group: 939
+    - mode: 755
+
+curclustercwarm: 
+  file.managed:
+    - name: /usr/sbin/so-curator-cluster-warm
+    - source: salt://curator/files/bin/so-curator-cluster-warm
+    - user: 934
+    - group: 939
+    - mode: 755
+    
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
   {% if CURATOROPTIONS.status == 'running' %}
