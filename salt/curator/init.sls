@@ -197,7 +197,7 @@ so-curatorclusterwarm:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
-        {% endif %%}
+        {% endif %}
 
     {% else %}
 so-curatorcloseddeletecron:
