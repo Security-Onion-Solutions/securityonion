@@ -99,6 +99,7 @@ curclusterclose:
     - user: 934
     - group: 939
     - mode: 755
+    - template: jinja
 
 curclusterdelete: 
   file.managed:
@@ -107,6 +108,7 @@ curclusterdelete:
     - user: 934
     - group: 939
     - mode: 755
+    - template: jinja
 
 curclustercwarm: 
   file.managed:
@@ -115,7 +117,8 @@ curclustercwarm:
     - user: 934
     - group: 939
     - mode: 755
-    
+    - template: jinja
+
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
   {% if CURATOROPTIONS.status == 'running' %}
