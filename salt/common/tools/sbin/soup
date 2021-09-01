@@ -127,7 +127,7 @@ EOF
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
         echo "Something went wrong trying to mount the ISO."
         echo "Ensure you verify the ISO that you downloaded."
-        exit 1
+        exit 0
       else
         echo "ISO has been mounted!"
       fi  
@@ -140,14 +140,14 @@ EOF
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
         echo "Something went wrong trying to mount the device."
         echo "Ensure you verify the ISO that you downloaded."
-        exit 1
+        exit 0
       else
         echo "Device has been mounted!"
       fi
     else
       echo "Could not find Security Onion ISO content at ${ISOLOC}" 
       echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
-      exit 1
+      exit 0
     fi
   fi
 }
@@ -157,7 +157,7 @@ airgap_update_dockers() {
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
-      exit 1
+      exit 0
     else
       echo "Stopping the registry docker"
       docker stop so-dockerregistry
@@ -631,7 +631,7 @@ upgrade_space() {
     clean_dockers
     if ! verify_upgradespace; then
       echo "There is not enough space to perform the upgrade. Please free up space and try again"
-      exit 1
+      exit 0
     fi
   else
       echo "You have enough space for upgrade. Proceeding with soup."
@@ -788,7 +788,7 @@ main() {
   check_airgap
   if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
     echo "Missing file argument for unattended airgap upgrade."
-    exit 1
+    exit 0
   fi
   echo "Checking to see if this is a manager."
   echo ""
@@ -885,7 +885,7 @@ main() {
       echo "Once the issue is resolved, run soup again."
       echo "Exiting."
       echo ""
-      exit 1
+      exit 0
     else
       echo "Salt upgrade success."
       echo ""
