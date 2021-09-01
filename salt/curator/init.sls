@@ -83,6 +83,7 @@ curclose:
     - user: 934
     - group: 939
     - mode: 755
+    - template: jinja
 
 curdel:
   file.managed:
