@@ -105,17 +105,20 @@ add_common() {
 
 airgap_mounted() {
   # Let's see if the ISO is already mounted. 
-  if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+  if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
     echo "The ISO is already mounted"
   else
-    echo ""
-    cat << EOF
+    if [[ -z $ISOLOC ]]; then
+      echo "This is airgap. Ask for a location."
+      echo ""
+      cat << EOF
 In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided. 
 For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso. 
 Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom.
 
 EOF
-    read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+      read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+    fi
     if [[ -f $ISOLOC ]]; then
       # Mounting the ISO image
       mkdir -p /tmp/soagupdate
@@ -131,7 +134,7 @@ EOF
     elif [[ -f $ISOLOC/SecurityOnion/VERSION ]]; then
       ln -s $ISOLOC /tmp/soagupdate
       echo "Found the update content"
-    else 
+    elif [[ -b $ISOLOC ]]; then
       mkdir -p /tmp/soagupdate
       mount $ISOLOC /tmp/soagupdate
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
@@ -140,7 +143,11 @@ EOF
         exit 0
       else
         echo "Device has been mounted!"
-      fi        
+      fi
+    else
+      echo "Could not find Security Onion ISO content at ${ISOLOC}" 
+      echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
+      exit 0
     fi
   fi
 }
@@ -150,7 +157,7 @@ airgap_update_dockers() {
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
-      exit 1
+      exit 0
     else
       echo "Stopping the registry docker"
       docker stop so-dockerregistry
@@ -624,7 +631,7 @@ upgrade_space() {
     clean_dockers
     if ! verify_upgradespace; then
       echo "There is not enough space to perform the upgrade. Please free up space and try again"
-      exit 1
+      exit 0
     fi
   else
       echo "You have enough space for upgrade. Proceeding with soup."
@@ -774,39 +781,23 @@ verify_latest_update_script() {
 }
 
 main() {
-  set -e
-  set +e
   trap 'check_err $?' EXIT
   
-  echo "### Preparing soup at $(date) ###"
-  while getopts ":b" opt; do
-    case "$opt" in
-      b ) # process option b
-        shift
-        BATCHSIZE=$1
-        if ! [[ "$BATCHSIZE" =~ ^[0-9]+$ ]]; then
-          echo "Batch size must be a number greater than 0."
-          exit 1
-        fi
-      ;;
-      \? ) 
-        echo "Usage: cmd [-b]"
-      ;;
-    esac
-  done
-
+  echo "Checking to see if this is an airgap install."
+  echo ""
+  check_airgap
+  if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
+    echo "Missing file argument for unattended airgap upgrade."
+    exit 0
+  fi
   echo "Checking to see if this is a manager."
   echo ""
   require_manager
   set_minionid
-  echo "Checking to see if this is an airgap install."
-  echo ""
-  check_airgap
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
-    echo "This is airgap. Ask for a location."
     airgap_mounted
   else
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
@@ -894,7 +885,7 @@ main() {
       echo "Once the issue is resolved, run soup again."
       echo "Exiting."
       echo ""
-      exit 1
+      exit 0
     else
       echo "Salt upgrade success."
       echo ""
@@ -1029,7 +1020,40 @@ EOF
   echo "### soup has been served at $(date) ###"
 }
 
-cat << EOF
+while getopts ":b:f:y" opt; do
+  case ${opt} in
+    b )
+      BATCHSIZE="$OPTARG"
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Batch size must be a number greater than 0."
+        exit 1
+      fi
+    ;;
+    y )
+      if [[ ! -f /opt/so/state/yeselastic.txt ]]; then
+        echo "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
+        exit 1
+      else
+        UNATTENDED=true 
+      fi
+    ;;
+    f )
+      ISOLOC="$OPTARG"
+    ;;
+    \? ) 
+      echo "Usage: soup [-b] [-y] [-f <iso location>]"
+      exit 1
+    ;;
+    : )
+      echo "Invalid option: $OPTARG requires an argument"
+      exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z $UNATTENDED ]]; then
+  cat << EOF
 
 SOUP - Security Onion UPdater
 
@@ -1041,7 +1065,9 @@ Press Enter to continue or Ctrl-C to cancel.
 
 EOF
 
-read -r input
+  read -r input
+fi
 
+echo "### Preparing soup at $(date) ###"
 main "$@" | tee -a $SOUP_LOG
   
