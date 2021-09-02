@@ -1,0 +1,29 @@
+{%- set DELETE_DAYS = salt['pillar.get']('elasticsearch:index_settings:so-snyk:delete', 365) -%}
+---
+# Remember, leave a key empty if there is no value.  None will be a string,
+# not a Python "NoneType"
+#
+# Also remember that all examples have 'disable_action' set to True.  If you
+# want to use this action as a template, be sure to set this to False after
+# copying it.
+actions:
+  1:
+    action: delete_indices
+    description: >-
+      Delete snyk indices when older than {{ DELETE_DAYS }} days.
+    options:
+      ignore_empty_list: True
+      disable_action: False
+    filters:
+    - filtertype: pattern
+      kind: regex
+      value: '^(logstash-snyk.*|so-snyk.*)$'
+    - filtertype: age
+      source: name
+      direction: older
+      timestring: '%Y.%m.%d'
+      unit: days
+      unit_count: {{ DELETE_DAYS }}
+      exclude:
+  
+      
