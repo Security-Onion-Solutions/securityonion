@@ -20,7 +20,7 @@ source $(dirname $0)/so-common
 
 DEFAULT_ROLE=analyst
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
+if [[ $# -lt 1 || $# -gt 3 ]]; then
   echo "Usage: $0 <operation> [email] [role]"
   echo ""
   echo " where <operation> is one of the following:"
@@ -197,7 +197,7 @@ function syncElasticSystemRole() {
 function syncElastic() {
   echo "Syncing users between SOC and Elastic..."
   ensureRoleFileExists
-  
+
   usersTmpFile="${elasticUsersFile}.tmp"
   createElasticFile "${usersTmpFile}"
 
@@ -255,7 +255,7 @@ function listUsers() {
 
   users=$(echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort)
   for user in $users; do
-    roles=$(grep "$user" users_roles | cut -d: -f1 | tr '\n' ' ')
+    roles=$(grep "$user" "$elasticRolesFile" | cut -d: -f1 | tr '\n' ' ')
     echo "$user: $roles"
   done
 }
@@ -264,14 +264,14 @@ function addUserRole() {
   email=$1
   role=$2
 
-  return adjustUserRole "$email" "$role" "add"
+  adjustUserRole "$email" "$role" "add"
 }
 
 function deleteUserRole() {
   email=$1
   role=$2
 
-  return adjustUserRole "$email" "$role" "del"
+  adjustUserRole "$email" "$role" "del"
 }
 
 function adjustUserRole() {
@@ -285,9 +285,10 @@ function adjustUserRole() {
   ensureRoleFileExists
 
   filename="$elasticRolesFile"
-  grep "$role:" "$elasticRolesFile" | grep "$email" && hasRole=1
+  hasRole=0
+  grep "$role:" "$elasticRolesFile" | grep -q "$email" && hasRole=1
   if [[ "$op" == "add" ]]; then
-    if [[ "$hasRole" -eq 1 ]]; then
+    if [[ "$hasRole" == "1" ]]; then
       fail "User '$email' already has the role: $role"
     else
       echo "$role:$email" >> "$filename"
@@ -299,15 +300,13 @@ function adjustUserRole() {
       sed -i "/^$role:$email\$/d" "$filename"
     fi
   else
-    echo "Unsupported role adjustment operation: $op"
-    exit 1
+    fail "Unsupported role adjustment operation: $op"
   fi
-  return 0
 }
 
 function createUser() {
   email=$1
-  role=$1
+  role=$2
 
   now=$(date -u +%FT%TZ)
   addUserJson=$(cat <<EOF
@@ -328,7 +327,7 @@ EOF
 
     reason=$(echo "${response}" | jq ".error.message")
     [[ $? == 0 ]] && fail "Unable to add user: ${reason}"
-
+  else
     addUserRole "$email" "$role"
   fi
 
