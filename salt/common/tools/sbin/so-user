@@ -150,6 +150,23 @@ function createElasticFile() {
   chown "${esUID}:${esGID}" "$filename"
 }
 
+function ensureRoleFileExists() {
+  if [ ! -f "$elasticRolesFile" ]; then
+    echo "Creating new roles file: $elasticRolesFile"
+    rolesTmpFile="${elasticRolesFile}.tmp"
+    createElasticFile "${rolesTmpFile}"
+    authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
+    syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesTmpFile"
+    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$rolesTmpFile"
+    mv "${rolesTmpFile}" "${elasticRolesFile}"
+  fi
+}
+
 function syncElasticSystemUser() {
   json=$1
   userid=$2
@@ -179,6 +196,8 @@ function syncElasticSystemRole() {
 
 function syncElastic() {
   echo "Syncing users between SOC and Elastic..."
+  ensureRoleFileExists
+  
   usersTmpFile="${elasticUsersFile}.tmp"
   createElasticFile "${usersTmpFile}"
 
@@ -263,19 +282,7 @@ function adjustUserRole() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  if [ ! -f "$filename" ]; then
-    rolesTmpFile="${elasticRolesFile}.tmp"
-    createElasticFile "${rolesTmpFile}"
-    authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
-    syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesTmpFile"
-    syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$rolesTmpFile"
-    mv "${rolesTmpFile}" "${elasticRolesFile}"
-  fi
+  ensureRoleFileExists
 
   filename="$elasticRolesFile"
   grep "$role:" "$elasticRolesFile" | grep "$email" && hasRole=1
