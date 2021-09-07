@@ -289,25 +289,31 @@ check_os_updates() {
     OSUPDATES=$(yum -q list updates | wc -l)
   fi
   if [[ "$OSUPDATES" -gt 0 ]]; then
-      echo $NEEDUPDATES
-      echo ""
-      read -p "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
-
-      if [[ "$confirm" == [cC] ]]; then
+      if [[ -z $UNATTENDED ]]; then
+        echo "$NEEDUPDATES"
+        echo ""
+        read -rp "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+        if [[ "$confirm" == [cC] ]]; then
           echo "Continuing without updating packages"
-      elif [[ "$confirm" == [uU] ]]; then
+        elif [[ "$confirm" == [uU] ]]; then
           echo "Applying Grid Updates"
-          set +e
-          run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
-          set -e
-      else
+          update_flag=true
+        else
           echo "Exiting soup"
           exit 0
+        fi
+      else
+        update_flag=true
       fi
   else
-      echo "Looks like you have an updated OS"
+    echo "Looks like you have an updated OS"
   fi
-    
+
+  if [[ $update_flag == true ]]; then
+    set +e
+    run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
+    set -e
+  fi
 }
 
 clean_dockers() {
@@ -787,7 +793,7 @@ main() {
   echo ""
   check_airgap
   if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
-    echo "Missing file argument for unattended airgap upgrade."
+    echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
     exit 0
   fi
   echo "Checking to see if this is a manager."
