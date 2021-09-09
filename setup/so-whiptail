@@ -110,13 +110,6 @@ whiptail_check_exitstatus() {
 	esac
 }
 
-whiptail_components_adv_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --msgbox "The next screen will provide the ability to choose optional services to be enabled for this installation. Be aware that the more services you enable the more RAM that is required." 8 75
-}
-
 whiptail_create_admin_user() {
 
 	[ -n "$TESTING" ] && return
@@ -408,9 +401,10 @@ whiptail_enable_components() {
 	PLAYBOOK=0
 	STRELKA=0
 
+description="Choose optional services to be enabled for this installation. Be aware that the more services you enable the more RAM that is required."
 if [[ $is_eval ]]; then
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 8 \
+	"$description" 20 75 8 \
 	GRAFANA "Enable Grafana for system monitoring" ON \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
@@ -419,7 +413,7 @@ if [[ $is_eval ]]; then
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 else
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 7 \
+	"$description" 20 75 7 \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
 	THEHIVE "Enable TheHive" ON \
