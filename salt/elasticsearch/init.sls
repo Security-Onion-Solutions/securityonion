@@ -140,10 +140,9 @@ eslog4jfile:
 esyml:
   file.managed:
     - name: /opt/so/conf/elasticsearch/elasticsearch.yml
-    - source: salt://elasticsearch/files/elasticsearch.yml
+    - contents: {{ ESCONFIG.elasticsearch.cluster_settings | yaml }}
     - user: 930
     - group: 939
-    - template: jinja
 
 esyml_test:
   file.managed:
