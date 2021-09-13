@@ -41,10 +41,7 @@ if [[ $? == 0 ]]; then
 fi
 read -rs FLEET_PASS
 
-if ! check_password "$FLEET_PASS"; then
-  echo "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password."
-  exit 2
-fi
+check_password_and_exit "$FLEET_PASS"
 
 FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_PASS'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
 if [[ $? -ne 0 ]]; then

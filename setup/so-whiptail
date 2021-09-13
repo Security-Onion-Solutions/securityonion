@@ -110,13 +110,6 @@ whiptail_check_exitstatus() {
 	esac
 }
 
-whiptail_components_adv_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
-}
-
 whiptail_create_admin_user() {
 
 	[ -n "$TESTING" ] && return
@@ -408,9 +401,10 @@ whiptail_enable_components() {
 	PLAYBOOK=0
 	STRELKA=0
 
+description="Choose optional services to be enabled for this installation. Be aware that the more services you enable the more RAM that is required."
 if [[ $is_eval ]]; then
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 8 \
+	"$description" 20 75 8 \
 	GRAFANA "Enable Grafana for system monitoring" ON \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
@@ -419,7 +413,7 @@ if [[ $is_eval ]]; then
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 else
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 7 \
+	"$description" 20 75 7 \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
 	THEHIVE "Enable TheHive" ON \
@@ -843,7 +837,7 @@ whiptail_invalid_pass_characters_warning() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "$whiptail_title" --msgbox "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password." 8 75
+	whiptail --title "$whiptail_title" --msgbox "Password is invalid. Please exclude single quotes, double quotes, dollar signs, and backslashes from the password." 8 75
 }
 
 whiptail_invalid_pass_warning() {
@@ -1873,8 +1867,9 @@ whiptail_you_sure() {
 	read -r -d '' you_sure_text <<- EOM
 		Welcome to Security Onion Setup!
 
-		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise.
-		
+		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise. Don't forget to review the documentation at:
+		https://docs.securityonion.net
+
 		Setup uses keyboard navigation and you can use arrow keys to move around.  Certain screens may provide a list and ask you to select one or more items from that list.  You can use [SPACE] to select items and [ENTER] to proceed to the next screen.
 		
 		Would you like to continue?

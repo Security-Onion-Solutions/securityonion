@@ -4,10 +4,10 @@
 {% do CURATOROPTIONS.update({'manage_sostatus': True}) %}
 
 # don't start the docker container if curator is disabled via pillar
-{% if not ENABLED or grains.id.split('_')|last == 'manager'%}
+{% if not ENABLED or (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}
   {% do CURATOROPTIONS.update({'start': False}) %}
   {% do CURATOROPTIONS.update({'status': 'absent'}) %}
-  {% if grains.id.split('_')|last == 'manager' %}
+  {% if (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}
     {% do CURATOROPTIONS.update({'manage_sostatus': False}) %}
   {% endif %}
 {% else %}
