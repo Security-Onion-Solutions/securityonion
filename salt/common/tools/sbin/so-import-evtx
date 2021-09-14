@@ -46,7 +46,7 @@ function evtx2es() {
     so-evtx2es02 \
     --host {{ MANAGERIP }} --scheme https \
     --index so-beats-$INDEX_DATE --pipeline import.wel \
-    --login {{ES_USER}} --pwd {{ES_PW}} "/tmp/$RUNID.evtx" 2>&1
+    --login {{ES_USER}} --pwd {{ES_PW}} "/tmp/$RUNID.evtx" 1>/dev/null 2>/dev/null
 
 
   docker run --rm \
@@ -75,7 +75,7 @@ for i in "$@"; do
   fi
 done
 
-# track if we have any valid or invalid pcaps
+# track if we have any valid or invalid evtx
 INVALID_EVTXS="no"
 VALID_EVTXS="no"
 
@@ -108,13 +108,9 @@ for EVTX in "$@"; do
     EVTX_DIR=$HASH_DIR/evtx
     mkdir -p $EVTX_DIR
 
-    # generate IDS alerts and write them to standard pipeline
+    # import evtx and write them to import ingest pipeline
     echo "- importing logs with evtx2es"
     evtx2es "${EVTX}" $HASH
-
-    #START=$(pcapinfo "${EVTX}" -a |grep "First packet time:" | awk '{print $4}')
-    #END=$(pcapinfo "${EVTX}" -e |grep "Last packet time:" | awk '{print $4}')
-    #echo "- saving EVTX data spanning dates $START through $END"
 
     # compare $START to $START_OLDEST
     START=$(cat /nsm/import/evtx-start_oldest)
