@@ -16,7 +16,7 @@
       {% do ESCONFIG.elasticsearch.cluster_settings.node.update({'roles': ['master', 'data', 'remote_cluster_client']}) %}
       {% do ESCONFIG.elasticsearch.cluster_settings.discovery.update({'seed_hosts': grains.master}) %}
       {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-        {% do ESCONFIG.elasticsearch.cluster_settings.discovery.update({'seed_hosts': SN.split('_')|first}) %}
+        {% do ESCONFIG.elasticsearch.cluster_settings.discovery.seed_hosts.append(SN.split('_')|first) %}
       {% endfor %}
     {% endif %}
     {% if grains.id.split('_') | last == 'managersearch' %}
@@ -28,4 +28,3 @@
     {% do ESCONFIG.elasticsearch.cluster_settings.discovery.update({'seed_hosts': grains.master}) %}
   {% endif %}
 {% endif %}
-
