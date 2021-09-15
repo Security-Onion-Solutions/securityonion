@@ -43,18 +43,19 @@ function evtx2es() {
   
   docker run --rm \
     -v "$EVTX:/tmp/$RUNID.evtx" \
-    so-evtx2es02 \
+    --entrypoint evtx2es \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} \
     --host {{ MANAGERIP }} --scheme https \
     --index so-beats-$INDEX_DATE --pipeline import.wel \
-    --login {{ES_USER}} --pwd {{ES_PW}} "/tmp/$RUNID.evtx" 1>/dev/null 2>/dev/null
-
+    --login {{ES_USER}} --pwd {{ES_PW}} \
+    "/tmp/$RUNID.evtx" 1>/dev/null 2>/dev/null
 
   docker run --rm \
     -v "$EVTX:/tmp/import.evtx" \
     -v "/nsm/import/evtx-end_newest:/tmp/newest" \
     -v "/nsm/import/evtx-start_oldest:/tmp/oldest" \
-    --entrypoint '/calculate_timestamp.sh' \
-    so-evtx2es02
+    --entrypoint '/evtx_calc_timestamps.sh' \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }}
 }
 
 # if no parameters supplied, display usage
@@ -109,7 +110,7 @@ for EVTX in "$@"; do
     mkdir -p $EVTX_DIR
 
     # import evtx and write them to import ingest pipeline
-    echo "- importing logs with evtx2es"
+    echo "- importing logs to Elasticsearch..."
     evtx2es "${EVTX}" $HASH
 
     # compare $START to $START_OLDEST
