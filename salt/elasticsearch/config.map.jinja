@@ -10,10 +10,10 @@
 {% endif %}
 
 {% if salt['pillar.get']('elasticsearch:true_cluster', False) %}
+  {% do ESCONFIG.elasticsearch.cluster_settings.cluster.update({'name': salt['pillar.get']('elasticsearch:true_cluster_name')}) %} {# this is temporary #}
   {% if grains.id.split('_') | last in ['manager','managersearch'] %}
     {% if salt['pillar.get']('nodestab', {}) %}
       {% do ESCONFIG.elasticsearch.cluster_settings.node.roles.extend(['master', 'data', 'remote_cluster_client']) %}
-node.roles: [ master, data, remote_cluster_client ]
       {% do ESCONFIG.elasticsearch.cluster_settings.discovery.seed_hosts.append(grains.master) %}
       {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
         {% do ESCONFIG.elasticsearch.cluster_settings.discovery.seed_hosts.append(SN.split('_')|first) %}
