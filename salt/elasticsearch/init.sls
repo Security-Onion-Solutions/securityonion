@@ -152,7 +152,7 @@ esyml:
     - user: 930
     - group: 939
     - defaults:
-        ESCONFIG: {{ ESCONFIG.elasticsearch.cluster_settings }}
+        ESCONFIG: {{ ESCONFIG.elasticsearch.config }}
     - template: jinja
 
 
