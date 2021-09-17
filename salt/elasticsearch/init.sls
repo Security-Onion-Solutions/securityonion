@@ -152,16 +152,8 @@ esyml:
     - user: 930
     - group: 939
     - defaults:
-        ESCONFIG: {{ ESCONFIG.elasticsearch.config }}
+        ESCONFIG: {{ ESCONFIG }}
     - template: jinja
-
-
-esyml_test:
-  file.managed:
-    - name: /tmp/elasticsearch.yml
-    - user: 930
-    - group: 939
-    - contents: {{ ESCONFIG | yaml }}
 
 #sync templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
