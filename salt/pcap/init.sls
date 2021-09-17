@@ -15,13 +15,14 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from "pcap/map.jinja" import STENOOPTIONS with context %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
 {% set BPF_COMPILED = "" %}
-{% from "pcap/map.jinja" import STENOOPTIONS with context %}
 
 # PCAP Section
 
