@@ -15,6 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states and grains.role not in ['so-manager', 'so-managersearch'] %}
 
+{% from "suricata/map.jinja" import SURICATAOPTIONS with context %}
+
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -136,9 +138,10 @@ suribpf:
    {% endif %}
 
 so-suricata:
-  docker_container.running:
+  docker_container.{{ SURICATAOPTIONS.status }}:
+  {% if SURICATAOPTIONS.status == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
-    - start: {{ START }}
+    - start: {{ SURICATAOPTIONS.start }}
     - privileged: True
     - environment:
       - INTERFACE={{ interface }}
@@ -157,18 +160,27 @@ so-suricata:
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
 
+  {% else %} {# if Suricata isn't enabled, then stop and remove the container #}
+    - force: True
+  {% endif %}
+
 append_so-suricata_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-suricata
     - unless: grep -q so-suricata /opt/so/conf/so-status/so-status.conf
 
-{% if grains.role == 'so-import' %}
-disable_so-suricata_so-status.conf:
+  {% if not SURICATAOPTIONS.start %}
+so-suricata_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-suricata$
-{% endif %}
+  {% else %}
+delete_so-suricata_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-suricata$
+  {% endif %}
 
 /usr/local/bin/surirotate:
   cron.absent:

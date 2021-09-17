@@ -1,7 +1,21 @@
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% from "zeek/map.jinja" import START with context %}
+{% from "zeek/map.jinja" import ZEEKOPTIONS with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -179,9 +193,10 @@ localzeeksync:
         LOCAL: {{ ZEEK.local | tojson }}
 
 so-zeek:
-  docker_container.running:
+  docker_container.{{ ZEEKOPTIONS.status }}:
+  {% if ZEEKOPTIONS.status == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
-    - start: {{ START }}
+    - start: {{ ZEEKOPTIONS.start }}
     - privileged: True
     - ulimits:
       - core=0
@@ -204,6 +219,9 @@ so-zeek:
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
+  {% else %} {# if Zeek isn't enabled, then stop and remove the container #}
+    - force: True
+  {% endif %}
 
 append_so-zeek_so-status.conf:
   file.append:
@@ -211,12 +229,17 @@ append_so-zeek_so-status.conf:
     - text: so-zeek
     - unless: grep -q so-zeek /opt/so/conf/so-status/so-status.conf
 
-{% if grains.role == 'so-import' %}
-disable_so-zeek_so-status.conf:
+  {% if not ZEEKOPTIONS.start %}
+so-zeek_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-zeek$
-{% endif %}
+  {% else %}
+delete_so-zeek_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-zeek$
+  {% endif %}
 
 {% else %}
 
