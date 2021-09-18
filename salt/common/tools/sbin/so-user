@@ -152,6 +152,7 @@ function createFile() {
   uid=$2
   gid=$3
 
+  mkdir -p $(dirname "$filename")
   truncate -s 0 "$filename"
   chmod 600 "$filename"
   chown "${uid}:${gid}" "$filename"
@@ -159,29 +160,24 @@ function createFile() {
 
 function ensureRoleFileExists() {
   if [[ ! -f "$socRolesFile" || ! -s "$socRolesFile" ]]; then
+    # Generate the new users file
+    rolesTmpFile="${socRolesFile}.tmp"
+    createFile "$rolesTmpFile" "$soUID" "$soGID"
+
     if [[ -f "$databasePath" ]]; then
       echo "Migrating roles to new file: $socRolesFile"
-
-      # Generate the new users file
-      rolesTmpFile="${socRolesFile}.tmp"
-      createFile "$rolesTmpFile" "$soUID" "$soGID"
 
       echo "select 'superuser:' || id from identities;" | sqlite3 "$databasePath" \
         >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read identities from database"
 
-      mv "${rolesTmpFile}" "${socRolesFile}"
       echo "The following users have all been migrated with the super user role:"
       cat "${socRolesFile}"
     else
       echo "Database file does not exist yet, installation is likely not yet complete."
-
-      # Create all required files to allow docker volumes to bind correctly
-      createFile "$socRolesFile" "$soUID" "$soGID"
-      createFile "$elasticUsersFile" "$esUID" "$esGID"
-      createFile "$elasticRolesFile" "$esUID" "$esGID"
-      exit 0
     fi
+
+    mv "${rolesTmpFile}" "${socRolesFile}"
   fi
 }
 
