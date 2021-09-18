@@ -159,22 +159,22 @@ function createFile() {
 
 function ensureRoleFileExists() {
   if [ ! -s "$socRolesFile" ]; then
-    echo "Migrating roles to new file: $socRolesFile"
-
-    rolesTmpFile="${socRolesFile}.tmp"
-    createFile "$rolesTmpFile" "$soUID" "$soGID"
-
     if [[ -f "$databasePath" ]]; then
+      echo "Migrating roles to new file: $socRolesFile"
+
       # Generate the new users file
+      rolesTmpFile="${socRolesFile}.tmp"
+      createFile "$rolesTmpFile" "$soUID" "$soGID"
+
       echo "select 'superuser:' || id from identities;" | sqlite3 "$databasePath" \
         >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read identities from database"
+
+      mv "${rolesTmpFile}" "${socRolesFile}"
     else
       echo "Database file does not exist yet, installation is likely not yet complete."
-      exit 1
+      exit 0
     fi
-
-    mv "${rolesTmpFile}" "${socRolesFile}"
   fi
 }
 
