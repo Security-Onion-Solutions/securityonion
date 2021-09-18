@@ -158,7 +158,7 @@ function createFile() {
 }
 
 function ensureRoleFileExists() {
-  if [ ! -s "$socRolesFile" ]; then
+  if [[ ! -f "$socRolesFile" || ! -s "$socRolesFile" ]]; then
     if [[ -f "$databasePath" ]]; then
       echo "Migrating roles to new file: $socRolesFile"
 
@@ -170,6 +170,7 @@ function ensureRoleFileExists() {
         >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read identities from database"
 
+      rm -fr "$socRolesFile"
       mv "${rolesTmpFile}" "${socRolesFile}"
     else
       echo "Database file does not exist yet, installation is likely not yet complete."
