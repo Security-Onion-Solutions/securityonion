@@ -124,6 +124,7 @@ syncesusers:
     - creates:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
+      - /opt/so/conf/soc/soc_users_roles
     - show_changes: False
 
 {% else %}

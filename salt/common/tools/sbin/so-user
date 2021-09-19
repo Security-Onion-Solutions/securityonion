@@ -138,7 +138,7 @@ function updatePassword() {
     validatePassword "$password"
   fi
 
-  if [[ -n $identityId ]]; then
+  if [[ -n "$identityId" ]]; then
     # Generate password hash
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
@@ -172,7 +172,7 @@ function ensureRoleFileExists() {
       [[ $? != 0 ]] && fail "Unable to read identities from database"
 
       echo "The following users have all been migrated with the super user role:"
-      cat "${socRolesFile}"
+      cat "${rolesTmpFile}"
     else
       echo "Database file does not exist yet, installation is likely not yet complete."
     fi
@@ -331,7 +331,8 @@ function adjustUserRole() {
   grep "$role:" "$socRolesFile" | grep -q "$identityId" && hasRole=1
   if [[ "$op" == "add" ]]; then
     if [[ "$hasRole" == "1" ]]; then
-      fail "User '$email' already has the role: $role"
+      echo "User '$email' already has the role: $role"
+      return 1
     else
       echo "$role:$identityId" >> "$filename"
     fi
@@ -339,11 +340,14 @@ function adjustUserRole() {
     if [[ "$hasRole" -ne 1 ]]; then
       fail "User '$email' does not have the role: $role"
     else
-      sed -i "/^$role:$identityId\$/d" "$filename"
+      sed "/^$role:$identityId\$/d" "$filename" > "$filename.tmp"
+      cat "$filename".tmp > "$filename"
+      rm -f "$filename".tmp
     fi
   else
     fail "Unsupported role adjustment operation: $op"
   fi
+  return 0
 }
 
 function createUser() {
@@ -370,10 +374,9 @@ EOF
     reason=$(echo "${response}" | jq ".error.message")
     [[ $? == 0 ]] && fail "Unable to add user: ${reason}"
   else
+    updatePassword "$identityId"
     addUserRole "$email" "$role"
   fi
-
-  updatePassword "$identityId"
 }
 
 function updateStatus() {
@@ -457,9 +460,10 @@ case "${operation}" in
 
     lock
     validateEmail "$email"
-    addUserRole "$email" "$role"
-    syncElastic
-    echo "Successfully added role to user"
+    if addUserRole "$email" "$role"; then
+      syncElastic
+      echo "Successfully added role to user"
+    fi
     ;;
 
   "delrole")
