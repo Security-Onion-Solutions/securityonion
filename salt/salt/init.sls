@@ -2,7 +2,6 @@
 saltpymodules:
   pkg.installed:
     - pkgs:
-      - python-docker
       {% if grains['oscodename'] == 'bionic' %}
       - python-m2crypto
       - python-docker
