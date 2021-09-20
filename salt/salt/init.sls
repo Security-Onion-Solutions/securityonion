@@ -3,7 +3,11 @@ saltpymodules:
   pkg.installed:
     - pkgs:
       - python-docker
+      {% if grains['codename'] == 'bionic' %}
       - python-m2crypto
+      {% elif grains['codename'] == 'focal' %}
+      - python3-m2crypto
+      {% endif %}
 {% endif %}
 
 salt_bootstrap:

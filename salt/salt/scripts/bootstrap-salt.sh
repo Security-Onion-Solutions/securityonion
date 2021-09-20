@@ -3082,7 +3082,11 @@ install_ubuntu_git_deps() {
                 __PACKAGES="${__PACKAGES} python3-setuptools"
             else
                 # There is no m2crypto package for Py3 at this time - only install for Py2
+                if [ $DISTRO_CODENAME == "focal" ]; then
+                __PACKAGES="${__PACKAGES} python3-m2crypto"
+                else
                 __PACKAGES="${__PACKAGES} python-m2crypto"
+                fi
             fi
 
             __PACKAGES="${__PACKAGES} python${PY_PKG_VER}-crypto python${PY_PKG_VER}-jinja2"
