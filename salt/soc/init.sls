@@ -91,7 +91,7 @@ so-soc:
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
-      - /opt/so/conf/elasticsearch/users_roles:/opt/sensoroni/rbac/users_roles:ro
+      - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
