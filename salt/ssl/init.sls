@@ -42,9 +42,9 @@ m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-    {% if grains['codename'] == 'bionic' %}
+    {% if grains['oscodename'] == 'bionic' %}
       - python-m2crypto
-    {% elif grains['codename'] == 'focal' %}
+    {% elif grains['oscodename'] == 'focal' %}
       - python3-m2crypto
     {% endif %}
 {% endif %}

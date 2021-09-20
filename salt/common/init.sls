@@ -107,12 +107,12 @@ commonpkgs:
 heldpackages:
   pkg.installed:
     - pkgs:
-    {% if grains['codename'] == 'bionic' %}
+    {% if grains['oscodename'] == 'bionic' %}
       - containerd.io: 1.4.4-1
       - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
       - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
       - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
-    {% elif grains['codename'] == 'focal' %}
+    {% elif grains['oscodename'] == 'focal' %}
       - containerd.io: 1.4.9-1
       - docker-ce: 5:20.10.8~3-0~ubuntu-focal
       - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
