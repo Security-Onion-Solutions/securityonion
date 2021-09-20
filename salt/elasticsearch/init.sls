@@ -15,6 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -37,6 +39,7 @@
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+{% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 
 
 vm.max_map_count:
@@ -145,9 +148,11 @@ eslog4jfile:
 esyml:
   file.managed:
     - name: /opt/so/conf/elasticsearch/elasticsearch.yml
-    - source: salt://elasticsearch/files/elasticsearch.yml
+    - source: salt://elasticsearch/files/elasticsearch.yaml.jinja
     - user: 930
     - group: 939
+    - defaults:
+        ESCONFIG: {{ ESCONFIG }}
     - template: jinja
 
 #sync templates to /opt/so/conf/elasticsearch/templates
