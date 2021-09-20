@@ -367,7 +367,7 @@ EOF
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   identityId=$(echo "${response}" | jq -r ".id")
-  if [[ ${identityId} == "null" ]]; then
+  if [[ "${identityId}" == "null" ]]; then
     code=$(echo "${response}" | jq ".error.code")
     [[ "${code}" == "409" ]] && fail "User already exists"
 
@@ -389,17 +389,17 @@ function updateStatus() {
   response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  oldConfig=$(echo "select config from identity_credentials where identity_id=${identityId};" | sqlite3 "$databasePath")
+  oldConfig=$(echo "select config from identity_credentials where identity_id='${identityId}';" | sqlite3 "$databasePath")
   if [[ "$status" == "locked" ]]; then
     config=$(echo $oldConfig | sed -e 's/hashed/locked/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to lock credential record"
 
-    echo "delete from sessions where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "delete from sessions where identity_id='${identityId}';" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to invalidate sessions"    
   else
     config=$(echo $oldConfig | sed -e 's/locked/hashed/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to unlock credential record"
   fi  
 
@@ -415,7 +415,7 @@ function updateUser() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  updatePassword $identityId 
+  updatePassword "$identityId"
 }
 
 function deleteUser() {
