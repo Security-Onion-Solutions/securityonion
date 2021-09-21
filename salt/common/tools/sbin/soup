@@ -634,6 +634,15 @@ up_2.3.5X_to_2.3.80() {
   sed -i '/  index_settings:/a \\    so-kibana: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
   sed -i '/  index_settings:/a \\    so-redis: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
   
+  # Do some pillar formatting
+  tc=$(grep -w true_cluster /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print tolower($2)'}| xargs)
+
+  if [[ "$tc" == "true" ]]; then
+    tcname=$(grep -w true_cluster_name /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print $2'})
+    sed -i '/elasticsearch:/a \\  config: \n    cluster: \n      name: $tcname' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '  true_cluster_name/d /opt/so/saltstack/local/pillar/global.sls'
+  else
+
   INSTALLEDVERSION=2.3.80
 }
 
