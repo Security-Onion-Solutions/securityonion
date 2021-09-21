@@ -639,8 +639,15 @@ up_2.3.5X_to_2.3.80() {
 
   if [[ "$tc" == "true" ]]; then
     tcname=$(grep -w true_cluster_name /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print $2'})
-    sed -i "/elasticsearch:/a \\  config: \n    cluster: \n      name: $tcname" /opt/so/saltstack/local/pillar/global.sls
+    sed -i "/^elasticsearch:/a \\  config: \n    cluster: \n      name: $tcname" /opt/so/saltstack/local/pillar/global.sls
     sed -i '/  true_cluster_name/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/  esclustername/d' /opt/so/saltstack/local/pillar/global.sls
+
+    for file in /opt/so/saltstack/local/pillar/minions/*.sls; do
+      noderoutetype=$(grep -w node_route_type $file | awk -F: {'print $2'})
+      sed -i "/^elasticsearch:/a \\  config: \n    node: \n      attr: \n        box_type: $noderoutetype" $file
+      sed -i '/  node_route_type/d' $file
+    done
   fi
 
   INSTALLEDVERSION=2.3.80
