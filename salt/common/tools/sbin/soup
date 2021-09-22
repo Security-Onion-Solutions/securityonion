@@ -27,6 +27,7 @@ SOUP_LOG=/root/soup.log
 INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
+NOTIFYCUSTOMELASTICCONFIG=false
 
 check_err() {
   local exit_code=$1
@@ -655,6 +656,11 @@ up_2.3.5X_to_2.3.80() {
     done
   fi
 
+  # check for local es config to inform user that the config in local is now ignored and those options need to be placed in the pillar
+  if [ -f "/opt/so/saltstack/local/salt/elasticsearch/files/elasticsearch.yml" ]; then
+    NOTIFYCUSTOMELASTICCONFIG=true
+  fi
+
   INSTALLEDVERSION=2.3.80
 }
 
@@ -1057,6 +1063,19 @@ For more information, please see https://docs.securityonion.net/en/2.3/soup.html
 EOF
 
     fi
+  fi
+
+  if [ "$NOTIFYCUSTOMELASTICCONFIG" = true ] ; then
+
+    cat << EOF
+
+
+A custom Elasticsearch configuration has been found at /opt/so/saltstack/local/elasticsearch/files/elasticsearch.yml. This file is no longer referenced in Security Onion versions >= 2.3.80.
+
+If you still need those customizations, you'll need to manually migrate them to the new Elasticsearch config as shown at https://docs.securityonion.net/en/2.3/elasticsearch.html.
+
+EOF
+
   fi
 
   echo "### soup has been served at $(date) ###"
