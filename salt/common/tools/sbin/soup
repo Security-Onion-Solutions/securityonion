@@ -704,8 +704,8 @@ thehive_maint() {
   done
   if [ "$THEHIVE_CONNECTED" == "yes" ]; then
     echo "Migrating thehive databases if needed."
-    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
-    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
   fi
 }
 
@@ -992,8 +992,6 @@ main() {
     set +e
     salt-call state.highstate -l info queue=True
     set -e
-    echo ""
-    echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
     echo ""
     echo "Stopping Salt Master to remove ACL"
@@ -1016,6 +1014,13 @@ main() {
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
+    echo ""
+    echo "Upgrade to $NEWVERSION complete."
+
+    # Everything beyond this is post-upgrade checking, don't fail past this point if something here causes an error
+    set +e
+
+    echo "Checking the number of minions."
     NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
@@ -1026,8 +1031,10 @@ main() {
       fi
     fi
 
+    echo "Checking for local modifications."
     check_local_mods
 
+    echo "Checking sudoers file."
     check_sudoers
 
     if [[ -n $lsl_msg ]]; then
