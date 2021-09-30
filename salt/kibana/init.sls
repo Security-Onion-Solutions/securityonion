@@ -69,7 +69,7 @@ synckibanacustom:
 kibanabin:
   file.managed:
     - name: /usr/sbin/so-kibana-dashboard-load
-    - source: salt://kibana/bin/so-kibana-dashbaord-load
+    - source: salt://kibana/bin/so-kibana-dashboard-load
     - mode: 755
     - template: jinja
     - defaults:
