@@ -34,8 +34,8 @@ kibanaconfdir:
 
 synckibanaconfig:
   file.recurse:
-    - name: /opt/so/conf/kibana/etc
-    - source: salt://kibana/etc
+    - name: /opt/so/conf/kibana/etc/kibana.yml
+    - source: salt://kibana/etc/kibana.yml.jinja
     - user: 932
     - group: 939
     - file_mode: 660
@@ -104,9 +104,9 @@ kibanadashtemplate:
     - defaults:
         DASHBOARD: {{ KIBANA_SETTINGS.dashboard }}
 
-so-kibana-config-load:
+so-kibana-dashboard-load:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load
+    - name: /usr/sbin/so-kibana-dashboard-load
     - cwd: /opt/so
 
 # Keep the setting correct
