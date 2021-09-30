@@ -9,6 +9,9 @@
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
 
+{% from 'kibana/config.map.jinja' as import KIBANACONFIG %}
+
+
 # Add ES Group
 kibanasearchgroup:
   group.present:
@@ -40,6 +43,8 @@ synckibanaconfig:
     - group: 939
     - file_mode: 660
     - template: jinja
+    - defaults:
+        KIBANACONFIG: KIBANACONFIG
 
 kibanalogdir:
   file.directory:
@@ -64,8 +69,8 @@ synckibanacustom:
 
 kibanabin:
   file.managed:
-    - name: /usr/sbin/so-kibana-config-load
-    - source: salt://kibana/bin/so-kibana-config-load
+    - name: /usr/sbin/so-kibana-dashboard-load
+    - source: salt://kibana/bin/so-kibana-dashbaord-load
     - mode: 755
     - template: jinja
     - defaults:
