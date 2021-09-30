@@ -43,7 +43,7 @@ synckibanaconfig:
     - mode: 660
     - template: jinja
     - defaults:
-        KIBANACONFIG: KIBANACONFIG
+        KIBANACONFIG: {{ KIBANACONFIG }}
 
 kibanalogdir:
   file.directory:
