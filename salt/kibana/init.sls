@@ -35,7 +35,7 @@ kibanaconfdir:
     - makedirs: True
 
 synckibanaconfig:
-  file.recurse:
+  file.managed:
     - name: /opt/so/conf/kibana/etc/kibana.yml
     - source: salt://kibana/etc/kibana.yml.jinja
     - user: 932
