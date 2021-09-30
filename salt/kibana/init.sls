@@ -9,8 +9,7 @@
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
 
-{% from 'kibana/config.map.jinja' as import KIBANACONFIG %}
-
+{% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
 
 # Add ES Group
 kibanasearchgroup:
