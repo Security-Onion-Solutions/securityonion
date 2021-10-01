@@ -1,0 +1,26 @@
+{% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
+
+{% if not salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+  {% do ESCONFIG.elasticsearch.config.xpack.security.authc.anonymous.update({'username': 'anonymous_user', 'roles': 'superuser', 'authz_exception': 'true'}) %}
+{% endif %}
+
+{% if salt['pillar.get']('elasticsearch:true_cluster', False) %}
+    {% if grains.id.split('_') | last in ['manager','managersearch'] %}
+    {% if salt['pillar.get']('nodestab', {}) %}
+      {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client']}) %}
+      {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
+      {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
+        {% do ESCONFIG.elasticsearch.config.discovery.seed_hosts.append(SN.split('_')|first) %}
+      {% endfor %}
+    {% endif %}
+    {% if grains.id.split('_') | last == 'manager' %}
+      {% do ESCONFIG.elasticsearch.config.node.attr.update({'box_type': ''}) %}
+    {% endif %}
+  {% else %}
+    {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['data', 'ingest']}) %}
+    {% do ESCONFIG.elasticsearch.config.node.attr.update({'box_type': 'hot'}) %}
+    {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
+  {% endif %}
+{% endif %}
+
+{% set ESCONFIG = salt['pillar.get']('elasticsearch:config', default=ESCONFIG.elasticsearch.config, merge=True) %}

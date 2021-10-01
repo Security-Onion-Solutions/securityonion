@@ -62,6 +62,15 @@ soccustom:
     - mode: 600
     - template: jinja
 
+soccustomroles:
+  file.managed:
+    - name: /opt/so/conf/soc/custom_roles
+    - source: salt://soc/files/soc/custom_roles
+    - user: 939
+    - group: 939
+    - mode: 600
+    - template: jinja
+
 # we dont want this added too early in setup, so we add the onlyif to verify 'startup_states: highstate'
 # is in the minion config. That line is added before the final highstate during setup
 sosyncusers:
@@ -81,6 +90,8 @@ so-soc:
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
+      - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
+      - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:

@@ -121,7 +121,7 @@ add_web_user() {
 	{
 		echo "Attempting to add administrator user for web interface...";
 		export SKIP_STATE_APPLY=true
-		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER";
+		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER" "superuser";
 		unset SKIP_STATE_APPLY
 		echo "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
@@ -1724,18 +1724,20 @@ manager_global() {
 		"  hot_warm: False"\
 		"elastic:"\
 		"  features: False"\
-		"elasticsearch:"\
-		"  replicas: 0" >> "$global_pillar"
+		"elasticsearch:"\ >> "$global_pillar"
 	if [ -n "$ESCLUSTERNAME" ]; then 
 		printf '%s\n'\
 			"  true_cluster: True"\
-			"  true_cluster_name: '$ESCLUSTERNAME'" >> "$global_pillar"
+			"  config:"\
+			"    cluster:"\
+			"      name: '$ESCLUSTERNAME'" >> "$global_pillar"
 	else
 		printf '%s\n'\
-			"  true_cluster: False"\
-			"  true_cluster_name: 'so'" >> "$global_pillar"
+			"  true_cluster: False" >> "$global_pillar"
 	fi
+
 	printf '%s\n'\
+		"  replicas: 0"\
 		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\

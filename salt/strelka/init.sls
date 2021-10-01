@@ -21,6 +21,8 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 {% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
+{% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
+{% set IGNORELIST = salt['pillar.get']('strelka:ignore', strelka_config.strelka.ignore, merge=True, merge_nested_lists=True) %}
 
 # Strelka config
 strelkaconfdir:
@@ -54,6 +56,17 @@ strelkarules:
     - source: salt://strelka/rules
     - user: 939
     - group: 939
+    - clean: True
+    - exclude_pat:
+      {% for IGNOREDRULE in IGNORELIST %}
+      - {{ IGNOREDRULE }}
+      {% endfor %}
+
+      {% for IGNOREDRULE in IGNORELIST %}
+remove_rule_{{ IGNOREDRULE }}:
+  file.absent:
+    - name: /opt/so/conf/strelka/rules/signature-base/{{ IGNOREDRULE }}
+      {% endfor %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
 strelkarepos:

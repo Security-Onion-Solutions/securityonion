@@ -15,6 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
@@ -35,7 +37,9 @@
 {% endif %}
 
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+{% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 
 
 vm.max_map_count:
@@ -119,6 +123,13 @@ estemplatedir:
     - group: 939
     - makedirs: True
 
+esrolesdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/roles
+    - user: 930
+    - group: 939
+    - makedirs: True
+
 esingestconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -137,9 +148,11 @@ eslog4jfile:
 esyml:
   file.managed:
     - name: /opt/so/conf/elasticsearch/elasticsearch.yml
-    - source: salt://elasticsearch/files/elasticsearch.yml
+    - source: salt://elasticsearch/files/elasticsearch.yaml.jinja
     - user: 930
     - group: 939
+    - defaults:
+        ESCONFIG: {{ ESCONFIG }}
     - template: jinja
 
 #sync templates to /opt/so/conf/elasticsearch/templates
@@ -156,6 +169,15 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     - user: 930
     - group: 939
 {% endfor %}
+
+esroles:
+  file.recurse:
+    - source: salt://elasticsearch/roles/
+    - name: /opt/so/conf/elasticsearch/roles/
+    - clean: True
+    - template: jinja
+    - user: 930
+    - group: 939
 
 nsmesdir:
   file.directory:
@@ -193,7 +215,7 @@ auth_users_inode:
   require:
     - file: auth_users
   cmd.run:
-    - name: cat /opt/so/conf/elasticsearch/users.tmp > /opt/so/conf/elasticsearch/users && chown 930:930 /opt/so/conf/elasticsearch/users && chmod 600 /opt/so/conf/elasticsearch/users
+    - name: cat /opt/so/conf/elasticsearch/users.tmp > /opt/so/conf/elasticsearch/users && chown 930:939 /opt/so/conf/elasticsearch/users && chmod 660 /opt/so/conf/elasticsearch/users
     - onchanges:
       - file: /opt/so/conf/elasticsearch/users.tmp
 
@@ -201,7 +223,7 @@ auth_users_roles_inode:
   require:
     - file: auth_users_roles
   cmd.run:
-    - name: cat /opt/so/conf/elasticsearch/users_roles.tmp > /opt/so/conf/elasticsearch/users_roles && chown 930:930 /opt/so/conf/elasticsearch/users_roles && chmod 600 /opt/so/conf/elasticsearch/users_roles
+    - name: cat /opt/so/conf/elasticsearch/users_roles.tmp > /opt/so/conf/elasticsearch/users_roles && chown 930:939 /opt/so/conf/elasticsearch/users_roles && chmod 660 /opt/so/conf/elasticsearch/users_roles
     - onchanges:
       - file: /opt/so/conf/elasticsearch/users_roles.tmp
 
@@ -283,13 +305,19 @@ so-elasticsearch-pipelines:
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-heavynode', 'so-node', 'so-import'] and TEMPLATES %}
+{% if TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
     - template: jinja
 {% endif %}
+
+so-elasticsearch-roles-load:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-roles-load
+    - cwd: /opt/so
+    - template: jinja
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 

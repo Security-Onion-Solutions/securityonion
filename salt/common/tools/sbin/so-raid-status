@@ -20,6 +20,9 @@
 appliance_check() {
   {%- if salt['grains.get']('sosmodel', '') %}
   APPLIANCE=1
+  {%- if grains['sosmodel'] in ['SO2AMI01', 'SO2GCI01', 'SO2AZI01'] %}
+  exit 0
+  {%- endif %}
   DUDEYOUGOTADELL=$(dmidecode |grep Dell)
   if [[ -n $DUDEYOUGOTADELL ]]; then
   APPTYPE=dell
@@ -90,7 +93,7 @@ check_software_raid
 {%- endif %}
 
 if [[ -n $SWRAID ]]; then
-  if [[ $SWRAID == '0' && BOSSRAID == '0' ]]; then
+  if [[ $SWRAID == '0' && $BOSSRAID == '0' ]]; then
     RAIDSTATUS=0
   else
     RAIDSTATUS=1

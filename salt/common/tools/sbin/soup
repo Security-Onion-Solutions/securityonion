@@ -27,6 +27,7 @@ SOUP_LOG=/root/soup.log
 INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
+NOTIFYCUSTOMELASTICCONFIG=false
 
 check_err() {
   local exit_code=$1
@@ -105,17 +106,20 @@ add_common() {
 
 airgap_mounted() {
   # Let's see if the ISO is already mounted. 
-  if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+  if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
     echo "The ISO is already mounted"
   else
-    echo ""
-    cat << EOF
+    if [[ -z $ISOLOC ]]; then
+      echo "This is airgap. Ask for a location."
+      echo ""
+      cat << EOF
 In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided. 
 For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso. 
 Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom.
 
 EOF
-    read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+      read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+    fi
     if [[ -f $ISOLOC ]]; then
       # Mounting the ISO image
       mkdir -p /tmp/soagupdate
@@ -131,7 +135,7 @@ EOF
     elif [[ -f $ISOLOC/SecurityOnion/VERSION ]]; then
       ln -s $ISOLOC /tmp/soagupdate
       echo "Found the update content"
-    else 
+    elif [[ -b $ISOLOC ]]; then
       mkdir -p /tmp/soagupdate
       mount $ISOLOC /tmp/soagupdate
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
@@ -140,7 +144,11 @@ EOF
         exit 0
       else
         echo "Device has been mounted!"
-      fi        
+      fi
+    else
+      echo "Could not find Security Onion ISO content at ${ISOLOC}" 
+      echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
+      exit 0
     fi
   fi
 }
@@ -150,7 +158,7 @@ airgap_update_dockers() {
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
-      exit 1
+      exit 0
     else
       echo "Stopping the registry docker"
       docker stop so-dockerregistry
@@ -282,25 +290,31 @@ check_os_updates() {
     OSUPDATES=$(yum -q list updates | wc -l)
   fi
   if [[ "$OSUPDATES" -gt 0 ]]; then
-      echo $NEEDUPDATES
-      echo ""
-      read -p "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
-
-      if [[ "$confirm" == [cC] ]]; then
+      if [[ -z $UNATTENDED ]]; then
+        echo "$NEEDUPDATES"
+        echo ""
+        read -rp "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+        if [[ "$confirm" == [cC] ]]; then
           echo "Continuing without updating packages"
-      elif [[ "$confirm" == [uU] ]]; then
+        elif [[ "$confirm" == [uU] ]]; then
           echo "Applying Grid Updates"
-          set +e
-          run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
-          set -e
-      else
+          update_flag=true
+        else
           echo "Exiting soup"
           exit 0
+        fi
+      else
+        update_flag=true
       fi
   else
-      echo "Looks like you have an updated OS"
+    echo "Looks like you have an updated OS"
   fi
-    
+
+  if [[ $update_flag == true ]]; then
+    set +e
+    run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
+    set -e
+  fi
 }
 
 clean_dockers() {
@@ -372,6 +386,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
     [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
     [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
+    [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_2.3.5X_to_2.3.80
     true
 }
 
@@ -609,6 +624,46 @@ EOF
   INSTALLEDVERSION=2.3.50
 }
 
+up_2.3.5X_to_2.3.80() {
+  
+  # Remove watermark settings from global.sls
+  sed -i '/  cluster_routing_allocation_disk/d' /opt/so/saltstack/local/pillar/global.sls
+
+  # Add new indices to the global
+  sed -i '/  index_settings:/a \\    so-elasticsearch: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-logstash: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-kibana: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-redis: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  
+  # Do some pillar formatting
+  tc=$(grep -w true_cluster /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print tolower($2)'}| xargs)
+
+  if [[ "$tc" == "true" ]]; then
+    tcname=$(grep -w true_cluster_name /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print $2'})
+    sed -i "/^elasticsearch:/a \\  config: \n    cluster: \n      name: $tcname" /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/  true_cluster_name/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/  esclustername/d' /opt/so/saltstack/local/pillar/global.sls
+
+    for file in /opt/so/saltstack/local/pillar/minions/*.sls; do
+      if [[ ${file} != *"manager.sls"* ]]; then
+        noderoutetype=$(grep -w node_route_type $file | awk -F: {'print $2'})
+        if [ -n "$noderoutetype" ]; then
+          sed -i "/^elasticsearch:/a \\  config: \n    node: \n      attr: \n        box_type: $noderoutetype" $file
+          sed -i '/  node_route_type/d' $file
+          noderoutetype=''
+        fi
+      fi
+    done
+  fi
+
+  # check for local es config to inform user that the config in local is now ignored and those options need to be placed in the pillar
+  if [ -f "/opt/so/saltstack/local/salt/elasticsearch/files/elasticsearch.yml" ]; then
+    NOTIFYCUSTOMELASTICCONFIG=true
+  fi
+
+  INSTALLEDVERSION=2.3.80
+}
+
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
   if [ "$CURRENTSPACE" -lt "10" ]; then
@@ -624,7 +679,7 @@ upgrade_space() {
     clean_dockers
     if ! verify_upgradespace; then
       echo "There is not enough space to perform the upgrade. Please free up space and try again"
-      exit 1
+      exit 0
     fi
   else
       echo "You have enough space for upgrade. Proceeding with soup."
@@ -649,8 +704,8 @@ thehive_maint() {
   done
   if [ "$THEHIVE_CONNECTED" == "yes" ]; then
     echo "Migrating thehive databases if needed."
-    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
-    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
   fi
 }
 
@@ -774,39 +829,23 @@ verify_latest_update_script() {
 }
 
 main() {
-  set -e
-  set +e
   trap 'check_err $?' EXIT
   
-  echo "### Preparing soup at $(date) ###"
-  while getopts ":b" opt; do
-    case "$opt" in
-      b ) # process option b
-        shift
-        BATCHSIZE=$1
-        if ! [[ "$BATCHSIZE" =~ ^[0-9]+$ ]]; then
-          echo "Batch size must be a number greater than 0."
-          exit 1
-        fi
-      ;;
-      \? ) 
-        echo "Usage: cmd [-b]"
-      ;;
-    esac
-  done
-
+  echo "Checking to see if this is an airgap install."
+  echo ""
+  check_airgap
+  if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
+    echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
+    exit 0
+  fi
   echo "Checking to see if this is a manager."
   echo ""
   require_manager
   set_minionid
-  echo "Checking to see if this is an airgap install."
-  echo ""
-  check_airgap
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
-    echo "This is airgap. Ask for a location."
     airgap_mounted
   else
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
@@ -894,7 +933,7 @@ main() {
       echo "Once the issue is resolved, run soup again."
       echo "Exiting."
       echo ""
-      exit 1
+      exit 0
     else
       echo "Salt upgrade success."
       echo ""
@@ -953,8 +992,6 @@ main() {
     set +e
     salt-call state.highstate -l info queue=True
     set -e
-    echo ""
-    echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
     echo ""
     echo "Stopping Salt Master to remove ACL"
@@ -977,6 +1014,13 @@ main() {
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
+    echo ""
+    echo "Upgrade to $NEWVERSION complete."
+
+    # Everything beyond this is post-upgrade checking, don't fail past this point if something here causes an error
+    set +e
+
+    echo "Checking the number of minions."
     NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
@@ -987,8 +1031,10 @@ main() {
       fi
     fi
 
+    echo "Checking for local modifications."
     check_local_mods
 
+    echo "Checking sudoers file."
     check_sudoers
 
     if [[ -n $lsl_msg ]]; then
@@ -1026,10 +1072,56 @@ EOF
     fi
   fi
 
+  if [ "$NOTIFYCUSTOMELASTICCONFIG" = true ] ; then
+
+    cat << EOF
+
+
+A custom Elasticsearch configuration has been found at /opt/so/saltstack/local/elasticsearch/files/elasticsearch.yml. This file is no longer referenced in Security Onion versions >= 2.3.80.
+
+If you still need those customizations, you'll need to manually migrate them to the new Elasticsearch config as shown at https://docs.securityonion.net/en/2.3/elasticsearch.html.
+
+EOF
+
+  fi
+
   echo "### soup has been served at $(date) ###"
 }
 
-cat << EOF
+while getopts ":b:f:y" opt; do
+  case ${opt} in
+    b )
+      BATCHSIZE="$OPTARG"
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Batch size must be a number greater than 0."
+        exit 1
+      fi
+    ;;
+    y )
+      if [[ ! -f /opt/so/state/yeselastic.txt ]]; then
+        echo "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
+        exit 1
+      else
+        UNATTENDED=true 
+      fi
+    ;;
+    f )
+      ISOLOC="$OPTARG"
+    ;;
+    \? ) 
+      echo "Usage: soup [-b] [-y] [-f <iso location>]"
+      exit 1
+    ;;
+    : )
+      echo "Invalid option: $OPTARG requires an argument"
+      exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z $UNATTENDED ]]; then
+  cat << EOF
 
 SOUP - Security Onion UPdater
 
@@ -1041,7 +1133,9 @@ Press Enter to continue or Ctrl-C to cancel.
 
 EOF
 
-read -r input
+  read -r input
+fi
 
+echo "### Preparing soup at $(date) ###"
 main "$@" | tee -a $SOUP_LOG
   
