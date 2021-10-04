@@ -22,7 +22,11 @@ mysqlpkgs:
     - skip_suggestions: False
     - pkgs:
       {% if grains['os'] != 'CentOS' %}
-      - python-mysqldb
+        {% if grains['oscodename'] == 'bionic' %}
+      - python3-mysqldb
+        {% elif grains['oscodename'] == 'focal' %}
+      - python3-mysqldb
+        {% endif %}
       {% else %}
       - MySQL-python
       {% endif %}

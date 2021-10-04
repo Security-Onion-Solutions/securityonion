@@ -1104,8 +1104,8 @@ detect_os() {
 		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
 			OSVER=bionic
-		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
-			OSVER=xenial
+		elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+			OSVER=focal
 		else
 			echo "We do not support your current version of Ubuntu."
 			exit 1
@@ -2159,9 +2159,12 @@ saltify() {
 	else
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
-		if [ $OSVER != "xenial" ]; then
+		if [ $OSVER == "bionic" ]; then
 			# Switch to Python 3 as default if this is not xenial
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
+		elif [ $OSVER == "focal" ]; then
+			# Switch to Python 3 as default if this is not xenial
+			update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 >> "$setup_log" 2>&1
 		fi
 		
 		local pkg_arr=(
