@@ -111,13 +111,13 @@ so-elastalert:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
     - hostname: elastalert
     - name: so-elastalert
-    - user: elastalert
+    - user: so-elastalert
     - detach: True
     - binds:
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
-      - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/config/elastalert_config.yaml:ro
+      - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
