@@ -237,8 +237,12 @@ function syncElastic() {
   if [[ -f "$databasePath" && -f "$socRolesFile" ]]; then
     # Append the SOC users 
     echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
-      "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
+      "from identity_credential_identifiers ici, identity_credentials ic, identities i " \
+      "where " \
+      "      ici.identity_credential_id=ic.id " \
+      "  and ic.identity_id=i.id " \
+      "  and instr(ic.config, 'hashed_password') " \
+      "  and i.state == 'active' " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
@@ -391,24 +395,16 @@ function updateStatus() {
   response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  oldConfig=$(echo "select config from identity_credentials where identity_id='${identityId}';" | sqlite3 "$databasePath")
+  schemaId=$(echo "$response" | jq -r .schema_id)
+  traitBlock=$(echo "$response" | jq -r .traits)
+
+  state="active"
   if [[ "$status" == "locked" ]]; then
-    config=$(echo $oldConfig | sed -e 's/hashed/locked/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to lock credential record"
-
-    echo "delete from sessions where identity_id='${identityId}';" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to invalidate sessions"    
-  else
-    config=$(echo $oldConfig | sed -e 's/locked/hashed/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to unlock credential record"
-  fi  
-
-  updatedJson=$(echo "$response" | jq ".traits.status = \"$status\" | del(.verifiable_addresses) | del(.id) | del(.schema_url) | del(.created_at) | del(.updated_at)")
-  response=$(curl -Ss -XPUT -L ${kratosUrl}/identities/$identityId -d "$updatedJson")
-  [[ $? != 0 ]] && fail "Unable to mark user as locked"
-
+    state="inactive"
+  fi
+  body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
+  response=$(curl -fSsL -XPUT "${kratosUrl}/identities/$identityId" -d "$body")
+  [[ $? != 0 ]] && fail "Unable to update user"
 }
 
 function updateUser() {
