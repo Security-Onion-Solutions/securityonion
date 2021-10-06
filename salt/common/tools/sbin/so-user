@@ -396,7 +396,9 @@ function updateStatus() {
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   schemaId=$(echo "$response" | jq -r .schema_id)
-  traitBlock=$(echo "$response" | jq -r .traits)
+
+  # Capture traits and remove obsolete 'status' trait if exists
+  traitBlock=$(echo "$response" | jq -r .traits | grep -v "\"status\":")
 
   state="active"
   if [[ "$status" == "locked" ]]; then
