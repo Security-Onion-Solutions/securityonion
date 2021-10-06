@@ -35,7 +35,7 @@ kibanaconfdir:
     - group: 939
     - makedirs: True
 
-synckibanaconfig:
+kibanaconfig:
   file.managed:
     - name: /opt/so/conf/kibana/etc/kibana.yml
     - source: salt://kibana/etc/kibana.yml.jinja
@@ -93,6 +93,8 @@ so-kibana:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
+    - watch:
+      - file: kibanaconfig
 
 append_so-kibana_so-status.conf:
   file.append:
