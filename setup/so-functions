@@ -1207,11 +1207,7 @@ docker_install() {
 				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac 
-		if [ $OSVER != "xenial" ]; then
-			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || exit 1
-		fi
+		retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
 	fi
 	docker_registry
 	{
@@ -2172,10 +2168,10 @@ saltify() {
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
 		if [ $OSVER == "bionic" ]; then
-			# Switch to Python 3 as default if this is not xenial
+			# Switch to Python 3 as default for bionic
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
 		elif [ $OSVER == "focal" ]; then
-			# Switch to Python 3 as default if this is not xenial
+			# Switch to Python 3 as default for focal
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 >> "$setup_log" 2>&1
 		fi
 		
@@ -2194,21 +2190,16 @@ saltify() {
 		# Grab the version from the os-release file
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
-		if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 		case "$install_type" in
 			'FLEET')
-				if [[ $OSVER != 'xenial' ]]; then
-					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				else
-					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				fi
+				retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2216,7 +2207,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2240,7 +2231,7 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
@@ -2249,11 +2240,7 @@ saltify() {
 		set_progress_str 8 'Installing salt-minion & python modules'
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
-		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging python-influxdb"  >> "$setup_log" 2>&1 || exit 1
-		fi
+		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
