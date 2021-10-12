@@ -10,7 +10,7 @@
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
 
 {% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
-{% from 'kibana/config.map.jinja' import KIBANADASH with context %}
+{% from 'kibana/config.map.jinja' import SAVED_OBJECTS with context %}
 
 # Add ES Group
 kibanasearchgroup:
@@ -109,7 +109,7 @@ kibanadashtemplate:
     - group: 939
     - template: jinja
     - defaults:
-        DASHBOARD: {{ KIBANADASH }}
+        SAVED_OBJECTS: {{ SAVED_OBJECTS }}
 
 so-kibana-dashboard-load:
   cmd.run:
