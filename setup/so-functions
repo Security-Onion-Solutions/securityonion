@@ -2037,7 +2037,7 @@ reinstall_init() {
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
+			if [[ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]]; then
 				docker stop $(docker ps -a -q --filter "name=so-")
 				docker rm -f $(docker ps -a -q --filter "name=so-")
 			fi
@@ -2055,6 +2055,10 @@ reinstall_init() {
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
+
+		if [[ $OS == 'ubuntu' ]]; then
+			apt-mark unhold $(apt-mark showhold)
+		fi
 
 	} >> "$setup_log" 2>&1
 }
