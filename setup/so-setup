@@ -256,7 +256,8 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	is_analyst=true
+	cd .. || exit 255
+	exec bash so-analyst-install
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -335,11 +336,6 @@ if ! [[ -f $install_opt_file ]]; then
 		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
-	fi
-
-	if [[ $is_analyst ]]; then
-		cd .. || exit 255
-		exec bash so-analyst-install
 	fi
 
 else
