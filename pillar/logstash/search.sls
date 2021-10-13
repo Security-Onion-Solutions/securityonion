@@ -14,4 +14,3 @@ logstash:
         - so/9600_output_ossec.conf.jinja
         - so/9700_output_strelka.conf.jinja
         - so/9800_output_logscan.conf.jinja
-        - so/9900_output_endgame.conf.jinja
