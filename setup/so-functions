@@ -229,9 +229,10 @@ check_service_status() {
 }
 
 check_salt_master_status() {
+	local timeout=$1
 	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
 	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
-	salt-call state.show_top > /dev/null 2>&1
+	salt-call state.show_top -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
 		echo "  Could not talk to salt master" >> "$setup_log" 2>&1
@@ -244,8 +245,9 @@ check_salt_master_status() {
 }
 
 check_salt_minion_status() {
+	local timeout=$1
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping > /dev/null 2>&1
+	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
 		echo "  Minion did not respond" >> "$setup_log" 2>&1
@@ -2292,28 +2294,32 @@ salt_checkin() {
 					done
 				done
 
-				count=0
-				while ! (check_salt_master_status); do
-					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
-					if [ $count -gt 30 ]; then
-						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
+				count=1
+				timeout=60
+				while ! (check_salt_master_status $timeout); do
+					echo "salt minion cannot talk to salt master after $timeout seconds" >> "$setup_log" 2>&1
+					if [ $count -gt 2 ]; then
+						echo "salt minion could not talk to salt master after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					sleep 1;
 					((count++))
+					((timeout+=30)) # add 30s to the timeout each attempt
 				done
 
-				count=0
-				while ! (check_salt_minion_status); do
-					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					if [ $count -gt 30 ]; then
-						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
+				count=1
+				timeout=60
+				while ! (check_salt_minion_status $timeout) ; do
+					echo "salt master did not get a job response from salt minion after $timeout seconds" >> "$setup_log" 2>&1
+					if [ $count -gt 2 ]; then
+						echo "salt master did not get a job response from salt minion after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					systemctl kill salt-minion
 					systemctl start salt-minion
 					sleep 1;
 					((count++))
+					((timeout+=30)) # add 30s to the timeout each attempt
 				done
 
 				echo " Confirming existence of the CA certificate"
