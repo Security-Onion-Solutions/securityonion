@@ -69,8 +69,8 @@ synckibanacustom:
 
 kibanabin:
   file.managed:
-    - name: /usr/sbin/so-kibana-dashboard-load
-    - source: salt://kibana/bin/so-kibana-dashboard-load
+    - name: /usr/sbin/so-kibana-config-load
+    - source: salt://kibana/bin/so-kibana-config-load
     - mode: 755
     - template: jinja
     - defaults:
@@ -100,21 +100,6 @@ append_so-kibana_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kibana
-
-kibanadashtemplate:
-  file.managed:
-    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
-    - source: salt://kibana/files/saved_objects.ndjson.jinja
-    - user: 932
-    - group: 939
-    - template: jinja
-    - defaults:
-        SAVED_OBJECTS: {{ SAVED_OBJECTS }}
-
-so-kibana-dashboard-load:
-  cmd.run:
-    - name: /usr/sbin/so-kibana-dashboard-load
-    - cwd: /opt/so
 
 # Keep the setting correct
 #KibanaHappy:

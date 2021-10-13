@@ -1,0 +1,25 @@
+#!/bin/bash
+# {%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
+
+. /usr/sbin/so-common
+if $1; then
+  ndjson_template_file=$1
+else
+  ndjson_template_file='/opt/so/conf/kibana/saved_objects.ndjson.template'
+fi
+ndjson_file=$(echo $ndjson_template | sed -e "s/\.template$//")
+# Copy template file
+#cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
+cp $ndjson_template $ndjson_file
+
+# SOCtopus and Manager
+if grep -lq 'PLACEHOLDER' $ndjson_file; then
+  sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" $ndjson_file
+fi
+
+wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+
+SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
+# Load saved objects
+{{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@$ndjson_file >> /opt/so/log/kibana/misc.log
