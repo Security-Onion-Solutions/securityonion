@@ -2294,32 +2294,32 @@ salt_checkin() {
 					done
 				done
 
-				count=0
+				count=1
 				timeout=60
 				while ! (check_salt_master_status $timeout); do
 					echo "salt minion cannot talk to salt master after $timeout seconds" >> "$setup_log" 2>&1
 					if [ $count -gt 3 ]; then
-						echo "salt minion could not talk to salt master after 3 attempts, exiting" >> "$setup_log" 2>&1
+						echo "salt minion could not talk to salt master after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					sleep 1;
 					((count++))
-					timeout=$(( $timeout + (20 * $count) )) # add 20s to the timeout each attempt
+					(($timeout += 20)) # add 20s to the timeout each attempt
 				done
 
-				count=0
+				count=1
 				timeout=60
 				while ! (check_salt_minion_status $timeout) ; do
 					echo "salt master did not get a job response from salt minion after $timeout seconds" >> "$setup_log" 2>&1
 					if [ $count -gt 3 ]; then
-						echo "salt master did not get a job response from salt minion after 3 attempts, exiting" >> "$setup_log" 2>&1
+						echo "salt master did not get a job response from salt minion after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					systemctl kill salt-minion
 					systemctl start salt-minion
 					sleep 1;
 					((count++))
-					timeout=$(( $timeout + (20 * $count) )) # add 20s to the timeout each attempt
+					(($timeout += 20)) # add 20s to the timeout each attempt
 				done
 
 				echo " Confirming existence of the CA certificate"
