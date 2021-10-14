@@ -5,14 +5,16 @@
 if [ ! -z "$1" ]; then
   ndjson_template_file=$1
 else
-  ndjson_template_file='/opt/so/conf/kibana/saved_objects.ndjson.template'
+  ndjson_template_file='/opt/so/conf/kibana/saved_objects.ndjson'
 fi
 
 if [ -f "$ndjson_template_file" ]; then
   ndjson_file=$(echo $ndjson_template_file | sed -e "s/\.template$//")
   # Copy template file
   #cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
-  cp "$ndjson_template_file" "$ndjson_file"
+  if [ "$ndjson_template_file" != "$ndjson_file" ]; then
+    cp "$ndjson_template_file" "$ndjson_file"
+  fi
 
   # SOCtopus and Manager
   if grep -lq 'PLACEHOLDER' "$ndjson_file"; then

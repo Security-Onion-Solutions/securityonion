@@ -1,6 +1,7 @@
 include:
   - kibana
   - kibana.so_dashboard_load
+  - kibana.so_securitySolution_load
 
 config_saved_objects:
   file.managed:
