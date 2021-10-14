@@ -1421,7 +1421,7 @@ firewall_generate_templates() {
    
 	cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-	for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
+	for i in analyst beats_endpoint endgame sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
 		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
 
@@ -1640,6 +1640,13 @@ manager_pillar() {
 	printf '%s\n'\
 		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
+
+        if [[ -n $ENDGAMEHOST ]]; then
+        	printf '%s\n'\
+			"soc:"\
+                	"  endgamehost: '$ENDGAMEHOST'"\
+                	"" >> "$pillar_file"
+	fi
 }
 
 manager_global() {
