@@ -12,7 +12,7 @@ config_saved_objects:
 
 so-kiba-config-load:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load /opt/so/conf/kibana/config_saved_objects.ndjson
+    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/config_saved_objects.ndjson
     - cwd: /opt/so
     - require:
       - sls: kibana
