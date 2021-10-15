@@ -1,20 +1,23 @@
-{%- set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{%- set diskfreepercentage = salt['pillar.get']('steno:diskfreepercentage', 10) %}
-{%- set maxfiles = salt['pillar.get']('steno:maxfiles', 30000) %}
-
-
+{%- set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
+{%- set DISKFREEPERCENTAGE = salt['pillar.get']('steno:diskfreepercentage', 10) %}
+{%- set MAXFILES = salt['pillar.get']('steno:maxfiles', 30000) %}
+{%- set BLOCKS = salt['pillar.get']('steno:blocks', 2048) %}
+{%- set FILEMB = salt['pillar.get']('steno:filemb', 4096) %}
+{%- set AIOPS = salt['pillar.get']('steno:aiops', 128) %} 
+{%- set THREADS = salt['pillar.get']('steno:threads', 1) %}
 {
   "Threads": [
-    { "PacketsDirectory": "/nsm/pcap"
-    , "IndexDirectory": "/nsm/pcapindex"
-    , "MaxDirectoryFiles": {{ maxfiles }}
-    , "DiskFreePercentage": {{ diskfreepercentage }}
-    }
+    { "PacketsDirectory": "/nsm/pcap", "IndexDirectory": "/nsm/pcapindex", "MaxDirectoryFiles": {{ MAXFILES }}, "DiskFreePercentage": {{ DISKFREEPERCENTAGE }} }
+  {%- if THREADS > 1 %}
+      {%- for i in range(2,THREADS+1) %}
+    , { "PacketsDirectory": "/nsm/pcap" , "IndexDirectory": "/nsm/pcapindex", "MaxDirectoryFiles": {{ MAXFILES }}, "DiskFreePercentage": {{ DISKFREEPERCENTAGE }} }
+      {%- endfor %}
+  {%- endif %}
   ]
   , "StenotypePath": "/usr/bin/stenotype"
-  , "Interface": "{{ interface }}"
+  , "Interface": "{{ INTERFACE }}"
   , "Port": 1234
   , "Host": "127.0.0.1"
-  , "Flags": ["-v", "--uid=stenographer", "--gid=stenographer"{{ BPF_COMPILED }}]
+  , "Flags": ["-v", "--blocks={{ BLOCKS }}", "--preallocate_file_mb={{ FILEMB }}", "--aiops={{ AIOPS }}", "--uid=stenographer", "--gid=stenographer"{{ BPF_COMPILED }}]
   , "CertPath": "/etc/stenographer/certs"
 }
