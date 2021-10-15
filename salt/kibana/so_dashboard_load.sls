@@ -10,7 +10,7 @@ dashboard_saved_objects_template:
 
 so-kiba-dashboard-load:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load -u /opt/so/conf/kibana/saved_objects.ndjson
+    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/saved_objects.ndjson
     - cwd: /opt/so
     - require:
       - sls: kibana
