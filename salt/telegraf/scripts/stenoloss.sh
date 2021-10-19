@@ -19,25 +19,30 @@ THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
 
 if [ ! "$THEGREP" ]; then
 
-    TSFILE=/var/log/telegraf/laststenodrop.log
-    if [ -f "$TSFILE" ]; then
-        LASTTS=$(cat $TSFILE)
-    else
-        LASTTS=0
+    CHECKIT=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2|wc -l)
+    STENOGREP=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2)
+
+    declare RESULT=($STENOGREP)
+
+    CURRENT_PACKETS=$(echo ${RESULT[9]} | awk -F'=' '{print $2 }')
+    CURRENT_DROPS=$(echo ${RESULT[12]} | awk -F'=' '{print $2 }')
+    PREVIOUS_PACKETS=$(echo ${RESULT[23]} | awk -F'=' '{print $2 }')
+    PREVIOUS_DROPS=$(echo ${RESULT[26]} | awk -F'=' '{print $2 }')
+
+    DROPPED=$((CURRENT_DROPS - PREVIOUS_DROPS))
+    TOTAL_CURRENT=$((CURRENT_PACKETS + CURRENT_DROPS))
+    TOTAL_PAST=$((PREVIOUS_PACKETS + PREVIOUS_DROPS))
+    TOTAL=$((TOTAL_CURRENT - TOTAL_PAST))
+
+    if [ $CHECKIT == 2 ]; then
+      if [ $DROPPED == 0 ]; then
+        echo "stenodrop drop=$DROPPED"
+      else
+        LOSS=$(echo "4 k $DROPPED $TOTAL / 100 * p" | dc)
+        echo "stenodrop drop=$loss"
+      fi
     fi
-
-    # Get the data
-    LOGLINE=$(tac /var/log/stenographer/stenographer.log | grep -m1 drop)
-    CURRENTTS=$(echo $LOGLINE | awk '{print $1}')
-
-    if [[ "$CURRENTTS" != "$LASTTS" ]]; then
-      DROP=$(echo $LOGLINE | awk '{print $14}' | awk -F "=" '{print $2}')
-      echo $CURRENTTS > $TSFILE
-    else
-      DROP=0
-    fi
-
-    echo "stenodrop drop=$DROP"
+    
 else
     exit 0
 fi
