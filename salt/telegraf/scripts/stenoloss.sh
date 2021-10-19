@@ -39,7 +39,7 @@ if [ ! "$THEGREP" ]; then
         echo "stenodrop drop=$DROPPED"
       else
         LOSS=$(echo "4 k $DROPPED $TOTAL / 100 * p" | dc)
-        echo "stenodrop drop=$loss"
+        echo "stenodrop drop=$LOSS"
       fi
     fi
     
