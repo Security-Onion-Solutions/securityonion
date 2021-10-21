@@ -53,6 +53,8 @@ so-domainstats:
     - user: domainstats
     - binds:
       - /opt/so/log/domainstats:/var/log/domain_stats
+    - require:
+      - file: dstatslogdir
 
 append_so-domainstats_so-status.conf:
   file.append:

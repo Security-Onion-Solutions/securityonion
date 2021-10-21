@@ -122,6 +122,10 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - cmd: wait_for_elasticsearch
+      - file: elastarules
+      - file: elastalogdir
+      - file: elastacustmodulesdir
+      - file: elastaconf
     - watch:
       - file: elastaconf
 

@@ -30,6 +30,9 @@
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
+include:
+  - ca
+
 # Trust the CA
 trusttheca:
   x509.pem_managed:
