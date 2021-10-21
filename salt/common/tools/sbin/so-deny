@@ -184,21 +184,25 @@ def main():
       return_code = e.errno
     sys.exit(return_code)
   elif args.roles is not None and args.ip is None:
-    main_parser.print_help()
-  else:
-    if validate_ip_cidr(args.ip):
-      try:
-        for role in args.roles:
-          return_code = apply(role, args.ip)
-          if return_code > 0:
-            break
-      except Exception as e:
-        print(f'Unexpected exception occurred: {e}', file=sys.stderr)
-        return_code = e.errno
+    if os.environ.get('IP') is None:
+      main_parser.print_help()
+      sys.exit(1)
     else:
-      print(f'Invalid IP address or CIDR block \'{args.ip}\', please try again.', file=sys.stderr)
-      return_code = 1
-
+      args.ip = os.environ['IP']
+  
+  if validate_ip_cidr(args.ip):
+    try:
+      for role in args.roles:
+        return_code = apply(role, args.ip)
+        if return_code > 0:
+          break
+    except Exception as e:
+      print(f'Unexpected exception occurred: {e}', file=sys.stderr)
+      return_code = e.errno
+  else:
+    print(f'Invalid IP address or CIDR block \'{args.ip}\', please try again.', file=sys.stderr)
+    return_code = 1
+    
   sys.exit(return_code)
 
 
