@@ -24,8 +24,6 @@ import argparse
 import re
 from lxml import etree as ET
 from xml.dom import minidom
-from datetime import datetime as dt
-from datetime import timezone as tz
 
 
 LOCAL_SALT_DIR='/opt/so/saltstack/local'
@@ -56,7 +54,7 @@ def validate_ip_cidr(ip_cidr: str) -> bool:
 
 def role_prompt() -> str:
   print()
-  print('Choose the role for the IP or Range you would like to allow')
+  print('Choose the role for the IP or Range you would like to deny')
   print()
   for role in VALID_ROLES:
     print(f'[{role}] - {VALID_ROLES[role]["desc"]}')
@@ -70,7 +68,7 @@ def role_prompt() -> str:
   
 
 def ip_prompt() -> str:
-  ip = input('Enter a single ip address or range to allow (ex: 10.10.10.10 or 10.10.0.0/16): ')
+  ip = input('Enter a single ip address or range to deny (ex: 10.10.10.10 or 10.10.0.0/16): ')
   if validate_ip_cidr(ip):
     return ip
   else:
@@ -89,35 +87,38 @@ def wazuh_enabled() -> bool:
 def root_to_str(root: ET.ElementTree) -> str:
     xml_str = ET.tostring(root, encoding='unicode', method='xml').replace('\n', '')
     xml_str = re.sub(r'(?:(?<=>) *)', '', xml_str)
+
+    # Remove specific substrings to better format comments on intial parse/write
     xml_str = re.sub(r'       -', '', xml_str)
     xml_str = re.sub(r'      -->', ' -->', xml_str)
+    
     dom = minidom.parseString(xml_str)
     return dom.toprettyxml(indent="  ")
 
 
-def add_wl(ip):
+def rem_wl(ip):
     parser = ET.XMLParser(remove_blank_text=True)
     with open(WAZUH_CONF, 'rb') as wazuh_conf:
         tree = ET.parse(wazuh_conf, parser)
     root = tree.getroot()
 
-    source_comment = ET.Comment(f'Address {ip} added by /usr/sbin/so-allow on {dt.utcnow().replace(tzinfo=tz.utc).strftime("%a %b %e %H:%M:%S %Z %Y")}')
-    new_global = ET.Element("global")
-    new_wl = ET.SubElement(new_global, 'white_list')
-    new_wl.text = ip
+    global_elems = root.findall(f"global/white_list[. = '{ip}']/..")
+    if len(global_elems) > 0:
+      for g_elem in global_elems:
+          ge_index = list(root).index(g_elem)
+          if ge_index > 0 and root[list(root).index(g_elem) - 1].tag == ET.Comment:
+              root.remove(root[ge_index - 1])
+          root.remove(g_elem)
 
-    root.append(source_comment)
-    root.append(new_global)
-
-    with open(WAZUH_CONF, 'w') as add_out:
-        add_out.write(root_to_str(root))
+      with open(WAZUH_CONF, 'w') as out:
+          out.write(root_to_str(root))
 
 
 def apply(role: str, ip: str) -> int:
-  firewall_cmd = ['so-firewall', 'includehost', role, ip]
+  firewall_cmd = ['so-firewall', 'excludehost', role, ip]
   salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', 'firewall', 'queue=True']
   restart_wazuh_cmd = ['so-wazuh-restart']
-  print(f'Adding {ip} to the {role} role. This can take a few seconds...')
+  print(f'Removing {ip} from the {role} role. This can take a few seconds...')
   cmd = subprocess.run(firewall_cmd)
   if cmd.returncode == 0:
     cmd = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
@@ -126,10 +127,10 @@ def apply(role: str, ip: str) -> int:
   if cmd.returncode == 0:
     if wazuh_enabled and role=='analyst':
       try:
-        add_wl(ip)
-        print(f'Added whitelist entry for {ip} from {WAZUH_CONF}', file=sys.stderr)
+        rem_wl(ip)
+        print(f'Removed whitelist entry for {ip} from {WAZUH_CONF}', file=sys.stderr)
       except Exception as e:
-        print(f'Failed to add whitelist entry for {ip} from {WAZUH_CONF}', file=sys.stderr)
+        print(f'Failed to remove whitelist entry for {ip} from {WAZUH_CONF}', file=sys.stderr)
         print(e)
         return 1
       print('Restarting OSSEC Server...')
@@ -210,4 +211,3 @@ if __name__ == '__main__':
     main()
   except KeyboardInterrupt:
     sys.exit(1)
-
