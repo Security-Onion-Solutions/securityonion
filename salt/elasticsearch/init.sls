@@ -287,13 +287,13 @@ so-elasticsearch:
       - file: nsmesdir
       - file: eslogdir
       - file: cacertz
-      - file: /etc/pki/elasticsearch.crt
-      - file: /etc/pki/elasticsearch.key
+      - x509: /etc/pki/elasticsearch.crt
+      - x509: /etc/pki/elasticsearch.key
       - file: elasticp12perms
       {% if ismanager %}
-      - file: pki_public_ca_crt
+      - x509: pki_public_ca_crt
       {% else %}
-      - file: trusttheca
+      - x509: trusttheca
       {% endif %}
       {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
       - cmd: auth_users_roles_inode
