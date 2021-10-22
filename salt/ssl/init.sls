@@ -174,7 +174,7 @@ etc_filebeat_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: /etc/pki/filebeat.crt
+      - x509: etc_filebeat_crt
     {%- endif %}
     - timeout: 30
     - retry:
@@ -182,7 +182,7 @@ etc_filebeat_key:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-filebeat_crt:
+etc_filebeat_crt:
   x509.certificate_managed:
     - name: /etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
@@ -493,7 +493,7 @@ conf_filebeat_key:
     - new: True
     {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: filebeat_crt
+      - x509: conf_filebeat_crt
     {%- endif %}
     - timeout: 30
     - retry:
@@ -501,7 +501,7 @@ conf_filebeat_key:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-filebeat_crt:
+conf_filebeat_crt:
   x509.certificate_managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}

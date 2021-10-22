@@ -141,7 +141,7 @@ so-filebeat:
       - file: filebeatconf
       - file: filebeatmoduleconf
       - file: filebeatmoduledir
-      - x509: filebeat_crt
+      - x509: conf_filebeat_crt
       - x509: conf_filebeat_key
       - x509: trusttheca
 

@@ -200,7 +200,7 @@ so-logstash:
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
     - require:
-      - x509: filebeat_crt
+      - x509: etc_filebeat_crt
 {% if grains['role'] == 'so-heavynode' %}
       - x509: trusttheca
 {% else %}
