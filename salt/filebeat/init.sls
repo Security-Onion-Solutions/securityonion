@@ -142,7 +142,7 @@ so-filebeat:
       - file: filebeatmoduleconf
       - file: filebeatmoduledir
       - x509: filebeat_crt
-      - x509: filebeat_key
+      - x509: conf_filebeat_key
       - x509: trusttheca
 
 {% if grains.role in ES_INCLUDED_NODES %}

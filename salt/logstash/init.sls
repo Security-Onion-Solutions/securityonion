@@ -201,7 +201,6 @@ so-logstash:
 {% endfor %}
     - require:
       - x509: filebeat_crt
-      - x509: filebeat_key
 {% if grains['role'] == 'so-heavynode' %}
       - x509: trusttheca
 {% else %}

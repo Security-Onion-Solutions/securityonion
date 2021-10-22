@@ -163,7 +163,7 @@ rediskeyperms:
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
-filebeat_key:
+etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
     - CN: {{ COMMONNAME }}
@@ -205,7 +205,7 @@ filebeat_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
     - onchanges:
-      - x509: filebeat_key
+      - x509: etc_filebeat_key
 
 
 fbperms:
@@ -482,7 +482,7 @@ fbcertdir:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
 
-filebeat_key:
+conf_filebeat_key:
   x509.private_key_managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ COMMONNAME }}
@@ -527,7 +527,7 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
     - onchanges:
-      - x509: filebeat_key
+      - x509: conf_filebeat_key
 
 filebeatkeyperms:
   file.managed:
