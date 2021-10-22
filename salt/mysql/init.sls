@@ -52,7 +52,7 @@ mysqletc:
     - user: 939
     - group: 939
     - template: jinja
-    - mode: 640
+    - file_mode: 640
 
 mysqllogdir:
   file.directory:
