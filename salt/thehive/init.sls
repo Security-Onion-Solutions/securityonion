@@ -83,8 +83,7 @@ so-thehive-es:
     - tty: True
     - binds:
       - /nsm/thehive/esdata:/usr/share/elasticsearch/data:rw
-      - /opt/so/conf/thehive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-      - /opt/so/conf/thehive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
+      - /opt/so/conf/thehive/etc/es/:/usr/share/elasticsearch/config/:ro
       - /opt/so/log/thehive:/var/log/elasticsearch:rw
     - environment:
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
@@ -96,6 +95,14 @@ append_so-thehive-es_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-thehive-es
+
+cortex_application_conf:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/cortex-application.conf
+
+application_conf:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/application.conf
 
 # Install Cortex
 so-cortex:
@@ -110,6 +117,8 @@ so-cortex:
       - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
+    - require:
+      - file: cortex_application_conf
 
 append_so-cortex_so-status.conf:
   file.append:
@@ -135,6 +144,8 @@ so-thehive:
       - /opt/so/conf/thehive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
+    - require:
+      - file: application_conf
 
 append_so-thehive_so-status.conf:
   file.append:

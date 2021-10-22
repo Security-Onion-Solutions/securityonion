@@ -127,7 +127,9 @@ so-steno:
       - /nsm/pcaptmp:/tmp:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
     - watch:
-      - file: /opt/so/conf/steno/config
+      - file: stenoconf
+    - require:
+      - file: stenoconf
   {% else %} {# if stenographer isn't enabled, then stop and remove the container #}
     - force: True
   {% endif %}

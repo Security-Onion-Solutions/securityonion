@@ -47,6 +47,10 @@ so-dockerregistry:
     - retry:
         attempts: 5
         interval: 30
+    - require:
+      - file: dockerregistryconf
+      - x509: registry_crt
+      - x509: registry_key
 
 append_so-dockerregistry_so-status.conf:
   file.append:

@@ -117,8 +117,9 @@ influxkeyperms:
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
 # Create a cert for Redis encryption
-/etc/pki/redis.key:
+redis_key:
   x509.private_key_managed:
+    - name: /etc/pki/redis.key
     - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
@@ -134,8 +135,9 @@ influxkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/redis.crt:
+redis_crt:
   x509.certificate_managed:
+    - name: /etc/pki/redis.crt
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
@@ -244,8 +246,9 @@ fbcrtlink:
     - user: socore
     - group: socore
 
-/etc/pki/registry.key:
+registry_key:
   x509.private_key_managed:
+    - name: /etc/pki/registry.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -262,8 +265,9 @@ fbcrtlink:
         interval: 30
 
 # Create a cert for the docker registry
-/etc/pki/registry.crt:
+registry_crt:
   x509.certificate_managed:
+    - name: /etc/pki/registry.crt
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
@@ -287,8 +291,9 @@ regkeyperms:
     - mode: 640
     - group: 939
 
-/etc/pki/minio.key:
+minio_key:
   x509.private_key_managed:
+    - name: /etc/pki/minio.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -305,8 +310,9 @@ regkeyperms:
         interval: 30
 
 # Create a cert for minio
-/etc/pki/minio.crt:
+minio_crt:
   x509.certificate_managed:
+    - name: /etc/pki/minio.crt
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/minio.key
@@ -386,8 +392,9 @@ elasticp12perms:
     - mode: 640
     - group: 930
 
-/etc/pki/managerssl.key:
+managerssl_key:
   x509.private_key_managed:
+    - name: /etc/pki/managerssl.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -404,8 +411,9 @@ elasticp12perms:
         interval: 30
 
 # Create a cert for the reverse proxy
-/etc/pki/managerssl.crt:
+managerssl_crt:
   x509.certificate_managed:
+    - name: /etc/pki/managerssl.crt
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
@@ -548,8 +556,9 @@ chownfilebeatp8:
 
 {% if grains['role'] == 'so-fleet' %}
 
-/etc/pki/managerssl.key:
+managerssl_key:
   x509.private_key_managed:
+    - name: /etc/pki/managerssl.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -566,8 +575,9 @@ chownfilebeatp8:
         interval: 30
 
 # Create a cert for the reverse proxy
-/etc/pki/managerssl.crt:
+managerssl_crt:
   x509.certificate_managed:
+    - name: /etc/pki/managerssl.crt
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key

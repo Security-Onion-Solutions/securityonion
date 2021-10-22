@@ -60,8 +60,7 @@ aptcacherlogdir:
     - group: 939
     - makedirs: true
 
-# Copy the config
-acngcopyconf:
+acngconf:
   file.managed:
     - name: /opt/so/conf/aptcacher-ng/etc/acng.conf
     - source: salt://manager/files/acng/acng.conf
@@ -80,6 +79,8 @@ so-aptcacherng:
       - /opt/so/conf/aptcacher-ng/cache:/var/cache/apt-cacher-ng:rw
       - /opt/so/log/aptcacher-ng:/var/log/apt-cacher-ng:rw
       - /opt/so/conf/aptcacher-ng/etc/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+    - require:
+      - file: acngconf
 
 append_so-aptcacherng_so-status.conf:
   file.append:

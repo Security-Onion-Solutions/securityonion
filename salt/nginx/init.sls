@@ -8,6 +8,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
+include:
+  - ssl
+
 # Drop the correct nginx config based on role
 nginxconfdir:
   file.directory:
@@ -95,6 +98,12 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+    - require:
+      - file: nginxconf
+      - x509: managerssl_key
+      - x509: managerssl_crt
+      - file: navigatorconfig
+      - file: navigatordefaultlayer
 
 append_so-nginx_so-status.conf:
   file.append:

@@ -19,6 +19,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
+include:
+  - ssl
+
 # Redis Setup
 redisconfdir:
   file.directory:
@@ -41,10 +44,10 @@ redislogdir:
     - group: 939
     - makedirs: True
 
-redisconfsync:
-  file.recurse:
-    - name: /opt/so/conf/redis/etc
-    - source: salt://redis/etc
+redisconf:
+  file.managed:
+    - name: /opt/so/conf/redis/etc/redis.conf
+    - source: salt://redis/etc/redis.conf
     - user: 939
     - group: 939
     - template: jinja
@@ -67,6 +70,11 @@ so-redis:
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
       - file: /opt/so/conf/redis/etc
+    - require:
+      - file: redisconf
+      - x509: redis_crt
+      - x509: redis_key
+      - x509: pki_public_ca_crt
 
 append_so-redis_so-status.conf:
   file.append:

@@ -45,13 +45,14 @@ mysqlpiddir:
     - group: 939
     - makedirs: True
 
-mysqletcsync:
+mysqletc:
   file.recurse:
     - name: /opt/so/conf/mysql/etc
     - source: salt://mysql/etc
     - user: 939
     - group: 939
     - template: jinja
+    - mode: 640
 
 mysqllogdir:
   file.directory:
@@ -88,12 +89,13 @@ so-mysql:
       - MYSQL_ROOT_HOST={{ MAINIP }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
-      - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
-      - /opt/so/conf/mysql/etc/mypass:/etc/mypass
+      - /opt/so/conf/mysql/etc/:/etc/:ro
       - /nsm/mysql:/var/lib/mysql:rw
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
       - /opt/so/conf/mysql/etc
+    - require:
+      - file: mysqletc
   cmd.run:
     - name: until nc -z {{ MAINIP }} 3306; do sleep 1; done
     - timeout: 600

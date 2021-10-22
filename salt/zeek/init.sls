@@ -116,7 +116,7 @@ zeekctlcfg:
         ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
 
 # Sync node.cfg
-nodecfgsync:
+nodecfg:
   file.managed:
     - name: /opt/so/conf/zeek/node.cfg
     - source: salt://zeek/files/node.cfg
@@ -182,7 +182,7 @@ zeekbpf:
 {% endif %}
 
 
-localzeeksync:
+localzeek:
   file.managed:
     - name: /opt/so/conf/zeek/local.zeek
     - source: salt://zeek/files/local.zeek.jinja
@@ -219,6 +219,11 @@ so-zeek:
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf
+    - require:
+      - file: localzeek
+      - file: nodecfg
+      - file: zeekctlcfg
+      - file: zeekbpf
   {% else %} {# if Zeek isn't enabled, then stop and remove the container #}
     - force: True
   {% endif %}
