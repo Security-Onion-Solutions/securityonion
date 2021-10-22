@@ -17,6 +17,8 @@
 include:
   - salt.minion
   - salt.python3-influxdb
+  - ssl
+  
 # Influx DB
 influxconfdir:
   file.directory:
@@ -60,6 +62,10 @@ so-influxdb:
       - 0.0.0.0:8086:8086
     - watch:
       - file: influxdbconf
+    - require:
+      - file: influxdbconf
+      - x509: influxdb_key
+      - x509: influxdb_crt
 
 append_so-influxdb_so-status.conf:
   file.append:

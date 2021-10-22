@@ -45,8 +45,6 @@ so-domainstatsimage:
 
 so-domainstats:
   docker_container.running:
-    - require:
-      - so-domainstatsimage
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-domainstats:{{ VERSION }}
     - hostname: domainstats
     - name: so-domainstats
@@ -55,6 +53,7 @@ so-domainstats:
       - /opt/so/log/domainstats:/var/log/domain_stats
     - require:
       - file: dstatslogdir
+      - cmd: so-domainstatsimage
 
 append_so-domainstats_so-status.conf:
   file.append:

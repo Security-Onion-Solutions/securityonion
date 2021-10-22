@@ -67,8 +67,9 @@ removeesp12dir:
     - name: /etc/pki/elasticsearch.p12
     - onlyif: "[ -d /etc/pki/elasticsearch.p12 ]"
     
-/etc/pki/influxdb.key:
+influxdb_key:
   x509.private_key_managed:
+    - name: /etc/pki/influxdb.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -85,8 +86,9 @@ removeesp12dir:
         interval: 30
 
 # Create a cert for the talking to influxdb
-/etc/pki/influxdb.crt:
+influxdb_crt:
   x509.certificate_managed:
+    - name: /etc/pki/influxdb.crt
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
@@ -161,8 +163,9 @@ rediskeyperms:
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
-/etc/pki/filebeat.key:
+filebeat_key:
   x509.private_key_managed:
+    - name: /etc/pki/filebeat.key
     - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
@@ -179,8 +182,9 @@ rediskeyperms:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-/etc/pki/filebeat.crt:
+filebeat_crt:
   x509.certificate_managed:
+    - name: /etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
@@ -201,7 +205,7 @@ rediskeyperms:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
     - onchanges:
-      - x509: /etc/pki/filebeat.key
+      - x509: filebeat_key
 
 
 fbperms:
@@ -427,8 +431,9 @@ msslkeyperms:
     - group: 939
 
 # Create a private key and cert for OSQuery
-/etc/pki/fleet.key:
+fleet_key:
   x509.private_key_managed:
+    - name: /etc/pki/fleet.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -444,8 +449,9 @@ msslkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/fleet.crt:
+fleet_crt:
   x509.certificate_managed:
+    - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ manager }}
     - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
@@ -476,8 +482,9 @@ fbcertdir:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
 
-/opt/so/conf/filebeat/etc/pki/filebeat.key:
+filebeat_key:
   x509.private_key_managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
@@ -486,7 +493,7 @@ fbcertdir:
     - new: True
     {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
+      - x509: filebeat_crt
     {%- endif %}
     - timeout: 30
     - retry:
@@ -494,8 +501,9 @@ fbcertdir:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-/opt/so/conf/filebeat/etc/pki/filebeat.crt:
+filebeat_crt:
   x509.certificate_managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
@@ -519,7 +527,7 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
     - onchanges:
-      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.key
+      - x509: filebeat_key
 
 filebeatkeyperms:
   file.managed:
@@ -585,8 +593,9 @@ msslkeyperms:
     - group: 939
 
 # Create a private key and cert for Fleet
-/etc/pki/fleet.key:
+fleet_key:
   x509.private_key_managed:
+    - name: /etc/pki/fleet.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -602,8 +611,9 @@ msslkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/fleet.crt:
+fleet_crt:
   x509.certificate_managed:
+    - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ HOSTNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}

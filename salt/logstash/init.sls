@@ -45,6 +45,7 @@
 {% endif %}
 
 include:
+  - ssl
   - elasticsearch
 
 # Create the logstash group
@@ -162,9 +163,7 @@ so-logstash:
 {% endfor %}
     - binds:
       - /opt/so/conf/elasticsearch/templates/:/templates/:ro
-      - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
-      - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+      - /opt/so/conf/logstash/etc/:/usr/share/logstash/config/:ro
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
@@ -181,7 +180,6 @@ so-logstash:
       {% endif %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
-      - /etc/pki/ca.cer:/ca/ca.crt:ro
       {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
@@ -201,6 +199,16 @@ so-logstash:
 {% for TEMPLATE in TEMPLATES %}
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
 {% endfor %}
+    - require:
+      - x509: filebeat_crt
+      - x509: filebeat_key
+{% if grains['role'] == 'so-heavynode' %}
+      - x509: trusttheca
+{% else %}
+      - x509: pki_public_ca_crt
+{% endif %}
+      - file: cacertz
+      - file: capemz
 
 append_so-logstash_so-status.conf:
   file.append:
