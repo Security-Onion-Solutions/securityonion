@@ -117,8 +117,6 @@ so-steno:
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
     - privileged: True
-    - port_bindings:
-      - 127.0.0.1:1234:1234
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
