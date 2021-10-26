@@ -51,7 +51,6 @@ mysqlcnf:
     - source: salt://mysql/etc/my.cnf
     - user: 939
     - group: 939
-    - mode: 640
 
 mysqlpass:
   file.managed:
@@ -60,7 +59,6 @@ mysqlpass:
     - user: 939
     - group: 939
     - template: jinja
-    - mode: 640
     - defaults:
         MYSQLPASS: {{ MYSQLPASS }}
 
