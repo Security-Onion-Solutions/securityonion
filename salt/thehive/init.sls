@@ -73,6 +73,14 @@ thehiveesdata:
     - user: 939
     - group: 939
 
+thehive_elasticsearch_yml:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/es/elasticsearch.yml
+
+log4j2_properties:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/es/log4j2.properties
+
 so-thehive-es:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-thehive-es:{{ VERSION }}
@@ -83,13 +91,17 @@ so-thehive-es:
     - tty: True
     - binds:
       - /nsm/thehive/esdata:/usr/share/elasticsearch/data:rw
-      - /opt/so/conf/thehive/etc/es/:/usr/share/elasticsearch/config/:ro
+      - /opt/so/conf/thehive/etc/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /opt/so/conf/thehive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /opt/so/log/thehive:/var/log/elasticsearch:rw
     - environment:
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
     - port_bindings:
       - 0.0.0.0:9400:9400
       - 0.0.0.0:9500:9500
+    - require:
+      - file: thehive_elasticsearch_yml
+      - file: log4j2_properties
 
 append_so-thehive-es_so-status.conf:
   file.append:
