@@ -20,7 +20,7 @@ thehive_init(){
     SOCTOPUS_CONFIG="/opt/so/saltstack/salt/soctopus/files/SOCtopus.conf"
 
     echo -n "Waiting for TheHive..."
-    if wait_for_web_response $THEHIVE_URL "TheHive" 60; then
+    if wait_for_web_response $THEHIVE_URL "TheHive" 120; then
         # Migrate DB
         curl -sk -XPOST -L "$THEHIVE_API_URL/maintenance/migrate"
 
@@ -43,7 +43,7 @@ if [ -f /opt/so/state/thehive.txt ]; then
     thehive_clean
     exit 0
 else
-    if wait_for_web_response http://{{MANAGERIP}}:9400/_cluster/health '"status":"green"' 60; then
+    if wait_for_web_response http://{{MANAGERIP}}:9400/_cluster/health '"status":"green"' 120; then
         thehive_init
         thehive_clean
     else
