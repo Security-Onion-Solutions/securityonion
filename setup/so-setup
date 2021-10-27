@@ -265,14 +265,6 @@ if [[ $is_manager || $is_import ]]; then
 fi
 
 if ! [[ -f $install_opt_file ]]; then
-	# Check if this is an airgap install
-	if [[ ( $is_manager || $is_import || $is_minion ) && $is_iso ]]; then
-		whiptail_airgap
-		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-			is_airgap=true
-		fi
-	fi
-
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -312,17 +304,6 @@ if ! [[ -f $install_opt_file ]]; then
 		add_mngr_ip_to_hosts
 	fi
 
-	reset_proxy
-	if [[ -z $is_airgap ]]; then
-		collect_net_method
-		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]]; then
-		whiptail_ssh_key_copy_notice
-		copy_ssh_key >> $setup_log 2>&1
-	fi
-
 	if [[ $is_minion ]] && ! (compare_versions); then
 		info "Installer version mismatch, downloading correct version from manager"
 		printf '%s\n' \
@@ -331,15 +312,34 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" \
-			"is_airgap=$is_airgap" \
 			"NODE_DESCRIPTION=\"$NODE_DESCRIPTION\"" > "$install_opt_file"
-		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
-
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
+fi
+
+# Check if this is an airgap install
+if [[ ( $is_manager || $is_import) && $is_iso ]]; then
+	whiptail_airgap
+	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+		is_airgap=true
+	fi
+el [[ $is_minion ]]
+	airgap_mngr_str=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}') >> $setup_log 2>&1
+	[[ $airgap_mngr_str == "True" ]] && is_airgap=true >> $setup_log 2>&1
+fi
+
+reset_proxy
+if [[ -z $is_airgap ]]; then
+	collect_net_method
+	[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
+fi
+
+if [[ $is_minion ]]; then
+	whiptail_ssh_key_copy_notice
+	copy_ssh_key >> $setup_log 2>&1
 fi
 
 percentage=0
