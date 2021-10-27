@@ -21,6 +21,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
+include:
+ - ssl
+
 # Minio Setup
 minioconfdir:
   file.directory:
@@ -59,6 +62,9 @@ so-minio:
       - /etc/pki/minio.key:/.minio/certs/private.key:ro
       - /etc/pki/minio.crt:/.minio/certs/public.crt:ro
     - entrypoint: "/usr/bin/docker-entrypoint.sh server --certs-dir /.minio/certs --address :9595 /data"
+    - require:
+      - file: minio_key
+      - file: minio_crt
 
 append_so-minio_so-status.conf:
   file.append:

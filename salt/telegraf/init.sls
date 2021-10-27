@@ -88,7 +88,16 @@ so-telegraf:
       - file: tgrafconf
       - file: tgrafsyncscripts
       - file: node_config
-
+    - require: 
+      - file: tgrafconf
+      - file: node_config
+      {% if grains['role'] == 'so-manager' or grains['role'] == 'so-eval' or grains['role'] == 'so-managersearch' %}
+      - x509: pki_public_ca_crt
+      {% else %}
+      - x509: trusttheca
+      {% endif %}
+      - x509: influxdb_crt
+      - x509: influxdb_key
 append_so-telegraf_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
