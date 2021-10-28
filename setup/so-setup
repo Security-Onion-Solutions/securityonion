@@ -304,6 +304,11 @@ if ! [[ -f $install_opt_file ]]; then
 		add_mngr_ip_to_hosts
 	fi
 
+	if [[ $is_minion ]]; then
+		whiptail_ssh_key_copy_notice
+		copy_ssh_key >> $setup_log 2>&1
+	fi
+
 	if [[ $is_minion ]] && ! (compare_versions); then
 		info "Installer version mismatch, downloading correct version from manager"
 		printf '%s\n' \
@@ -335,11 +340,6 @@ reset_proxy
 if [[ -z $is_airgap ]]; then
 	collect_net_method
 	[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-fi
-
-if [[ $is_minion ]]; then
-	whiptail_ssh_key_copy_notice
-	copy_ssh_key >> $setup_log 2>&1
 fi
 
 percentage=0
