@@ -332,8 +332,9 @@ if [[ ( $is_manager || $is_import) && $is_iso ]]; then
 		is_airgap=true
 	fi
 elif [[ $is_minion ]]; then
-	airgap_mngr_str=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}') >> $setup_log 2>&1
-	[[ $airgap_mngr_str == "True" ]] && is_airgap=true >> $setup_log 2>&1
+	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
+	airgap_check=$?
+	[[ $airgap_check ]] && is_airgap=true >> $setup_log 2>&1
 fi
 
 reset_proxy
