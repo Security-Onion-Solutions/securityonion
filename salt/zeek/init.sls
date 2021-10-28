@@ -146,7 +146,7 @@ plcronscript:
     - mode: 755
 
 zeekpacketlosscron:
-  cron.present:
+  cron.{{ZEEKOPTIONS.pl_cron_state}}:
     - name: /usr/local/bin/packetloss.sh
     - user: root
     - minute: '*/10'
