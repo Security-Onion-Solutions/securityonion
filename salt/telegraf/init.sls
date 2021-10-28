@@ -5,6 +5,9 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
+include:
+  - ssl
+
 # Add Telegraf to monitor all the things.
 tgraflogdir:
   file.directory:
