@@ -1,70 +1,107 @@
 {
-  "aliasColors": {
-    "InBound": "#629E51",
-    "OutBound": "#5195CE",
-    "net.non_negative_derivative": "super-light-blue"
+  "id": 18,
+  "gridPos": {
+
   },
-  "maxDataPoints": 750,
-  "interval": "30s",
-  "bars": false,
-  "dashLength": 10,
-  "dashes": false,
+  "type": "timeseries",
+  "title": "Management Interface Traffic ",
   "datasource": "InfluxDB",
-  "editable": true,
-  "error": false,
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "links": [],
   "fieldConfig": {
     "defaults": {
-      "links": []
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 2,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "links": [],
+      "unit": "bps"
     },
-    "overrides": []
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Trend/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "custom.lineWidth",
+            "value": 4
+          },
+          {
+            "id": "custom.lineStyle",
+            "value": {
+              "fill": "dash",
+              "dash": [
+                4,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    ]
   },
-  "fill": 1,
-  "fillGradient": 0,
-  "gridPos": {
-    "x": {{ PANELS.management_interface_traffic_both_graph.gridPos.x }},
-    "y": {{ PANELS.management_interface_traffic_both_graph.gridPos.y }},
-    "w": {{ PANELS.management_interface_traffic_both_graph.gridPos.w }},
-    "h": {{ PANELS.management_interface_traffic_both_graph.gridPos.h }}
-  },
-  "hiddenSeries": false,
-  "id": 18,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "max": true,
-    "min": true,
-    "show": true,
-    "total": false,
-    "values": true
-  },
-  "lines": true,
-  "linewidth": 2,
-  "links": [],
-  "nullPointMode": "connected",
   "options": {
-    "alertThreshold": true
-  },
-  "percentage": false,
-  "pluginVersion": "7.5.4",
-  "pointradius": 5,
-  "points": false,
-  "renderer": "flot",
-  "seriesOverrides": [
-    {
-      "alias": "/Trend/",
-      "dashLength": 4,
-      "dashes": true,
-      "fill": 0,
-      "linewidth": 4
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "mean",
+        "lastNotNull",
+        "max",
+        "min"
+      ]
     }
-  ],
-  "spaceLength": 10,
-  "stack": false,
-  "steppedLine": false,
+  },
   "targets": [
     {
-      "alias": "Inbound Current",
+      "alias": "$tag_host: $tag_interface: Inbound Current",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -72,6 +109,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "interface"
+          ]
         },
         {
           "params": [
@@ -114,19 +163,19 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         },
         {
           "condition": "AND",
           "key": "interface",
-          "operator": "=",
-          "value": "$manint"
+          "operator": "=~",
+          "value": "/^$manint$/"
         }
       ]
     },
     {
-      "alias": "Outbound Current",
+      "alias": "$tag_host: $tag_interface: Outbound Current",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -134,6 +183,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "interface"
+          ]
         },
         {
           "params": [
@@ -176,19 +237,19 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         },
         {
           "condition": "AND",
           "key": "interface",
-          "operator": "=",
-          "value": "$manint"
+          "operator": "=~",
+          "value": "/^$manint$/"
         }
       ]
     },
     {
-      "alias": "Inbound Trend",
+      "alias": "$tag_host: $tag_interface: Inbound Trend",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -196,6 +257,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "interface"
+          ]
         },
         {
           "params": [
@@ -239,19 +312,19 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         },
         {
           "condition": "AND",
           "key": "interface",
-          "operator": "=",
-          "value": "$manint"
+          "operator": "=~",
+          "value": "/^$manint$/"
         }
       ]
     },
     {
-      "alias": "Outbound Trend",
+      "alias": "$tag_host: $tag_interface: Outbound Trend",
       "dsType": "influxdb",
       "groupBy": [
         {
@@ -259,6 +332,18 @@
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "interface"
+          ]
         },
         {
           "params": [
@@ -302,56 +387,20 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         },
         {
           "condition": "AND",
           "key": "interface",
-          "operator": "=",
-          "value": "$manint"
+          "operator": "=~",
+          "value": "/^$manint$/"
         }
       ]
     }
   ],
-  "thresholds": [],
+  "maxDataPoints": null,
   "timeFrom": null,
-  "timeRegions": [],
   "timeShift": null,
-  "title": "Management Interface Traffic - $manint",
-  "tooltip": {
-    "msResolution": true,
-    "shared": true,
-    "sort": 0,
-    "value_type": "cumulative"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "format": "bps",
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
-    },
-    {
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
-    }
-  ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  }
+  "description": ""
 }

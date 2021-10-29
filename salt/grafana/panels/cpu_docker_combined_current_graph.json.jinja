@@ -1,20 +1,142 @@
 {
-  "type": "graph",
-  "title": "Container CPU Usage Current",
+  "id": 100,
   "gridPos": {
     "x": {{ PANELS.cpu_docker_combined_current_graph.gridPos.x }},
     "y": {{ PANELS.cpu_docker_combined_current_graph.gridPos.y }},
     "w": {{ PANELS.cpu_docker_combined_current_graph.gridPos.w }},
     "h": {{ PANELS.cpu_docker_combined_current_graph.gridPos.h }}
   },
-  "id": 100,
+  "type": "timeseries",
+  "title": "Container CPU Usage Current",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "decimals": 1,
+      "unit": "percent"
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/n_cpus/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
+      "alias": "$tag_host: $tag_container_name",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_cpu",
       "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(\"usage_percent\") FROM \"docker_container_cpu\" WHERE (\"host\" =~ /^$servername$/ AND \"container_name\" =~ /^$containers$/) AND $timeFilter GROUP BY time($__interval), \"container_name\", \"host\" fill(null)",
+      "queryType": "randomWalk",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "usage_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
       "tags": [
         {
           "key": "host",
@@ -28,6 +150,21 @@
           "value": "/^$containers$/"
         }
       ],
+      "hide": false
+    },
+    {
+      "refId": "B",
+      "hide": false,
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "value": "/^$servername$/",
+          "operator": "=~"
+        }
+      ],
       "groupBy": [
         {
           "type": "time",
@@ -38,7 +175,7 @@
         {
           "type": "tag",
           "params": [
-            "container_name"
+            "host"
           ]
         },
         {
@@ -53,105 +190,27 @@
           {
             "type": "field",
             "params": [
-              "usage_percent"
+              "n_cpus"
             ]
           },
           {
-            "type": "mean",
+            "type": "last",
             "params": []
           },
           {
             "type": "math",
             "params": [
-              " / $cpucount"
+              " * 100"
             ]
           }
         ]
       ],
-      "measurement": "docker_container_cpu",
-      "alias": "$tag_container_name"
+      "measurement": "system",
+      "alias": "$tag_host: n_cpus*100"
     }
   ],
-  "options": {
-    "alertThreshold": true
-  },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "percent",
-      "$$hashKey": "object:315"
-    },
-    {
-      "label": null,
-      "show": false,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:316"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
-  },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "lines": true,
-  "fill": 1,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": false,
-    "min": false,
-    "max": false,
-    "current": false,
-    "total": false,
-    "avg": false,
-    "alignAsTable": false,
-    "rightSide": false,
-    "hideZero": false
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "decimals": null,
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
-  "percentage": false,
-  "steppedLine": false,
+  "transformations": [],
+  "maxDataPoints": null,
   "timeFrom": null,
-  "timeShift": null,
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeShift": null
 }

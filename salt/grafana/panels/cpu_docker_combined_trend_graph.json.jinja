@@ -1,20 +1,79 @@
 {
-  "type": "graph",
-  "title": "Container CPU Usage Trend",
+  "id": 101,
   "gridPos": {
     "x": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.x }},
     "y": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.y }},
     "w": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.w }},
     "h": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.h }}
   },
-  "id": 101,
+  "type": "timeseries",
+  "title": "Container CPU Usage Trend",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "so_long_term",
-      "resultFormat": "time_series",
+      "alias": "$tag_host: $tag_container_name",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_cpu",
       "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "mean_usage_percent"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
       "tags": [
         {
           "key": "host",
@@ -27,6 +86,20 @@
           "operator": "=~",
           "value": "/^$containers$/"
         }
+      ]
+    },
+    {
+      "refId": "B",
+      "hide": false,
+      "policy": "so_long_term",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "value": "/^$servername$/",
+          "operator": "=~"
+        }
       ],
       "groupBy": [
         {
@@ -38,7 +111,7 @@
         {
           "type": "tag",
           "params": [
-            "container_name"
+            "host"
           ]
         },
         {
@@ -53,106 +126,88 @@
           {
             "type": "field",
             "params": [
-              "mean_usage_percent"
+              "mean_n_cpus"
             ]
           },
           {
-            "type": "mean",
+            "type": "last",
             "params": []
           },
           {
             "type": "math",
             "params": [
-              " / $cpucount"
+              " * 100"
             ]
           }
         ]
       ],
-      "measurement": "docker_container_cpu",
-      "alias": "$tag_container_name"
+      "measurement": "system",
+      "alias": "$tag_host: n_cpus*100"
     }
   ],
-  "options": {
-    "alertThreshold": true
-  },
-  "datasource": "InfluxDB",
   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "percent",
-      "$$hashKey": "object:315"
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "percent",
+      "decimals": 1
     },
-    {
-      "label": null,
-      "show": false,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:316"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/n_cpus/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      }
+    ]
   },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "lines": true,
-  "fill": 1,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": false,
-    "max": false,
-    "current": false,
-    "total": false,
-    "avg": true,
-    "alignAsTable": false,
-    "rightSide": false,
-    "hideZero": false
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "decimals": 1,
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
-  "percentage": false,
-  "steppedLine": false,
-  "timeFrom": null,
-  "timeShift": null,
+  "maxDataPoints": null,
   "description": "",
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeFrom": null,
+  "timeShift": null
 }

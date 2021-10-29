@@ -1,73 +1,121 @@
 {
-  "aliasColors": {},
-  "bars": false,
-  "maxDataPoints": 750,
-  "interval": "30s",
-  "dashLength": 10,
-  "dashes": false,
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {
-      "links": []
-    },
-    "overrides": []
-  },
-  "fill": 1,
-  "fillGradient": 0,
+  "id": 71,
   "gridPos": {
     "x": {{ PANELS.zeek_capture_loss_graph.gridPos.x }},
     "y": {{ PANELS.zeek_capture_loss_graph.gridPos.y }},
     "w": {{ PANELS.zeek_capture_loss_graph.gridPos.w }},
     "h": {{ PANELS.zeek_capture_loss_graph.gridPos.h }}
   },
-  "hiddenSeries": false,
-  "id": 71,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "hideEmpty": true,
-    "max": true,
-    "min": false,
-    "rightSide": false,
-    "show": true,
-    "sort": "current",
-    "sortDesc": true,
-    "total": false,
-    "values": true
+  "type": "timeseries",
+  "title": "Capture Loss",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "auto",
+        "pointSize": 6,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "links": [],
+      "unit": "percent",
+      "decimals": 1,
+      "min": 0
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Trend/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "custom.lineWidth",
+            "value": 4
+          },
+          {
+            "id": "custom.lineStyle",
+            "value": {
+              "fill": "dash",
+              "dash": [
+                4,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    ]
   },
-  "lines": true,
-  "linewidth": 1,
-  "nullPointMode": "connected",
   "options": {
-    "alertThreshold": true
-  },
-  "percentage": false,
-  "pluginVersion": "7.5.4",
-  "pointradius": 2,
-  "points": true,
-  "renderer": "flot",
-  "seriesOverrides": [
-    {
-      "alias": "/Trend/",
-      "dashLength": 4,
-      "dashes": true,
-      "fill": 0,
-      "linewidth": 4
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "mean",
+        "lastNotNull"
+      ]
     }
-  ],
-  "spaceLength": 10,
-  "stack": false,
-  "steppedLine": false,
+  },
   "targets": [
     {
-      "alias": "Loss Current",
+      "alias": "$tag_host: Loss Current",
       "groupBy": [
         {
           "params": [
             "$__interval"
           ],
           "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
         },
         {
           "params": [
@@ -98,13 +146,13 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         }
       ]
     },
     {
-      "alias": "Loss Trend",
+      "alias": "$tag_host: Loss Trend",
       "groupBy": [
         {
           "params": [
@@ -142,51 +190,13 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         }
       ]
     }
   ],
-  "thresholds": [],
+  "maxDataPoints": null,
   "timeFrom": null,
-  "timeRegions": [],
-  "timeShift": null,
-  "title": "Capture Loss",
-  "tooltip": {
-    "shared": true,
-    "sort": 0,
-    "value_type": "individual"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "decimals": 1,
-      "format": "percent",
-      "label": "",
-      "logBase": 1,
-      "max": null,
-      "min": 0,
-      "show": true
-    },
-    {
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": false
-    }
-  ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  }
+  "timeShift": null
 }
