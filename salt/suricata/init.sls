@@ -93,7 +93,7 @@ surilogscript:
     - month: '*'
     - dayweek: '*'
 
-suriconfigsync:
+suriconfig:
   file.managed:
     - name: /opt/so/conf/suricata/suricata.yaml
     - source: salt://suricata/files/suricata.yaml.jinja
@@ -155,10 +155,14 @@ so-suricata:
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
     - network_mode: host
     - watch:
-      - file: /opt/so/conf/suricata/suricata.yaml
+      - file: suriconfig
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+    - require:
+      - file: suriconfig
+      - file: surithresholding
+      - file: suribpf
 
   {% else %} {# if Suricata isn't enabled, then stop and remove the container #}
     - force: True

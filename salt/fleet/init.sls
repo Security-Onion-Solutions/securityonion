@@ -17,6 +17,7 @@
 
 
 include:
+  - ssl
   - mysql
 
 # Fleet Setup
@@ -136,6 +137,9 @@ so-fleet:
       - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
+    - require:
+      - x509: fleet_key
+      - x509: fleet_crt
 
 append_so-fleet_so-status.conf:
   file.append:

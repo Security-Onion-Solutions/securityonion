@@ -51,6 +51,8 @@ so-logscan:
       - /opt/so/log/logscan:/logscan/output:rw
       - /opt/so/log:/logscan/logs:ro
     - cpu_period: {{ logscan_cpu_period }}
+    - require:
+      - file: logscan_conf
     {% else %}
     - force: true
     {% endif %}
