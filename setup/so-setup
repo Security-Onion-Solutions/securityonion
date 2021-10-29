@@ -309,6 +309,24 @@ if ! [[ -f $install_opt_file ]]; then
 		copy_ssh_key >> $setup_log 2>&1
 	fi
 
+	# Check if this is an airgap install
+	if [[ ( $is_manager || $is_import) && $is_iso ]]; then
+		whiptail_airgap
+		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+			is_airgap=true
+		fi
+	elif [[ $is_minion && $is_iso ]]; then
+		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
+		airgap_check=$?
+		[[ $airgap_check ]] && is_airgap=true >> $setup_log 2>&1
+	fi
+
+	reset_proxy
+	if [[ -z $is_airgap ]]; then
+		collect_net_method
+		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
+	fi
+
 	if [[ $is_minion ]] && ! (compare_versions); then
 		info "Installer version mismatch, downloading correct version from manager"
 		printf '%s\n' \
@@ -317,30 +335,14 @@ if ! [[ -f $install_opt_file ]]; then
 			"HOSTNAME=$HOSTNAME" \
 			"MSRV=$MSRV" \
 			"MSRVIP=$MSRVIP" \
+			"is_airgap=$is_airgap" \
 			"NODE_DESCRIPTION=\"$NODE_DESCRIPTION\"" > "$install_opt_file"
+		[[ -n $so_proxy ]] && echo "so_proxy=$so_proxy" >> "$install_opt_file"
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
-fi
-
-# Check if this is an airgap install
-if [[ ( $is_manager || $is_import) && $is_iso ]]; then
-	whiptail_airgap
-	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-		is_airgap=true
-	fi
-elif [[ $is_minion && $is_iso ]]; then
-	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
-	airgap_check=$?
-	[[ $airgap_check ]] && is_airgap=true >> $setup_log 2>&1
-fi
-
-reset_proxy
-if [[ -z $is_airgap ]]; then
-	collect_net_method
-	[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
 fi
 
 percentage=0
