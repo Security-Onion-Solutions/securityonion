@@ -265,14 +265,6 @@ if [[ $is_manager || $is_import ]]; then
 fi
 
 if ! [[ -f $install_opt_file ]]; then
-	# Check if this is an airgap install
-	if [[ ( $is_manager || $is_import || $is_minion ) && $is_iso ]]; then
-		whiptail_airgap
-		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-			is_airgap=true
-		fi
-	fi
-
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -312,15 +304,27 @@ if ! [[ -f $install_opt_file ]]; then
 		add_mngr_ip_to_hosts
 	fi
 
+	if [[ $is_minion ]]; then
+		whiptail_ssh_key_copy_notice
+		copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	# Check if this is an airgap install
+	if [[ ( $is_manager || $is_import) && $is_iso ]]; then
+		whiptail_airgap
+		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+			is_airgap=true
+		fi
+	elif [[ $is_minion && $is_iso ]]; then
+		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
+		airgap_check=$?
+		[[ $airgap_check ]] && is_airgap=true >> $setup_log 2>&1
+	fi
+
 	reset_proxy
 	if [[ -z $is_airgap ]]; then
 		collect_net_method
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]]; then
-		whiptail_ssh_key_copy_notice
-		copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]] && ! (compare_versions); then
@@ -337,7 +341,6 @@ if ! [[ -f $install_opt_file ]]; then
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
-
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
 fi

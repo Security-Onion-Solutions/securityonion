@@ -462,7 +462,7 @@ fleet_crt:
     - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ manager }}
-    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
+    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}{% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
