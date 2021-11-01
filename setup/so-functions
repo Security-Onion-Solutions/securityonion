@@ -846,7 +846,7 @@ check_requirements() {
 	local req_cores
 	local req_storage
 	local nic_list
-	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
 	if [[ "$standalone_or_dist" == 'standalone' ]]; then
@@ -1374,7 +1374,7 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
