@@ -8,6 +8,7 @@
   },
   "type": "timeseries",
   "title": "Container CPU Usage Current",
+  "transformations": [],
   "datasource": "InfluxDB",
   "pluginVersion": "8.2.1",
   "interval": "30s",
@@ -67,6 +68,13 @@
           {
             "id": "custom.fillOpacity",
             "value": 0
+          },
+          {
+            "id": "color",
+            "value": {
+              "mode": "fixed",
+              "fixedColor": "dark-red"
+            }
           }
         ]
       }
@@ -115,6 +123,7 @@
           "type": "fill"
         }
       ],
+      "hide": false,
       "measurement": "docker_container_cpu",
       "orderByTime": "ASC",
       "policy": "default",
@@ -149,67 +158,65 @@
           "operator": "=~",
           "value": "/^$containers$/"
         }
-      ],
-      "hide": false
+      ]
     },
     {
-      "refId": "B",
-      "hide": false,
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [
-        {
-          "key": "host",
-          "value": "/^$servername$/",
-          "operator": "=~"
-        }
-      ],
+      "alias": "$tag_host: n_cpus*100",
       "groupBy": [
         {
-          "type": "time",
           "params": [
             "$__interval"
-          ]
+          ],
+          "type": "time"
         },
         {
-          "type": "tag",
           "params": [
             "host"
-          ]
+          ],
+          "type": "tag"
         },
         {
-          "type": "fill",
           "params": [
             "null"
-          ]
+          ],
+          "type": "fill"
         }
       ],
+      "hide": false,
+      "measurement": "system",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "B",
+      "resultFormat": "time_series",
       "select": [
         [
           {
-            "type": "field",
             "params": [
               "n_cpus"
-            ]
+            ],
+            "type": "field"
           },
           {
-            "type": "last",
-            "params": []
+            "params": [],
+            "type": "last"
           },
           {
-            "type": "math",
             "params": [
               " * 100"
-            ]
+            ],
+            "type": "math"
           }
         ]
       ],
-      "measurement": "system",
-      "alias": "$tag_host: n_cpus*100"
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
     }
   ],
-  "transformations": [],
   "maxDataPoints": null,
   "timeFrom": null,
   "timeShift": null

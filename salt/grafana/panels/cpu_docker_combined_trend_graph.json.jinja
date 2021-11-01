@@ -11,140 +11,6 @@
   "datasource": "InfluxDB",
   "pluginVersion": "8.2.1",
   "interval": "30s",
-  "options": {
-    "tooltip": {
-      "mode": "single"
-    },
-    "legend": {
-      "displayMode": "table",
-      "placement": "right",
-      "calcs": [
-        "max",
-        "mean",
-        "lastNotNull"
-      ]
-    }
-  },
-  "targets": [
-    {
-      "alias": "$tag_host: $tag_container_name",
-      "groupBy": [
-        {
-          "params": [
-            "$__interval"
-          ],
-          "type": "time"
-        },
-        {
-          "params": [
-            "container_name"
-          ],
-          "type": "tag"
-        },
-        {
-          "type": "tag",
-          "params": [
-            "host"
-          ]
-        },
-        {
-          "params": [
-            "null"
-          ],
-          "type": "fill"
-        }
-      ],
-      "measurement": "docker_container_cpu",
-      "orderByTime": "ASC",
-      "policy": "so_long_term",
-      "queryType": "randomWalk",
-      "refId": "A",
-      "resultFormat": "time_series",
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "mean_usage_percent"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          }
-        ]
-      ],
-      "tags": [
-        {
-          "key": "host",
-          "operator": "=~",
-          "value": "/^$servername$/"
-        },
-        {
-          "condition": "AND",
-          "key": "container_name",
-          "operator": "=~",
-          "value": "/^$containers$/"
-        }
-      ]
-    },
-    {
-      "refId": "B",
-      "hide": false,
-      "policy": "so_long_term",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [
-        {
-          "key": "host",
-          "value": "/^$servername$/",
-          "operator": "=~"
-        }
-      ],
-      "groupBy": [
-        {
-          "type": "time",
-          "params": [
-            "$__interval"
-          ]
-        },
-        {
-          "type": "tag",
-          "params": [
-            "host"
-          ]
-        },
-        {
-          "type": "fill",
-          "params": [
-            "null"
-          ]
-        }
-      ],
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "mean_n_cpus"
-            ]
-          },
-          {
-            "type": "last",
-            "params": []
-          },
-          {
-            "type": "math",
-            "params": [
-              " * 100"
-            ]
-          }
-        ]
-      ],
-      "measurement": "system",
-      "alias": "$tag_host: n_cpus*100"
-    }
-  ],
   "fieldConfig": {
     "defaults": {
       "custom": {
@@ -188,8 +54,8 @@
         ]
       },
       "mappings": [],
-      "unit": "percent",
-      "decimals": 1
+      "decimals": 1,
+      "unit": "percent"
     },
     "overrides": [
       {
@@ -201,13 +67,154 @@
           {
             "id": "custom.fillOpacity",
             "value": 0
+          },
+          {
+            "id": "color",
+            "value": {
+              "mode": "fixed",
+              "fixedColor": "dark-red"
+            }
           }
         ]
       }
     ]
   },
-  "maxDataPoints": null,
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_container_name",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_cpu",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_usage_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
+    },
+    {
+      "alias": "$tag_host: n_cpus*100",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "system",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_n_cpus"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          },
+          {
+            "params": [
+              " * 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    }
+  ],
   "description": "",
+  "maxDataPoints": null,
   "timeFrom": null,
   "timeShift": null
 }
