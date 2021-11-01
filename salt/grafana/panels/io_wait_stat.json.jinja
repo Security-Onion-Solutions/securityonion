@@ -1,16 +1,5 @@
 {
-  "id": 61867,
-  "gridPos": {
-    "x": {{ PANELS.io_wait_stat.gridPos.x }},
-    "y": {{ PANELS.io_wait_stat.gridPos.y }},
-    "w": {{ PANELS.io_wait_stat.gridPos.w }},
-    "h": {{ PANELS.io_wait_stat.gridPos.h }}
-  },
-  "type": "stat",
-  "title": "IOWait",
   "datasource": "InfluxDB",
-  "pluginVersion": "8.2.1",
-  "links": [],
   "fieldConfig": {
     "defaults": {
       "thresholds": {
@@ -32,41 +21,31 @@
       },
       "mappings": [
         {
-          "options": {
-            "match": "null",
-            "result": {
-              "text": "N/A"
-            }
-          },
-          "type": "special"
+          "op": "=",
+          "text": "N/A",
+          "value": "null",
+          "$$hashKey": "object:1217",
+          "id": 0,
+          "type": 1
         }
       ],
+      "unit": "percent",
+      "decimals": 2,
       "color": {
         "mode": "thresholds"
-      },
-      "decimals": 2,
-      "max": 100,
-      "min": 0,
-      "unit": "percent"
+      }
     },
     "overrides": []
   },
-  "interval": "30",
-  "options": {
-    "reduceOptions": {
-      "values": false,
-      "calcs": [
-        "lastNotNull"
-      ],
-      "fields": ""
-    },
-    "orientation": "horizontal",
-    "text": {},
-    "textMode": "auto",
-    "colorMode": "value",
-    "graphMode": "area",
-    "justifyMode": "auto"
+  "gridPos": {
+    "x": {{ PANELS.io_wait_stat.gridPos.x }},
+    "y": {{ PANELS.io_wait_stat.gridPos.y }},
+    "w": {{ PANELS.io_wait_stat.gridPos.w }},
+    "h": {{ PANELS.io_wait_stat.gridPos.h }}
   },
+  "id": 61867,
+  "links": [],
+  "maxDataPoints": 100,
   "targets": [
     {
       "dsType": "influxdb",
@@ -85,7 +64,6 @@
         }
       ],
       "measurement": "cpu",
-      "orderByTime": "ASC",
       "policy": "default",
       "query": "SELECT non_negative_derivative(mean(\"usage_iowait\"), 1s) FROM \"cpu\" WHERE (host =~ /$servername$/ AND \"cpu\" = 'cpu-total') AND $timeFilter GROUP BY time($interval) fill(null)",
       "rawQuery": false,
@@ -108,8 +86,8 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=",
-          "value": "$servername"
+          "operator": "=~",
+          "value": "/^$servername$/"
         },
         {
           "condition": "AND",
@@ -117,9 +95,28 @@
           "operator": "=",
           "value": "cpu-total"
         }
-      ]
+      ],
+      "orderByTime": "ASC"
     }
   ],
-  "maxDataPoints": null,
-  "cacheTimeout": null
+  "title": "IOWait",
+  "type": "stat",
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "auto",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
+  },
+  "cacheTimeout": null,
+  "interval": null,
+  "pluginVersion": "7.5.4"
 }

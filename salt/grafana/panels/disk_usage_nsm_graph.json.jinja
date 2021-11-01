@@ -1,211 +1,186 @@
 {
-  "id": 68888,
+  "type": "graph",
+  "title": "Disk Usage /nsm",
   "gridPos": {
     "x": {{ PANELS.disk_usage_nsm_graph.gridPos.x }},
     "y": {{ PANELS.disk_usage_nsm_graph.gridPos.y }},
     "w": {{ PANELS.disk_usage_nsm_graph.gridPos.w }},
     "h": {{ PANELS.disk_usage_nsm_graph.gridPos.h }}
   },
-  "type": "timeseries",
-  "title": "Disk Usage /nsm",
-  "datasource": "InfluxDB",
-  "pluginVersion": "8.2.1",
-  "interval": "30s",
-  "options": {
-    "tooltip": {
-      "mode": "single"
-    },
-    "legend": {
-      "displayMode": "table",
-      "placement": "bottom",
-      "calcs": [
-        "max",
-        "mean",
-        "lastNotNull"
-      ]
-    }
-  },
+  "id": 68888,
   "targets": [
     {
-      "alias": "$tag_host: mountpoint $tag_path - $col",
+      "refId": "A",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
       "groupBy": [
         {
+          "type": "time",
           "params": [
             "$__interval"
-          ],
-          "type": "time"
+          ]
         },
         {
+          "type": "fill",
           "params": [
             "null"
-          ],
-          "type": "fill"
+          ]
         }
       ],
-      "orderByTime": "ASC",
-      "policy": "default",
-      "query": "SELECT mean(total) AS \"total\", mean(used) as \"used\" FROM \"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/nsm' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\"",
-      "queryType": "randomWalk",
-      "rawQuery": true,
-      "refId": "A",
-      "resultFormat": "time_series",
       "select": [
         [
           {
+            "type": "field",
             "params": [
               "value"
-            ],
-            "type": "field"
+            ]
           },
           {
-            "params": [],
-            "type": "mean"
+            "type": "mean",
+            "params": []
           }
         ]
       ],
-      "tags": []
+      "query": "SELECT mean(total) AS \"total\", mean(used) as \"used\" FROM \"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/nsm' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\"",
+      "rawQuery": true,
+      "alias": "$tag_host: mountpoint $tag_path - $col"
     },
     {
-      "alias": "$tag_host: mountpoint $tag_path - $col",
+      "refId": "B",
+      "queryType": "randomWalk",
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [],
       "groupBy": [
         {
+          "type": "time",
           "params": [
             "$__interval"
-          ],
-          "type": "time"
+          ]
         },
         {
+          "type": "fill",
           "params": [
             "null"
-          ],
-          "type": "fill"
+          ]
         }
       ],
-      "hide": false,
-      "orderByTime": "ASC",
-      "policy": "default",
-      "query": "SELECT mean(mean_total) AS \"trend_total\", mean(mean_used) as \"trend_used\" FROM \"so_long_term\".\"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/nsm' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\" fill(linear)",
-      "queryType": "randomWalk",
-      "rawQuery": true,
-      "refId": "B",
-      "resultFormat": "time_series",
       "select": [
         [
           {
+            "type": "field",
             "params": [
               "value"
-            ],
-            "type": "field"
+            ]
           },
           {
-            "params": [],
-            "type": "mean"
+            "type": "mean",
+            "params": []
           }
         ]
       ],
-      "tags": []
+      "query": "SELECT mean(mean_total) AS \"trend_total\", mean(mean_used) as \"trend_used\" FROM \"so_long_term\".\"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/nsm' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\"",
+      "rawQuery": true,
+      "alias": "$tag_host: mountpoint $tag_path - $col",
+      "hide": false
     }
   ],
-  "fieldConfig": {
-    "defaults": {
-      "custom": {
-        "drawStyle": "line",
-        "lineInterpolation": "linear",
-        "barAlignment": 0,
-        "lineWidth": 1,
-        "fillOpacity": 10,
-        "gradientMode": "none",
-        "spanNulls": false,
-        "showPoints": "never",
-        "pointSize": 5,
-        "stacking": {
-          "mode": "none",
-          "group": "A"
-        },
-        "axisPlacement": "auto",
-        "axisLabel": "",
-        "scaleDistribution": {
-          "type": "linear"
-        },
-        "hideFrom": {
-          "tooltip": false,
-          "viz": false,
-          "legend": false
-        },
-        "thresholdsStyle": {
-          "mode": "off"
-        }
-      },
-      "color": {
-        "mode": "palette-classic"
-      },
-      "thresholds": {
-        "mode": "absolute",
-        "steps": [
-          {
-            "color": "green",
-            "value": null
-          }
-        ]
-      },
-      "mappings": [],
-      "unit": "bytes",
-      "min": 0,
-      "decimals": 1
-    },
-    "overrides": [
-      {
-        "matcher": {
-          "id": "byRegexp",
-          "options": "/total/"
-        },
-        "properties": [
-          {
-            "id": "color",
-            "value": {
-              "fixedColor": "#C4162A",
-              "mode": "fixed"
-            }
-          },
-          {
-            "id": "custom.fillOpacity",
-            "value": 0
-          },
-          {
-            "id": "custom.lineWidth",
-            "value": 2
-          }
-        ]
-      },
-      {
-        "matcher": {
-          "id": "byRegexp",
-          "options": "/trend/"
-        },
-        "properties": [
-          {
-            "id": "custom.fillOpacity",
-            "value": 0
-          },
-          {
-            "id": "custom.lineWidth",
-            "value": 4
-          },
-          {
-            "id": "custom.lineStyle",
-            "value": {
-              "fill": "dash",
-              "dash": [
-                4,
-                10
-              ]
-            }
-          }
-        ]
-      }
-    ]
+  "options": {
+    "alertThreshold": true
   },
-  "maxDataPoints": null,
-  "timeFrom": null,
-  "timeShift": null
+  "datasource": "InfluxDB",
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+  },
+  "pluginVersion": "7.5.4",
+  "renderer": "flot",
+  "yaxes": [
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": "0",
+      "max": null,
+      "format": "bytes",
+      "$$hashKey": "object:235"
+    },
+    {
+      "label": null,
+      "show": true,
+      "logBase": 1,
+      "min": null,
+      "max": null,
+      "format": "short",
+      "$$hashKey": "object:236"
+    }
+  ],
+  "xaxis": {
+    "show": true,
+    "mode": "time",
+    "name": null,
+    "values": [],
+    "buckets": null
+  },
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "lines": true,
+  "fill": 1,
+  "linewidth": 1,
+  "dashLength": 10,
+  "spaceLength": 10,
+  "pointradius": 2,
+  "legend": {
+    "show": true,
+    "values": true,
+    "min": false,
+    "max": true,
+    "current": true,
+    "total": false,
+    "avg": true,
+    "alignAsTable": true
+  },
+  "nullPointMode": "connected",
+  "tooltip": {
+    "value_type": "individual",
+    "shared": true,
+    "sort": 0
+  },
+  "aliasColors": {},
+  "seriesOverrides": [
+    {
+      "$$hashKey": "object:486",
+      "alias": "/total/",
+      "fill": 0,
+      "linewidth": 2,
+      "color": "#C4162A",
+      "zindex": 3
+    },
+    {
+      "$$hashKey": "object:829",
+      "alias": "/trend/",
+      "fill": 0,
+      "linewidth": 4,
+      "dashes": true,
+      "dashLength": 4
+    }
+  ],
+  "thresholds": [],
+  "timeRegions": [],
+  "steppedLine": true,
+  "fillGradient": 0,
+  "dashes": false,
+  "hiddenSeries": false,
+  "points": false,
+  "bars": false,
+  "stack": false,
+  "percentage": false,
+  "maxDataPoints": 750,
+  "interval": "30s"
 }
