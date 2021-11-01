@@ -1,48 +1,30 @@
 {
-  "aliasColors": {},
-  "dashLength": 10,
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
+  "id": 61869,
   "gridPos": {
     "x": {{ PANELS.load_averages_graph.gridPos.x }},
     "y": {{ PANELS.load_averages_graph.gridPos.y }},
     "w": {{ PANELS.load_averages_graph.gridPos.w }},
     "h": {{ PANELS.load_averages_graph.gridPos.h }}
   },
-  "id": 61869,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "max": true,
-    "min": true,
-    "show": true,
-    "total": false,
-    "values": true
-  },
-  "lines": true,
-  "linewidth": 1,
-  "nullPointMode": "connected",
+  "type": "timeseries",
+  "title": "1 Minute Load Average",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
   "options": {
-    "alertThreshold": true
-  },
-  "pluginVersion": "7.5.4",
-  "pointradius": 2,
-  "renderer": "flot",
-  "seriesOverrides": [
-    {
-      "$$hashKey": "object:364",
-      "alias": "/trend/",
-      "fill": 0,
-      "linewidth": 4,
-      "dashes": true,
-      "dashLength": 4
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
     }
-  ],
-  "spaceLength": 10,
+  },
   "targets": [
     {
       "alias": "$tag_host: $col",
@@ -99,9 +81,10 @@
           "type": "fill"
         }
       ],
+      "hide": false,
       "orderByTime": "ASC",
       "policy": "default",
-      "query": "SELECT mean(mean_load1) as \"trend_1 minute\" FROM \"so_long_term\".\"system\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), * ORDER BY asc",
+      "query": "SELECT mean(mean_load1) as \"trend_1 minute\" FROM \"so_long_term\".\"system\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), * fill(linear) ORDER BY asc",
       "queryType": "randomWalk",
       "rawQuery": true,
       "refId": "B",
@@ -120,61 +103,85 @@
           }
         ]
       ],
-      "tags": [],
-      "hide": false
+      "tags": []
     }
   ],
-  "thresholds": [],
-  "timeRegions": [],
-  "title": "1 Minute Load Average",
-  "tooltip": {
-    "shared": true,
-    "sort": 0,
-    "value_type": "individual"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "$$hashKey": "object:287",
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "short",
+      "decimals": 1
     },
-    {
-      "$$hashKey": "object:288",
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
-    }
-  ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/trend/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "custom.lineWidth",
+            "value": 4
+          },
+          {
+            "id": "custom.lineStyle",
+            "value": {
+              "fill": "dash",
+              "dash": [
+                4,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    ]
   },
-  "bars": false,
-  "dashes": false,
-  "fill": 0,
-  "fillGradient": 0,
-  "hiddenSeries": false,
-  "percentage": false,
-  "points": false,
-  "stack": false,
-  "steppedLine": false,
+  "maxDataPoints": null,
   "timeFrom": null,
-  "timeShift": null,
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeShift": null
 }
