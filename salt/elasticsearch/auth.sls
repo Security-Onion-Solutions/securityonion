@@ -1,8 +1,8 @@
-{% set so_elastic_user_pass = salt['random.get_str'](20) %}
-{% set so_kibana_user_pass = salt['random.get_str'](20) %}
-{% set so_logstash_user_pass = salt['random.get_str'](20) %}
-{% set so_beats_user_pass = salt['random.get_str'](20) %}
-{% set so_monitor_user_pass = salt['random.get_str'](20) %}
+{% set so_elastic_user_pass = salt['random.get_str'](72) %}
+{% set so_kibana_user_pass = salt['random.get_str'](72) %}
+{% set so_logstash_user_pass = salt['random.get_str'](72) %}
+{% set so_beats_user_pass = salt['random.get_str'](72) %}
+{% set so_monitor_user_pass = salt['random.get_str'](72) %}
 
 elastic_auth_pillar:
   file.managed:
