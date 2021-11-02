@@ -352,12 +352,15 @@ if [[ -z $is_airgap ]]; then
 		progress_bg_proc=$!
 		./so-preflight true "$setup_log" >> $setup_log 2>&1
 		preflight_ret=$?
+		echo "$preflight_ret" > /tmp/preflight_ret
 		kill -9 "$progress_bg_proc"
 		wait "$progress_bg_proc" &> /dev/null
-		if [[ $preflight_ret -gt 0 ]] && ! ( whiptail_preflight_err ); then
-			whiptail_cancel
-		fi
 	} | progress '...'
+	[[ -f /tmp/setup_tmp_var ]] && preflight_ret=$(cat /tmp/preflight_ret)
+	rm /tmp/preflight_ret
+	if [[ -n $preflight_ret && $preflight_ret -gt 0 ]] && ! ( whiptail_preflight_err ); then
+		whiptail_cancel
+	fi
 fi
 
 percentage=0
