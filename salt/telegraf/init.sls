@@ -44,6 +44,7 @@ tgrafconf:
     - mode: 660
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
+    - show_changes: False
 
 #this file will be read by telegraf to send node details(management interface, monitor interface, etc)
 # into influx so that grafan can build dashboards using queries
