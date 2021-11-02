@@ -25,6 +25,7 @@
 
 INDEX_DATE=$(date +'%Y.%m.%d')
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
+LOG_FILE=/nsm/import/evtx-import.log
 
 . /usr/sbin/so-common
 
@@ -41,14 +42,17 @@ function evtx2es() {
   EVTX=$1
   HASH=$2
   
+  ES_PW=$(lookup_pillar "auth:users:so_elastic_user:pass" "elasticsearch")
+  ES_USER=$(lookup_pillar "auth:users:so_elastic_user:user" "elasticsearch")
+
   docker run --rm \
     -v "$EVTX:/tmp/$RUNID.evtx" \
     --entrypoint evtx2es \
     {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} \
     --host {{ MANAGERIP }} --scheme https \
     --index so-beats-$INDEX_DATE --pipeline import.wel \
-    --login {{ES_USER}} --pwd {{ES_PW}} \
-    "/tmp/$RUNID.evtx" 1>/dev/null 2>/dev/null
+    --login $ES_USER --pwd $ES_PW \
+    "/tmp/$RUNID.evtx" >> $LOG_FILE 2>&1
 
   docker run --rm \
     -v "$EVTX:/tmp/import.evtx" \
