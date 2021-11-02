@@ -25,6 +25,7 @@
 
 INDEX_DATE=$(date +'%Y.%m.%d')
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
+LOG_FILE=/nsm/import/evtx-import.log
 
 . /usr/sbin/so-common
 
@@ -51,7 +52,7 @@ function evtx2es() {
     --host {{ MANAGERIP }} --scheme https \
     --index so-beats-$INDEX_DATE --pipeline import.wel \
     --login $ES_USER --pwd $ES_PW \
-    "/tmp/$RUNID.evtx" 1>/dev/null 2>/dev/null
+    "/tmp/$RUNID.evtx" 1>/dev/null  > $LOG_FILE 2>&1
 
   docker run --rm \
     -v "$EVTX:/tmp/import.evtx" \
