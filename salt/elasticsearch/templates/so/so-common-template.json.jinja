@@ -1,12 +1,14 @@
 {%- set INDEX_SORTING = salt['pillar.get']('elasticsearch:index_sorting', True) %}
+{%- set REPLICAS = salt['pillar.get']('elasticsearch:replicas', 0) %}
+{%- set REFRESH = salt['pillar.get']('elasticsearch:index_settings:so-common:refresh', '30s') %}
 {
   "index_patterns": ["so-*"],
   "version":50001,
   "order":10,
   "settings":{
-    "number_of_replicas":0,
+    "number_of_replicas":{{ REPLICAS }},
     "number_of_shards":1,
-    "index.refresh_interval":"30s",
+    "index.refresh_interval":"{{ REFRESH }}",
     "index.routing.allocation.require.box_type":"hot",
     "index.mapping.total_fields.limit": "1500",
 {%- if INDEX_SORTING is sameas true %}
