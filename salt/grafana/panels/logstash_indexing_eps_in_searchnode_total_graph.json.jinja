@@ -1,23 +1,23 @@
 {
   "id": 69001,
   "gridPos": {
-    "x": {{ PANELS.logstash_estimated_eps_in_searchnode_total_graph.gridPos.x }},
-    "y": {{ PANELS.logstash_estimated_eps_in_searchnode_total_graph.gridPos.y }},
-    "w": {{ PANELS.logstash_estimated_eps_in_searchnode_total_graph.gridPos.w }},
-    "h": {{ PANELS.logstash_estimated_eps_in_searchnode_total_graph.gridPos.h }}
+    "x": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.x }},
+    "y": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.y }},
+    "w": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.w }},
+    "h": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.h }}
   },
   "type": "timeseries",
-  "title": "Indexing Events Per Second",
+  "title": "Total Searchnode Indexing Events Per Second",
   "transformations": [
     {
       "id": "calculateField",
       "options": {
+        "alias": "Total EPS",
         "mode": "reduceRow",
         "reduce": {
           "reducer": "sum"
         },
-        "replaceFields": true,
-        "alias": "Total EPS"
+        "replaceFields": true
       }
     }
   ],
@@ -55,24 +55,20 @@
         }
       },
       "color": {
-        "mode": "palette-classic"
+        "mode": "fixed",
+        "fixedColor": "orange"
       },
       "thresholds": {
         "mode": "absolute",
         "steps": [
           {
-            "value": null,
-            "color": "green"
-          },
-          {
-            "value": 80,
-            "color": "red"
+            "color": "green",
+            "value": null
           }
         ]
       },
       "mappings": [],
-      "unit": "short",
-      "decimals": 1
+      "unit": "short"
     },
     "overrides": []
   },
@@ -82,48 +78,44 @@
     },
     "legend": {
       "displayMode": "table",
-      "placement": "right",
+      "placement": "bottom",
       "calcs": [
         "max",
         "mean",
-        "lastNotNull"
+        "min"
       ]
     }
   },
   "targets": [
     {
-      "refId": "A",
-      "hide": false,
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [
-        {
-          "key": "role",
-          "value": "searchnode",
-          "operator": "="
-        }
-      ],
       "groupBy": [
         {
-          "type": "time",
           "params": [
             "$__interval"
-          ]
+          ],
+          "type": "time"
         },
         {
-          "type": "tag",
           "params": [
             "host"
-          ]
+          ],
+          "type": "tag"
         },
         {
-          "type": "fill",
           "params": [
             "null"
-          ]
+          ],
+          "type": "fill"
         }
       ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
       "select": [
         [
           {
@@ -144,13 +136,35 @@
           }
         ]
       ],
-      "measurement": "logstash_events",
-      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
-      "rawQuery": false
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/search/"
+        },
+        {
+          "key": "role",
+          "value": "heavynode",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
     }
   ],
-  "maxDataPoints": null,
   "description": "",
+  "maxDataPoints": null,
   "timeFrom": null,
   "timeShift": null
 }
