@@ -18,7 +18,13 @@
 source ../salt/common/tools/sbin/so-common
 source ./so-functions
 
-preflight_log='/root/preflight.log'
+script_run="$1"
+
+if [[ $script_run == true ]]; then
+	preflight_log="${2:-'/root/preflight.log'}"
+else
+	preflight_log='/root/preflight.log'
+fi
 
 check_default_repos() {
 	local ret_code=0
@@ -27,7 +33,7 @@ check_default_repos() {
 	if [[ $OS == 'centos' ]]; then
 		printf '%s' 'yum update.' | tee -a "$preflight_log"
 		echo "" >> "$preflight_log"
-		yum -y update >> $preflight_log 2>&1
+		yum -y check-update >> $preflight_log 2>&1
 		ret_code=$?
 	else
 		printf '%s' 'apt update.' | tee -a "$preflight_log"
@@ -72,7 +78,8 @@ check_new_repos() {
 check_misc_urls() {
 	printf '  Checking various other URLs used by setup.' | tee -a "$preflight_log"
 
-	local so_version=$(cat ../VERSION)
+	local so_version
+	so_version=$(cat ../VERSION)
 	local url_arr=(
 		"https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
 		"https://github.com/Neo23x0/signature-base"
@@ -112,10 +119,18 @@ __check_url_arr() {
 }
 
 main() {
+	local intro_str="Beginning pre-flight checks."
+	local success_str="Pre-flight checks completed successfully!"
+	local fail_str="Pre-flight checks could not complete."
+
 	detect_os "$preflight_log"
 
 	[[ -f $preflight_log ]] || touch "$preflight_log"
-	echo "Beginning pre-flight checks." | tee "$preflight_log"
+	if [[ $script_run == true ]]; then
+		echo "$intro_str"
+	else
+		echo "$intro_str" | tee "$preflight_log"
+	fi
 	check_default_repos &&\
 	check_new_repos &&\
 	check_misc_urls
@@ -124,12 +139,23 @@ main() {
 	
 	echo ""
 	if [[ $success == 0 ]]; then
-		echo -e "Pre-flight checks completed successfully!\n" | tee -a "$preflight_log"
+		if [[ $script_run == true ]]; then
+			echo "$success_str"
+		else
+			echo "$success_str" | tee -a "$preflight_log"
+			echo ""
+		fi
 	else
-		echo -e "Pre-flight checks could not complete." | tee -a "$preflight_log"
-		echo -e "  Check $preflight_log for details.\n"
-		exit 1
+		if [[ $script_run == true ]]; then
+			echo "$fail_str"
+		else
+			echo "$fail_str" | tee -a "$preflight_log"
+			echo "Check $preflight_log for details."
+			echo ""
+		fi
 	fi
+
+	exit $success
 }
 
 main

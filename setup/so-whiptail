@@ -83,8 +83,8 @@ whiptail_bond_nics_mtu() {
 }
 
 whiptail_cancel() {
-
-	whiptail --title "$whiptail_title" --msgbox "Cancelling Setup." 8 75
+	[ -z "$TESTING" ] && whiptail --title "$whiptail_title" --msgbox "Cancelling Setup." 8 75
+	
 	if [ -d "/root/installtmp" ]; then
 		{
 			echo "/root/installtmp exists";
@@ -95,7 +95,7 @@ whiptail_cancel() {
 
 	title "User cancelled setup."
 	
-	exit
+	exit 1
 }
 
 whiptail_check_exitstatus() {
@@ -1487,6 +1487,20 @@ whiptail_patch_schedule_select_hours() {
 
     IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
+}
+
+whiptail_preflight_err() {
+	[ -n "$TESTING" ] && return 1
+
+	read -r -d '' message <<- EOM
+	The so-preflight script failed checking one or more URLs required by setup. Check $setup_log for more details.
+
+	Would you like to exit setup?
+	EOM
+
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 \
+		--yes-button "Continue" --no-button "Exit" --defaultno
 }
 
 whiptail_proxy_ask() {

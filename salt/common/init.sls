@@ -9,6 +9,11 @@ rmvariablesfile:
   file.absent:
     - name: /tmp/variables.txt
 
+dockergroup:
+  group.present:
+    - name: docker
+    - gid: 920
+
 # Add socore Group
 socoregroup:
   group.present:
