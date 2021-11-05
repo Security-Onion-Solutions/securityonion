@@ -735,7 +735,7 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose install type:" 12 65 5 \
+	"Choose install type. See https://docs.securityonion.net/architecture for details." 12 65 5 \
 		"EVAL" "Evaluation mode (not for production) " ON \
 		"STANDALONE" "Standalone production install " OFF \
 		"DISTRIBUTED" "Distributed install submenu " OFF \
@@ -749,6 +749,11 @@ whiptail_install_type() {
 
 	if [[ $install_type == "DISTRIBUTED" ]]; then
 		whiptail_install_type_dist
+		if [[ $dist_option == "NEWDEPLOYMENT" ]]; then
+			whiptail_install_type_dist_new
+		else
+			whiptail_install_type_dist_existing
+		fi
 	elif [[ $install_type == "OTHER" ]]; then
 		whiptail_install_type_other
 	fi
@@ -759,13 +764,39 @@ whiptail_install_type() {
 whiptail_install_type_dist() {
 
 	[ -n "$TESTING" ] && return
+
+	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to an existing deployment?" 10 75 2 \
+		"New Deployment         " "Create a new Security Onion deployment" \
+		"Existing Deployment    " "Join to an exisiting Security Onion deployment " \
+		 3>&1 1>&2 2>&3
+	)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	dist_option=$(echo "${option^^}" | tr -d ' ')
+}
+
+whiptail_install_type_dist_new() {
+	[ -n "$TESTING" ] && return
 	
 	install_type=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose distributed node type:" 13 60 6 \
-		"MANAGER" "Start a new grid " ON \
+	"Choose distributed manager type. See https://docs.securityonion.net/architecture for details." 24 60 6 \
+		"MANAGER" "Start a new grid - requires separate search node(s) " ON \
+		"MANAGERSEARCH" "Start a new grid - separate search node(s) are optional " OFF \
+		3>&1 1>&2 2>&3
+	)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_install_type_dist_existing() {
+	[ -n "$TESTING" ] && return
+	
+	install_type=$(whiptail --title "$whiptail_title" --radiolist \
+	"Choose distributed node type. See https://docs.securityonion.net/architecture for details." 13 60 6 \
 		"SENSOR" "Create a forward only sensor " OFF \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
-		"MANAGERSEARCH" "Manager + search node " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \
 		"HEAVYNODE" "Sensor + Search Node " OFF \
 		3>&1 1>&2 2>&3
@@ -777,8 +808,6 @@ whiptail_install_type_dist() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-	export install_type
 }
 
 whiptail_install_type_other() {
@@ -907,6 +936,7 @@ whiptail_first_menu_iso() {
 
 	option=$(echo "${option^^}" | tr -d ' ')
 }
+
 whiptail_make_changes() {
 
 	[ -n "$TESTING" ] && return
