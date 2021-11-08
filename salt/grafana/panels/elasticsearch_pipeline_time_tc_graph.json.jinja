@@ -1,0 +1,135 @@
+{
+  "id": 445552,
+  "gridPos": {
+    "x": {{ PANELS.elasticsearch_pipeline_time_nontc_graph.gridPos.x }},
+    "y": {{ PANELS.elasticsearch_pipeline_time_nontc_graph.gridPos.y }},
+    "w": {{ PANELS.elasticsearch_pipeline_time_nontc_graph.gridPos.w }},
+    "h": {{ PANELS.elasticsearch_pipeline_time_nontc_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Pipeline Time",
+  "datasource": "InfluxDB",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "ms"
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "multi"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "elasticsearch_clusterstats_nodes",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "ingest_processor_stats_pipeline_time_in_millis"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_difference",
+            "params": []
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "cluster_name",
+          "operator": "=",
+          "value": "$cluster_name"
+        }
+      ]
+    }
+  ]
+}
+
+
+
+
+
+
+
