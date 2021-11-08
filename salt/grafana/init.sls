@@ -21,7 +21,7 @@
     {% do DASHBOARDS.append('pipeline_overview_nontc') %}
   {% else %}
     {% do DASHBOARDS.append('pipeline_overview_tc') %}
-  {% fi %}
+  {% endif %}
   {# Grab a unique listing of nodetypes that exists so that we create only the needed dashboards #}
   {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
     {% if dashboard in ALLOWED_DASHBOARDS %}
