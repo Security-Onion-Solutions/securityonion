@@ -475,10 +475,15 @@ collect_mngr_hostname() {
 		whiptail_management_server "$MSRV"
 	done
 
+	while [[ $MSRV == "$HOSTNAME" ]]; do 
+		whiptail_invalid_hostname 0
+		whiptail_management_server "$MSRV"
+	done
+
 	if ! getent hosts "$MSRV"; then
 		whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP"; do
+		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
 			whiptail_invalid_input
 			whiptail_manager_ip "$MSRVIP"
 		done
@@ -846,7 +851,7 @@ check_requirements() {
 	local req_cores
 	local req_storage
 	local nic_list
-	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
 	if [[ "$standalone_or_dist" == 'standalone' ]]; then
@@ -1124,9 +1129,10 @@ detect_os() {
 
 installer_progress_loop() {
 	local i=0
+	local msg="${1:-Performing background actions...}"
 	while true; do
 		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" 'Checking that all required packages are installed and enabled...' nolog
+		set_progress_str "$i" "$msg" nolog
 		[[ $i -gt 0 ]] && sleep 5s
 	done
 }
@@ -1374,7 +1380,7 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()

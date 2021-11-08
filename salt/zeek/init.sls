@@ -90,11 +90,14 @@ zeekpolicysync:
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
   file.directory:
-    - name: /nsm/zeek
+    - name: /nsm/zeek/spool
     - user: 937
-    - max_depth: 1
-    - recurse:
-      - user
+zeekstatedbownership:
+  file.managed:
+    - name: /nsm/zeek/spool/state.db
+    - user: 937
+    - replace: False
+    - create: False
 
 # Sync Intel
 zeekintelloadsync:
