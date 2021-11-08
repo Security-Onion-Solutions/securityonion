@@ -841,7 +841,6 @@ whiptail_invalid_input() { # TODO: This should accept a list of arguments to spe
 	[ -n "$TESTING" ] && return
 	
 	whiptail --title "$whiptail_title" --msgbox "  Invalid input, please try again." 7 40
-
 }
 
 whiptail_invalid_proxy() {
@@ -888,10 +887,21 @@ whiptail_invalid_user_warning() {
 whiptail_invalid_hostname() {
 	[ -n "$TESTING" ] && return
 
+	local is_manager_hostname
+	is_manager_hostname="$1"
+
 	local error_message
-	error_message=$(echo "Please choose a valid hostname. It cannot be localhost; and must contain only \
-		the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', \
-		and hyphen ('-')" | tr -d '\t')
+	read -r -d '' error_message <<- EOM
+	Please choose a valid hostname. It cannot be localhost; and must contain only the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', and hyphen ('-')
+	EOM
+
+	if [[ $is_manager_hostname = 0 ]]; then
+		local error_message
+		read -r -d '' error_message <<- EOM
+		Please enter a valid hostname. The manager hostname cannot be localhost or the chosen hostname for this machine. 
+		EOM
+
+	fi
 
 	whiptail --title "$whiptail_title" \
 	--msgbox "$error_message" 10 75
