@@ -10,7 +10,6 @@
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
 
 {% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
-{% from 'kibana/config.map.jinja' import SAVED_OBJECTS with context %}
 
 # Add ES Group
 kibanasearchgroup:
