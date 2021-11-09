@@ -15,7 +15,7 @@ elastic_auth_pillar:
     - contents: |
         elasticsearch:
           auth:
-            enabled: False
+            enabled: True
             users:
               so_elastic_user:
                 user: so_elastic
