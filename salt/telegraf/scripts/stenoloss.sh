@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
-
-if [ ! "$THEGREP" ]; then
+# if this script isn't already running
+if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     CHECKIT=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2|wc -l)
     STENOGREP=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2)
@@ -42,7 +41,7 @@ if [ ! "$THEGREP" ]; then
         echo "stenodrop drop=$LOSS"
       fi
     fi
-    
-else
-    exit 0
+
 fi
+
+exit 0
