@@ -8,7 +8,7 @@ securitySolution_saved_objects:
     - user: 932
     - group: 939
 
-so-kiba-securitySolution_saved_objects-load:
+so-kibana-securitySolution_saved_objects-load:
   cmd.run:
     - name: /usr/sbin/so-kibana-config-load -u /opt/so/conf/kibana/securitySolution_saved_objects.ndjson
     - cwd: /opt/so

@@ -44,6 +44,7 @@ kibanaconfig:
     - template: jinja
     - defaults:
         KIBANACONFIG: {{ KIBANACONFIG }}
+    - show_changes: False
 
 kibanalogdir:
   file.directory:

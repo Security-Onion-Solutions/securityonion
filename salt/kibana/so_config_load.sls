@@ -8,7 +8,7 @@ config_saved_objects:
     - user: 932
     - group: 939
 
-so-kiba-config-load:
+so-kibana-config-load:
   cmd.run:
     - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/config_saved_objects.ndjson
     - cwd: /opt/so
