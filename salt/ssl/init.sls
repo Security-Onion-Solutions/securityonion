@@ -269,6 +269,7 @@ registry_crt:
   x509.certificate_managed:
     - name: /etc/pki/registry.crt
     - ca_server: {{ ca_server }}
+    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
     - CN: {{ manager }}
