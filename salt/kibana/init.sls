@@ -101,14 +101,6 @@ append_so-kibana_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kibana
 
-# Keep the setting correct
-#KibanaHappy:
-#  cmd.script:
-#    - shell: /bin/bash
-#    - runas: socore
-#    - source: salt://kibana/bin/keepkibanahappy.sh
-#    - template: jinja
-
 {% else %}
 
 {{sls}}_state_not_allowed:
