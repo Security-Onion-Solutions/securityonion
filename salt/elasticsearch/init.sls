@@ -329,6 +329,7 @@ so-elasticsearch-pipelines:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
    - onchanges:
       - file: esingestconf
+      - file: esingestdynamicconf
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 
