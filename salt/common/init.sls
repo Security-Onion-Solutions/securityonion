@@ -9,6 +9,11 @@ rmvariablesfile:
   file.absent:
     - name: /tmp/variables.txt
 
+dockergroup:
+  group.present:
+    - name: docker
+    - gid: 920
+
 # Add socore Group
 socoregroup:
   group.present:
@@ -101,6 +106,7 @@ commonpkgs:
       - python3-m2crypto
       - python3-mysqldb
       - python3-packaging
+      - python3-lxml
       - git
       - vim
 
@@ -143,6 +149,7 @@ commonpkgs:
       - python36-m2crypto
       - python36-mysql
       - python36-packaging
+      - python36-lxml
       - yum-utils
       - device-mapper-persistent-data
       - lvm2

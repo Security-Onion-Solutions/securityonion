@@ -1,3 +1,4 @@
+{% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 [
   { "name": "actionHunt", "description": "actionHuntHelp", "icon": "fa-crosshairs", "target": "", 
             "links": [
@@ -29,5 +30,12 @@
   { "name": "actionVirusTotal", "description": "actionVirusTotalHelp", "icon": "fa-external-link-alt", "target": "_blank", 
             "links": [
               "https://www.virustotal.com/gui/search/{value}"
-					  ]}
+	    ]}
+ {%- if HIGHLANDER %}
+   {%- set EGHOST = salt['pillar.get']('soc:endgamehost', 'EGHOSTNOTPOPULATED') %}
+   ,{ "name": "Endgame", "description": "Endgame Endpoint Investigation and Response", "icon": "fa-external-link-alt", "target": "_blank",
+            "links": [
+              "https://{{ EGHOST }}/endpoints/{:agent.id}"
+            ]}
+ {% endif %}
 ]

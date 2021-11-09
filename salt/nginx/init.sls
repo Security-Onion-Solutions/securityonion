@@ -8,6 +8,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
+include:
+  - ssl
+
 # Drop the correct nginx config based on role
 nginxconfdir:
   file.directory:
@@ -73,28 +76,38 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
+      - /opt/so/conf/fleet/packages:/opt/socore/html/packages
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
-      - /opt/so/conf/fleet/packages:/opt/socore/html/packages
-      {% if ISAIRGAP is sameas true %}
-      - /nsm/repo:/opt/socore/html/repo:ro
-      {% endif %}
       # ATT&CK Navigator binds
       - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
+  {% endif %}
+  {% if ISAIRGAP is sameas true %}
+      - /nsm/repo:/opt/socore/html/repo:ro
+  {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       - 80:80
       - 443:443
-      {% if ISAIRGAP is sameas true %}
+  {% if ISAIRGAP is sameas true %}
       - 7788:7788
-      {% endif %}
-    {%- if FLEETMANAGER or FLEETNODE %}
+  {% endif %}
+  {%- if FLEETMANAGER or FLEETNODE %}
       - 8090:8090
-    {%- endif %}
+  {%- endif %}
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+    - require:
+      - file: nginxconf
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+      - x509: managerssl_key
+      - x509: managerssl_crt
+      - file: navigatorconfig
+      - file: navigatordefaultlayer
+  {% endif %}
 
 append_so-nginx_so-status.conf:
   file.append:

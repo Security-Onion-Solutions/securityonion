@@ -475,10 +475,15 @@ collect_mngr_hostname() {
 		whiptail_management_server "$MSRV"
 	done
 
+	while [[ $MSRV == "$HOSTNAME" ]]; do 
+		whiptail_invalid_hostname 0
+		whiptail_management_server "$MSRV"
+	done
+
 	if ! getent hosts "$MSRV"; then
 		whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP"; do
+		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
 			whiptail_invalid_input
 			whiptail_manager_ip "$MSRVIP"
 		done
@@ -846,7 +851,7 @@ check_requirements() {
 	local req_cores
 	local req_storage
 	local nic_list
-	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
 	if [[ "$standalone_or_dist" == 'standalone' ]]; then
@@ -1124,9 +1129,10 @@ detect_os() {
 
 installer_progress_loop() {
 	local i=0
+	local msg="${1:-Performing background actions...}"
 	while true; do
 		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" 'Checking that all required packages are installed and enabled...' nolog
+		set_progress_str "$i" "$msg" nolog
 		[[ $i -gt 0 ]] && sleep 5s
 	done
 }
@@ -1209,11 +1215,7 @@ docker_install() {
 				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac 
-		if [ $OSVER != "xenial" ]; then
-			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || exit 1
-		fi
+		retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
 	fi
 	docker_registry
 	{
@@ -1229,7 +1231,7 @@ docker_registry() {
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# This will get applied so docker can attempt to start
 	if [ -z "$DOCKERNET" ]; then
-            DOCKERNET=172.17.0.0
+		DOCKERNET=172.17.0.0
 	fi
 	# Make the host use the manager docker registry
 	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
@@ -1378,7 +1380,7 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
@@ -1421,7 +1423,7 @@ firewall_generate_templates() {
    
 	cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-	for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
+	for i in analyst beats_endpoint endgame sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
 		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
 
@@ -1513,7 +1515,7 @@ host_pillar() {
 		"  mainint: '$MNIC'"\
 		"sensoroni:"\
 		"  node_address: '$MAINIP'"\
-		"  node_description: '$NODE_DESCRIPTION'"\
+		"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
 		"" > "$pillar_file"
 }
 
@@ -1538,6 +1540,10 @@ install_cleanup() {
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
 		sed -i '/so-setup/d' /etc/sudoers
+	fi
+
+	if [[ -z $SO_ERROR ]]; then
+		echo "Setup completed at $(date)" >> "$setup_log" 2>&1
 	fi
 }
 
@@ -1640,6 +1646,14 @@ manager_pillar() {
 	printf '%s\n'\
 		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
+
+        if [[ -n $ENDGAMEHOST ]]; then
+        	printf '%s\n'\
+			"soc:"\
+                	"  endgamehost: '$ENDGAMEHOST'"\
+			"  es_index_patterns: '*:so-*,*:endgame-*'"\
+                	"" >> "$pillar_file"
+	fi
 }
 
 manager_global() {
@@ -2039,7 +2053,7 @@ reinstall_init() {
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
+			if [[ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]]; then
 				docker stop $(docker ps -a -q --filter "name=so-")
 				docker rm -f $(docker ps -a -q --filter "name=so-")
 			fi
@@ -2057,6 +2071,10 @@ reinstall_init() {
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
+
+		if [[ $OS == 'ubuntu' ]]; then
+			apt-mark unhold $(apt-mark showhold)
+		fi
 
 	} >> "$setup_log" 2>&1
 }
@@ -2152,6 +2170,7 @@ saltify() {
 					python36-m2crypto\
 					python36-mysql\
 					python36-packaging\
+					python36-lxml\
 					yum-utils\
 					device-mapper-persistent-data\
 					lvm2\
@@ -2166,10 +2185,10 @@ saltify() {
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
 		if [ $OSVER == "bionic" ]; then
-			# Switch to Python 3 as default if this is not xenial
+			# Switch to Python 3 as default for bionic
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
 		elif [ $OSVER == "focal" ]; then
-			# Switch to Python 3 as default if this is not xenial
+			# Switch to Python 3 as default for focal
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 >> "$setup_log" 2>&1
 		fi
 		
@@ -2188,21 +2207,16 @@ saltify() {
 		# Grab the version from the os-release file
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
-		if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 		case "$install_type" in
 			'FLEET')
-				if [[ $OSVER != 'xenial' ]]; then
-					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				else
-					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				fi
+				retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2210,7 +2224,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2234,7 +2248,7 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
@@ -2243,11 +2257,7 @@ saltify() {
 		set_progress_str 8 'Installing salt-minion & python modules'
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
-		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging python-influxdb"  >> "$setup_log" 2>&1 || exit 1
-		fi
+		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 

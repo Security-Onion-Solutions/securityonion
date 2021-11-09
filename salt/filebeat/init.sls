@@ -25,9 +25,10 @@
 {% from 'filebeat/map.jinja' import SO with context %}
 {% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
 
+include:
+  - ssl
 #only include elastic state for certain nodes
 {% if grains.role in ES_INCLUDED_NODES %}
-include:
   - elasticsearch
 {% endif %}
 
@@ -66,7 +67,7 @@ fileregistrydir:
     - makedirs: True
 
 # This needs to be owned by root
-filebeatconfsync:
+filebeatconf:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/filebeat.yml
     - source: salt://filebeat/etc/filebeat.yml
@@ -78,7 +79,7 @@ filebeatconfsync:
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
 
 # Filebeat module config file
-filebeatmoduleconfsync:
+filebeatmoduleconf:
   file.managed:
     - name: /opt/so/conf/filebeat/etc/module-setup.yml
     - source: salt://filebeat/etc/module-setup.yml
@@ -135,14 +136,21 @@ so-filebeat:
   {% endfor %}
 {% endfor %}
     - watch:
-      - file: /opt/so/conf/filebeat/etc/filebeat.yml
+      - file: filebeatconf
+    - require:
+      - file: filebeatconf
+      - file: filebeatmoduleconf
+      - file: filebeatmoduledir
+      - x509: conf_filebeat_crt
+      - x509: conf_filebeat_key
+      - x509: trusttheca
 
 {% if grains.role in ES_INCLUDED_NODES %}
 run_module_setup:
   cmd.run:
     - name: /usr/sbin/so-filebeat-module-setup
     - require:
-      - file: filebeatmoduleconfsync
+      - file: filebeatmoduleconf
       - docker_container: so-filebeat
     - onchanges:
       - docker_container: so-elasticsearch

@@ -15,7 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-
+include:
+  - ssl
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -280,6 +281,24 @@ so-elasticsearch:
       - file: esyml
       - file: esingestconf
       - file: so-elasticsearch-pipelines-file
+    - require:
+      - file: esyml
+      - file: eslog4jfile
+      - file: nsmesdir
+      - file: eslogdir
+      - file: cacertz
+      - x509: /etc/pki/elasticsearch.crt
+      - x509: /etc/pki/elasticsearch.key
+      - file: elasticp12perms
+      {% if ismanager %}
+      - x509: pki_public_ca_crt
+      {% else %}
+      - x509: trusttheca
+      {% endif %}
+      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+      - cmd: auth_users_roles_inode
+      - cmd: auth_users_inode
+      {% endif %}
 
 append_so-elasticsearch_so-status.conf:
   file.append:

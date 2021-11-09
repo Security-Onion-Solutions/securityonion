@@ -117,8 +117,6 @@ so-steno:
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
     - privileged: True
-    - port_bindings:
-      - 127.0.0.1:1234:1234
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
@@ -127,7 +125,9 @@ so-steno:
       - /nsm/pcaptmp:/tmp:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
     - watch:
-      - file: /opt/so/conf/steno/config
+      - file: stenoconf
+    - require:
+      - file: stenoconf
   {% else %} {# if stenographer isn't enabled, then stop and remove the container #}
     - force: True
   {% endif %}

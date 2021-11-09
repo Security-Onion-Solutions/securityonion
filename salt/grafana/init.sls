@@ -132,6 +132,8 @@ so-grafana:
       - 0.0.0.0:3000:3000
     - watch:
       - file: /opt/so/conf/grafana/*
+    - require:
+      - file: grafana-config
 
 append_so-grafana_so-status.conf:
   file.append:
