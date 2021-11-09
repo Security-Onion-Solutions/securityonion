@@ -10,3 +10,4 @@ kibana_secrets_pillar:
           secrets:
             encryptedSavedObjects:
               encryptionKey: {{ kibana_encryptedSavedObjects_encryptionKey }}
+    - show_changes: False
