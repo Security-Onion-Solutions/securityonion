@@ -35,14 +35,21 @@ check_default_repos() {
 		echo "" >> "$preflight_log"
 		yum -y check-update >> $preflight_log 2>&1
 		ret_code=$?
+		if [[ $ret_code == 0 || $ret_code == 100 ]]; then
+			printf '%s\n' '  SUCCESS'
+			ret_code=0
+		else
+			printf '%s\n' '  FAILURE'
+		fi
 	else
 		printf '%s' 'apt update.' | tee -a "$preflight_log"
 		echo "" >> "$preflight_log"
 		retry 50 10 "apt-get -y update" >> $preflight_log 2>&1
 		ret_code=$?
+		[[ $ret_code == 0 ]] && printf '%s\n' '  SUCCESS' || printf '%s\n' '  FAILURE'
+
 	fi
 
-	[[ $ret_code == 0 ]] && printf '%s\n' '  SUCCESS' || printf '%s\n' '  FAILURE'
 	return $ret_code
 }
 
