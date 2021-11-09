@@ -1,5 +1,9 @@
 {% set kibana_encryptedSavedObjects_encryptionKey = salt['pillar.get']('kibana:secrets:encryptedSavedObjects:encryptionKey', salt['random.get_str'](72)) %}
 
+kibana_pillar_directory:
+  file.directory:
+    - name: /opt/so/saltstack/local/pillar/kibana
+
 kibana_secrets_pillar:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/kibana/secrets.sls
