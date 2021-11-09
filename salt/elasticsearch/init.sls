@@ -131,6 +131,14 @@ esrolesdir:
     - group: 939
     - makedirs: True
 
+esingestdynamicconf:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - source: salt://elasticsearch/files/ingest-dynamic
+    - user: 930
+    - group: 939
+    - template: jinja
+
 esingestconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
