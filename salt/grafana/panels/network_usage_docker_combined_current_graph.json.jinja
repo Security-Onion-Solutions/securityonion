@@ -1,45 +1,33 @@
 {
-  "aliasColors": {},
-  "dashLength": 10,
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "fill": 1,
-    "gridPos": {
+  "id": 61868,
+  "gridPos": {
     "x": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.x }},
     "y": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.y }},
     "w": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.w }},
     "h": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.h }}
   },
-  "id": 61868,
-  "legend": {
-    "alignAsTable": false,
-    "avg": false,
-    "current": false,
-    "hideZero": false,
-    "max": false,
-    "min": false,
-    "rightSide": false,
-    "show": true,
-    "total": false,
-    "values": false
-  },
-  "lines": true,
-  "linewidth": 1,
-  "nullPointMode": "connected",
+  "type": "timeseries",
+  "title": "Container Network Usage Current",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
   "options": {
-    "alertThreshold": true
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
   },
-  "pluginVersion": "7.5.4",
-  "pointradius": 2,
-  "renderer": "flot",
-  "seriesOverrides": [],
-  "spaceLength": 10,
   "targets": [
     {
-      "alias": "$tag_container_name RX",
+      "alias": "$tag_host: $tag_container_name RX",
       "groupBy": [
         {
           "params": [
@@ -52,6 +40,12 @@
             "container_name"
           ],
           "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
         },
         {
           "params": [
@@ -69,94 +63,26 @@
       "select": [
         [
           {
-            "type": "field",
             "params": [
               "rx_bytes"
-            ]
+            ],
+            "type": "field"
           },
           {
-            "type": "mean",
-            "params": []
+            "params": [],
+            "type": "mean"
           },
           {
-            "type": "non_negative_derivative",
             "params": [
               "1s"
-            ]
+            ],
+            "type": "non_negative_derivative"
           },
           {
-            "type": "math",
             "params": [
               "*8"
-            ]
-          }
-        ]
-      ],
-      "tags": [
-        {
-          "key": "host",
-          "operator": "=~",
-          "value": "/^$servername$/"
-        },
-        {
-          "condition": "AND",
-          "key": "container_name",
-          "operator": "=~",
-          "value": "/^$containers$/"
-        }
-      ]
-    },
-    {
-      "alias": "$tag_container_name TX",
-      "groupBy": [
-        {
-          "params": [
-            "$__interval"
-          ],
-          "type": "time"
-        },
-        {
-          "params": [
-            "container_name"
-          ],
-          "type": "tag"
-        },
-        {
-          "params": [
-            "null"
-          ],
-          "type": "fill"
-        }
-      ],
-      "measurement": "docker_container_net",
-      "orderByTime": "ASC",
-      "policy": "default",
-      "queryType": "randomWalk",
-      "refId": "B",
-      "resultFormat": "time_series",
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "tx_bytes"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          },
-          {
-            "type": "non_negative_derivative",
-            "params": [
-              "1s"
-            ]
-          },
-          {
-            "type": "math",
-            "params": [
-              "*8"
-            ]
+            ],
+            "type": "math"
           }
         ]
       ],
@@ -174,60 +100,133 @@
         }
       ],
       "hide": false
-    }
-  ],
-  "thresholds": [],
-  "timeRegions": [],
-  "title": "Container Network Usage Current",
-  "tooltip": {
-    "shared": true,
-    "sort": 2,
-    "value_type": "individual"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "$$hashKey": "object:315",
-      "format": "bps",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
     },
     {
-      "$$hashKey": "object:316",
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": false
+      "alias": "$tag_host: $tag_container_name TX",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "docker_container_net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "tx_bytes"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
     }
   ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 5,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "bps",
+      "decimals": 1
+    },
+    "overrides": []
   },
-  "bars": false,
-  "dashes": false,
-  "decimals": null,
-  "fillGradient": 0,
-  "hiddenSeries": false,
-  "percentage": false,
-  "points": false,
-  "stack": false,
-  "steppedLine": false,
-  "timeFrom": null,
-  "timeShift": null,
+  "maxDataPoints": null,
   "description": "",
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeFrom": null,
+  "timeShift": null
 }

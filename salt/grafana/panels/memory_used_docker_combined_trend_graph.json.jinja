@@ -1,53 +1,66 @@
 {
-  "type": "graph",
-  "title": "Container Memory Usage Trend",
+  "id": 103,
   "gridPos": {
     "x": {{ PANELS.memory_used_docker_combined_trend_graph.gridPos.x }},
     "y": {{ PANELS.memory_used_docker_combined_trend_graph.gridPos.y }},
     "w": {{ PANELS.memory_used_docker_combined_trend_graph.gridPos.w }},
     "h": {{ PANELS.memory_used_docker_combined_trend_graph.gridPos.h }}
   },
-  "id": 103,
+  "type": "timeseries",
+  "title": "Container Memory Usage Trend",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "maxDataPoints": 750,
+  "interval": "30s",
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "so_long_term",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [
-        {
-          "key": "host",
-          "operator": "=~",
-          "value": "/^$servername$/"
-        },
-        {
-          "condition": "AND",
-          "key": "container_name",
-          "operator": "=~",
-          "value": "/^$containers$/"
-        }
-      ],
+      "alias": "$tag_host: $tag_container_name",
       "groupBy": [
         {
-          "type": "time",
           "params": [
             "$__interval"
-          ]
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
         },
         {
           "type": "tag",
           "params": [
-            "container_name"
+            "host"
           ]
         },
         {
-          "type": "fill",
           "params": [
             "null"
-          ]
+          ],
+          "type": "fill"
         }
       ],
+      "measurement": "docker_container_mem",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
       "select": [
         [
           {
@@ -62,90 +75,69 @@
           }
         ]
       ],
-      "measurement": "docker_container_mem",
-      "alias": "$tag_container_name"
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
     }
   ],
-  "options": {
-    "alertThreshold": true
-  },
-  "datasource": "InfluxDB",
   "fieldConfig": {
-    "defaults": {},
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "percent",
+      "decimals": 1
+    },
     "overrides": []
   },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "percent",
-      "$$hashKey": "object:315"
-    },
-    {
-      "label": null,
-      "show": false,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:316"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
-  },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "lines": true,
-  "fill": 1,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "show": true,
-    "values": true,
-    "min": false,
-    "max": false,
-    "current": false,
-    "total": false,
-    "avg": true,
-    "alignAsTable": false,
-    "rightSide": false,
-    "hideZero": false
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "decimals": 1,
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
-  "percentage": false,
-  "steppedLine": false,
   "timeFrom": null,
-  "timeShift": null,
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeShift": null
 }

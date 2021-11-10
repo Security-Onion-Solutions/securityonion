@@ -22,6 +22,7 @@
 
 include:
   - elasticsearch.auth
+  - kibana.secrets
   - salt.minion
 
 socore_own_saltstack:

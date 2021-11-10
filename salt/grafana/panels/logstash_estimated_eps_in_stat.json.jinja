@@ -1,0 +1,136 @@
+{
+  "id": 23,
+  "gridPos": {
+    "x": {{ PANELS.logstash_estimated_eps_in_stat.gridPos.x }},
+    "y": {{ PANELS.logstash_estimated_eps_in_stat.gridPos.y }},
+    "w": {{ PANELS.logstash_estimated_eps_in_stat.gridPos.w }},
+    "h": {{ PANELS.logstash_estimated_eps_in_stat.gridPos.h }}
+  },
+  "type": "stat",
+  "title": "Estimated EPS In - Selected Total",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "dark-red",
+            "value": null
+          },
+          {
+            "color": "dark-green",
+            "value": 1
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "type": "special",
+          "options": {
+            "match": "null",
+            "result": {
+              "text": "N/A"
+            }
+          }
+        }
+      ],
+      "color": {
+        "mode": "thresholds"
+      },
+      "decimals": 0,
+      "unit": "short"
+    },
+    "overrides": []
+  },
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "value",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
+  },
+  "targets": [
+    {
+      "refId": "A",
+      "hide": false,
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "value": "/^$servername$/",
+          "operator": "=~"
+        }
+      ],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "measurement": "logstash_events"
+    }
+  ],
+  "transformations": [
+    {
+      "id": "calculateField",
+      "options": {
+        "mode": "reduceRow",
+        "reduce": {
+          "reducer": "sum"
+        },
+        "replaceFields": true
+      }
+    }
+  ],
+  "maxDataPoints": null,
+  "cacheTimeout": null,
+  "timeFrom": null
+}
