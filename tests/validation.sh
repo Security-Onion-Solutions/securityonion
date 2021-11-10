@@ -46,7 +46,7 @@ test_fun 1 valid_fqdn "rwwiv."
 
 test_fun 1 valid_fqdn ""
 
-sleep 0.15s
+sleep 0.15
 
 header "ip4"
 
@@ -62,13 +62,13 @@ test_fun 1 valid_ip4 "192.168.1.1."
 
 test_fun 1 valid_ip4 ""
 
-sleep 0.15s
+sleep 0.15
 
 header "CIDR (ipv4)"
 
 test_fun 0 valid_cidr "192.168.1.0/24"
 
-test_fun 0 valid_cidr "192.168.1.0/12"
+test_fun 0 valid_cidr "192.160.0.0/12"
 
 test_fun 1 valid_cidr "192.168.1.0"
 
@@ -78,7 +78,7 @@ test_fun 1 valid_ip4 "/24"
 
 test_fun 1 valid_cidr ""
 
-sleep 0.15s
+sleep 0.15
 
 header "CIDR list"
 
@@ -90,7 +90,7 @@ test_fun 1 valid_cidr_list "10.0.0.0/8,192.168.0.0/16172.16.0.0/12"
 
 test_fun 1 valid_cidr_list "10.0.0.0"
 
-sleep 0.15s
+sleep 0.15
 
 header "DNS"
 
@@ -104,7 +104,7 @@ test_fun 1 valid_dns_list "8.8.8.,8.8.4.4"
 
 test_fun 1 valid_dns_list "192.168.9."
 
-sleep 0.15s
+sleep 0.15
 
 header "int (default min: 1, default max: 1000000000)"
 
@@ -130,7 +130,7 @@ test_fun 1 valid_int "not_a_num"
 
 test_fun 1 valid_int ""
 
-sleep 0.15s
+sleep 0.15
 
 header "hostname"
 
@@ -146,7 +146,7 @@ test_fun 1 valid_hostname "localhost"
 
 test_fun 1 valid_hostname ""
 
-sleep 0.15s
+sleep 0.15
 
 header "string (default min_length: 1, default max_length: 64)"
 
@@ -168,7 +168,7 @@ test_fun 1 valid_string "too_long" "" "4"
 
 test_fun 1 valid_string ""
 
-sleep 0.15s
+sleep 0.15
 
 header "Linux user"
 
