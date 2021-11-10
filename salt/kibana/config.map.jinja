@@ -1,0 +1,13 @@
+{% import_yaml 'kibana/defaults.yaml' as KIBANACONFIG with context %}
+
+{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+  {% do KIBANACONFIG.kibana.config.elasticsearch.update({'username': salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user'), 'password': salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass')}) %}
+{% else %}
+  {% do KIBANACONFIG.kibana.config.xpack.update({'security': {'authc': {'providers': {'anonymous': {'anonymous1': {'order': 0, 'credentials': 'elasticsearch_anonymous_user'}}}}}}) %}
+{% endif %}
+
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
+  {% do KIBANACONFIG.kibana.config.xpack.update({'encryptedSavedObjects': {'encryptionKey': pillar['kibana']['secrets']['encryptedSavedObjects']['encryptionKey'] }}) %}
+{% endif %}
+
+{% set KIBANACONFIG = salt['pillar.get']('kibana:config', default=KIBANACONFIG.kibana.config, merge=True) %}

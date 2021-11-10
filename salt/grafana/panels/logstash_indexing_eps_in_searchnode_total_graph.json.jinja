@@ -1,0 +1,170 @@
+{
+  "id": 69001,
+  "gridPos": {
+    "x": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.x }},
+    "y": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.y }},
+    "w": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.w }},
+    "h": {{ PANELS.logstash_indexing_eps_in_searchnode_total_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Total Searchnode Indexing Events Per Second",
+  "transformations": [
+    {
+      "id": "calculateField",
+      "options": {
+        "alias": "Total EPS",
+        "mode": "reduceRow",
+        "reduce": {
+          "reducer": "sum"
+        },
+        "replaceFields": true
+      }
+    }
+  ],
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "EPS",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "decimals": 2,
+      "unit": "short"
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/search/"
+        },
+        {
+          "key": "role",
+          "value": "heavynode",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
+    }
+  ],
+  "description": "",
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}
