@@ -6,8 +6,10 @@
   {% do KIBANACONFIG.kibana.config.xpack.update({'security': {'authc': {'providers': {'anonymous': {'anonymous1': {'order': 0, 'credentials': 'elasticsearch_anonymous_user'}}}}}}) %}
 {% endif %}
 
-{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
-  {% do KIBANACONFIG.kibana.config.xpack.update({'encryptedSavedObjects': {'encryptionKey': pillar['kibana']['secrets']['encryptedSavedObjects']['encryptionKey'] }}) %}
+{% if salt['pillar.get']('kibana:secrets') %}
+  {% do KIBANACONFIG.kibana.config.xpack.update({'encryptedSavedObjects': {'encryptionKey': pillar['kibana']['secrets']['encryptedSavedObjects']['encryptionKey']}}) %}
+  {% do KIBANACONFIG.kibana.config.xpack.security.update({'encryptionKey': pillar['kibana']['secrets']['security']['encryptionKey']}) %}
+  {% do KIBANACONFIG.kibana.config.xpack.update({'reporting': {'encryptionKey': pillar['kibana']['secrets']['reporting']['encryptionKey']}}) %}
 {% endif %}
 
 {% set KIBANACONFIG = salt['pillar.get']('kibana:config', default=KIBANACONFIG.kibana.config, merge=True) %}
