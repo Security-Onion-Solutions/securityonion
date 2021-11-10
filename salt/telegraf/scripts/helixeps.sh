@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
-
-if [ ! "$THEGREP" ]; then
+# if this script isn't already running
+if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
   PREVCOUNTFILE='/tmp/helixevents.txt'
   EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.pipelines.helix.events.out')"
@@ -39,6 +38,7 @@ if [ ! "$THEGREP" ]; then
 
     echo "helixeps eps=${EVENTS%%.*}"
   fi
-else
-    exit 0
+
 fi
+
+exit 0

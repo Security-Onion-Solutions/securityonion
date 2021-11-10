@@ -18,30 +18,61 @@
 source ../salt/common/tools/sbin/so-common
 source ./so-functions
 
-preflight_log='/root/preflight.log'
+script_run="$1"
+
+if [[ $script_run == true ]]; then
+	preflight_log="${2:-'/root/preflight.log'}"
+else
+	preflight_log='/root/preflight.log'
+fi
 
 check_default_repos() {
 	local ret_code=0
-
-	printf '  Checking OS default repos with ' | tee -a "$preflight_log"
-	if [[ $OS == 'centos' ]]; then
-		printf '%s' 'yum update.' | tee -a "$preflight_log"
-		echo "" >> "$preflight_log"
-		yum -y update >> $preflight_log 2>&1
-		ret_code=$?
+	local repo_str='  Checking OS default repos with '
+	if [[ $script_run == true ]]; then
+		printf '%s' "$repo_str"
 	else
-		printf '%s' 'apt update.' | tee -a "$preflight_log"
+		printf '%s' "$repo_str" | tee -a "$preflight_log"
+	fi
+
+	if [[ $OS == 'centos' ]]; then
+		if [[ $script_run == true ]]; then
+			printf '%s' 'yum update.'
+		else
+			printf '%s' 'yum update.' | tee -a "$preflight_log"
+		fi
+		echo "" >> "$preflight_log"
+		yum -y check-update >> $preflight_log 2>&1
+		ret_code=$?
+		if [[ $ret_code == 0 || $ret_code == 100 ]]; then
+			printf '%s\n' '  SUCCESS'
+			ret_code=0
+		else
+			printf '%s\n' '  FAILURE'
+		fi
+	else
+		if [[ $script_run == true ]]; then
+			printf '%s' 'apt update.'
+		else
+			printf '%s' 'apt update.' | tee -a "$preflight_log"
+		fi
 		echo "" >> "$preflight_log"
 		retry 50 10 "apt-get -y update" >> $preflight_log 2>&1
 		ret_code=$?
+		[[ $ret_code == 0 ]] && printf '%s\n' '  SUCCESS' || printf '%s\n' '  FAILURE'
+
 	fi
 
-	[[ $ret_code == 0 ]] && printf '%s\n' '  SUCCESS' || printf '%s\n' '  FAILURE'
 	return $ret_code
 }
 
 check_new_repos() {
-	printf '  Checking repo URLs added by setup.' | tee -a "$preflight_log"
+	local repo_url_str='  Checking repo URLs added by setup.'
+	if [[ $script_run == true ]]; then
+		printf '%s' "$repo_url_str"
+	else
+		printf '%s' "$repo_url_str" | tee -a "$preflight_log"
+	fi
 
 	if [[ $OS == 'centos' ]]; then
 		local repo_arr=( 
@@ -54,11 +85,10 @@ check_new_repos() {
 	else
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release 2> /dev/null | awk -F '[ "]' '{print $2}')
-		if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 		local repo_arr=(
 			"https://download.docker.com/linux/ubuntu/gpg"
 			"https://download.docker.com/linux/ubuntu"
-			"https://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003/SALTSTACK-GPG-KEY.pub"
+			"https://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/SALTSTACK-GPG-KEY.pub"
 			"https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 			"https://packages.wazuh.com"
 		)
@@ -71,9 +101,15 @@ check_new_repos() {
 }
 
 check_misc_urls() {
-	printf '  Checking various other URLs used by setup.' | tee -a "$preflight_log"
+	local misc_url_str='  Checking various other URLs used by setup.'
+	if [[ $script_run == true ]]; then
+		printf '%s' "$misc_url_str"
+	else
+		printf '%s' "$misc_url_str" | tee -a "$preflight_log"
+	fi
 
-	local so_version=$(cat ../VERSION)
+	local so_version
+	so_version=$(cat ../VERSION)
 	local url_arr=(
 		"https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
 		"https://github.com/Neo23x0/signature-base"
@@ -113,10 +149,18 @@ __check_url_arr() {
 }
 
 main() {
+	local intro_str="Beginning pre-flight checks."
+	local success_str="Pre-flight checks completed successfully!"
+	local fail_str="Pre-flight checks could not complete."
+
 	detect_os "$preflight_log"
 
 	[[ -f $preflight_log ]] || touch "$preflight_log"
-	echo "Beginning pre-flight checks." | tee "$preflight_log"
+	if [[ $script_run == true ]]; then
+		echo "$intro_str"
+	else
+		echo "$intro_str" | tee "$preflight_log"
+	fi
 	check_default_repos &&\
 	check_new_repos &&\
 	check_misc_urls
@@ -125,12 +169,23 @@ main() {
 	
 	echo ""
 	if [[ $success == 0 ]]; then
-		echo -e "Pre-flight checks completed successfully!\n" | tee -a "$preflight_log"
+		if [[ $script_run == true ]]; then
+			echo "$success_str"
+		else
+			echo "$success_str" | tee -a "$preflight_log"
+			echo ""
+		fi
 	else
-		echo -e "Pre-flight checks could not complete." | tee -a "$preflight_log"
-		echo -e "  Check $preflight_log for details.\n"
-		exit 1
+		if [[ $script_run == true ]]; then
+			echo "$fail_str"
+		else
+			echo "$fail_str" | tee -a "$preflight_log"
+			echo "Check $preflight_log for details."
+			echo ""
+		fi
 	fi
+
+	exit $success
 }
 
 main

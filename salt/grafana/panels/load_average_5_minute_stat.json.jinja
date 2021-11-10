@@ -1,5 +1,17 @@
 {
+  "id": 61859,
+  "gridPos": {
+    "x": {{ PANELS.load_average_5_minute_stat.gridPos.x }},
+    "y": {{ PANELS.load_average_5_minute_stat.gridPos.y }},
+    "w": {{ PANELS.load_average_5_minute_stat.gridPos.w }},
+    "h": {{ PANELS.load_average_5_minute_stat.gridPos.h }}
+  },
+  "type": "stat",
+  "title": "5 Minute Load Average - $cpucount Cores",
   "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30",
+  "links": [],
   "fieldConfig": {
     "defaults": {
       "thresholds": {
@@ -7,7 +19,7 @@
         "steps": [
           {
             "color": "rgba(50, 172, 45, 0.97)",
-            "value": "$cpucount / 2"
+            "value": null
           },
           {
             "color": "rgba(237, 129, 40, 0.89)",
@@ -21,30 +33,39 @@
       },
       "mappings": [
         {
-          "op": "=",
-          "text": "N/A",
-          "value": "null",
-          "id": 0,
-          "type": 2
+          "options": {
+            "from": null,
+            "result": {
+              "text": "N/A"
+            },
+            "to": null
+          },
+          "type": "range"
         }
       ],
-      "unit": "none",
-      "decimals": 1,
       "color": {
         "mode": "thresholds"
-      }
+      },
+      "decimals": 1,
+      "unit": "none"
     },
     "overrides": []
   },
-  "gridPos": {
-    "x": {{ PANELS.load_average_5_minute_stat.gridPos.x }},
-    "y": {{ PANELS.load_average_5_minute_stat.gridPos.y }},
-    "w": {{ PANELS.load_average_5_minute_stat.gridPos.w }},
-    "h": {{ PANELS.load_average_5_minute_stat.gridPos.h }}
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "auto",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
   },
-  "id": 61859,
-  "links": [],
-  "maxDataPoints": 100,
   "targets": [
     {
       "dsType": "influxdb",
@@ -65,6 +86,8 @@
       "measurement": "system",
       "orderByTime": "ASC",
       "policy": "default",
+      "query": "SELECT last(\"load5\") FROM \"system\" WHERE (\"host\" = '$servername') AND $timeFilter GROUP BY time($__interval) fill(null)",
+      "rawQuery": false,
       "refId": "A",
       "resultFormat": "time_series",
       "select": [
@@ -84,30 +107,12 @@
       "tags": [
         {
           "key": "host",
-          "operator": "=~",
-          "value": "/^$servername$/"
+          "operator": "=",
+          "value": "$servername"
         }
       ]
     }
   ],
-  "title": "5 Minute Load Average - $cpucount Cores",
-  "type": "stat",
-  "options": {
-    "reduceOptions": {
-      "values": false,
-      "calcs": [
-        "lastNotNull"
-      ],
-      "fields": ""
-    },
-    "orientation": "horizontal",
-    "text": {},
-    "textMode": "auto",
-    "colorMode": "value",
-    "graphMode": "area",
-    "justifyMode": "auto"
-  },
-  "pluginVersion": "7.5.4",
   "cacheTimeout": null,
-  "interval": null
+  "maxDataPoints": null
 }

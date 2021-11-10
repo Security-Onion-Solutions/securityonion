@@ -1,45 +1,82 @@
 {
-  "aliasColors": {},
-  "dashLength": 10,
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
+  "id": 67830,
   "gridPos": {
     "x": {{ PANELS.disk_usage_root_percent_graph.gridPos.x }},
     "y": {{ PANELS.disk_usage_root_percent_graph.gridPos.y }},
     "w": {{ PANELS.disk_usage_root_percent_graph.gridPos.w }},
     "h": {{ PANELS.disk_usage_root_percent_graph.gridPos.h }}
   },
-  "id": 67830,
+  "type": "timeseries",
+  "title": "Disk Usage /",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
   "interval": "30s",
-  "legend": {
-    "alignAsTable": true,
-    "avg": false,
-    "current": true,
-    "max": false,
-    "min": false,
-    "rightSide": true,
-    "show": true,
-    "sort": "current",
-    "sortDesc": true,
-    "total": false,
-    "values": true
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "percent",
+      "decimals": 1,
+      "min": 0,
+      "max": 100
+    },
+    "overrides": []
   },
-  "lines": true,
-  "linewidth": 1,
-  "maxDataPoints": 750,
-  "nullPointMode": "connected",
   "options": {
-    "alertThreshold": false
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "lastNotNull"
+      ]
+    }
   },
-  "pluginVersion": "7.5.4",
-  "pointradius": 2,
-  "renderer": "flot",
-  "seriesOverrides": [],
-  "spaceLength": 10,
-  "steppedLine": true,
   "targets": [
     {
       "alias": "$tag_host $tag_role",
@@ -51,24 +88,25 @@
           "type": "time"
         },
         {
-          "type": "tag",
           "params": [
             "host"
-          ]
+          ],
+          "type": "tag"
         },
         {
-          "type": "tag",
           "params": [
             "role"
-          ]
+          ],
+          "type": "tag"
         },
         {
           "params": [
-            "null"
+            "none"
           ],
           "type": "fill"
         }
       ],
+      "measurement": "disk",
       "orderByTime": "ASC",
       "policy": "default",
       "query": "SELECT mean(total) AS \"total\", mean(used) as \"used\" FROM \"disk\" WHERE \"host\" =~ /$servername$/ AND \"path\" = '/' AND $timeFilter GROUP BY time($__interval), \"host\", \"path\"",
@@ -102,60 +140,10 @@
           "operator": "=",
           "value": "/"
         }
-      ],
-      "measurement": "disk"
+      ]
     }
   ],
-  "thresholds": [],
-  "timeRegions": [],
-  "title": "Disk Usage /",
-  "tooltip": {
-    "shared": true,
-    "sort": 2,
-    "value_type": "individual"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "$$hashKey": "object:235",
-      "format": "percent",
-      "label": "",
-      "logBase": 1,
-      "max": "100",
-      "min": "0",
-      "show": true,
-      "decimals": 1
-    },
-    {
-      "$$hashKey": "object:236",
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
-    }
-  ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "fill": 0,
-  "bars": false,
-  "dashes": false,
-  "fillGradient": 0,
-  "hiddenSeries": false,
-  "percentage": false,
-  "points": false,
-  "stack": false,
+  "maxDataPoints": null,
   "timeFrom": null,
-  "timeShift": null,
-  "decimals": 1
+  "timeShift": null
 }

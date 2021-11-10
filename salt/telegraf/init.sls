@@ -5,6 +5,9 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 
+include:
+  - ssl
+
 # Add Telegraf to monitor all the things.
 tgraflogdir:
   file.directory:
@@ -41,6 +44,7 @@ tgrafconf:
     - mode: 660
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
+    - show_changes: False
 
 #this file will be read by telegraf to send node details(management interface, monitor interface, etc)
 # into influx so that grafan can build dashboards using queries
@@ -88,7 +92,16 @@ so-telegraf:
       - file: tgrafconf
       - file: tgrafsyncscripts
       - file: node_config
-
+    - require: 
+      - file: tgrafconf
+      - file: node_config
+      {% if grains['role'] == 'so-manager' or grains['role'] == 'so-eval' or grains['role'] == 'so-managersearch' %}
+      - x509: pki_public_ca_crt
+      {% else %}
+      - x509: trusttheca
+      {% endif %}
+      - x509: influxdb_crt
+      - x509: influxdb_key
 append_so-telegraf_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf

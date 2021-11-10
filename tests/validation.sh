@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ../salt/common/tools/sbin/so-common
+. "$(dirname "$0")"/../salt/common/tools/sbin/so-common
 
 script_ret=0
 
@@ -106,7 +106,7 @@ test_fun 1 valid_dns_list "192.168.9."
 
 sleep 0.15s
 
-header "int (default min: 1, default max: 1000)"
+header "int (default min: 1, default max: 1000000000)"
 
 test_fun 0 valid_int "24"
 
@@ -114,9 +114,9 @@ test_fun 0 valid_int "1"
 
 test_fun 0 valid_int "2" "2" 
 
-test_fun 0 valid_int "1000"
+test_fun 0 valid_int "1000000000"
 
-test_fun 1 valid_int "10001"
+test_fun 1 valid_int "1000000001"
 
 test_fun 1 valid_int "24" "" "20"
 

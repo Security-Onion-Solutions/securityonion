@@ -17,6 +17,11 @@
 {% if grains.role == 'so-eval' %}
   {% do DASHBOARDS.append('eval') %}
 {% else %}
+  {% if not salt['pillar.get']('elasticsearch:true_cluster', False) %}
+    {% do DASHBOARDS.append('pipeline_overview_nontc') %}
+  {% else %}
+    {% do DASHBOARDS.append('pipeline_overview_tc') %}
+  {% endif %}
   {# Grab a unique listing of nodetypes that exists so that we create only the needed dashboards #}
   {% for dashboard in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
     {% if dashboard in ALLOWED_DASHBOARDS %}
@@ -132,6 +137,8 @@ so-grafana:
       - 0.0.0.0:3000:3000
     - watch:
       - file: /opt/so/conf/grafana/*
+    - require:
+      - file: grafana-config
 
 append_so-grafana_so-status.conf:
   file.append:

@@ -24,8 +24,9 @@ pki_private_key:
       - x509: /etc/pki/ca.crt
     {%- endif %}
 
-/etc/pki/ca.crt:
+pki_public_ca_crt:
   x509.certificate_managed:
+    - name: /etc/pki/ca.crt
     - signing_private_key: /etc/pki/ca.key
     - CN: {{ manager }}
     - C: US
