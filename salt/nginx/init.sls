@@ -102,7 +102,7 @@ so-nginx:
       - file: nginxconfdir
     - require:
       - file: nginxconf
-  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
       - x509: managerssl_key
       - x509: managerssl_crt
       - file: navigatorconfig
