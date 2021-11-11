@@ -2,6 +2,8 @@
 {% if sls in allowed_states %}
 
   {% set kibana_encryptedSavedObjects_encryptionKey = salt['pillar.get']('kibana:secrets:encryptedSavedObjects:encryptionKey', salt['random.get_str'](72)) %}
+  {% set kibana_security_encryptionKey = salt['pillar.get']('kibana:secrets:security:encryptionKey', salt['random.get_str'](72)) %}
+  {% set kibana_reporting_encryptionKey = salt['pillar.get']('kibana:secrets:reporting:encryptionKey', salt['random.get_str'](72)) %}
 
 kibana_pillar_directory:
   file.directory:
@@ -17,6 +19,10 @@ kibana_secrets_pillar:
           secrets:
             encryptedSavedObjects:
               encryptionKey: {{ kibana_encryptedSavedObjects_encryptionKey }}
+            security:
+              encryptionKey: {{ kibana_security_encryptionKey }}
+            reporting:
+              encryptionKey: {{ kibana_reporting_encryptionKey }}
     - show_changes: False
 
 {% else %}
