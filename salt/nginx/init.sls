@@ -77,7 +77,7 @@ so-nginx:
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
       - /opt/so/conf/fleet/packages:/opt/socore/html/packages
-  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
