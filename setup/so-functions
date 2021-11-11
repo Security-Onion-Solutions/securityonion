@@ -299,15 +299,6 @@ collect_adminuser_inputs() {
 	done
 }
 
-collect_cur_close_days() {
-	whiptail_cur_close_days "$CURCLOSEDAYS"
-
-	while ! valid_int "$CURCLOSEDAYS"; do
-		whiptail_invalid_input
-		whiptail_cur_close_days "$CURCLOSEDAYS"
-	done
-}
-
 collect_dns() {
 	whiptail_management_interface_dns "8.8.8.8,8.8.4.4"
 
@@ -933,10 +924,11 @@ compare_main_nic_ip() {
 		  read -r -d '' message <<- EOM
 		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
-			This is not a supported configuration, please remediate and rerun setup.
+			This is not a supported configuration, please remediate 
+			and rerun setup.
 			EOM
 
-		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 10 75
+		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 11 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
 	else
@@ -1608,7 +1600,6 @@ manager_pillar() {
 	printf '%s\n'\
 		"  elastalert: 1"\
 		"  es_port: $node_es_port"\
-		"  cur_close_days: $CURCLOSEDAYS"\
 		"  grafana: $GRAFANA"\
 		"  osquery: $OSQUERY"\
 		"  thehive: $THEHIVE"\
