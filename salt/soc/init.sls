@@ -43,6 +43,7 @@ socconfig:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
 
 socmotd:
   file.managed:
