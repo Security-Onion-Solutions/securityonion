@@ -33,7 +33,7 @@ elastic_auth_pillar:
               so_monitor_user:
                 user: so_monitor
                 pass: {{ so_monitor_user_pass }}
-
+    - show_changes: False
 {% else %}
 
 {{sls}}_state_not_allowed:

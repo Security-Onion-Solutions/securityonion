@@ -77,6 +77,7 @@ filebeatconf:
     - defaults:
         INPUTS: {{ salt['pillar.get']('filebeat:config:inputs', {}) }}
         OUTPUT: {{ salt['pillar.get']('filebeat:config:output', {}) }}
+    - show_changes: False
 
 # Filebeat module config file
 filebeatmoduleconf:
@@ -87,6 +88,7 @@ filebeatmoduleconf:
     - group: root
     - mode: 640
     - template: jinja
+    - show_changes: False
 
 sodefaults_module_conf:
   file.managed:
