@@ -221,6 +221,19 @@ check_local_mods() {
 
 # {% endraw %}
 
+check_pillar_items() {
+  local pillar_output=$(salt-call pillar.items --out=json)
+
+  cond=$(jq '.local | has("_errors")' <<< "$pillar_output")
+  if [[ "$cond" == "true" ]]; then
+    printf "\nThere is an issue rendering the manager's pillars. Please correct the issues in the sls files mentioned below before running SOUP again.\n\n"
+    jq '.local._errors[]' <<< "$pillar_output"
+    exit 0
+  else
+    printf "\nThe manager's pillars can be rendered. We can proceed with SOUP.\n\n"
+  fi
+}
+
 check_sudoers() {
   if grep -q "so-setup" /etc/sudoers; then
     echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
@@ -849,6 +862,8 @@ verify_latest_update_script() {
 main() {
   trap 'check_err $?' EXIT
   
+  check_pillar_items
+
   echo "Checking to see if this is an airgap install."
   echo ""
   check_airgap
