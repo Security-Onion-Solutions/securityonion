@@ -124,8 +124,8 @@ so-fleet:
       - FLEET_SERVER_KEY=/ssl/server.key
       - FLEET_LOGGING_JSON=true
       - FLEET_AUTH_JWT_KEY= {{ FLEETJWT }}
-      - FLEET_OSQUERY_STATUS_LOG_FILE=/var/log/fleet/status.log
-      - FLEET_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
+      - FLEET_FILESYSTEM_STATUS_LOG_FILE=/var/log/fleet/status.log
+      - FLEET_FILESYSTEM_RESULT_LOG_FILE=/var/log/osquery/result.log
       - FLEET_SERVER_URL_PREFIX=/fleet
       - FLEET_FILESYSTEM_ENABLE_LOG_ROTATION=true
       - FLEET_FILESYSTEM_ENABLE_LOG_COMPRESSION=true
