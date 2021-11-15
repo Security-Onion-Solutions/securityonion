@@ -68,8 +68,8 @@ yumconf:
 {% endif %}
 
 cleanyum:
-  module.run:
-    - pkg.clean_metadata: []
+  cmd.run:
+    - name: 'yum clean metadata'
     - onchanges:
 {% if ISAIRGAP %}
       - file: airgapyum
@@ -80,4 +80,3 @@ cleanyum:
 {% endif %}
 
 {% endif %}
-
