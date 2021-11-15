@@ -393,14 +393,15 @@ valid_cidr() {
 	# Verify there is a backslash in the string
 	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
 	
-	local cidr
+	local cidr="$1"
 	local ip
-
-	cidr=$(echo "$1" | sed 's/.*\///')
-	ip=$(echo "$1" | sed 's/\/.*//' )
+	ip=$(echo "$cidr" | sed 's/\/.*//' )
 	
 	if valid_ip4 "$ip"; then
-		[[ $cidr =~ ([0-9]|[1-2][0-9]|3[0-2]) ]] && return 0 || return 1
+		local ip1 ip2 ip3 ip4 N
+		IFS="./" read -r ip1 ip2 ip3 ip4 N <<< "$cidr"
+		ip_total=$((ip1 * 256 ** 3 + ip2 * 256 ** 2 + ip3 * 256 + ip4))
+		[[ $((ip_total % 2**(32-N))) == 0 ]] && return 0 || return 1
 	else
 		return 1
 	fi
