@@ -390,30 +390,20 @@ has_uppercase() {
 }
 
 valid_cidr() {
-	local cidr=$1
+	# Verify there is a backslash in the string
+	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
+	
+	local cidr
+	local ip
 
-	read -r -d '' cidr_python <<- EOM
-	import ipaddress
-	import sys
-
-	def validate_cidr(cidr: str) -> bool:
-	  # We want the string to be a cidr block and not a single ip
-	  if '/' not in cidr:
-	  	return False
-	  try:
-	    ipaddress.ip_network(cidr)
-	  except ValueError:
-	    return False
-	  return True
-
-	if validate_cidr('$cidr'):
-	  sys.exit(0)
-	else:
-	  sys.exit(1)
-	EOM
-
-	python3 -c "$cidr_python"
-	return $?
+	cidr=$(echo "$1" | sed 's/.*\///')
+	ip=$(echo "$1" | sed 's/\/.*//' )
+	
+	if valid_ip4 "$ip"; then
+		[[ $cidr =~ ([0-9]|[1-2][0-9]|3[0-2]) ]] && return 0 || return 1
+	else
+		return 1
+	fi
 }
 
 valid_cidr_list() {
@@ -457,26 +447,7 @@ valid_hostname() {
 valid_ip4() {
 	local ip=$1
 
-	local ip_python
-	read -r -d '' ip_python <<- EOM
-	import ipaddress
-	import sys
-
-	def validate_ip(ip: str) -> bool:
-	  try:
-	    ipaddress.ip_address(ip)
-	  except ValueError:
-	    return False
-	  return True
-
-	if validate_ip('$ip'):
-	  sys.exit(0)
-	else:
-	  sys.exit(1)
-	EOM
-
-	python3 -c "$ip_python"
-	return $?
+	echo "$ip" | grep -qP '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$' && return 0 || return 1
 }
 
 valid_int() {
