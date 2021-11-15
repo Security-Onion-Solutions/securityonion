@@ -93,7 +93,7 @@ influxdb_crt:
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
     - CN: {{ manager }}
-    - subjectAltName: DNS:{{ HOSTNAME }}
+    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
