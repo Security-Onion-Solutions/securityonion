@@ -393,14 +393,11 @@ preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
-    [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
-    [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
-    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
-    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
-    [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_2.3.5X_to_2.3.80
-    [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_2.3.80_to_2.3.90
+    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_to_2.3.20
+    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_to_2.3.30
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
+    [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
+    [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     true
 }
 
@@ -408,33 +405,27 @@ postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
     
-    [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
-    [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
-    [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
-    [[ "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_2.3.5X_to_2.3.60
-    [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_2.3.60_to_2.3.90
+    [[ "$POSTVERSION" == 2.3.0 || "$POSTVERSION" == 2.3.1 || "$POSTVERSION" == 2.3.2 || "$POSTVERSION" == 2.3.10 || "$POSTVERSION" == 2.3.20 ]] && post_to_2.3.21
+    [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
+    [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
+    [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     true
 }
 
-post_rc1_to_2.3.21() {
+post_to_2.3.21() {
   salt-call state.apply playbook.OLD_db_init
   rm -f /opt/so/rules/elastalert/playbook/*.yaml
   so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   POSTVERSION=2.3.21
 }
 
-post_2.3.2X_to_2.3.30() {
-  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
-  POSTVERSION=2.3.30
-}
-
-post_2.3.30_to_2.3.40() {
+post_to_2.3.40() {
   so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
   so-kibana-space-defaults
   POSTVERSION=2.3.40
 }
 
-post_2.3.5X_to_2.3.60() {
+post_to_2.3.60() {
   for table in identity_recovery_addresses selfservice_recovery_flows selfservice_registration_flows selfservice_verification_flows identities identity_verification_tokens identity_credentials selfservice_settings_flows identity_recovery_tokens continuity_containers identity_credential_identifiers identity_verifiable_addresses courier_messages selfservice_errors sessions selfservice_login_flows
   do
     echo "Forcing Kratos network migration: $table"
@@ -444,7 +435,7 @@ post_2.3.5X_to_2.3.60() {
   POSTVERSION=2.3.60
 }
 
-post_2.3.60_to_2.3.90() {
+post_to_2.3.90() {
   # Do Kibana dashboard things
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
 
@@ -452,89 +443,7 @@ post_2.3.60_to_2.3.90() {
 }
 
 
-rc1_to_rc2() {
-
-  # Move the static file to global.sls
-  echo "Migrating static.sls to global.sls"
-  mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
-  sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
-
-  # Moving baseurl from minion sls file to inside global.sls
-  local line=$(grep '^  url_base:' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls)
-  sed -i '/^  url_base:/d' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls;
-  sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
-
-  # Adding play values to the global.sls
-  local HIVEPLAYSECRET=$(get_random_value)
-  local CORTEXPLAYSECRET=$(get_random_value)
-  sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
-  sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
-
-  # Move storage nodes to hostname for SSL
-  # Get a list we can use:
-  grep -A1 searchnode /opt/so/saltstack/local/pillar/data/nodestab.sls | grep -v '\-\-' | sed '$!N;s/\n/ /' | awk '{print $1,$3}' | awk '/_searchnode:/{gsub(/\_searchnode:/, "_searchnode"); print}' >/tmp/nodes.txt
-  # Remove the nodes from cluster settings
-  while read p; do
-  local NAME=$(echo $p | awk '{print $1}')
-  local IP=$(echo $p | awk '{print $2}')
-  echo "Removing the old cross cluster config for $NAME"
-  curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
-  done </tmp/nodes.txt
-  # Add the nodes back using hostname
-  while read p; do
-    local NAME=$(echo $p | awk '{print $1}')
-    local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
-    local IP=$(echo $p | awk '{print $2}')
-    echo "Adding the new cross cluster config for $NAME"
-    curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
-  done </tmp/nodes.txt
-
-  INSTALLEDVERSION=rc.2
-}
-
-rc2_to_rc3() {
-
-  # move location of local.rules
-  cp /opt/so/saltstack/default/salt/idstools/localrules/local.rules /opt/so/saltstack/local/salt/idstools/local.rules
-  
-  if [ -f /opt/so/saltstack/local/salt/idstools/localrules/local.rules ]; then
-    cat /opt/so/saltstack/local/salt/idstools/localrules/local.rules >> /opt/so/saltstack/local/salt/idstools/local.rules
-  fi
-  rm -rf /opt/so/saltstack/local/salt/idstools/localrules
-  rm -rf /opt/so/saltstack/default/salt/idstools/localrules
-
-  # Rename mdengine to MDENGINE
-  sed -i "s/  zeekversion/  mdengine/g" /opt/so/saltstack/local/pillar/global.sls
-  # Enable Strelka Rules
-  sed -i "/  rules:/c\  rules: 1" /opt/so/saltstack/local/pillar/global.sls
-
-  INSTALLEDVERSION=rc.3
-
-}
-
-rc3_to_2.3.0() {
-  # Fix Tab Complete
-  if [ ! -f /etc/profile.d/securityonion.sh ]; then
-    echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
-  fi
-
-  {
-    echo "redis_settings:"
-    echo "  redis_maxmemory: 827"
-    echo "playbook:"
-    echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
-  } >> /opt/so/saltstack/local/pillar/global.sls
-
-  sed -i 's/playbook:/playbook_db:/' /opt/so/saltstack/local/pillar/secrets.sls
-  {
-    echo "playbook_admin: $(get_random_value)"
-    echo "playbook_automation: $(get_random_value)"
-  } >> /opt/so/saltstack/local/pillar/secrets.sls
-
-  INSTALLEDVERSION=2.3.0
-}
-
-up_2.3.0_to_2.3.20(){
+up_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
   # Remove PCAP from global
   sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
@@ -572,7 +481,7 @@ up_2.3.0_to_2.3.20(){
   INSTALLEDVERSION=2.3.20
 }
 
-up_2.3.2X_to_2.3.30() {
+up_to_2.3.30() {
   # Replace any curly brace scalars with the same scalar in single quotes
   readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
   for pillar in "${minion_pillars[@]}"; do
@@ -595,32 +504,7 @@ up_2.3.2X_to_2.3.30() {
   INSTALLEDVERSION=2.3.30
 }
 
-upgrade_to_2.3.50_repo() {
-  echo "Performing repo changes."
-  if [[ "$OS" == "centos" ]]; then
-    # Import GPG Keys
-    gpg_rpm_import
-    echo "Disabling fastestmirror."
-    disable_fastestmirror
-    echo "Deleting unneeded repo files."
-    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
-
-    for DELREPO in "${DELREPOS[@]}"; do
-      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
-        echo "Deleting $DELREPO.repo"
-        rm -f "/etc/yum.repos.d/$DELREPO.repo"
-      fi
-    done
-    if [[ $is_airgap -eq 1 ]]; then
-      # Copy the new repo file if not airgap
-      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
-      yum clean all
-      yum repolist
-    fi
-  fi
-}
-
-up_2.3.3X_to_2.3.50() {
+up_to_2.3.50() {
   
   cat <<EOF > /tmp/supersed.txt
 /so-zeek:/ {
@@ -652,7 +536,7 @@ EOF
   INSTALLEDVERSION=2.3.50
 }
 
-up_2.3.5X_to_2.3.80() {
+up_to_2.3.80() {
   
   # Remove watermark settings from global.sls
   sed -i '/  cluster_routing_allocation_disk/d' /opt/so/saltstack/local/pillar/global.sls
@@ -692,7 +576,7 @@ up_2.3.5X_to_2.3.80() {
   INSTALLEDVERSION=2.3.80
 }
 
-up_2.3.80_to_2.3.90() {
+up_to_2.3.90() {
   for i in manager eval standalone; do
         echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*$i*.sls
         sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*$i*.sls
@@ -718,6 +602,7 @@ up_2.3.80_to_2.3.90() {
 
   INSTALLEDVERSION=2.3.90
 }
+
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
@@ -857,6 +742,31 @@ upgrade_salt() {
     apt-mark hold "salt-common"
     apt-mark hold "salt-master"
     apt-mark hold "salt-minion"
+  fi
+}
+
+upgrade_to_2.3.50_repo() {
+  echo "Performing repo changes."
+  if [[ "$OS" == "centos" ]]; then
+    # Import GPG Keys
+    gpg_rpm_import
+    echo "Disabling fastestmirror."
+    disable_fastestmirror
+    echo "Deleting unneeded repo files."
+    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+
+    for DELREPO in "${DELREPOS[@]}"; do
+      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+        echo "Deleting $DELREPO.repo"
+        rm -f "/etc/yum.repos.d/$DELREPO.repo"
+      fi
+    done
+    if [[ $is_airgap -eq 1 ]]; then
+      # Copy the new repo file if not airgap
+      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+      yum clean all
+      yum repolist
+    fi
   fi
 }
 
