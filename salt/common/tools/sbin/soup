@@ -435,6 +435,12 @@ post_2.3.30_to_2.3.40() {
 }
 
 post_2.3.5X_to_2.3.60() {
+  for table in identity_recovery_addresses selfservice_recovery_flows selfservice_registration_flows selfservice_verification_flows identities identity_verification_tokens identity_credentials selfservice_settings_flows identity_recovery_tokens continuity_containers identity_credential_identifiers identity_verifiable_addresses courier_messages selfservice_errors sessions selfservice_login_flows
+  do
+    echo "Forcing Kratos network migration: $table"
+    sqlite3 /opt/so/conf/kratos/db/db.sqlite "update $table set nid=(select id from networks limit 1);"
+  done
+
   POSTVERSION=2.3.60
 }
 
