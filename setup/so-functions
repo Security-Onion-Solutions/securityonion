@@ -1849,6 +1849,8 @@ minio_generate_keys() {
 network_init() {
 	disable_ipv6
 	set_hostname
+	echo "Verifying all network devices are managed by Network Manager" >> "$setup_log" 2>&1
+	check_network_manager_conf
 	if [[ "$setup_type" == 'iso' ]]; then
 		set_management_interface
 	fi
@@ -1878,9 +1880,6 @@ network_init_whiptail() {
 network_setup() {
 	{
 		echo "Finishing up network setup";
-
-		echo "... Verifying all network devices are managed by Network Manager";
-		check_network_manager_conf;
 
 		echo "... Copying 99-so-checksum-offload-disable";
 		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
