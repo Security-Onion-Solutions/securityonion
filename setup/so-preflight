@@ -15,10 +15,18 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+cd "$(dirname "$0")" || exit 255
+
 source ../salt/common/tools/sbin/so-common
 source ./so-functions
 
 script_run="$1"
+
+retry_count=10
+retry_sleep=5
+warning_prefix="[WARNING]"
+info_prefix="[INFO   ]"
+error_prefix="[ERROR  ]"
 
 if [[ $script_run == true ]]; then
 	preflight_log="${2:-'/root/preflight.log'}"
@@ -129,19 +137,31 @@ __check_url_arr() {
 	local ret_code=0
 	echo "" >> "$preflight_log"
 	for url in "$@"; do
-		local status
-		status=$(curl -s -o /dev/null -w "%{http_code}" -L "$url" 2> /dev/null)
-		local ret=$?
+		# Reset vars
+		local status=999 # Set status to something outside the range of normal HTTP codes but above the 200 range
+		local ret=1
+		local count=0
+
+		while [[ $ret != 0 && $count -lt $retry_count ]]; do
+			((count++))
+			[[ $count != 1 ]] && sleep $retry_sleep
+			status=$(curl -s -o /dev/null -w "%{http_code}" -L "$url" 2> /dev/null)
+			ret=$?
+			local count_str
+			printf -v count_str '%02d' "$count"
+			[[ $ret != 0 ]] && echo "$warning_prefix ($count_str/$retry_count) Could not reach $url, curl error code: $ret" >> "$preflight_log"
+		done
+
 		if [[ $ret == 0 ]]; then
-			printf '%s' "    - Successfully reached $url" >> "$preflight_log"
+			url_success_str="Successfully reached $url"
 			if [[ $status -ge 400 ]]; then
-				printf '%s\n' " but server responded with error code $status" >> "$preflight_log"
+				echo "$warning_prefix $url_success_str but server responded with HTTP code $status." >> "$preflight_log"
 			else
-				printf '\n' >> "$preflight_log"
+				printf '%s\n' "$info_prefix $url_success_str" >> "$preflight_log"
 			fi
 		else
 			ret_code=1
-			echo "    - [ERROR]: Could not reach $url" >> "$preflight_log"
+			echo "$error_prefix Could not reach $url after $retry_count attempts." >> "$preflight_log"
 		fi
 	done
 	echo "" >> "$preflight_log"
@@ -153,9 +173,10 @@ main() {
 	local success_str="Pre-flight checks completed successfully!"
 	local fail_str="Pre-flight checks could not complete."
 
+	[[ -f $preflight_log ]] || touch "$preflight_log"
+
 	detect_os "$preflight_log"
 
-	[[ -f $preflight_log ]] || touch "$preflight_log"
 	if [[ $script_run == true ]]; then
 		echo "$intro_str"
 	else
