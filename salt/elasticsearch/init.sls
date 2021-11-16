@@ -288,6 +288,7 @@ so-elasticsearch:
       - file: cacertz
       - file: esyml
       - file: esingestconf
+      - file: esingestdynamicconf
       - file: so-elasticsearch-pipelines-file
     - require:
       - file: esyml
