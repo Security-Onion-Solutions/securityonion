@@ -147,8 +147,9 @@ __check_url_arr() {
 			[[ $count != 1 ]] && sleep $retry_sleep
 			status=$(curl -s -o /dev/null -w "%{http_code}" -L "$url" 2> /dev/null)
 			ret=$?
-
-			[[ $ret != 0 ]] && echo "$warning_prefix ($count/$retry_count) Could not reach $url, curl error code: $ret" >> "$preflight_log"
+			local count_str
+			printf -v count_str '%02d' "$count"
+			[[ $ret != 0 ]] && echo "$warning_prefix ($count_str/$retry_count) Could not reach $url, curl error code: $ret" >> "$preflight_log"
 		done
 
 		if [[ $ret == 0 ]]; then
