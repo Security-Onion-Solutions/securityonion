@@ -9,6 +9,9 @@ if [[ $# -ne 2 ]] ; then
       exit 1
 fi
 
+USER_EMAIL=$1
+USER_PW=$2
+
 # Checking to see if required containers are started...
 if [ ! "$(docker ps -q -f name=so-fleet)" ]; then
         echo "Starting Docker Containers..."
@@ -19,13 +22,16 @@ fi
 
 docker exec so-fleet fleetctl config set --address https://127.0.0.1:8080 --tls-skip-verify --url-prefix /fleet
 docker exec so-fleet bash -c 'while [[ "$(curl -s -o /dev/null --insecure -w ''%{http_code}'' https://127.0.0.1:8080/fleet)" != "301" ]]; do sleep 5; done'
-docker exec so-fleet fleetctl setup --email $1 --password $2 --name admin --org-name SO
 
-# Create Security Onion Fleet Service Account
+# Create Security Onion Fleet Service Account + Setup Fleet
 FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
 FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
-docker exec so-fleet fleetctl user create --email $FLEET_SA_EMAIL --name SO_ServiceAccount --password $FLEET_SA_PW --global-role admin
+docker exec so-fleet fleetctl setup --email $FLEET_SA_EMAIL --password $FLEET_SA_PW --name SO_ServiceAccount --org-name SO
 
+# Create User Account
+echo "$USER_PW" | so-fleet-user-add "$USER_EMAIL"
+
+# Import Packs & Configs
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/MacOS/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/palantir/Fleet/Endpoints/Windows/osquery.yaml
 docker exec so-fleet fleetctl apply -f /packs/so/so-default.yml

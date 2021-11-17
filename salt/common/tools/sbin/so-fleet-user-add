@@ -32,6 +32,7 @@ fi
 USER_EMAIL=$1
 FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
 FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+MYSQL_PW=$(lookup_pillar_secret mysql)
 
 # Read password for new user from stdin
 test -t 0
@@ -62,3 +63,7 @@ else
     echo "$CREATE_OUTPUT"
     exit 2
 fi
+
+# Disable forced password reset
+MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+"UPDATE users SET admin_forced_password_reset = 0 WHERE email = '$USER_EMAIL'" 2>&1)
