@@ -80,6 +80,22 @@ test_fun 1 valid_cidr ""
 
 sleep 0.15
 
+header "ip4 with CIDR mask"
+
+test_fun 0 valid_ip4_cidr_mask "192.168.1.12/24"
+
+test_fun 0 valid_ip4_cidr_mask "192.168.1.12/16"
+
+test_fun 1 valid_ip4_cidr_mask "192.168.9.12/54"
+
+test_fun 1 valid_cidr "192.168.1.0"
+
+test_fun 1 valid_ip4 "192.168.1.0/"
+
+test_fun 1 valid_ip4 "/24"
+
+test_fun 1 valid_cidr ""
+
 header "CIDR list"
 
 test_fun 0 valid_cidr_list "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"

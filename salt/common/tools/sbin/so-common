@@ -451,6 +451,23 @@ valid_ip4() {
 	echo "$ip" | grep -qP '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$' && return 0 || return 1
 }
 
+valid_ip4_cidr_mask() {
+	# Verify there is a backslash in the string
+	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
+
+	local cidr
+	local ip
+
+	cidr=$(echo "$1" | sed 's/.*\///')
+	ip=$(echo "$1" | sed 's/\/.*//' )
+
+	if valid_ip4 "$ip"; then
+		[[ $cidr =~ ^([0-9]|[1-2][0-9]|3[0-2])$ ]] && return 0 || return 1
+	else
+		return 1
+	fi
+}
+
 valid_int() {
 	local num=$1
 	local min=${2:-1}
