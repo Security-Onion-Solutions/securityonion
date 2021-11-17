@@ -24,6 +24,7 @@ include:
   - elasticsearch.auth
   - kibana.secrets
   - salt.minion
+  - soc
 
 socore_own_saltstack:
   file.directory:
@@ -128,6 +129,8 @@ syncesusers:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
       - /opt/so/conf/soc/soc_users_roles
     - show_changes: False
+    - require:
+      -  docker_container: so-kratos
 
 {% else %}
 
