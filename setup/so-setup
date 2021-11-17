@@ -762,12 +762,15 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info registry >> $setup_log 2>&1
 		docker_seed_registry # ~ 60% when finished
 		
-		set_progress_str 60 "$(print_salt_state_apply 'manager')"
-		salt-call state.apply -l info manager >> $setup_log 2>&1
-		
+		set_progress_str 59 "$(print_salt_state_apply 'elasticsearch.auth')"
+		salt-call state.apply -l info elasticsearch.auth >> $setup_log 2>&1
+
 		echo "Executing so-elastic-auth..." >> $setup_log 2>&1
 		ELASTIC_AUTH_SKIP_HIGHSTATE=true bash /opt/so/saltstack/default/salt/common/tools/sbin/so-elastic-auth true >> $setup_log 2>&1
 		echo "Finished so-elastic-auth..." >> $setup_log 2>&1
+
+		set_progress_str 60 "$(print_salt_state_apply 'manager')"
+		salt-call state.apply -l info manager >> $setup_log 2>&1
 	fi
 
 	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
