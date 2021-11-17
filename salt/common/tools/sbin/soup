@@ -447,19 +447,17 @@ post_to_2.3.90() {
   FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
 
   if [[ $? -ne 0 ]]; then
-    echo "Failed to generate Fleet password hash"
-    exit 2
-  fi
-
-  MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
-     "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_USER','$FLEET_USER','admin')" 2>&1)
-
-  if [[ $? -eq 0 ]]; then
-      echo "Successfully added service account to Fleet"
+    echo "Failed to generate Fleet password hash, unable to add service account to Fleet"
   else
-      echo "Unable to add service account to Fleet"
-      echo "$MYSQL_OUTPUT"
-      exit 2
+    MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+    "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_SA_EMAIL','$FLEET_SA_EMAIL','admin')" 2>&1)
+
+    if [[ $? -eq 0 ]]; then
+        echo "Successfully added service account to Fleet"
+    else
+        echo "Unable to add service account to Fleet"
+        echo "$MYSQL_OUTPUT"
+    fi
   fi
 
   POSTVERSION=2.3.90
