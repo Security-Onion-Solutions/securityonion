@@ -577,9 +577,11 @@ up_to_2.3.80() {
 }
 
 up_to_2.3.90() {
-  for i in manager eval standalone; do
-        echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*$i*.sls
-        sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*$i*.sls
+  for i in manager managersearch eval standalone; do
+    if compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls" > /dev/null; then
+      echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*_$i.sls
+      sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*_$i.sls
+    fi
   done
   
   # Create Endgame Hostgroup
