@@ -439,6 +439,29 @@ post_to_2.3.90() {
   # Do Kibana dashboard things
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
 
+  # Create FleetDM service account
+  FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
+  FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+  MYSQL_PW=$(lookup_pillar_secret mysql)
+
+  FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to generate Fleet password hash"
+    exit 2
+  fi
+
+  MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+     "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_USER','$FLEET_USER','admin')" 2>&1)
+
+  if [[ $? -eq 0 ]]; then
+      echo "Successfully added service account to Fleet"
+  else
+      echo "Unable to add service account to Fleet"
+      echo "$MYSQL_OUTPUT"
+      exit 2
+  fi
+
   POSTVERSION=2.3.90
 }
 
@@ -602,6 +625,19 @@ up_to_2.3.90() {
     sed -i -e '$a{{'{% endraw %}'}}\n' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
   fi
 
+  # Generate FleetDM Service Account creds if they do not exist
+  if grep -q "fleet_sa_email" /opt/so/saltstack/local/pillar/secrets.sls; then
+    echo "FleetDM Service Account credentials already created..."
+  else
+    echo "Generating FleetDM Service Account credentials..."
+    FLEETSAPASS=$(get_random_value)
+    	printf '%s\n'\
+        "  fleet_sa_email: service.account@securityonion.invalid"\
+        "  fleet_sa_password: $FLEETSAPASS"\
+        >> /opt/so/saltstack/local/pillar/secrets.sls
+
+  fi
+  
   INSTALLEDVERSION=2.3.90
 }
 

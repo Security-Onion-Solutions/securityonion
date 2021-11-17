@@ -18,9 +18,9 @@
 . /usr/sbin/so-common
 
 usage() {
-    echo "Usage: $0 <new-user-email>"
+    echo "Usage: $0 <user-email>"
     echo ""
-    echo "Adds a new user to Fleet. The new password will be read from STDIN."
+    echo "Deletes a user in Fleet"
     exit 1
 }
 
@@ -28,37 +28,29 @@ if [ $# -ne 1 ]; then
   usage
 fi
 
-
 USER_EMAIL=$1
 FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
 FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
-
-# Read password for new user from stdin
-test -t 0
-if [[ $? == 0 ]]; then
-  echo "Enter new password:"
-fi
-read -rs USER_PASS
-
-check_password_and_exit "$USER_PASS"
 
 # Config fleetctl & login with the SO Service Account
 CONFIG_OUTPUT=$(docker exec so-fleet fleetctl config set --address https://127.0.0.1:8080 --tls-skip-verify --url-prefix /fleet  2>&1 )
 SALOGIN_OUTPUT=$(docker exec so-fleet fleetctl login --email $FLEET_SA_EMAIL --password $FLEET_SA_PW 2>&1)
 
 if [[ $? -ne 0 ]]; then
-    echo "Unable to add user to Fleet; Fleet Service account login failed"
+    echo "Unable to delete user from Fleet; Fleet Service account login failed"
     echo "$SALOGIN_OUTPUT"
     exit 2
 fi
 
-# Create New User
-CREATE_OUTPUT=$(docker exec so-fleet fleetctl user create --email $USER_EMAIL --name $USER_EMAIL --password $USER_PASS --global-role admin 2>&1)
+# Delete User
+DELETE_OUTPUT=$(docker exec so-fleet fleetctl user delete --email $USER_EMAIL 2>&1)
 
 if [[ $? -eq 0 ]]; then
-    echo "Successfully added user to Fleet"
+    echo "Successfully deleted user from Fleet"
 else
-    echo "Unable to add user to Fleet; user might already exist"
-    echo "$CREATE_OUTPUT"
+    echo "Unable to delete user from Fleet"
+    echo "$DELETE_OUTPUT"
     exit 2
 fi
+
+
