@@ -1189,10 +1189,11 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7;
+			  yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7
 			fi
-			yum versionlock docker-ce-20.10.5-3.el7;
-			yum versionlock docker-ce-cli-20.10.5-3.el7;
+			yum versionlock docker-ce-20.10.5-3.el7
+			yum versionlock docker-ce-cli-20.10.5-3.el7
+			yum versionlock docker-ce-rootless-extras-20.10.5-3.el7
 			yum versionlock containerd.io-1.4.4-3.1.el7
 		} >> "$setup_log" 2>&1
 		
@@ -1208,9 +1209,9 @@ docker_install() {
 				;;
 		esac
 		if [ $OSVER == "bionic" ]; then
-			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
 		elif [ $OSVER == "focal" ]; then
-			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 	docker_registry
@@ -2816,7 +2817,7 @@ update_sudoers() {
 update_packages() {
 	if [ "$OS" = 'centos' ]; then
 	    yum repolist >> /dev/null
-        yum -y update --exclude=salt*,wazuh* >> "$setup_log"
+        yum -y update --exclude=salt*,wazuh*,docker*,containerd* >> "$setup_log"
 	else
 		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
