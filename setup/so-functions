@@ -1206,8 +1206,12 @@ docker_install() {
 				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
 				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
-		esac 
-		retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
+		esac
+		if [ $OSVER == "bionic" ]; then
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+		elif [ $OSVER == "focal" ]; then
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
+		fi
 	fi
 	docker_registry
 	{
