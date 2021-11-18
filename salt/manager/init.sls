@@ -130,7 +130,8 @@ syncesusers:
       - /opt/so/conf/soc/soc_users_roles
     - show_changes: False
     - require:
-      -  docker_container: so-kratos
+      - docker_container: so-kratos
+      - http: wait_for_kratos
 
 {% else %}
 
