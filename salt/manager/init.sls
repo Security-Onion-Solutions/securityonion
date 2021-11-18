@@ -24,7 +24,7 @@ include:
   - elasticsearch.auth
   - kibana.secrets
   - salt.minion
-  - soc
+  - kratos
 
 socore_own_saltstack:
   file.directory:

@@ -99,6 +99,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager
@@ -167,6 +168,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - manager
     - idstools
@@ -233,6 +235,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager    
@@ -333,6 +336,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - manager
     - idstools
@@ -453,6 +457,7 @@ base:
     - manager
     - nginx
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager
