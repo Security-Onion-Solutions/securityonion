@@ -132,8 +132,8 @@ base:
     - elastalert
     {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
-    - fleet
     - redis
+    - fleet
     - fleet.install_package
     {%- endif %}
     - utility
