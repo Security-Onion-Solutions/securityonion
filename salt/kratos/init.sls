@@ -62,7 +62,6 @@ so-kratos:
     - port_bindings:
       - 0.0.0.0:4433:4433
       - 0.0.0.0:4434:4434
-    - restart_policy: on-failure:20
     - watch:
       - file: /opt/so/conf/kratos
     - require:
