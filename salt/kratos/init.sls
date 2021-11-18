@@ -62,6 +62,7 @@ so-kratos:
     - port_bindings:
       - 0.0.0.0:4433:4433
       - 0.0.0.0:4434:4434
+    - restart_policy: unless-stopped
     - watch:
       - file: /opt/so/conf/kratos
     - require:
@@ -74,6 +75,22 @@ append_so-kratos_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kratos
+
+wait_for_kratos:
+  http.wait_for_successful_query:
+    - name: 'http://{{ MANAGER }}:4434/'
+    - ssl: True
+    - verify_ssl: False
+    - status:
+      - 200
+      - 301
+      - 302
+      - 404
+    - status_type: list
+    - wait_for: 300
+    - request_interval: 10
+    - require:
+      -  docker_container: so-kratos
 
 {% else %}
 
