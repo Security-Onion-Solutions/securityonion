@@ -440,21 +440,25 @@ post_to_2.3.90() {
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
 
   # Create FleetDM service account
-  FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
-  FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
-  MYSQL_PW=$(lookup_pillar_secret mysql)
+    FLEET_MANAGER=$(lookup_pillar fleet_manager)
+    if [[ "$FLEET_MANAGER" == "True" ]]; then
+      FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
+      FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+      MYSQL_PW=$(lookup_pillar_secret mysql)
 
-  FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
-  MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
-  "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_SA_EMAIL','$FLEET_SA_EMAIL','admin')" 2>&1)
+      FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+      MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+      "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_SA_EMAIL','$FLEET_SA_EMAIL','admin')" 2>&1)
 
-  if [[ $? -eq 0 ]]; then
-      echo "Successfully added service account to Fleet"
-  else
-      echo "Unable to add service account to Fleet"
-      echo "$MYSQL_OUTPUT"
-  fi
+      if [[ $? -eq 0 ]]; then
+          echo "Successfully added service account to Fleet"
+      else
+          echo "Unable to add service account to Fleet"
+          echo "$MYSQL_OUTPUT"
+      fi
+    fi
 
+  
 
   POSTVERSION=2.3.90
 }
