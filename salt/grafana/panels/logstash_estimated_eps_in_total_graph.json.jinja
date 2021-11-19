@@ -1,0 +1,156 @@
+{
+  "id": 69001,
+  "gridPos": {
+    "x": {{ PANELS.logstash_estimated_eps_in_total_graph.gridPos.x }},
+    "y": {{ PANELS.logstash_estimated_eps_in_total_graph.gridPos.y }},
+    "w": {{ PANELS.logstash_estimated_eps_in_total_graph.gridPos.w }},
+    "h": {{ PANELS.logstash_estimated_eps_in_total_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Estimated EPS In - Selected Total",
+  "transformations": [
+    {
+      "id": "calculateField",
+      "options": {
+        "mode": "reduceRow",
+        "reduce": {
+          "reducer": "sum"
+        },
+        "replaceFields": true,
+        "alias": "Total EPS"
+      }
+    }
+  ],
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "EPS",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "short",
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "refId": "A",
+      "hide": false,
+      "policy": "default",
+      "resultFormat": "time_series",
+      "orderByTime": "ASC",
+      "tags": [
+        {
+          "key": "host",
+          "value": "/^$servername$/",
+          "operator": "=~"
+        }
+      ],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$__interval"
+          ]
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "measurement": "logstash_events",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"host\" =~ /^$servername$/) AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false
+    }
+  ],
+  "maxDataPoints": null,
+  "description": "",
+  "timeFrom": null,
+  "timeShift": null
+}

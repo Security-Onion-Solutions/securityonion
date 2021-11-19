@@ -1,0 +1,283 @@
+{
+  "id": 61875,
+  "gridPos": {
+    "x": {{ PANELS.management_interface_packets_graph.gridPos.x }},
+    "y": {{ PANELS.management_interface_packets_graph.gridPos.y }},
+    "w": {{ PANELS.management_interface_packets_graph.gridPos.w }},
+    "h": {{ PANELS.management_interface_packets_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Management Interface Packets",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_interface: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(packets_recv), 1s) as \"in\" FROM \"net\" WHERE host =~ /$servername/ AND interface =~ /$manint/ AND $timeFilter GROUP BY time($__interval), * fill(none)",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [],
+      "hide": false
+    },
+    {
+      "alias": "$tag_host: $tag_interface: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(packets_sent), 1s) as \"out\" FROM \"net\" WHERE host =~ /$servername/ AND interface =~ /$manint/ AND $timeFilter GROUP BY time($__interval), * fill(none)",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $tag_interface: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(mean_packets_recv), 1s) as \"trend_in\" FROM \"so_long_term\".\"net\" WHERE host =~ /$servername/ AND interface =~ /$manint/ AND $timeFilter GROUP BY time($__interval), * fill(none)",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "C",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $tag_interface: $col",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(mean_packets_sent), 1s) as \"trend_out\" FROM \"so_long_term\".\"net\" WHERE host =~ /$servername/ AND interface =~ /$manint/ AND $timeFilter GROUP BY time($__interval), * fill(none)",
+      "rawQuery": true,
+      "refId": "D",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "Packets per second",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "pps",
+      "min": 0,
+      "decimals": 1
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/trend/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "custom.lineWidth",
+            "value": 4
+          },
+          {
+            "id": "custom.lineStyle",
+            "value": {
+              "fill": "dash",
+              "dash": [
+                4,
+                10
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/veth/"
+        },
+        "properties": [
+          {
+            "id": "custom.hideFrom",
+            "value": {
+              "tooltip": true,
+              "viz": true,
+              "legend": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}

@@ -1,0 +1,220 @@
+{
+  "id": 101,
+  "gridPos": {
+    "x": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.x }},
+    "y": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.y }},
+    "w": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.w }},
+    "h": {{ PANELS.cpu_docker_combined_trend_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Container CPU Usage Trend",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "decimals": 1,
+      "unit": "percent"
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/n_cpus/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "color",
+            "value": {
+              "mode": "fixed",
+              "fixedColor": "dark-red"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_container_name",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_cpu",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_usage_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
+    },
+    {
+      "alias": "$tag_host: n_cpus*100",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "system",
+      "orderByTime": "ASC",
+      "policy": "so_long_term",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "mean_n_cpus"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          },
+          {
+            "params": [
+              " * 100"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        }
+      ]
+    }
+  ],
+  "description": "",
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}

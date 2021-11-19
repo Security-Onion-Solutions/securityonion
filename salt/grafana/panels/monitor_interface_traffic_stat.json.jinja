@@ -1,0 +1,152 @@
+{
+  "id": 24,
+  "gridPos": {
+    "x": {{ PANELS.monitor_interface_traffic_stat.gridPos.x }},
+    "y": {{ PANELS.monitor_interface_traffic_stat.gridPos.y }},
+    "w": {{ PANELS.monitor_interface_traffic_stat.gridPos.w }},
+    "h": {{ PANELS.monitor_interface_traffic_stat.gridPos.h }}
+  },
+  "type": "stat",
+  "title": "Monitor Traffic - Selected Total",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "rgba(245, 54, 54, 0.9)",
+            "value": null
+          },
+          {
+            "color": "rgba(50, 172, 45, 0.97)",
+            "value": 1
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "options": {
+            "match": "null",
+            "result": {
+              "text": "N/A"
+            }
+          },
+          "type": "special"
+        }
+      ],
+      "color": {
+        "mode": "thresholds"
+      },
+      "decimals": 2,
+      "unit": "bps"
+    },
+    "overrides": []
+  },
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "value",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
+  },
+  "targets": [
+    {
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "none"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "bytes_recv"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          },
+          {
+            "type": "math",
+            "params": [
+              "*8"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "interface",
+          "operator": "=~",
+          "value": "/^$monint$/"
+        }
+      ],
+      "query": "SELECT non_negative_derivative(mean(\"bytes_recv\"), 1s) *8 FROM \"net\" WHERE (\"host\" =~ /^$servername$/ AND \"interface\" = '$monint') AND $timeFilter GROUP BY time($__interval) fill(null)",
+      "rawQuery": false
+    }
+  ],
+  "maxDataPoints": null,
+  "cacheTimeout": null,
+  "interval": null,
+  "transformations": [
+    {
+      "id": "calculateField",
+      "options": {
+        "mode": "reduceRow",
+        "reduce": {
+          "reducer": "sum"
+        },
+        "alias": "Monitor Traffic",
+        "replaceFields": true
+      }
+    }
+  ],
+  "description": ""
+}

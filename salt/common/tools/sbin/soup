@@ -27,6 +27,7 @@ SOUP_LOG=/root/soup.log
 INFLUXDB_MIGRATION_LOG=/opt/so/log/influxdb/soup_migration.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
+NOTIFYCUSTOMELASTICCONFIG=false
 
 check_err() {
   local exit_code=$1
@@ -105,17 +106,20 @@ add_common() {
 
 airgap_mounted() {
   # Let's see if the ISO is already mounted. 
-  if [ -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
+  if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
     echo "The ISO is already mounted"
   else
-    echo ""
-    cat << EOF
+    if [[ -z $ISOLOC ]]; then
+      echo "This is airgap. Ask for a location."
+      echo ""
+      cat << EOF
 In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided. 
 For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso. 
 Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom.
 
 EOF
-    read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+      read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
+    fi
     if [[ -f $ISOLOC ]]; then
       # Mounting the ISO image
       mkdir -p /tmp/soagupdate
@@ -131,7 +135,7 @@ EOF
     elif [[ -f $ISOLOC/SecurityOnion/VERSION ]]; then
       ln -s $ISOLOC /tmp/soagupdate
       echo "Found the update content"
-    else 
+    elif [[ -b $ISOLOC ]]; then
       mkdir -p /tmp/soagupdate
       mount $ISOLOC /tmp/soagupdate
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
@@ -140,7 +144,11 @@ EOF
         exit 0
       else
         echo "Device has been mounted!"
-      fi        
+      fi
+    else
+      echo "Could not find Security Onion ISO content at ${ISOLOC}" 
+      echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
+      exit 0
     fi
   fi
 }
@@ -150,7 +158,7 @@ airgap_update_dockers() {
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
-      exit 1
+      exit 0
     else
       echo "Stopping the registry docker"
       docker stop so-dockerregistry
@@ -179,6 +187,50 @@ check_airgap() {
       AGREPO=/tmp/soagupdate/Packages
   else 
       is_airgap=1
+  fi
+}
+
+# {% raw %}
+
+check_local_mods() {
+  local salt_local=/opt/so/saltstack/local
+
+  local_mod_arr=()
+
+  while IFS= read -r -d '' local_file; do
+    stripped_path=${local_file#"$salt_local"}
+    default_file="${DEFAULT_SALT_DIR}${stripped_path}"
+    if [[ -f $default_file ]]; then
+      file_diff=$(diff "$default_file" "$local_file" )
+      if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
+        local_mod_arr+=( "$local_file" )
+      fi
+    fi
+  done< <(find $salt_local -type f -print0)
+
+  if [[ ${#local_mod_arr} -gt 0 ]]; then
+    echo "Potentially breaking changes found in the following files (check ${DEFAULT_SALT_DIR} for original copy):"
+    for file_str in "${local_mod_arr[@]}"; do
+      echo "  $file_str"
+    done
+    echo ""
+    echo "To reference this list later, check $SOUP_LOG"
+    sleep 10
+  fi
+}
+
+# {% endraw %}
+
+check_pillar_items() {
+  local pillar_output=$(salt-call pillar.items --out=json)
+
+  cond=$(jq '.local | has("_errors")' <<< "$pillar_output")
+  if [[ "$cond" == "true" ]]; then
+    printf "\nThere is an issue rendering the manager's pillars. Please correct the issues in the sls files mentioned below before running SOUP again.\n\n"
+    jq '.local._errors[]' <<< "$pillar_output"
+    exit 0
+  else
+    printf "\nThe manager's pillars can be rendered. We can proceed with SOUP.\n\n"
   fi
 }
 
@@ -251,25 +303,31 @@ check_os_updates() {
     OSUPDATES=$(yum -q list updates | wc -l)
   fi
   if [[ "$OSUPDATES" -gt 0 ]]; then
-      echo $NEEDUPDATES
-      echo ""
-      read -p "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
-
-      if [[ "$confirm" == [cC] ]]; then
+      if [[ -z $UNATTENDED ]]; then
+        echo "$NEEDUPDATES"
+        echo ""
+        read -rp "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+        if [[ "$confirm" == [cC] ]]; then
           echo "Continuing without updating packages"
-      elif [[ "$confirm" == [uU] ]]; then
+        elif [[ "$confirm" == [uU] ]]; then
           echo "Applying Grid Updates"
-          set +e
-          run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
-          set -e
-      else
+          update_flag=true
+        else
           echo "Exiting soup"
           exit 0
+        fi
+      else
+        update_flag=true
       fi
   else
-      echo "Looks like you have an updated OS"
+    echo "Looks like you have an updated OS"
   fi
-    
+
+  if [[ $update_flag == true ]]; then
+    set +e
+    run_check_net_err "salt '*' -b 5 state.apply patch.os queue=True" 'Could not apply OS updates, please check your network connection.'
+    set -e
+  fi
 }
 
 clean_dockers() {
@@ -335,12 +393,11 @@ preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" =~ rc.1 ]] && rc1_to_rc2
-    [[ "$INSTALLEDVERSION" =~ rc.2 ]] && rc2_to_rc3
-    [[ "$INSTALLEDVERSION" =~ rc.3 ]] && rc3_to_2.3.0
-    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_2.3.0_to_2.3.20
-    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_2.3.2X_to_2.3.30
-    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_2.3.3X_to_2.3.50
+    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_to_2.3.20
+    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_to_2.3.30
+    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
+    [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
+    [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     true
 }
 
@@ -348,119 +405,66 @@ postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
     
-    [[ "$POSTVERSION" =~ rc.1 ]] && post_rc1_to_rc2
-    [[ "$POSTVERSION" == 2.3.20 || "$POSTVERSION" == 2.3.21 ]] && post_2.3.2X_to_2.3.30
-    [[ "$POSTVERSION" == 2.3.30 ]] && post_2.3.30_to_2.3.40
-    [[ "$POSTVERSION" == 2.3.50 ]] && post_2.3.5X_to_2.3.60
+    [[ "$POSTVERSION" == 2.3.0 || "$POSTVERSION" == 2.3.1 || "$POSTVERSION" == 2.3.2 || "$POSTVERSION" == 2.3.10 || "$POSTVERSION" == 2.3.20 ]] && post_to_2.3.21
+    [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
+    [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
+    [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     true
 }
 
-post_rc1_to_2.3.21() {
+post_to_2.3.21() {
   salt-call state.apply playbook.OLD_db_init
   rm -f /opt/so/rules/elastalert/playbook/*.yaml
   so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
   POSTVERSION=2.3.21
 }
 
-post_2.3.2X_to_2.3.30() {
-  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
-  POSTVERSION=2.3.30
-}
-
-post_2.3.30_to_2.3.40() {
+post_to_2.3.40() {
   so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
   so-kibana-space-defaults
   POSTVERSION=2.3.40
 }
 
-post_2.3.5X_to_2.3.60() {
+post_to_2.3.60() {
+  for table in identity_recovery_addresses selfservice_recovery_flows selfservice_registration_flows selfservice_verification_flows identities identity_verification_tokens identity_credentials selfservice_settings_flows identity_recovery_tokens continuity_containers identity_credential_identifiers identity_verifiable_addresses courier_messages selfservice_errors sessions selfservice_login_flows
+  do
+    echo "Forcing Kratos network migration: $table"
+    sqlite3 /opt/so/conf/kratos/db/db.sqlite "update $table set nid=(select id from networks limit 1);"
+  done
+
   POSTVERSION=2.3.60
 }
 
+post_to_2.3.90() {
+  # Do Kibana dashboard things
+  salt-call state.apply kibana.so_savedobjects_defaults queue=True
 
-rc1_to_rc2() {
+  # Create FleetDM service account
+    FLEET_MANAGER=$(lookup_pillar fleet_manager)
+    if [[ "$FLEET_MANAGER" == "True" ]]; then
+      FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
+      FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+      MYSQL_PW=$(lookup_pillar_secret mysql)
 
-  # Move the static file to global.sls
-  echo "Migrating static.sls to global.sls"
-  mv -v /opt/so/saltstack/local/pillar/static.sls /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
-  sed -i '1c\global:' /opt/so/saltstack/local/pillar/global.sls >> "$SOUP_LOG" 2>&1
+      FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+      MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+      "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_SA_EMAIL','$FLEET_SA_EMAIL','admin')" 2>&1)
 
-  # Moving baseurl from minion sls file to inside global.sls
-  local line=$(grep '^  url_base:' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls)
-  sed -i '/^  url_base:/d' /opt/so/saltstack/local/pillar/minions/$MINIONID.sls;
-  sed -i "/^global:/a \\$line" /opt/so/saltstack/local/pillar/global.sls;
+      if [[ $? -eq 0 ]]; then
+          echo "Successfully added service account to Fleet"
+      else
+          echo "Unable to add service account to Fleet"
+          echo "$MYSQL_OUTPUT"
+      fi
+    fi
 
-  # Adding play values to the global.sls
-  local HIVEPLAYSECRET=$(get_random_value)
-  local CORTEXPLAYSECRET=$(get_random_value)
-  sed -i "/^global:/a \\  hiveplaysecret: $HIVEPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
-  sed -i "/^global:/a \\  cortexplaysecret: $CORTEXPLAYSECRET" /opt/so/saltstack/local/pillar/global.sls;
-
-  # Move storage nodes to hostname for SSL
-  # Get a list we can use:
-  grep -A1 searchnode /opt/so/saltstack/local/pillar/data/nodestab.sls | grep -v '\-\-' | sed '$!N;s/\n/ /' | awk '{print $1,$3}' | awk '/_searchnode:/{gsub(/\_searchnode:/, "_searchnode"); print}' >/tmp/nodes.txt
-  # Remove the nodes from cluster settings
-  while read p; do
-  local NAME=$(echo $p | awk '{print $1}')
-  local IP=$(echo $p | awk '{print $2}')
-  echo "Removing the old cross cluster config for $NAME"
-  curl -XPUT -H 'Content-Type: application/json' http://localhost:9200/_cluster/settings -d '{"persistent":{"cluster":{"remote":{"'$NAME'":{"skip_unavailable":null,"seeds":null}}}}}'
-  done </tmp/nodes.txt
-  # Add the nodes back using hostname
-  while read p; do
-    local NAME=$(echo $p | awk '{print $1}')
-    local EHOSTNAME=$(echo $p | awk -F"_" '{print $1}')
-    local IP=$(echo $p | awk '{print $2}')
-    echo "Adding the new cross cluster config for $NAME"
-    curl -XPUT http://localhost:9200/_cluster/settings -H'Content-Type: application/json' -d '{"persistent": {"search": {"remote": {"'$NAME'": {"skip_unavailable": "true", "seeds": ["'$EHOSTNAME':9300"]}}}}}'
-  done </tmp/nodes.txt
-
-  INSTALLEDVERSION=rc.2
-}
-
-rc2_to_rc3() {
-
-  # move location of local.rules
-  cp /opt/so/saltstack/default/salt/idstools/localrules/local.rules /opt/so/saltstack/local/salt/idstools/local.rules
   
-  if [ -f /opt/so/saltstack/local/salt/idstools/localrules/local.rules ]; then
-    cat /opt/so/saltstack/local/salt/idstools/localrules/local.rules >> /opt/so/saltstack/local/salt/idstools/local.rules
-  fi
-  rm -rf /opt/so/saltstack/local/salt/idstools/localrules
-  rm -rf /opt/so/saltstack/default/salt/idstools/localrules
 
-  # Rename mdengine to MDENGINE
-  sed -i "s/  zeekversion/  mdengine/g" /opt/so/saltstack/local/pillar/global.sls
-  # Enable Strelka Rules
-  sed -i "/  rules:/c\  rules: 1" /opt/so/saltstack/local/pillar/global.sls
-
-  INSTALLEDVERSION=rc.3
-
+  POSTVERSION=2.3.90
 }
 
-rc3_to_2.3.0() {
-  # Fix Tab Complete
-  if [ ! -f /etc/profile.d/securityonion.sh ]; then
-    echo "complete -cf sudo" > /etc/profile.d/securityonion.sh
-  fi
 
-  {
-    echo "redis_settings:"
-    echo "  redis_maxmemory: 827"
-    echo "playbook:"
-    echo "  api_key: de6639318502476f2fa5aa06f43f51fb389a3d7f" 
-  } >> /opt/so/saltstack/local/pillar/global.sls
-
-  sed -i 's/playbook:/playbook_db:/' /opt/so/saltstack/local/pillar/secrets.sls
-  {
-    echo "playbook_admin: $(get_random_value)"
-    echo "playbook_automation: $(get_random_value)"
-  } >> /opt/so/saltstack/local/pillar/secrets.sls
-
-  INSTALLEDVERSION=2.3.0
-}
-
-up_2.3.0_to_2.3.20(){
+up_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
   # Remove PCAP from global
   sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
@@ -498,7 +502,7 @@ up_2.3.0_to_2.3.20(){
   INSTALLEDVERSION=2.3.20
 }
 
-up_2.3.2X_to_2.3.30() {
+up_to_2.3.30() {
   # Replace any curly brace scalars with the same scalar in single quotes
   readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
   for pillar in "${minion_pillars[@]}"; do
@@ -521,32 +525,7 @@ up_2.3.2X_to_2.3.30() {
   INSTALLEDVERSION=2.3.30
 }
 
-upgrade_to_2.3.50_repo() {
-  echo "Performing repo changes."
-  if [[ "$OS" == "centos" ]]; then
-    # Import GPG Keys
-    gpg_rpm_import
-    echo "Disabling fastestmirror."
-    disable_fastestmirror
-    echo "Deleting unneeded repo files."
-    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
-
-    for DELREPO in "${DELREPOS[@]}"; do
-      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
-        echo "Deleting $DELREPO.repo"
-        rm -f "/etc/yum.repos.d/$DELREPO.repo"
-      fi
-    done
-    if [[ $is_airgap -eq 1 ]]; then
-      # Copy the new repo file if not airgap
-      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
-      yum clean all
-      yum repolist
-    fi
-  fi
-}
-
-up_2.3.3X_to_2.3.50() {
+up_to_2.3.50() {
   
   cat <<EOF > /tmp/supersed.txt
 /so-zeek:/ {
@@ -578,6 +557,89 @@ EOF
   INSTALLEDVERSION=2.3.50
 }
 
+up_to_2.3.80() {
+  
+  # Remove watermark settings from global.sls
+  sed -i '/  cluster_routing_allocation_disk/d' /opt/so/saltstack/local/pillar/global.sls
+
+  # Add new indices to the global
+  sed -i '/  index_settings:/a \\    so-elasticsearch: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-logstash: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-kibana: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  sed -i '/  index_settings:/a \\    so-redis: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
+  
+  # Do some pillar formatting
+  tc=$(grep -w true_cluster /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print tolower($2)'}| xargs)
+
+  if [[ "$tc" == "true" ]]; then
+    tcname=$(grep -w true_cluster_name /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print $2'})
+    sed -i "/^elasticsearch:/a \\  config: \n    cluster: \n      name: $tcname" /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/  true_cluster_name/d' /opt/so/saltstack/local/pillar/global.sls
+    sed -i '/  esclustername/d' /opt/so/saltstack/local/pillar/global.sls
+
+    for file in /opt/so/saltstack/local/pillar/minions/*.sls; do
+      if [[ ${file} != *"manager.sls"* ]]; then
+        noderoutetype=$(grep -w node_route_type $file | awk -F: {'print $2'})
+        if [ -n "$noderoutetype" ]; then
+          sed -i "/^elasticsearch:/a \\  config: \n    node: \n      attr: \n        box_type: $noderoutetype" $file
+          sed -i '/  node_route_type/d' $file
+          noderoutetype=''
+        fi
+      fi
+    done
+  fi
+
+  # check for local es config to inform user that the config in local is now ignored and those options need to be placed in the pillar
+  if [ -f "/opt/so/saltstack/local/salt/elasticsearch/files/elasticsearch.yml" ]; then
+    NOTIFYCUSTOMELASTICCONFIG=true
+  fi
+
+  INSTALLEDVERSION=2.3.80
+}
+
+up_to_2.3.90() {
+  for i in manager managersearch eval standalone; do
+    if compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls" > /dev/null; then
+      echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*_$i.sls
+      sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*_$i.sls
+    fi
+  done
+  
+  # Create Endgame Hostgroup
+  so-firewall addhostgroup endgame
+  
+  # Force influx to generate a new cert
+  mv /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
+  mv /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
+  
+  # remove old common ingest pipeline in default
+  rm -vf /opt/so/saltstack/default/salt/elasticsearch/files/ingest/common
+  # if custom common, move from local ingest to local ingest-dynamic
+  mkdir -vp /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic
+  if [[ -f "/opt/so/saltstack/local/salt/elasticsearch/files/ingest/common" ]]; then
+    mv -v /opt/so/saltstack/local/salt/elasticsearch/files/ingest/common /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
+    # since json file, we need to wrap with raw
+    sed -i '1s/^/{{'{% raw %}'}}\n/' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
+    sed -i -e '$a{{'{% endraw %}'}}\n' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
+  fi
+
+  # Generate FleetDM Service Account creds if they do not exist
+  if grep -q "fleet_sa_email" /opt/so/saltstack/local/pillar/secrets.sls; then
+    echo "FleetDM Service Account credentials already created..."
+  else
+    echo "Generating FleetDM Service Account credentials..."
+    FLEETSAPASS=$(get_random_value)
+    	printf '%s\n'\
+        "  fleet_sa_email: service.account@securityonion.invalid"\
+        "  fleet_sa_password: $FLEETSAPASS"\
+        >> /opt/so/saltstack/local/pillar/secrets.sls
+
+  fi
+  
+  INSTALLEDVERSION=2.3.90
+}
+
+
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
   if [ "$CURRENTSPACE" -lt "10" ]; then
@@ -593,7 +655,7 @@ upgrade_space() {
     clean_dockers
     if ! verify_upgradespace; then
       echo "There is not enough space to perform the upgrade. Please free up space and try again"
-      exit 1
+      exit 0
     fi
   else
       echo "You have enough space for upgrade. Proceeding with soup."
@@ -618,8 +680,8 @@ thehive_maint() {
   done
   if [ "$THEHIVE_CONNECTED" == "yes" ]; then
     echo "Migrating thehive databases if needed."
-    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate"
-    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate"
+    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
+    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
   fi
 }
 
@@ -719,6 +781,31 @@ upgrade_salt() {
   fi
 }
 
+upgrade_to_2.3.50_repo() {
+  echo "Performing repo changes."
+  if [[ "$OS" == "centos" ]]; then
+    # Import GPG Keys
+    gpg_rpm_import
+    echo "Disabling fastestmirror."
+    disable_fastestmirror
+    echo "Deleting unneeded repo files."
+    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+
+    for DELREPO in "${DELREPOS[@]}"; do
+      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+        echo "Deleting $DELREPO.repo"
+        rm -f "/etc/yum.repos.d/$DELREPO.repo"
+      fi
+    done
+    if [[ $is_airgap -eq 1 ]]; then
+      # Copy the new repo file if not airgap
+      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+      yum clean all
+      yum repolist
+    fi
+  fi
+}
+
 verify_latest_update_script() {
   # Check to see if the update scripts match. If not run the new one.
   CURRENTSOUP=$(md5sum /opt/so/saltstack/default/salt/common/tools/sbin/soup | awk '{print $1}')
@@ -743,39 +830,25 @@ verify_latest_update_script() {
 }
 
 main() {
-  set -e
-  set +e
   trap 'check_err $?' EXIT
   
-  echo "### Preparing soup at $(date) ###"
-  while getopts ":b" opt; do
-    case "$opt" in
-      b ) # process option b
-        shift
-        BATCHSIZE=$1
-        if ! [[ "$BATCHSIZE" =~ ^[0-9]+$ ]]; then
-          echo "Batch size must be a number greater than 0."
-          exit 1
-        fi
-      ;;
-      \? ) 
-        echo "Usage: cmd [-b]"
-      ;;
-    esac
-  done
+  check_pillar_items
 
+  echo "Checking to see if this is an airgap install."
+  echo ""
+  check_airgap
+  if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
+    echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
+    exit 0
+  fi
   echo "Checking to see if this is a manager."
   echo ""
   require_manager
   set_minionid
-  echo "Checking to see if this is an airgap install."
-  echo ""
-  check_airgap
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
-    echo "This is airgap. Ask for a location."
     airgap_mounted
   else
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
@@ -863,7 +936,7 @@ main() {
       echo "Once the issue is resolved, run soup again."
       echo "Exiting."
       echo ""
-      exit 1
+      exit 0
     else
       echo "Salt upgrade success."
       echo ""
@@ -922,8 +995,6 @@ main() {
     set +e
     salt-call state.highstate -l info queue=True
     set -e
-    echo ""
-    echo "Upgrade from $INSTALLEDVERSION to $NEWVERSION complete."
 
     echo ""
     echo "Stopping Salt Master to remove ACL"
@@ -946,6 +1017,13 @@ main() {
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
+    echo ""
+    echo "Upgrade to $NEWVERSION complete."
+
+    # Everything beyond this is post-upgrade checking, don't fail past this point if something here causes an error
+    set +e
+
+    echo "Checking the number of minions."
     NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
@@ -956,7 +1034,14 @@ main() {
       fi
     fi
 
+    echo "Checking for local modifications."
+    check_local_mods
+
+    echo "Checking sudoers file."
     check_sudoers
+
+    echo "Checking for necessary user migrations."
+    so-user migrate
 
     if [[ -n $lsl_msg ]]; then
       case $lsl_msg in
@@ -993,10 +1078,56 @@ EOF
     fi
   fi
 
+  if [ "$NOTIFYCUSTOMELASTICCONFIG" = true ] ; then
+
+    cat << EOF
+
+
+A custom Elasticsearch configuration has been found at /opt/so/saltstack/local/elasticsearch/files/elasticsearch.yml. This file is no longer referenced in Security Onion versions >= 2.3.80.
+
+If you still need those customizations, you'll need to manually migrate them to the new Elasticsearch config as shown at https://docs.securityonion.net/en/2.3/elasticsearch.html.
+
+EOF
+
+  fi
+
   echo "### soup has been served at $(date) ###"
 }
 
-cat << EOF
+while getopts ":b:f:y" opt; do
+  case ${opt} in
+    b )
+      BATCHSIZE="$OPTARG"
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Batch size must be a number greater than 0."
+        exit 1
+      fi
+    ;;
+    y )
+      if [[ ! -f /opt/so/state/yeselastic.txt ]]; then
+        echo "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
+        exit 1
+      else
+        UNATTENDED=true 
+      fi
+    ;;
+    f )
+      ISOLOC="$OPTARG"
+    ;;
+    \? ) 
+      echo "Usage: soup [-b] [-y] [-f <iso location>]"
+      exit 1
+    ;;
+    : )
+      echo "Invalid option: $OPTARG requires an argument"
+      exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z $UNATTENDED ]]; then
+  cat << EOF
 
 SOUP - Security Onion UPdater
 
@@ -1008,7 +1139,9 @@ Press Enter to continue or Ctrl-C to cancel.
 
 EOF
 
-read -r input
+  read -r input
+fi
 
+echo "### Preparing soup at $(date) ###"
 main "$@" | tee -a $SOUP_LOG
   

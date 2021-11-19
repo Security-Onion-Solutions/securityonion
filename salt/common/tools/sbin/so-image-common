@@ -17,6 +17,7 @@
 
 # NOTE: This script depends on so-common
 IMAGEREPO=security-onion-solutions
+STATUS_CONF='/opt/so/conf/so-status/so-status.conf'
 
 # shellcheck disable=SC2120
 container_list() {
@@ -136,6 +137,11 @@ update_docker_containers() {
   result=$?
   if [[ $result -eq 0 ]]; then
     cat $SIGNPATH/KEYS | gpg --import - >> "$LOG_FILE" 2>&1
+  fi
+
+  # If downloading for soup, check if any optional images need to be pulled
+  if [[ $CURLTYPE == 'soup' ]]; then
+    grep -q "so-logscan" "$STATUS_CONF" && TRUSTED_CONTAINERS+=("so-logscan")
   fi
   
   # Download the containers from the interwebs

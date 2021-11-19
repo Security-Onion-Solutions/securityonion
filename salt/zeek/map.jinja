@@ -1,6 +1,17 @@
-# don't start the docker container if it is an import node
-{% if grains.id.split('_')|last == 'import' %}
-  {% set START = False %}
+{% set ZEEKOPTIONS = {} %}
+{% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
+
+# don't start the docker container if it is an import node or disabled via pillar
+{% if grains.id.split('_')|last == 'import' or not ENABLED %}
+  {% do ZEEKOPTIONS.update({'start': False}) %}
+  {% do ZEEKOPTIONS.update({'pl_cron_state': 'absent'}) %}
 {% else %}
-  {% set START = True %}
+  {% do ZEEKOPTIONS.update({'start': True}) %}
+  {% do ZEEKOPTIONS.update({'pl_cron_state': 'present'}) %}
+{% endif %}
+
+{% if not ENABLED %}
+  {% do ZEEKOPTIONS.update({'status': 'absent'}) %}
+{% else %}
+  {% do ZEEKOPTIONS.update({'status': 'running'}) %}
 {% endif %}

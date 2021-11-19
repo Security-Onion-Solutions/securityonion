@@ -15,13 +15,14 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from "pcap/map.jinja" import STENOOPTIONS with context %}
+
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
 {% set BPF_COMPILED = "" %}
-{% from "pcap/map.jinja" import STENOOPTIONS with context %}
 
 # PCAP Section
 
@@ -111,12 +112,11 @@ stenolog:
 
 so-steno:
   docker_container.{{ STENOOPTIONS.status }}:
+  {% if STENOOPTIONS.status == 'running' %}
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
     - privileged: True
-    - port_bindings:
-      - 127.0.0.1:1234:1234
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
       - /opt/so/conf/steno/config:/etc/stenographer/config:rw
@@ -125,14 +125,18 @@ so-steno:
       - /nsm/pcaptmp:/tmp:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
     - watch:
-      - file: /opt/so/conf/steno/config
+      - file: stenoconf
+    - require:
+      - file: stenoconf
+  {% else %} {# if stenographer isn't enabled, then stop and remove the container #}
+    - force: True
+  {% endif %}
 
 append_so-steno_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-steno
     - unless: grep -q so-steno /opt/so/conf/so-status/so-status.conf
-
 
   {% if not STENOOPTIONS.start %}
 so-steno_so-status.disabled:

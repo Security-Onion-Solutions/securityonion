@@ -1,0 +1,143 @@
+{
+  "id": 102,
+  "gridPos": {
+    "x": {{ PANELS.memory_used_docker_combined_current_graph.gridPos.x }},
+    "y": {{ PANELS.memory_used_docker_combined_current_graph.gridPos.y }},
+    "w": {{ PANELS.memory_used_docker_combined_current_graph.gridPos.w }},
+    "h": {{ PANELS.memory_used_docker_combined_current_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Container Memory Usage Current",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_container_name",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_mem",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "usage_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "percent",
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}

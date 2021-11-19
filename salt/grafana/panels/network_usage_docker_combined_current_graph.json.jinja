@@ -1,0 +1,232 @@
+{
+  "id": 61868,
+  "gridPos": {
+    "x": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.x }},
+    "y": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.y }},
+    "w": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.w }},
+    "h": {{ PANELS.network_usage_docker_combined_current_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Container Network Usage Current",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_container_name RX",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "docker_container_net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "rx_bytes"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ],
+      "hide": false
+    },
+    {
+      "alias": "$tag_host: $tag_container_name TX",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "container_name"
+          ],
+          "type": "tag"
+        },
+        {
+          "type": "tag",
+          "params": [
+            "host"
+          ]
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "docker_container_net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "tx_bytes"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "container_name",
+          "operator": "=~",
+          "value": "/^$containers$/"
+        }
+      ]
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 5,
+        "gradientMode": "none",
+        "spanNulls": true,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "bps",
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "maxDataPoints": null,
+  "description": "",
+  "timeFrom": null,
+  "timeShift": null
+}

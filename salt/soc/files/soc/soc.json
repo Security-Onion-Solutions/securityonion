@@ -3,7 +3,8 @@
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
-{%- set OSQUERY = salt['pillar.get']('manager:osquery', '0') %}
+{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
+{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {%- set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {%- set API_TIMEOUT = salt['pillar.get']('sensoroni:api_timeout_ms', 0) %}
@@ -25,7 +26,7 @@
 {%-   set ES_USER = '' %}
 {%-   set ES_PASS = '' %}
 {%- endif %}
-
+{%- set ES_INDEX_PATTERNS = salt['pillar.get']('soc:es_index_patterns', '*:so-*') %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -56,6 +57,7 @@
         {%- endif %}
         "username": "{{ ES_USER }}",
         "password": "{{ ES_PASS }}",
+	"index": "{{ ES_INDEX_PATTERNS }}",
         "cacheMs": {{ ES_FIELDCAPS_CACHE }},
         "verifyCert": false,
         "timeoutMs": {{ API_TIMEOUT }}
@@ -85,15 +87,27 @@
       "statickeyauth": {
         "anonymousCidr": "{{ DNET }}/24",
         "apiKey": "{{ SENSORONIKEY }}"
+      },
+      "staticrbac": {
+        "roleFiles": [ 
+          "rbac/permissions", 
+          "rbac/roles", 
+          "rbac/custom_roles"
+        ],
+        "userFiles": [
+          "rbac/users_roles"
+        ]
       }
     },
     "client": {
       {%- if ISAIRGAP is sameas true %}
       "docsUrl": "/docs/",
       "cheatsheetUrl": "/docs/cheatsheet.pdf",
+      "releaseNotesUrl": "/docs/#release-notes",
       {%- else %}
       "docsUrl": "https://docs.securityonion.net/en/2.3/",
       "cheatsheetUrl": "https://github.com/Security-Onion-Solutions/securityonion-docs/raw/2.3/images/cheat-sheet/Security-Onion-Cheat-Sheet.pdf",
+      "releaseNotesUrl": "https://docs.securityonion.net/en/2.3/release-notes",
       {%- endif %}
       "apiTimeoutMs": {{ API_TIMEOUT }},
       "webSocketTimeoutMs": {{ WEBSOCKET_TIMEOUT }},
@@ -106,7 +120,7 @@
         {%- if THEHIVE == 0 %}
           "toolTheHive",
         {%- endif %}
-        {%- if OSQUERY == 0 %}
+        {%- if not FLEETMANAGER and not FLEETNODE %}
           "toolFleet",
         {%- endif %}
         {%- if GRAFANA == 0 %}

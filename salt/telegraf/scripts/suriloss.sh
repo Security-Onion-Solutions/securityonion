@@ -16,9 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-THEGREP=$(ps -ef | grep $0 | grep -v $$ | grep -v grep)
-
-if [ ! "$THEGREP" ]; then
+# if this script isn't already running
+if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     SURILOG=$(tac /var/log/suricata/stats.log | grep kernel | head -4)
     CHECKIT=$(echo $SURILOG | grep -o 'drop' | wc -l)
@@ -43,6 +42,7 @@ if [ ! "$THEGREP" ]; then
         echo "suridrop drop=$LOSS"
       fi
     fi
-else
-  echo "suridrop drop=0"
+
 fi
+
+exit 0

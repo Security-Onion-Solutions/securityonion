@@ -26,6 +26,15 @@ soclogdir:
     - group: 939
     - makedirs: True
 
+socactions:
+  file.managed:
+    - name: /opt/so/conf/soc/menu.actions.json
+    - source: salt://soc/files/soc/menu.actions.json
+    - user: 939
+    - group: 939
+    - mode: 600
+    - template: jinja
+
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
@@ -34,6 +43,7 @@ socconfig:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
 
 socmotd:
   file.managed:
@@ -62,6 +72,19 @@ soccustom:
     - mode: 600
     - template: jinja
 
+soccustomroles:
+  file.managed:
+    - name: /opt/so/conf/soc/custom_roles
+    - source: salt://soc/files/soc/custom_roles
+    - user: 939
+    - group: 939
+    - mode: 600
+    - template: jinja
+
+socusersroles:
+  file.exists:
+    - name: /opt/so/conf/soc/soc_users_roles
+
 # we dont want this added too early in setup, so we add the onlyif to verify 'startup_states: highstate'
 # is in the minion config. That line is added before the final highstate during setup
 sosyncusers:
@@ -77,11 +100,13 @@ so-soc:
     - name: so-soc
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
+      - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
-      - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
+      - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
+      - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
@@ -92,68 +117,20 @@ so-soc:
       - 0.0.0.0:9822:9822
     - watch:
       - file: /opt/so/conf/soc/*
+    - require:
+      - file: socdatadir
+      - file: soclogdir
+      - file: socconfig
+      - file: socmotd
+      - file: socbanner
+      - file: soccustom
+      - file: soccustomroles
+      - file: socusersroles
 
 append_so-soc_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-soc
-
-# Add Kratos Group
-kratosgroup:
-  group.present:
-    - name: kratos
-    - gid: 928
-
-# Add Kratos user
-kratos:
-  user.present:
-    - uid: 928
-    - gid: 928
-    - home: /opt/so/conf/kratos
-    
-kratosdir:
-  file.directory:
-    - name: /opt/so/conf/kratos/db
-    - user: 928
-    - group: 928
-    - makedirs: True
-
-kratoslogdir:
-  file.directory:
-    - name: /opt/so/log/kratos
-    - user: 928
-    - group: 928
-    - makedirs: True
-
-kratossync:
-  file.recurse:
-    - name: /opt/so/conf/kratos
-    - source: salt://soc/files/kratos
-    - user: 928
-    - group: 928
-    - file_mode: 600
-    - template: jinja
-
-so-kratos:
-  docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kratos:{{ VERSION }}
-    - hostname: kratos
-    - name: so-kratos
-    - binds:
-      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
-      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
-      - /opt/so/log/kratos/:/kratos-log:rw
-      - /opt/so/conf/kratos/db:/kratos-data:rw
-    - port_bindings:
-      - 0.0.0.0:4433:4433
-      - 0.0.0.0:4434:4434
-    - watch:
-      - file: /opt/so/conf/kratos
-
-append_so-kratos_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-kratos
 
 {% else %}
 

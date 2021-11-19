@@ -1,13 +1,10 @@
 #!/bin/bash
-got_root() {
 
-  # Make sure you are root
-  if [ "$(id -u)" -ne 0 ]; then
-          echo "This script must be run using sudo!"
-          exit 1
-  fi
+. /usr/sbin/so-common
 
-}
+argstr=""
+for arg in "$@"; do
+    argstr="${argstr} \"${arg}\""
+done
 
-got_root
-docker exec so-idstools /bin/bash -c "cd /opt/so/idstools/etc && idstools-rulecat $1"
+docker exec so-idstools /bin/bash -c "cd /opt/so/idstools/etc && idstools-rulecat --force ${argstr}"

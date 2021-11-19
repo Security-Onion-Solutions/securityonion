@@ -1,0 +1,189 @@
+{
+  "id": 60200,
+  "gridPos": {
+    "x": {{ PANELS.disk_io_bytes_graph.gridPos.x }},
+    "y": {{ PANELS.disk_io_bytes_graph.gridPos.y }},
+    "w": {{ PANELS.disk_io_bytes_graph.gridPos.w }},
+    "h": {{ PANELS.disk_io_bytes_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Disk I/O bytes for /dev/$disk",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "links": [],
+      "unit": "bytes",
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host: $tag_name: $col",
+      "dsType": "influxdb",
+      "function": "mean",
+      "groupBy": [
+        {
+          "interval": "auto",
+          "params": [
+            "auto"
+          ],
+          "type": "time"
+        },
+        {
+          "key": "host",
+          "params": [
+            "tag"
+          ],
+          "type": "tag"
+        },
+        {
+          "key": "path",
+          "params": [
+            "tag"
+          ],
+          "type": "tag"
+        }
+      ],
+      "measurement": "io_reads",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(read_bytes),1s) as \"read\" FROM \"diskio\" WHERE \"host\" =~ /$servername$/ AND \"name\" =~ /$disk$/  AND $timeFilter GROUP BY time($__interval), *",
+      "rawQuery": true,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    },
+    {
+      "alias": "$tag_host: $tag_name: $col",
+      "dsType": "influxdb",
+      "function": "mean",
+      "groupBy": [
+        {
+          "interval": "auto",
+          "params": [
+            "auto"
+          ],
+          "type": "time"
+        },
+        {
+          "key": "host",
+          "params": [
+            "tag"
+          ],
+          "type": "tag"
+        },
+        {
+          "key": "path",
+          "params": [
+            "tag"
+          ],
+          "type": "tag"
+        }
+      ],
+      "measurement": "io_reads",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(write_bytes),1s) as \"write\" FROM \"diskio\" WHERE \"host\" =~ /$servername$/ AND \"name\" =~ /$disk$/ AND $timeFilter GROUP BY time($__interval), *",
+      "rawQuery": true,
+      "refId": "C",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ],
+  "scopedVars": {
+    "disk": {
+      "text": "sda",
+      "value": "sda",
+      "selected": false
+    }
+  },
+  "maxDataPoints": null,
+  "repeat": null,
+  "timeFrom": null,
+  "timeShift": null
+}

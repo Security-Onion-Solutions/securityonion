@@ -1,0 +1,24 @@
+{%- set WARM_DAYS = salt['pillar.get']('elasticsearch:index_settings:so-syslog:warm', 7) -%}
+actions:
+  1:
+    action: allocation
+    description: "Apply shard allocation filtering rules to the specified indices"
+    options:
+      key: box_type
+      value: warm
+      allocation_type: require
+      wait_for_completion: true
+      timeout_override:
+      continue_if_exception: false
+      disable_action: false
+    filters:
+    - filtertype: pattern
+      kind: prefix
+      value: so-syslog
+    - filtertype: age
+      source: name
+      direction: older
+      timestring: '%Y.%m.%d'
+      unit: days
+      unit_count: {{ WARM_DAYS }} 
+

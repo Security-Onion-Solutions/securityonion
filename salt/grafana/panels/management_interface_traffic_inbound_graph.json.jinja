@@ -1,0 +1,164 @@
+{
+  "id": 18,
+  "gridPos": {
+    "x": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.x }},
+    "y": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.y }},
+    "w": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.w }},
+    "h": {{ PANELS.management_interface_traffic_inbound_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Management Interface Traffic - Inbound",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 2,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "links": [],
+      "unit": "bps",
+      "decimals": 1,
+      "min": 0
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host $tag_role",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "role"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "net",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"bytes_recv\"), 1s) *8 FROM \"net\" WHERE (\"host\" = '$servername' AND \"interface\" = '$manint') AND $timeFilter GROUP BY time($__interval) fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "bytes_recv"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          },
+          {
+            "params": [
+              "1s"
+            ],
+            "type": "non_negative_derivative"
+          },
+          {
+            "params": [
+              "*8"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=~",
+          "value": "/^$servername$/"
+        },
+        {
+          "condition": "AND",
+          "key": "interface",
+          "operator": "=~",
+          "value": "/^$manint$/"
+        }
+      ]
+    }
+  ],
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}

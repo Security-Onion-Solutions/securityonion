@@ -1,0 +1,113 @@
+{
+  "id": 26,
+  "gridPos": {
+    "x": {{ PANELS.pcap_retention_stat.gridPos.x }},
+    "y": {{ PANELS.pcap_retention_stat.gridPos.y }},
+    "w": {{ PANELS.pcap_retention_stat.gridPos.w }},
+    "h": {{ PANELS.pcap_retention_stat.gridPos.h }}
+  },
+  "type": "stat",
+  "title": "PCAP Retention",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "options": {
+            "match": "null",
+            "result": {
+              "text": "N/A"
+            }
+          },
+          "type": "special"
+        }
+      ],
+      "color": {
+        "mode": "thresholds"
+      },
+      "decimals": 2,
+      "unit": "d"
+    },
+    "overrides": []
+  },
+  "interval": "30",
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "value",
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto"
+  },
+  "targets": [
+    {
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "pcapage",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "seconds"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          },
+          {
+            "params": [
+              "/86400"
+            ],
+            "type": "math"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$servername"
+        }
+      ]
+    }
+  ],
+  "maxDataPoints": null,
+  "cacheTimeout": null
+}

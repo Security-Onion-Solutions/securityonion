@@ -83,8 +83,8 @@ whiptail_bond_nics_mtu() {
 }
 
 whiptail_cancel() {
-
-	whiptail --title "$whiptail_title" --msgbox "Cancelling Setup." 8 75
+	[ -z "$TESTING" ] && whiptail --title "$whiptail_title" --msgbox "Cancelling Setup." 8 75
+	
 	if [ -d "/root/installtmp" ]; then
 		{
 			echo "/root/installtmp exists";
@@ -95,7 +95,7 @@ whiptail_cancel() {
 
 	title "User cancelled setup."
 	
-	exit
+	exit 1
 }
 
 whiptail_check_exitstatus() {
@@ -108,13 +108,6 @@ whiptail_check_exitstatus() {
 			exit
 			;;
 	esac
-}
-
-whiptail_components_adv_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --msgbox "Please keep in mind the more services that you enable the more RAM that is required." 8 75
 }
 
 whiptail_create_admin_user() {
@@ -292,7 +285,7 @@ whiptail_storage_requirements() {
 
 		You need ${needed_val} to meet minimum requirements.
 
-		Visit https://docs.securityonion.net/en/2.1/hardware.html for more information.
+		Visit https://docs.securityonion.net/en/latest/hardware.html for more information.
 
 		Select YES to continue anyway, or select NO to cancel.
 	EOM
@@ -304,18 +297,6 @@ whiptail_storage_requirements() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_cur_close_days() {
-
-	[ -n "$TESTING" ] && return
-
-	CURCLOSEDAYS=$(whiptail --title "$whiptail_title" --inputbox \
-	"Please specify the threshold (in days) at which Elasticsearch indices will be closed:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_dhcp_or_static() {
@@ -408,9 +389,10 @@ whiptail_enable_components() {
 	PLAYBOOK=0
 	STRELKA=0
 
+description="Choose optional services to be enabled for this installation. Be aware that the more services you enable the more RAM that is required."
 if [[ $is_eval ]]; then
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 8 \
+	"$description" 20 75 8 \
 	GRAFANA "Enable Grafana for system monitoring" ON \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
@@ -419,7 +401,7 @@ if [[ $is_eval ]]; then
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 else
 	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"Select Components to install:" 20 75 7 \
+	"$description" 20 75 7 \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
 	THEHIVE "Enable TheHive" ON \
@@ -511,6 +493,8 @@ whiptail_end_settings() {
 	[[ -n $WEBUSER ]] && __append_end_msg "Web User: $WEBUSER"
 
 	[[ -n $FLEETNODEUSER ]] && __append_end_msg "Fleet User: $FLEETNODEUSER"
+	
+	[[ -n $FLEETCUSTOMHOSTNAME ]] && __append_end_msg "Fleet Custom Hostname: $FLEETCUSTOMHOSTNAME"
 
 	if [[ $is_manager ]]; then
 		__append_end_msg "Enabled Optional Components:"
@@ -584,7 +568,6 @@ whiptail_end_settings() {
 		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "  Curator Day Cutoff: $CURCLOSEDAYS days"
 		__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
 	else
 		__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
@@ -592,7 +575,6 @@ whiptail_end_settings() {
 		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "Curator Close After: $CURCLOSEDAYS days"
 		__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
 	fi
 
@@ -739,7 +721,7 @@ whiptail_install_type() {
 
 	# What kind of install are we doing?
 	install_type=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose install type:" 12 65 5 \
+	"Choose install type. \nSee https://docs.securityonion.net/architecture for details." 13 65 5 \
 		"EVAL" "Evaluation mode (not for production) " ON \
 		"STANDALONE" "Standalone production install " OFF \
 		"DISTRIBUTED" "Distributed install submenu " OFF \
@@ -753,6 +735,11 @@ whiptail_install_type() {
 
 	if [[ $install_type == "DISTRIBUTED" ]]; then
 		whiptail_install_type_dist
+		if [[ $dist_option == "NEWDEPLOYMENT" ]]; then
+			whiptail_install_type_dist_new
+		else
+			whiptail_install_type_dist_existing
+		fi
 	elif [[ $install_type == "OTHER" ]]; then
 		whiptail_install_type_other
 	fi
@@ -763,13 +750,55 @@ whiptail_install_type() {
 whiptail_install_type_dist() {
 
 	[ -n "$TESTING" ] && return
+
+	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to \nan existing deployment?" 11 75 2 \
+		"New Deployment         " "Create a new Security Onion deployment" \
+		"Existing Deployment    " "Join to an exisiting Security Onion deployment " \
+		 3>&1 1>&2 2>&3
+	)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	dist_option=$(echo "${dist_option^^}" | tr -d ' ')
+}
+
+whiptail_install_type_dist_new() {
+	[ -n "$TESTING" ] && return
+
+	local mngr_msg
+	read -r -d '' mngr_msg <<- EOM
+	Choose a distributed manager type to start a new grid.
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose distributed node type:" 13 60 6 \
-		"MANAGER" "Start a new grid " ON \
-		"SENSOR" "Create a forward only sensor " OFF \
+	See https://docs.securityonion.net/architecture for details.
+
+	Note: MANAGER is the recommended option for most users. MANAGERSEARCH should only be used in very specific situations.
+	EOM
+	
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$mngr_msg" 15 75 2 \
+		"MANAGER" "New grid, requires separate search node(s) " ON \
+		"MANAGERSEARCH" "New grid, separate search node(s) are optional " OFF \
+		3>&1 1>&2 2>&3
+	)
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_install_type_dist_existing() {
+	[ -n "$TESTING" ] && return
+
+	local node_msg
+	read -r -d '' node_msg <<- EOM
+	Choose a distributed node type to join to an existing grid.
+	
+	See https://docs.securityonion.net/architecture for details.
+
+	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
+	EOM
+	
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 18 58 4 \
+		"SENSOR" "Create a forward only sensor " ON \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
-		"MANAGERSEARCH" "Manager + search node " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \
 		"HEAVYNODE" "Sensor + Search Node " OFF \
 		3>&1 1>&2 2>&3
@@ -781,8 +810,6 @@ whiptail_install_type_dist() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-
-	export install_type
 }
 
 whiptail_install_type_other() {
@@ -816,7 +843,6 @@ whiptail_invalid_input() { # TODO: This should accept a list of arguments to spe
 	[ -n "$TESTING" ] && return
 	
 	whiptail --title "$whiptail_title" --msgbox "  Invalid input, please try again." 7 40
-
 }
 
 whiptail_invalid_proxy() {
@@ -843,7 +869,7 @@ whiptail_invalid_pass_characters_warning() {
 
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "$whiptail_title" --msgbox "Password is invalid. Please exclude single quotes, double quotes and backslashes from the password." 8 75
+	whiptail --title "$whiptail_title" --msgbox "Password is invalid. Please exclude single quotes, double quotes, dollar signs, and backslashes from the password." 8 75
 }
 
 whiptail_invalid_pass_warning() {
@@ -863,10 +889,21 @@ whiptail_invalid_user_warning() {
 whiptail_invalid_hostname() {
 	[ -n "$TESTING" ] && return
 
+	local is_manager_hostname
+	is_manager_hostname="$1"
+
 	local error_message
-	error_message=$(echo "Please choose a valid hostname. It cannot be localhost; and must contain only \
-		the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', \
-		and hyphen ('-')" | tr -d '\t')
+	read -r -d '' error_message <<- EOM
+	Please choose a valid hostname. It cannot be localhost. It must contain only the ASCII letters 'A-Z' and 'a-z' (case-sensitive), the digits '0' through '9', and hyphen ('-').
+	EOM
+
+	if [[ $is_manager_hostname = 0 ]]; then
+		local error_message
+		read -r -d '' error_message <<- EOM
+		Please enter a valid hostname. The manager hostname cannot be localhost or the chosen hostname for this machine. 
+		EOM
+
+	fi
 
 	whiptail --title "$whiptail_title" \
 	--msgbox "$error_message" 10 75
@@ -911,6 +948,7 @@ whiptail_first_menu_iso() {
 
 	option=$(echo "${option^^}" | tr -d ' ')
 }
+
 whiptail_make_changes() {
 
 	[ -n "$TESTING" ] && return
@@ -959,30 +997,15 @@ whiptail_management_interface_gateway() {
 whiptail_management_interface_ip_mask() {
 	[ -n "$TESTING" ] && return
 
-	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter your IPv4 address with CIDR mask (e.g. 192.168.1.2/24):" 10 60 "$1" 3>&1 1>&2 2>&3)
+	local msg
+	read -r -d '' msg <<- EOM
+	What IPv4 address would you like to assign to this Security Onion installation?
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
+	Please enter the IPv4 address with CIDR mask
+	(e.g. 192.168.1.2/24):
+	EOM
 
-whiptail_management_interface_ip() {
-
-	[ -n "$TESTING" ] && return
-
-	MIP=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter your IP address:" 10 60 X.X.X.X 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_management_interface_mask() {
-
-	[ -n "$TESTING" ] && return
-
-	MMASK=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the bit mask for your subnet:" 10 60 24 3>&1 1>&2 2>&3)
+	manager_ip_mask=$(whiptail --title "$whiptail_title" --inputbox "$msg" 12 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1508,6 +1531,20 @@ whiptail_patch_schedule_select_hours() {
 
 }
 
+whiptail_preflight_err() {
+	[ -n "$TESTING" ] && return 1
+
+	read -r -d '' message <<- EOM
+	The so-preflight script failed checking one or more URLs required by setup. Check $setup_log for more details.
+
+	Would you like to exit setup?
+	EOM
+
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 \
+		--yes-button "Continue" --no-button "Exit" --defaultno
+}
+
 whiptail_proxy_ask() {
 	[ -n "$TESTING" ] && return
 
@@ -1661,11 +1698,16 @@ whiptail_set_redirect() {
 
 	[ -n "$TESTING" ] && return
 
+	local options=()
+	options+=( "IP" "Use IP address to access the web interface" ON )
+	[[ $no_use_hostname != true ]] && options+=( "HOSTNAME" "Use hostname to access the web interface" OFF )
+	options+=("OTHER" "Use a different name like a FQDN or Load Balancer" OFF)
+
 	REDIRECTINFO=$(whiptail --title "$whiptail_title" --radiolist \
-	"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
-	"IP" "Use IP address to access the web interface" ON  \
-	"HOSTNAME" "Use hostname to access the web interface" OFF \
-	"OTHER" "Use a different name like a FQDN or Load Balancer" OFF 3>&1 1>&2 2>&3 )
+		"How would you like to access the web interface?\n\nSecurity Onion uses strict cookie enforcement, so whatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
+		"${options[@]}" \
+		3>&1 1>&2 2>&3 
+	)
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
@@ -1729,7 +1771,7 @@ whiptail_so_allow_yesno() {
 	[ -n "$TESTING" ] && return
 
 	whiptail --title "$whiptail_title" \
-		--yesno "Do you want to run so-allow to allow access to the web tools?" \
+		--yesno "Do you want to run so-allow to allow other machines to access this Security Onion installation via the web interface?" \
 		8 75
 }
 
@@ -1790,7 +1832,7 @@ whiptail_storage_requirements() {
 
 		You need ${needed_val} to meet minimum requirements.
 
-		Visit https://docs.securityonion.net/en/2.1/hardware.html for more information.
+		Visit https://docs.securityonion.net/en/latest/hardware.html for more information.
 
 		Press YES to continue anyway, or press NO to cancel.
 	EOM
@@ -1844,18 +1886,36 @@ whiptail_suricata_pins() {
 
 }
 
-whiptail_node_updates() {
+# shellcheck disable=2120
+whiptail_uppercase_warning() {
 
 	[ -n "$TESTING" ] && return
+	
+	local type=$1
 
-	NODEUPDATES=$(whiptail --title "$whiptail_title" --radiolist \
-	"How would you like to download OS package updates for your grid?" 20 75 4 \
-	"MANAGER" "Manager node is proxy for updates." ON \
-	"OPEN" "Each node connects to the Internet for updates" OFF 3>&1 1>&2 2>&3 )
+	local msg
+	if [[ -z $type ]]; then
+		type="hostname"
+		read -r -d '' msg <<- EOM
+		The value "$HOSTNAME" contains uppercase characters.
+		
+		Continuing with this hostname could render the system unusable in certain cases, and will also disable the option later in setup to access Security Onion's web interface via the hostname.
+		EOM
+	else
+		read -r -d '' msg <<- EOM
+		The value "$REDIRECTHOST" contains uppercase characters.
+		
+		Continuing with this value could render the system unusable in certain cases.
+		EOM
+	fi
 
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
+	read -r -d '' msg <<- EOM
+	$msg
 
+	For best results, it is recommended to only use lowercase ${type}s with Security Onion. For more information see https://docs.securityonion.com/uppercase (URL TBD)
+	EOM
+
+	whiptail --title "$whiptail_title" --yesno "$msg" --yes-button "Continue anyway" --no-button "Go back" --defaultno 16 75
 }
 
 whiptail_you_sure() {
@@ -1865,8 +1925,9 @@ whiptail_you_sure() {
 	read -r -d '' you_sure_text <<- EOM
 		Welcome to Security Onion Setup!
 
-		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise.
-		
+		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise. Don't forget to review the documentation at:
+		https://docs.securityonion.net
+
 		Setup uses keyboard navigation and you can use arrow keys to move around.  Certain screens may provide a list and ask you to select one or more items from that list.  You can use [SPACE] to select items and [ENTER] to proceed to the next screen.
 		
 		Would you like to continue?

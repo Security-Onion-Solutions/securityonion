@@ -11,7 +11,6 @@
 {% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
-{% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
@@ -101,6 +100,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager
@@ -128,15 +128,13 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
-    - fleet
     - redis
+    - fleet
     - fleet.install_package
     {%- endif %}
     - utility
@@ -157,6 +155,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -170,6 +169,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - manager
     - idstools
@@ -192,12 +192,14 @@ base:
     {%- if KIBANA %}
     - kibana
     {%- endif %}
+    - curator
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
+    - curator
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -219,6 +221,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -233,6 +236,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager    
@@ -266,9 +270,7 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
@@ -293,6 +295,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -311,9 +314,7 @@ base:
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
@@ -336,6 +337,7 @@ base:
     - influxdb
     - grafana
     - soc
+    - kratos
     - firewall
     - manager
     - idstools
@@ -355,9 +357,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if KIBANA %}
     - kibana
     {%- endif %}
@@ -367,7 +367,6 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    
     - utility
     - schedule
     {%- if FLEETMANAGER or FLEETNODE %}
@@ -389,6 +388,7 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
+    - learn
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -410,9 +410,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if CURATOR %}
     - curator
-    {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
@@ -460,6 +458,7 @@ base:
     - manager
     - nginx
     - soc
+    - kratos
     - firewall
     - idstools
     - suricata.manager
@@ -479,3 +478,4 @@ base:
     - schedule
     - docker_clean
     - pipeline.load
+    - learn

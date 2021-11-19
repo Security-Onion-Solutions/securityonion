@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /usr/sbin/so-common
+
+usage() {
+    echo "Usage: $0 <user-name>"
+    echo ""
+    echo "Update password for an existing Fleet user. The new password will be read from STDIN."
+    exit 1
+}
+
+if [ $# -ne 1 ]; then
+  usage
+fi
+
+USER=$1
+
+MYSQL_PASS=$(lookup_pillar_secret mysql)
+FLEET_IP=$(lookup_pillar fleet_ip)
+FLEET_USER=$USER
+
+# test existence of user
+MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PASS fleet -e \
+    "SELECT count(1) FROM users WHERE email='$FLEET_USER'" 2>/dev/null | tail -1)
+if [[ $? -ne 0 ]] || [[ $MYSQL_OUTPUT -ne 1 ]] ; then
+    echo "Test for email [${FLEET_USER}] failed"
+    echo "    expect 1 hit in users database, return $MYSQL_OUTPUT hit(s)."
+    echo "Unable to update Fleet user password."
+    exit 2
+fi
+
+# Read password for new user from stdin
+test -t 0
+if [[ $? == 0 ]]; then
+  echo "Enter new password:"
+fi
+read -rs FLEET_PASS
+
+if ! check_password "$FLEET_PASS"; then
+  echo "Password is invalid. Please exclude single quotes, double quotes, dollar signs, and backslashes from the password."
+  exit 2
+fi
+
+FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_PASS'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+if [[ $? -ne 0 ]]; then
+	echo "Failed to generate Fleet password hash"
+	exit 2
+fi
+
+
+MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PASS fleet -e \
+    "UPDATE users SET password='$FLEET_HASH', salt='' where email='$FLEET_USER'" 2>&1)
+
+if [[ $? -eq 0 ]]; then
+    echo "Successfully updated Fleet user password"
+else
+    echo "Unable to update Fleet user password"
+    echo "$MYSQL_OUTPUT"
+    exit 2
+fi

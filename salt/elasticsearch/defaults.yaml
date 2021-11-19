@@ -1,0 +1,62 @@
+elasticsearch:
+  config:
+    node:
+      name: {{ grains.host }}
+      attr:
+        box_type: hot
+    cluster:
+      name: {{ grains.host }}
+      routing:
+        allocation:
+          disk:
+            threshold_enabled: true
+            watermark:
+              low: 95%
+              high: 98%
+              flood_stage: 98%
+    network:
+      host: 0.0.0.0
+    path:
+      logs: /var/log/elasticsearch
+    action:
+      destructive_requires_name: true
+    transport:
+      bind_host: 0.0.0.0
+      publish_host: {{ grains.host }}
+      publish_port: 9300
+    xpack:
+      ml:
+        enabled: false
+      security:
+        enabled: true
+        authc:
+          anonymous:
+            authz_exception: true
+            roles: []
+            username: _anonymous
+        transport:
+          ssl:
+            enabled: true
+            verification_mode: none
+            key: /usr/share/elasticsearch/config/elasticsearch.key
+            certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+            certificate_authorities:
+              - /usr/share/elasticsearch/config/ca.crt
+        http:
+          ssl:
+            enabled: true
+            client_authentication: none
+            key: /usr/share/elasticsearch/config/elasticsearch.key
+            certificate: /usr/share/elasticsearch/config/elasticsearch.crt
+            certificate_authorities: 
+              - /usr/share/elasticsearch/config/ca.crt
+    script:
+      max_compilations_rate: 20000/1m
+    indices:
+      query:
+        bool:
+          max_clause_count: 1500
+
+
+
+

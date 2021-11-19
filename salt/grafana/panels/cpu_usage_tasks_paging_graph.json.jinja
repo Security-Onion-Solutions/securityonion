@@ -1,0 +1,124 @@
+{
+  "id": 69008,
+  "gridPos": {
+    "x": {{ PANELS.cpu_usage_tasks_paging_graph.gridPos.x }},
+    "y": {{ PANELS.cpu_usage_tasks_paging_graph.gridPos.y }},
+    "w": {{ PANELS.cpu_usage_tasks_paging_graph.gridPos.w }},
+    "h": {{ PANELS.cpu_usage_tasks_paging_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "CPU Tasks Paging",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "short",
+      "min": 0,
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "$tag_host $tag_role",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(paging) as paging FROM \"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host, role ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ],
+  "interval": "30s",
+  "timeFrom": null,
+  "timeShift": null
+}

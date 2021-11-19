@@ -9,6 +9,11 @@ rmvariablesfile:
   file.absent:
     - name: /tmp/variables.txt
 
+dockergroup:
+  group.present:
+    - name: docker
+    - gid: 920
+
 # Add socore Group
 socoregroup:
   group.present:
@@ -101,16 +106,24 @@ commonpkgs:
       - python3-m2crypto
       - python3-mysqldb
       - python3-packaging
+      - python3-lxml
       - git
       - vim
 
 heldpackages:
   pkg.installed:
     - pkgs:
+    {% if grains['oscodename'] == 'bionic' %}
       - containerd.io: 1.4.4-1
       - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
       - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
       - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
+    {% elif grains['oscodename'] == 'focal' %}
+      - containerd.io: 1.4.9-1
+      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
+      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
+      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
+    {% endif %}
     - hold: True
     - update_holds: True
 
@@ -136,6 +149,7 @@ commonpkgs:
       - python36-m2crypto
       - python36-mysql
       - python36-packaging
+      - python36-lxml
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
@@ -326,6 +340,16 @@ dockerreserveports:
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
 {% if salt['grains.get']('sosmodel', '') %}
+  {% if grains['os'] == 'CentOS' %}     
+# Install Raid tools
+raidpkgs:
+  pkg.installed:
+    - skip_suggestions: True
+    - pkgs:
+      - securityonion-raidtools
+      - securityonion-megactl
+  {% endif %}
+
 # Install raid check cron
 /usr/sbin/so-raid-status > /dev/null 2>&1:
   cron.present:

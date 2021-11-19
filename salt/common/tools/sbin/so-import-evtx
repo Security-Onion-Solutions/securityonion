@@ -1,0 +1,176 @@
+#!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{%- set MANAGER = salt['grains.get']('master') %}
+{%- set VERSION = salt['pillar.get']('global:soversion') %}
+{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{%- set MANAGERIP = salt['pillar.get']('global:managerip') -%}
+{%- set URLBASE = salt['pillar.get']('global:url_base') %}
+{% set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{% set ES_PW = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+
+INDEX_DATE=$(date +'%Y.%m.%d')
+RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
+LOG_FILE=/nsm/import/evtx-import.log
+
+. /usr/sbin/so-common
+
+function usage {
+  cat << EOF
+Usage: $0 <evtx-file-1> [evtx-file-2] [evtx-file-*]
+
+Imports one or more evtx files into Security Onion. The evtx files will be analyzed and made available for review in the Security Onion toolset.
+EOF
+}
+
+
+function evtx2es() {
+  EVTX=$1
+  HASH=$2
+  
+  ES_PW=$(lookup_pillar "auth:users:so_elastic_user:pass" "elasticsearch")
+  ES_USER=$(lookup_pillar "auth:users:so_elastic_user:user" "elasticsearch")
+
+  docker run --rm \
+    -v "$EVTX:/tmp/$RUNID.evtx" \
+    --entrypoint evtx2es \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} \
+    --host {{ MANAGERIP }} --scheme https \
+    --index so-beats-$INDEX_DATE --pipeline import.wel \
+    --login $ES_USER --pwd $ES_PW \
+    "/tmp/$RUNID.evtx" >> $LOG_FILE 2>&1
+
+  docker run --rm \
+    -v "$EVTX:/tmp/import.evtx" \
+    -v "/nsm/import/evtx-end_newest:/tmp/newest" \
+    -v "/nsm/import/evtx-start_oldest:/tmp/oldest" \
+    --entrypoint '/evtx_calc_timestamps.sh' \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }}
+}
+
+# if no parameters supplied, display usage
+if [ $# -eq 0 ]; then
+  usage
+  exit 1
+fi
+
+# ensure this is a Manager node
+require_manager
+
+# verify that all parameters are files
+for i in "$@"; do
+  if ! [ -f "$i" ]; then
+    usage
+    echo "\"$i\" is not a valid file!"
+    exit 2
+  fi
+done
+
+# track if we have any valid or invalid evtx
+INVALID_EVTXS="no"
+VALID_EVTXS="no"
+
+# track oldest start and newest end so that we can generate the Kibana search hyperlink at the end
+START_OLDEST="2050-12-31"
+END_NEWEST="1971-01-01"
+
+touch /nsm/import/evtx-start_oldest
+touch /nsm/import/evtx-end_newest
+
+echo $START_OLDEST > /nsm/import/evtx-start_oldest
+echo $END_NEWEST > /nsm/import/evtx-end_newest
+
+# paths must be quoted in case they include spaces
+for EVTX in "$@"; do
+  EVTX=$(/usr/bin/realpath "$EVTX")
+  echo "Processing Import: ${EVTX}"
+
+  # generate a unique hash to assist with dedupe checks
+  HASH=$(md5sum "${EVTX}" | awk '{ print $1 }')
+  HASH_DIR=/nsm/import/${HASH}
+  echo "- assigning unique identifier to import: $HASH"
+
+  if [ -d $HASH_DIR ]; then
+    echo "- this EVTX has already been imported; skipping"
+    INVALID_EVTXS="yes"
+  else
+    VALID_EVTXS="yes"
+
+    EVTX_DIR=$HASH_DIR/evtx
+    mkdir -p $EVTX_DIR
+
+    # import evtx and write them to import ingest pipeline
+    echo "- importing logs to Elasticsearch..."
+    evtx2es "${EVTX}" $HASH
+
+    # compare $START to $START_OLDEST
+    START=$(cat /nsm/import/evtx-start_oldest)
+    START_COMPARE=$(date -d $START +%s)
+    START_OLDEST_COMPARE=$(date -d $START_OLDEST +%s)
+    if [ $START_COMPARE -lt $START_OLDEST_COMPARE ]; then
+      START_OLDEST=$START
+    fi  
+
+    # compare $ENDNEXT to $END_NEWEST
+    END=$(cat /nsm/import/evtx-end_newest)
+    ENDNEXT=`date +%Y-%m-%d --date="$END 1 day"`
+    ENDNEXT_COMPARE=$(date -d $ENDNEXT +%s)
+    END_NEWEST_COMPARE=$(date -d $END_NEWEST +%s)
+    if [ $ENDNEXT_COMPARE -gt $END_NEWEST_COMPARE ]; then
+      END_NEWEST=$ENDNEXT
+    fi  
+
+    cp -f "${EVTX}" "${EVTX_DIR}"/data.evtx
+    chmod 644 "${EVTX_DIR}"/data.evtx
+
+  fi # end of valid evtx
+
+  echo
+
+done # end of for-loop processing evtx files
+
+# remove temp files
+echo "Cleaning up:"
+for TEMP_EVTX in ${TEMP_EVTXS[@]}; do
+  echo "- removing temporary evtx $TEMP_EVTX"
+  rm -f $TEMP_EVTX
+done
+
+# output final messages
+if [ "$INVALID_EVTXS" = "yes" ]; then
+  echo
+  echo "Please note!  One or more evtx was invalid!  You can scroll up to see which ones were invalid."
+fi
+
+START_OLDEST_FORMATTED=`date +%Y-%m-%d --date="$START_OLDEST"`
+START_OLDEST_SLASH=$(echo $START_OLDEST_FORMATTED | sed -e 's/-/%2F/g')
+END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
+
+if [ "$VALID_EVTXS" = "yes" ]; then
+cat << EOF
+
+Import complete!
+
+You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
+https://{{ URLBASE }}/#/hunt?q=import.id:${RUNID}%20%7C%20groupby%20event.module%20event.dataset&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
+
+or you can manually set your Time Range to be (in UTC):
+From: $START_OLDEST_FORMATTED    To: $END_NEWEST
+
+Please note that it may take 30 seconds or more for events to appear in Hunt.
+EOF
+fi

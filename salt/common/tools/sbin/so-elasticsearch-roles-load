@@ -1,0 +1,57 @@
+#!/bin/bash
+# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{%- set mainint = salt['pillar.get']('host:mainint') %}
+{%- set MYIP = salt['grains.get']('ip_interfaces:' ~ mainint)[0] %}
+
+default_conf_dir=/opt/so/conf
+ELASTICSEARCH_HOST="{{ MYIP }}"
+ELASTICSEARCH_PORT=9200
+
+# Define a default directory to load roles from
+ELASTICSEARCH_ROLES="$default_conf_dir/elasticsearch/roles/"
+
+# Wait for ElasticSearch to initialize
+echo -n "Waiting for ElasticSearch..."
+COUNT=0
+ELASTICSEARCH_CONNECTED="no"
+while [[ "$COUNT" -le 240 ]]; do
+    {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+	if [ $? -eq 0 ]; then
+		ELASTICSEARCH_CONNECTED="yes"
+		echo "connected!"
+		break
+	else
+		((COUNT+=1))
+		sleep 1
+		echo -n "."
+	fi
+done
+if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+	echo
+	echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+	echo
+fi
+
+cd ${ELASTICSEARCH_ROLES}
+
+echo "Loading templates..."
+for role in *; do
+	name=$(echo "$role" | cut -d. -f1)
+	so-elasticsearch-query _security/role/$name -XPUT -d @"$role"
+done
+
+cd - >/dev/null

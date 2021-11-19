@@ -9,6 +9,11 @@
 {% set MAININT = salt['pillar.get']('host:mainint') %}
 {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
+{% if grains.role in ['so-heavynode'] %}
+  {% set COMMONNAME = salt['grains.get']('host') %}
+{% else %}
+  {% set COMMONNAME = manager %}
+{% endif %}
 
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import', 'helixsensor'] %}
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -25,6 +30,9 @@
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
+include:
+  - ca
+
 # Trust the CA
 trusttheca:
   x509.pem_managed:
@@ -37,7 +45,11 @@ m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
+    {% if grains['oscodename'] == 'bionic' %}
       - python-m2crypto
+    {% elif grains['oscodename'] == 'focal' %}
+      - python3-m2crypto
+    {% endif %}
 {% endif %}
 
 removefbcertdir:
@@ -55,8 +67,9 @@ removeesp12dir:
     - name: /etc/pki/elasticsearch.p12
     - onlyif: "[ -d /etc/pki/elasticsearch.p12 ]"
     
-/etc/pki/influxdb.key:
+influxdb_key:
   x509.private_key_managed:
+    - name: /etc/pki/influxdb.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -73,20 +86,23 @@ removeesp12dir:
         interval: 30
 
 # Create a cert for the talking to influxdb
-/etc/pki/influxdb.crt:
+influxdb_crt:
   x509.certificate_managed:
+    - name: /etc/pki/influxdb.crt
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
     - CN: {{ manager }}
-    - subjectAltName: DNS:{{ HOSTNAME }}
+    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -101,9 +117,10 @@ influxkeyperms:
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
 # Create a cert for Redis encryption
-/etc/pki/redis.key:
+redis_key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - name: /etc/pki/redis.key
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -118,19 +135,22 @@ influxkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/redis.crt:
+redis_crt:
   x509.certificate_managed:
+    - name: /etc/pki/redis.crt
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -145,9 +165,10 @@ rediskeyperms:
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
-/etc/pki/filebeat.key:
+etc_filebeat_key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - name: /etc/pki/filebeat.key
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -155,7 +176,7 @@ rediskeyperms:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: /etc/pki/filebeat.crt
+      - x509: etc_filebeat_crt
     {%- endif %}
     - timeout: 30
     - retry:
@@ -163,23 +184,22 @@ rediskeyperms:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-/etc/pki/filebeat.crt:
+etc_filebeat_crt:
   x509.certificate_managed:
+    - name: /etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-{% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.host}}
-{% else %}
-    - CN: {{manager}}
-{% endif %}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -187,7 +207,7 @@ rediskeyperms:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/filebeat.key -topk8 -out /etc/pki/filebeat.p8 -nocrypt"
     - onchanges:
-      - x509: /etc/pki/filebeat.key
+      - x509: etc_filebeat_key
 
 
 fbperms:
@@ -226,8 +246,9 @@ fbcrtlink:
     - user: socore
     - group: socore
 
-/etc/pki/registry.key:
+registry_key:
   x509.private_key_managed:
+    - name: /etc/pki/registry.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -244,9 +265,11 @@ fbcrtlink:
         interval: 30
 
 # Create a cert for the docker registry
-/etc/pki/registry.crt:
+registry_crt:
   x509.certificate_managed:
+    - name: /etc/pki/registry.crt
     - ca_server: {{ ca_server }}
+    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
     - CN: {{ manager }}
@@ -269,8 +292,9 @@ regkeyperms:
     - mode: 640
     - group: 939
 
-/etc/pki/minio.key:
+minio_key:
   x509.private_key_managed:
+    - name: /etc/pki/minio.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -287,8 +311,9 @@ regkeyperms:
         interval: 30
 
 # Create a cert for minio
-/etc/pki/minio.crt:
+minio_crt:
   x509.certificate_managed:
+    - name: /etc/pki/minio.crt
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/minio.key
@@ -315,7 +340,7 @@ miniokeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -335,14 +360,16 @@ miniokeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ manager }}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -366,8 +393,9 @@ elasticp12perms:
     - mode: 640
     - group: 930
 
-/etc/pki/managerssl.key:
+managerssl_key:
   x509.private_key_managed:
+    - name: /etc/pki/managerssl.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -384,8 +412,9 @@ elasticp12perms:
         interval: 30
 
 # Create a cert for the reverse proxy
-/etc/pki/managerssl.crt:
+managerssl_crt:
   x509.certificate_managed:
+    - name: /etc/pki/managerssl.crt
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
@@ -411,8 +440,9 @@ msslkeyperms:
     - group: 939
 
 # Create a private key and cert for OSQuery
-/etc/pki/fleet.key:
+fleet_key:
   x509.private_key_managed:
+    - name: /etc/pki/fleet.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -428,11 +458,12 @@ msslkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/fleet.crt:
+fleet_crt:
   x509.certificate_managed:
+    - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ manager }}
-    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}
+    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}{% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -460,9 +491,10 @@ fbcertdir:
     - name: /opt/so/conf/filebeat/etc/pki
     - makedirs: True
 
-/opt/so/conf/filebeat/etc/pki/filebeat.key:
+conf_filebeat_key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - CN: {{ COMMONNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -470,7 +502,7 @@ fbcertdir:
     - new: True
     {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
-      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.crt
+      - x509: conf_filebeat_crt
     {%- endif %}
     - timeout: 30
     - retry:
@@ -478,23 +510,22 @@ fbcertdir:
         interval: 30
 
 # Request a cert and drop it where it needs to go to be distributed
-/opt/so/conf/filebeat/etc/pki/filebeat.crt:
+conf_filebeat_crt:
   x509.certificate_managed:
+    - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
-{% if grains.role == 'so-heavynode' %}
-    - CN: {{grains.id}}
-{% else %}
-    - CN: {{manager}}
-{% endif %}
+    - CN: {{ COMMONNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
+{% if grains.role not in ['so-heavynode'] %}
     - unless:
       # https://github.com/saltstack/salt/issues/52167
       # Will trigger 5 days (432000 sec) from cert expiration
       - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -505,7 +536,7 @@ filebeatpkcs:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /opt/so/conf/filebeat/etc/pki/filebeat.key -topk8 -out /opt/so/conf/filebeat/etc/pki/filebeat.p8 -passout pass:"
     - onchanges:
-      - x509: /opt/so/conf/filebeat/etc/pki/filebeat.key
+      - x509: conf_filebeat_key
 
 filebeatkeyperms:
   file.managed:
@@ -526,8 +557,9 @@ chownfilebeatp8:
 
 {% if grains['role'] == 'so-fleet' %}
 
-/etc/pki/managerssl.key:
+managerssl_key:
   x509.private_key_managed:
+    - name: /etc/pki/managerssl.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -544,8 +576,9 @@ chownfilebeatp8:
         interval: 30
 
 # Create a cert for the reverse proxy
-/etc/pki/managerssl.crt:
+managerssl_crt:
   x509.certificate_managed:
+    - name: /etc/pki/managerssl.crt
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
@@ -571,8 +604,9 @@ msslkeyperms:
     - group: 939
 
 # Create a private key and cert for Fleet
-/etc/pki/fleet.key:
+fleet_key:
   x509.private_key_managed:
+    - name: /etc/pki/fleet.key
     - CN: {{ manager }}
     - bits: 4096
     - days_remaining: 0
@@ -588,8 +622,9 @@ msslkeyperms:
         attempts: 5
         interval: 30
 
-/etc/pki/fleet.crt:
+fleet_crt:
   x509.certificate_managed:
+    - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
     - CN: {{ HOSTNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}

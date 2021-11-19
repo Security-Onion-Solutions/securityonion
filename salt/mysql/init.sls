@@ -22,7 +22,11 @@ mysqlpkgs:
     - skip_suggestions: False
     - pkgs:
       {% if grains['os'] != 'CentOS' %}
-      - python-mysqldb
+        {% if grains['oscodename'] == 'bionic' %}
+      - python3-mysqldb
+        {% elif grains['oscodename'] == 'focal' %}
+      - python3-mysqldb
+        {% endif %}
       {% else %}
       - MySQL-python
       {% endif %}
@@ -41,13 +45,22 @@ mysqlpiddir:
     - group: 939
     - makedirs: True
 
-mysqletcsync:
-  file.recurse:
-    - name: /opt/so/conf/mysql/etc
-    - source: salt://mysql/etc
+mysqlcnf:
+  file.managed:
+    - name: /opt/so/conf/mysql/etc/my.cnf
+    - source: salt://mysql/etc/my.cnf
+    - user: 939
+    - group: 939
+
+mysqlpass:
+  file.managed:
+    - name: /opt/so/conf/mysql/etc/mypass
+    - source: salt://mysql/etc/mypass
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        MYSQLPASS: {{ MYSQLPASS }}
 
 mysqllogdir:
   file.directory:
@@ -90,6 +103,9 @@ so-mysql:
       - /opt/so/log/mysql:/var/log/mysql:rw
     - watch:
       - /opt/so/conf/mysql/etc
+    - require:
+      - file: mysqlcnf
+      - file: mysqlpass
   cmd.run:
     - name: until nc -z {{ MAINIP }} 3306; do sleep 1; done
     - timeout: 600

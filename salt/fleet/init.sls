@@ -17,6 +17,7 @@
 
 
 include:
+  - ssl
   - mysql
 
 # Fleet Setup
@@ -114,20 +115,20 @@ so-fleet:
     - port_bindings:
       - 0.0.0.0:8080:8080
     - environment:
-      - KOLIDE_MYSQL_ADDRESS={{ MAINIP }}:3306
-      - KOLIDE_REDIS_ADDRESS={{ MAINIP }}:6379
-      - KOLIDE_MYSQL_DATABASE=fleet
-      - KOLIDE_MYSQL_USERNAME=fleetdbuser
-      - KOLIDE_MYSQL_PASSWORD={{ FLEETPASS }}
-      - KOLIDE_SERVER_CERT=/ssl/server.cert
-      - KOLIDE_SERVER_KEY=/ssl/server.key
-      - KOLIDE_LOGGING_JSON=true
-      - KOLIDE_AUTH_JWT_KEY= {{ FLEETJWT }}
-      - KOLIDE_OSQUERY_STATUS_LOG_FILE=/var/log/fleet/status.log
-      - KOLIDE_OSQUERY_RESULT_LOG_FILE=/var/log/osquery/result.log
-      - KOLIDE_SERVER_URL_PREFIX=/fleet
-      - KOLIDE_FILESYSTEM_ENABLE_LOG_ROTATION=true
-      - KOLIDE_FILESYSTEM_ENABLE_LOG_COMPRESSION=true
+      - FLEET_MYSQL_ADDRESS={{ MAINIP }}:3306
+      - FLEET_REDIS_ADDRESS={{ MAINIP }}:6379
+      - FLEET_MYSQL_DATABASE=fleet
+      - FLEET_MYSQL_USERNAME=fleetdbuser
+      - FLEET_MYSQL_PASSWORD={{ FLEETPASS }}
+      - FLEET_SERVER_CERT=/ssl/server.cert
+      - FLEET_SERVER_KEY=/ssl/server.key
+      - FLEET_LOGGING_JSON=true
+      - FLEET_AUTH_JWT_KEY= {{ FLEETJWT }}
+      - FLEET_FILESYSTEM_STATUS_LOG_FILE=/var/log/fleet/status.log
+      - FLEET_FILESYSTEM_RESULT_LOG_FILE=/var/log/osquery/result.log
+      - FLEET_SERVER_URL_PREFIX=/fleet
+      - FLEET_FILESYSTEM_ENABLE_LOG_ROTATION=true
+      - FLEET_FILESYSTEM_ENABLE_LOG_COMPRESSION=true
     - binds:
       - /etc/pki/fleet.key:/ssl/server.key:ro
       - /etc/pki/fleet.crt:/ssl/server.cert:ro
@@ -136,6 +137,9 @@ so-fleet:
       - /opt/so/conf/fleet/packs:/packs
     - watch:
       - /opt/so/conf/fleet/etc
+    - require:
+      - x509: fleet_key
+      - x509: fleet_crt
 
 append_so-fleet_so-status.conf:
   file.append:

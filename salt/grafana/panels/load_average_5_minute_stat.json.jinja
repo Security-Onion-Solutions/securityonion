@@ -1,0 +1,118 @@
+{
+  "id": 61859,
+  "gridPos": {
+    "x": {{ PANELS.load_average_5_minute_stat.gridPos.x }},
+    "y": {{ PANELS.load_average_5_minute_stat.gridPos.y }},
+    "w": {{ PANELS.load_average_5_minute_stat.gridPos.w }},
+    "h": {{ PANELS.load_average_5_minute_stat.gridPos.h }}
+  },
+  "type": "stat",
+  "title": "5 Minute Load Average - $cpucount Cores",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30",
+  "links": [],
+  "fieldConfig": {
+    "defaults": {
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "rgba(50, 172, 45, 0.97)",
+            "value": null
+          },
+          {
+            "color": "rgba(237, 129, 40, 0.89)",
+            "value": "$cpucount / 1.5"
+          },
+          {
+            "color": "rgba(245, 54, 54, 0.9)",
+            "value": "$cpucount"
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "options": {
+            "from": null,
+            "result": {
+              "text": "N/A"
+            },
+            "to": null
+          },
+          "type": "range"
+        }
+      ],
+      "color": {
+        "mode": "thresholds"
+      },
+      "decimals": 1,
+      "unit": "none"
+    },
+    "overrides": []
+  },
+  "options": {
+    "reduceOptions": {
+      "values": false,
+      "calcs": [
+        "lastNotNull"
+      ],
+      "fields": ""
+    },
+    "orientation": "horizontal",
+    "text": {},
+    "textMode": "auto",
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto"
+  },
+  "targets": [
+    {
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "system",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT last(\"load5\") FROM \"system\" WHERE (\"host\" = '$servername') AND $timeFilter GROUP BY time($__interval) fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "load5"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$servername"
+        }
+      ]
+    }
+  ],
+  "cacheTimeout": null,
+  "maxDataPoints": null
+}

@@ -6,6 +6,11 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+{% import_yaml 'kibana/defaults.yaml' as default_settings %}
+{% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
+
+{% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
+
 # Add ES Group
 kibanasearchgroup:
   group.present:
@@ -29,14 +34,17 @@ kibanaconfdir:
     - group: 939
     - makedirs: True
 
-synckibanaconfig:
-  file.recurse:
-    - name: /opt/so/conf/kibana/etc
-    - source: salt://kibana/etc
+kibanaconfig:
+  file.managed:
+    - name: /opt/so/conf/kibana/etc/kibana.yml
+    - source: salt://kibana/etc/kibana.yml.jinja
     - user: 932
     - group: 939
-    - file_mode: 660
+    - mode: 660
     - template: jinja
+    - defaults:
+        KIBANACONFIG: {{ KIBANACONFIG }}
+    - show_changes: False
 
 kibanalogdir:
   file.directory:
@@ -85,31 +93,13 @@ so-kibana:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
       - 0.0.0.0:5601:5601
+    - watch:
+      - file: kibanaconfig
 
 append_so-kibana_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kibana
-
-kibanadashtemplate:
-  file.managed:
-    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
-    - source: salt://kibana/files/saved_objects.ndjson
-    - user: 932
-    - group: 939
-
-so-kibana-config-load:
-  cmd.run:
-    - name: /usr/sbin/so-kibana-config-load
-    - cwd: /opt/so
-
-# Keep the setting correct
-#KibanaHappy:
-#  cmd.script:
-#    - shell: /bin/bash
-#    - runas: socore
-#    - source: salt://kibana/bin/keepkibanahappy.sh
-#    - template: jinja
 
 {% else %}
 

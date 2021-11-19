@@ -26,6 +26,9 @@ base:
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
+    - kibana.secrets
+{% endif %}
     - secrets
     - global
     - minions.{{ grains.id }}
@@ -45,6 +48,9 @@ base:
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
+    - kibana.secrets
+{% endif %}
     - global
     - minions.{{ grains.id }}
 
@@ -55,6 +61,9 @@ base:
     - elasticsearch.search
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+{% endif %}
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
+    - kibana.secrets
 {% endif %}
     - data.*
     - zeeklogs
@@ -102,6 +111,9 @@ base:
     - elasticsearch.eval
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+{% endif %}
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
+    - kibana.secrets
 {% endif %}
     - global
     - minions.{{ grains.id }}

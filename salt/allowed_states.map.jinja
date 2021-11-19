@@ -35,6 +35,7 @@
           'influxdb',
           'grafana',
           'soc',
+          'kratos',
           'firewall',
           'idstools',
           'suricata.manager',
@@ -45,7 +46,8 @@
           'schedule',
           'soctopus',
           'tcpreplay',
-          'docker_clean'
+          'docker_clean',
+          'learn'
           ],
       'so-heavynode': [
           'ca',
@@ -99,6 +101,7 @@
           'manager',
           'nginx',
           'soc',
+          'kratos',
           'firewall',
           'idstools',
           'suricata.manager',
@@ -108,7 +111,8 @@
           'zeek',
           'schedule',
           'tcpreplay',
-          'docker_clean'
+          'docker_clean',
+          'learn'
           ],
       'so-manager': [
           'salt.master',
@@ -121,13 +125,15 @@
           'influxdb',
           'grafana',
           'soc',
+          'kratos',
           'firewall',
           'idstools',
           'suricata.manager',
           'utility',
           'schedule',
           'soctopus',
-          'docker_clean'
+          'docker_clean',
+          'learn'
           ],
       'so-managersearch': [
           'salt.master',
@@ -139,6 +145,7 @@
           'influxdb',
           'grafana',
           'soc',
+          'kratos',
           'firewall',
           'manager',
           'idstools',
@@ -146,7 +153,8 @@
           'utility',
           'schedule',
           'soctopus',
-          'docker_clean'
+          'docker_clean',
+          'learn'
           ],
       'so-node': [
           'ca',
@@ -168,6 +176,7 @@
           'influxdb',
           'grafana',
           'soc',
+          'kratos',
           'firewall',
           'idstools',
           'suricata.manager',
@@ -178,7 +187,8 @@
           'schedule',
           'soctopus',
           'tcpreplay',
-          'docker_clean'
+          'docker_clean',
+          'learn'
           ],
       'so-sensor': [
           'ca',
@@ -233,11 +243,16 @@
     {% do allowed_states.append('elasticsearch') %}
   {% endif %}
 
-  {% if KIBANA and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
-    {% do allowed_states.append('kibana') %}
+  {% if ELASTICSEARCH and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+    {% do allowed_states.append('elasticsearch.auth') %}
   {% endif %}
 
-  {% if CURATOR and grains.role in ['so-eval', 'so-standalone', 'so-node', 'so-managersearch', 'so-heavynode'] %}
+  {% if KIBANA and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+    {% do allowed_states.append('kibana') %}
+    {% do allowed_states.append('kibana.secrets') %}
+  {% endif %}
+
+  {% if grains.role in ['so-eval', 'so-standalone', 'so-node', 'so-managersearch', 'so-heavynode', 'so-manager'] %}
     {% do allowed_states.append('curator') %}
   {% endif %}
 

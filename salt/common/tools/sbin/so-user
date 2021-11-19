@@ -18,11 +18,17 @@
 
 source $(dirname $0)/so-common
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "Usage: $0 <list|add|update|enable|disable|validate|valemail|valpass> [email]"
+DEFAULT_ROLE=analyst
+
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+  echo "Usage: $0 <operation> [email] [role]"
+  echo ""
+  echo " where <operation> is one of the following:"
   echo ""
   echo "     list: Lists all user email addresses currently defined in the identity system"
-  echo "      add: Adds a new user to the identity system; requires 'email' parameter"
+  echo "      add: Adds a new user to the identity system; requires 'email' parameter, while 'role' parameter is optional and defaults to $DEFAULT_ROLE"
+  echo "  addrole: Grants a role to an existing user; requires 'email' and 'role' parameters"
+  echo "  delrole: Removes a role from an existing user; requires 'email' and 'role' parameters"
   echo "   update: Updates a user's password; requires 'email' parameter"
   echo "   enable: Enables a user; requires 'email' parameter"
   echo "  disable: Disables a user; requires 'email' parameter"
@@ -36,14 +42,18 @@ fi
 
 operation=$1
 email=$2
+role=$3
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
 elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
 elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
+socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_users_roles}
 esUID=${ELASTIC_UID:-930}
 esGID=${ELASTIC_GID:-930}
+soUID=${SOCORE_UID:-939}
+soGID=${SOCORE_GID:-939}
 
 function lock() {
   # Obtain file descriptor lock
@@ -80,7 +90,7 @@ function findIdByEmail() {
   email=$1
 
   response=$(curl -Ss -L ${kratosUrl}/identities)
-  identityId=$(echo "${response}" | jq ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
+  identityId=$(echo "${response}" | jq -r ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
   echo $identityId
 }
 
@@ -89,17 +99,23 @@ function validatePassword() {
 
   len=$(expr length "$password")
   if [[ $len -lt 6 ]]; then
-    echo "Password does not meet the minimum requirements"
-    exit 2
+    fail "Password does not meet the minimum requirements"
   fi
+  if [[ $len -gt 72 ]]; then
+    fail "Password is too long (max: 72)"
+  fi
+  check_password_and_exit "$password"
 }
 
 function validateEmail() {
   email=$1
   # (?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
   if [[ ! "$email" =~ ^[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}$ ]]; then
-    echo "Email address is invalid"
-    exit 3
+    fail "Email address is invalid"
+  fi
+
+  if [[ "$email" =~ [A-Z] ]]; then
+    fail "Email addresses cannot contain uppercase letters"
   fi
 }
 
@@ -127,21 +143,51 @@ function updatePassword() {
     validatePassword "$password"
   fi
 
-  if [[ -n $identityId ]]; then
+  if [[ -n "$identityId" ]]; then
     # Generate password hash
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
 }
 
-function createElasticFile() {
+function createFile() {
   filename=$1
-  tmpFile=${filename}
-  truncate -s 0 "$tmpFile"
-  chmod 600 "$tmpFile"
-  chown "${esUID}:${esGID}" "$tmpFile"
+  uid=$2
+  gid=$3
+
+  mkdir -p $(dirname "$filename")
+  truncate -s 0 "$filename"
+  chmod 600 "$filename"
+  chown "${uid}:${gid}" "$filename"
+}
+
+function ensureRoleFileExists() {
+  if [[ ! -f "$socRolesFile" || ! -s "$socRolesFile" ]]; then
+    # Generate the new users file
+    rolesTmpFile="${socRolesFile}.tmp"
+    createFile "$rolesTmpFile" "$soUID" "$soGID"
+
+    if [[ -f "$databasePath" ]]; then
+      echo "Migrating roles to new file: $socRolesFile"
+
+      echo "select 'superuser:' || id from identities;" | sqlite3 "$databasePath" \
+        >> "$rolesTmpFile"
+      [[ $? != 0 ]] && fail "Unable to read identities from database"
+
+      echo "The following users have all been migrated with the super user role:"
+      cat "${rolesTmpFile}"
+    else
+      echo "Database file does not exist yet, installation is likely not yet complete."
+    fi
+
+    if [[ -d "$socRolesFile" ]]; then
+      echo "Removing invalid roles directory created by Docker"
+      rm -fr "$socRolesFile"
+    fi
+    mv "${rolesTmpFile}" "${socRolesFile}"
+  fi
 }
 
 function syncElasticSystemUser() {
@@ -172,53 +218,56 @@ function syncElasticSystemRole() {
 }
 
 function syncElastic() {
-  echo "Syncing users between SOC and Elastic..."
+  echo "Syncing users and roles between SOC and Elastic..."
+
   usersTmpFile="${elasticUsersFile}.tmp"
+  createFile "${usersTmpFile}" "$esUID" "$esGID"
   rolesTmpFile="${elasticRolesFile}.tmp"
-  createElasticFile "${usersTmpFile}"
-  createElasticFile "${rolesTmpFile}"
+  createFile "${rolesTmpFile}" "$esUID" "$esGID"
 
   authPillarJson=$(lookup_salt_value "auth" "elasticsearch" "pillar" "json")
 
   syncElasticSystemUser "$authPillarJson" "so_elastic_user"  "$usersTmpFile"
-  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
-
   syncElasticSystemUser "$authPillarJson" "so_kibana_user"   "$usersTmpFile"
-  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
-
   syncElasticSystemUser "$authPillarJson" "so_logstash_user" "$usersTmpFile"
-  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
-
   syncElasticSystemUser "$authPillarJson" "so_beats_user"    "$usersTmpFile"
-  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
-
   syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersTmpFile"
+
+  syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_agent" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "monitoring_user" "$rolesTmpFile"
 
-  if [[ -f "$databasePath" ]]; then
-    # Generate the new users file
+  if [[ -f "$databasePath" && -f "$socRolesFile" ]]; then
+    # Append the SOC users 
     echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
-      "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
+      "from identity_credential_identifiers ici, identity_credentials ic, identities i " \
+      "where " \
+      "      ici.identity_credential_id=ic.id " \
+      "  and ic.identity_id=i.id " \
+      "  and instr(ic.config, 'hashed_password') " \
+      "  and i.state == 'active' " \
       "order by ici.identifier;" | \
       sqlite3 "$databasePath" | \
       jq -r '.user + ":" + .data.hashed_password' \
       >> "$usersTmpFile"
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
 
-    # Generate the new users_roles file
-    
-    echo "select 'superuser:' || ici.identifier " \
-      "from identity_credential_identifiers ici, identity_credentials ic " \
-      "where ici.identity_credential_id=ic.id and instr(ic.config, 'hashed_password') " \
-      "order by ici.identifier;" | \
-      sqlite3 "$databasePath" \
-      >> "$rolesTmpFile"
-    [[ $? != 0 ]] && fail "Unable to read credential IDs from database"
+    # Append the user roles
+    while IFS="" read -r rolePair || [ -n "$rolePair" ]; do
+      userId=$(echo "$rolePair" | cut -d: -f2)
+      role=$(echo "$rolePair" | cut -d: -f1)
+      echo "select '$role:' || ici.identifier " \
+        "from identity_credential_identifiers ici, identity_credentials ic " \
+        "where ici.identity_credential_id=ic.id and ic.identity_id = '$userId';" | \
+        sqlite3 "$databasePath" >> "$rolesTmpFile"
+    done < "$socRolesFile"
+
   else
-    echo "Database file does not exist yet, skipping users export"
+    echo "Database file or soc roles file does not exist yet, skipping users export"
   fi
 
   if [[ -s "${usersTmpFile}" ]]; then
@@ -236,15 +285,22 @@ function syncElastic() {
 }
 
 function syncAll() {
+  ensureRoleFileExists
+
+  # Check if a sync is needed. Sync is not needed if the following are true:
+  # - user database entries are all older than the elastic users file
+  # - soc roles file last modify date is older than the elastic roles file
   if [[ -z "$FORCE_SYNC" && -f "$databasePath" && -f "$elasticUsersFile" ]]; then
     usersFileAgeSecs=$(echo $(($(date +%s) - $(date +%s -r "$elasticUsersFile"))))
     staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${usersFileAgeSecs} seconds');" \
       | sqlite3 "$databasePath")
-    if [[ "$staleCount" == "0" ]]; then
+    if [[ "$staleCount" == "0" && "$elasticRolesFile" -nt "$socRolesFile" ]]; then
       return 1
     fi
   fi
+
   syncElastic
+
   return 0
 }
 
@@ -252,11 +308,64 @@ function listUsers() {
   response=$(curl -Ss -L ${kratosUrl}/identities)
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort
+  users=$(echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort)
+  for user in $users; do
+    roles=$(grep "$user" "$elasticRolesFile" | cut -d: -f1 | tr '\n' ' ')
+    echo "$user: $roles"
+  done
+}
+
+function addUserRole() {
+  email=$1
+  role=$2
+
+  adjustUserRole "$email" "$role" "add"
+}
+
+function deleteUserRole() {
+  email=$1
+  role=$2
+
+  adjustUserRole "$email" "$role" "del"
+}
+
+function adjustUserRole() {
+  email=$1
+  role=$2
+  op=$3
+
+  identityId=$(findIdByEmail "$email")
+  [[ ${identityId} == "" ]] && fail "User not found"
+
+  ensureRoleFileExists
+
+  filename="$socRolesFile"
+  hasRole=0
+  grep "$role:" "$socRolesFile" | grep -q "$identityId" && hasRole=1
+  if [[ "$op" == "add" ]]; then
+    if [[ "$hasRole" == "1" ]]; then
+      echo "User '$email' already has the role: $role"
+      return 1
+    else
+      echo "$role:$identityId" >> "$filename"
+    fi
+  elif [[ "$op" == "del" ]]; then
+    if [[ "$hasRole" -ne 1 ]]; then
+      fail "User '$email' does not have the role: $role"
+    else
+      sed "/^$role:$identityId\$/d" "$filename" > "$filename.tmp"
+      cat "$filename".tmp > "$filename"
+      rm -f "$filename".tmp
+    fi
+  else
+    fail "Unsupported role adjustment operation: $op"
+  fi
+  return 0
 }
 
 function createUser() {
   email=$1
+  role=$2
 
   now=$(date -u +%FT%TZ)
   addUserJson=$(cat <<EOF
@@ -270,16 +379,30 @@ EOF
   response=$(curl -Ss -L ${kratosUrl}/identities -d "$addUserJson")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  identityId=$(echo "${response}" | jq ".id")
-  if [[ ${identityId} == "null" ]]; then
+  identityId=$(echo "${response}" | jq -r ".id")
+  if [[ "${identityId}" == "null" ]]; then
     code=$(echo "${response}" | jq ".error.code")
     [[ "${code}" == "409" ]] && fail "User already exists"
 
     reason=$(echo "${response}" | jq ".error.message")
     [[ $? == 0 ]] && fail "Unable to add user: ${reason}"
+  else
+    updatePassword "$identityId"
+    addUserRole "$email" "$role"
   fi
+}
 
-  updatePassword $identityId
+function migrateLockedUsers() {
+  # This is a migration function to convert locked users from prior to 2.3.90
+  # to inactive users using the newer Kratos functionality. This should only
+  # find locked users once.
+  lockedEmails=$(curl -s http://localhost:4434/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
+  if [[ -n "$lockedEmails" ]]; then
+    echo "Disabling locked users..."
+    for email in $lockedEmails; do
+      updateStatus "$email" locked
+    done
+  fi
 }
 
 function updateStatus() {
@@ -292,24 +415,18 @@ function updateStatus() {
   response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
-  oldConfig=$(echo "select config from identity_credentials where identity_id=${identityId};" | sqlite3 "$databasePath")
+  schemaId=$(echo "$response" | jq -r .schema_id)
+
+  # Capture traits and remove obsolete 'status' trait if exists
+  traitBlock=$(echo "$response" | jq -c .traits | sed -re 's/,?"status":".*?"//')
+
+  state="active"
   if [[ "$status" == "locked" ]]; then
-    config=$(echo $oldConfig | sed -e 's/hashed/locked/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to lock credential record"
-
-    echo "delete from sessions where identity_id=${identityId};" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to invalidate sessions"    
-  else
-    config=$(echo $oldConfig | sed -e 's/locked/hashed/')
-    echo "update identity_credentials set config=CAST('${config}' as BLOB) where identity_id=${identityId};" | sqlite3 "$databasePath"
-    [[ $? != 0 ]] && fail "Unable to unlock credential record"
-  fi  
-
-  updatedJson=$(echo "$response" | jq ".traits.status = \"$status\" | del(.verifiable_addresses) | del(.id) | del(.schema_url)")
-  response=$(curl -Ss -XPUT -L ${kratosUrl}/identities/$identityId -d "$updatedJson")
-  [[ $? != 0 ]] && fail "Unable to mark user as locked"
-
+    state="inactive"
+  fi
+  body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
+  response=$(curl -fSsL -XPUT "${kratosUrl}/identities/$identityId" -d "$body")
+  [[ $? != 0 ]] && fail "Unable to update user"
 }
 
 function updateUser() {
@@ -318,7 +435,7 @@ function updateUser() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  updatePassword $identityId 
+  updatePassword "$identityId"
 }
 
 function deleteUser() {
@@ -329,6 +446,11 @@ function deleteUser() {
 
   response=$(curl -Ss -XDELETE -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
+
+  rolesTmpFile="${socRolesFile}.tmp"
+  createFile "$rolesTmpFile" "$soUID" "$soGID"
+  grep -v "$identityId" "$socRolesFile" > "$rolesTmpFile"
+  mv "$rolesTmpFile" "$socRolesFile"
 }
 
 case "${operation}" in
@@ -339,7 +461,7 @@ case "${operation}" in
     lock
     validateEmail "$email"
     updatePassword
-    createUser "$email"
+    createUser "$email" "${role:-$DEFAULT_ROLE}"
     syncAll
     echo "Successfully added new user to SOC"
     check_container thehive && echo "$password" | so-thehive-user-add "$email"
@@ -349,6 +471,31 @@ case "${operation}" in
   "list")
     verifyEnvironment
     listUsers
+    ;;
+
+  "addrole")
+    verifyEnvironment
+    [[ "$email" == "" ]] && fail "Email address must be provided"
+    [[ "$role" == "" ]] && fail "Role must be provided"
+
+    lock
+    validateEmail "$email"
+    if addUserRole "$email" "$role"; then
+      syncElastic
+      echo "Successfully added role to user"
+    fi
+    ;;
+
+  "delrole")
+    verifyEnvironment
+    [[ "$email" == "" ]] && fail "Email address must be provided"
+    [[ "$role" == "" ]] && fail "Role must be provided"
+
+    lock
+    validateEmail "$email"
+    deleteUserRole "$email" "$role"
+    syncElastic
+    echo "Successfully removed role from user"
     ;;
 
   "update")
@@ -370,7 +517,7 @@ case "${operation}" in
     syncAll
     echo "Successfully enabled user"
     check_container thehive && so-thehive-user-enable "$email" true
-    check_container fleet && so-fleet-user-enable "$email" true   
+    echo "Fleet user will need to be recreated manually with so-fleet-user-add"
     ;;
 
   "disable")
@@ -382,7 +529,7 @@ case "${operation}" in
     syncAll
     echo "Successfully disabled user"
     check_container thehive && so-thehive-user-enable "$email" false
-    check_container fleet && so-fleet-user-enable "$email" false   
+    check_container fleet && so-fleet-user-delete "$email"   
     ;;    
 
   "delete")
@@ -394,7 +541,7 @@ case "${operation}" in
     syncAll
     echo "Successfully deleted user"
     check_container thehive && so-thehive-user-enable "$email" false
-    check_container fleet && so-fleet-user-enable "$email" false
+    check_container fleet && so-fleet-user-delete "$email"
     ;;
 
   "sync")
@@ -416,6 +563,11 @@ case "${operation}" in
   "valpass")
     updatePassword
     echo "Password is acceptable"
+    ;;
+
+  "migrate")
+    migrateLockedUsers
+    echo "User migration complete"
     ;;
 
   *)

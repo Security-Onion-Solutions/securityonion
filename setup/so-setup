@@ -256,7 +256,8 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	is_analyst=true
+	cd .. || exit 255
+	exec bash so-analyst-install
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -264,14 +265,6 @@ if [[ $is_manager || $is_import ]]; then
 fi
 
 if ! [[ -f $install_opt_file ]]; then
-	# Check if this is an airgap install
-	if [[ ( $is_manager || $is_import || $is_minion ) && $is_iso ]]; then
-		whiptail_airgap
-		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
-			is_airgap=true
-		fi
-	fi
-
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
@@ -311,15 +304,27 @@ if ! [[ -f $install_opt_file ]]; then
 		add_mngr_ip_to_hosts
 	fi
 
+	if [[ $is_minion ]]; then
+		whiptail_ssh_key_copy_notice
+		copy_ssh_key >> $setup_log 2>&1
+	fi
+
+	# Check if this is an airgap install
+	if [[ ( $is_manager || $is_import) && $is_iso ]]; then
+		whiptail_airgap
+		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+			is_airgap=true
+		fi
+	elif [[ $is_minion && $is_iso ]]; then
+		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
+		airgap_check=$?
+		[[ $airgap_check ]] && is_airgap=true >> $setup_log 2>&1
+	fi
+
 	reset_proxy
 	if [[ -z $is_airgap ]]; then
 		collect_net_method
 		[[ -n "$so_proxy" ]] && set_proxy >> $setup_log 2>&1
-	fi
-
-	if [[ $is_minion ]]; then
-		whiptail_ssh_key_copy_notice
-		copy_ssh_key >> $setup_log 2>&1
 	fi
 
 	if [[ $is_minion ]] && ! (compare_versions); then
@@ -336,19 +341,31 @@ if ! [[ -f $install_opt_file ]]; then
 		download_repo_tarball
 		exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 	fi
-
-	if [[ $is_analyst ]]; then
-		cd .. || exit 255
-		exec bash so-analyst-install
-	fi
-
 else
 	rm -rf $install_opt_file >> "$setup_log" 2>&1
 fi
 
+if [[ -z $is_airgap ]]; then
+	percentage=0
+	{
+		installer_progress_loop 'Running preflight checks...' &
+		progress_bg_proc=$!
+		./so-preflight true "$setup_log" >> $setup_log 2>&1
+		preflight_ret=$?
+		echo "$preflight_ret" > /tmp/preflight_ret
+		kill -9 "$progress_bg_proc"
+		wait "$progress_bg_proc" &> /dev/null
+	} | progress '...'
+	[[ -f /tmp/preflight_ret ]] && preflight_ret=$(cat /tmp/preflight_ret)
+	rm /tmp/preflight_ret
+	if [[ -n $preflight_ret && $preflight_ret -gt 0 ]] && ! ( whiptail_preflight_err ); then
+		whiptail_cancel
+	fi
+fi
+
 percentage=0
 {
-	installer_progress_loop & # Run progress bar to 98 in ~8 minutes while waiting for package installs
+	installer_progress_loop 'Checking that all required packages are installed and enabled...' & # Run progress bar to 98 in ~8 minutes while waiting for package installs
 	progress_bg_proc=$!
 	installer_prereq_packages
 	install_success=$?
@@ -395,10 +412,6 @@ if [[ $is_manager && $is_node ]]; then
 	ZEEKVERSION=${ZEEKVERSION:-ZEEK}
 fi
 
-if [[ $is_node ]]; then
-	CURCLOSEDAYS=${CURCLOSEDAYS:-30}
-fi
-
 if [[ $is_import ]]; then
 	PATCHSCHEDULENAME=${PATCHSCHEDULENAME:-auto}
 	MTU=${MTU:-1500}
@@ -430,6 +443,8 @@ if [[ $is_helix ]]; then
 fi
 
 if [[ $is_helix || $is_sensor ]]; then
+	echo "Verifying all network devices are managed by Network Manager that should be" >> "$setup_log" 2>&1
+	check_network_manager_conf
 	set_network_dev_status_list
 	whiptail_sensor_nics
 fi
@@ -473,7 +488,6 @@ if [[ $is_manager && ! $is_eval ]]; then
 fi
 
 if [[ $is_manager ]]; then
-	whiptail_components_adv_warning
 	whiptail_enable_components
 
 	if [[ "$STRELKA" = 1 ]]; then
@@ -535,7 +549,6 @@ if [[ $is_node && ! $is_eval ]]; then
 		collect_node_ls_pipeline_worker_count
 		collect_node_ls_pipeline_batch_size
 		collect_node_ls_input
-		collect_cur_close_days
 		collect_es_space_limit
 	else
 		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
@@ -751,7 +764,7 @@ echo "1" > /root/accept_changes
 		
 		set_progress_str 60 "$(print_salt_state_apply 'manager')"
 		salt-call state.apply -l info manager >> $setup_log 2>&1
-		
+
 		echo "Executing so-elastic-auth..." >> $setup_log 2>&1
 		ELASTIC_AUTH_SKIP_HIGHSTATE=true bash /opt/so/saltstack/default/salt/common/tools/sbin/so-elastic-auth true >> $setup_log 2>&1
 		echo "Finished so-elastic-auth..." >> $setup_log 2>&1
@@ -812,7 +825,9 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info soc >> $setup_log 2>&1
 
 		set_progress_str 70 "$(print_salt_state_apply 'kibana')"
-		salt-call state.apply -l info kibana >> $setup_log 2>&1
+		salt-call state.apply -l info kibana.so_config_load >> $setup_log 2>&1
+		salt-call state.apply -l info kibana.so_securitySolution_load >> $setup_log 2>&1
+		salt-call state.apply -l info kibana.so_dashboard_load >> $setup_log 2>&1
 
 		set_progress_str 70 "Setting up default Space in Kibana"
 		so-kibana-space-defaults >> $setup_log 2>&1
@@ -940,7 +955,6 @@ if [[ -n $SO_ERROR ]]; then
 
 	SKIP_REBOOT=1
 	whiptail_setup_failed
-
 else 
 	echo "Successfully completed setup! Continuing with post-installation steps" >> $setup_log 2>&1
 	{
@@ -962,11 +976,22 @@ else
 			set_progress_str 99 'Waiting for TheHive to start up'
 			check_hive_init >> $setup_log 2>&1
 		fi
+
+		if [[ -n $LEARN_LOGSCAN_ENABLE ]]; then
+			set_progress_str 99 'Enabling logscan'
+			so-learn enable logscan --apply >> $setup_log 2>&1
+		fi
+
+		if [[ -n $ENDGAMEHOST ]]; then
+                        set_progress_str 99 'Configuring firewall for Endgame SMP'
+                        so-firewall --apply includehost endgame $ENDGAMEHOST   >> $setup_log 2>&1
+                fi
+
 	} | whiptail_gauge_post_setup "Running post-installation steps..."
 
+	echo "Post-installation steps have completed. Awaiting user input to clean up installer." >> $setup_log 2>&1
 	whiptail_setup_complete
 	[[ $setup_type != 'iso' ]] && whitpail_ssh_warning
-	echo "Post-installation steps have completed." >> $setup_log 2>&1
 fi
 
 install_cleanup >> "$setup_log" 2>&1

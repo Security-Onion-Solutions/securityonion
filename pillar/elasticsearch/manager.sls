@@ -1,7 +1,8 @@
 elasticsearch:
   templates:
     - so/so-beats-template.json.jinja
-    - so/so-common-template.json
+    - so/so-common-template.json.jinja
+    - so/so-endgame-template.json.jinja
     - so/so-firewall-template.json.jinja
     - so/so-flow-template.json.jinja
     - so/so-ids-template.json.jinja
