@@ -18,7 +18,7 @@
 . /usr/sbin/so-common
 
 usage() {
-    echo "Usage: $0 <new-user-name>"
+    echo "Usage: $0 <new-user-email>"
     echo ""
     echo "Adds a new user to Fleet. The new password will be read from STDIN."
     exit 1
@@ -28,34 +28,42 @@ if [ $# -ne 1 ]; then
   usage
 fi
 
-USER=$1
 
-MYSQL_PASS=$(lookup_pillar_secret mysql)
-FLEET_IP=$(lookup_pillar fleet_ip)
-FLEET_USER=$USER
+USER_EMAIL=$1
+FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
+FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+MYSQL_PW=$(lookup_pillar_secret mysql)
 
 # Read password for new user from stdin
 test -t 0
 if [[ $? == 0 ]]; then
   echo "Enter new password:"
 fi
-read -rs FLEET_PASS
+read -rs USER_PASS
 
-check_password_and_exit "$FLEET_PASS"
+check_password_and_exit "$USER_PASS"
 
-FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_PASS'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+# Config fleetctl & login with the SO Service Account
+CONFIG_OUTPUT=$(docker exec so-fleet fleetctl config set --address https://127.0.0.1:8080 --tls-skip-verify --url-prefix /fleet  2>&1 )
+SALOGIN_OUTPUT=$(docker exec so-fleet fleetctl login --email $FLEET_SA_EMAIL --password $FLEET_SA_PW 2>&1)
+
 if [[ $? -ne 0 ]]; then
-	echo "Failed to generate Fleet password hash"
-	exit 2
+    echo "Unable to add user to Fleet; Fleet Service account login failed"
+    echo "$SALOGIN_OUTPUT"
+    exit 2
 fi
 
-MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PASS fleet -e \
-    "INSERT INTO users (password,salt,username,email,admin,enabled) VALUES ('$FLEET_HASH','','$FLEET_USER','$FLEET_USER',1,1)" 2>&1)
+# Create New User
+CREATE_OUTPUT=$(docker exec so-fleet fleetctl user create --email $USER_EMAIL --name $USER_EMAIL --password $USER_PASS --global-role admin 2>&1)
 
 if [[ $? -eq 0 ]]; then
     echo "Successfully added user to Fleet"
 else
     echo "Unable to add user to Fleet; user might already exist"
-    echo "$MYSQL_OUTPUT"
+    echo "$CREATE_OUTPUT"
     exit 2
 fi
+
+# Disable forced password reset
+MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+"UPDATE users SET admin_forced_password_reset = 0 WHERE email = '$USER_EMAIL'" 2>&1)

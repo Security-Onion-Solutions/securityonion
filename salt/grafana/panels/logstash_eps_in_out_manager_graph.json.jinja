@@ -1,0 +1,403 @@
+{
+  "id": 77741,
+  "gridPos": {
+    "x": {{ PANELS.logstash_eps_in_out_manager_graph.gridPos.x }},
+    "y": {{ PANELS.logstash_eps_in_out_manager_graph.gridPos.y }},
+    "w": {{ PANELS.logstash_eps_in_out_manager_graph.gridPos.w }},
+    "h": {{ PANELS.logstash_eps_in_out_manager_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Manager Logstash Events",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "description": "Events from the grid to redis",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 50,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "EPS",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "decimals": 2,
+      "unit": "short"
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Incoming/"
+        },
+        "properties": [
+          {
+            "id": "color",
+            "value": {
+              "fixedColor": "orange",
+              "mode": "fixed"
+            }
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Outgoing/"
+        },
+        "properties": [
+          {
+            "id": "color",
+            "value": {
+              "fixedColor": "green",
+              "mode": "fixed"
+            }
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Incoming hidden"
+        },
+        "properties": [
+          {
+            "id": "custom.fillBelowTo",
+            "value": "Outgoing hidden"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Outgoing hidden"
+        },
+        "properties": [
+          {
+            "id": "custom.fillBelowTo",
+            "value": "Incoming hidden"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Incoming"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Outgoing"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/hidden/"
+        },
+        "properties": [
+          {
+            "id": "custom.hideFrom",
+            "value": {
+              "legend": true,
+              "tooltip": true,
+              "viz": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "tooltip": {
+      "mode": "multi"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "Incoming",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/^manager/"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
+    },
+    {
+      "alias": "Outgoing",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "out"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/^manager/"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
+    },
+    {
+      "alias": "Incoming hidden",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "C",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/^manager/"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
+    },
+    {
+      "alias": "Outgoing hidden",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "D",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "out"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "role",
+          "operator": "=~",
+          "value": "/^manager/"
+        },
+        {
+          "key": "role",
+          "value": "standalone",
+          "operator": "=",
+          "condition": "OR"
+        },
+        {
+          "key": "role",
+          "value": "eval",
+          "operator": "=",
+          "condition": "OR"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null
+}

@@ -1,55 +1,30 @@
 {
-  "aliasColors": {},
-  "dashLength": 10,
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "fill": 1,
+  "id": 61873,
   "gridPos": {
     "x": {{ PANELS.memory_usage_graph.gridPos.x }},
     "y": {{ PANELS.memory_usage_graph.gridPos.y }},
     "w": {{ PANELS.memory_usage_graph.gridPos.w }},
     "h": {{ PANELS.memory_usage_graph.gridPos.h }}
   },
-  "id": 61873,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "max": true,
-    "min": true,
-    "show": true,
-    "total": false,
-    "values": true
-  },
-  "lines": true,
-  "linewidth": 1,
-  "nullPointMode": "connected",
+  "type": "timeseries",
+  "title": "Memory Usage",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
   "options": {
-    "alertThreshold": true
-  },
-  "pluginVersion": "7.5.4",
-  "pointradius": 2,
-  "renderer": "flot",
-  "seriesOverrides": [
-    {
-      "$$hashKey": "object:295",
-      "alias": "/total/",
-      "color": "#C4162A",
-      "fill": 0
+    "tooltip": {
+      "mode": "single"
     },
-    {
-      "$$hashKey": "object:164",
-      "alias": "/trend/",
-      "fill": 0,
-      "linewidth": 4,
-      "dashes": true,
-      "dashLength": 4
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
     }
-  ],
-  "spaceLength": 10,
+  },
   "targets": [
     {
       "alias": "$tag_host: $col",
@@ -106,9 +81,10 @@
           "type": "fill"
         }
       ],
+      "hide": false,
       "orderByTime": "ASC",
       "policy": "default",
-      "query": "SELECT mean(mean_total) as trend_total, mean(mean_used) as trend_used, mean(mean_cached) as trend_cached, mean(mean_free) as trend_free, mean(mean_buffered) as trend_buffered  FROM \"so_long_term\".\"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host ORDER BY asc",
+      "query": "SELECT mean(mean_total) as trend_total, mean(mean_used) as trend_used, mean(mean_cached) as trend_cached, mean(mean_free) as trend_free, mean(mean_buffered) as trend_buffered  FROM \"so_long_term\".\"mem\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host fill(linear) ORDER BY asc",
       "queryType": "randomWalk",
       "rawQuery": true,
       "refId": "B",
@@ -127,61 +103,106 @@
           }
         ]
       ],
-      "tags": [],
-      "hide": false
+      "tags": []
     }
   ],
-  "thresholds": [],
-  "timeRegions": [],
-  "title": "Memory Usage",
-  "tooltip": {
-    "shared": true,
-    "sort": 0,
-    "value_type": "individual"
-  },
-  "type": "graph",
-  "xaxis": {
-    "buckets": null,
-    "mode": "time",
-    "name": null,
-    "show": true,
-    "values": []
-  },
-  "yaxes": [
-    {
-      "$$hashKey": "object:235",
-      "format": "bytes",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": "0",
-      "show": true
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 10,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "bytes",
+      "min": 0,
+      "decimals": 1
     },
-    {
-      "$$hashKey": "object:236",
-      "format": "short",
-      "label": null,
-      "logBase": 1,
-      "max": null,
-      "min": null,
-      "show": true
-    }
-  ],
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/total/"
+        },
+        "properties": [
+          {
+            "id": "color",
+            "value": {
+              "fixedColor": "#C4162A",
+              "mode": "fixed"
+            }
+          },
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/trend/"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          },
+          {
+            "id": "custom.lineWidth",
+            "value": 4
+          },
+          {
+            "id": "custom.lineStyle",
+            "value": {
+              "fill": "dash",
+              "dash": [
+                4,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    ]
   },
-  "bars": false,
-  "dashes": false,
+  "maxDataPoints": null,
   "description": "",
-  "fillGradient": 0,
-  "hiddenSeries": false,
-  "percentage": false,
-  "points": false,
-  "stack": false,
-  "steppedLine": false,
   "timeFrom": null,
-  "timeShift": null,
-  "maxDataPoints": 750,
-  "interval": "30s"
+  "timeShift": null
 }

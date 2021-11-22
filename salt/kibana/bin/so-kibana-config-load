@@ -1,17 +1,76 @@
 #!/bin/bash
-# {%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
-
+{%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
 . /usr/sbin/so-common
 
-# Copy template file
-cp /opt/so/conf/kibana/saved_objects.ndjson.template /opt/so/conf/kibana/saved_objects.ndjson
+check_file() {
+local file=$1
+if [ ! -f "$file" ]; then
+  echo "File $file does not exist."
+  exit 1
+fi
 
-# SOCtopus and Manager
-sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" /opt/so/conf/kibana/saved_objects.ndjson
+}
 
-wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+import() {
+  local file=$1
+  ndjson_file=$(echo $file | sed -e "s/\.template$//")
+  # Copy template file
+  if [ "$file" != "$ndjson_file" ]; then
+    cp "$file" "$ndjson_file"
+  fi
 
-SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+  # SOCtopus and Manager
+  if grep -lq 'PLACEHOLDER' "$ndjson_file"; then
+    sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" "$ndjson_file"
+  fi
 
-# Load saved objects
-{{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@/opt/so/conf/kibana/saved_objects.ndjson >> /opt/so/log/kibana/misc.log
+  wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+
+  SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+  # Load saved objects
+  {{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@"$ndjson_file" >> /opt/so/log/kibana/misc.log
+}
+
+update() {
+  wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"  
+  IFS=$'\r\n' GLOBIGNORE='*' command eval  'LINES=($(cat $1))'
+  for i in "${LINES[@]}"; do
+    {{ ELASTICCURL }} -X PUT "localhost:5601/api/saved_objects/config/7.15.2" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i "
+  done
+
+}
+
+usage()
+{
+cat <<EOF
+Security Onion Kibana Config Loader
+  Options:
+  -h                   This message
+  -i <filename>        Import saved objects
+  -u <filename>        Update saved objects
+EOF
+}
+
+while getopts "h:i:u:" OPTION
+do
+  case $OPTION in
+    h)
+      usage
+      exit 0
+      ;;
+    i)
+      FILE=${OPTARG}
+      check_file $FILE
+      import $FILE
+      ;;
+    u)
+      FILE=${OPTARG}
+      check_file $FILE
+      update $FILE
+      ;;
+    *)
+      usage
+      exit 0
+      ;;
+  esac
+done

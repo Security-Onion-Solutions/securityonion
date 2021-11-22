@@ -1,132 +1,124 @@
 {
-  "type": "graph",
-  "title": "CPU Tasks Zombies",
+  "id": 69004,
   "gridPos": {
     "x": {{ PANELS.cpu_usage_tasks_zombies_graph.gridPos.x }},
     "y": {{ PANELS.cpu_usage_tasks_zombies_graph.gridPos.y }},
     "w": {{ PANELS.cpu_usage_tasks_zombies_graph.gridPos.w }},
     "h": {{ PANELS.cpu_usage_tasks_zombies_graph.gridPos.h }}
   },
-  "id": 69004,
+  "type": "timeseries",
+  "title": "CPU Tasks Zombies",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "short",
+      "min": 0,
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
-      "orderByTime": "ASC",
-      "tags": [],
+      "alias": "$tag_host $tag_role",
       "groupBy": [
         {
-          "type": "time",
           "params": [
             "$__interval"
-          ]
+          ],
+          "type": "time"
         },
         {
-          "type": "fill",
           "params": [
             "null"
-          ]
+          ],
+          "type": "fill"
         }
       ],
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT mean(zombies) as zombies FROM \"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host, role ORDER BY asc",
+      "queryType": "randomWalk",
+      "rawQuery": true,
+      "refId": "A",
+      "resultFormat": "time_series",
       "select": [
         [
           {
-            "type": "field",
             "params": [
               "value"
-            ]
+            ],
+            "type": "field"
           },
           {
-            "type": "mean",
-            "params": []
+            "params": [],
+            "type": "mean"
           }
         ]
       ],
-      "query": "SELECT mean(zombies) as zombies FROM \"processes\" WHERE host =~ /$servername$/ AND $timeFilter GROUP BY time($__interval), host, role ORDER BY asc",
-      "rawQuery": true,
-      "alias": "$tag_host $tag_role"
+      "tags": []
     }
   ],
-  "options": {
-    "alertThreshold": true
-  },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": 0,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:412"
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:413"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
-  },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "lines": true,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "max": true,
-    "min": false,
-    "rightSide": true,
-    "show": true,
-    "sort": "current",
-    "sortDesc": true,
-    "total": false,
-    "values": true
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "fill": 0,
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
-  "percentage": false,
-  "steppedLine": false,
   "timeFrom": null,
-  "timeShift": null
+  "timeShift": null,
+  "interval": "30s"
 }

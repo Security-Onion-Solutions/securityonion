@@ -8,6 +8,9 @@
 {% set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 
+include:
+  - nginx
+
 soctopusdir:
   file.directory:
     - name: /opt/so/conf/soctopus/sigma-import
@@ -71,6 +74,9 @@ so-soctopus:
       - 0.0.0.0:7000:7000
     - extra_hosts:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
+    - require:
+      - file: soctopusconf
+      - file: navigatordefaultlayer
 
 append_so-soctopus_so-status.conf:
   file.append:

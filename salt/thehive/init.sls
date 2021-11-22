@@ -73,6 +73,14 @@ thehiveesdata:
     - user: 939
     - group: 939
 
+thehive_elasticsearch_yml:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/es/elasticsearch.yml
+
+log4j2_properties:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/es/log4j2.properties
+
 so-thehive-es:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-thehive-es:{{ VERSION }}
@@ -91,11 +99,22 @@ so-thehive-es:
     - port_bindings:
       - 0.0.0.0:9400:9400
       - 0.0.0.0:9500:9500
+    - require:
+      - file: thehive_elasticsearch_yml
+      - file: log4j2_properties
 
 append_so-thehive-es_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-thehive-es
+
+cortex_application_conf:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/cortex-application.conf
+
+application_conf:
+  file.exists:
+    - name: /opt/so/conf/thehive/etc/application.conf
 
 # Install Cortex
 so-cortex:
@@ -110,6 +129,8 @@ so-cortex:
       - /opt/so/conf/cortex/custom-responders:/custom-responders:ro
     - port_bindings:
       - 0.0.0.0:9001:9001
+    - require:
+      - file: cortex_application_conf
 
 append_so-cortex_so-status.conf:
   file.append:
@@ -135,6 +156,8 @@ so-thehive:
       - /opt/so/conf/thehive/etc/application.conf:/opt/thehive/conf/application.conf:ro
     - port_bindings:
       - 0.0.0.0:9000:9000
+    - require:
+      - file: application_conf
 
 append_so-thehive_so-status.conf:
   file.append:

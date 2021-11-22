@@ -15,36 +15,37 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
+  {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+  {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+  {% set MANAGER = salt['grains.get']('master') %}
+  {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
 
-# Logstash Section - Decide which pillar to use
-{% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
-  {% set freq = salt['pillar.get']('manager:freq', '0') %}
-  {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
-  {% set nodetype = salt['grains.get']('role', '')  %}
-{% elif grains['role'] == 'so-helix' %}
-  {% set freq = salt['pillar.get']('manager:freq', '0') %}
-  {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
-  {% set nodetype = salt['grains.get']('role', '')  %}
-{% endif %}
+  # Logstash Section - Decide which pillar to use
+  {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
+  {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+    {% set freq = salt['pillar.get']('manager:freq', '0') %}
+    {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
+    {% set nodetype = salt['grains.get']('role', '')  %}
+  {% elif grains['role'] == 'so-helix' %}
+    {% set freq = salt['pillar.get']('manager:freq', '0') %}
+    {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
+    {% set nodetype = salt['grains.get']('role', '')  %}
+  {% endif %}
 
-{% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
-{% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
-{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+  {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
+  {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
+  {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
-{% if grains.role in ['so-heavynode'] %}
-  {% set EXTRAHOSTHOSTNAME = salt['grains.get']('host') %}
-  {% set EXTRAHOSTIP = salt['pillar.get']('sensor:mainip') %}
-{% else %}
-  {% set EXTRAHOSTHOSTNAME = MANAGER %}
-  {% set EXTRAHOSTIP = MANAGERIP %}
-{% endif %}
+  {% if grains.role in ['so-heavynode'] %}
+    {% set EXTRAHOSTHOSTNAME = salt['grains.get']('host') %}
+    {% set EXTRAHOSTIP = salt['pillar.get']('sensor:mainip') %}
+  {% else %}
+    {% set EXTRAHOSTHOSTNAME = MANAGER %}
+    {% set EXTRAHOSTIP = MANAGERIP %}
+  {% endif %}
 
 include:
+  - ssl
   - elasticsearch
 
 # Create the logstash group
@@ -73,22 +74,22 @@ lspipelinedir:
     - user: 931
     - group: 939
 
-{% for PL in PIPELINES %}
-  {% for CONFIGFILE in PIPELINES[PL].config %}
+  {% for PL in PIPELINES %}
+    {% for CONFIGFILE in PIPELINES[PL].config %}
 ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
     - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
-    {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
+      {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
     - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
-    {% else %}
+      {% else %}
     - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1]}}
-    {% endif %}
+      {% endif %}
     - user: 931
     - group: 939
     - mode: 660
     - makedirs: True
-  {% endfor %}
+    {% endfor %}
 
 ls_pipeline_{{PL}}:
   file.directory:
@@ -96,12 +97,12 @@ ls_pipeline_{{PL}}:
     - user: 931
     - group: 939
     - require:
-  {% for CONFIGFILE in PIPELINES[PL].config %}
+    {% for CONFIGFILE in PIPELINES[PL].config %}
       - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
-  {% endfor %}
+    {% endfor %}
     - clean: True
 
-{% endfor %}
+  {% endfor %}
 
 lspipelinesyml:
   file.managed:
@@ -157,50 +158,60 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-{% for BINDING in DOCKER_OPTIONS.port_bindings %}
+  {% for BINDING in DOCKER_OPTIONS.port_bindings %}
       - {{ BINDING }}
-{% endfor %}
+  {% endfor %}
     - binds:
       - /opt/so/conf/elasticsearch/templates/:/templates/:ro
-      - /opt/so/conf/logstash/etc/log4j2.properties:/usr/share/logstash/config/log4j2.properties:ro
-      - /opt/so/conf/logstash/etc/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - /opt/so/conf/logstash/etc/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+      - /opt/so/conf/logstash/etc/:/usr/share/logstash/config/:ro
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
       - /opt/so/rules:/etc/nsm/rules:ro
       - /nsm/import:/nsm/import:ro
       - /nsm/logstash:/usr/share/logstash/data:rw
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
+  {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
+  {% endif %}
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-      {% if grains['role'] == 'so-heavynode' %}
+  {% if grains['role'] == 'so-heavynode' %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
-      {% else %}
+  {% else %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
-      {% endif %}
+  {% endif %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
-      - /etc/pki/ca.cer:/ca/ca.crt:ro
-      {%- if grains['role'] == 'so-eval' %}
+  {%- if grains['role'] == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
       - /nsm/wazuh/logs/alerts:/wazuh/alerts:ro
       - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
-      {%- endif %}
+  {%- endif %}
     - watch:
       - file: lsetcsync
-{% for PL in PIPELINES %}
+  {% for PL in PIPELINES %}
       - file: ls_pipeline_{{PL}}
-  {% for CONFIGFILE in PIPELINES[PL].config %}
+    {% for CONFIGFILE in PIPELINES[PL].config %}
       - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+    {% endfor %}
   {% endfor %}
-{% endfor %}
-{% for TEMPLATE in TEMPLATES %}
+  {% for TEMPLATE in TEMPLATES %}
       - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-{% endfor %}
+  {% endfor %}
+    - require:
+  {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+      - x509: etc_filebeat_crt
+  {% endif %}
+  {% if grains['role'] == 'so-heavynode' %}
+      - x509: trusttheca
+  {% else %}
+      - x509: pki_public_ca_crt
+  {% endif %}
+      - file: cacertz
+      - file: capemz
 
 append_so-logstash_so-status.conf:
   file.append:

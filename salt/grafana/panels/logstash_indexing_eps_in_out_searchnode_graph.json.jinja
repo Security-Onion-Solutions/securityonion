@@ -1,0 +1,411 @@
+{
+  "id": 445554,
+  "gridPos": {
+    "x": {{ PANELS.logstash_indexing_eps_in_out_searchnode_graph.gridPos.x }},
+    "y": {{ PANELS.logstash_indexing_eps_in_out_searchnode_graph.gridPos.y }},
+    "w": {{ PANELS.logstash_indexing_eps_in_out_searchnode_graph.gridPos.w }},
+    "h": {{ PANELS.logstash_indexing_eps_in_out_searchnode_graph.gridPos.h }}
+  },
+  "type": "timeseries",
+  "title": "Indexing Events Per Second - $searchnode",
+  "repeat": "searchnode",
+  "repeatDirection": "v",
+  "transformations": [],
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "interval": "30s",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 50,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "EPS",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      },
+      "mappings": [],
+      "decimals": 2,
+      "unit": "short"
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Incoming/"
+        },
+        "properties": [
+          {
+            "id": "color",
+            "value": {
+              "fixedColor": "orange",
+              "mode": "fixed"
+            }
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/Outgoing/"
+        },
+        "properties": [
+          {
+            "id": "color",
+            "value": {
+              "fixedColor": "green",
+              "mode": "fixed"
+            }
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Incoming hidden"
+        },
+        "properties": [
+          {
+            "id": "custom.fillBelowTo",
+            "value": "Outgoing hidden"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Incoming"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Outgoing"
+        },
+        "properties": [
+          {
+            "id": "custom.fillOpacity",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Outgoing hidden"
+        },
+        "properties": [
+          {
+            "id": "custom.fillBelowTo",
+            "value": "Incoming hidden"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byRegexp",
+          "options": "/hidden/"
+        },
+        "properties": [
+          {
+            "id": "custom.hideFrom",
+            "value": {
+              "legend": true,
+              "tooltip": true,
+              "viz": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "tooltip": {
+      "mode": "multi"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "bottom",
+      "calcs": [
+        "max",
+        "mean"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "alias": "Incoming",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$searchnode"
+        }
+      ]
+    },
+    {
+      "alias": "Outgoing",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "B",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "out"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$searchnode"
+        }
+      ]
+    },
+    {
+      "alias": "Incoming hidden",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "C",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "in"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$searchnode"
+        }
+      ]
+    },
+    {
+      "alias": "Outgoing hidden",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "hide": false,
+      "measurement": "logstash_events",
+      "orderByTime": "ASC",
+      "policy": "default",
+      "query": "SELECT non_negative_derivative(mean(\"in\"), 1s) FROM \"logstash_events\" WHERE (\"role\" = \"searchnode\") AND $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
+      "rawQuery": false,
+      "refId": "D",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "out"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          },
+          {
+            "type": "non_negative_derivative",
+            "params": [
+              "1s"
+            ]
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "host",
+          "operator": "=",
+          "value": "$searchnode"
+        }
+      ]
+    }
+  ],
+  "description": "",
+  "maxDataPoints": null,
+  "timeFrom": null,
+  "timeShift": null
+}

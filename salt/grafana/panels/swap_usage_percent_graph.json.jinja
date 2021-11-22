@@ -1,148 +1,141 @@
 {
-  "type": "graph",
-  "title": "Swap Usage",
+  "id": 69873,
   "gridPos": {
     "x": {{ PANELS.swap_usage_percent_graph.gridPos.x }},
     "y": {{ PANELS.swap_usage_percent_graph.gridPos.y }},
     "w": {{ PANELS.swap_usage_percent_graph.gridPos.w }},
     "h": {{ PANELS.swap_usage_percent_graph.gridPos.h }}
   },
-  "id": 69873,
+  "type": "timeseries",
+  "title": "Swap Usage",
+  "datasource": "InfluxDB",
+  "pluginVersion": "8.2.1",
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "never",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 80,
+            "color": "red"
+          }
+        ]
+      },
+      "mappings": [],
+      "unit": "percent",
+      "decimals": 1
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single"
+    },
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "calcs": [
+        "max",
+        "mean",
+        "lastNotNull"
+      ]
+    }
+  },
   "targets": [
     {
-      "refId": "A",
-      "queryType": "randomWalk",
-      "policy": "default",
-      "resultFormat": "time_series",
+      "alias": "$tag_host $tag_role",
+      "groupBy": [
+        {
+          "params": [
+            "$__interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "host"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "role"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "swap",
       "orderByTime": "ASC",
+      "policy": "default",
+      "queryType": "randomWalk",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "used_percent"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "mean"
+          }
+        ]
+      ],
       "tags": [
         {
           "key": "host",
           "operator": "=~",
           "value": "/^$servername$/"
         }
-      ],
-      "groupBy": [
-        {
-          "type": "time",
-          "params": [
-            "$__interval"
-          ]
-        },
-        {
-          "type": "tag",
-          "params": [
-            "host"
-          ]
-        },
-        {
-          "type": "tag",
-          "params": [
-            "role"
-          ]
-        },
-        {
-          "type": "fill",
-          "params": [
-            "null"
-          ]
-        }
-      ],
-      "select": [
-        [
-          {
-            "type": "field",
-            "params": [
-              "used_percent"
-            ]
-          },
-          {
-            "type": "mean",
-            "params": []
-          }
-        ]
-      ],
-      "measurement": "swap",
-      "alias": "$tag_host $tag_role"
+      ]
     }
   ],
-  "options": {
-    "alertThreshold": true
-  },
-  "datasource": "InfluxDB",
-  "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-  },
-  "pluginVersion": "7.5.4",
-  "renderer": "flot",
-  "yaxes": [
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "percent",
-      "$$hashKey": "object:100",
-      "decimals": 1
-    },
-    {
-      "label": null,
-      "show": true,
-      "logBase": 1,
-      "min": null,
-      "max": null,
-      "format": "short",
-      "$$hashKey": "object:101"
-    }
-  ],
-  "xaxis": {
-    "show": true,
-    "mode": "time",
-    "name": null,
-    "values": [],
-    "buckets": null
-  },
-  "yaxis": {
-    "align": false,
-    "alignLevel": null
-  },
-  "lines": true,
-  "linewidth": 1,
-  "dashLength": 10,
-  "spaceLength": 10,
-  "pointradius": 2,
-  "legend": {
-    "alignAsTable": true,
-    "avg": true,
-    "current": true,
-    "max": true,
-    "min": false,
-    "rightSide": true,
-    "show": true,
-    "sort": "current",
-    "sortDesc": true,
-    "total": false,
-    "values": true
-  },
-  "nullPointMode": "connected",
-  "tooltip": {
-    "value_type": "individual",
-    "shared": true,
-    "sort": 2
-  },
-  "aliasColors": {},
-  "seriesOverrides": [],
-  "thresholds": [],
-  "timeRegions": [],
-  "fill": 0,
-  "fillGradient": 0,
-  "dashes": false,
-  "hiddenSeries": false,
-  "points": false,
-  "bars": false,
-  "stack": false,
-  "percentage": false,
-  "steppedLine": false
+  "timeFrom": null,
+  "timeShift": null,
+  "interval": "30s",
+  "maxDataPoints": null
 }

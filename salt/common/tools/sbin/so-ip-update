@@ -8,9 +8,9 @@ fi
 
 echo "This tool will update a manager's IP address to the new IP assigned to the management network interface."
 
-echo
+echo ""
 echo "WARNING: This tool is still undergoing testing, use at your own risk!"
-echo
+echo ""
 
 if [ -z "$OLD_IP" ]; then
 	OLD_IP=$(lookup_pillar "managerip")
@@ -27,7 +27,7 @@ if [ -z "$NEW_IP" ]; then
 	NEW_IP=$(ip -4 addr list $iface | grep inet | cut -d' ' -f6 | cut -d/ -f1)
 
 	if [ -z "$NEW_IP" ]; then
-		fail "Unable to detect new IP on interface $iface.    "
+		fail "Unable to detect new IP on interface $iface."
 	fi
 
 	echo "Detected new IP $NEW_IP on interface $iface."
@@ -39,15 +39,20 @@ fi
 
 echo "About to change old IP $OLD_IP to new IP $NEW_IP."
 
-echo
+echo ""
 read -n 1 -p "Would you like to continue? (y/N) " CONTINUE
-echo
+echo ""
 
 if [ "$CONTINUE" == "y" ]; then
-  for file in $(grep -rlI $OLD_IP /opt/so/saltstack /etc); do
-  	echo "Updating file: $file"
-    sed -i "s|$OLD_IP|$NEW_IP|g" $file
-  done
+	for file in $(grep -rlI $OLD_IP /opt/so/saltstack /etc); do
+		echo "Updating file: $file"
+		sed -i "s|$OLD_IP|$NEW_IP|g" $file
+	done
+
+	echo "Granting MySQL root user permissions on $NEW_IP"
+	docker exec -i so-mysql mysql --user=root --password=$(lookup_pillar_secret 'mysql') -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'$NEW_IP' IDENTIFIED BY '$(lookup_pillar_secret 'mysql')' WITH GRANT OPTION;" &> /dev/null
+	echo "Removing MySQL root user from $OLD_IP"
+	docker exec -i so-mysql mysql --user=root --password=$(lookup_pillar_secret 'mysql') -e "DROP USER 'root'@'$OLD_IP';" &> /dev/null
 
 	echo "The IP has been changed from $OLD_IP to $NEW_IP."
 

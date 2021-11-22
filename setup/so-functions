@@ -229,9 +229,10 @@ check_service_status() {
 }
 
 check_salt_master_status() {
+	local timeout=$1
 	echo "Checking if we can talk to the salt master" >> "$setup_log" 2>&1
 	salt-call saltutil.kill_all_jobs > /dev/null 2>&1
-	salt-call state.show_top > /dev/null 2>&1
+	salt-call state.show_top -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
 		echo "  Could not talk to salt master" >> "$setup_log" 2>&1
@@ -244,8 +245,9 @@ check_salt_master_status() {
 }
 
 check_salt_minion_status() {
+	local timeout=$1
 	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping > /dev/null 2>&1
+	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
 		echo "  Minion did not respond" >> "$setup_log" 2>&1
@@ -294,15 +296,6 @@ collect_adminuser_inputs() {
 		whiptail_create_admin_user_password1
 		whiptail_create_admin_user_password2
 		check_admin_pass
-	done
-}
-
-collect_cur_close_days() {
-	whiptail_cur_close_days "$CURCLOSEDAYS"
-
-	while ! valid_int "$CURCLOSEDAYS"; do
-		whiptail_invalid_input
-		whiptail_cur_close_days "$CURCLOSEDAYS"
 	done
 }
 
@@ -456,7 +449,7 @@ collect_hostname_validate() {
 collect_int_ip_mask() {
 	whiptail_management_interface_ip_mask
 
-	while ! valid_cidr "$manager_ip_mask"; do
+	while ! valid_ip4_cidr_mask "$manager_ip_mask"; do
 		whiptail_invalid_input
 		whiptail_management_interface_ip_mask "$manager_ip_mask"
 	done
@@ -473,10 +466,15 @@ collect_mngr_hostname() {
 		whiptail_management_server "$MSRV"
 	done
 
+	while [[ $MSRV == "$HOSTNAME" ]]; do 
+		whiptail_invalid_hostname 0
+		whiptail_management_server "$MSRV"
+	done
+
 	if ! getent hosts "$MSRV"; then
 		whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP"; do
+		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
 			whiptail_invalid_input
 			whiptail_manager_ip "$MSRVIP"
 		done
@@ -844,7 +842,7 @@ check_requirements() {
 	local req_cores
 	local req_storage
 	local nic_list
-	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g')"
+	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
 	if [[ "$standalone_or_dist" == 'standalone' ]]; then
@@ -926,10 +924,11 @@ compare_main_nic_ip() {
 		  read -r -d '' message <<- EOM
 		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
 
-			This is not a supported configuration, please remediate and rerun setup.
+			This is not a supported configuration, please remediate 
+			and rerun setup.
 			EOM
 
-		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 10 75
+		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 11 75
 		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
 	  fi
 	else
@@ -1104,8 +1103,8 @@ detect_os() {
 		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
 			OSVER=bionic
-		elif grep -q "UBUNTU_CODENAME=xenial" /etc/os-release; then
-			OSVER=xenial
+		elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+			OSVER=focal
 		else
 			echo "We do not support your current version of Ubuntu."
 			exit 1
@@ -1122,9 +1121,10 @@ detect_os() {
 
 installer_progress_loop() {
 	local i=0
+	local msg="${1:-Performing background actions...}"
 	while true; do
 		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" 'Checking that all required packages are installed and enabled...' nolog
+		set_progress_str "$i" "$msg" nolog
 		[[ $i -gt 0 ]] && sleep 5s
 	done
 }
@@ -1189,10 +1189,11 @@ docker_install() {
 		{
 			yum clean expire-cache;
 			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7;
+			  yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7
 			fi
-			yum versionlock docker-ce-20.10.5-3.el7;
-			yum versionlock docker-ce-cli-20.10.5-3.el7;
+			yum versionlock docker-ce-20.10.5-3.el7
+			yum versionlock docker-ce-cli-20.10.5-3.el7
+			yum versionlock docker-ce-rootless-extras-20.10.5-3.el7
 			yum versionlock containerd.io-1.4.4-3.1.el7
 		} >> "$setup_log" 2>&1
 		
@@ -1206,11 +1207,11 @@ docker_install() {
 				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
 				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
 				;;
-		esac 
-		if [ $OSVER != "xenial" ]; then
-			retry 50 10 "apt-get -y install docker-ce python3-docker" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install docker-ce python-docker" >> "$setup_log" 2>&1 || exit 1
+		esac
+		if [ $OSVER == "bionic" ]; then
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+		elif [ $OSVER == "focal" ]; then
+			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 	docker_registry
@@ -1227,7 +1228,7 @@ docker_registry() {
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# This will get applied so docker can attempt to start
 	if [ -z "$DOCKERNET" ]; then
-            DOCKERNET=172.17.0.0
+		DOCKERNET=172.17.0.0
 	fi
 	# Make the host use the manager docker registry
 	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
@@ -1358,7 +1359,7 @@ es_heapsize() {
 	export ES_HEAP_SIZE
 
 	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE|IMPORT)$ ]]; then
-		NODE_ES_HEAP_SIZE=ES_HEAP_SIZE
+		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
 		export NODE_ES_HEAP_SIZE
 	fi
 }
@@ -1376,7 +1377,7 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g')
+	filtered_nics=$(ip link | awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "$grep_string"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
@@ -1419,7 +1420,7 @@ firewall_generate_templates() {
    
 	cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/ >> "$setup_log" 2>&1
 
-	for i in analyst beats_endpoint sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
+	for i in analyst beats_endpoint endgame sensor manager minion osquery_endpoint search_node wazuh_endpoint; do
 		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
 	done
 
@@ -1444,6 +1445,7 @@ generate_passwords(){
   PLAYBOOKADMINPASS=$(get_random_value)
   PLAYBOOKAUTOMATIONPASS=$(get_random_value)
   FLEETPASS=$(get_random_value)
+  FLEETSAPASS=$(get_random_value)
   FLEETJWT=$(get_random_value)
   GRAFANAPASS=$(get_random_value)
   if [[ "$THEHIVE" == "1" ]]; then
@@ -1511,7 +1513,7 @@ host_pillar() {
 		"  mainint: '$MNIC'"\
 		"sensoroni:"\
 		"  node_address: '$MAINIP'"\
-		"  node_description: '$NODE_DESCRIPTION'"\
+		"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
 		"" > "$pillar_file"
 }
 
@@ -1536,6 +1538,10 @@ install_cleanup() {
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
 		sed -i '/so-setup/d' /etc/sudoers
+	fi
+
+	if [[ -z $SO_ERROR ]]; then
+		echo "Setup completed at $(date)" >> "$setup_log" 2>&1
 	fi
 }
 
@@ -1570,7 +1576,7 @@ ls_heapsize() {
 	export LS_HEAP_SIZE
 
 	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE)$ ]]; then
-		NODE_LS_HEAP_SIZE=LS_HEAP_SIZE
+		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
 		export NODE_LS_HEAP_SIZE
 	fi
 }
@@ -1600,7 +1606,6 @@ manager_pillar() {
 	printf '%s\n'\
 		"  elastalert: 1"\
 		"  es_port: $node_es_port"\
-		"  cur_close_days: $CURCLOSEDAYS"\
 		"  grafana: $GRAFANA"\
 		"  osquery: $OSQUERY"\
 		"  thehive: $THEHIVE"\
@@ -1638,6 +1643,15 @@ manager_pillar() {
 	printf '%s\n'\
 		"  kratoskey: '$KRATOSKEY'"\
 		"" >> "$pillar_file"
+	printf '%s\n'\
+		"soc:"\
+		"  es_index_patterns: '*:so-*,*:endgame-*'"\
+		"" >> "$pillar_file"
+	if [[ -n $ENDGAMEHOST ]]; then
+		printf '%s\n'\
+			"  endgamehost: '$ENDGAMEHOST'"\
+			"" >> "$pillar_file"
+	fi
 }
 
 manager_global() {
@@ -1668,6 +1682,10 @@ manager_global() {
 		"  url_base: '$REDIRECTIT'"\
 		"  managerip: '$MAINIP'" > "$global_pillar"
 	
+	if [[ $HIGHLANDER == 'True' ]]; then
+	    printf '%s\n'\
+		"  highlander: True"\ >> "$global_pillar"
+	fi
 	if [[ $is_airgap ]]; then
 		printf '%s\n'\
 			"  airgap: True"\ >> "$global_pillar"
@@ -1867,9 +1885,6 @@ network_setup() {
 	{
 		echo "Finishing up network setup";
 
-		echo "... Verifying all network devices are managed by Network Manager";
-		check_network_manager_conf;
-
 		echo "... Copying 99-so-checksum-offload-disable";
 		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
 
@@ -2033,7 +2048,7 @@ reinstall_init() {
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
-			if [ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]; then
+			if [[ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]]; then
 				docker stop $(docker ps -a -q --filter "name=so-")
 				docker rm -f $(docker ps -a -q --filter "name=so-")
 			fi
@@ -2051,6 +2066,10 @@ reinstall_init() {
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
+
+		if [[ $OS == 'ubuntu' ]]; then
+			apt-mark unhold $(apt-mark showhold)
+		fi
 
 	} >> "$setup_log" 2>&1
 }
@@ -2146,6 +2165,7 @@ saltify() {
 					python36-m2crypto\
 					python36-mysql\
 					python36-packaging\
+					python36-lxml\
 					yum-utils\
 					device-mapper-persistent-data\
 					lvm2\
@@ -2159,9 +2179,12 @@ saltify() {
 	else
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
-		if [ $OSVER != "xenial" ]; then
-			# Switch to Python 3 as default if this is not xenial
+		if [ $OSVER == "bionic" ]; then
+			# Switch to Python 3 as default for bionic
 			update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 >> "$setup_log" 2>&1
+		elif [ $OSVER == "focal" ]; then
+			# Switch to Python 3 as default for focal
+			update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 >> "$setup_log" 2>&1
 		fi
 		
 		local pkg_arr=(
@@ -2179,21 +2202,16 @@ saltify() {
 		# Grab the version from the os-release file
 		local ubuntu_version
 		ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
-		if [ "$OSVER" != "xenial" ]; then local py_ver_url_path="/py3"; else local py_ver_url_path="/apt"; fi
 
 		case "$install_type" in
 			'FLEET')
-				if [[ $OSVER != 'xenial' ]]; then
-					retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				else
-					retry 50 10 "apt-get -y install python-mysqldb" >> "$setup_log" 2>&1 || exit 1
-				fi
+				retry 50 10 "apt-get -y install python3-mysqldb" >> "$setup_log" 2>&1 || exit 1
 				;;
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com"$py_ver_url_path"/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2201,7 +2219,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com$py_ver_url_path/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2225,7 +2243,7 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com$py_ver_url_path/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
@@ -2234,11 +2252,7 @@ saltify() {
 		set_progress_str 8 'Installing salt-minion & python modules'
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
-		if [[ $OSVER != 'xenial' ]]; then
-			retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb" >> "$setup_log" 2>&1 || exit 1
-		else
-			retry 50 10 "apt-get -y install python-pip python-dateutil python-m2crypto python-mysqldb python-packaging python-influxdb"  >> "$setup_log" 2>&1 || exit 1
-		fi
+		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
@@ -2285,28 +2299,32 @@ salt_checkin() {
 					done
 				done
 
-				count=0
-				while ! (check_salt_master_status); do
-					echo "salt minion cannot talk to salt master" >> "$setup_log" 2>&1
-					if [ $count -gt 30 ]; then
-						echo "salt minion could not talk to salt master after 30 attempts, exiting" >> "$setup_log" 2>&1
+				count=1
+				timeout=60
+				while ! (check_salt_master_status $timeout); do
+					echo "salt minion cannot talk to salt master after $timeout seconds" >> "$setup_log" 2>&1
+					if [ $count -gt 2 ]; then
+						echo "salt minion could not talk to salt master after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					sleep 1;
 					((count++))
+					((timeout+=30)) # add 30s to the timeout each attempt
 				done
 
-				count=0
-				while ! (check_salt_minion_status); do
-					echo "salt master did not get a job response from salt minion" >> "$setup_log" 2>&1
-					if [ $count -gt 30 ]; then
-						echo "salt master did not get a job response from salt minion after 30 attempts, exiting" >> "$setup_log" 2>&1
+				count=1
+				timeout=60
+				while ! (check_salt_minion_status $timeout) ; do
+					echo "salt master did not get a job response from salt minion after $timeout seconds" >> "$setup_log" 2>&1
+					if [ $count -gt 2 ]; then
+						echo "salt master did not get a job response from salt minion after $count attempts, exiting" >> "$setup_log" 2>&1
 						exit 1
 					fi
 					systemctl kill salt-minion
 					systemctl start salt-minion
 					sleep 1;
 					((count++))
+					((timeout+=30)) # add 30s to the timeout each attempt
 				done
 
 				echo " Confirming existence of the CA certificate"
@@ -2357,6 +2375,8 @@ secrets_pillar(){
 		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
 		"  grafana_admin: $GRAFANAPASS"\
 		"  fleet: $FLEETPASS"\
+		"  fleet_sa_email: service.account@securityonion.invalid"\
+		"  fleet_sa_password: $FLEETSAPASS"\
 		"  fleet_jwt: $FLEETJWT"\
 		"  fleet_enroll-secret: False" > $local_salt_dir/pillar/secrets.sls
   fi
@@ -2797,7 +2817,7 @@ update_sudoers() {
 update_packages() {
 	if [ "$OS" = 'centos' ]; then
 	    yum repolist >> /dev/null
-        yum -y update --exclude=salt*,wazuh* >> "$setup_log"
+        yum -y update --exclude=salt*,wazuh*,docker*,containerd* >> "$setup_log"
 	else
 		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1

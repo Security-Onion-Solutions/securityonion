@@ -1,0 +1,155 @@
+{
+  "description" : "ECS Testing Pipeline",
+  "processors": [
+    {
+      "append": {
+        "field": "event.category",
+        "value": [
+          "process"
+        ],
+        "if": "ctx?.wazuh?.data?.type == 'process'",
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.type",
+        "value": [
+          "start"
+        ],
+        "if": "ctx?.wazuh?.data?.type == 'process'",
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.type",
+        "value": "end",
+        "if": "ctx?.wazuh?.data?.type == 'process_end'",
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "user.name",
+        "copy_from": "process.user",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "host.os.type",
+        "copy_from": "wazuh.data.os.sysname",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "host.os.platform",
+        "copy_from": "wazuh.data.os.platform",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "host.os.name",
+        "copy_from": "wazuh.data.os.name",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "host.os.version",
+        "copy_from": "wazuh.data.os.version",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "signal.rule.name",
+        "copy_from": "rule.name",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "signal.rule.type",
+        "copy_from": "rule.category",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "signal.rule.threat.tactic.name",
+        "copy_from": "rule.mitre.tactic",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "append": {
+        "field": "event.category",
+        "value": [
+          "authentication"
+        ],
+        "if": "if(ctx?.rule?.groups != null) {\n    if(ctx?.rule?.groups?.contains('authentication_success')) {\n        return true\n    }\n    if(ctx?.rule?.groups?.contains('authentication_failed')) {\n        return true\n    }\n    return false\n}",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.outcome",
+        "value": "success",
+        "ignore_empty_value": true,
+        "if": "ctx?.rule?.groups != null && ctx?.rule?.groups.contains('authentication_success')",
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.outcome",
+        "value": "failure",
+        "ignore_empty_value": true,
+        "if": "ctx?.rule?.groups != null && ctx?.rule?.groups.contains('authentication_failed')",
+        "tag": "test",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "url.path",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true,
+        "copy_from": "url.original"
+      }
+    },
+    {
+      "set": {
+        "field": "url.domain",
+        "ignore_empty_value": true,
+        "tag": "test",
+        "ignore_failure": true,
+        "copy_from": "kibana.log.meta.req.headers.origin"
+      }
+    }
+  ]
+}

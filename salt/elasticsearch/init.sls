@@ -15,7 +15,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-
+include:
+  - ssl
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -129,6 +130,14 @@ esrolesdir:
     - user: 930
     - group: 939
     - makedirs: True
+
+esingestdynamicconf:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/ingest
+    - source: salt://elasticsearch/files/ingest-dynamic
+    - user: 930
+    - group: 939
+    - template: jinja
 
 esingestconf:
   file.recurse:
@@ -279,7 +288,26 @@ so-elasticsearch:
       - file: cacertz
       - file: esyml
       - file: esingestconf
+      - file: esingestdynamicconf
       - file: so-elasticsearch-pipelines-file
+    - require:
+      - file: esyml
+      - file: eslog4jfile
+      - file: nsmesdir
+      - file: eslogdir
+      - file: cacertz
+      - x509: /etc/pki/elasticsearch.crt
+      - x509: /etc/pki/elasticsearch.key
+      - file: elasticp12perms
+      {% if ismanager %}
+      - x509: pki_public_ca_crt
+      {% else %}
+      - x509: trusttheca
+      {% endif %}
+      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
+      - cmd: auth_users_roles_inode
+      - cmd: auth_users_inode
+      {% endif %}
 
 append_so-elasticsearch_so-status.conf:
   file.append:
@@ -302,6 +330,7 @@ so-elasticsearch-pipelines:
    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
    - onchanges:
       - file: esingestconf
+      - file: esingestdynamicconf
       - file: esyml
       - file: so-elasticsearch-pipelines-file
 

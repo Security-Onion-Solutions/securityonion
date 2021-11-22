@@ -38,6 +38,8 @@ so-sensoroni:
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
+    - require:
+      - file: sensoroniagentconf
 
 append_so-sensoroni_so-status.conf:
   file.append:

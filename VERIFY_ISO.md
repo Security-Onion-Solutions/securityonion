@@ -1,18 +1,18 @@
-### 2.3.80 ISO image built on 2021/09/27
+### 2.3.90 ISO image built on 2021/11/19
 
 
 
 ### Download and Verify
 
-2.3.80 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.3.80.iso
+2.3.90 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.3.90.iso
 
-MD5: 24F38563860416F4A8ABE18746913E14  
-SHA1: F923C005F54EA2A17AB225ADA0DA46042707AAD9  
-SHA256: 8E95D10AF664D9A406C168EC421D943CB23F0D0C1813C6C2DBA9B4E131984018 
+MD5: F214ECE9F32A6F881D9A735DEAF90E46  
+SHA1: 0B04FAA0FEC704CF6AD2030AA7A4AE80D9379AFA  
+SHA256: BE0E1516D83D7782AEAE9D52449FED45A45D72981515672C761C2A17B7AA613C 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.80.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
@@ -26,22 +26,22 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.80.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.3.80.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.3.90.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.3.80.iso.sig securityonion-2.3.80.iso
+gpg --verify securityonion-2.3.90.iso.sig securityonion-2.3.90.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Mon 27 Sep 2021 08:55:01 AM EDT using RSA key ID FE507013
+gpg: Signature made Fri 19 Nov 2021 05:15:29 PM EST using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.

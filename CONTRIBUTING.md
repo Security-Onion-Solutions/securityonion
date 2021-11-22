@@ -15,7 +15,7 @@
 
 ### Contributing code
 
-* **All commits must be signed** with a valid key that has been added to your GitHub account. The commits should have all the "**Verified**" tag when viewed on GitHub as shown below:
+* **All commits must be signed** with a valid key that has been added to your GitHub account. Each commit should have the "**Verified**" tag when viewed on GitHub as shown below:
   
   <img src="./assets/images/verified-commit-1.png" width="450">
 
