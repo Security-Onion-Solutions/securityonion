@@ -41,7 +41,7 @@ gpg --verify securityonion-2.3.90-WAZUH.iso.sig securityonion-2.3.90-WAZUH.iso
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Fri 19 Nov 2021 05:15:29 PM EST using RSA key ID FE507013
+gpg: Signature made Tue 23 Nov 2021 03:19:08 PM EST using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
