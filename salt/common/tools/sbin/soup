@@ -838,7 +838,7 @@ verify_latest_update_script() {
 }
 
 apply_hotfix() {
-  if [[ "$INSTALLEDVERSION" == "2.3.90" && "$HOTFIXVERSION" == "WAZUH" ]] ; then
+  if [[ "$INSTALLEDVERSION" == "2.3.90" && "$HOTFIXVERSION" == "WAZUH" ]]; then
     FILE="/nsm/wazuh/etc/ossec.conf"
     echo "Detecting if ossec.conf needs corrected..."
     WAZUHHEADER=$(head -1 $FILE | grep "xml version")
@@ -848,6 +848,8 @@ apply_hotfix() {
     else    
       echo "$FILE does not have an XML header, so no changes are necessary."
     fi
+  else
+    echo "Skipping ossec.conf check ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
 }
 
@@ -906,10 +908,10 @@ main() {
   set -e
 
   if [ "$is_hotfix" == "true" ]; then
-    echo "Applying $HOTFIXVERSION" 
+    echo "Applying $HOTFIXVERSION hotfix"
     copy_new_files
     apply_hotfix
-    echo ""
+    echo "Hotfix applied"
     update_version
     salt-call state.highstate -l info queue=True
   else
