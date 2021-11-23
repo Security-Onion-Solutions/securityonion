@@ -23,7 +23,6 @@ import sys
 import argparse
 import re
 from lxml import etree as ET
-from xml.dom import minidom
 from datetime import datetime as dt
 from datetime import timezone as tz
 
@@ -87,12 +86,7 @@ def wazuh_enabled() -> bool:
 
 
 def root_to_str(root: ET.ElementTree) -> str:
-    xml_str = ET.tostring(root, encoding='unicode', method='xml').replace('\n', '')
-    xml_str = re.sub(r'(?:(?<=>) *)', '', xml_str)
-    xml_str = re.sub(r'       -', '', xml_str)
-    xml_str = re.sub(r'      -->', ' -->', xml_str)
-    dom = minidom.parseString(xml_str)
-    return dom.toprettyxml(indent="  ")
+    return ET.tostring(root, encoding='unicode', method='xml', xml_declaration=False, pretty_print=True)
 
 
 def add_wl(ip):
