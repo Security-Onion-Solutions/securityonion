@@ -1,18 +1,18 @@
-### 2.3.90 ISO image built on 2021/11/19
+### 2.3.90-WAZUH ISO image built on 2021/11/23
 
 
 
 ### Download and Verify
 
-2.3.90 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.3.90.iso
+2.3.90-WAZUH ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.3.90-WAZUH.iso
 
-MD5: F214ECE9F32A6F881D9A735DEAF90E46  
-SHA1: 0B04FAA0FEC704CF6AD2030AA7A4AE80D9379AFA  
-SHA256: BE0E1516D83D7782AEAE9D52449FED45A45D72981515672C761C2A17B7AA613C 
+MD5: B7141C8627CDB45F4A8741B2ADE4A9F3  
+SHA1: 16087B385CA651659EC98F139AFDF90922430FB6  
+SHA256: 667AF11BBCFE3248AF59E45043703B55A543E059899AE387FF55EB8077304F04 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90-WAZUH.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
@@ -26,17 +26,17 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.90-WAZUH.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.3.90.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.3.90-WAZUH.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.3.90.iso.sig securityonion-2.3.90.iso
+gpg --verify securityonion-2.3.90-WAZUH.iso.sig securityonion-2.3.90-WAZUH.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
