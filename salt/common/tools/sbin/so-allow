@@ -79,10 +79,10 @@ def ip_prompt() -> str:
 
 
 def wazuh_enabled() -> bool:
-  for file in os.listdir(f'{LOCAL_SALT_DIR}/pillar'):
-    with open(file, 'r') as pillar:
-      if 'wazuh: 1' in pillar.read():
-        return True
+  file = f'{LOCAL_SALT_DIR}/pillar/global.sls'
+  with open(file, 'r') as pillar:
+    if 'wazuh: 1' in pillar.read():
+      return True
   return False
 
 
@@ -124,7 +124,7 @@ def apply(role: str, ip: str) -> int:
   else:
     return cmd.returncode
   if cmd.returncode == 0:
-    if wazuh_enabled and role=='analyst':
+    if wazuh_enabled() and role=='analyst':
       try:
         add_wl(ip)
         print(f'Added whitelist entry for {ip} from {WAZUH_CONF}', file=sys.stderr)
