@@ -517,6 +517,7 @@ conf_filebeat_crt:
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ COMMONNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
