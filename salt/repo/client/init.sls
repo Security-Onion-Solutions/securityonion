@@ -65,6 +65,10 @@ yumconf:
     - mode: 644
     - template: jinja
     - show_changes: False
+
+cleanairgap:
+  file.absent:
+    - name: /etc/yum.repos.d/airgap_repo.repo
 {% endif %}
 
 cleanyum:
