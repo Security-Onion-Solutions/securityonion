@@ -599,9 +599,14 @@ up_to_2.3.80() {
 
 up_to_2.3.90() {
   for i in manager managersearch eval standalone; do
-    if compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls" > /dev/null; then
-      echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*_$i.sls
-      sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*_$i.sls
+    echo "Checking for compgen match of /opt/so/saltstack/local/pillar/minions/*_$i.sls"
+    if compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls"; then
+      echo "Found compgen match for /opt/so/saltstack/local/pillar/minions/*_$i.sls"
+      for f in $(compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls"); do
+        echo "Appending soc pillar data to $f"
+        echo "soc:" >> "$f"
+        sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" "$f"
+      done
     fi
   done
   
@@ -609,8 +614,8 @@ up_to_2.3.90() {
   so-firewall addhostgroup endgame
   
   # Force influx to generate a new cert
-  mv /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
-  mv /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
+  mv -v /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
+  mv -v /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
   
   # remove old common ingest pipeline in default
   rm -vf /opt/so/saltstack/default/salt/elasticsearch/files/ingest/common
