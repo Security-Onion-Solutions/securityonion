@@ -611,11 +611,17 @@ up_to_2.3.90() {
   done
   
   # Create Endgame Hostgroup
-  so-firewall addhostgroup endgame
+  echo "Adding endgame hostgroup with so-firewall"
+  if so-firewall addhostgroup endgame 2>&1 | grep -q 'Already exists'; then
+    echo 'endgame hostgroup already exists'
+  else
+    echo 'endgame hostgroup added'
+  fi
   
   # Force influx to generate a new cert
-  mv -v /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
-  mv -v /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
+  echo "Moving influxdb.crt and influxdb.key to generate new certs"
+  mv -vf /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
+  mv -vf /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
   
   # remove old common ingest pipeline in default
   rm -vf /opt/so/saltstack/default/salt/elasticsearch/files/ingest/common
