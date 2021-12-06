@@ -162,12 +162,85 @@ EOM
 
 }
 
-fail() {
-	msg=$1
-	echo "ERROR: $msg"
-	echo "Exiting."
+
+# Logging functions, ${__msg_myname} should be set in the sourcing script
+
+__msg_myname="${0##*/}"
+__msg_istty=0 # assume we aren't using a tty
+#__msg_libname="messages"
+# set colors based on tput if avalable
+if tput -V > /dev/null 2>&1
+then
+	__red=$(tput setaf 1)
+	__blue=$(tput setaf 4)
+	__NC=$(tput sgr0)
+else
+	__red="\e[31m"
+	__blue="\e[34m"
+	__NC="\e[0m"
+fi
+
+# Prefix strings space padded to be 8 spaces long
+__no_pre="        "
+__info="+++++++ "
+__warn="warning "
+__error="ERROR   "
+__fatal="FATAL!! "
+
+__msg() {
+	if [ ${__msg_istty} -eq 0 ]
+	then
+		printf "%s%s[%s] %s%s\n" \
+			"${color}" "${prefix}" "${__msg_myname}" "${1}" "${__NC}"
+	else
+		printf "%s[%s] %s\n" "${prefix}" "${__msg_myname}" "${1}"
+	fi
+	unset prefix; unset color
+}
+
+__err() {
+	__msg "${1}" 1>&2
+}
+
+__die() {
+	__err "${1}"
 	exit 1
 }
+
+# not sure where this is called so it's a wrapper around die() to preserve old behavior
+fail() {
+	__die "${1}"
+}
+
+msg_detect_tty() {
+	## Respect NO_COLOR if set, though if set as 'NO_COLOR=""' we have no efficient
+	## way of differentiating it from not being set
+	if [ "${#NO_COLOR}" -eq 0 ]
+	then
+		__msg_istty=0
+		return "${__msg_istty}"
+	fi
+	if tty -s 2<&- >/dev/null
+	then
+    echo "Is a tty"
+		__msg_istty=1
+	fi
+}
+
+# log takes 2 arguments, a severity and a string in that order
+# severity is an integer from 0 to 4
+# if log does not recognise the severity it passes all arguments to __msg
+log() {
+	case "${1}" in
+		0) shift; prefix="${__no_pre}"; color="${__NC}"  ; __msg "${@}" ;;
+		1) shift; prefix="${__info}"  ; color="${__NC}"  ; __msg "${@}" ;;
+		2) shift; prefix="${__warn}"  ; color="${__blue}"; __msg "${@}" ;;
+		3) shift; prefix="${__error}" ; color="${__red}" ; __err "${@}" ;;
+		4) shift; prefix="${__fatal}" ; color="${__red}" ; __die "${@}" ;;
+		*) prefix="$__no_pre" ; color="${__NC}" ; __msg "${@}" ;;
+	esac
+}
+msg_detect_tty
 
 get_random_value() {
 	length=${1:-20}
@@ -176,18 +249,18 @@ get_random_value() {
 
 gpg_rpm_import() {
 	if [[ "$OS" == "centos" ]]; then
-	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
-	        local RPMKEYSLOC="../salt/repo/client/files/centos/keys"
-	    else
-	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/centos/keys"
-	    fi
-	
-	    RPMKEYS=('RPM-GPG-KEY-EPEL-7' 'GPG-KEY-WAZUH' 'docker.pub' 'SALTSTACK-GPG-KEY.pub' 'securityonion.pub')
+		if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
+			local RPMKEYSLOC="../salt/repo/client/files/centos/keys"
+		else
+			local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/centos/keys"
+		fi
 
-	    for RPMKEY in "${RPMKEYS[@]}"; do
-    	        rpm --import $RPMKEYSLOC/$RPMKEY
-	        echo "Imported $RPMKEY"
-	    done
+		RPMKEYS=('RPM-GPG-KEY-EPEL-7' 'GPG-KEY-WAZUH' 'docker.pub' 'SALTSTACK-GPG-KEY.pub' 'securityonion.pub')
+
+		for RPMKEY in "${RPMKEYS[@]}"; do
+			rpm --import $RPMKEYSLOC/$RPMKEY
+			echo "Imported $RPMKEY"
+		done
 	fi
 }
 
@@ -216,9 +289,9 @@ is_manager_node() {
 	# Check to see if this is a manager node
 	role=$(lookup_role)
 	is_single_node_grid && return 0
-	[ $role == 'manager' ] && return 0
-	[ $role == 'managersearch' ] && return 0
-	[ $role == 'helix' ] && return 0
+	[[ "$role" == 'manager' ]] && return 0
+	[[ "$role" == 'managersearch' ]] && return 0
+	[[ "$role" == 'helix' ]] && return 0
 	return 1
 }
 
@@ -226,17 +299,17 @@ is_sensor_node() {
 	# Check to see if this is a sensor (forward) node
 	role=$(lookup_role)
 	is_single_node_grid && return 0
-	[ $role == 'sensor' ] && return 0
-	[ $role == 'heavynode' ] && return 0
-	[ $role == 'helix' ] && return 0
+	[[ "$role" == 'sensor' ]] && return 0
+	[[ "$role" == 'heavynode' ]] && return 0
+	[[ "$role" == 'helix' ]] && return 0
 	return 1
 }
 
 is_single_node_grid() {
 	role=$(lookup_role)
-	[ $role == 'eval' ] && return 0
-	[ $role == 'standalone' ] && return 0
-	[ $role == 'import' ] && return 0
+	[[ "$role" == 'eval' ]] && return 0
+	[[ "$role" == 'standalone' ]] && return 0
+	[[ "$role" == 'import' ]] && return 0
 	return 1
 }
 
