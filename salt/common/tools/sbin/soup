@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# shellcheck source=./so-common
 . /usr/sbin/so-common
 export LC_CTYPE="en_US.UTF-8"
 
@@ -34,65 +35,40 @@ check_err() {
   local exit_code=$1
   local err_msg="Unhandled error occured, please check $SOUP_LOG for details."
 
-  [[ $ERR_HANDLED == true ]] && exit $exit_code
+  [[ ${ERR_HANDLED} == true ]] && exit "${exit_code}"
+
   if [[ $exit_code -ne 0 ]]; then
     printf '%s' "Soup failed with error $exit_code: "
     case $exit_code in
-      2)
-        echo 'No such file or directory'
-      ;;
-      5)
-        echo 'Interrupted system call'
-      ;;
-      12)
-        echo 'Out of memory'
-      ;;
+      2) log 3 'No such file or directory' ;;
+      5) log 3 'Interrupted system call' ;;
+      12) log 3 'Out of memory' ;;
       28)
-        echo 'No space left on device'
-        echo 'Likely ran out of space on disk, please review hardware requirements for Security Onion: https://docs.securityonion.net/en/2.3/hardware.html'
-      ;;
-      30)
-        echo 'Read-only file system'
-      ;;
-      35)
-        echo 'Resource temporarily unavailable'
-      ;;
-      64)
-        echo 'Machine is not on the network'
-      ;;
-      67)
-        echo 'Link has been severed'
-      ;;
-      100)
-        echo 'Network is down'
-      ;;
-      101)
-        echo 'Network is unreachable'
-      ;;
-      102)
-        echo 'Network reset'
-      ;;
-      110)
-        echo 'Connection timed out'
-      ;;
-      111)
-        echo 'Connection refused'
-      ;;
-      112)
-        echo 'Host is down'
-      ;;
-      113)
-        echo 'No route to host'
-      ;;
+        log 3 'No space left on device'
+        log 3 'Likely ran out of space on disk'
+        log 3 'please review hardware requirements for Security Onion:'
+        log 3 'https://docs.securityonion.net/en/2.3/hardware.html'
+        ;;
+      30) log 3 'Read-only file system' ;;
+      35) log 3 'Resource temporarily unavailable' ;;
+      64) log 3 'Machine is not on the network' ;;
+      67) log 3 'Link has been severed' ;;
+      100) log 3 'Network is down' ;;
+      101) log 3 'Network is unreachable' ;;
+      102) log 3 'Network reset' ;;
+      110) log 3 'Connection timed out' ;;
+      111) log 3 'Connection refused' ;;
+      112) log 3 'Host is down' ;;
+      113) log 3 'No route to host' ;;
       *)
-        echo 'Unhandled error'
-        echo "$err_msg"
-      ;;
+        log 3 'Unhandled error'
+        log 3 "$err_msg"
+        ;;
     esac
     if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
-      echo "$err_msg"
+      log 3 "$err_msg"
     fi
-    exit $exit_code
+    exit "${exit_code}"
   fi
 
 }
@@ -101,55 +77,53 @@ add_common() {
   cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
   cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
   salt-call state.apply common queue=True
-  echo "Run soup one more time"
+  log 0 "Run soup one more time"
   exit 0
 }
 
 airgap_mounted() {
-  # Let's see if the ISO is already mounted. 
+  # Let's see if the ISO is already mounted.
   if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
-    echo "The ISO is already mounted"
+    log "The ISO is already mounted"
   else
     if [[ -z $ISOLOC ]]; then
-      echo "This is airgap. Ask for a location."
-      echo ""
-      cat << EOF
-In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided. 
-For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso. 
-Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom.
+      log 1 "This is airgap. Ask for a location."
+      log ""
+      printf "%s" "In order for soup to proceed," \
+        "the path to the downloaded Security Onion ISO file," \
+        "or the path to the CD-ROM or equivalent device containing the ISO media must be provided." \
+        "For example, if you have copied the new Security Onion ISO file to your home directory," \
+        "then the path might look like /home/myuser/securityonion-2.x.y.iso." \
+        "Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom."
 
-EOF
       read -rp 'Enter the path to the new Security Onion ISO content: ' ISOLOC
     fi
     if [[ -f $ISOLOC ]]; then
       # Mounting the ISO image
       mkdir -p /tmp/soagupdate
-      mount -t iso9660 -o loop $ISOLOC /tmp/soagupdate
+      mount -t iso9660 -o loop "${ISOLOC}" /tmp/soagupdate
       # Make sure mounting was successful
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
-        echo "Something went wrong trying to mount the ISO."
-        echo "Ensure you verify the ISO that you downloaded."
-        exit 0
+        log 3 "Something went wrong trying to mount the ISO."
+        log 4 "Ensure you verify the ISO that you downloaded."
       else
-        echo "ISO has been mounted!"
-      fi  
+        log "ISO has been mounted!"
+      fi
     elif [[ -f $ISOLOC/SecurityOnion/VERSION ]]; then
-      ln -s $ISOLOC /tmp/soagupdate
-      echo "Found the update content"
+      ln -s "${ISOLOC}" /tmp/soagupdate
+      log "Found the update content"
     elif [[ -b $ISOLOC ]]; then
       mkdir -p /tmp/soagupdate
-      mount $ISOLOC /tmp/soagupdate
+      mount "${ISOLOC}" /tmp/soagupdate
       if [ ! -f /tmp/soagupdate/SecurityOnion/VERSION ]; then
-        echo "Something went wrong trying to mount the device."
-        echo "Ensure you verify the ISO that you downloaded."
-        exit 0
+        log 3 "Something went wrong trying to mount the device."
+        log 4 "Ensure you verify the ISO that you downloaded."
       else
-        echo "Device has been mounted!"
+        log 0 "Device has been mounted!"
       fi
     else
-      echo "Could not find Security Onion ISO content at ${ISOLOC}" 
-      echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
-      exit 0
+      log 3 "Could not find Security Onion ISO content at ${ISOLOC}"
+      log 4 "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
     fi
   fi
 }
@@ -158,15 +132,14 @@ airgap_update_dockers() {
   if [[ $is_airgap -eq 0 ]]; then
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
-      echo "Unable to locate registry. Exiting"
-      exit 0
+      log 4 "Unable to locate registry. Exiting"
     else
-      echo "Stopping the registry docker"
+      log 0 "Stopping the registry docker"
       docker stop so-dockerregistry
       docker rm so-dockerregistry
-      echo "Copying the new dockers over"
+      log 0 "Copying the new dockers over"
       tar xvf "$AGDOCKER/registry.tar" -C /nsm/docker-registry/docker
-      echo "Add Registry back"
+      log 0 "Add Registry back"
       docker load -i "$AGDOCKER/registry_image.tar"
     fi
   fi
@@ -180,14 +153,16 @@ update_registry() {
 
 check_airgap() {
   # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}')
-  if [[ "$AIRGAP" == "True" ]]; then
-      is_airgap=0
-      UPDATE_DIR=/tmp/soagupdate/SecurityOnion
-      AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
-  else 
-      is_airgap=1
+  AIRGAP=$(awk 'airgap {print $2}' /opt/so/saltstack/local/pillar/global.sls)
+  if [[ "${AIRGAP}" == "True" ]]; then
+    log 1 "Airgap detected"
+    is_airgap=0
+    UPDATE_DIR=/tmp/soagupdate/SecurityOnion
+    AGDOCKER=/tmp/soagupdate/docker
+    AGREPO=/tmp/soagupdate/Packages
+  else
+    log 1 "Not an arigap"
+    is_airgap=1
   fi
 }
 
@@ -210,12 +185,12 @@ check_local_mods() {
   done< <(find $salt_local -type f -print0)
 
   if [[ ${#local_mod_arr} -gt 0 ]]; then
-    echo "Potentially breaking changes found in the following files (check ${DEFAULT_SALT_DIR} for original copy):"
+    log 2 "Potentially breaking changes found in the following files (check ${DEFAULT_SALT_DIR} for original copy):"
     for file_str in "${local_mod_arr[@]}"; do
-      echo "  $file_str"
+      log "  $file_str"
     done
-    echo ""
-    echo "To reference this list later, check $SOUP_LOG"
+    log ""
+    log 2 "To reference this list later, check $SOUP_LOG"
     sleep 10
   fi
 }
@@ -223,21 +198,23 @@ check_local_mods() {
 # {% endraw %}
 
 check_pillar_items() {
-  local pillar_output=$(salt-call pillar.items --out=json)
+  local pillar_output
+  pillar_output=$(salt-call pillar.items --out=json)
 
   cond=$(jq '.local | has("_errors")' <<< "$pillar_output")
   if [[ "$cond" == "true" ]]; then
-    printf "\nThere is an issue rendering the manager's pillars. Please correct the issues in the sls files mentioned below before running SOUP again.\n\n"
+    log 3 "There is an issue rendering the manager's pillars."
+    log 3 "Please correct the issues in the sls files mentioned below before running SOUP again."
     jq '.local._errors[]' <<< "$pillar_output"
-    exit 0
+    exit
   else
-    printf "\nThe manager's pillars can be rendered. We can proceed with SOUP.\n\n"
+    log 0 "The manager's pillars can be rendered. We can proceed with SOUP."
   fi
 }
 
 check_sudoers() {
   if grep -q "so-setup" /etc/sudoers; then
-    echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
+    log 1 "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
   fi
 }
 
@@ -245,7 +222,7 @@ check_log_size_limit() {
 
   local num_minion_pillars
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
-  
+
   if [[ $num_minion_pillars -gt 1 ]]; then
     if find /opt/so/saltstack/local/pillar/minions/ -type f | grep -q "_heavynode"; then
       lsl_msg='distributed'
@@ -258,18 +235,18 @@ check_log_size_limit() {
     IFS='_' read -ra minion_arr <<< "$minion_id"
 
     local node_type="${minion_arr[0]}"
-    
+
     local current_limit
     current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
-    
+
     local percent
     case $node_type in
       'standalone' | 'eval')
         percent=50
-      ;;
+        ;;
       *)
         percent=80
-      ;;
+        ;;
     esac
 
     local disk_dir="/"
@@ -304,24 +281,24 @@ check_os_updates() {
     OSUPDATES=$(yum -q list updates | wc -l)
   fi
   if [[ "$OSUPDATES" -gt 0 ]]; then
-      if [[ -z $UNATTENDED ]]; then
-        echo "$NEEDUPDATES"
-        echo ""
-        read -rp "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
-        if [[ "$confirm" == [cC] ]]; then
-          echo "Continuing without updating packages"
-        elif [[ "$confirm" == [uU] ]]; then
-          echo "Applying Grid Updates"
-          update_flag=true
-        else
-          echo "Exiting soup"
-          exit 0
-        fi
-      else
+    if [[ -z $UNATTENDED ]]; then
+      log 1 "$NEEDUPDATES"
+      log ""
+      read -rp "Press U to update OS packages (recommended), C to continue without updates, or E to exit: " confirm
+      if [[ "$confirm" == [cC] ]]; then
+        log 2 "Continuing without updating packages"
+      elif [[ "$confirm" == [uU] ]]; then
+        log 2 "Applying Grid Updates"
         update_flag=true
+      else
+        log 1 "Exiting soup"
+        exit 0
       fi
+    else
+      update_flag=true
+    fi
   else
-    echo "Looks like you have an updated OS"
+    log 0 "Looks like you have an updated OS"
   fi
 
   if [[ $update_flag == true ]]; then
@@ -333,9 +310,8 @@ check_os_updates() {
 
 clean_dockers() {
   # Place Holder for cleaning up old docker images
-  echo "Trying to clean up old dockers."
+  log 0 "Trying to clean up old dockers."
   docker system prune -a -f
-
 }
 
 clone_to_tmp() {
@@ -348,11 +324,10 @@ clone_to_tmp() {
   if [ -n "$BRANCH" ]; then
     SOUP_BRANCH="-b $BRANCH"
   fi
-  git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
+  git clone "${SOUP_BRANCH}" https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
-    echo "Update was unable to pull from github. Please check your internet."
-    exit 0
+    log 4 "Update was unable to pull from github. Please check your internet."
   fi
 }
 
@@ -370,106 +345,106 @@ highstate() {
 }
 
 masterlock() {
-  echo "Locking Salt Master"
+  log 0 "Locking Salt Master"
   if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
     TOPFILE=/opt/so/saltstack/default/salt/top.sls
     BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
     mv -v $TOPFILE $BACKUPTOPFILE
-    echo "base:" > $TOPFILE
-    echo "  $MINIONID:" >> $TOPFILE
-    echo "    - ca" >> $TOPFILE
-    echo "    - ssl" >> $TOPFILE
-    echo "    - elasticsearch" >> $TOPFILE
+    printf "base:" > $TOPFILE
+    printf "  $MINIONID:" >> $TOPFILE
+    printf "    - ca" >> $TOPFILE
+    printf "    - ssl" >> $TOPFILE
+    printf "    - elasticsearch" >> $TOPFILE
   fi
 }
 
 masterunlock() {
-  echo "Unlocking Salt Master"
+  log 0 "Unlocking Salt Master"
   if [[ "$INSTALLEDVERSION" =~ rc.1 ]]; then
     mv -v $BACKUPTOPFILE $TOPFILE
   fi
 }
 
 preupgrade_changes() {
-    # This function is to add any new pillar items if needed.
-    echo "Checking to see if changes are needed."
+  # This function is to add any new pillar items if needed.
+  log 0 "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_to_2.3.20
-    [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_to_2.3.30
-    [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
-    [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
-    [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
-    true
+  [[ "$INSTALLEDVERSION" == 2.3.0 || "$INSTALLEDVERSION" == 2.3.1 || "$INSTALLEDVERSION" == 2.3.2 || "$INSTALLEDVERSION" == 2.3.10 ]] && up_to_2.3.20
+  [[ "$INSTALLEDVERSION" == 2.3.20 || "$INSTALLEDVERSION" == 2.3.21 ]] && up_to_2.3.30
+  [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
+  [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
+  [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
+  true
 }
 
 postupgrade_changes() {
-    # This function is to add any new pillar items if needed.
-    echo "Running post upgrade processes."
-    
-    [[ "$POSTVERSION" == 2.3.0 || "$POSTVERSION" == 2.3.1 || "$POSTVERSION" == 2.3.2 || "$POSTVERSION" == 2.3.10 || "$POSTVERSION" == 2.3.20 ]] && post_to_2.3.21
-    [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
-    [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
-    [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
-    true
+  # This function is to add any new pillar items if needed.
+  log 0 "Running post upgrade processes."
+
+  [[ "$POSTVERSION" == 2.3.0 || "$POSTVERSION" == 2.3.1 || "$POSTVERSION" == 2.3.2 || "$POSTVERSION" == 2.3.10 || "$POSTVERSION" == 2.3.20 ]] && post_to_2.3.21
+  [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
+  [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
+  [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
+  true
 }
 
 post_to_2.3.21() {
-  salt-call state.apply playbook.OLD_db_init
-  rm -f /opt/so/rules/elastalert/playbook/*.yaml
-  so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
-  POSTVERSION=2.3.21
+salt-call state.apply playbook.OLD_db_init
+rm -f /opt/so/rules/elastalert/playbook/*.yaml
+so-playbook-ruleupdate >> /root/soup_playbook_rule_update.log 2>&1 &
+POSTVERSION=2.3.21
 }
 
 post_to_2.3.40() {
-  so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
-  so-kibana-space-defaults
-  POSTVERSION=2.3.40
+so-playbook-sigma-refresh >> /root/soup_playbook_sigma_refresh.log 2>&1 &
+so-kibana-space-defaults
+POSTVERSION=2.3.40
 }
 
 post_to_2.3.60() {
-  for table in identity_recovery_addresses selfservice_recovery_flows selfservice_registration_flows selfservice_verification_flows identities identity_verification_tokens identity_credentials selfservice_settings_flows identity_recovery_tokens continuity_containers identity_credential_identifiers identity_verifiable_addresses courier_messages selfservice_errors sessions selfservice_login_flows
-  do
-    echo "Forcing Kratos network migration: $table"
-    sqlite3 /opt/so/conf/kratos/db/db.sqlite "update $table set nid=(select id from networks limit 1);"
-  done
+for table in identity_recovery_addresses selfservice_recovery_flows selfservice_registration_flows selfservice_verification_flows identities identity_verification_tokens identity_credentials selfservice_settings_flows identity_recovery_tokens continuity_containers identity_credential_identifiers identity_verifiable_addresses courier_messages selfservice_errors sessions selfservice_login_flows
+do
+  log "Forcing Kratos network migration: $table"
+  sqlite3 /opt/so/conf/kratos/db/db.sqlite "update $table set nid=(select id from networks limit 1);"
+done
 
-  POSTVERSION=2.3.60
+POSTVERSION=2.3.60
 }
 
 post_to_2.3.90() {
-  # Do Kibana dashboard things
-  salt-call state.apply kibana.so_savedobjects_defaults queue=True
+# Do Kibana dashboard things
+salt-call state.apply kibana.so_savedobjects_defaults queue=True
 
   # Create FleetDM service account
-    FLEET_MANAGER=$(lookup_pillar fleet_manager)
-    if [[ "$FLEET_MANAGER" == "True" ]]; then
-      FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
-      FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
-      MYSQL_PW=$(lookup_pillar_secret mysql)
+  FLEET_MANAGER=$(lookup_pillar fleet_manager)
+  if [[ "$FLEET_MANAGER" == "True" ]]; then
+    FLEET_SA_EMAIL=$(lookup_pillar_secret fleet_sa_email)
+    FLEET_SA_PW=$(lookup_pillar_secret fleet_sa_password)
+    MYSQL_PW=$(lookup_pillar_secret mysql)
 
-      FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
-      MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
+    FLEET_HASH=$(docker exec so-soctopus python -c "import bcrypt; print(bcrypt.hashpw('$FLEET_SA_PW'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'));" 2>&1)
+    MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password="${MYSQL_PW}" fleet -e \
       "INSERT INTO users (password,salt,email,name,global_role) VALUES ('$FLEET_HASH','','$FLEET_SA_EMAIL','$FLEET_SA_EMAIL','admin')" 2>&1)
 
-      if [[ $? -eq 0 ]]; then
-          echo "Successfully added service account to Fleet"
-      else
-          echo "Unable to add service account to Fleet"
-          echo "$MYSQL_OUTPUT"
-      fi
+    if [[ $? -eq 0 ]]; then
+      log 0 "Successfully added service account to Fleet"
+    else
+      log 3 "Unable to add service account to Fleet"
+      log 3 "$MYSQL_OUTPUT"
     fi
+  fi
 
-  
+
 
   POSTVERSION=2.3.90
 }
 
 
 up_to_2.3.20(){
-  DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-  # Remove PCAP from global
-  sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
-  sed '/sensor_checkin_interval_ms:/d' /opt/so/saltstack/local/pillar/global.sls
+DOCKERSTUFFBIP=$(echo "${DOCKERSTUFF}" | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+# Remove PCAP from global
+sed '/pcap:/d' /opt/so/saltstack/local/pillar/global.sls
+sed '/sensor_checkin_interval_ms:/d' /opt/so/saltstack/local/pillar/global.sls
 
   # Add checking interval to glbal
   echo "sensoroni:" >> /opt/so/saltstack/local/pillar/global.sls
@@ -477,10 +452,11 @@ up_to_2.3.20(){
 
   # Update pillar fiels for new sensoroni functionality
   for file in /opt/so/saltstack/local/pillar/minions/*; do
-    echo "sensoroni:" >> $file
-    echo "  node_description:" >> $file
-    local SOMEADDRESS=$(cat $file | grep mainip | tail -n 1 | awk '{print $2'})
-    echo "  node_address: $SOMEADDRESS" >> $file
+    echo "sensoroni:" >> "${file}"
+    echo "  node_description:" >> "${file}"
+    local SOMEADDRESS
+    SOMEADDRESS=$( grep mainip "${file}" | tail -n 1 | awk '{print $2}' )
+    echo "  node_address: $SOMEADDRESS" >> "${file}"
   done
 
   # Remove old firewall config to reduce confusion
@@ -504,31 +480,31 @@ up_to_2.3.20(){
 }
 
 up_to_2.3.30() {
-  # Replace any curly brace scalars with the same scalar in single quotes
-  readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
-  for pillar in "${minion_pillars[@]}"; do
-    sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
-  done
+# Replace any curly brace scalars with the same scalar in single quotes
+readarray -t minion_pillars <<< "$(find /opt/so/saltstack/local/pillar/minions -type f -name '*.sls')"
+for pillar in "${minion_pillars[@]}"; do
+  sed -i -r "s/ (\{\{.*}})$/ '\1'/g" "$pillar"
+done
 
   # Change the IMAGEREPO
   sed -i "/  imagerepo: 'securityonion'/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls
-  sed -i "/  imagerepo: securityonion/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls 
+  sed -i "/  imagerepo: securityonion/c\  imagerepo: 'security-onion-solutions'" /opt/so/saltstack/local/pillar/global.sls
 
   # Strelka rule repo pillar addition
   if [[ $is_airgap -eq 0 ]]; then
-      # Add manager as default Strelka YARA rule repo
-      sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;
+    # Add manager as default Strelka YARA rule repo
+    sed -i "/^strelka:/a \\  repos: \n    - https://$HOSTNAME/repo/rules/strelka" /opt/so/saltstack/local/pillar/global.sls;
   else
-      # Add Github repo for Strelka YARA rules
-      sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
+    # Add Github repo for Strelka YARA rules
+    sed -i "/^strelka:/a \\  repos: \n    - https://github.com/Neo23x0/signature-base" /opt/so/saltstack/local/pillar/global.sls;
   fi
   check_log_size_limit
   INSTALLEDVERSION=2.3.30
 }
 
 up_to_2.3.50() {
-  
-  cat <<EOF > /tmp/supersed.txt
+
+cat <<EOF > /tmp/supersed.txt
 /so-zeek:/ {
   p;
   n;
@@ -547,19 +523,19 @@ up_to_2.3.50() {
           p;
           d;
         }
-      }
     }
-  }
+}
+}
 }
 p;
 EOF
-  sed -n -i -f /tmp/supersed.txt /opt/so/saltstack/local/pillar/global.sls
-  rm /tmp/supersed.txt
-  INSTALLEDVERSION=2.3.50
+sed -n -i -f /tmp/supersed.txt /opt/so/saltstack/local/pillar/global.sls
+rm /tmp/supersed.txt
+INSTALLEDVERSION=2.3.50
 }
 
 up_to_2.3.80() {
-  
+
   # Remove watermark settings from global.sls
   sed -i '/  cluster_routing_allocation_disk/d' /opt/so/saltstack/local/pillar/global.sls
 
@@ -568,7 +544,7 @@ up_to_2.3.80() {
   sed -i '/  index_settings:/a \\    so-logstash: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
   sed -i '/  index_settings:/a \\    so-kibana: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
   sed -i '/  index_settings:/a \\    so-redis: \n      shards: 1 \n      warm: 7 \n      close: 30 \n      delete: 365' /opt/so/saltstack/local/pillar/global.sls
-  
+
   # Do some pillar formatting
   tc=$(grep -w true_cluster /opt/so/saltstack/local/pillar/global.sls | awk -F: {'print tolower($2)'}| xargs)
 
@@ -641,19 +617,19 @@ up_to_2.3.90() {
 
   # Generate FleetDM Service Account creds if they do not exist
   if grep -q "fleet_sa_email" /opt/so/saltstack/local/pillar/secrets.sls; then
-    echo "FleetDM Service Account credentials already created..."
+    log 1 "FleetDM Service Account credentials already created..."
   else
-    echo "Generating FleetDM Service Account credentials..."
+    log 0 "Generating FleetDM Service Account credentials..."
     FLEETSAPASS=$(get_random_value)
-    	printf '%s\n'\
-        "  fleet_sa_email: service.account@securityonion.invalid"\
-        "  fleet_sa_password: $FLEETSAPASS"\
-        >> /opt/so/saltstack/local/pillar/secrets.sls
+    printf '%s\n'\
+      "  fleet_sa_email: service.account@securityonion.invalid"\
+      "  fleet_sa_password: $FLEETSAPASS"\
+      >> /opt/so/saltstack/local/pillar/secrets.sls
 
   fi
 
   sed -i -re 's/^(playbook_admin.*|playbook_automation.*)/  \1/g' /opt/so/saltstack/local/pillar/secrets.sls
-  
+
   INSTALLEDVERSION=2.3.90
 }
 
@@ -661,10 +637,10 @@ up_to_2.3.90() {
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
   if [ "$CURRENTSPACE" -lt "10" ]; then
-      echo "You are low on disk space."
-      return 1
+    log 4 "You are low on disk space."
+    return 1
   else
-      return 0
+    return 0
   fi
 }
 
@@ -672,32 +648,31 @@ upgrade_space() {
   if ! verify_upgradespace; then
     clean_dockers
     if ! verify_upgradespace; then
-      echo "There is not enough space to perform the upgrade. Please free up space and try again"
-      exit 0
+      log 4 "There is not enough space to perform the upgrade. Please free up space and try again"
     fi
   else
-      echo "You have enough space for upgrade. Proceeding with soup."
-  fi  
+    log 0 "You have enough space for upgrade. Proceeding with soup."
+  fi
 }
 
 thehive_maint() {
-  echo -n "Waiting for TheHive..."
+  printf "Waiting for TheHive..."
   COUNT=0
   THEHIVE_CONNECTED="no"
   while [[ "$COUNT" -le 240 ]]; do
-    curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
-      if [ $? -eq 0 ]; then
-        THEHIVE_CONNECTED="yes"
-        echo "connected!"
-        break
-      else
-        ((COUNT+=1))
-        sleep 1
-        echo -n "."
-      fi
+    if ! curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
+    then
+      THEHIVE_CONNECTED="yes"
+      log 0 "connected!"
+      break
+    else
+      ((COUNT+=1))
+      sleep 1
+      printf "."
+    fi
   done
   if [ "$THEHIVE_CONNECTED" == "yes" ]; then
-    echo "Migrating thehive databases if needed."
+    log 0 "Migrating thehive databases if needed."
     curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
     curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
   fi
@@ -715,17 +690,17 @@ update_airgap_rules() {
 
 update_centos_repo() {
   # Update the files in the repo
-  echo "Syncing new updates to /nsm/repo"
+  log 0 "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
-  echo "Creating repo"
+  log 0 "Creating repo"
   createrepo /nsm/repo
 }
 
 update_version() {
   # Update the version to the latest
-  echo "Updating the Security Onion version file."
-  echo $NEWVERSION > /etc/soversion
-  echo $HOTFIXVERSION > /etc/sohotfix
+  log 0 "Updating the Security Onion version file."
+  echo "${NEWVERSION}" > /etc/soversion
+  echo "${HOTFIXVERSION}" > /etc/sohotfix
   sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global.sls
 }
 
@@ -735,93 +710,93 @@ upgrade_check() {
   HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
-    echo "Checking to see if there are hotfixes needed"
+    log 0 "Checking to see if there are hotfixes needed"
     if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
-      echo "You are already running the latest version of Security Onion."
+      log 0 "You are already running the latest version of Security Onion."
       exit 0
     else
-      echo "We need to apply a hotfix"
+      log 0 "We need to apply a hotfix"
       is_hotfix=true
     fi
   else
     is_hotfix=false
-  fi 
+  fi
 
 }
 
 upgrade_check_salt() {
   NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk '{print $2}')
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
-    echo "You are already running the correct version of Salt for Security Onion."
+    log 0 "You are already running the correct version of Salt for Security Onion."
   else
     UPGRADESALT=1
   fi
-}   
+}
 
 upgrade_salt() {
   SALTUPGRADED=True
-  echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
-  echo ""
+  log 0 "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
+  log 0 ""
   # If CentOS
   if [[ $OS == 'centos' ]]; then
-    echo "Removing yum versionlock for Salt."
-    echo ""
+    log 0 "Removing yum versionlock for Salt."
+    log 0 ""
     yum versionlock delete "salt-*"
-    echo "Updating Salt packages and restarting services."
-    echo ""
+    log 0 "Updating Salt packages and restarting services."
+    log 0 ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-    "Could not update salt, please check $SOUP_LOG for details."
-    set -e
-    echo "Applying yum versionlock for Salt."
-    echo ""
-    yum versionlock add "salt-*"
-  # Else do Ubuntu things
-  elif [[ $OS == 'ubuntu' ]]; then
-    echo "Removing apt hold for Salt."
-    echo ""
-    apt-mark unhold "salt-common"
-    apt-mark unhold "salt-master"
-    apt-mark unhold "salt-minion"
-    echo "Updating Salt packages and restarting services."
-    echo ""
-    set +e
-    run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-    "Could not update salt, please check $SOUP_LOG for details."
-    set -e
-    echo "Applying apt hold for Salt."
-    echo ""
-    apt-mark hold "salt-common"
-    apt-mark hold "salt-master"
-    apt-mark hold "salt-minion"
+      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+      "Could not update salt, please check $SOUP_LOG for details."
+          set -e
+          log 0 "Applying yum versionlock for Salt."
+          log 0 ""
+          yum versionlock add "salt-*"
+          # Else do Ubuntu things
+        elif [[ $OS == 'ubuntu' ]]; then
+          log 0 "Removing apt hold for Salt."
+          log 0 ""
+          apt-mark unhold "salt-common"
+          apt-mark unhold "salt-master"
+          apt-mark unhold "salt-minion"
+          log 0 "Updating Salt packages and restarting services."
+          log 0 ""
+          set +e
+          run_check_net_err \
+            "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+            "Could not update salt, please check $SOUP_LOG for details."
+                      set -e
+                      log 0 "Applying apt hold for Salt."
+                      log 0 ""
+                      apt-mark hold "salt-common"
+                      apt-mark hold "salt-master"
+                      apt-mark hold "salt-minion"
   fi
 }
 
 upgrade_to_2.3.50_repo() {
-  echo "Performing repo changes."
-  if [[ "$OS" == "centos" ]]; then
-    # Import GPG Keys
-    gpg_rpm_import
-    echo "Disabling fastestmirror."
-    disable_fastestmirror
-    echo "Deleting unneeded repo files."
-    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+log 0 "Performing repo changes."
+if [[ "$OS" == "centos" ]]; then
+  # Import GPG Keys
+  gpg_rpm_import
+  log 0 "Disabling fastestmirror."
+  disable_fastestmirror
+  log 0 "Deleting unneeded repo files."
+  DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
 
-    for DELREPO in "${DELREPOS[@]}"; do
-      if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
-        echo "Deleting $DELREPO.repo"
-        rm -f "/etc/yum.repos.d/$DELREPO.repo"
-      fi
-    done
-    if [[ $is_airgap -eq 1 ]]; then
-      # Copy the new repo file if not airgap
-      cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
-      yum clean all
-      yum repolist
+  for DELREPO in "${DELREPOS[@]}"; do
+    if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
+      log 0 "Deleting $DELREPO.repo"
+      rm -f "/etc/yum.repos.d/$DELREPO.repo"
     fi
+  done
+  if [[ $is_airgap -eq 1 ]]; then
+    # Copy the new repo file if not airgap
+    cp $UPDATE_DIR/salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+    yum clean all
+    yum repolist
   fi
+fi
 }
 
 verify_latest_update_script() {
@@ -839,16 +814,16 @@ verify_latest_update_script() {
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
 
   if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
-    echo "This version of the soup script is up to date. Proceeding."
+    log 0 "This version of the soup script is up to date. Proceeding."
     rm -f /tmp/soup /tmp/so-common
   else
-    echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
+    log 0 "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
     cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     salt-call state.apply -l info common queue=True
-    echo ""
-    echo "soup has been updated. Please run soup again."
+    log 0 ""
+    log 0 "soup has been updated. Please run soup again."
     exit 0
   fi
 }
@@ -856,87 +831,87 @@ verify_latest_update_script() {
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
     FILE="/nsm/wazuh/etc/ossec.conf"
-    echo "Detecting if ossec.conf needs corrected..."
+    log 0 "Detecting if ossec.conf needs corrected..."
     if head -1 $FILE | grep -q "xml version"; then
-      echo "$FILE has an XML header; removing"
+      log 0 "$FILE has an XML header; removing"
       sed -i 1d $FILE
       so-wazuh-restart
-    else    
-      echo "$FILE does not have an XML header, so no changes are necessary."
+    else
+      log 0 "$FILE does not have an XML header, so no changes are necessary."
     fi
   else
-    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    log 0 "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
 }
 
 
 main() {
   trap 'check_err $?' EXIT
-  
-  echo "### Preparing soup at $(date) ###"
+
+  log 0 "### Preparing soup at $(date) ###"
   check_pillar_items
 
-  echo "Checking to see if this is an airgap install."
-  echo ""
+  log 0 "Checking to see if this is an airgap install."
+  log 0 ""
   check_airgap
   if [[ $is_airgap -eq 0 && $UNATTENDED == true && -z $ISOLOC ]]; then
-    echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
+    log 0 "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
     exit 0
   fi
-  echo "Checking to see if this is a manager."
-  echo ""
+  log 0 "Checking to see if this is a manager."
+  log 0 ""
   require_manager
   set_minionid
-  echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
-  echo ""
+  log 0 "Found that Security Onion $INSTALLEDVERSION is currently installed."
+  log 0 ""
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
     airgap_mounted
   else
-    echo "Cloning Security Onion github repo into $UPDATE_DIR."
-    echo "Removing previous upgrade sources."
+    log 0 "Cloning Security Onion github repo into $UPDATE_DIR."
+    log 0 "Removing previous upgrade sources."
     rm -rf $UPDATE_DIR
-    echo "Cloning the Security Onion Repo."
+    log 0 "Cloning the Security Onion Repo."
     clone_to_tmp
   fi
-  echo "Verifying we have the latest soup script."
+  log 0 "Verifying we have the latest soup script."
   verify_latest_update_script
-  echo ""
+  log 0 ""
   set_os
   set_palette
   check_elastic_license
-  echo ""
+  log 0 ""
   check_os_updates
 
-  echo "Generating new repo archive"
+  log 0 "Generating new repo archive"
   generate_and_clean_tarballs
   if [ -f /usr/sbin/so-image-common ]; then
     . /usr/sbin/so-image-common
-  else 
-  add_common
+  else
+    add_common
   fi
 
-  echo "Let's see if we need to update Security Onion."
+  log 0 "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
 
-  echo "Checking for Salt Master and Minion updates."
+  log 0 "Checking for Salt Master and Minion updates."
   upgrade_check_salt
   set -e
 
   if [ "$is_hotfix" == "true" ]; then
-    echo "Applying $HOTFIXVERSION hotfix"
+    log 0 "Applying $HOTFIXVERSION hotfix"
     copy_new_files
     apply_hotfix
-    echo "Hotfix applied"
+    log 0 "Hotfix applied"
     update_version
     salt-call state.highstate -l info queue=True
   else
-    echo ""
-    echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
-    echo ""
+    log 0 ""
+    log 0 "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
+    log 0 ""
 
-    echo "Updating dockers to $NEWVERSION."
+    log 0 "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
       update_centos_repo
@@ -949,47 +924,47 @@ main() {
       set -e
     fi
 
-    echo ""
-    echo "Stopping Salt Minion service."
+    log 0 ""
+    log 0 "Stopping Salt Minion service."
     systemctl stop salt-minion
-    echo "Killing any remaining Salt Minion processes."
+    log 0 "Killing any remaining Salt Minion processes."
     set +e
     pkill -9 -ef /usr/bin/salt-minion
     set -e
-    echo ""
-    echo "Stopping Salt Master service."
+    log 0 ""
+    log 0 "Stopping Salt Master service."
     systemctl stop salt-master
-    echo ""
+    log 0 ""
 
     upgrade_to_2.3.50_repo
 
     # Does salt need upgraded. If so update it.
     if [[ $UPGRADESALT -eq 1 ]]; then
-      echo "Upgrading Salt"
+      log 0 "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
-    
-      echo "Checking if Salt was upgraded."
-      echo ""
+
+      log 0 "Checking if Salt was upgraded."
+      log 0 ""
       # Check that Salt was upgraded
       SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
       if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
-        echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
-        echo "Once the issue is resolved, run soup again."
-        echo "Exiting."
-        echo ""
+        log 0 "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+        log 0 "Once the issue is resolved, run soup again."
+        log 0 "Exiting."
+        log 0 ""
         exit 0
       else
-        echo "Salt upgrade success."
-        echo ""
+        log 0 "Salt upgrade success."
+        log 0 ""
       fi
     fi
 
     preupgrade_changes
-    echo ""
+    log 0 ""
 
     if [[ $is_airgap -eq 0 ]]; then
-      echo "Updating Rule Files to the Latest."
+      log 0 "Updating Rule Files to the Latest."
       update_airgap_rules
     fi
 
@@ -998,116 +973,116 @@ main() {
       update_centos_repo
     fi
 
-    echo ""
-    echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
+    log 0 ""
+    log 0 "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
     copy_new_files
-    echo ""
+    log 0 ""
     update_version
 
-    echo ""
-    echo "Locking down Salt Master for upgrade"
+    log 0 ""
+    log 0 "Locking down Salt Master for upgrade"
     masterlock
 
-    echo ""
-    echo "Starting Salt Master service."
+    log 0 ""
+    log 0 "Starting Salt Master service."
     systemctl start salt-master
 
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
-    echo "Waiting on the Salt Master service to be ready."
+    log 0 "Waiting on the Salt Master service to be ready."
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
 
-    echo ""
-    echo "Ensuring python modules for Salt are installed and patched."
+    log 0 ""
+    log 0 "Ensuring python modules for Salt are installed and patched."
     salt-call state.apply salt.python3-influxdb -l info queue=True
-    echo ""
+    log 0 ""
 
     # Only regenerate osquery packages if Fleet is enabled
     FLEET_MANAGER=$(lookup_pillar fleet_manager)
     FLEET_NODE=$(lookup_pillar fleet_node)
     if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
-      echo ""
-      echo "Regenerating Osquery Packages.... This will take several minutes."
+      log 0 ""
+      log 0 "Regenerating Osquery Packages.... This will take several minutes."
       salt-call state.apply fleet.event_gen-packages -l info queue=True
-      echo ""
+      log 0 ""
     fi
 
-    echo ""
-    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
+    log 0 ""
+    log 0 "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
     set +e
     salt-call state.highstate -l info queue=True
     set -e
 
-    echo ""
-    echo "Stopping Salt Master to remove ACL"
+    log 0 ""
+    log 0 "Stopping Salt Master to remove ACL"
     systemctl stop salt-master
 
     masterunlock
 
-    echo ""
-    echo "Starting Salt Master service."
+    log 0 ""
+    log 0 "Starting Salt Master service."
     systemctl start salt-master
 
     set +e
-    echo "Waiting on the Salt Master service to be ready."
+    log 0 "Waiting on the Salt Master service to be ready."
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
-    
-    echo "Running a highstate. This could take several minutes."
+
+    log 0 "Running a highstate. This could take several minutes."
     salt-call state.highstate -l info queue=True
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
     thehive_maint
 
-    echo ""
-    echo "Upgrade to $NEWVERSION complete."
+    log 0 ""
+    log 0 "Upgrade to $NEWVERSION complete."
 
     # Everything beyond this is post-upgrade checking, don't fail past this point if something here causes an error
     set +e
 
-    echo "Checking the number of minions."
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    log 0 "Checking the number of minions."
+    NUM_MINIONS=$(find /opt/so/saltstack/local/pillar/minions/ -name '*_*.sls' | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
-        echo ""
-        echo "Cleaning repos on remote Security Onion nodes."
+        log 0 ""
+        log 0 "Cleaning repos on remote Security Onion nodes."
         salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
-        echo ""
+        log 0 ""
       fi
     fi
 
-    echo "Checking for local modifications."
+    log 0 "Checking for local modifications."
     check_local_mods
 
-    echo "Checking sudoers file."
+    log 0 "Checking sudoers file."
     check_sudoers
 
-    echo "Checking for necessary user migrations."
+    log 0 "Checking for necessary user migrations."
     so-user migrate
 
     if [[ -n $lsl_msg ]]; then
       case $lsl_msg in
         'distributed')
-          echo "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
-          echo " -> We recommend checking and adjusting the values as necessary."
-          echo " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
-        ;;
+          log 0 "[INFO] The value of log_size_limit in any heavy node minion pillars may be incorrect."
+          log 0 " -> We recommend checking and adjusting the values as necessary."
+          log 0 " -> Minion pillar directory: /opt/so/saltstack/local/pillar/minions/"
+          ;;
         'single-node')
           # We can assume the lsl_details array has been set if lsl_msg has this value
-          echo "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
-          echo " -> We recommend checking and adjusting the value as necessary."
-          echo " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
-        ;;
+          log 0 "[WARNING] The value of log_size_limit (${lsl_details[0]}) does not match the recommended value of ${lsl_details[1]}."
+          log 0 " -> We recommend checking and adjusting the value as necessary."
+          log 0 " -> File: /opt/so/saltstack/local/pillar/minions/${lsl_details[2]}.sls"
+          ;;
       esac
     fi
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
       cat << EOF
-    
-  
-  
+
+
+
 This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
 Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
@@ -1118,12 +1093,12 @@ For more information, please see https://docs.securityonion.net/en/2.3/soup.html
 
 EOF
 
-    fi
-  fi
+fi
+fi
 
-  if [ "$NOTIFYCUSTOMELASTICCONFIG" = true ] ; then
+if [ "$NOTIFYCUSTOMELASTICCONFIG" = true ] ; then
 
-    cat << EOF
+  cat << EOF
 
 
 A custom Elasticsearch configuration has been found at /opt/so/saltstack/local/elasticsearch/files/elasticsearch.yml. This file is no longer referenced in Security Onion versions >= 2.3.80.
@@ -1132,9 +1107,9 @@ If you still need those customizations, you'll need to manually migrate them to 
 
 EOF
 
-  fi
+fi
 
-  echo "### soup has been served at $(date) ###"
+log 0 "### soup has been served at $(date) ###"
 }
 
 while getopts ":b:f:y" opt; do
@@ -1142,29 +1117,19 @@ while getopts ":b:f:y" opt; do
     b )
       BATCHSIZE="$OPTARG"
       if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
-        echo "Batch size must be a number greater than 0."
-        exit 1
+        log 4 "Batch size must be a number greater than 0."
       fi
-    ;;
+      ;;
     y )
       if [[ ! -f /opt/so/state/yeselastic.txt ]]; then
-        echo "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
-        exit 1
+        log 4 "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
       else
-        UNATTENDED=true 
+        UNATTENDED=true
       fi
-    ;;
-    f )
-      ISOLOC="$OPTARG"
-    ;;
-    \? ) 
-      echo "Usage: soup [-b] [-y] [-f <iso location>]"
-      exit 1
-    ;;
-    : )
-      echo "Invalid option: $OPTARG requires an argument"
-      exit 1
-    ;;
+      ;;
+    f ) ISOLOC="$OPTARG" ;;
+    \? ) log 4 "Usage: soup [-b] [-y] [-f <iso location>]" ;;
+    : ) log 4 "Invalid option: $OPTARG requires an argument" ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -1182,7 +1147,7 @@ Press Enter to continue or Ctrl-C to cancel.
 
 EOF
 
-  read -r input
+read -r input
 fi
 
 main "$@" | tee -a $SOUP_LOG
