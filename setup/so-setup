@@ -257,6 +257,7 @@ elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
 elif [ "$install_type" = 'RECEIVER' ]; then
 	is_minion=true
+	is_receiver=true
 elif [ "$install_type" = 'ANALYST' ]; then
 	cd .. || exit 255
 	exec bash so-analyst-install
@@ -783,7 +784,7 @@ echo "1" > /root/accept_changes
 	set_progress_str 62 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
-	if [[ ! $is_helix ]]; then
+	if [[ ! $is_helix || ! $is_receiver ]]; then
 		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
 	fi
