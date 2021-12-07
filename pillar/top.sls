@@ -110,7 +110,7 @@ base:
     - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
-    - data.receivertab
+    - data.receiverstab
 
   '*_import':
     - zeeklogs
