@@ -2665,7 +2665,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
-		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
@@ -2685,6 +2685,9 @@ set_initial_firewall_policy() {
 				'FLEET')
 				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
+				'RECEIVER')
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost receiver "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh receivertab "$MINION_ID" "$MAINIP"
 			esac
 			;;
 		'PARSINGNODE')

@@ -104,6 +104,14 @@ base:
     - minions.{{ grains.id }}
     - data.nodestab
 
+  '*_receiver':
+    - logstash
+    - logstash.receiver
+    - elasticsearch.auth
+    - global
+    - minions.{{ grains.id }}
+    - data.receivertab
+
   '*_import':
     - zeeklogs
     - secrets

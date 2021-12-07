@@ -478,3 +478,27 @@ base:
     - docker_clean
     - pipeline.load
     - learn
+
+  '*_receiver and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ca
+    - ssl
+    - telegraf
+    - firewall
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    {%- if LOGSTASH %}
+    - logstash
+    {%- endif %}
+    {%- if REDIS %}
+    - redis
+    {%- endif %}
+    {%- if FILEBEAT %}
+    - filebeat
+    {%- endif %}
+    {%- if FLEETMANAGER or FLEETNODE %}
+    - fleet.install_package
+    {%- endif %}
+    - schedule
+    - docker_clean
