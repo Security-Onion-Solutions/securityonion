@@ -327,7 +327,7 @@ so-elasticsearch-pipelines-file:
 
 so-elasticsearch-pipelines:
  cmd.run:
-   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ esclustername }}
+   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
    - onchanges:
       - file: esingestconf
       - file: esingestdynamicconf

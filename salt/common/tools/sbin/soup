@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
+export LC_CTYPE="en_US.UTF-8"
 
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
@@ -599,18 +600,33 @@ up_to_2.3.80() {
 
 up_to_2.3.90() {
   for i in manager managersearch eval standalone; do
+    echo "Checking for compgen match of /opt/so/saltstack/local/pillar/minions/*_$i.sls"
     if compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls"; then
-      echo "soc:" >> /opt/so/saltstack/local/pillar/minions/*_$i.sls
-      sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" /opt/so/saltstack/local/pillar/minions/*_$i.sls
+      echo "Found compgen match for /opt/so/saltstack/local/pillar/minions/*_$i.sls"
+      for f in $(compgen -G "/opt/so/saltstack/local/pillar/minions/*_$i.sls"); do
+        if grep -qozP "^soc:\n.*es_index_patterns: '\*:so-\*,\*:endgame-\*'" "$f"; then
+          echo "soc:es_index_patterns already present in $f"
+        else
+          echo "Appending soc pillar data to $f"
+          echo "soc:" >> "$f"
+          sed -i "/^soc:/a \\  es_index_patterns: '*:so-*,*:endgame-*'" "$f"
+        fi
+      done
     fi
   done
   
   # Create Endgame Hostgroup
-  so-firewall addhostgroup endgame
+  echo "Adding endgame hostgroup with so-firewall"
+  if so-firewall addhostgroup endgame 2>&1 | grep -q 'Already exists'; then
+    echo 'endgame hostgroup already exists'
+  else
+    echo 'endgame hostgroup added'
+  fi
   
   # Force influx to generate a new cert
-  mv /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
-  mv /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
+  echo "Moving influxdb.crt and influxdb.key to generate new certs"
+  mv -vf /etc/pki/influxdb.crt /etc/pki/influxdb.crt.2390upgrade
+  mv -vf /etc/pki/influxdb.key /etc/pki/influxdb.key.2390upgrade
   
   # remove old common ingest pipeline in default
   rm -vf /opt/so/saltstack/default/salt/elasticsearch/files/ingest/common
@@ -838,7 +854,7 @@ verify_latest_update_script() {
 }
 
 apply_hotfix() {
-  if [[ "$INSTALLEDVERSION" == "2.3.90" && "$HOTFIXVERSION" == "WAZUH" ]] ; then
+  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
     FILE="/nsm/wazuh/etc/ossec.conf"
     echo "Detecting if ossec.conf needs corrected..."
     if head -1 $FILE | grep -q "xml version"; then
@@ -849,7 +865,7 @@ apply_hotfix() {
       echo "$FILE does not have an XML header, so no changes are necessary."
     fi
   else
-    echo "Skipping ossec.conf check ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
 }
 
@@ -857,6 +873,7 @@ apply_hotfix() {
 main() {
   trap 'check_err $?' EXIT
   
+  echo "### Preparing soup at $(date) ###"
   check_pillar_items
 
   echo "Checking to see if this is an airgap install."
@@ -1168,5 +1185,4 @@ EOF
   read -r input
 fi
 
-echo "### Preparing soup at $(date) ###"
 main "$@" | tee -a $SOUP_LOG
