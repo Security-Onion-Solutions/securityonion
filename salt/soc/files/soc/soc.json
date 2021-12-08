@@ -18,6 +18,11 @@
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
 {%- import_json "soc/files/soc/menu.actions.json" as menu_actions %}
 {%- import_json "soc/files/soc/tools.json" as tools %}
+{%- import_json "soc/files/soc/presets.category.json" as presets_category %}
+{%- import_json "soc/files/soc/presets.pap.json" as presets_pap %}
+{%- import_json "soc/files/soc/presets.severity.json" as presets_severity %}
+{%- import_json "soc/files/soc/presets.tag.json" as presets_tag %}
+{%- import_json "soc/files/soc/presets.tlp.json" as presets_tlp %}
 {%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
 {%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
 {%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %} 
@@ -182,8 +187,38 @@
           { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true, "enablesToggles":["acknowledged"] }
         ],
         "queries": {{ alerts_queries | json }},
-        "actions": {{ menu_actions | json }}        
-      }        
+        "actions": {{ menu_actions | json }}
+      },
+      "cases": {
+        "advanced": false,
+        "groupItemsPerPage": 50,
+        "groupFetchLimit": 100,
+        "eventItemsPerPage": 50,
+        "eventFetchLimit": 500,
+        "relativeTimeValue": 12,
+        "relativeTimeUnit": 60,
+        "mostRecentlyUsedLimit": 5,
+        "ackEnabled": false,
+        "escalateEnabled": false,
+        "escalateRelatedEventsEnabled": false,
+        "viewEnabled": true,
+        "eventFields": {{ cases_eventfields | json }},
+        "queryBaseFilter": "_index:so-case AND kind:case",
+        "queryToggleFilters": [
+        ],
+        "queries": {{ cases_queries | json }},
+        "actions": {{ menu_actions | json }}
+      },      
+      "case": {
+        "mostRecentlyUsedLimit": 5,
+        "presets": {
+          "category": {{ presets_category | json }},
+          "pap": {{ presets_pap | json }},
+          "severity": {{ presets_severity | json }},            
+          "tag": {{ presets_tag | json }},
+          "tlp": {{ presets_tlp | json }}
+        }
+      }
     }
   }
 }
