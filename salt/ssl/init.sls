@@ -225,7 +225,7 @@ chownilogstashfilebeatp8:
     - user: 931
     - group: 939
 
-  {% if grains.role != 'so-heavynode' %}
+  {% if grains.role not in  ['so-heavynode', 'so-receiver']%}
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
