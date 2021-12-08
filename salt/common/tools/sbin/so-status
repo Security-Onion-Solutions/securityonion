@@ -175,57 +175,50 @@ parse_status() {
 # {% raw %}
 
 print_line() {
-    local service_name=${1}
-    local service_state="$( parse_status ${1} ${2} )"
-    local columns=$(tput cols)
-    local state_color="\e[0m"
+    is_tty
+    local service_name="${1}"
+    local service_state ; service_state="$( parse_status "${1}" "${2}" )"
+    # XXX: What will we do if tput isn't avalable?
+    if [ "${__tty}" -eq 1 ]; then
+        NC="$(tput sgr0)" # no color
+        red="$(tput setaf 1 bold)"
+        green="$(tput setaf 2 bold)"
+        yellow="$(tput setaf 3 bold)"
+    fi
+    state_color="${NC}"
 
-    local PADDING_CONSTANT=15
+    local PADDING_CONSTANT=16 # two tabs wide
 
-    if [[ $service_state = "$ERROR_STRING" ]] || [[ $service_state = "$MISSING_STRING" ]]; then
-        state_color="\e[1;31m"
-        if [[ "$EXITCODE" -eq 0 ]]; then
-            EXITCODE=1
-        fi
+    if [[ $service_state = "$ERROR_STRING" ]] \
+        || [[ $service_state = "$MISSING_STRING" ]]; then
+          state_color="${red:-}"
+          if [[ "$EXITCODE" -eq 0 ]]; then
+              EXITCODE=1
+          fi
     elif [[ $service_state = "$SUCCESS_STRING" ]]; then
-        state_color="\e[1;32m"
-    elif [[ $service_state = "$PENDING_STRING" ]] || [[ $service_state = "$DISABLED_STRING" ]] || [[ $service_state = "$STARTING_STRING" ]] || [[ $service_state = "$WAIT_START_STRING" ]]; then
-        state_color="\e[1;33m"
-        EXITCODE=2
+        state_color="${green:-}"
+    elif [[ $service_state = "$PENDING_STRING" ]] \
+        || [[ $service_state = "$DISABLED_STRING" ]] \
+        || [[ $service_state = "$STARTING_STRING" ]] \
+        || [[ $service_state = "$WAIT_START_STRING" ]]; then
+            state_color="${yellow:-}"
+            EXITCODE=2
     fi
 
-    printf "    $service_name "
-    for i in $(seq 0 $(( $columns - $PADDING_CONSTANT - ${#service_name} - ${#service_state} ))); do
-        printf "${state_color}%b\e[0m" "-"
-    done
-    printf " [ "
-    printf "${state_color}%b\e[0m" "$service_state"
-    printf "%s    \n" " ]"
-}
-
-non_term_print_line() {
-    local service_name=${1}
-    local service_state="$( parse_status ${1} ${2} )"
-
-    if [[ $service_state = "$ERROR_STRING" ]] || [[ $service_state = "$MISSING_STRING" ]]; then
-        if [[ "$EXITCODE" -eq 0 ]]; then
-            EXITCODE=1
-        fi
-    elif [[ $service_state = "$PENDING_STRING" ]] || [[ $service_state = "$DISABLED_STRING" ]] || [[ $service_state = "$STARTING_STRING" ]] || [[ $service_state = "$WAIT_START_STRING" ]]; then
-        EXITCODE=2
+    line=""
+    if [ "${__tty}" -eq 1 ]; then
+        # construct a line of '------' so that the names and states are all aligned
+        local columns ; columns=$(tput cols)
+        linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
+        for i in $(seq 0 "${linewidth}"); do
+            line="${line}-"
+        done
     fi
-
-    printf "    $service_name "
-    for i in $(seq 0 $(( 35 - ${#service_name} - ${#service_state} ))); do
-        printf "-"
-    done
-    printf " [ "
-    printf "$service_state"
-    printf "%s    \n" " ]"
+    service_state="${state_color:-}${service_state}${NC:-}"
+    printf "\t%s %s [ %s ]\n" "${service_name}" "${line}" "${service_state}"
 }
 
 main() {
-
     # if running from salt
     if [ "$CALLER" == 'salt-call' ] ||  [ "$CALLER" == 'salt-minion' ]; then
       printf "\n"
@@ -233,9 +226,9 @@ main() {
 
       systemctl is-active --quiet docker
       if [[ $? = 0 ]]; then
-          non_term_print_line "Docker" "running"
+          print_line "Docker" "running"
       else
-          non_term_print_line "Docker" "exited"
+          print_line "Docker" "exited"
       fi
 
       populate_container_lists
@@ -246,7 +239,7 @@ main() {
       local num_containers=${#container_name_list[@]}
 
       for i in $(seq 0 $(($num_containers - 1 ))); do
-          non_term_print_line ${container_name_list[$i]} ${container_state_list[$i]}
+          print_line ${container_name_list[$i]} ${container_state_list[$i]}
       done
 
       printf "\n"
@@ -310,6 +303,21 @@ while getopts ':hq' OPTION; do
       ;;
   esac
 done
+
+
+
+is_tty() {
+    __tty=0
+    # don't print colors if NO_COLOR is set to anything
+    if [ "${#NO_COLOR}" -eq 0 ]
+    then
+        __tty=0
+        return "${__tty}"
+    fi
+    tty -s 2<&- >/dev/null \
+        && __tty=1
+    return "${__tty}"
+}
 
 main
 
