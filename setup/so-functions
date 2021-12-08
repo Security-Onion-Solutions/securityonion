@@ -1327,15 +1327,6 @@ elasticsearch_pillar() {
 		"  log_size_limit: $log_size_limit"\
 		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
-	
-	printf '%s\n'\
-		"logstash_settings:"\
-		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
-		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
-		"" >> "$pillar_file"
-
 }
 
 es_heapsize() {
@@ -1552,6 +1543,20 @@ import_registry_docker() {
 	else
 	  info "Need to download registry"
 	fi
+}
+
+logstash_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the logstash pillar
+	printf '%s\n'\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
+		"  ls_input_threads: $LSINPUTTHREADS"\
+		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
+		"" >> "$pillar_file"
 }
 
 # Set Logstash heap size based on total memory
@@ -2405,11 +2410,6 @@ securityonion_repo() {
 	else
 		echo "This is Ubuntu"
 	fi
-}
-
-set_base_heapsizes() {
-	es_heapsize
-	ls_heapsize
 }
 
 set_network_dev_status_list() {

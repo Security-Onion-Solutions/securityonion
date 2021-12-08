@@ -464,8 +464,14 @@ if [[ $is_helix ||  $is_manager || $is_import ]]; then
 	collect_homenet_mngr
 fi
 
+#set base elasticsearch heap size
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
-	set_base_heapsizes
+	es_heapsize
+fi
+
+#set base logstash heap size
+if [[ $is_helix || $is_manager || $is_node || $is_import || $is_receiver ]]; then
+	ls_heapsize
 fi
 
 if [[ $is_manager && ! $is_eval ]]; then
@@ -544,17 +550,21 @@ fi
 
 [[ $is_iso ]] && collect_ntp_servers
 
-if [[ $is_node && ! $is_eval ]]; then
+if [[ ($is_node || $is_receiver) && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
-		collect_node_es_heap
+		if [[ ! $is_receiver ]]; then 
+			collect_node_es_heap
+			collect_es_space_limit
+		fi
 		collect_node_ls_heap
 		collect_node_ls_pipeline_worker_count
 		collect_node_ls_pipeline_batch_size
 		collect_node_ls_input
-		collect_es_space_limit
 	else
-		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+		if [[ ! $is_receiver ]]; then
+			NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+		fi
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
 		LSPIPELINEWORKERS=$num_cpu_cores
 		LSPIPELINEBATCH=125
@@ -726,6 +736,12 @@ echo "1" > /root/accept_changes
 			elasticsearch_pillar >> $setup_log 2>&1
 		fi
 	fi
+
+	if [[ $is_node || $is_receiver ]]; then
+		set_progress_str 19 'Generating logstash pillar'
+		logstash_pillar >> $setup_log 2>&1
+	fi
+
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
