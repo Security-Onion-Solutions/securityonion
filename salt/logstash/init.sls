@@ -46,7 +46,9 @@
 
 include:
   - ssl
+{% if grains.role not in ['so-receiver'] %}
   - elasticsearch
+{% endif %}
 
 # Create the logstash group
 logstashgroup:
@@ -210,8 +212,10 @@ so-logstash:
   {% else %}
       - x509: pki_public_ca_crt
   {% endif %}
+  {% if grains.role not in ['so-receiver'] %}
       - file: cacertz
       - file: capemz
+  {% endif %}
 
 append_so-logstash_so-status.conf:
   file.append:

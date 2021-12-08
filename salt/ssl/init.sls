@@ -115,7 +115,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
 # Create a cert for Redis encryption
 redis_key:
   x509.private_key_managed:
@@ -484,7 +484,7 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:
