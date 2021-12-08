@@ -184,8 +184,6 @@ print_line() {
     fi
     state_color="${NC}"
 
-    local PADDING_CONSTANT=16 # two tabs wide
-
     if [[ $service_state = "$ERROR_STRING" ]] \
         || [[ $service_state = "$MISSING_STRING" ]]; then
           state_color="${red:-}"
@@ -205,6 +203,8 @@ print_line() {
     line=""
     if [ "${__tty}" -eq 1 ]; then
         # construct a line of '------' so that the names and states are all aligned
+        local PADDING_CONSTANT=16 # two tabs wide
+        PADDING_CONSTANT=$((PADDING_CONSTANT + PADDING_CONSTANT / 2))
         local columns ; columns=$(tput cols)
         linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
         for i in $(seq 0 "${linewidth}"); do
@@ -285,28 +285,10 @@ main() {
 
 # {% endraw %}
 
-while getopts ':hq' OPTION; do
-  case "$OPTION" in
-    h)
-      display_help
-      exit 0
-      ;;
-    q)
-      QUIET=true
-      ;;
-    \?)
-      display_help
-      exit 0
-      ;;
-  esac
-done
-
-
-
 is_tty() {
     __tty=0
     # don't print colors if NO_COLOR is set to anything
-    if [ "${#NO_COLOR}" -eq 0 ]
+    if [ "${#NO_COLOR}" -ne 0 ]
     then
         __tty=0
         return "${__tty}"
