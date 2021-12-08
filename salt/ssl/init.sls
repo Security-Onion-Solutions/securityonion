@@ -164,7 +164,7 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
