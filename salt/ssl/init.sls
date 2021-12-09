@@ -293,23 +293,7 @@ regkeyperms:
     - mode: 640
     - group: 939
 
-minio_key:
-  x509.private_key_managed:
-    - name: /etc/pki/minio.key
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/minio.key') -%}
-    - prereq:
-      - x509: /etc/pki/minio.crt
-    {%- endif %}
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
+  {% endif %}
 
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
