@@ -7,19 +7,37 @@
 {%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 output {
   if "beat-ext" in [tags] and "import" not in [tags] and "filebeat" not in [metadata][pipeline] {
-    elasticsearch {
-      pipeline => "beats.common" 
-      hosts => "{{ ES }}"
-{% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
-      user => "{{ ES_USER }}"
-      password => "{{ ES_PASS }}"
-{% endif %}
-      index => "so-beats"
-      template_name => "so-beats"
-      template => "/templates/so-beats-template.json"
-      template_overwrite => true
-      ssl => true
-      ssl_certificate_verification => false
-    }
+    if [metadata][_id] {
+      elasticsearch {
+        pipeline => "beats.common" 
+        hosts => "{{ ES }}"
+  {% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+        user => "{{ ES_USER }}"
+        password => "{{ ES_PASS }}"
+  {% endif %}
+        index => "so-beats"
+        template_name => "so-beats"
+        template => "/templates/so-beats-template.json"
+        template_overwrite => true
+        ssl => true
+        ssl_certificate_verification => false
+        document_id => "%{[metadata][_id]}" 
+      }
+      } else {
+      elasticsearch {
+        pipeline => "beats.common" 
+        hosts => "{{ ES }}"
+  {% if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
+        user => "{{ ES_USER }}"
+        password => "{{ ES_PASS }}"
+  {% endif %}
+        index => "so-beats"
+        template_name => "so-beats"
+        template => "/templates/so-beats-template.json"
+        template_overwrite => true
+        ssl => true
+        ssl_certificate_verification => false
+      }
   }
+ }
 }
