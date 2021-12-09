@@ -63,7 +63,6 @@ base:
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - telegraf
@@ -298,7 +297,6 @@ base:
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
@@ -391,7 +389,6 @@ base:
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
@@ -433,7 +430,6 @@ base:
   
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
