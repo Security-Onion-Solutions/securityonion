@@ -103,9 +103,13 @@ create_expected_container_list() {
 }
 
 populate_container_lists() {
+    # TODO: check exit code directly, not with $?
     systemctl is-active --quiet docker
 
     if [[ $? = 0 ]]; then
+        # TODO: why use curl when you can just run docker ps?
+        # TODO: why use an indexed array when bash has associtive arrays?
+        # TODO: why use an array when you can just use a string?
         mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/v1.40/containers/json?all=1 \
             | jq -c '.[] | { Name: .Names[0], State: .State }' \
             | tr -d '/{"}')
