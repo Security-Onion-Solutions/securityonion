@@ -174,15 +174,25 @@ parse_status() {
 print_line() {
     is_tty
     local service_name="${1}"
-    local service_state ; service_state="$( parse_status "${1}" "${2}" )"
+    local service_state="" ; service_state="$( parse_status "${1}" "${2}" )"
     # XXX: What will we do if tput isn't avalable?
-    if [ "${__tty}" -eq 1 ]; then
-        NC="$(tput sgr0)" # no color
-        red="$(tput setaf 1 bold)"
-        green="$(tput setaf 2 bold)"
-        yellow="$(tput setaf 3 bold)"
+    if (( __tty == 1 )); then
+        local NC; NC="$(tput sgr0)" # no color
+        local red=""; red="$(tput setaf 1 bold)"
+        local green; green="$(tput setaf 2 bold)"
+        local yellow; yellow="$(tput setaf 3 bold)"
+
+        # construct a line of '------' so that the names and states are all aligned
+        local PADDING_CONSTANT=16 # two tabs wide
+        PADDING_CONSTANT=$((PADDING_CONSTANT + PADDING_CONSTANT / 2))
+        local columns ; columns=$(tput cols)
+        linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
+
+        local line=""
+        for i in $(seq 0 "${linewidth}"); do
+          line="${line}-"
+        done
     fi
-    state_color="${NC}"
 
     if [[ $service_state = "$ERROR_STRING" ]] \
         || [[ $service_state = "$MISSING_STRING" ]]; then
@@ -200,19 +210,9 @@ print_line() {
             EXITCODE=2
     fi
 
-    line=""
-    if [ "${__tty}" -eq 1 ]; then
-        # construct a line of '------' so that the names and states are all aligned
-        local PADDING_CONSTANT=16 # two tabs wide
-        PADDING_CONSTANT=$((PADDING_CONSTANT + PADDING_CONSTANT / 2))
-        local columns ; columns=$(tput cols)
-        linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
-        for i in $(seq 0 "${linewidth}"); do
-            line="${line}-"
-        done
-    fi
     service_state="${state_color:-}${service_state}${NC:-}"
-    printf "\t%s %s [ %s ]\n" "${service_name}" "${line}" "${service_state}"
+    line="${state_color:-}${line:-}${NC:-}"
+    printf "\t%s %s [ %s ]\n" "${service_name}" "${line:-}" "${service_state}"
 }
 
 main() {
@@ -230,8 +230,7 @@ main() {
 
       populate_container_lists
 
-      printf "\n"
-      printf "Checking container statuses\n\n"
+      printf "\nChecking container statuses\n\n"
 
       local num_containers=${#container_name_list[@]}
 
@@ -252,9 +251,13 @@ main() {
       else
           print_or_parse="print_line"
 
-          local focus_color="\e[1;34m"
-          printf "\n"
-          printf "${focus_color}%b\e[0m" "Checking Docker status\n\n"
+          if (( __tty == 1 ))
+          then
+          local focus_color="" focus_color="$(tput setaf 3 bold)"
+          local NC=""
+              NC="$(tput sgr0)" # no color
+          fi
+          printf "\n${focus_color:-}%s${NC:-}\n\n" "Checking Docker status"
       fi
 
       systemctl is-active --quiet docker
@@ -267,8 +270,7 @@ main() {
       populate_container_lists
 
       if [ "$QUIET" = false ]; then
-          printf "\n"
-          printf "${focus_color}%b\e[0m" "Checking container statuses\n\n"
+          printf "\n${focus_color:-}%s${NC:-}\n\n" "Checking container statuses"
       fi
 
       local num_containers=${#container_name_list[@]}
@@ -287,14 +289,11 @@ main() {
 
 is_tty() {
     __tty=0
-    # don't print colors if NO_COLOR is set to anything
-    if [ "${#NO_COLOR}" -ne 0 ]
-    then
-        __tty=0
-        return "${__tty}"
-    fi
-    tty -s 2<&- >/dev/null \
+    [ -t 1 ] \
         && __tty=1
+    # don't print colors if NO_COLOR is set to anything
+    [ "${#NO_COLOR}" -ne 0 ] \
+        && __tty=0
     return "${__tty}"
 }
 
