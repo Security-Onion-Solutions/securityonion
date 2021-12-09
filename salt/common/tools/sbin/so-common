@@ -213,18 +213,14 @@ fail() {
 }
 
 msg_detect_tty() {
+	__msg_istty=0
+	[ -t 1 ] \
+		&& __msg_istty=1
 	## Respect NO_COLOR if set, though if set as 'NO_COLOR=""' we have no efficient
 	## way of differentiating it from not being set
-	if [ "${#NO_COLOR}" -eq 0 ]
-	then
-		__msg_istty=0
+	[ "${#NO_COLOR}" -eq 0 ] \
+		&& __msg_istty=0
 		return "${__msg_istty}"
-	fi
-	if tty -s 2<&- >/dev/null
-	then
-    echo "Is a tty"
-		__msg_istty=1
-	fi
 }
 
 # log takes 2 arguments, a severity and a string in that order
