@@ -82,7 +82,7 @@ salt_minion_service_unit_file:
 mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
-    - source: salt://salt/etc/mine_functions.conf
+    - source: salt://salt/etc/minion.d/mine_functions.conf
     - template: jinja
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state

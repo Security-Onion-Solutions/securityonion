@@ -321,7 +321,19 @@ output.logstash:
   enabled: true
 
   # The Logstash hosts
-  hosts: ["{{ MANAGER }}:5644"]
+  hosts:
+{%- set LOADBALANCE = ['false'] %}
+{%- if grains.role not in ['so-heavynode', 'so-import', 'so-helix', 'so-eval'] %}
+{%-   for minionid, ip in salt['mine.get']('G@role:so-standalone or G@role:so-manager or G@role:so-managersearch or G@role:so-receiver', 'network.ip_addrs', tgt_type='compound') | dictsort() %}
+    - "{{ minionid.split('_')[0] }}:5644" #{{ ip[0] }}
+{%-     if loop.index == 2 %}
+{%-       do LOADBALANCE.insert(0, 'true') %}
+{%-     endif %}
+{%-   endfor %}
+  loadbalance: {{ LOADBALANCE[0] }}
+{%- else %}
+    - "{{ grains.host }}:5644"
+{%- endif %}
 
   # Number of workers per Logstash host.
   worker: {{ FBLSWORKERS }}
