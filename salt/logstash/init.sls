@@ -156,7 +156,7 @@ so-logstash:
     - extra_hosts:
       - {{ EXTRAHOSTHOSTNAME }}:{{ EXTRAHOSTIP }}
     - environment:
-      - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
+      - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }} -Dlog4j2.formatMsgNoLookups=true
     - port_bindings:
   {% for BINDING in DOCKER_OPTIONS.port_bindings %}
       - {{ BINDING }}
