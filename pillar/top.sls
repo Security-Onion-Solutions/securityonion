@@ -2,6 +2,8 @@ base:
   '*':
     - patch.needs_restarting
     - logrotate
+    - node_data.ips
+    - node_data.test_ping
 
   '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound

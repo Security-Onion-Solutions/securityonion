@@ -324,8 +324,12 @@ output.logstash:
   hosts:
 {%- set LOADBALANCE = ['false'] %}
 {%- if grains.role not in ['so-heavynode', 'so-import', 'so-helix', 'so-eval'] %}
-{%-   for minionid, ip in salt['mine.get']('G@role:so-standalone or G@role:so-manager or G@role:so-managersearch or G@role:so-receiver', 'network.ip_addrs', tgt_type='compound') | dictsort() %}
-    - "{{ minionid.split('_')[0] }}:5644" #{{ ip[0] }}
+{%-   for node_type, node_details in salt['pillar.get']('node_data') | dictsort() %}
+{%-     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
+{%-       for hostname in node_type.keys() %}
+    - "{{ hostname }}:5644" #{{ node_details[hostname][ip] }}
+{%-       endfor %}
+{%-     endif %}
 {%-     if loop.index == 2 %}
 {%-       do LOADBALANCE.insert(0, 'true') %}
 {%-     endif %}
