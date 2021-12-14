@@ -4,3 +4,20 @@
 {% import_yaml 'filebeat/securityoniondefaults.yaml' as SODEFAULTS %}
 {% set SO = SODEFAULTS.securityonion_filebeat %}
 {#% set SO = salt['pillar.get']('filebeat:third_party_filebeat', default=SODEFAULTS.third_party_filebeat, merge=True) %#}
+
+{% set role = grains.role %}
+{% set EXTRA_HOSTS = [] %}
+{% set mainint = salt['pillar.get']('host:mainint') %}
+{% set localhostip = salt['grains.get']('ip_interfaces').get(mainint)[0] %}
+{% if role in ['so-sensor', 'so-fleet', 'so-node' ] %}
+  {% set node_data = salt['pillar.get']('logstash:nodes') %}
+  {% for node_type, node_details in node_data.items() | sort %}
+    {% if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
+      {% for hostname in node_data[node_type].keys() %}
+        {% do EXTRA_HOSTS.append({hostname:node_details[hostname].ip}) %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% do EXTRA_HOSTS.append({grains.host:localhostip}) %}
+{% endif %}
