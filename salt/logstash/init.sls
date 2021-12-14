@@ -61,6 +61,13 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
+lslibdir:
+  file.directory:
+    - name: /opt/so/conf/logstash/lib
+    - user: 931
+    - group: 939
+    - makedirs: True
+
 lsetcdir:
   file.directory:
     - name: /opt/so/conf/logstash/etc
@@ -123,6 +130,14 @@ lsetcsync:
     - clean: True
     - exclude_pat: pipelines*
 
+lslibsync:
+  file.managed:
+    - name: /opt/so/conf/logstash/lib/log4j-core-2.14.0-patched.jar
+    - source: salt://logstash/lib/log4j-core-2.14.0-patched.jar
+    - user: 931
+    - group: 939
+    - mode: 644
+
 # Create the import directory
 importdir:
   file.directory:
@@ -162,6 +177,7 @@ so-logstash:
       - {{ BINDING }}
   {% endfor %}
     - binds:
+      - /opt/so/conf/logstash/lib/log4j-core-2.14.0-patched.jar:/usr/share/logstash/logstash-core/lib/jars/log4j-core-2.14.0.jar:ro
       - /opt/so/conf/elasticsearch/templates/:/templates/:ro
       - /opt/so/conf/logstash/etc/:/usr/share/logstash/config/:ro
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
