@@ -477,7 +477,6 @@ base:
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - telegraf
     - firewall

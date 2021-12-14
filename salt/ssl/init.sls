@@ -210,7 +210,6 @@ etc_filebeat_crt:
     - onchanges:
       - x509: etc_filebeat_key
 
-
 fbperms:
   file.managed:
     - replace: False
@@ -226,7 +225,7 @@ chownilogstashfilebeatp8:
     - user: 931
     - group: 939
 
-  {% if grains.role not in  ['so-heavynode', 'so-receiver']%}
+  {% if grains.role not in ['so-heavynode', 'so-receiver'] %}
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -294,7 +293,7 @@ regkeyperms:
     - group: 939
 
   {% endif %}
-
+  {% if grains.role not in ['so-receiver'] %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
@@ -338,7 +337,7 @@ regkeyperms:
     - onchanges:
       - x509: /etc/pki/elasticsearch.key
 
-ealstickeyperms:
+elastickeyperms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticsearch.key
@@ -398,6 +397,8 @@ msslkeyperms:
     - mode: 640
     - group: 939
 
+  {% endif %}
+
 # Create a private key and cert for OSQuery
 fleet_key:
   x509.private_key_managed:
@@ -443,6 +444,7 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
+
 {% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
