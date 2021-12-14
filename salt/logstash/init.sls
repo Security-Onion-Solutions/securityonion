@@ -177,12 +177,12 @@ so-logstash:
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
   {% endif %}
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-  {% if grains['role'] == 'so-heavynode' %}
-      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
-  {% else %}
+  {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
+  {% else %}
+      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
   {% endif %}
-  {% if grains.role not in ['so-receiver'] %}
+  {% if grains.role in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
   {% endif %}
@@ -209,12 +209,12 @@ so-logstash:
   {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_filebeat_crt
   {% endif %}
-  {% if grains['role'] == 'so-heavynode' %}
-      - x509: trusttheca
-  {% else %}
+  {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - x509: pki_public_ca_crt
+  {% else %}
+      - x509: trusttheca
   {% endif %}
-  {% if grains.role not in ['so-receiver'] %}
+  {% if grains.role in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - file: cacertz
       - file: capemz
   {% endif %}
