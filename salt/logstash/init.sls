@@ -182,7 +182,7 @@ so-logstash:
   {% else %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
   {% endif %}
-  {% if grains.role in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+  {% if grains.role in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-node'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
   {% endif %}
