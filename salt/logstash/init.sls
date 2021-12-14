@@ -36,13 +36,14 @@
   {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
   {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
-  {% if grains.role in ['so-heavynode', 'so-receiver'] %}
+  {# if grains.role in ['so-heavynode', 'so-receiver'] %}
     {% set EXTRAHOSTHOSTNAME = salt['grains.get']('host') %}
     {% set EXTRAHOSTIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('host:mainint'))[0] %}
   {% else %}
     {% set EXTRAHOSTHOSTNAME = MANAGER %}
     {% set EXTRAHOSTIP = MANAGERIP %}
-  {% endif %}
+  {% endif #}
+  {% from 'logstash/map.jinja' import EXTRA_HOSTS with context %}
 
 include:
   - ssl
@@ -155,8 +156,7 @@ so-logstash:
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
-    - extra_hosts:
-      - {{ EXTRAHOSTHOSTNAME }}:{{ EXTRAHOSTIP }}
+    - extra_hosts: {{ EXTRA_HOSTS }}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
