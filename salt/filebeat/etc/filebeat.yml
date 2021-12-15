@@ -322,24 +322,27 @@ output.logstash:
 
   # The Logstash hosts
   hosts:
-{%- if grains.role in ['so-sensor', 'so-fleet', 'so-node'] %}
-{%-   set LOADBALANCE = ['false'] %}
-{%-   set node_data = salt['pillar.get']('logstash:nodes') %}
-{%-   for node_type, node_details in node_data.items() | sort %}
-{%-     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
-{%-       for hostname in node_data[node_type].keys() %}
+{%- if grains.role in ['so-sensor', 'so-fleet', 'so-node'] -%}
+{%   set LOGSTASH = namespace() -%}
+{%   set LOGSTASH.count = 0 -%}
+{%   set LOGSTASH.loadbalance = false -%}
+{%   set node_data = salt['pillar.get']('logstash:nodes') -%}
+{%   for node_type, node_details in node_data.items() | sort -%}
+{%     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] -%}
+{%       for hostname in node_data[node_type].keys() -%}
+{%         set LOGSTASH.count = LOGSTASH.count + 1 %}
     - "{{ hostname }}:5644" #{{ node_details[hostname].ip }}
-{%-       endfor %}
-{%-     endif %}
-{%-     if loop.index == 2 %}
-{%-       do LOADBALANCE.insert(0, 'true') %}
-{%-     endif %}
-{%-   endfor %}
-  loadbalance: {{ LOADBALANCE[0] }}
-{%- else %}
-    - "{{ grains.host }}:5644"
-{%- endif %}
+{%-       endfor -%}
+{%     endif -%}
+{%     if LOGSTASH.count > 1 -%}
+{%       set LOGSTASH.loadbalance = true -%}
+{%     endif -%}
+{%   endfor %}
 
+  loadbalance: {{ LOGSTASH.loadbalance | lower }}
+{% else -%}
+    - "{{ grains.host }}:5644"
+{% endif %}
   # Number of workers per Logstash host.
   worker: {{ FBLSWORKERS }}
 
