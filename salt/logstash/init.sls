@@ -57,6 +57,10 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
+lslibdir:
+  file.absent:
+    - name: /opt/so/conf/logstash/lib
+
 lsetcdir:
   file.directory:
     - name: /opt/so/conf/logstash/etc
