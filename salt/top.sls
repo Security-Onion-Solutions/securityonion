@@ -478,6 +478,7 @@ base:
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - sensoroni
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
