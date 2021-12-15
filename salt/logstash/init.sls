@@ -43,7 +43,7 @@
     {% set EXTRAHOSTHOSTNAME = MANAGER %}
     {% set EXTRAHOSTIP = MANAGERIP %}
   {% endif #}
-  {% from 'logstash/map.jinja' import EXTRA_HOSTS with context %}
+  {% from 'logstash/map.jinja' import REDIS_NODES with context %}
 
 include:
   - ssl
@@ -156,7 +156,7 @@ so-logstash:
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
-    - extra_hosts: {{ EXTRA_HOSTS }}
+    - extra_hosts: {{ REDIS_NODES }}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
