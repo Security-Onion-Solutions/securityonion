@@ -20,7 +20,7 @@
 {% set MANAGER = salt['grains.get']('master') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 {% from 'filebeat/map.jinja' import SO with context %}
-{% from 'filebeat/map.jinja' import LOGSTASH_NODES with context %}
+{% from 'filebeat/map.jinja' import FILEBEAT_EXTRA_HOSTS with context %}
 {% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
 
 include:
@@ -109,7 +109,7 @@ so-filebeat:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ LOGSTASH_NODES }}
+    - extra_hosts: {{ FILEBEAT_EXTRA_HOSTS }}
     - binds:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw
