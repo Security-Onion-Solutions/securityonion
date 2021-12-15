@@ -36,13 +36,6 @@
   {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
   {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
-  {# if grains.role in ['so-heavynode', 'so-receiver'] %}
-    {% set EXTRAHOSTHOSTNAME = salt['grains.get']('host') %}
-    {% set EXTRAHOSTIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('host:mainint'))[0] %}
-  {% else %}
-    {% set EXTRAHOSTHOSTNAME = MANAGER %}
-    {% set EXTRAHOSTIP = MANAGERIP %}
-  {% endif #}
   {% from 'logstash/map.jinja' import REDIS_NODES with context %}
 
 include:
