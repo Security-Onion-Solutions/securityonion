@@ -15,7 +15,7 @@
   {% set COMMONNAME = manager %}
 {% endif %}
 
-{% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import', 'helixsensor'] %}
+{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'helixsensor'] %}
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
     {% set ca_server = grains.id %}
 include:
