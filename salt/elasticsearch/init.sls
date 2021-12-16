@@ -131,6 +131,10 @@ esrolesdir:
     - group: 939
     - makedirs: True
 
+eslibdir:
+  file.absent:
+    - name: /opt/so/conf/elasticsearch/lib
+   
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -258,7 +262,7 @@ so-elasticsearch:
       {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
       - discovery.type=single-node
       {% endif %}
-      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true
+      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
       ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
@@ -271,7 +275,7 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
-      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
+      - /opt/so/conf/ca/cacerts:/etc/ssl/certs/java/cacerts:ro
       {% if ismanager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% else %}

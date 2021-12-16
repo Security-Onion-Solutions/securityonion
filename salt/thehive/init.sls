@@ -95,7 +95,7 @@ so-thehive-es:
       - /opt/so/conf/thehive/etc/es/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /opt/so/log/thehive:/var/log/elasticsearch:rw
     - environment:
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m -Dlog4j2.formatMsgNoLookups=true
     - port_bindings:
       - 0.0.0.0:9400:9400
       - 0.0.0.0:9500:9500
