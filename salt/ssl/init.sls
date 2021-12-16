@@ -18,6 +18,8 @@
 {% if grains.id.split('_')|last in ['manager', 'eval', 'standalone', 'import', 'helixsensor'] %}
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
     {% set ca_server = grains.id %}
+include:
+  - ca
 {% else %}
     {% set x509dict = salt['mine.get']('*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
@@ -29,9 +31,6 @@
     {% set trusttheca_text = global_ca_text[0] %}
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
-
-include:
-  - ca
 
 # Trust the CA
 trusttheca:
@@ -70,7 +69,7 @@ removeesp12dir:
 influxdb_key:
   x509.private_key_managed:
     - name: /etc/pki/influxdb.key
-    - CN: {{ manager }}
+    - CN: {{ HOSTNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -92,8 +91,8 @@ influxdb_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
-    - CN: {{ manager }}
-    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
+    - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -115,12 +114,12 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
 # Create a cert for Redis encryption
 redis_key:
   x509.private_key_managed:
     - name: /etc/pki/redis.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ HOSTNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -139,9 +138,10 @@ redis_crt:
   x509.certificate_managed:
     - name: /etc/pki/redis.crt
     - ca_server: {{ ca_server }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ HOSTNAME }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -164,7 +164,7 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
@@ -190,7 +190,8 @@ etc_filebeat_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -209,7 +210,6 @@ etc_filebeat_crt:
     - onchanges:
       - x509: etc_filebeat_key
 
-
 fbperms:
   file.managed:
     - replace: False
@@ -225,7 +225,7 @@ chownilogstashfilebeatp8:
     - user: 931
     - group: 939
 
-  {% if grains.role != 'so-heavynode' %}
+  {% if grains.role not in ['so-heavynode', 'so-receiver'] %}
 # Create Symlinks to the keys so I can distribute it to all the things
 filebeatdir:
   file.directory:
@@ -292,51 +292,8 @@ regkeyperms:
     - mode: 640
     - group: 939
 
-minio_key:
-  x509.private_key_managed:
-    - name: /etc/pki/minio.key
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/minio.key') -%}
-    - prereq:
-      - x509: /etc/pki/minio.crt
-    {%- endif %}
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-# Create a cert for minio
-minio_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/minio.crt
-    - ca_server: {{ ca_server }}
-    - signing_policy: registry
-    - public_key: /etc/pki/minio.key
-    - CN: {{ manager }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/minio.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-miniokeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/minio.key
-    - mode: 640
-    - group: 939
   {% endif %}
+  {% if grains.role not in ['so-receiver'] %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
@@ -360,7 +317,8 @@ miniokeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -379,7 +337,7 @@ miniokeyperms:
     - onchanges:
       - x509: /etc/pki/elasticsearch.key
 
-ealstickeyperms:
+elastickeyperms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticsearch.key
@@ -418,7 +376,7 @@ managerssl_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
-    - CN: {{ manager }}
+    - CN: {{ HOSTNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
     - days_remaining: 0
     - days_valid: 820
@@ -439,11 +397,13 @@ msslkeyperms:
     - mode: 640
     - group: 939
 
+  {% endif %}
+
 # Create a private key and cert for OSQuery
 fleet_key:
   x509.private_key_managed:
     - name: /etc/pki/fleet.key
-    - CN: {{ manager }}
+    - CN: {{ HOSTNAME }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -462,8 +422,8 @@ fleet_crt:
   x509.certificate_managed:
     - name: /etc/pki/fleet.crt
     - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ manager }}
-    - subjectAltName: DNS:{{ manager }},IP:{{ managerip }}{% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }}{% endif %}
+    - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }},IP:{{ MAINIP }}{% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -484,7 +444,8 @@ fleetkeyperms:
     - group: 939
 
 {% endif %}
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import'] %}
+
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:
@@ -516,7 +477,7 @@ conf_filebeat_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
+    - CN: {{ HOSTNAME }}
     - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - days_remaining: 0
     - days_valid: 820
@@ -675,6 +636,7 @@ fleetkeyperms:
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
     - CN: {{ HOSTNAME }}
+    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True

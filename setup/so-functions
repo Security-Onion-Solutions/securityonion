@@ -77,7 +77,7 @@ accept_salt_key_remote() {
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
 	# Delete the key just in case.
 	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
-	salt-call state.apply ca >> /dev/null 2>&1
+	salt-call state.show_top >> /dev/null 2>&1
 	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 }
 
@@ -99,7 +99,7 @@ addtotab_generate_templates() {
 
 	local addtotab_path=$local_salt_dir/pillar/data
 
-	for i in evaltab managersearchtab managertab nodestab sensorstab standalonetab; do
+	for i in evaltab managersearchtab managertab nodestab sensorstab standalonetab receiverstab; do
 		printf '%s\n'\
 		"$i:"\
 		"" > "$addtotab_path"/$i.sls
@@ -1327,15 +1327,6 @@ elasticsearch_pillar() {
 		"  log_size_limit: $log_size_limit"\
 		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
-	
-	printf '%s\n'\
-		"logstash_settings:"\
-		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
-		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
-		"" >> "$pillar_file"
-
 }
 
 es_heapsize() {
@@ -1490,7 +1481,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -1552,6 +1543,20 @@ import_registry_docker() {
 	else
 	  info "Need to download registry"
 	fi
+}
+
+logstash_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the logstash pillar
+	printf '%s\n'\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
+		"  ls_input_threads: $LSINPUTTHREADS"\
+		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
+		"" >> "$pillar_file"
 }
 
 # Set Logstash heap size based on total memory
@@ -2345,13 +2350,13 @@ salt_checkin() {
 			;;
 		*)
 			{
-				salt-call state.apply ca;
+				#salt-call state.apply ca;
 				salt-call state.apply ssl;
 			} >> "$setup_log" 2>&1
 			;;
 	esac
 	{
-		salt-call state.apply ca;
+		#salt-call state.apply ca;
 		salt-call state.apply ssl;
 		salt-call saltutil.sync_modules;
 	} >> "$setup_log" 2>&1
@@ -2405,11 +2410,6 @@ securityonion_repo() {
 	else
 		echo "This is Ubuntu"
 	fi
-}
-
-set_base_heapsizes() {
-	es_heapsize
-	ls_heapsize
 }
 
 set_network_dev_status_list() {
@@ -2665,7 +2665,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
-		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
@@ -2685,6 +2685,9 @@ set_initial_firewall_policy() {
 				'FLEET')
 				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
+				'RECEIVER')
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost receiver "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh receiverstab "$MINION_ID" "$MAINIP"
 			esac
 			;;
 		'PARSINGNODE')
