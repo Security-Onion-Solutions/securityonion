@@ -131,6 +131,10 @@ esrolesdir:
     - group: 939
     - makedirs: True
 
+eslibdir:
+  file.absent:
+    - name: /opt/so/conf/elasticsearch/lib
+    
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
