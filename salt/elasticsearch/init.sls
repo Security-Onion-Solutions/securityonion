@@ -131,13 +131,6 @@ esrolesdir:
     - group: 939
     - makedirs: True
 
-eslibdir:
-  file.directory:
-    - name: /opt/so/conf/elasticsearch/lib
-    - user: 930
-    - group: 939
-    - makedirs: True
-
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -185,14 +178,6 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     - user: 930
     - group: 939
 {% endfor %}
-
-eslibsync:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/lib/log4j-core-2.11.1-patched.jar
-    - source: salt://elasticsearch/lib/log4j-core-2.11.1-patched.jar
-    - user: 930
-    - group: 939
-    - mode: 644
 
 esroles:
   file.recurse:
@@ -282,7 +267,6 @@ so-elasticsearch:
       - 0.0.0.0:9200:9200
       - 0.0.0.0:9300:9300
     - binds:
-      - /opt/so/conf/elasticsearch/lib/log4j-core-2.11.1-patched.jar:/usr/share/elasticsearch/lib/log4j-core-2.11.1.jar:ro
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
