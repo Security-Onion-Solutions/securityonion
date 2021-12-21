@@ -134,7 +134,7 @@ esrolesdir:
 eslibdir:
   file.absent:
     - name: /opt/so/conf/elasticsearch/lib
-   
+
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -275,7 +275,11 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
+<<<<<<< HEAD
       - /opt/so/conf/ca/cacerts:/etc/ssl/certs/java/cacerts:ro
+=======
+      - /opt/so/conf/ca/cacerts:/usr/share/elasticsearch/jdk/lib/security/cacerts:ro
+>>>>>>> master
       {% if ismanager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% else %}
