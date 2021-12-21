@@ -63,7 +63,6 @@ base:
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - telegraf
@@ -298,7 +297,6 @@ base:
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
@@ -391,7 +389,6 @@ base:
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
@@ -433,7 +430,6 @@ base:
   
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
-    - ca
     - ssl
     - sensoroni
     - nginx
@@ -478,3 +474,27 @@ base:
     - docker_clean
     - pipeline.load
     - learn
+
+  '*_receiver and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    {%- if LOGSTASH %}
+    - logstash
+    {%- endif %}
+    {%- if REDIS %}
+    - redis
+    {%- endif %}
+    {%- if FILEBEAT %}
+    - filebeat
+    {%- endif %}
+    {%- if FLEETMANAGER or FLEETNODE %}
+    - fleet.install_package
+    {%- endif %}
+    - schedule
+    - docker_clean

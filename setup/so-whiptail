@@ -563,19 +563,23 @@ whiptail_end_settings() {
 
 	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
 		__append_end_msg "Advanced Node Settings:"
-		__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		if [[ ! $is_receiver ]]; then
+			__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+			__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
+		fi
 		__append_end_msg "  Logstash Heap Size: $NODE_LS_HEAP_SIZE"
 		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
 	else
-		__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		if [[ ! $is_receiver ]]; then
+			__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+			__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+		fi
 		__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
 		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
 	fi
 
 
@@ -796,11 +800,12 @@ whiptail_install_type_dist_existing() {
 	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 18 58 4 \
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 18 58 5 \
 		"SENSOR" "Create a forward only sensor " ON \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \
 		"HEAVYNODE" "Sensor + Search Node " OFF \
+		"RECEIVER" "Receiver Node " OFF \
 		3>&1 1>&2 2>&3
 		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
 		# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO

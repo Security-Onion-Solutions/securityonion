@@ -1,19 +1,20 @@
-{%- if grains.role in ['so-heavynode'] %}
-  {%- set HOST = salt['grains.get']('host') %}
-{%- else %}
-  {%- set HOST = salt['grains.get']('master') %}
-{%- endif %}
-  {%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
-{%- set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) %}
+{% set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') -%}
+{% set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) -%}
+{% from 'logstash/map.jinja' import REDIS_NODES with context -%}
+
+{% for index in range(REDIS_NODES|length) -%}
+{%   for host in REDIS_NODES[index] -%}
 input {
-	redis {
-		host => '{{ HOST }}'
-		port => 9696
-		ssl => true
-		data_type => 'list'
-		key => 'logstash:unparsed'
-		type => 'redis-input'
-		threads => {{ THREADS }}
-		batch_count => {{ BATCH }}
-	}
+        redis {
+                host => '{{ host }}'
+                port => 9696
+                ssl => true
+                data_type => 'list'
+                key => 'logstash:unparsed'
+                type => 'redis-input'
+                threads => {{ THREADS }}
+                batch_count => {{ BATCH }}
+        }
 }
+{%   endfor %}
+{% endfor -%}

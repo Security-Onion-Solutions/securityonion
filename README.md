@@ -1,6 +1,6 @@
-## Security Onion 2.3.90-20211213
+## Security Onion 2.3.91
 
-Security Onion 2.3.90-20211213 is here!
+Security Onion 2.3.91 is here!
 
 ## Screenshots
 

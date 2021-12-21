@@ -76,7 +76,14 @@ salt_minion_service_unit_file:
       - module: systemd_reload
     - listen_in:
       - service: salt_minion_service
+
 {% endif %}
+
+mine_functions:
+  file.managed:
+    - name: /etc/salt/minion.d/mine_functions.conf
+    - source: salt://salt/etc/minion.d/mine_functions.conf
+    - template: jinja
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
@@ -84,6 +91,8 @@ salt_minion_service:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+    - watch:
+      - file: mine_functions
 
 patch_pkg:
   pkg.installed:
