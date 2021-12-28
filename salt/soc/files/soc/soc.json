@@ -16,8 +16,17 @@
 {%- import_json "soc/files/soc/alerts.eventfields.json" as alerts_eventfields %}
 {%- import_json "soc/files/soc/hunt.queries.json" as hunt_queries %}
 {%- import_json "soc/files/soc/hunt.eventfields.json" as hunt_eventfields %}
+{%- import_json "soc/files/soc/cases.queries.json" as cases_queries %}
+{%- import_json "soc/files/soc/cases.eventfields.json" as cases_eventfields %}
 {%- import_json "soc/files/soc/menu.actions.json" as menu_actions %}
 {%- import_json "soc/files/soc/tools.json" as tools %}
+{%- import_json "soc/files/soc/presets.artifacttype.json" as presets_artifacttype %}
+{%- import_json "soc/files/soc/presets.category.json" as presets_category %}
+{%- import_json "soc/files/soc/presets.pap.json" as presets_pap %}
+{%- import_json "soc/files/soc/presets.severity.json" as presets_severity %}
+{%- import_json "soc/files/soc/presets.status.json" as presets_status %}
+{%- import_json "soc/files/soc/presets.tag.json" as presets_tag %}
+{%- import_json "soc/files/soc/presets.tlp.json" as presets_tlp %}
 {%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
 {%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
 {%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %} 
@@ -27,6 +36,8 @@
 {%-   set ES_PASS = '' %}
 {%- endif %}
 {%- set ES_INDEX_PATTERNS = salt['pillar.get']('soc:es_index_patterns', '*:so-*') %}
+{%- set CASE_MODULE = salt['pillar.get']('soc:case_module', 'soc') %}
+{%- set GENERIC_CASE_CONFIG = salt['pillar.get']('soc:generic_case_config', '') %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni-server.log",
   "server": {
@@ -57,9 +68,10 @@
         {%- endif %}
         "username": "{{ ES_USER }}",
         "password": "{{ ES_PASS }}",
-	"index": "{{ ES_INDEX_PATTERNS }}",
+        "index": "{{ ES_INDEX_PATTERNS }}",
         "cacheMs": {{ ES_FIELDCAPS_CACHE }},
         "verifyCert": false,
+        "casesEnabled": {{ 'true' if CASE_MODULE == 'soc' else 'false' }},
         "timeoutMs": {{ API_TIMEOUT }}
       },
       "influxdb": {
@@ -77,11 +89,21 @@
         "refreshIntervalMs": 30000,
         "offlineThresholdMs": 900000
       },
-{% if THEHIVEKEY != '' %}
+{% if CASE_MODULE == 'thehive' and THEHIVEKEY != '' %}
       "thehive": {
         "hostUrl": "http://{{ MANAGERIP }}:9000/thehive",
         "key": "{{ THEHIVEKEY }}",
         "verifyCert": false
+      },
+{% elif CASE_MODULE == 'elasticcases' %}
+      "elasticcases": {
+        "hostUrl": "https://{{ MANAGERIP }}:5601",
+        "username": "{{ ES_USER }}",
+        "password": "{{ ES_PASS }}",
+      },
+{% elif CASE_MODULE == 'generichttp' %}
+      "generichttp": {
+        {{ GENERIC_CASE_CONFIG }}
       },
 {% endif %}
       "statickeyauth": {
@@ -113,6 +135,7 @@
       "webSocketTimeoutMs": {{ WEBSOCKET_TIMEOUT }},
       "tipTimeoutMs": {{ TIP_TIMEOUT }},
       "cacheExpirationMs": {{ CACHE_EXPIRATION }},
+      "casesEnabled": {{ 'true' if CASE_MODULE == 'soc' else 'false' }},
       "inactiveTools": [
         {%- if PLAYBOOK == 0 %}
           "toolPlaybook",
@@ -139,7 +162,8 @@
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
         "ackEnabled": false,
-        "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
+        "escalateEnabled": true,
+        "escalateRelatedEventsEnabled": {{ 'true' if CASE_MODULE == 'soc' else 'false' }},
         "eventFields": {{ hunt_eventfields | json }},
         "queryBaseFilter": "",
         "queryToggleFilters": [],
@@ -159,7 +183,8 @@
         "relativeTimeUnit": 30,
         "mostRecentlyUsedLimit": 5,
         "ackEnabled": true,
-        "escalateEnabled": {{ 'true' if THEHIVEKEY != '' else 'false' }},
+        "escalateEnabled": true,
+        "escalateRelatedEventsEnabled": {{ 'true' if CASE_MODULE == 'soc' else 'false' }},
         "eventFields": {{ alerts_eventfields | json }},
         "queryBaseFilter": "event.dataset:alert",
         "queryToggleFilters": [
@@ -167,8 +192,40 @@
           { "name": "escalated", "filter": "event.escalated:true", "enabled": false, "exclusive": true, "enablesToggles":["acknowledged"] }
         ],
         "queries": {{ alerts_queries | json }},
-        "actions": {{ menu_actions | json }}        
-      }        
+        "actions": {{ menu_actions | json }}
+      },
+      "cases": {
+        "advanced": false,
+        "groupItemsPerPage": 50,
+        "groupFetchLimit": 100,
+        "eventItemsPerPage": 50,
+        "eventFetchLimit": 500,
+        "relativeTimeValue": 12,
+        "relativeTimeUnit": 60,
+        "mostRecentlyUsedLimit": 5,
+        "ackEnabled": false,
+        "escalateEnabled": false,
+        "escalateRelatedEventsEnabled": false,
+        "viewEnabled": true,
+        "eventFields": {{ cases_eventfields | json }},
+        "queryBaseFilter": "_index:so-case AND kind:case",
+        "queryToggleFilters": [
+        ],
+        "queries": {{ cases_queries | json }},
+        "actions": {{ menu_actions | json }}
+      },      
+      "case": {
+        "mostRecentlyUsedLimit": 5,
+        "presets": {
+          "artifactType": {{ presets_artifacttype | json }},
+          "category": {{ presets_category | json }},
+          "pap": {{ presets_pap | json }},
+          "severity": {{ presets_severity | json }},
+          "status": {{ presets_status | json }},
+          "tags": {{ presets_tag | json }},
+          "tlp": {{ presets_tlp | json }}
+        }
+      }
     }
   }
 }

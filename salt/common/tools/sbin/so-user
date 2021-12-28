@@ -147,7 +147,7 @@ function updatePassword() {
     # Generate password hash
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB) where identity_id='${identityId}';" | sqlite3 "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), updated_at=datetime('now') where identity_id='${identityId}';" | sqlite3 "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
 }
@@ -310,7 +310,7 @@ function listUsers() {
 
   users=$(echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort)
   for user in $users; do
-    roles=$(grep "$user" "$elasticRolesFile" | cut -d: -f1 | tr '\n' ' ')
+    roles=$(grep ":$user\$" "$elasticRolesFile" | cut -d: -f1 | tr '\n' ' ')
     echo "$user: $roles"
   done
 }
@@ -341,7 +341,7 @@ function adjustUserRole() {
 
   filename="$socRolesFile"
   hasRole=0
-  grep "$role:" "$socRolesFile" | grep -q "$identityId" && hasRole=1
+  grep "^$role:" "$socRolesFile" | grep -q "$identityId" && hasRole=1
   if [[ "$op" == "add" ]]; then
     if [[ "$hasRole" == "1" ]]; then
       echo "User '$email' already has the role: $role"
