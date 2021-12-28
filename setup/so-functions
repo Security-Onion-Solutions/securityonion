@@ -1429,6 +1429,32 @@ fleet_pillar() {
 		"" > "$pillar_file"
 }
 
+generate_ca() {
+	{
+		echo "Building Certificate Authority";
+		salt-call state.apply ca;
+
+		echo " Confirming existence of the CA certificate"
+		openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
+
+		echo "Confirming salt mine now contains the certificate";
+		salt-call mine.get "$MINION_ID" x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
+		if [ $? -eq 0 ]; then
+			echo "CA in mine"
+		else
+			echo "CA not in mine"
+		fi
+	} >> "$setup_log" 2>&1
+}
+
+generate_ssl() {
+	{
+		echo "Applying SSL state";
+		salt-call state.apply ssl;
+		salt-call saltutil.sync_modules;
+	} >> "$setup_log" 2>&1
+}
+
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(get_random_value)
@@ -2259,107 +2285,6 @@ saltify() {
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" >> "$setup_log" 2>&1 || exit 1
 	fi
-}
-
-salt_checkin() {
-	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
-			{
-				echo "Building Certificate Authority";
-				salt-call state.apply ca;
-				echo " *** Restarting Salt to fix any SSL errors. ***";
-
-				local SALT_SERVICES=(\
-				"salt-master" \
-				"salt-minion"
-				)
-				local count=0
-
-				for service in "${SALT_SERVICES[@]}"; do
-					{
-						echo "Restarting service $service"
-						systemctl restart "$service" &
-						local pid=$!
-					} >> "$setup_log" 2>&1 
-
-					count=0
-					while ! (check_service_status "$service"); do
-						# On final loop, kill the pid trying to restart service and try to manually kill then start it
-						if [ $count -eq 12 ]; then
-							{
-								kill -9 "$pid"
-								systemctl kill "$service"
-								systemctl start "$service" &
-								local pid=$!
-							} >> "$setup_log" 2>&1 
-						fi
-						
-						if [ $count -gt 12 ]; then
-							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
-							kill -9 "$pid"
-							exit 1
-						fi
-						sleep 10;
-						((count++))
-					done
-				done
-
-				count=1
-				timeout=60
-				while ! (check_salt_master_status $timeout); do
-					echo "salt minion cannot talk to salt master after $timeout seconds" >> "$setup_log" 2>&1
-					if [ $count -gt 2 ]; then
-						echo "salt minion could not talk to salt master after $count attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
-					fi
-					sleep 1;
-					((count++))
-					((timeout+=30)) # add 30s to the timeout each attempt
-				done
-
-				count=1
-				timeout=60
-				while ! (check_salt_minion_status $timeout) ; do
-					echo "salt master did not get a job response from salt minion after $timeout seconds" >> "$setup_log" 2>&1
-					if [ $count -gt 2 ]; then
-						echo "salt master did not get a job response from salt minion after $count attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
-					fi
-					systemctl kill salt-minion
-					systemctl start salt-minion
-					sleep 1;
-					((count++))
-					((timeout+=30)) # add 30s to the timeout each attempt
-				done
-
-				echo " Confirming existence of the CA certificate"
-				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
-				echo " Applyng a mine hack";
-				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
-				salt "$MINION_ID" mine.update;
-				echo "Confirming salt mine now contains the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
-				if [ $? -eq 0 ]; then
-					echo "CA in mine"
-				else
-					echo "CA not in mine"
-				fi
-				echo " Applying SSL state";
-				salt-call state.apply ssl;
-			} >> "$setup_log" 2>&1
-			;;
-		*)
-			{
-				#salt-call state.apply ca;
-				salt-call state.apply ssl;
-			} >> "$setup_log" 2>&1
-			;;
-	esac
-	{
-		#salt-call state.apply ca;
-		salt-call state.apply ssl;
-		salt-call saltutil.sync_modules;
-	} >> "$setup_log" 2>&1
 }
 
 # Run a salt command to generate the minion key
