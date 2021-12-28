@@ -23,9 +23,15 @@ include:
 {% else %}
 include:
   - ca.dirs
-    {% set x509dict = salt['mine.get'](manager, 'x509.get_pem_entries') %}
-    {% set trusttheca_text = x509dict[manager].get('/etc/pki/ca.crt')|replace('\n', '') %}
-    {% set ca_server = manager %}
+    {% set x509dict = salt['mine.get'](manager~'*', 'x509.get_pem_entries') %}
+    {% for host in x509dict %}
+      {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
+        {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
+        {% do global_ca_server.append(host) %}
+      {% endif %}
+    {% endfor %}
+    {% set trusttheca_text = global_ca_text[0] %}
+    {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
 # Trust the CA
