@@ -39,7 +39,7 @@ pki_public_ca_crt:
     - backup: True
     - replace: False
     - require:
-      - file: /etc/pki
+      - sls: ca.dirs
     - timeout: 30
     - retry:
         attempts: 5
