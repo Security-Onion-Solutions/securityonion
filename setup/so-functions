@@ -1147,7 +1147,7 @@ installer_prereq_packages() {
 		logCmd "systemctl start NetworkManager"
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
@@ -1204,12 +1204,12 @@ docker_install() {
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || exit 1
 				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac
 		if [ $OSVER == "bionic" ]; then
@@ -2259,7 +2259,7 @@ saltify() {
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
 				retry 50 10 "apt-get -y install sqlite3 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
@@ -2279,7 +2279,7 @@ saltify() {
 				;;
 		esac
 
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
