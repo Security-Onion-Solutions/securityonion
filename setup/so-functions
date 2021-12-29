@@ -1033,6 +1033,8 @@ copy_minion_tmp_files() {
 			} >> "$setup_log" 2>&1
 			;;
 	esac
+	echo "Syncing all salt modules." >> "$setup_log" 2>&1
+	salt-call saltutil.sync_modules >> "$setup_log" 2>&1
 }
 
 copy_ssh_key() {
@@ -1436,16 +1438,20 @@ generate_ca() {
 		echo "Building Certificate Authority";
 		salt-call state.apply ca;
 
-		echo " Confirming existence of the CA certificate"
+		echo "Confirming existence of the CA certificate"
 		openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 	} >> "$setup_log" 2>&1
 }
 
 generate_ssl() {
 	{
+		# if the install type is a manager then we need to wait for the minion to be ready before trying
+		# to run the ssl state since we need the minion to sign the certs
+		if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
+			wait_for_salt_minion
+		fi
 		echo "Applying SSL state";
 		salt-call state.apply ssl;
-		salt-call saltutil.sync_modules;
 	} >> "$setup_log" 2>&1
 }
 
@@ -2785,6 +2791,10 @@ wait_for_file() {
 	done
 	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
 	return 1
+}
+
+wait_for_salt_minion() {
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
 }
 
 # Enable Zeek Logs
