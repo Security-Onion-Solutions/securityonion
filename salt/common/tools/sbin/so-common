@@ -309,21 +309,21 @@ retry() {
                 echo "Results: $output ($exitcode)"
                 if [ -n "$expectedOutput" ]; then
                         if [[ "$output" =~ "$expectedOutput" ]]; then
-                                return $exitCode
+                                return $exitcode
                         else
                                 echo "Expected '$expectedOutput' but got '$output'"
                         fi
                 elif [ -n "$failedOutput" ]; then
                         if [[ "$output" =~ "$failedOutput" ]]; then
-                                echo "Found failed output '$failedOutput' in '$output'"
-                                if [[ $exitcode -eq 0 ]]; then
-                                        exitcode="${exitcode} (This is 0, but we found '$failedOutput' in the output.)"
-                                fi
+                                echo "Found failed output '$failedOutput' in '$output'. Setting exitcode to 1."
+								if [[ $exitcode -eq 0 ]]; then
+									exitcode=1
+								fi
                         else
-                                return $exitCode
+                                return $exitcode
                         fi
                 elif [[ $exitcode -eq 0 ]]; then
-                        return $exitCode
+                        return $exitcode
                 fi
                 echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
                 sleep $sleepDelay
