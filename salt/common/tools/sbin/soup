@@ -399,6 +399,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
     [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
+    [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     true
 }
 
@@ -410,6 +411,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
     [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
+    [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     true
 }
 
@@ -459,11 +461,12 @@ post_to_2.3.90() {
       fi
     fi
 
-  
-
   POSTVERSION=2.3.90
 }
 
+post_to_2.3.100() {
+  echo "Post Processing for .100"
+}
 
 up_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
@@ -657,6 +660,10 @@ up_to_2.3.90() {
   INSTALLEDVERSION=2.3.90
 }
 
+up_to_2.3.100() {
+  echo "Updating to Security Onion to 2.3.100"
+  fix_wazuh
+}
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
@@ -855,20 +862,23 @@ verify_latest_update_script() {
 
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
-    FILE="/nsm/wazuh/etc/ossec.conf"
-    echo "Detecting if ossec.conf needs corrected..."
-    if head -1 $FILE | grep -q "xml version"; then
-      echo "$FILE has an XML header; removing"
-      sed -i 1d $FILE
-      so-wazuh-restart
-    else    
-      echo "$FILE does not have an XML header, so no changes are necessary."
-    fi
+    fix_wazuh
   else
     echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
 }
 
+fix_wazuh() {
+  FILE="/nsm/wazuh/etc/ossec.conf"
+  echo "Detecting if ossec.conf needs corrected..."
+  if head -1 $FILE | grep -q "xml version"; then
+    echo "$FILE has an XML header; removing"
+    sed -i 1d $FILE
+    so-wazuh-restart
+  else    
+    echo "$FILE does not have an XML header, so no changes are necessary."
+  fi
+}
 
 main() {
   trap 'check_err $?' EXIT
