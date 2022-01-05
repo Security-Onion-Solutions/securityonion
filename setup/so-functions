@@ -2096,6 +2096,10 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
+		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
+		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
 
 		# Backup directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
@@ -2126,6 +2130,16 @@ reset_proxy() {
 		sed -i "/proxy=/d" /etc/yum.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+}
+
+restore_file() {
+	src=$1
+	dst=$2
+	if [ -f "$src" ]; then
+		[ ! -d "$dst" ] && mkdir -v -p "$dst"
+		echo "Restoring $src to $dst." >> "$setup_log" 2>&1
+		cp -v "$src" "$dst"
 	fi
 }
 
