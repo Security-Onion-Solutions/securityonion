@@ -330,13 +330,15 @@ so-elasticsearch-pipelines-file:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 so-elasticsearch-pipelines:
- cmd.run:
-   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
-   - onchanges:
+  cmd.run:
+    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
+    - onchanges:
       - file: esingestconf
       - file: esingestdynamicconf
       - file: esyml
       - file: so-elasticsearch-pipelines-file
+    - require:
+      - docker_container: so-elasticsearch
 
 {% if TEMPLATES %}
 so-elasticsearch-templates:
@@ -344,6 +346,8 @@ so-elasticsearch-templates:
     - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
 {% endif %}
 
 so-elasticsearch-roles-load:
@@ -351,6 +355,8 @@ so-elasticsearch-roles-load:
     - name: /usr/sbin/so-elasticsearch-roles-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 
