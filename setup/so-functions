@@ -2042,6 +2042,9 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 	
+	# remove all of root's cronjobs
+	crontab -r -u root
+
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
@@ -2100,6 +2103,8 @@ reinstall_init() {
 		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
 		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
 		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
+		# If the elastic license has been accepted restore the state file
+		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
 		# Backup directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
