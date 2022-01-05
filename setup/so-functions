@@ -2042,6 +2042,9 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 	
+	# remove all of root's cronjobs
+	crontab -r -u root
+
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
@@ -2081,7 +2084,7 @@ reinstall_init() {
 		done
 
 		# Remove all salt configs
-		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
+		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -2096,6 +2099,12 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
+		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
+		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
+		# If the elastic license has been accepted restore the state file
+		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
 		# Backup directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
@@ -2126,6 +2135,16 @@ reset_proxy() {
 		sed -i "/proxy=/d" /etc/yum.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+}
+
+restore_file() {
+	src=$1
+	dst=$2
+	if [ -f "$src" ]; then
+		[ ! -d "$dst" ] && mkdir -v -p "$dst"
+		echo "Restoring $src to $dst." >> "$setup_log" 2>&1
+		cp -v "$src" "$dst"
 	fi
 }
 
