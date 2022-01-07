@@ -618,6 +618,9 @@ up_to_2.3.90() {
     fi
   done
   
+  # There was a bug in 2.3.0 so-firewall addhostgroup that was resolved in 2.3.1 - commit 32294eb2ed30ac74b15bb4bfab687084a928daf2
+  echo "Verify so-firewall is up to date"
+  verify_latest_so-firewall_script
   # Create Endgame Hostgroup
   echo "Adding endgame hostgroup with so-firewall"
   if so-firewall addhostgroup endgame 2>&1 | grep -q 'Already exists'; then
@@ -861,6 +864,22 @@ verify_latest_update_script() {
     echo ""
     echo "soup has been updated. Please run soup again."
     exit 0
+  fi
+}
+
+verify_latest_so-firewall_script() {
+  # Check to see if the so-firewall script matches. If not run the new one.
+  CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
+  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-firewall | awk '{print $1}')
+
+  if [[ "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+    echo "This version of the so-firewall script is up to date. Proceeding."
+  else
+    echo "You are not running the latest version of so-firewall. Updating so-firewall."
+    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    salt-call state.apply -l info common queue=True
+    echo ""
+    echo "so-firewall has been updated."
   fi
 }
 
