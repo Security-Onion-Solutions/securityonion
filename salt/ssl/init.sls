@@ -16,12 +16,14 @@
 {% endif %}
 
 {% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'helixsensor'] %}
-    {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
-    {% set ca_server = grains.id %}
 include:
   - ca
+    {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
+    {% set ca_server = grains.id %}
 {% else %}
-    {% set x509dict = salt['mine.get']('*', 'x509.get_pem_entries') %}
+include:
+  - ca.dirs
+    {% set x509dict = salt['mine.get'](manager~'*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}

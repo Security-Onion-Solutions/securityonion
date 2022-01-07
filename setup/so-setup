@@ -761,8 +761,13 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
-	set_progress_str 23 'Generating CA and checking in'
-	salt_checkin >> $setup_log 2>&1
+	if [[ $is_manager || $is_helix || $is_import ]]; then
+		set_progress_str 23 'Generating CA'
+		generate_ca >> $setup_log 2>&1
+	fi
+
+	set_progress_str 24 'Generating SSL'
+	generate_ssl >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
