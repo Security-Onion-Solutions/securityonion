@@ -187,6 +187,7 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -194,9 +195,10 @@ elastic_curl_config:
     - mode: 600
     - show_changes: False
     - makedirs: True
-{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
     - require:
       - file: elastic_curl_config_distributed
+  {% endif %}
 {% endif %}
 
 # Sync some Utilities
