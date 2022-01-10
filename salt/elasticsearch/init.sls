@@ -24,6 +24,7 @@ include:
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
+{% set ESMOUNT = salt ['pillar.get']('elasticsearch:extramount')%}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -287,6 +288,9 @@ so-elasticsearch:
       {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
+      {% endif %}
+      {% if ESMOUNT %}
+      - {{ ESMOUNT }}:/snapshots:rw
       {% endif %}
     - watch:
       - file: cacertz
