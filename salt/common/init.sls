@@ -4,6 +4,11 @@
 {% set role = grains.id.split('_') | last %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+include:
+  - manager.elasticsearch # needed for elastic_curl_config state
+{% endif %}
+
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
   file.absent:
@@ -189,6 +194,10 @@ elastic_curl_config:
     - mode: 600
     - show_changes: False
     - makedirs: True
+{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+    - require:
+      - file: elastic_curl_config_distributed
+{% endif %}
 
 # Sync some Utilities
 utilsyncscripts:

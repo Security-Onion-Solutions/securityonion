@@ -25,6 +25,7 @@ include:
   - kibana.secrets
   - salt.minion
   - kratos
+  - manager.elasticsearch
 
 socore_own_saltstack:
   file.directory:
@@ -109,14 +110,6 @@ strelka_yara_update:
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - hour: '7'
     - minute: '1'
-
-elastic_curl_config_distributed:
-  file.managed:
-    - name: /opt/so/saltstack/local/salt/elasticsearch/curl.config
-    - source: salt://elasticsearch/files/curl.config.template
-    - template: jinja
-    - mode: 600
-    - show_changes: False
 
 # Must run before elasticsearch docker container is started!
 syncesusers:
