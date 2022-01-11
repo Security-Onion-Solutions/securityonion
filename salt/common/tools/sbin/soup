@@ -992,17 +992,34 @@ main() {
       set -e
     fi
 
+    echo "Disabling highstate to prevent from running if salt-minion restarts."
+    salt-call state.disable highstate -l info --local
     echo ""
+
+    echo "Storing salt-minion pid."
+    MINIONPID=$(pgrep salt-minion | head -1)
+    echo "Found salt-minion PID $MINIONPID"
     echo "Stopping Salt Minion service at $(date +"%T.%6N")."
     systemctl stop salt-minion
-    echo "Killing any remaining Salt Minion processes at $(date +"%T.%6N")"
+
     set +e
-    pkill -9 -ef /usr/bin/salt-minion
+    timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
     set -e
+
+    #echo "Killing any remaining Salt Minion processes at $(date +"%T.%6N")"
+    #set +e
+    #pkill -9 -ef /usr/bin/salt-minion
+    #set -e
+
+    echo ""
+    echo "Storing salt-master pid."
+    MASTERPID=$(pgrep salt-master | head -1)
+    echo "Found salt-master PID $MASTERPID"
     echo ""
     echo "Stopping Salt Master service at $(date +"%T.%6N")"
     systemctl stop salt-master
     echo ""
+    timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
 
     upgrade_to_2.3.50_repo
 
@@ -1066,6 +1083,13 @@ main() {
     salt-call state.apply salt.python3-influxdb -l info queue=True
     echo ""
 
+    # update the salt-minion configs here and start the minion
+    # since highstate are disabled above, minion start should not trigger a highstate
+    echo ""
+    echo "Ensuring salt-minion configs are up-to-date."
+    salt-call state.apply salt.minion -l info queue=True
+    echo ""
+
     # Only regenerate osquery packages if Fleet is enabled
     FLEET_MANAGER=$(lookup_pillar fleet_manager)
     FLEET_NODE=$(lookup_pillar fleet_node)
@@ -1076,6 +1100,10 @@ main() {
       echo ""
     fi
 
+    echo "Enabling highstate."
+    salt-call state.enable highstate -l info --local
+    echo ""
+
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
@@ -1083,8 +1111,14 @@ main() {
     set -e
 
     echo ""
-    echo "Stopping Salt Master to remove ACL at $(date +"%T.%6N")."
+    echo "Storing salt-master pid."
+    MASTERPID=$(pgrep salt-master | head -1)
+    echo "Found salt-master PID $MASTERPID"
+    echo ""
+    echo "Stopping Salt Master service to remove ACL(masterunlock) at $(date +"%T.%6N")"
     systemctl stop salt-master
+    echo ""
+    timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
 
     masterunlock
 
