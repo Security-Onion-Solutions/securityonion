@@ -24,7 +24,7 @@ include:
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set ESMOUNT = salt ['pillar.get']('elasticsearch:extramount')%}
+{% set ESMOUNT = salt ['pillar.get']('elasticsearch:extramount', False) %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
