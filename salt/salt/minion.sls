@@ -84,6 +84,8 @@ mine_functions:
     - name: /etc/salt/minion.d/mine_functions.conf
     - source: salt://salt/etc/minion.d/mine_functions.conf
     - template: jinja
+    - listen_in:
+      - service: salt_minion_service
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
@@ -91,8 +93,6 @@ salt_minion_service:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
-    - watch:
-      - file: mine_functions
 
 patch_pkg:
   pkg.installed:
