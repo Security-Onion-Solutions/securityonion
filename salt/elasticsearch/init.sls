@@ -24,6 +24,7 @@ include:
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
+{% set ESMOUNT = salt['pillar.get']('elasticsearch:extramount', False) %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -288,6 +289,9 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
+      {% if ESMOUNT %}
+      - {{ ESMOUNT }}:/snapshots:rw
+      {% endif %}
     - watch:
       - file: cacertz
       - file: esyml
@@ -330,13 +334,15 @@ so-elasticsearch-pipelines-file:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 so-elasticsearch-pipelines:
- cmd.run:
-   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
-   - onchanges:
+  cmd.run:
+    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
+    - onchanges:
       - file: esingestconf
       - file: esingestdynamicconf
       - file: esyml
       - file: so-elasticsearch-pipelines-file
+    - require:
+      - docker_container: so-elasticsearch
 
 {% if TEMPLATES %}
 so-elasticsearch-templates:
@@ -344,6 +350,8 @@ so-elasticsearch-templates:
     - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
 {% endif %}
 
 so-elasticsearch-roles-load:
@@ -351,6 +359,8 @@ so-elasticsearch-roles-load:
     - name: /usr/sbin/so-elasticsearch-roles-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 

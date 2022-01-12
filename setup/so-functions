@@ -1033,6 +1033,8 @@ copy_minion_tmp_files() {
 			} >> "$setup_log" 2>&1
 			;;
 	esac
+	echo "Syncing all salt modules." >> "$setup_log" 2>&1
+	salt-call saltutil.sync_modules >> "$setup_log" 2>&1
 }
 
 copy_ssh_key() {
@@ -1145,7 +1147,7 @@ installer_prereq_packages() {
 		logCmd "systemctl start NetworkManager"
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
@@ -1202,18 +1204,24 @@ docker_install() {
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || exit 1
 				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac
 		if [ $OSVER == "bionic" ]; then
+		        service docker stop
+			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+	        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras
 		elif [ $OSVER == "focal" ]; then
+		        service docker stop
+			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
+                        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras		
 		fi
 	fi
 	docker_registry
@@ -1436,16 +1444,20 @@ generate_ca() {
 		echo "Building Certificate Authority";
 		salt-call state.apply ca;
 
-		echo " Confirming existence of the CA certificate"
+		echo "Confirming existence of the CA certificate"
 		openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 	} >> "$setup_log" 2>&1
 }
 
 generate_ssl() {
 	{
+		# if the install type is a manager then we need to wait for the minion to be ready before trying
+		# to run the ssl state since we need the minion to sign the certs
+		if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
+			wait_for_salt_minion
+		fi
 		echo "Applying SSL state";
 		salt-call state.apply ssl;
-		salt-call saltutil.sync_modules;
 	} >> "$setup_log" 2>&1
 }
 
@@ -2030,6 +2042,9 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 	
+	# remove all of root's cronjobs
+	crontab -r -u root
+
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
@@ -2069,7 +2084,7 @@ reinstall_init() {
 		done
 
 		# Remove all salt configs
-		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
+		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -2084,6 +2099,12 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
+		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
+		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
+		# If the elastic license has been accepted restore the state file
+		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
 		# Backup directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
@@ -2114,6 +2135,16 @@ reset_proxy() {
 		sed -i "/proxy=/d" /etc/yum.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
+	fi
+}
+
+restore_file() {
+	src=$1
+	dst=$2
+	if [ -f "$src" ]; then
+		[ ! -d "$dst" ] && mkdir -v -p "$dst"
+		echo "Restoring $src to $dst." >> "$setup_log" 2>&1
+		cp -v "$src" "$dst"
 	fi
 }
 
@@ -2253,7 +2284,7 @@ saltify() {
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
 				retry 50 10 "apt-get -y install sqlite3 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
@@ -2273,7 +2304,7 @@ saltify() {
 				;;
 		esac
 
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
 		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
@@ -2785,6 +2816,10 @@ wait_for_file() {
 	done
 	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
 	return 1
+}
+
+wait_for_salt_minion() {
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
 }
 
 # Enable Zeek Logs

@@ -3,8 +3,8 @@
 {%- set THEHIVEKEY = salt['pillar.get']('global:hivekey', '') %}
 {%- set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {%- set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
-{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
-{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
+{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
+{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {%- set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {%- set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
 {%- set API_TIMEOUT = salt['pillar.get']('sensoroni:api_timeout_ms', 0) %}
@@ -89,23 +89,23 @@
         "refreshIntervalMs": 30000,
         "offlineThresholdMs": 900000
       },
-{% if CASE_MODULE == 'thehive' and THEHIVEKEY != '' %}
+{%- if CASE_MODULE == 'thehive' and THEHIVEKEY != '' %}
       "thehive": {
         "hostUrl": "http://{{ MANAGERIP }}:9000/thehive",
         "key": "{{ THEHIVEKEY }}",
         "verifyCert": false
       },
-{% elif CASE_MODULE == 'elasticcases' %}
+{%- elif CASE_MODULE == 'elasticcases' %}
       "elasticcases": {
         "hostUrl": "https://{{ MANAGERIP }}:5601",
         "username": "{{ ES_USER }}",
         "password": "{{ ES_PASS }}",
       },
-{% elif CASE_MODULE == 'generichttp' %}
+{%- elif CASE_MODULE == 'generichttp' %}
       "generichttp": {
         {{ GENERIC_CASE_CONFIG }}
       },
-{% endif %}
+{%- endif %}
       "statickeyauth": {
         "anonymousCidr": "{{ DNET }}/24",
         "apiKey": "{{ SENSORONIKEY }}"
@@ -166,7 +166,9 @@
         "escalateRelatedEventsEnabled": {{ 'true' if CASE_MODULE == 'soc' else 'false' }},
         "eventFields": {{ hunt_eventfields | json }},
         "queryBaseFilter": "",
-        "queryToggleFilters": [],
+        "queryToggleFilters": [
+          { "name": "caseExcludeToggle", "filter": "NOT _index:\"*:so-case*\"", "enabled": true }
+        ],
         "queries": {{ hunt_queries | json }},
         "actions": {{ menu_actions | json }}           
       },
@@ -207,8 +209,9 @@
         "escalateEnabled": false,
         "escalateRelatedEventsEnabled": false,
         "viewEnabled": true,
+        "createLink": "/case/create",
         "eventFields": {{ cases_eventfields | json }},
-        "queryBaseFilter": "_index:so-case AND kind:case",
+        "queryBaseFilter": "_index:\"*:so-case\" AND kind:case",
         "queryToggleFilters": [
         ],
         "queries": {{ cases_queries | json }},

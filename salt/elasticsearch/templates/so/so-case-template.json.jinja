@@ -1,0 +1,261 @@
+{%- set INDEX_SORTING = salt['pillar.get']('elasticsearch:index_sorting', True) %}
+{%- set REPLICAS = salt['pillar.get']('elasticsearch:replicas', 0) %}
+{%- set REFRESH = salt['pillar.get']('elasticsearch:index_settings:so-common:refresh', '30s') %}
+{
+  "index_patterns": ["so-case*"],
+  "version":50001,
+  "order":10,
+  "settings":{
+    "number_of_replicas":{{ REPLICAS }},
+    "number_of_shards":1,
+    "index.refresh_interval":"{{ REFRESH }}",
+    "index.routing.allocation.require.box_type":"hot",
+{%- if INDEX_SORTING is sameas true %}
+    "index.sort.field": "@timestamp",
+    "index.sort.order": "desc",
+{%- endif %}
+    "index.mapping.total_fields.limit": "1500"
+  },
+  "mappings": {
+    "_meta": {
+      "version": "1.5.0"
+    },
+    "date_detection": false,
+    "dynamic_templates": [
+      {
+        "strings_as_keyword": {
+          "mapping": {
+            "ignore_above": 1024,
+            "type": "keyword"
+          },
+          "match_mapping_type": "string"
+        }
+      }
+    ],
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "kind": {
+        "type": "keyword",
+        "ignore_above": 1024
+      },
+      "operation": {
+        "type": "keyword",
+        "ignore_above": 1024
+      },      
+      "so_audit_doc_id": {
+        "type": "keyword",
+        "ignore_above": 1024
+      },
+      "artifact": {
+        "properties": {
+          "artifactType": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "caseId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "createTime": {
+            "type": "date"
+          },
+          "description": {
+            "type": "text"
+          },
+          "groupId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "groupType": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "ioc": {
+            "type": "boolean"
+          },
+          "md5": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "mimeType": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "sha1": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "sha256": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "streamId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "streamLength": {
+            "type": "long"
+          },
+          "tags": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "tlp": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "userId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "value": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 1024
+              }
+            }
+          }
+        }
+      },
+      "artifactstream": {
+        "properties": {
+          "content": {
+            "type": "text"
+          },
+          "createTime": {
+            "type": "date"
+          },
+          "userId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      },
+      "case": {
+        "properties": {
+          "assigneeId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "category": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "completeTime": {
+            "type": "date"
+          },
+          "createTime": {
+            "type": "date"
+          },
+          "description": {
+            "type": "text"
+          },
+          "pap": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "priority": {
+            "type": "long"
+          },
+          "severity": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "startTime": {
+            "type": "date"
+          },
+          "status": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "tags": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "template": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "title": {
+            "type": "text"
+          },
+          "tlp": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "userId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      },
+      "comment": {
+        "properties": {
+          "caseId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "createTime": {
+            "type": "date"
+          },
+          "description": {
+            "type": "text"
+          },
+          "userId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      },
+      "related": {
+        "properties": {
+          "caseId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "createTime": {
+            "type": "date"
+          },
+          "fields": {
+            "properties": {
+              "@timestamp": {
+                "type": "date"
+              },
+              "event": {
+                "properties": {
+                  "dataset": {
+                    "type": "keyword",
+                    "ignore_above": 1024
+                  },
+                  "module": {
+                    "type": "keyword",
+                    "ignore_above": 1024
+                  },
+                  "category": {
+                    "type": "keyword",
+                    "ignore_above": 1024
+                  }                  
+                }
+              },
+              "message": {
+                "type": "text"
+              },
+              "tags": {
+                "type": "keyword",
+                "ignore_above": 1024
+              }
+            }
+          },
+          "userId": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      }
+    }
+  }
+}

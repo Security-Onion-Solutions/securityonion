@@ -32,13 +32,19 @@
     { "rename":         { "field": "data.win.eventdata.targetFilename",         "target_field": "file.target",  "ignore_missing": true  } },
     { "rename":         { "field": "data.win.eventdata.user",                   "target_field": "user.name",            "ignore_missing": true  } },
     { "rename":         { "field": "data.win.system",                   "target_field": "winlog",           "ignore_missing": true  } },
-    { "rename":         { "field": "data.win.eventdata",                   "target_field": "winlog.event_data",           "ignore_missing": true  } },
+    { "rename":         { "field": "data.win.eventdata",                   "target_field": "winlog.event_data",           "ignore_missing": true  } },     
     { "rename":         { "field": "data",                   "target_field": "wazuh.data",           "ignore_missing": true  } },
     { "rename":         { "field": "winlog.eventID",                   "target_field": "winlog.event_id",           "ignore_missing": true  } },
     { "rename":         { "field": "predecoder.program_name",                   "target_field": "process.name",         "ignore_missing": true  } },
     { "rename":         { "field": "decoder.name",                   "target_field": "event.dataset",         "ignore_missing": true  } },
     { "rename":         { "field": "rule.description",                   "target_field": "rule.name",         "ignore_missing": true  } },
     { "rename":         { "field": "rule.id",                            "target_field": "rule.uuid",         "ignore_missing": true  } },
+    { "script": {
+        "if": "ctx.winlog?.event_data != null", 
+        "lang": "painless", 
+        "source": "Map eventData = ctx['winlog']['event_data']; Map updatedEventData = new HashMap(); for (String key: eventData.keySet()) { updatedEventData[key.substring(0,1).toUpperCase() + key.substring(1)] = eventData[key] } ctx['winlog']['event_data'] = updatedEventData"
+            }
+          },
     { "set":            { "if": "ctx.rule != null && ctx.rule.level == 1",          "field": "rule.category", "value": "None"                               } },
     { "set":            { "if": "ctx.rule != null && ctx.rule.level == 2",          "field": "rule.category", "value": "System low priority notification"   } },
     { "set":            { "if": "ctx.rule != null && ctx.rule.level == 3",          "field": "rule.category", "value": "Successful/authorized event"        } },

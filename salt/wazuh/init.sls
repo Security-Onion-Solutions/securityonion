@@ -127,7 +127,7 @@ registertheagent:
   cmd.run:
     - name: /usr/sbin/wazuh-register-agent
     - cwd: /
-    #- stateful: True
+    - unless: ls /opt/so/conf/wazuh/initial_agent_registration.log
 
 # Whitelist manager IP
 whitelistmanager:
