@@ -735,6 +735,13 @@ update_centos_repo() {
   createrepo /nsm/repo
 }
 
+update_salt_mine() {
+    echo "Populating the mine with network.ip_addrs pillar.host.mainint for each host."
+    set +e
+    salt \* cmd.run cmd='MAININT=$(salt-call pillar.get host:mainint --out=newline_values_only) && salt-call mine.send name=network.ip_addrs interface="$MAININT"'
+    set -e
+}
+
 update_version() {
   # Update the version to the latest
   echo "Updating the Security Onion version file."
@@ -972,6 +979,9 @@ main() {
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
+
+    # update mine items prior to stopping salt-minion and salt-master
+    update_salt_mine
 
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
