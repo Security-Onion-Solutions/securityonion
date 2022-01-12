@@ -988,6 +988,7 @@ main() {
   verify_latest_update_script
   echo ""
   set_os
+  set_cron_service_name
   set_palette
   check_elastic_license
   echo ""
@@ -1020,6 +1021,10 @@ main() {
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
+
+    echo "Stopping $cron_service_name service at $(date +"%T.%6N")."
+    echo ""
+    systemctl stop "$cron_service_name"
 
     # update mine items prior to stopping salt-minion and salt-master
     update_salt_mine
@@ -1190,6 +1195,9 @@ main() {
         ;;
       esac
     fi
+
+    echo "Starting $cron_service_name service at $(date +"%T.%6N")."
+    systemctl start "$cron_service_name"
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
