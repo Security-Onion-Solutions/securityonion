@@ -958,7 +958,18 @@ fix_wazuh() {
 main() {
   trap 'check_err $?' EXIT
   
+  if [ -n "$BRANCH" ]; then
+    echo "SOUP will use the $BRANCH branch."
+    echo ""
+  fi
+
   echo "### Preparing soup at $(date) ###"
+  echo ""
+
+  echo "Checking to see if this is a manager."
+  echo ""
+  require_manager
+
   check_pillar_items
 
   echo "Checking to see if this is an airgap install."
@@ -968,9 +979,7 @@ main() {
     echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
     exit 0
   fi
-  echo "Checking to see if this is a manager."
-  echo ""
-  require_manager
+
   set_minionid
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
@@ -1277,12 +1286,6 @@ https://blog.securityonion.net
 
 EOF
 
-  if [ -n "$BRANCH" ]; then
-    cat << EOF
-SOUP will use the $BRANCH branch.
-
-EOF
-  fi
   cat << EOF
 Press Enter to continue or Ctrl-C to cancel.
 EOF
