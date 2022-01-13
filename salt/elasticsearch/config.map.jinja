@@ -10,7 +10,7 @@
     {% if salt['pillar.get']('nodestab', {}) %}
       {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client']}) %}
       {% if HIGHLANDER %}
-          {% do ESCONFIG.elasticsearch.config.node.roles.append('ml') %}
+          {% do ESCONFIG.elasticsearch.config.node.roles.append('ml', 'transform') %}
       {% endif %}
       {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
       {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
@@ -23,7 +23,7 @@
   {% else %}
     {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['data', 'ingest']}) %}
     {% if HIGHLANDER %}
-          {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'master']) %}
+          {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
     {% endif %}
     {% do ESCONFIG.elasticsearch.config.node.attr.update({'box_type': 'hot'}) %}
     {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
