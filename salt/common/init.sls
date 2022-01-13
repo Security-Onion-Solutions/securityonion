@@ -4,9 +4,8 @@
 {% set role = grains.id.split('_') | last %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
-include:
-  - cron.running
 {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+include:
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
