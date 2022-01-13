@@ -19,6 +19,10 @@
 
 base:
 
+  '*':
+    - salt.enable_highstate
+    - cron.running
+
   'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test

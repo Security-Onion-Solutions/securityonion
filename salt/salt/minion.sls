@@ -62,8 +62,6 @@ set_log_levels:
     - text:
       - "log_level: error"
       - "log_level_logfile: error"
-    - listen_in:
-      - service: salt_minion_service
 
 salt_minion_service_unit_file:
   file.managed:
@@ -74,8 +72,6 @@ salt_minion_service_unit_file:
         service_start_delay: {{ service_start_delay }}
     - onchanges_in:
       - module: systemd_reload
-    - listen_in:
-      - service: salt_minion_service
 
 {% endif %}
 
@@ -91,8 +87,13 @@ salt_minion_service:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
-    - watch:
+    - listen:
       - file: mine_functions
+{% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
+      - file: set_log_levels
+      - file: salt_minion_service_unit_file
+{% endif %}
+
 
 patch_pkg:
   pkg.installed:

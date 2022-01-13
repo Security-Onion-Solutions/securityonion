@@ -468,6 +468,51 @@ post_to_2.3.100() {
   echo "Post Processing for .100"
 }
 
+stop_salt_master() {
+    # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
+    set +e
+    echo ""
+    echo "Killing all Salt jobs across the grid."
+    salt \* saltutil.kill_all_jobs
+    echo ""
+    echo "Killing any queued Salt jobs on the manager."
+    pkill -9 -ef "/usr/bin/python3 /bin/salt"
+    set -e
+
+    echo ""
+    echo "Storing salt-master pid."
+    MASTERPID=$(pgrep salt-master | head -1)
+    echo "Found salt-master PID $MASTERPID"
+    echo ""
+    echo "Stopping Salt Master service at $(date +"%T.%6N")"
+    systemctl stop salt-master
+    echo ""
+    timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
+}
+
+stop_salt_minion() {
+    echo "Disabling highstate to prevent from running if salt-minion restarts."
+    salt-call state.disable highstate -l info --local
+    echo ""
+
+    # kill all salt jobs before stopping salt-minion
+    set +e
+    echo ""
+    echo "Killing Salt jobs on this node."
+    salt-call saltutil.kill_all_jobs --local
+    set -e
+
+    echo "Storing salt-minion pid."
+    MINIONPID=$(pgrep salt-minion | head -1)
+    echo "Found salt-minion PID $MINIONPID"
+    echo "Stopping Salt Minion service at $(date +"%T.%6N")."
+    systemctl stop salt-minion
+
+    set +e
+    timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
+    set -e
+}
+
 up_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
   # Remove PCAP from global
@@ -784,11 +829,11 @@ upgrade_salt() {
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
-    echo "Updating Salt packages and restarting services."
+    echo "Updating Salt packages."
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying yum versionlock for Salt."
@@ -801,11 +846,11 @@ upgrade_salt() {
     apt-mark unhold "salt-common"
     apt-mark unhold "salt-master"
     apt-mark unhold "salt-minion"
-    echo "Updating Salt packages and restarting services."
+    echo "Updating Salt packages."
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying apt hold for Salt."
@@ -913,7 +958,18 @@ fix_wazuh() {
 main() {
   trap 'check_err $?' EXIT
   
+  if [ -n "$BRANCH" ]; then
+    echo "SOUP will use the $BRANCH branch."
+    echo ""
+  fi
+
   echo "### Preparing soup at $(date) ###"
+  echo ""
+
+  echo "Checking to see if this is a manager."
+  echo ""
+  require_manager
+
   check_pillar_items
 
   echo "Checking to see if this is an airgap install."
@@ -923,9 +979,7 @@ main() {
     echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
     exit 0
   fi
-  echo "Checking to see if this is a manager."
-  echo ""
-  require_manager
+
   set_minionid
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
@@ -943,6 +997,7 @@ main() {
   verify_latest_update_script
   echo ""
   set_os
+  set_cron_service_name
   set_palette
   check_elastic_license
   echo ""
@@ -976,6 +1031,10 @@ main() {
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
 
+    echo "Stopping $cron_service_name service at $(date +"%T.%6N")."
+    echo ""
+    systemctl stop "$cron_service_name"
+
     # update mine items prior to stopping salt-minion and salt-master
     update_salt_mine
 
@@ -992,17 +1051,9 @@ main() {
       set -e
     fi
 
-    echo ""
-    echo "Stopping Salt Minion service."
-    systemctl stop salt-minion
-    echo "Killing any remaining Salt Minion processes."
-    set +e
-    pkill -9 -ef /usr/bin/salt-minion
-    set -e
-    echo ""
-    echo "Stopping Salt Master service."
-    systemctl stop salt-master
-    echo ""
+    stop_salt_minion
+
+    stop_salt_master
 
     upgrade_to_2.3.50_repo
 
@@ -1048,11 +1099,11 @@ main() {
     update_version
 
     echo ""
-    echo "Locking down Salt Master for upgrade"
+    echo "Locking down Salt Master for upgrade at $(date +"%T.%6N")."
     masterlock
 
     echo ""
-    echo "Starting Salt Master service."
+    echo "Starting Salt Master service at $(date +"%T.%6N")."
     systemctl start salt-master
 
     # Testing that salt-master is up by checking that is it connected to itself
@@ -1066,6 +1117,13 @@ main() {
     salt-call state.apply salt.python3-influxdb -l info queue=True
     echo ""
 
+    # update the salt-minion configs here and start the minion
+    # since highstate are disabled above, minion start should not trigger a highstate
+    echo ""
+    echo "Ensuring salt-minion configs are up-to-date."
+    salt-call state.apply salt.minion -l info queue=True
+    echo ""
+
     # Only regenerate osquery packages if Fleet is enabled
     FLEET_MANAGER=$(lookup_pillar fleet_manager)
     FLEET_NODE=$(lookup_pillar fleet_node)
@@ -1076,20 +1134,22 @@ main() {
       echo ""
     fi
 
+    echo "Enabling highstate."
+    salt-call state.enable highstate -l info --local
     echo ""
-    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
+
+    echo ""
+    echo "Running a highstate. This could take several minutes."
     set +e
     salt-call state.highstate -l info queue=True
     set -e
 
-    echo ""
-    echo "Stopping Salt Master to remove ACL"
-    systemctl stop salt-master
+    stop_salt_master
 
     masterunlock
 
     echo ""
-    echo "Starting Salt Master service."
+    echo "Starting Salt Master service at $(date +"%T.%6N") ."
     systemctl start salt-master
 
     set +e
@@ -1097,7 +1157,7 @@ main() {
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
     
-    echo "Running a highstate. This could take several minutes."
+    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
     salt-call state.highstate -l info queue=True
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
@@ -1144,6 +1204,9 @@ main() {
         ;;
       esac
     fi
+
+    echo "Starting $cron_service_name service at $(date +"%T.%6N")."
+    systemctl start "$cron_service_name"
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
@@ -1223,12 +1286,6 @@ https://blog.securityonion.net
 
 EOF
 
-  if [ -n "$BRANCH" ]; then
-    cat << EOF
-SOUP will use the $BRANCH branch.
-
-EOF
-  fi
   cat << EOF
 Press Enter to continue or Ctrl-C to cancel.
 EOF

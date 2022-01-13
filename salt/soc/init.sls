@@ -5,6 +5,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
+include:
+  - manager.sync_es_users
+
 socdir:
   file.directory:
     - name: /opt/so/conf/soc
@@ -84,14 +87,8 @@ soccustomroles:
 socusersroles:
   file.exists:
     - name: /opt/so/conf/soc/soc_users_roles
-
-# we dont want this added too early in setup, so we add the onlyif to verify 'startup_states: highstate'
-# is in the minion config. That line is added before the final highstate during setup
-sosyncusers:
-  cron.present:
-    - user: root
-    - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
-    - onlyif: "grep 'startup_states: highstate' /etc/salt/minion"
+    - require:
+      - sls: manager.sync_es_users
 
 so-soc:
   docker_container.running:
