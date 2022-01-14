@@ -28,7 +28,7 @@ airgap_repo:
   file.absent:
     - name: {{ REPOPATH }}{{ file }}
     - onchanges_in:
-      - module: cleanyum
+      - cmd: cleanyum
   {% endfor %}
 {% endif %}
 
