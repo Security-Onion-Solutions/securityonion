@@ -45,12 +45,6 @@ pki_public_ca_crt:
         attempts: 5
         interval: 30
 
-x509_pem_entries:
-  module.run:
-    - mine.send:
-       - name: x509.get_pem_entries
-       - glob_path: /etc/pki/ca.crt
-
 cakeyperms:
   file.managed:
     - replace: False
