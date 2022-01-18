@@ -1156,7 +1156,9 @@ installer_prereq_packages() {
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+		if ! command -v curl > /dev/null 2>&1; then
+			retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+		fi
 	fi
 }
 

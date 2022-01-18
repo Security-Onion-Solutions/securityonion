@@ -168,6 +168,14 @@ __check_url_arr() {
 	return $ret_code
 }
 
+preflight_prereqs() {
+	if [[ $OS == 'centos' ]]; then
+		: # no-op to match structure of other checks for $OS var
+	else
+		retry 50 10 "apt-get -y install curl" >> "$preflight_log" 2>&1 || exit 1
+	fi
+}
+
 main() {
 	local intro_str="Beginning pre-flight checks."
 	local success_str="Pre-flight checks completed successfully!"
@@ -183,6 +191,7 @@ main() {
 		echo "$intro_str" | tee "$preflight_log"
 	fi
 	check_default_repos &&\
+	preflight_prereqs &&\
 	check_new_repos &&\
 	check_misc_urls
 
