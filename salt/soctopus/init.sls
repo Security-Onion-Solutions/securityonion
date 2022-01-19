@@ -34,6 +34,7 @@ soctopusconf:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
 
 soctopuslogdir:
   file.directory:

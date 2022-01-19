@@ -101,6 +101,7 @@ elastaconf:
     - group: 933
     - mode: 660
     - template: jinja
+    - show_changes: False
 
 wait_for_elasticsearch:
   cmd.run:
