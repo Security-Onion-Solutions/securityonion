@@ -2016,17 +2016,17 @@ proxy_validate() {
 
 reserve_group_ids() {
 	# This is a hack to fix CentOS from taking group IDs that we need
-	groupadd -g 928 kratos
-	groupadd -g 930 elasticsearch
-	groupadd -g 931 logstash
-	groupadd -g 932 kibana
-	groupadd -g 933 elastalert
-	groupadd -g 934 curator
-	groupadd -g 937 zeek
-	groupadd -g 940 suricata
-	groupadd -g 941 stenographer
-	groupadd -g 945 ossec
-	groupadd -g 946 cyberchef
+	logCmd "groupadd -g 928 kratos"
+	logCmd "groupadd -g 930 elasticsearch"
+	logCmd "groupadd -g 931 logstash"
+	logCmd "groupadd -g 932 kibana"
+	logCmd "groupadd -g 933 elastalert"
+	logCmd "groupadd -g 934 curator"
+	logCmd "groupadd -g 937 zeek"
+	logCmd "groupadd -g 940 suricata"
+	logCmd "groupadd -g 941 stenographer"
+	logCmd "groupadd -g 945 ossec"
+	logCmd "groupadd -g 946 cyberchef"
 }
 
 reserve_ports() {
@@ -2187,12 +2187,12 @@ saltify() {
 		fi 
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
-				reserve_group_ids >> "$setup_log" 2>&1
+				reserve_group_ids
 				if [[ ! $is_iso ]]; then
 				  logCmd "yum -y install sqlite curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
-				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
+				logCmd "mkdir -vp /opt/so/gpg"
 				if [[ ! $is_airgap ]]; then
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3004/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
@@ -2202,18 +2202,17 @@ saltify() {
 				if [[ ! $is_iso ]]; then
 				  logCmd "yum -y install salt-master-3004"
 				fi
-				systemctl enable salt-master >> "$setup_log" 2>&1
+				logCmd "systemctl enable salt-master"
 				;;
 			*)
 				;;
 		esac
 		if [[ ! $is_airgap ]]; then
-		  yum clean expire-cache >> "$setup_log" 2>&1
+		  logCmd "yum clean expire-cache"
 		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
-		{
 			if [[ ! $is_iso ]]; then
-			  yum -y install salt-minion-3004\
+			  logCmd "yum -y install salt-minion-3004\
 			  	httpd-tools\
 			   	python3\
 					python36-docker\
@@ -2226,12 +2225,11 @@ saltify() {
 					device-mapper-persistent-data\
 					lvm2\
 					openssl\
-					jq;
-					yum -y update --exclude=salt*;
+					jq"
+					logCmd "yum -y update --exclude=salt*"
 			fi
-			systemctl enable salt-minion;
-		} >> "$setup_log" 2>&1
-		yum versionlock salt*
+		logCmd "systemctl enable salt-minion"
+		logCmd "yum versionlock salt*"
 	else
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
