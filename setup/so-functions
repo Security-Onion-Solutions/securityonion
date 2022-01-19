@@ -2328,18 +2328,23 @@ securityonion_repo() {
 		if [[ "$INTERWEBS" == "AIRGAP" ]]; then
 			echo "This is airgap I don't need to add this repo"
 		else
-			logCmd "yum clean all"
+			if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
+				local repo_conf_file="../salt/repo/client/files/centos/securityonioncache.repo"
+			else
+				local repo_conf_file="../salt/repo/client/files/centos/securityonion.repo"
+			fi
+			# need to yum clean all before repo conf files are removed or clean,cleans nothing
+			logCmd "yum -v clean all"
+			# update this package before we remove repo config files because the repo config files get added back
+			# when the package is updated when the update_packages function is called
+			logCmd "yum -v -y -c $repo_conf_file update centos-release"
 			logCmd "mkdir -vp /root/oldrepos"
 			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 			logCmd "ls -la /etc/yum.repos.d/"
 			logCmd "rm -vrf /etc/yum.repos.d"
 			logCmd "yum repolist all"
 			logCmd "mkdir -vp /etc/yum.repos.d"
-			if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-				logCmd "cp -f ../salt/repo/client/files/centos/securityonioncache.repo /etc/yum.repos.d/"
-			else
-				logCmd "cp -f ../salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/"
-			fi
+			logCmd "cp -f $repo_conf_file /etc/yum.repos.d/"
 			logCmd "yum repolist all"
 		fi
 	else
