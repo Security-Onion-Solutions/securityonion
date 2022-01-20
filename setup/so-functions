@@ -799,7 +799,7 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		yum -y install chrony
+		logCmd "yum -y install chrony"
 	fi
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
@@ -1137,10 +1137,10 @@ installer_prereq_packages() {
 	if [ "$OS" == centos ]; then
 		if [[ ! $is_iso ]]; then
 			if ! yum versionlock > /dev/null 2>&1; then
-				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
+				logCmd "yum -y install yum-plugin-versionlock"
 			fi
 			if ! command -v nmcli > /dev/null 2>&1; then
-				yum -y install NetworkManager >> "$setup_log" 2>&1
+				logCmd "yum -y install NetworkManager"
 			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
@@ -1192,16 +1192,14 @@ disable_ipv6() {
 docker_install() {
 
 	if [ $OS = 'centos' ]; then
-		{
-			yum clean expire-cache;
-			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7
-			fi
-			yum versionlock docker-ce-20.10.5-3.el7
-			yum versionlock docker-ce-cli-20.10.5-3.el7
-			yum versionlock docker-ce-rootless-extras-20.10.5-3.el7
-			yum versionlock containerd.io-1.4.4-3.1.el7
-		} >> "$setup_log" 2>&1
+		logCmd "yum clean expire-cache"
+		if [[ ! $is_iso ]]; then
+			logCmd "yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7"
+		fi
+		logCmd "yum versionlock docker-ce-20.10.5-3.el7"
+		logCmd "yum versionlock docker-ce-cli-20.10.5-3.el7"
+		logCmd "yum versionlock docker-ce-rootless-extras-20.10.5-3.el7"
+		logCmd "yum versionlock containerd.io-1.4.4-3.1.el7"
 		
 	else
 		case "$install_type" in
@@ -2018,17 +2016,17 @@ proxy_validate() {
 
 reserve_group_ids() {
 	# This is a hack to fix CentOS from taking group IDs that we need
-	groupadd -g 928 kratos
-	groupadd -g 930 elasticsearch
-	groupadd -g 931 logstash
-	groupadd -g 932 kibana
-	groupadd -g 933 elastalert
-	groupadd -g 934 curator
-	groupadd -g 937 zeek
-	groupadd -g 940 suricata
-	groupadd -g 941 stenographer
-	groupadd -g 945 ossec
-	groupadd -g 946 cyberchef
+	logCmd "groupadd -g 928 kratos"
+	logCmd "groupadd -g 930 elasticsearch"
+	logCmd "groupadd -g 931 logstash"
+	logCmd "groupadd -g 932 kibana"
+	logCmd "groupadd -g 933 elastalert"
+	logCmd "groupadd -g 934 curator"
+	logCmd "groupadd -g 937 zeek"
+	logCmd "groupadd -g 940 suricata"
+	logCmd "groupadd -g 941 stenographer"
+	logCmd "groupadd -g 945 ossec"
+	logCmd "groupadd -g 946 cyberchef"
 }
 
 reserve_ports() {
@@ -2163,7 +2161,7 @@ remove_package() {
 	local package_name=$1
 	if [ $OS = 'centos' ]; then
 		if rpm -qa | grep -q "$package_name"; then
-			yum remove -y "$package_name"
+			logCmd "yum remove -y $package_name"
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
@@ -2189,51 +2187,36 @@ saltify() {
 		fi 
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
-				reserve_group_ids >> "$setup_log" 2>&1
+				reserve_group_ids
 				if [[ ! $is_iso ]]; then
 				  logCmd "yum -y install sqlite curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
-				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
+				logCmd "mkdir -vp /opt/so/gpg"
 				if [[ ! $is_airgap ]]; then
-				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3003/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3004/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install salt-master-3003"
+				  logCmd "yum -y install salt-master-3004"
 				fi
-				systemctl enable salt-master >> "$setup_log" 2>&1
+				logCmd "systemctl enable salt-master"
 				;;
 			*)
 				;;
 		esac
 		if [[ ! $is_airgap ]]; then
-		  yum clean expire-cache >> "$setup_log" 2>&1
+		  logCmd "yum clean expire-cache"
 		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
-		{
 			if [[ ! $is_iso ]]; then
-			  yum -y install salt-minion-3003\
-			  	httpd-tools\
-			   	python3\
-					python36-docker\
-					python36-dateutil\
-					python36-m2crypto\
-					python36-mysql\
-					python36-packaging\
-					python36-lxml\
-					yum-utils\
-					device-mapper-persistent-data\
-					lvm2\
-					openssl\
-					jq;
-					yum -y update --exclude=salt*;
+				logCmd "yum -y install salt-minion-3004 httpd-tools python3 python36-docker python36-dateutil python36-m2crypto python36-mysql python36-packaging python36-lxml yum-utils device-mapper-persistent-data lvm2 openssl jq"
+				logCmd "yum -y update --exclude=salt*"
 			fi
-			systemctl enable salt-minion;
-		} >> "$setup_log" 2>&1
-		yum versionlock salt*
+		logCmd "systemctl enable salt-minion"
+		logCmd "yum versionlock salt*"
 	else
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
@@ -2268,8 +2251,8 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3004/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3004 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2277,7 +2260,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3004/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2290,7 +2273,7 @@ saltify() {
 				set_progress_str 6 'Installing various dependencies'
 				retry 50 10 "apt-get -y install sqlite3 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
-				retry 50 10 "apt-get -y install salt-master=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get -y install salt-master=3004+ds-1" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
@@ -2301,14 +2284,14 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3004/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
 
 		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install salt-minion=3004+ds-1 salt-common=3004+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" >> "$setup_log" 2>&1 || exit 1
 	fi
@@ -2345,19 +2328,24 @@ securityonion_repo() {
 		if [[ "$INTERWEBS" == "AIRGAP" ]]; then
 			echo "This is airgap I don't need to add this repo"
 		else
-			mkdir -p /root/oldrepos
-			mv -v /etc/yum.repos.d/* /root/oldrepos/
-			ls -la /etc/yum.repos.d/
-			rm -rf /etc/yum.repos.d
-			yum clean all
-			yum repolist all
-			mkdir -p /etc/yum.repos.d
 			if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-				cp -f ../salt/repo/client/files/centos/securityonioncache.repo /etc/yum.repos.d/
+				local repo_conf_file="../salt/repo/client/files/centos/securityonioncache.repo"
 			else
-				cp -f ../salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+				local repo_conf_file="../salt/repo/client/files/centos/securityonion.repo"
 			fi
-			yum repolist all
+			# need to yum clean all before repo conf files are removed or clean,cleans nothing
+			logCmd "yum -v clean all"
+			# update this package before we remove repo config files because the repo config files get added back
+			# when the package is updated when the update_packages function is called
+			logCmd "yum -v -y -c $repo_conf_file update centos-release"
+			logCmd "mkdir -vp /root/oldrepos"
+			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
+			logCmd "ls -la /etc/yum.repos.d/"
+			logCmd "rm -vrf /etc/yum.repos.d"
+			logCmd "yum repolist all"
+			logCmd "mkdir -vp /etc/yum.repos.d"
+			logCmd "cp -f $repo_conf_file /etc/yum.repos.d/"
+			logCmd "yum repolist all"
 		fi
 	else
 		echo "This is Ubuntu"
@@ -2771,8 +2759,8 @@ update_sudoers() {
 
 update_packages() {
 	if [ "$OS" = 'centos' ]; then
-	    yum repolist >> /dev/null
-        yum -y update --exclude=salt*,wazuh*,docker*,containerd* >> "$setup_log"
+	    logCmd "yum repolist"
+        logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1

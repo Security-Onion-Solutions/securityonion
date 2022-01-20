@@ -89,6 +89,7 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
     - group: 939
     - mode: 660
     - makedirs: True
+    - show_changes: False
     {% endfor %}
 
 ls_pipeline_{{PL}}:
