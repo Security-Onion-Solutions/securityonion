@@ -92,6 +92,10 @@ check_err() {
     if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
       echo "$err_msg"
     fi
+    set +e
+    systemctl_func "start" "$cron_service_name"
+    echo "Ensuring highstate is enabled."
+    salt-call state.enable highstate --local
     exit $exit_code
   fi
 
@@ -954,7 +958,7 @@ fix_wazuh() {
 }
 
 main() {
-  trap 'trap_exit_code=$?; systemctl_func "start" "$cron_service_name"; salt-call state.enable highstate -l info --local; check_err $trap_exit_code' EXIT
+  trap 'check_err $?' EXIT
   
   if [ -n "$BRANCH" ]; then
     echo "SOUP will use the $BRANCH branch."
