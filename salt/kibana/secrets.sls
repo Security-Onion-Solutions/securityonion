@@ -4,7 +4,7 @@
   {% set DIGITS = "1234567890" %}
   {% set LOWERCASE = "qwertyuiopasdfghjklzxcvbnm" %}
   {% set UPPERCASE = "QWERTYUIOPASDFGHJKLZXCVBNM" %}
-  {% set SYMBOLS = "~!@#$%^&*()-_=+[]|;:,.<>?" %}
+  {% set SYMBOLS = "~!@#$^&*()-_=+[]|;:,.<>?" %}
   {% set CHARS = DIGITS~LOWERCASE~UPPERCASE~SYMBOLS %}
   {% set kibana_encryptedSavedObjects_encryptionKey = salt['pillar.get']('kibana:secrets:encryptedSavedObjects:encryptionKey', salt['random.get_str'](72, chars=CHARS)) %}
   {% set kibana_security_encryptionKey = salt['pillar.get']('kibana:secrets:security:encryptionKey', salt['random.get_str'](72, chars=CHARS)) %}
