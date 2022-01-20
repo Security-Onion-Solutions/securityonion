@@ -4,7 +4,7 @@
   {% set DIGITS = "1234567890" %}
   {% set LOWERCASE = "qwertyuiopasdfghjklzxcvbnm" %}
   {% set UPPERCASE = "QWERTYUIOPASDFGHJKLZXCVBNM" %}
-  {% set SYMBOLS = "~!@#$%^&*()-_=+[]|;:,.<>?" %}
+  {% set SYMBOLS = "~!@#$^&*()-_=+[]|;:,.<>?" %}
   {% set CHARS = DIGITS~LOWERCASE~UPPERCASE~SYMBOLS %}
   {% set so_elastic_user_pass = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
   {% set so_kibana_user_pass = salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
