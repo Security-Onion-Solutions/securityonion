@@ -483,10 +483,7 @@ stop_salt_master() {
     echo "Storing salt-master pid."
     MASTERPID=$(pgrep salt-master | head -1)
     echo "Found salt-master PID $MASTERPID"
-    echo ""
-    echo "Stopping Salt Master service at $(date +"%T.%6N")"
-    systemctl stop salt-master
-    echo ""
+    systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
 }
 
@@ -505,8 +502,7 @@ stop_salt_minion() {
     echo "Storing salt-minion pid."
     MINIONPID=$(pgrep salt-minion | head -1)
     echo "Found salt-minion PID $MINIONPID"
-    echo "Stopping Salt Minion service at $(date +"%T.%6N")."
-    systemctl stop salt-minion
+    systemctl_func "stop" "salt-minion"
 
     set +e
     timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
@@ -958,7 +954,7 @@ fix_wazuh() {
 }
 
 main() {
-  trap 'check_err $?' EXIT
+  trap 'trap_exit_code=$?; systemctl_func "start" "$cron_service_name"; salt-call state.enable highstate -l info --local; check_err $trap_exit_code' EXIT
   
   if [ -n "$BRANCH" ]; then
     echo "SOUP will use the $BRANCH branch."
@@ -1033,9 +1029,7 @@ main() {
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
 
-    echo "Stopping $cron_service_name service at $(date +"%T.%6N")."
-    echo ""
-    systemctl stop "$cron_service_name"
+    systemctl_func "stop" "$cron_service_name"
 
     # update mine items prior to stopping salt-minion and salt-master
     update_salt_mine
@@ -1104,9 +1098,7 @@ main() {
     echo "Locking down Salt Master for upgrade at $(date +"%T.%6N")."
     masterlock
 
-    echo ""
-    echo "Starting Salt Master service at $(date +"%T.%6N")."
-    systemctl start salt-master
+    systemctl_func "start" "salt-master"
 
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
@@ -1150,9 +1142,7 @@ main() {
 
     masterunlock
 
-    echo ""
-    echo "Starting Salt Master service at $(date +"%T.%6N") ."
-    systemctl start salt-master
+    systemctl_func "start" "salt-master"
 
     set +e
     echo "Waiting on the Salt Master service to be ready."
@@ -1206,9 +1196,6 @@ main() {
         ;;
       esac
     fi
-
-    echo "Starting $cron_service_name service at $(date +"%T.%6N")."
-    systemctl start "$cron_service_name"
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
