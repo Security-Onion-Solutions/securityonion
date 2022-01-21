@@ -2343,16 +2343,16 @@ securityonion_repo() {
 			fi
 			# need to yum clean all before repo conf files are removed or clean,cleans nothing
 			logCmd "yum -v clean all"
-			# update this package before we remove repo config files because the repo config files get added back
-			# when the package is updated when the update_packages function is called
-			logCmd "yum -v -y -c $repo_conf_file update centos-release"
 			logCmd "mkdir -vp /root/oldrepos"
 			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 			logCmd "ls -la /etc/yum.repos.d/"
-			logCmd "rm -vrf /etc/yum.repos.d"
-			logCmd "yum repolist all"
-			logCmd "mkdir -vp /etc/yum.repos.d"
 			logCmd "cp -f $repo_conf_file /etc/yum.repos.d/"
+			logCmd "yum -v repolist all"
+			# update this package because the repo config files get added back
+			# if the package is updated when the update_packages function is called
+			logCmd "yum -v -y update centos-release"
+			# move the repo files that we added by the centos-release package
+			logCmd "find /etc/yum.repos.d/ -type f -not -name 'securityonion*repo' -print0 | xargs -0  -I {} mv -bvf {} /root/oldrepos/"
 			logCmd "yum repolist all"
 		fi
 	else
