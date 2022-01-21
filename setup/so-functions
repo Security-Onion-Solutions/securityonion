@@ -92,6 +92,7 @@ add_admin_user() {
 }
 
 add_mngr_ip_to_hosts() {
+	echo "Adding $MSRV to /etc/hosts with IP: $MSRVIP" >> "$setup_log" 2>&1
 	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
@@ -470,6 +471,13 @@ collect_mngr_hostname() {
 		whiptail_invalid_hostname 0
 		whiptail_management_server "$MSRV"
 	done
+
+	# Remove the manager from /etc/hosts incase a user entered the wrong IP when prompted 
+	# and they are going through the installer again
+	if [[ "$HOSTNAME" != "$MSRV" ]]; then
+		echo "Removing $MSRV from /etc/hosts if present." >> "$setup_log" 2>&1
+		sed -i "/$MSRV/d" /etc/hosts
+	fi
 
 	if ! getent hosts "$MSRV"; then
 		whiptail_manager_ip
