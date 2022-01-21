@@ -2347,12 +2347,12 @@ securityonion_repo() {
 			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 			logCmd "ls -la /etc/yum.repos.d/"
 			logCmd "cp -f $repo_conf_file /etc/yum.repos.d/"
-			logCmd "yum -v repolist all"
+			logCmd "yum repolist all"
 			# update this package because the repo config files get added back
 			# if the package is updated when the update_packages function is called
 			logCmd "yum -v -y update centos-release"
-			# move the repo files that we added by the centos-release package
-			logCmd "find /etc/yum.repos.d/ -type f -not -name 'securityonion*repo' -print0 | xargs -0  -I {} mv -bvf {} /root/oldrepos/"
+			echo "Move the .repo files that were added by the centos-release package."
+			find /etc/yum.repos.d/ -type f -not -name 'securityonion*repo' -print0 | xargs -0 -I {} mv -bvf {} /root/oldrepos/
 			logCmd "yum repolist all"
 		fi
 	else
