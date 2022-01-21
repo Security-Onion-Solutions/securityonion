@@ -20,7 +20,6 @@
 base:
 
   '*':
-    - salt.enable_highstate
     - cron.running
 
   'not G@saltversion:{{saltversion}}':
