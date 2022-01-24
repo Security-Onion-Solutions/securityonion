@@ -4,8 +4,9 @@
 {% set role = grains.id.split('_') | last %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
-{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
 include:
+  - common.soup_scripts
+{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
@@ -214,6 +215,11 @@ utilsyncscripts:
         ELASTICCURL: 'curl'
     - context:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+    - exclude_pat:
+        - so-common
+        - so-firewall
+        - so-image-common
+        - soup
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup

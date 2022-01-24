@@ -195,8 +195,6 @@ check_airgap() {
   fi
 }
 
-# {% raw %}
-
 check_local_mods() {
   local salt_local=/opt/so/saltstack/local
 
@@ -223,8 +221,6 @@ check_local_mods() {
     sleep 10
   fi
 }
-
-# {% endraw %}
 
 check_pillar_items() {
   local pillar_output=$(salt-call pillar.items --out=json)
@@ -663,9 +659,6 @@ up_to_2.3.90() {
     fi
   done
   
-  # There was a bug in 2.3.0 so-firewall addhostgroup that was resolved in 2.3.1 - commit 32294eb2ed30ac74b15bb4bfab687084a928daf2
-  echo "Verify so-firewall is up to date"
-  verify_latest_so-firewall_script
   # Create Endgame Hostgroup
   echo "Adding endgame hostgroup with so-firewall"
   if so-firewall addhostgroup endgame 2>&1 | grep -q 'Already exists'; then
@@ -889,47 +882,24 @@ update_repo() {
 }
 
 verify_latest_update_script() {
-  #we need to render soup and so-common first since they contain jinja
-  salt-call slsutil.renderer $UPDATE_DIR/salt/common/tools/sbin/soup default_renderer='jinja' --local --out=newline_values_only --out-indent=-4 --out-file=/tmp/soup
-  sed -i -e '$a\' /tmp/soup
-  salt-call slsutil.renderer $UPDATE_DIR/salt/common/tools/sbin/so-common default_renderer='jinja' --local --out=newline_values_only --out-indent=-4 --out-file=/tmp/so-common
-  sed -i -e '$a\' /tmp/so-common
   # Check to see if the update scripts match. If not run the new one.
   CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
-  GITSOUP=$(md5sum /tmp/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
   CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
-  GITCMN=$(md5sum /tmp/so-common | awk '{print $1}')
+  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
   CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
-
-  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
-    echo "This version of the soup script is up to date. Proceeding."
-    rm -f /tmp/soup /tmp/so-common
-  else
-    echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
-    cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    salt-call state.apply -l info common queue=True
-    echo ""
-    echo "soup has been updated. Please run soup again."
-    exit 0
-  fi
-}
-
-verify_latest_so-firewall_script() {
-  # Check to see if the so-firewall script matches. If not run the new one.
   CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
   GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-firewall | awk '{print $1}')
 
-  if [[ "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
-    echo "This version of the so-firewall script is up to date. Proceeding."
+  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+    echo "This version of the soup script is up to date. Proceeding."
   else
-    echo "You are not running the latest version of so-firewall. Updating so-firewall."
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall /usr/sbin/
+    echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
+    salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt
     echo ""
-    echo "so-firewall has been updated."
+    echo "soup has been updated. Please run soup again."
+    exit 0
   fi
 }
 
