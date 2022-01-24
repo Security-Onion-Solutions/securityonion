@@ -29,6 +29,7 @@
 
 * See this document's [code styling and conventions section](#code-style-and-conventions) below to be sure your PR fits our code requirements prior to submitting.
 
+* Minor bug fixes can be submitted immediately. However, if you are wanting to make more involved changes, please start a [discussion](https://github.com/Security-Onion-Solutions/securityonion/discussions) first and tell us what you are hoping to achieve. If we agree with your goals, then you can submit the PR.
 
 
 ### Code style and conventions
