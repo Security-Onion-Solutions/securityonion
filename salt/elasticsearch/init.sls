@@ -24,7 +24,7 @@ include:
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set ESMOUNT = salt['pillar.get']('elasticsearch:extramount', False) %}
+{% set ES_PATH_REPO = salt['pillar.get']('elasticsearch:config:path:repo', False) %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -235,6 +235,14 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+es_repos_dir:
+  file.directory:
+    - name: /nsm/elasticsearch/repos/
+    - user: 930
+    - group: 939
+    - require:
+      - file: nsmesdir
+
 auth_users:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users.tmp
@@ -317,8 +325,13 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
-      {% if ESMOUNT %}
-      - {{ ESMOUNT }}:/snapshots:rw
+      {% if ES_PATH_REPO %}
+        {% for repo in ES_PATH_REPO %}
+          # /nsm/elasticsearch/repos{{ repo }} must exist as a symlink for the bind to be created
+          {% if salt['cmd.retcode']("[[ ! test -L /nsm/elasticsearch/repos{{ repo }} ]]") %}
+      - /nsm/elasticsearch/repos{{ repo }}:{{ repo }}:rw
+          {% endif %}
+        {% endfor %}
       {% endif %}
     - watch:
       - file: cacertz
