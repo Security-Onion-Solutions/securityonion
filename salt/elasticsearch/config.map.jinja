@@ -33,4 +33,15 @@
     {% endif %}
 {% endif %}
 
+{# merge with the elasticsearch pillar #}
 {% set ESCONFIG = salt['pillar.get']('elasticsearch:config', default=ESCONFIG.elasticsearch.config, merge=True) %}
+
+{# remove elasticsearch.config.path.repo values if a symlink /nsm/elasticsearch/repo{{ repo }} doesn't exist #}
+{% if salt['pillar.get']('elasticsearch:config:path:repo', False) %}
+  {% for repo in pillar.elasticsearch.config.path.repo %}
+    {# retcode is 1 if symlink doesn't exist #}
+    {% if salt['cmd.retcode']('test -L /nsm/elasticsearch/repo'~repo) %}
+      {% do ESCONFIG.path.repo.remove(repo) %}
+    {% endif %}
+  {% endfor %}
+{% endif %}

@@ -24,7 +24,6 @@ include:
 {% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
 {% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set ESMOUNT = salt['pillar.get']('elasticsearch:extramount', False) %}
 
 {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
   {% set esclustername = salt['pillar.get']('manager:esclustername') %}
@@ -235,6 +234,14 @@ eslogdir:
     - group: 939
     - makedirs: True
 
+es_repo_dir:
+  file.directory:
+    - name: /nsm/elasticsearch/repo/
+    - user: 930
+    - group: 930
+    - require:
+      - file: nsmesdir
+
 auth_users:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users.tmp
@@ -317,8 +324,10 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
-      {% if ESMOUNT %}
-      - {{ ESMOUNT }}:/snapshots:rw
+      {% if ESCONFIG.path.get('repo', False) %}
+        {% for repo in ESCONFIG.path.repo %}
+      - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
+        {% endfor %}
       {% endif %}
     - watch:
       - file: cacertz
