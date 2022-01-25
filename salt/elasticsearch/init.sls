@@ -327,7 +327,7 @@ so-elasticsearch:
       {% endif %}
       {% if ESCONFIG.path.repo %}
         {% for repo in ESCONFIG.path.repo %}
-      - /nsm/elasticsearch/repo{{ repo }}:/repo/{{ repo }}:rw
+      - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
         {% endfor %}
       {% endif %}
     - watch:
