@@ -235,9 +235,9 @@ eslogdir:
     - group: 939
     - makedirs: True
 
-es_repos_dir:
+es_repo_dir:
   file.directory:
-    - name: /nsm/elasticsearch/repos/
+    - name: /nsm/elasticsearch/repo/
     - user: 930
     - group: 939
     - require:
@@ -327,9 +327,9 @@ so-elasticsearch:
       {% endif %}
       {% if ES_PATH_REPO %}
         {% for repo in ES_PATH_REPO %}
-          # /nsm/elasticsearch/repos{{ repo }} must exist as a symlink for the bind to be created
-          {% if salt['cmd.retcode']("[[ ! test -L /nsm/elasticsearch/repos{{ repo }} ]]") %}
-      - /nsm/elasticsearch/repos{{ repo }}:{{ repo }}:rw
+          # /nsm/elasticsearch/repo{{ repo }} must exist as a symlink for the bind to be created
+          {% if salt['cmd.retcode']("[[ ! test -L /nsm/elasticsearch/repo{{ repo }} ]]") %}
+      - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
           {% endif %}
         {% endfor %}
       {% endif %}
