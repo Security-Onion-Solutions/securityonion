@@ -325,12 +325,9 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
-      {% if ES_PATH_REPO %}
-        {% for repo in ES_PATH_REPO %}
-          # /nsm/elasticsearch/repo{{ repo }} must exist as a symlink for the bind to be created
-          {% if salt['cmd.retcode']('test ! -L /nsm/elasticsearch/repo'~repo) %}
+      {% if ESCONFIG.path.repo %}
+        {% for repo in ESCONFIG.path.repo %}
       - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
-          {% endif %}
         {% endfor %}
       {% endif %}
     - watch:
