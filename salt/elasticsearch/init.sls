@@ -328,7 +328,7 @@ so-elasticsearch:
       {% if ES_PATH_REPO %}
         {% for repo in ES_PATH_REPO %}
           # /nsm/elasticsearch/repo{{ repo }} must exist as a symlink for the bind to be created
-          {% if salt['cmd.retcode']("[[ ! test -L /nsm/elasticsearch/repo{{ repo }} ]]") %}
+          {% if salt['cmd.retcode']('test ! -L /nsm/elasticsearch/repo'~repo) %}
       - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
           {% endif %}
         {% endfor %}
