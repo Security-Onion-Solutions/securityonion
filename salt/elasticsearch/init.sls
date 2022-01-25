@@ -239,7 +239,7 @@ es_repo_dir:
   file.directory:
     - name: /nsm/elasticsearch/repo/
     - user: 930
-    - group: 939
+    - group: 930
     - require:
       - file: nsmesdir
 
