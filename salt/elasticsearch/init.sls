@@ -324,7 +324,7 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
-      {% if ESCONFIG.path.repo %}
+      {% if ESCONFIG.path.get('repo', False) %}
         {% for repo in ESCONFIG.path.repo %}
       - /nsm/elasticsearch/repo{{ repo }}:{{ repo }}:rw
         {% endfor %}
