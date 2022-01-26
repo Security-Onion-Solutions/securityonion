@@ -2049,9 +2049,6 @@ reserve_ports() {
 
 reinstall_init() {
 	info "Putting system in state to run setup again"
-	
-	# remove all of root's cronjobs
-	crontab -r -u root
 
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
@@ -2062,6 +2059,9 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
+		# remove all of root's cronjobs
+		crontab -r -u root
+
 		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable --local
