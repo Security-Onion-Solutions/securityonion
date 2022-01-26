@@ -68,14 +68,6 @@ fbcertdir:
   file.absent:
     - name: /opt/so/conf/filebeat/etc/pki
 
-managerssl_key:
-  file.absent:
-    - name: /etc/pki/managerssl.key
-
-managerssl_crt:
-  file.absent:
-    - name: /etc/pki/managerssl.crt
-
 fleet_key:
   file.absent:
     - name: /etc/pki/fleet.key
@@ -83,13 +75,3 @@ fleet_key:
 fleet_crt:
   file.absent:
     - name: /etc/pki/fleet.crt
-
-/etc/pki/elasticsearch.key:
-  file.absent: []
-
-/etc/pki/elasticsearch.crt:
-  file.absent: []
-
-remove_elastic.p12:
-  file.absent:
-    - name: /etc/pki/elasticsearch.p12
