@@ -67,11 +67,3 @@ fleet_crt:
 fbcertdir:
   file.absent:
     - name: /opt/so/conf/filebeat/etc/pki
-
-fleet_key:
-  file.absent:
-    - name: /etc/pki/fleet.key
-
-fleet_crt:
-  file.absent:
-    - name: /etc/pki/fleet.crt
