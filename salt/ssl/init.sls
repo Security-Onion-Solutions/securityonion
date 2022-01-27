@@ -56,17 +56,17 @@ m2cryptopkgs:
 removefbcertdir:
   file.absent:
     - name: /etc/pki/filebeat.crt 
-    - onlyif: "[ -d /etc/pki/filebeat.crt ]"
+    - onlyif: "test -d /etc/pki/filebeat.crt"
 
 removefbp8dir:
   file.absent:
     - name: /etc/pki/filebeat.p8 
-    - onlyif: "[ -d /etc/pki/filebeat.p8 ]"
+    - onlyif: "test -d /etc/pki/filebeat.p8"
 
 removeesp12dir:
   file.absent:
     - name: /etc/pki/elasticsearch.p12
-    - onlyif: "[ -d /etc/pki/elasticsearch.p12 ]"
+    - onlyif: "test -d /etc/pki/elasticsearch.p12"
     
 influxdb_key:
   x509.private_key_managed:
