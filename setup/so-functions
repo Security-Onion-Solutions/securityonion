@@ -2049,9 +2049,6 @@ reserve_ports() {
 
 reinstall_init() {
 	info "Putting system in state to run setup again"
-	
-	# remove all of root's cronjobs
-	crontab -r -u root
 
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
@@ -2062,6 +2059,9 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
+		# remove all of root's cronjobs
+		logCmd "crontab -r -u root"
+
 		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable --local
@@ -2090,6 +2090,9 @@ reinstall_init() {
 				((count++))
 			done
 		done
+
+		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
+		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
 
 		# Remove all salt configs
 		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
@@ -2122,10 +2125,13 @@ reinstall_init() {
 		remove_package launcher-final
 
 		if [[ $OS == 'ubuntu' ]]; then
+			info "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
 
 	} >> "$setup_log" 2>&1
+
+	info "System reinstall init has been completed."
 }
 
 reset_proxy() {
