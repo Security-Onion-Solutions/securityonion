@@ -1,3 +1,4 @@
+{% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 include:
   - kibana
 
@@ -16,3 +17,20 @@ so-kibana-dashboard-load:
     - require:
       - sls: kibana
       - file: dashboard_saved_objects_template
+{%- if HIGHLANDER %}
+dashboard_saved_objects_template_hl:
+  file.managed:
+    - name: /opt/so/conf/kibana/hl.ndjson
+    - source: salt://kibana/files/hl.ndjson
+    - user: 932
+    - group: 939
+    - show_changes: False
+
+so-kibana-dashboard-load_hl:
+  cmd.run:
+    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/hl.ndjson
+    - cwd: /opt/so
+    - require:
+      - sls: kibana
+      - file: dashboard_saved_objects_template_hl
+{%- endif %}
