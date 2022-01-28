@@ -47,6 +47,12 @@ crsynckeys:
     - source: salt://repo/client/files/centos/keys/
 
 {% if not ISAIRGAP %}
+    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
+remove_securityonionrepocache:
+  file.absent:
+    - name: /etc/yum.repos.d/securityonioncache.repo
+    {% endif %}
+
 crsecurityonionrepo:
   file.managed:
     {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
