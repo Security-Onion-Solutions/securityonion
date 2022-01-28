@@ -77,7 +77,9 @@ base:
     {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
+    {%- if WAZUH != 0 %}
     - wazuh
+    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
