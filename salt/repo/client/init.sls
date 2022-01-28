@@ -1,7 +1,7 @@
 {% from 'repo/client/map.jinja' import ABSENTFILES with context %}
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
-{% set managerupdates = salt['pillar.get']('global:managerupdate', '0') %}
+{% set managerupdates = salt['pillar.get']('global:managerupdate', 0) %}
 {% set role = grains.id.split('_') | last %}
 
 # from airgap state
