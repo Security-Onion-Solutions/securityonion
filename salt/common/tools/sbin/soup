@@ -707,8 +707,19 @@ up_to_2.3.90() {
 up_to_2.3.100() {
   echo "Updating to Security Onion 2.3.100"
   fix_wazuh
+  
   echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
   rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
+  
+  echo "Adding receiver hostgroup with so-firewall"
+  if so-firewall addhostgroup receiver 2>&1 | grep -q 'Already exists'; then
+    echo 'receiver hostgroup already exists'
+  else
+    echo 'receiver hostgroup added'
+  fi
+
+  echo "Adding receiver to assigned_hostgroups.local.map.yaml"
+  grep -qxF "  receiver:" /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml || sed -i -e '$a\  receiver:' /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml
 }
 
 verify_upgradespace() {
