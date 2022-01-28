@@ -1,5 +1,6 @@
 #!/bin/bash
 {%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
+{%- set ENDGAMEHOST = salt['pillar.get']('soc:endgamehost', 'ENDGAMEHOST') %}
 . /usr/sbin/so-common
 
 check_file() {
@@ -23,7 +24,12 @@ import() {
   if grep -lq 'PLACEHOLDER' "$ndjson_file"; then
     sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" "$ndjson_file"
   fi
-
+  
+  # Endgame
+  if grep -lq 'ENDGAMEHOST' "$ndjson_file"; then
+    sed -i "s/ENDGAMEHOST/{{ ENDGAMEHOST }}/g" "$ndjson_file"
+  fi
+ 
   wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
 
   SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
@@ -35,7 +41,7 @@ update() {
   wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"  
   IFS=$'\r\n' GLOBIGNORE='*' command eval  'LINES=($(cat $1))'
   for i in "${LINES[@]}"; do
-    {{ ELASTICCURL }} -X PUT "localhost:5601/api/saved_objects/config/7.16.3" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i "
+    {{ ELASTICCURL }} -X PUT "localhost:5601/api/saved_objects/config/7.16.2" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i "
   done
 
 }
