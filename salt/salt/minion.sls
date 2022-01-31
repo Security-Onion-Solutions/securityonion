@@ -10,6 +10,7 @@ include:
   - salt
   - salt.helper-packages
   - systemd.reload
+  - repo.client
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
