@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -168,6 +168,18 @@ __check_url_arr() {
 	return $ret_code
 }
 
+preflight_prereqs() {
+	local ret_code=0
+	
+	if [[ $OS == 'centos' ]]; then
+		: # no-op to match structure of other checks for $OS var
+	else
+		retry 50 10 "apt-get -y install curl" >> "$preflight_log" 2>&1 || ret_code=1
+	fi
+
+	return $ret_code
+}
+
 main() {
 	local intro_str="Beginning pre-flight checks."
 	local success_str="Pre-flight checks completed successfully!"
@@ -182,7 +194,9 @@ main() {
 	else
 		echo "$intro_str" | tee "$preflight_log"
 	fi
+
 	check_default_repos &&\
+	preflight_prereqs &&\
 	check_new_repos &&\
 	check_misc_urls
 

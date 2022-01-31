@@ -84,6 +84,8 @@ wait_for_influxdb:
     - retry:
         attempts: 5
         interval: 60
+    - require:
+      - docker_container: so-influxdb
 
 telegraf_database:
   influxdb_database.present:

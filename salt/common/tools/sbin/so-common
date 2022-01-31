@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -294,32 +294,49 @@ require_manager() {
 }
 
 retry() {
-	maxAttempts=$1
-	sleepDelay=$2
-	cmd=$3
-	expectedOutput=$4
-	attempt=0
-	local exitcode=0
-	while [[ $attempt -lt $maxAttempts ]]; do			
-		attempt=$((attempt+1))
-		echo "Executing command with retry support: $cmd"
-		output=$(eval "$cmd")
-		exitcode=$?
-		echo "Results: $output ($exitcode)"
-		if [ -n "$expectedOutput" ]; then
-			if [[ "$output" =~ "$expectedOutput" ]]; then
-				return $exitCode
-			else
-				echo "Expected '$expectedOutput' but got '$output'"
-			fi
-		elif [[ $exitcode -eq 0 ]]; then
-			return $exitCode
-		fi
-		echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
-		sleep $sleepDelay
-	done
-	echo "Command continues to fail; giving up."
-	return $exitcode
+        maxAttempts=$1
+        sleepDelay=$2
+        cmd=$3
+        expectedOutput=$4
+        failedOutput=$5
+        attempt=0
+        local exitcode=0
+        while [[ $attempt -lt $maxAttempts ]]; do
+                attempt=$((attempt+1))
+                echo "Executing command with retry support: $cmd"
+                output=$(eval "$cmd")
+                exitcode=$?
+                echo "Results: $output ($exitcode)"
+                if [ -n "$expectedOutput" ]; then
+                        if [[ "$output" =~ "$expectedOutput" ]]; then
+                                return $exitcode
+                        else
+                                echo "Did not find expectedOutput: '$expectedOutput' in the output below from running the command: '$cmd'"
+								echo "<Start of output>"
+								echo "$output"
+								echo "<End of output>"
+                        fi
+                elif [ -n "$failedOutput" ]; then
+                        if [[ "$output" =~ "$failedOutput" ]]; then
+                                echo "Found failedOutput: '$failedOutput' in the output below from running the command: '$cmd'"
+								echo "<Start of output>"
+								echo "$output"
+								echo "<End of output>"
+								if [[ $exitcode -eq 0 ]]; then
+									echo "The exitcode was 0, but we are setting to 1 since we found $failedOutput in the output."
+									exitcode=1
+								fi
+                        else
+                                return $exitcode
+                        fi
+                elif [[ $exitcode -eq 0 ]]; then
+                        return $exitcode
+                fi
+                echo "Command failed with exit code $exitcode; will retry in $sleepDelay seconds ($attempt / $maxAttempts)..."
+                sleep $sleepDelay
+        done
+        echo "Command continues to fail; giving up."
+        return $exitcode
 }
 
 run_check_net_err() {
@@ -342,6 +359,13 @@ run_check_net_err() {
 		echo "$err_msg"
 		exit $exit_code
 	fi
+}
+set_cron_service_name() {
+  if [[ "$OS" == "centos" ]]; then
+    cron_service_name="crond"
+  else
+    cron_service_name="cron"
+  fi
 }
 
 set_os() {
@@ -379,6 +403,21 @@ set_version() {
 			VERSION="$NEWVERSION"
 		fi
 	fi
+}
+
+systemctl_func() {
+	local action=$1
+	local echo_action=$1
+	local service_name=$2
+
+	if [[ "$echo_action" == "stop" ]]; then
+		echo_action="stopp"
+	fi
+
+	echo ""
+	echo "${echo_action^}ing $service_name service at $(date +"%T.%6N")"
+    systemctl $action $service_name && echo "Successfully ${echo_action}ed $service_name." || echo "Failed to $action $service_name."
+	echo ""
 }
 
 has_uppercase() {

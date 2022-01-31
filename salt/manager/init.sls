@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 include:
-  - elasticsearch.auth
-  - kibana.secrets
   - salt.minion
-  - kratos
+  - kibana.secrets
+  - manager.sync_es_users
+  - manager.elasticsearch
 
 socore_own_saltstack:
   file.directory:
@@ -109,29 +109,6 @@ strelka_yara_update:
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - hour: '7'
     - minute: '1'
-
-elastic_curl_config_distributed:
-  file.managed:
-    - name: /opt/so/saltstack/local/salt/elasticsearch/curl.config
-    - source: salt://elasticsearch/files/curl.config.template
-    - template: jinja
-    - mode: 600
-    - show_changes: False
-
-# Must run before elasticsearch docker container is started!
-syncesusers:
-  cmd.run:
-    - name: so-user sync
-    - env:
-      - SKIP_STATE_APPLY: 'true'
-    - creates:
-      - /opt/so/saltstack/local/salt/elasticsearch/files/users
-      - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
-      - /opt/so/conf/soc/soc_users_roles
-    - show_changes: False
-    - require:
-      - docker_container: so-kratos
-      - http: wait_for_kratos
 
 {% else %}
 

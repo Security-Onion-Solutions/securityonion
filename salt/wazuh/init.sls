@@ -97,7 +97,7 @@ wazuhmgrwhitelist:
 # Check to see if Wazuh API port is available
 wazuhportavailable:
   cmd.run:
-    - name: netstat -utanp | grep ":55000" | grep -qv docker && PROCESS=$(netstat -utanp | grep ":55000" | uniq) && echo "Another process ($PROCESS) appears to be using port 55000.  Please terminate this process, or reboot to ensure a clean state so that the Wazuh API can start properly." && exit 1 || exit 0
+    - name: netstat -utanp | grep ":55000" | grep "LISTEN" | grep -qv docker && PROCESS=$(netstat -utanp | grep ":55000" | uniq) && echo "Another process ($PROCESS) appears to be using port 55000.  Please terminate this process, or reboot to ensure a clean state so that the Wazuh API can start properly." && exit 1 || exit 0
 
 so-wazuh:
   docker_container.running:
@@ -127,7 +127,7 @@ registertheagent:
   cmd.run:
     - name: /usr/sbin/wazuh-register-agent
     - cwd: /
-    #- stateful: True
+    - unless: ls /opt/so/conf/wazuh/initial_agent_registration.log
 
 # Whitelist manager IP
 whitelistmanager:

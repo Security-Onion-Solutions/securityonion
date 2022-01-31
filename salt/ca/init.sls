@@ -1,16 +1,13 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+include:
+  - ca.dirs
+
 {% set manager = salt['grains.get']('master') %}
 /etc/salt/minion.d/signing_policies.conf:
   file.managed:
     - source: salt://ca/files/signing_policies.conf
-
-/etc/pki:
-  file.directory: []
-
-/etc/pki/issued_certs:
-  file.directory: []
 
 pki_private_key:
   x509.private_key_managed:
@@ -42,17 +39,11 @@ pki_public_ca_crt:
     - backup: True
     - replace: False
     - require:
-      - file: /etc/pki
+      - sls: ca.dirs
     - timeout: 30
     - retry:
         attempts: 5
         interval: 30
-
-x509_pem_entries:
-  module.run:
-    - mine.send:
-       - name: x509.get_pem_entries
-       - glob_path: /etc/pki/ca.crt
 
 cakeyperms:
   file.managed:

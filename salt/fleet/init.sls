@@ -75,7 +75,7 @@ fleetdb:
 
 fleetdbuser:
   mysql_user.present:
-    - host: {{ DNET }}/255.255.0.0
+    - host: {{ DNET }}/255.255.255.0
     - password: {{ FLEETPASS }}
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
@@ -89,7 +89,7 @@ fleetdbpriv:
     - grant: all privileges
     - database: fleet.*
     - user: fleetdbuser
-    - host: {{ DNET }}/255.255.0.0
+    - host: {{ DNET }}/255.255.255.0
     - connection_host: {{ MAINIP }}
     - connection_port: 3306
     - connection_user: root

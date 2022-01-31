@@ -1,5 +1,5 @@
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -17,12 +17,10 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set LOCALHOSTNAME = salt['grains.get']('host') %}
-{% set MAININT = salt['pillar.get']('host:mainint') %}
-{% set LOCALHOSTIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
 {% from 'filebeat/map.jinja' import THIRDPARTY with context %}
 {% from 'filebeat/map.jinja' import SO with context %}
+{% from 'filebeat/map.jinja' import FILEBEAT_EXTRA_HOSTS with context %}
 {% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
 
 include:
@@ -111,7 +109,7 @@ so-filebeat:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
     - hostname: so-filebeat
     - user: root
-    - extra_hosts: {{ MANAGER }}:{{ MANAGERIP }},{{ LOCALHOSTNAME }}:{{ LOCALHOSTIP }}
+    - extra_hosts: {{ FILEBEAT_EXTRA_HOSTS }}
     - binds:
       - /nsm:/nsm:ro
       - /opt/so/log/filebeat:/usr/share/filebeat/logs:rw

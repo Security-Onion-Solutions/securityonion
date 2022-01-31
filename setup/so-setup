@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014-2020 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -255,6 +255,9 @@ elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 elif [ "$install_type" = 'IMPORT' ]; then
 	is_import=true
+elif [ "$install_type" = 'RECEIVER' ]; then
+	is_minion=true
+	is_receiver=true
 elif [ "$install_type" = 'ANALYST' ]; then
 	cd .. || exit 255
 	exec bash so-analyst-install
@@ -461,8 +464,14 @@ if [[ $is_helix ||  $is_manager || $is_import ]]; then
 	collect_homenet_mngr
 fi
 
+#set base elasticsearch heap size
 if [[ $is_helix || $is_manager || $is_node || $is_import ]]; then
-	set_base_heapsizes
+	es_heapsize
+fi
+
+#set base logstash heap size
+if [[ $is_helix || $is_manager || $is_node || $is_import || $is_receiver ]]; then
+	ls_heapsize
 fi
 
 if [[ $is_manager && ! $is_eval ]]; then
@@ -541,17 +550,21 @@ fi
 
 [[ $is_iso ]] && collect_ntp_servers
 
-if [[ $is_node && ! $is_eval ]]; then
+if [[ ($is_node || $is_receiver) && ! $is_eval ]]; then
 	whiptail_node_advanced
 	if [ "$NODESETUP" == 'NODEADVANCED' ]; then
-		collect_node_es_heap
+		if [[ ! $is_receiver ]]; then 
+			collect_node_es_heap
+			collect_es_space_limit
+		fi
 		collect_node_ls_heap
 		collect_node_ls_pipeline_worker_count
 		collect_node_ls_pipeline_batch_size
 		collect_node_ls_input
-		collect_es_space_limit
 	else
-		NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+		if [[ ! $is_receiver ]]; then
+			NODE_ES_HEAP_SIZE=$ES_HEAP_SIZE
+		fi
 		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
 		LSPIPELINEWORKERS=$num_cpu_cores
 		LSPIPELINEBATCH=125
@@ -724,6 +737,12 @@ echo "1" > /root/accept_changes
 		fi
 	fi
 
+	if [[ ($is_node || $is_receiver) && !($is_manager || $is_helix) ]]; then
+		set_progress_str 19 'Generating logstash pillar'
+		logstash_pillar >> $setup_log 2>&1
+	fi
+
+
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
 		retry 20 10	accept_salt_key_remote "going to be accepted" >> $setup_log 2>&1
@@ -742,8 +761,13 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info salt.minion >> $setup_log 2>&1
 	fi
 
-	set_progress_str 23 'Generating CA and checking in'
-	salt_checkin >> $setup_log 2>&1
+	if [[ $is_manager || $is_helix || $is_import ]]; then
+		set_progress_str 23 'Generating CA'
+		generate_ca >> $setup_log 2>&1
+	fi
+
+	set_progress_str 24 'Generating SSL'
+	generate_ssl >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
@@ -781,7 +805,7 @@ echo "1" > /root/accept_changes
 	set_progress_str 62 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
-	if [[ ! $is_helix ]]; then
+	if [[ ! $is_helix && ! $is_receiver ]]; then
 		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
 	fi
@@ -944,10 +968,11 @@ if [[ $success != 0 ]]; then SO_ERROR=1; fi
 
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
 # Ignore "Status .* was not found" due to output from salt http.query or http.wait_for_successful_query states used with retry
-if grep -E "ERROR|Result: False" $setup_log | grep -qvE "Status .* was not found" || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then 
+# Uncaught exception, closing connection|Exception in callback None - this is seen during influxdb / http.wait_for_successful_query state for ubuntu reinstall
+if grep -E "ERROR|Result: False" $setup_log | grep -qvE "Status .* was not found|An exception occurred in this state|Uncaught exception, closing connection|Exception in callback None" || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then
 	SO_ERROR=1
 
-	grep --color=never "ERROR" "$setup_log" | grep -qvE "Status .* was not found" > "$error_log"
+	grep --color=never "ERROR" "$setup_log" | grep -qvE "Status .* was not found|An exception occurred in this state|Uncaught exception, closing connection|Exception in callback None" > "$error_log"
 fi
 
 if [[ -n $SO_ERROR ]]; then 
@@ -991,7 +1016,7 @@ else
 
 	echo "Post-installation steps have completed. Awaiting user input to clean up installer." >> $setup_log 2>&1
 	whiptail_setup_complete
-	[[ $setup_type != 'iso' ]] && whitpail_ssh_warning
+	[[ $setup_type != 'iso' ]] && whiptail_ssh_warning
 fi
 
 install_cleanup >> "$setup_log" 2>&1

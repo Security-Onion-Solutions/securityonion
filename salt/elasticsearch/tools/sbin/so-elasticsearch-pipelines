@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+#
+# Copyright 2014-2022 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,16 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{%- set mainint = salt['pillar.get']('host:mainint') %}
-{%- set MYIP = salt['grains.get']('ip_interfaces:' ~ mainint)[0] %}
-
-default_conf_dir=/opt/so/conf
-ELASTICSEARCH_HOST="{{ MYIP }}"
+RETURN_CODE=0
+ELASTICSEARCH_HOST=$1
 ELASTICSEARCH_PORT=9200
-#ELASTICSEARCH_AUTH=""
 
 # Define a default directory to load pipelines from
-ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
+ELASTICSEARCH_INGEST_PIPELINES="/opt/so/conf/elasticsearch/ingest/"
 
 # Wait for ElasticSearch to initialize
 echo -n "Waiting for ElasticSearch..."
@@ -47,11 +44,12 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 	echo
 fi
 
-cd ${ELASTICSEARCH_TEMPLATES}
+cd ${ELASTICSEARCH_INGEST_PIPELINES}
 
-
-echo "Loading templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+echo "Loading pipelines..."
+for i in *; do echo $i; RESPONSE=$({{ ELASTICCURL }} -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
 echo
 
 cd - >/dev/null
+
+exit $RETURN_CODE

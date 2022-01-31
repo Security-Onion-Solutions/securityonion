@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
-export LC_CTYPE="en_US.UTF-8"
 
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
@@ -92,6 +91,10 @@ check_err() {
     if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
       echo "$err_msg"
     fi
+    set +e
+    systemctl_func "start" "$cron_service_name"
+    echo "Ensuring highstate is enabled."
+    salt-call state.enable highstate --local
     exit $exit_code
   fi
 
@@ -399,6 +402,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.30 || "$INSTALLEDVERSION" == 2.3.40 ]] && up_to_2.3.50
     [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
+    [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     true
 }
 
@@ -410,6 +414,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.21 || "$POSTVERSION" == 2.3.30 ]] && post_to_2.3.40
     [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
+    [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     true
 }
 
@@ -437,9 +442,6 @@ post_to_2.3.60() {
 }
 
 post_to_2.3.90() {
-  # Do Kibana dashboard things
-  salt-call state.apply kibana.so_savedobjects_defaults queue=True
-
   # Create FleetDM service account
     FLEET_MANAGER=$(lookup_pillar fleet_manager)
     if [[ "$FLEET_MANAGER" == "True" ]]; then
@@ -459,11 +461,55 @@ post_to_2.3.90() {
       fi
     fi
 
-  
-
   POSTVERSION=2.3.90
 }
 
+post_to_2.3.100() {
+  echo "Post Processing for 2.3.100"
+  echo "Updating Kibana dashboards"
+  salt-call state.apply kibana.so_savedobjects_defaults queue=True
+}
+
+stop_salt_master() {
+    # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
+    set +e
+    echo ""
+    echo "Killing all Salt jobs across the grid."
+    salt \* saltutil.kill_all_jobs
+    echo ""
+    echo "Killing any queued Salt jobs on the manager."
+    pkill -9 -ef "/usr/bin/python3 /bin/salt"
+    set -e
+
+    echo ""
+    echo "Storing salt-master pid."
+    MASTERPID=$(pgrep salt-master | head -1)
+    echo "Found salt-master PID $MASTERPID"
+    systemctl_func "stop" "salt-master"
+    timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
+}
+
+stop_salt_minion() {
+    echo "Disabling highstate to prevent from running if salt-minion restarts."
+    salt-call state.disable highstate -l info --local
+    echo ""
+
+    # kill all salt jobs before stopping salt-minion
+    set +e
+    echo ""
+    echo "Killing Salt jobs on this node."
+    salt-call saltutil.kill_all_jobs --local
+    set -e
+
+    echo "Storing salt-minion pid."
+    MINIONPID=$(pgrep salt-minion | head -1)
+    echo "Found salt-minion PID $MINIONPID"
+    systemctl_func "stop" "salt-minion"
+
+    set +e
+    timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
+    set -e
+}
 
 up_to_2.3.20(){
   DOCKERSTUFFBIP=$(echo $DOCKERSTUFF | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
@@ -635,8 +681,8 @@ up_to_2.3.90() {
   if [[ -f "/opt/so/saltstack/local/salt/elasticsearch/files/ingest/common" ]]; then
     mv -v /opt/so/saltstack/local/salt/elasticsearch/files/ingest/common /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
     # since json file, we need to wrap with raw
-    sed -i '1s/^/{{'{% raw %}'}}\n/' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
-    sed -i -e '$a{{'{% endraw %}'}}\n' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
+    sed -i '1s/^/{% raw %}\n/' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
+    sed -i -e '$a{% endraw %}\n' /opt/so/saltstack/local/salt/elasticsearch/files/ingest-dynamic/common
   fi
 
   # Generate FleetDM Service Account creds if they do not exist
@@ -657,6 +703,23 @@ up_to_2.3.90() {
   INSTALLEDVERSION=2.3.90
 }
 
+up_to_2.3.100() {
+  echo "Updating to Security Onion 2.3.100"
+  fix_wazuh
+  
+  echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
+  rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
+  
+  echo "Adding receiver hostgroup with so-firewall"
+  if so-firewall addhostgroup receiver 2>&1 | grep -q 'Already exists'; then
+    echo 'receiver hostgroup already exists'
+  else
+    echo 'receiver hostgroup added'
+  fi
+
+  echo "Adding receiver to assigned_hostgroups.local.map.yaml"
+  grep -qxF "  receiver:" /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml || sed -i -e '$a\  receiver:' /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml
+}
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
@@ -721,6 +784,13 @@ update_centos_repo() {
   createrepo /nsm/repo
 }
 
+update_salt_mine() {
+    echo "Populating the mine with network.ip_addrs pillar.host.mainint for each host."
+    set +e
+    salt \* cmd.run cmd='MAININT=$(salt-call pillar.get host:mainint --out=newline_values_only) && salt-call mine.send name=network.ip_addrs interface="$MAININT"'
+    set -e
+}
+
 update_version() {
   # Update the version to the latest
   echo "Updating the Security Onion version file."
@@ -767,11 +837,11 @@ upgrade_salt() {
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
-    echo "Updating Salt packages and restarting services."
+    echo "Updating Salt packages."
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying yum versionlock for Salt."
@@ -784,11 +854,11 @@ upgrade_salt() {
     apt-mark unhold "salt-common"
     apt-mark unhold "salt-master"
     apt-mark unhold "salt-minion"
-    echo "Updating Salt packages and restarting services."
+    echo "Updating Salt packages."
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying apt hold for Salt."
@@ -799,7 +869,7 @@ upgrade_salt() {
   fi
 }
 
-upgrade_to_2.3.50_repo() {
+update_repo() {
   echo "Performing repo changes."
   if [[ "$OS" == "centos" ]]; then
     # Import GPG Keys
@@ -807,7 +877,7 @@ upgrade_to_2.3.50_repo() {
     echo "Disabling fastestmirror."
     disable_fastestmirror
     echo "Deleting unneeded repo files."
-    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'wazuh')
+    DELREPOS=('CentOS-Base' 'CentOS-CR' 'CentOS-Debuginfo' 'docker-ce' 'CentOS-fasttrack' 'CentOS-Media' 'CentOS-Sources' 'CentOS-Vault' 'CentOS-x86_64-kernel' 'epel' 'epel-testing' 'saltstack' 'salt-latest' 'wazuh')
 
     for DELREPO in "${DELREPOS[@]}"; do
       if [[ -f "/etc/yum.repos.d/$DELREPO.repo" ]]; then
@@ -825,28 +895,25 @@ upgrade_to_2.3.50_repo() {
 }
 
 verify_latest_update_script() {
-  #we need to render soup and so-common first since they contain jinja
-  salt-call slsutil.renderer $UPDATE_DIR/salt/common/tools/sbin/soup default_renderer='jinja' --local --out=newline_values_only --out-indent=-4 --out-file=/tmp/soup
-  sed -i -e '$a\' /tmp/soup
-  salt-call slsutil.renderer $UPDATE_DIR/salt/common/tools/sbin/so-common default_renderer='jinja' --local --out=newline_values_only --out-indent=-4 --out-file=/tmp/so-common
-  sed -i -e '$a\' /tmp/so-common
   # Check to see if the update scripts match. If not run the new one.
   CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
-  GITSOUP=$(md5sum /tmp/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
   CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
-  GITCMN=$(md5sum /tmp/so-common | awk '{print $1}')
+  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
   CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+  CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
+  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-firewall | awk '{print $1}')
 
-  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" ]]; then
+  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
-    rm -f /tmp/soup /tmp/so-common
   else
     echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
     cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    salt-call state.apply -l info common queue=True
+    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
     echo ""
     echo "soup has been updated. Please run soup again."
     exit 0
@@ -855,25 +922,43 @@ verify_latest_update_script() {
 
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
-    FILE="/nsm/wazuh/etc/ossec.conf"
-    echo "Detecting if ossec.conf needs corrected..."
-    if head -1 $FILE | grep -q "xml version"; then
-      echo "$FILE has an XML header; removing"
-      sed -i 1d $FILE
-      so-wazuh-restart
-    else    
-      echo "$FILE does not have an XML header, so no changes are necessary."
-    fi
+    fix_wazuh
   else
     echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
 }
 
+fix_wazuh() {
+  FILE="/nsm/wazuh/etc/ossec.conf"
+  echo "Detecting if $FILE needs corrected..."
+  if [ -f "$FILE" ]; then
+    if head -1 $FILE | grep -q "xml version"; then
+      echo "$FILE has an XML header; removing"
+      sed -i 1d $FILE
+      docker restart so-wazuh # cannot use so-wazuh-restart here because the salt-master service is stopped
+    else
+      echo "$FILE does not have an XML header, so no changes are necessary."
+    fi
+  else
+    echo "$FILE does not exist, so no changes are necessary."
+  fi
+}
 
 main() {
   trap 'check_err $?' EXIT
   
+  if [ -n "$BRANCH" ]; then
+    echo "SOUP will use the $BRANCH branch."
+    echo ""
+  fi
+
   echo "### Preparing soup at $(date) ###"
+  echo ""
+
+  echo "Checking to see if this is a manager."
+  echo ""
+  require_manager
+
   check_pillar_items
 
   echo "Checking to see if this is an airgap install."
@@ -883,9 +968,7 @@ main() {
     echo "Missing file argument (-f <FILENAME>) for unattended airgap upgrade."
     exit 0
   fi
-  echo "Checking to see if this is a manager."
-  echo ""
-  require_manager
+
   set_minionid
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
@@ -903,6 +986,7 @@ main() {
   verify_latest_update_script
   echo ""
   set_os
+  set_cron_service_name
   set_palette
   check_elastic_license
   echo ""
@@ -936,6 +1020,11 @@ main() {
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
 
+    systemctl_func "stop" "$cron_service_name"
+
+    # update mine items prior to stopping salt-minion and salt-master
+    update_salt_mine
+
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
@@ -949,19 +1038,11 @@ main() {
       set -e
     fi
 
-    echo ""
-    echo "Stopping Salt Minion service."
-    systemctl stop salt-minion
-    echo "Killing any remaining Salt Minion processes."
-    set +e
-    pkill -9 -ef /usr/bin/salt-minion
-    set -e
-    echo ""
-    echo "Stopping Salt Master service."
-    systemctl stop salt-master
-    echo ""
+    stop_salt_minion
 
-    upgrade_to_2.3.50_repo
+    stop_salt_master
+
+    update_repo
 
     # Does salt need upgraded. If so update it.
     if [[ $UPGRADESALT -eq 1 ]]; then
@@ -1005,12 +1086,10 @@ main() {
     update_version
 
     echo ""
-    echo "Locking down Salt Master for upgrade"
+    echo "Locking down Salt Master for upgrade at $(date +"%T.%6N")."
     masterlock
 
-    echo ""
-    echo "Starting Salt Master service."
-    systemctl start salt-master
+    systemctl_func "start" "salt-master"
 
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
@@ -1023,6 +1102,13 @@ main() {
     salt-call state.apply salt.python3-influxdb -l info queue=True
     echo ""
 
+    # update the salt-minion configs here and start the minion
+    # since highstate are disabled above, minion start should not trigger a highstate
+    echo ""
+    echo "Ensuring salt-minion configs are up-to-date."
+    salt-call state.apply salt.minion -l info queue=True
+    echo ""
+
     # Only regenerate osquery packages if Fleet is enabled
     FLEET_MANAGER=$(lookup_pillar fleet_manager)
     FLEET_NODE=$(lookup_pillar fleet_node)
@@ -1033,28 +1119,28 @@ main() {
       echo ""
     fi
 
+    echo "Enabling highstate."
+    salt-call state.enable highstate -l info --local
     echo ""
-    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
+
+    echo ""
+    echo "Running a highstate. This could take several minutes."
     set +e
     salt-call state.highstate -l info queue=True
     set -e
 
-    echo ""
-    echo "Stopping Salt Master to remove ACL"
-    systemctl stop salt-master
+    stop_salt_master
 
     masterunlock
 
-    echo ""
-    echo "Starting Salt Master service."
-    systemctl start salt-master
+    systemctl_func "start" "salt-master"
 
     set +e
     echo "Waiting on the Salt Master service to be ready."
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
     
-    echo "Running a highstate. This could take several minutes."
+    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
     salt-call state.highstate -l info queue=True
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
@@ -1085,6 +1171,8 @@ main() {
 
     echo "Checking for necessary user migrations."
     so-user migrate
+
+    systemctl_func "start" "$cron_service_name"
 
     if [[ -n $lsl_msg ]]; then
       case $lsl_msg in
@@ -1178,8 +1266,10 @@ Please review the following for more information about the update process and re
 https://docs.securityonion.net/soup
 https://blog.securityonion.net
 
-Press Enter to continue or Ctrl-C to cancel.
+EOF
 
+  cat << EOF
+Press Enter to continue or Ctrl-C to cancel.
 EOF
 
   read -r input

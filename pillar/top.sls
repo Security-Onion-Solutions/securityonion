@@ -3,6 +3,9 @@ base:
     - patch.needs_restarting
     - logrotate
 
+  '* and not *_eval and not *_import':
+    - logstash.nodes
+
   '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
@@ -103,6 +106,13 @@ base:
     - global
     - minions.{{ grains.id }}
     - data.nodestab
+
+  '*_receiver':
+    - logstash
+    - logstash.receiver
+    - elasticsearch.auth
+    - global
+    - minions.{{ grains.id }}
 
   '*_import':
     - zeeklogs

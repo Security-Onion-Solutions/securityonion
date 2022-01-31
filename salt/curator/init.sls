@@ -56,6 +56,7 @@ curconf:
     - group: 939
     - mode: 660
     - template: jinja
+    - show_changes: False
 
 curcloseddel:
   file.managed:

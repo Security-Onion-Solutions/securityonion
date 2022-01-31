@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 {%- set MANAGERIP = salt['pillar.get']('global:managerip') -%}
 {%- set URLBASE = salt['pillar.get']('global:url_base') %}
 {% set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
-{% set ES_PW = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{% set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 INDEX_DATE=$(date +'%Y.%m.%d')
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
@@ -42,7 +42,7 @@ function evtx2es() {
   EVTX=$1
   HASH=$2
   
-  ES_PW=$(lookup_pillar "auth:users:so_elastic_user:pass" "elasticsearch")
+  ES_PASS=$(lookup_pillar "auth:users:so_elastic_user:pass" "elasticsearch")
   ES_USER=$(lookup_pillar "auth:users:so_elastic_user:user" "elasticsearch")
 
   docker run --rm \
@@ -51,7 +51,7 @@ function evtx2es() {
     {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} \
     --host {{ MANAGERIP }} --scheme https \
     --index so-beats-$INDEX_DATE --pipeline import.wel \
-    --login $ES_USER --pwd $ES_PW \
+    --login $ES_USER --pwd "$ES_PASS" \
     "/tmp/$RUNID.evtx" >> $LOG_FILE 2>&1
 
   docker run --rm \

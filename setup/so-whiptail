@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -213,7 +213,7 @@ whiptail_create_web_user() {
 	[ -n "$TESTING" ] && return
 
 	WEBUSER=$(whiptail --title "$whiptail_title" --inputbox \
-	"Please enter an email address to create an administrator account for the web interface.\n\nThis will also be used for Elasticsearch, Kibana, TheHive, Cortex, and Fleet." 12 60 "$1" 3>&1 1>&2 2>&3)
+	"Please enter an email address to create an administrator account for the web interface.\n\nThis will also be used for Elasticsearch, Kibana, and Fleet." 12 60 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -396,7 +396,6 @@ if [[ $is_eval ]]; then
 	GRAFANA "Enable Grafana for system monitoring" ON \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
-	THEHIVE "Enable TheHive" ON \
 	PLAYBOOK "Enable Playbook" ON \
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 else
@@ -404,7 +403,6 @@ else
 	"$description" 20 75 7 \
 	OSQUERY "Enable Fleet with osquery" ON \
 	WAZUH "Enable Wazuh" ON \
-	THEHIVE "Enable TheHive" ON \
 	PLAYBOOK "Enable Playbook" ON \
 	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
 	export "GRAFANA=1"
@@ -563,19 +561,23 @@ whiptail_end_settings() {
 
 	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
 		__append_end_msg "Advanced Node Settings:"
-		__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		if [[ ! $is_receiver ]]; then
+			__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+			__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
+		fi
 		__append_end_msg "  Logstash Heap Size: $NODE_LS_HEAP_SIZE"
 		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
 	else
-		__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+		if [[ ! $is_receiver ]]; then
+			__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+			__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+		fi
 		__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
 		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
 		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
-		__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
 	fi
 
 
@@ -796,11 +798,12 @@ whiptail_install_type_dist_existing() {
 	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 18 58 4 \
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 5 \
 		"SENSOR" "Create a forward only sensor " ON \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \
 		"HEAVYNODE" "Sensor + Search Node " OFF \
+		"RECEIVER" "Receiver Node " OFF \
 		3>&1 1>&2 2>&3
 		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
 		# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
@@ -1804,13 +1807,13 @@ whiptail_ssh_key_copy_notice() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whitpail_ssh_warning() {
+whiptail_ssh_warning() {
 	[ -n "$TESTING" ] && return
 
 	local msg
 
 	read -r -d '' msg <<- EOM
-	NOTE: You will recceive a warning upon SSH reconnect that the host key has changed.
+	NOTE: You will receive a warning upon SSH reconnect that the host key has changed.
 
 	This is expected due to hardening of the OpenSSH server config.
 	

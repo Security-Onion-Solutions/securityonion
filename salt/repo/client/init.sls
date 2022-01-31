@@ -1,7 +1,7 @@
 {% from 'repo/client/map.jinja' import ABSENTFILES with context %}
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
-{% set managerupdates = salt['pillar.get']('global:managerupdate', '0') %}
+{% set managerupdates = salt['pillar.get']('global:managerupdate', 0) %}
 {% set role = grains.id.split('_') | last %}
 
 # from airgap state
@@ -28,7 +28,7 @@ airgap_repo:
   file.absent:
     - name: {{ REPOPATH }}{{ file }}
     - onchanges_in:
-      - module: cleanyum
+      - cmd: cleanyum
   {% endfor %}
 {% endif %}
 
@@ -47,6 +47,18 @@ crsynckeys:
     - source: salt://repo/client/files/centos/keys/
 
 {% if not ISAIRGAP %}
+    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
+remove_securityonionrepocache:
+  file.absent:
+    - name: /etc/yum.repos.d/securityonioncache.repo
+    {% endif %}
+
+    {% if role not in ['eval', 'standalone', 'import', 'manager', 'managersearch'] and managerupdates == 1 %}
+remove_securityonionrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/securityonion.repo
+    {% endif %}
+
 crsecurityonionrepo:
   file.managed:
     {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}

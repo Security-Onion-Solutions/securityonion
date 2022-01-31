@@ -1,4 +1,3 @@
-{%- set PIPELINE = salt['pillar.get']('global:pipeline', 'redis') %}
 logstash:
   pipelines:
     manager:

@@ -4,6 +4,12 @@
 {% set role = grains.id.split('_') | last %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
+include:
+  - common.soup_scripts
+{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  - manager.elasticsearch # needed for elastic_curl_config state
+{% endif %}
+
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
   file.absent:
@@ -182,6 +188,7 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -189,6 +196,11 @@ elastic_curl_config:
     - mode: 600
     - show_changes: False
     - makedirs: True
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+    - require:
+      - file: elastic_curl_config_distributed
+  {% endif %}
+{% endif %}
 
 # Sync some Utilities
 utilsyncscripts:
@@ -203,6 +215,11 @@ utilsyncscripts:
         ELASTICCURL: 'curl'
     - context:
         ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+    - exclude_pat:
+        - so-common
+        - so-firewall
+        - so-image-common
+        - soup
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup

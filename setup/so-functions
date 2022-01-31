@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ accept_salt_key_remote() {
 	echo "Accept the key remotely on the manager" >> "$setup_log" 2>&1
 	# Delete the key just in case.
 	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -d "$MINION_ID" -y
-	salt-call state.apply ca >> /dev/null 2>&1
+	salt-call state.show_top >> /dev/null 2>&1
 	$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo salt-key -a "$MINION_ID" -y
 }
 
@@ -92,6 +92,7 @@ add_admin_user() {
 }
 
 add_mngr_ip_to_hosts() {
+	echo "Adding $MSRV to /etc/hosts with IP: $MSRVIP" >> "$setup_log" 2>&1
 	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
@@ -99,7 +100,7 @@ addtotab_generate_templates() {
 
 	local addtotab_path=$local_salt_dir/pillar/data
 
-	for i in evaltab managersearchtab managertab nodestab sensorstab standalonetab; do
+	for i in evaltab managersearchtab managertab nodestab sensorstab standalonetab receiverstab; do
 		printf '%s\n'\
 		"$i:"\
 		"" > "$addtotab_path"/$i.sls
@@ -471,6 +472,13 @@ collect_mngr_hostname() {
 		whiptail_management_server "$MSRV"
 	done
 
+	# Remove the manager from /etc/hosts incase a user entered the wrong IP when prompted 
+	# and they are going through the installer again
+	if [[ "$HOSTNAME" != "$MSRV" ]]; then
+		echo "Removing $MSRV from /etc/hosts if present." >> "$setup_log" 2>&1
+		sed -i "/$MSRV/d" /etc/hosts
+	fi
+
 	if ! getent hosts "$MSRV"; then
 		whiptail_manager_ip
 
@@ -760,9 +768,11 @@ configure_minion() {
 
 	case "$minion_type" in
 		'helix')
+			cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
 			echo "master: '$HOSTNAME'" >> "$minion_config"
 			;;
 		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
+			cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
 			printf '%s\n'\
 				"master: '$HOSTNAME'"\
 				"mysql.host: '$MAINIP'"\
@@ -797,7 +807,7 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		yum -y install chrony
+		logCmd "yum -y install chrony"
 	fi
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
@@ -1031,6 +1041,8 @@ copy_minion_tmp_files() {
 			} >> "$setup_log" 2>&1
 			;;
 	esac
+	echo "Syncing all salt modules." >> "$setup_log" 2>&1
+	salt-call saltutil.sync_modules >> "$setup_log" 2>&1
 }
 
 copy_ssh_key() {
@@ -1133,17 +1145,17 @@ installer_prereq_packages() {
 	if [ "$OS" == centos ]; then
 		if [[ ! $is_iso ]]; then
 			if ! yum versionlock > /dev/null 2>&1; then
-				yum -y install yum-plugin-versionlock >> "$setup_log" 2>&1
+				logCmd "yum -y install yum-plugin-versionlock"
 			fi
 			if ! command -v nmcli > /dev/null 2>&1; then
-				yum -y install NetworkManager >> "$setup_log" 2>&1
+				logCmd "yum -y install NetworkManager"
 			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
 		logCmd "systemctl start NetworkManager"
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
@@ -1152,7 +1164,9 @@ installer_prereq_packages() {
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
-		retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+		if ! command -v curl > /dev/null 2>&1; then
+			retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+		fi
 	fi
 }
 
@@ -1186,32 +1200,36 @@ disable_ipv6() {
 docker_install() {
 
 	if [ $OS = 'centos' ]; then
-		{
-			yum clean expire-cache;
-			if [[ ! $is_iso ]]; then
-			  yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7
-			fi
-			yum versionlock docker-ce-20.10.5-3.el7
-			yum versionlock docker-ce-cli-20.10.5-3.el7
-			yum versionlock docker-ce-rootless-extras-20.10.5-3.el7
-			yum versionlock containerd.io-1.4.4-3.1.el7
-		} >> "$setup_log" 2>&1
+		logCmd "yum clean expire-cache"
+		if [[ ! $is_iso ]]; then
+			logCmd "yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7"
+		fi
+		logCmd "yum versionlock docker-ce-20.10.5-3.el7"
+		logCmd "yum versionlock docker-ce-cli-20.10.5-3.el7"
+		logCmd "yum versionlock docker-ce-rootless-extras-20.10.5-3.el7"
+		logCmd "yum versionlock containerd.io-1.4.4-3.1.el7"
 		
 	else
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'STANDALONE' | 'MANAGERSEARCH' | 'IMPORT')
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
 				retry 50 10 "apt-key add $temp_install_dir/gpg/docker.pub" >> "$setup_log" 2>&1 || exit 1
 				add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" >> "$setup_log" 2>&1
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				;;
 		esac
 		if [ $OSVER == "bionic" ]; then
+		        service docker stop
+			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+	        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras
 		elif [ $OSVER == "focal" ]; then
+		        service docker stop
+			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
+                        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras		
 		fi
 	fi
 	docker_registry
@@ -1327,15 +1345,6 @@ elasticsearch_pillar() {
 		"  log_size_limit: $log_size_limit"\
 		"  node_route_type: 'hot'"\
 		"" >> "$pillar_file"
-	
-	printf '%s\n'\
-		"logstash_settings:"\
-		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
-		"  ls_input_threads: $LSINPUTTHREADS"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
-		"" >> "$pillar_file"
-
 }
 
 es_heapsize() {
@@ -1438,6 +1447,28 @@ fleet_pillar() {
 		"" > "$pillar_file"
 }
 
+generate_ca() {
+	{
+		echo "Building Certificate Authority";
+		salt-call state.apply ca;
+
+		echo "Confirming existence of the CA certificate"
+		openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
+	} >> "$setup_log" 2>&1
+}
+
+generate_ssl() {
+	{
+		# if the install type is a manager then we need to wait for the minion to be ready before trying
+		# to run the ssl state since we need the minion to sign the certs
+		if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
+			wait_for_salt_minion
+		fi
+		echo "Applying SSL state";
+		salt-call state.apply ssl;
+	} >> "$setup_log" 2>&1
+}
+
 generate_passwords(){
   # Generate Random Passwords for Things
   MYSQLPASS=$(get_random_value)
@@ -1490,7 +1521,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -1552,6 +1583,20 @@ import_registry_docker() {
 	else
 	  info "Need to download registry"
 	fi
+}
+
+logstash_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the logstash pillar
+	printf '%s\n'\
+		"logstash_settings:"\
+		"  ls_pipeline_batch_size: $LSPIPELINEBATCH"\
+		"  ls_input_threads: $LSINPUTTHREADS"\
+		"  lsheap: $NODE_LS_HEAP_SIZE"\
+		"  ls_pipeline_workers: $num_cpu_cores"\
+		"" >> "$pillar_file"
 }
 
 # Set Logstash heap size based on total memory
@@ -1979,17 +2024,17 @@ proxy_validate() {
 
 reserve_group_ids() {
 	# This is a hack to fix CentOS from taking group IDs that we need
-	groupadd -g 928 kratos
-	groupadd -g 930 elasticsearch
-	groupadd -g 931 logstash
-	groupadd -g 932 kibana
-	groupadd -g 933 elastalert
-	groupadd -g 934 curator
-	groupadd -g 937 zeek
-	groupadd -g 940 suricata
-	groupadd -g 941 stenographer
-	groupadd -g 945 ossec
-	groupadd -g 946 cyberchef
+	logCmd "groupadd -g 928 kratos"
+	logCmd "groupadd -g 930 elasticsearch"
+	logCmd "groupadd -g 931 logstash"
+	logCmd "groupadd -g 932 kibana"
+	logCmd "groupadd -g 933 elastalert"
+	logCmd "groupadd -g 934 curator"
+	logCmd "groupadd -g 937 zeek"
+	logCmd "groupadd -g 940 suricata"
+	logCmd "groupadd -g 941 stenographer"
+	logCmd "groupadd -g 945 ossec"
+	logCmd "groupadd -g 946 cyberchef"
 }
 
 reserve_ports() {
@@ -2004,7 +2049,7 @@ reserve_ports() {
 
 reinstall_init() {
 	info "Putting system in state to run setup again"
-	
+
 	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
@@ -2014,6 +2059,9 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
+		# remove all of root's cronjobs
+		logCmd "crontab -r -u root"
+
 		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
 			salt-call -l info schedule.disable --local
@@ -2043,8 +2091,11 @@ reinstall_init() {
 			done
 		done
 
+		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
+		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
+
 		# Remove all salt configs
-		rm -rf /etc/salt/grains /etc/salt/minion /etc/salt/pki/*
+		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -2059,6 +2110,12 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
+		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
+		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
+		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
+		# If the elastic license has been accepted restore the state file
+		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
 		# Backup directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
@@ -2068,10 +2125,13 @@ reinstall_init() {
 		remove_package launcher-final
 
 		if [[ $OS == 'ubuntu' ]]; then
+			info "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
 
 	} >> "$setup_log" 2>&1
+
+	info "System reinstall init has been completed."
 }
 
 reset_proxy() {
@@ -2092,6 +2152,16 @@ reset_proxy() {
 	fi
 }
 
+restore_file() {
+	src=$1
+	dst=$2
+	if [ -f "$src" ]; then
+		[ ! -d "$dst" ] && mkdir -v -p "$dst"
+		echo "Restoring $src to $dst." >> "$setup_log" 2>&1
+		cp -v "$src" "$dst" >> "$setup_log" 2>&1
+	fi
+}
+
 backup_dir() {
 	dir=$1
 	backup_suffix=$2
@@ -2105,7 +2175,7 @@ remove_package() {
 	local package_name=$1
 	if [ $OS = 'centos' ]; then
 		if rpm -qa | grep -q "$package_name"; then
-			yum remove -y "$package_name"
+			logCmd "yum remove -y $package_name"
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
@@ -2131,51 +2201,36 @@ saltify() {
 		fi 
 		case "$install_type" in
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
-				reserve_group_ids >> "$setup_log" 2>&1
+				reserve_group_ids
 				if [[ ! $is_iso ]]; then
 				  logCmd "yum -y install sqlite curl mariadb-devel"
 				fi 
 				# Download Ubuntu Keys in case manager updates = 1
-				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
+				logCmd "mkdir -vp /opt/so/gpg"
 				if [[ ! $is_airgap ]]; then
-				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3003/SALTSTACK-GPG-KEY.pub"
+				  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3004/SALTSTACK-GPG-KEY.pub"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 				  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 				fi
 				set_progress_str 7 'Installing salt-master'
 				if [[ ! $is_iso ]]; then
-				  logCmd "yum -y install salt-master-3003"
+				  logCmd "yum -y install salt-master-3004"
 				fi
-				systemctl enable salt-master >> "$setup_log" 2>&1
+				logCmd "systemctl enable salt-master"
 				;;
 			*)
 				;;
 		esac
 		if [[ ! $is_airgap ]]; then
-		  yum clean expire-cache >> "$setup_log" 2>&1
+		  logCmd "yum clean expire-cache"
 		fi
 		set_progress_str 8 'Installing salt-minion & python modules'
-		{
 			if [[ ! $is_iso ]]; then
-			  yum -y install salt-minion-3003\
-			  	httpd-tools\
-			   	python3\
-					python36-docker\
-					python36-dateutil\
-					python36-m2crypto\
-					python36-mysql\
-					python36-packaging\
-					python36-lxml\
-					yum-utils\
-					device-mapper-persistent-data\
-					lvm2\
-					openssl\
-					jq;
-					yum -y update --exclude=salt*;
+				logCmd "yum -y install salt-minion-3004 httpd-tools python3 python36-docker python36-dateutil python36-m2crypto python36-mysql python36-packaging python36-lxml yum-utils device-mapper-persistent-data lvm2 openssl jq"
+				logCmd "yum -y update --exclude=salt*"
 			fi
-			systemctl enable salt-minion;
-		} >> "$setup_log" 2>&1
-		yum versionlock salt*
+		logCmd "systemctl enable salt-minion"
+		logCmd "yum versionlock salt*"
 	else
 		DEBIAN_FRONTEND=noninteractive retry 50 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
 
@@ -2210,8 +2265,8 @@ saltify() {
 			'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT' | 'HELIXSENSOR')
 
 				# Add saltstack repo(s)
-				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				wget -q --inet4-only -O - https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3004/SALTSTACK-GPG-KEY.pub | apt-key add - >> "$setup_log" 2>&1
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3004 $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 
 				# Add Docker repo
 				curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - >> "$setup_log" 2>&1
@@ -2219,7 +2274,7 @@ saltify() {
 
 				# Get gpg keys
 				mkdir -p /opt/so/gpg >> "$setup_log" 2>&1
-				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3003/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
+				wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/"$ubuntu_version"/amd64/archive/3004/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg >> "$setup_log" 2>&1
 				wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH >> "$setup_log" 2>&1
 
@@ -2228,11 +2283,11 @@ saltify() {
 				# Add repo
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				
-				retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 6 'Installing various dependencies'
 				retry 50 10 "apt-get -y install sqlite3 libssl-dev" >> "$setup_log" 2>&1 || exit 1
 				set_progress_str 7 'Installing salt-master'
-				retry 50 10 "apt-get -y install salt-master=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
+				retry 50 10 "apt-get -y install salt-master=3004+ds-1" >> "$setup_log" 2>&1 || exit 1
 				retry 50 10 "apt-mark hold salt-master" >> "$setup_log" 2>&1 || exit 1
 				;;
 			*)
@@ -2243,118 +2298,17 @@ saltify() {
 				echo "Using apt-key add to add SALTSTACK-GPG-KEY.pub and GPG-KEY-WAZUH" >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub >> "$setup_log" 2>&1
 				apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH >> "$setup_log" 2>&1
-				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3003/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
+				echo "deb http://repo.saltstack.com/py3/ubuntu/$ubuntu_version/amd64/archive/3004/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list 2>> "$setup_log"
 				echo "deb https://packages.wazuh.com/3.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list 2>> "$setup_log"
 				;;
 		esac
 
-		retry 50 10 "apt-get update" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		set_progress_str 8 'Installing salt-minion & python modules'
-		retry 50 10 "apt-get -y install salt-minion=3003+ds-1 salt-common=3003+ds-1" >> "$setup_log" 2>&1 || exit 1
+		retry 50 10 "apt-get -y install salt-minion=3004+ds-1 salt-common=3004+ds-1" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-mark hold salt-minion salt-common" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" >> "$setup_log" 2>&1 || exit 1
 	fi
-}
-
-salt_checkin() {
-	case "$install_type" in
-		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT') # Fix Mine usage
-			{
-				echo "Building Certificate Authority";
-				salt-call state.apply ca;
-				echo " *** Restarting Salt to fix any SSL errors. ***";
-
-				local SALT_SERVICES=(\
-				"salt-master" \
-				"salt-minion"
-				)
-				local count=0
-
-				for service in "${SALT_SERVICES[@]}"; do
-					{
-						echo "Restarting service $service"
-						systemctl restart "$service" &
-						local pid=$!
-					} >> "$setup_log" 2>&1 
-
-					count=0
-					while ! (check_service_status "$service"); do
-						# On final loop, kill the pid trying to restart service and try to manually kill then start it
-						if [ $count -eq 12 ]; then
-							{
-								kill -9 "$pid"
-								systemctl kill "$service"
-								systemctl start "$service" &
-								local pid=$!
-							} >> "$setup_log" 2>&1 
-						fi
-						
-						if [ $count -gt 12 ]; then
-							echo "$service could not be restarted in 120 seconds, exiting" >> "$setup_log" 2>&1
-							kill -9 "$pid"
-							exit 1
-						fi
-						sleep 10;
-						((count++))
-					done
-				done
-
-				count=1
-				timeout=60
-				while ! (check_salt_master_status $timeout); do
-					echo "salt minion cannot talk to salt master after $timeout seconds" >> "$setup_log" 2>&1
-					if [ $count -gt 2 ]; then
-						echo "salt minion could not talk to salt master after $count attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
-					fi
-					sleep 1;
-					((count++))
-					((timeout+=30)) # add 30s to the timeout each attempt
-				done
-
-				count=1
-				timeout=60
-				while ! (check_salt_minion_status $timeout) ; do
-					echo "salt master did not get a job response from salt minion after $timeout seconds" >> "$setup_log" 2>&1
-					if [ $count -gt 2 ]; then
-						echo "salt master did not get a job response from salt minion after $count attempts, exiting" >> "$setup_log" 2>&1
-						exit 1
-					fi
-					systemctl kill salt-minion
-					systemctl start salt-minion
-					sleep 1;
-					((count++))
-					((timeout+=30)) # add 30s to the timeout each attempt
-				done
-
-				echo " Confirming existence of the CA certificate"
-				openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
-				echo " Applyng a mine hack";
-				salt "$MINION_ID" mine.send x509.get_pem_entries glob_path=/etc/pki/ca.crt;
-				salt "$MINION_ID" mine.update;
-				echo "Confirming salt mine now contains the certificate";
-				salt "$MINION_ID" mine.get '*' x509.get_pem_entries | grep -E 'BEGIN CERTIFICATE|END CERTIFICATE';
-				if [ $? -eq 0 ]; then
-					echo "CA in mine"
-				else
-					echo "CA not in mine"
-				fi
-				echo " Applying SSL state";
-				salt-call state.apply ssl;
-			} >> "$setup_log" 2>&1
-			;;
-		*)
-			{
-				salt-call state.apply ca;
-				salt-call state.apply ssl;
-			} >> "$setup_log" 2>&1
-			;;
-	esac
-	{
-		salt-call state.apply ca;
-		salt-call state.apply ssl;
-		salt-call saltutil.sync_modules;
-	} >> "$setup_log" 2>&1
 }
 
 # Run a salt command to generate the minion key
@@ -2388,28 +2342,28 @@ securityonion_repo() {
 		if [[ "$INTERWEBS" == "AIRGAP" ]]; then
 			echo "This is airgap I don't need to add this repo"
 		else
-			mkdir -p /root/oldrepos
-			mv -v /etc/yum.repos.d/* /root/oldrepos/
-			ls -la /etc/yum.repos.d/
-			rm -rf /etc/yum.repos.d
-			yum clean all
-			yum repolist all
-			mkdir -p /etc/yum.repos.d
 			if [[ ! $is_manager && "$MANAGERUPDATES" == "1" ]]; then
-				cp -f ../salt/repo/client/files/centos/securityonioncache.repo /etc/yum.repos.d/
+				local repo_conf_file="../salt/repo/client/files/centos/securityonioncache.repo"
 			else
-				cp -f ../salt/repo/client/files/centos/securityonion.repo /etc/yum.repos.d/
+				local repo_conf_file="../salt/repo/client/files/centos/securityonion.repo"
 			fi
-			yum repolist all
+			# need to yum clean all before repo conf files are removed or clean,cleans nothing
+			logCmd "yum -v clean all"
+			logCmd "mkdir -vp /root/oldrepos"
+			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
+			logCmd "ls -la /etc/yum.repos.d/"
+			logCmd "cp -f $repo_conf_file /etc/yum.repos.d/"
+			logCmd "yum repolist all"
+			# update this package because the repo config files get added back
+			# if the package is updated when the update_packages function is called
+			logCmd "yum -v -y update centos-release"
+			echo "Move the .repo files that were added by the centos-release package."
+			find /etc/yum.repos.d/ -type f -not -name 'securityonion*repo' -print0 | xargs -0 -I {} mv -bvf {} /root/oldrepos/
+			logCmd "yum repolist all"
 		fi
 	else
 		echo "This is Ubuntu"
 	fi
-}
-
-set_base_heapsizes() {
-	es_heapsize
-	ls_heapsize
 }
 
 set_network_dev_status_list() {
@@ -2665,7 +2619,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
-		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET')
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
@@ -2685,6 +2639,9 @@ set_initial_firewall_policy() {
 				'FLEET')
 				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
+				'RECEIVER')
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost receiver "$MAINIP"
+					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh receiverstab "$MINION_ID" "$MAINIP"
 			esac
 			;;
 		'PARSINGNODE')
@@ -2816,8 +2773,8 @@ update_sudoers() {
 
 update_packages() {
 	if [ "$OS" = 'centos' ]; then
-	    yum repolist >> /dev/null
-        yum -y update --exclude=salt*,wazuh*,docker*,containerd* >> "$setup_log"
+	    logCmd "yum repolist"
+        logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
@@ -2863,6 +2820,10 @@ wait_for_file() {
 	done
 	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
 	return 1
+}
+
+wait_for_salt_minion() {
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
 }
 
 # Enable Zeek Logs

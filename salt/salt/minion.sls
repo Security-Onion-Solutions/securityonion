@@ -10,6 +10,7 @@ include:
   - salt
   - salt.helper-packages
   - systemd.reload
+  - repo.client
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
@@ -62,8 +63,6 @@ set_log_levels:
     - text:
       - "log_level: error"
       - "log_level_logfile: error"
-    - listen_in:
-      - service: salt_minion_service
 
 salt_minion_service_unit_file:
   file.managed:
@@ -74,9 +73,14 @@ salt_minion_service_unit_file:
         service_start_delay: {{ service_start_delay }}
     - onchanges_in:
       - module: systemd_reload
-    - listen_in:
-      - service: salt_minion_service
+
 {% endif %}
+
+mine_functions:
+  file.managed:
+    - name: /etc/salt/minion.d/mine_functions.conf
+    - source: salt://salt/etc/minion.d/mine_functions.conf
+    - template: jinja
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
@@ -84,6 +88,13 @@ salt_minion_service:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
+    - listen:
+      - file: mine_functions
+{% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
+      - file: set_log_levels
+      - file: salt_minion_service_unit_file
+{% endif %}
+
 
 patch_pkg:
   pkg.installed:

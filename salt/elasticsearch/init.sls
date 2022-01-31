@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018,2019,2020,2021 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ vm.max_map_count:
 cascriptsync:
   file.managed:
     - name: /usr/sbin/so-catrust
-    - source: salt://elasticsearch/files/scripts/so-catrust
+    - source: salt://elasticsearch/tools/sbin/so-catrust
     - user: 939
     - group: 939
     - mode: 750
@@ -62,8 +62,36 @@ cascriptsync:
 cascriptfun:
   cmd.run:
     - name: /usr/sbin/so-catrust
-
+    - require:
+        - file: cascriptsync
 {% endif %}
+
+# Sync some es scripts
+es_sync_scripts:
+  file.recurse:
+    - name: /usr/sbin
+    - user: root
+    - group: root
+    - file_mode: 755
+    - template: jinja
+    - source: salt://elasticsearch/tools/sbin
+    - defaults:
+        ELASTICCURL: 'curl'
+    - context:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+    - exclude_pat:
+        - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+
+so-elasticsearch-pipelines-script:
+  file.managed:
+    - name: /usr/sbin/so-elasticsearch-pipelines
+    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-pipelines
+    - user: 930
+    - group: 939
+    - mode: 754
+    - template: jinja
+    - defaults:
+        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 # Move our new CA over so Elastic and Logstash can use SSL with the internal CA
 catrustdir:
@@ -134,7 +162,7 @@ esrolesdir:
 eslibdir:
   file.absent:
     - name: /opt/so/conf/elasticsearch/lib
-    
+
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -205,6 +233,14 @@ eslogdir:
     - user: 930
     - group: 939
     - makedirs: True
+
+es_repo_dir:
+  file.directory:
+    - name: /nsm/elasticsearch/repo/
+    - user: 930
+    - group: 930
+    - require:
+      - file: nsmesdir
 
 auth_users:
   file.managed:
@@ -288,12 +324,17 @@ so-elasticsearch:
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% endif %}
+      {% if ESCONFIG.path.get('repo', False) %}
+        {% for repo in ESCONFIG.path.repo %}
+      - {{ repo }}:{{ repo }}:rw
+        {% endfor %}
+      {% endif %}
     - watch:
       - file: cacertz
       - file: esyml
       - file: esingestconf
       - file: esingestdynamicconf
-      - file: so-elasticsearch-pipelines-file
+      - file: so-elasticsearch-pipelines-script
     - require:
       - file: esyml
       - file: eslog4jfile
@@ -318,25 +359,17 @@ append_so-elasticsearch_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
 
-so-elasticsearch-pipelines-file:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines
-    - source: salt://elasticsearch/files/so-elasticsearch-pipelines
-    - user: 930
-    - group: 939
-    - mode: 754
-    - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
-
 so-elasticsearch-pipelines:
- cmd.run:
-   - name: /opt/so/conf/elasticsearch/so-elasticsearch-pipelines {{ grains.host }}
-   - onchanges:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
+    - onchanges:
       - file: esingestconf
       - file: esingestdynamicconf
       - file: esyml
-      - file: so-elasticsearch-pipelines-file
+      - file: so-elasticsearch-pipelines-script
+    - require:
+      - docker_container: so-elasticsearch
+      - file: so-elasticsearch-pipelines-script
 
 {% if TEMPLATES %}
 so-elasticsearch-templates:
@@ -344,6 +377,9 @@ so-elasticsearch-templates:
     - name: /usr/sbin/so-elasticsearch-templates-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
+      - file: es_sync_scripts
 {% endif %}
 
 so-elasticsearch-roles-load:
@@ -351,6 +387,9 @@ so-elasticsearch-roles-load:
     - name: /usr/sbin/so-elasticsearch-roles-load
     - cwd: /opt/so
     - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
+      - file: es_sync_scripts
 
 {% endif %} {# if grains['role'] != 'so-helix' #}
 

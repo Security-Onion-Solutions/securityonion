@@ -1,4 +1,4 @@
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014-2022 Security Onion Solutions, LLC
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -101,6 +101,7 @@ elastaconf:
     - group: 933
     - mode: 660
     - template: jinja
+    - show_changes: False
 
 wait_for_elasticsearch:
   cmd.run:
