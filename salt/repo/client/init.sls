@@ -53,6 +53,12 @@ remove_securityonionrepocache:
     - name: /etc/yum.repos.d/securityonioncache.repo
     {% endif %}
 
+    {% if role not in ['eval', 'standalone', 'import', 'manager', 'managersearch'] and managerupdates == 1 %}
+remove_securityonionrepo:
+  file.absent:
+    - name: /etc/yum.repos.d/securityonion.repo
+    {% endif %}
+
 crsecurityonionrepo:
   file.managed:
     {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
