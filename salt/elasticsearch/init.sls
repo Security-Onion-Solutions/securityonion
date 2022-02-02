@@ -147,10 +147,12 @@ esingestdir:
 
 estemplatedir:
   file.directory:
-    - name: /opt/so/conf/elasticsearch/templates
+    - name: /opt/so/conf/elasticsearch/templates/index
     - user: 930
     - group: 939
     - makedirs: True
+
+
 
 esrolesdir:
   file.directory:
@@ -200,16 +202,23 @@ esyml:
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
   file.managed:
-    - source: salt://elasticsearch/templates/{{TEMPLATE}}
+    - source: salt://elasticsearch/templates/index/{{TEMPLATE}}
     {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
     {% else %}
-    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1]}}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1]}}
     {% endif %}
     - user: 930
     - group: 939
 {% endfor %}
+
+escomponenttemplates:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/templates/component
+    - source: salt://elasticsearch/templates/component
+    - user: 930
+    - group: 939
 
 esroles:
   file.recurse:
