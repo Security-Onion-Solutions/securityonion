@@ -1,0 +1,89 @@
+{%- set INDEX_SORTING = salt['pillar.get']('elasticsearch:index_sorting', False) %}
+{%- set REPLICAS = salt['pillar.get']('elasticsearch:replicas', 0) %}
+{%- set SHARDS = salt['pillar.get']('elasticsearch:index_settings:so-netflow:shards', 1) %}
+{%- set REFRESH = salt['pillar.get']('elasticsearch:index_settings:so-netflow:refresh', '30s') %}
+{%- set PRIORITY = salt['pillar.get']('elasticsearch:index_settings:so-netflow:priority', 500) %}
+{%- set FIELD_LIMIT = salt['pillar.get']('elasticsearch:index_settings:so-netflow:field_limit', 3000) %}
+{
+        "index_patterns": [
+          "so-netflow*"
+        ],
+        "template": {
+          "mappings": {
+            "dynamic_templates": [
+              {
+                "strings_as_keyword": {
+                  "mapping": {
+                    "ignore_above": 1024,
+                    "type": "keyword"
+                  },
+                  "match_mapping_type": "string"
+                }
+              }
+            ],
+            "date_detection": false
+          },
+          "settings": {
+            "index": {
+              "mapping": {
+                "total_fields": {
+                  "limit": {{ FIELD_LIMIT }}
+                }
+              },
+	      {%- if INDEX_SORTING is sameas true %}
+    	      "index.sort.field": "@timestamp",
+              "index.sort.order": "desc",
+              {%- endif %}
+              "refresh_interval": "{{ REFRESH }}",
+              "number_of_shards": {{ SHARDS }},
+    	      "number_of_replicas": {{ REPLICAS }}
+            }
+          }
+        },
+        "composed_of": [
+          "agent-mappings",
+          "base-mappings",
+          "client-mappings",
+          "cloud-mappings",
+          "container-mappings",
+          "data_stream-mappings",
+          "destination-mappings",
+          "dll-mappings",
+          "dns-mappings",
+          "ecs-mappings",
+          "error-mappings",
+          "dtc-event-mappings",
+          "file-mappings",
+          "group-mappings",
+          "host-mappings",
+          "http-mappings",
+          "log-mappings",
+          "network-mappings",
+          "dtc-observer-mappings",
+          "orchestrator-mappings",
+          "organization-mappings",
+          "package-mappings",
+          "process-mappings",
+          "registry-mappings",
+          "related-mappings",
+          "rule-mappings",
+          "server-mappings",
+          "service-mappings",
+          "source-mappings",
+          "threat-mappings",
+          "tls-mappings",
+          "tracing-mappings",
+          "url-mappings",
+          "user_agent-mappings",
+          "user-mappings",
+          "vulnerability-mappings",
+          "common-settings",
+          "common-dynamic-mappings"
+        ],
+        "priority": {{ PRIORITY }},
+        "_meta": {
+          "description": "Composable template that includes SO base fields",
+          "ecs_version": "1.12"
+        }
+      }
+    }

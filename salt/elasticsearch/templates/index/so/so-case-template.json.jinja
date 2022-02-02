@@ -1,0 +1,53 @@
+{%- set INDEX_SORTING = salt['pillar.get']('elasticsearch:index_sorting', False) %}
+{%- set REPLICAS = salt['pillar.get']('elasticsearch:replicas', 0) %}
+{%- set SHARDS = salt['pillar.get']('elasticsearch:index_settings:so-case:shards', 1) %}
+{%- set REFRESH = salt['pillar.get']('elasticsearch:index_settings:so-case:refresh', '30s') %}
+{%- set PRIORITY = salt['pillar.get']('elasticsearch:index_settings:so-case:priority', 500) %}
+{%- set FIELD_LIMIT = salt['pillar.get']('elasticsearch:index_settings:so-case:field_limit', 2000) %}
+{
+        "index_patterns": [
+          "so-case*"
+        ],
+        "template": {
+          "mappings": {
+            "dynamic_templates": [
+              {
+                "strings_as_keyword": {
+                  "mapping": {
+                    "ignore_above": 1024,
+                    "type": "keyword"
+                  },
+                  "match_mapping_type": "string"
+                }
+              }
+            ],
+            "date_detection": false
+          },
+          "settings": {
+            "index": {
+              "mapping": {
+                "total_fields": {
+                  "limit": {{ FIELD_LIMIT }}
+                }
+              },
+	      {%- if INDEX_SORTING is sameas true %}
+    	      "index.sort.field": "@timestamp",
+              "index.sort.order": "desc",
+              {%- endif %}
+              "refresh_interval": "{{ REFRESH }}",
+              "number_of_shards": {{ SHARDS }},
+    	      "number_of_replicas": {{ REPLICAS }}
+            }
+          }
+        },
+        "composed_of": [
+          "case-mappings",
+          "case-settings"
+        ],
+        "priority": {{ PRIORITY }},
+        "_meta": {
+          "description": "Composable template that includes Cases fields",
+          "ecs_version": "1.12"
+        }
+      }
+    }
