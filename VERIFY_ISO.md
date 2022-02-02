@@ -45,6 +45,7 @@ gpg: Signature made Wed 02 Feb 2022 12:12:39 PM EST using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: C804 A93D 36BE 0C73 3EA1  9644 7C10 60B7 FE50 7013
 ```
 
 Once you've verified the ISO image, you're ready to proceed to our Installation guide:  
