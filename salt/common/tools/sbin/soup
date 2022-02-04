@@ -976,6 +976,11 @@ main() {
     # Let's mount the ISO since this is airgap
     airgap_mounted
   else
+    # if not airgrap but -f was used
+    if [[ ! -z "$ISOLOC" ]]; then
+      airgap_mounted
+      AGDOCKER=/tmp/soagupdate/docker
+    fi
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
     echo "Removing previous upgrade sources."
     rm -rf $UPDATE_DIR
@@ -1031,10 +1036,8 @@ main() {
       update_centos_repo
       yum clean all
       check_os_updates
-    # the -f optarg was used and not airgap
+    # if not airgrap but -f was used
     elif [[ ! -z "$ISOLOC" ]]; then
-      airgap_mounted
-      AGDOCKER=/tmp/soagupdate/docker
       airgap_update_dockers
       unmount_update
     else
