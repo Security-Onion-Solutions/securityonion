@@ -251,6 +251,10 @@ elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
 	is_fleet_standalone=true
 	OSQUERY=1
+elif [ "$install_type" = 'IDH' ]; then
+	is_minion=true
+	is_idh_standalone=true
+	IDH=1
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 elif [ "$install_type" = 'IMPORT' ]; then
@@ -907,6 +911,13 @@ echo "1" > /root/accept_changes
 	
 		set_progress_str 78 "$(print_salt_state_apply 'so-fleet-setup')"	
 		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
+
+	fi
+
+	if [[ "$IDH" = 1 ]]; then
+
+		set_progress_str 79 "$(print_salt_state_apply 'idh')"
+		salt-call state.apply -l info idh >> $setup_log 2>&1
 
 	fi
 
