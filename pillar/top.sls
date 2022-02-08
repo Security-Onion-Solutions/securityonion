@@ -98,6 +98,11 @@ base:
     - global
     - minions.{{ grains.id }}
 
+  '*_idh':
+    - data.*
+    - global
+    - minions.{{ grains.id }}
+
   '*_searchnode':
     - logstash
     - logstash.search
