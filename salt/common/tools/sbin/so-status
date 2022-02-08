@@ -107,9 +107,9 @@ populate_container_lists() {
     systemctl is-active --quiet docker
 
     if [[ $? = 0 ]]; then
-        # TODO: why use curl when you can just run docker ps?
-        # TODO: why use an indexed array when bash has associtive arrays?
-        # TODO: why use an array when you can just use a string?
+        # TODO: look into using docker templates instead of curl and jq
+        #  Ex docker ps --format "{{.Names}}\t{{.State}}"
+        # TODO: convert the output to an associtive array
         mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/v1.40/containers/json?all=1 \
             | jq -c '.[] | { Name: .Names[0], State: .State }' \
             | tr -d '/{"}')
@@ -255,9 +255,8 @@ main() {
       else
           print_or_parse="print_line"
 
-          if (( __tty == 1 ))
-          then
-          local focus_color="" focus_color="$(tput setaf 3 bold)"
+          if (( __tty == 1 )) ; then
+          local focus_color="" ; focus_color="$(tput setaf 3 bold)"
           local NC=""
               NC="$(tput sgr0)" # no color
           fi
@@ -298,7 +297,6 @@ is_tty() {
     # don't print colors if NO_COLOR is set to anything
     [ "${#NO_COLOR}" -ne 0 ] \
         && __tty=0
-    return "${__tty}"
 }
 
 if ! [ "$(id -u)" = 0 ]; then
