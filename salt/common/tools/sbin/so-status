@@ -175,22 +175,23 @@ print_line() {
     local service_state="" ; service_state="$( parse_status "${1}" "${2}" )"
     # XXX: What will we do if tput isn't avalable?
     local line=""
+    local columns=35 # value used if not printing to a tty
+    local PADDING_CONSTANT=16 # two tabs wide
+
     if (( __tty == 1 )); then
         local NC; NC="$(tput sgr0)" # no color
-        local red=""; red="$(tput setaf 1 bold)"
+        local red; red="$(tput setaf 1 bold)"
         local green; green="$(tput setaf 2 bold)"
         local yellow; yellow="$(tput setaf 3 bold)"
 
-        # construct a line of '------' so that the names and states are all aligned
-        local PADDING_CONSTANT=16 # two tabs wide
-        PADDING_CONSTANT=$((PADDING_CONSTANT + PADDING_CONSTANT / 2))
-        local columns ; columns=$(tput cols)
-        linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
-
-        for i in $(seq 0 "${linewidth}"); do
-          line="${line}-"
-        done
+        columns=$(tput cols)
     fi
+
+    # construct a line of '------' so that the names and states are all aligned
+    linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
+    for i in $(seq 0 "${linewidth}"); do
+      line="${line}-"
+    done
 
     if [[ $service_state = "$ERROR_STRING" ]] \
         || [[ $service_state = "$MISSING_STRING" ]]; then
