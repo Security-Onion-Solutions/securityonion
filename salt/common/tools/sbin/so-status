@@ -18,20 +18,15 @@
 MYNAME="${0##*/}"
 
 display_help() {
-  printf "%s" "${MYNAME}"
-  printf " [%s]" "-h" "-q|--quiet"
-  printf "\n"
-  printf "\t-%s\t%s\n" \
-    "h" "Show this message." \
-    "q,--quiet" "suppress the output and return a single status code of overall status"
-  printf "\nReturn Codes:\n"
-  printf "\t%s - %s\n" \
-  "0" "Ok" \
-  "1" "Error" \
-  "2" "Starting/Pending"\
-  "99" "Installing SO"
-  # exit with code 0, unless passed a number when called
-  exit "${1:-0}"
+cat <<HELP_USAGE
+
+    $0  [-h] [-q|--quiet]
+
+   -h             Show this message.
+   -q|--quiet     Suppress the output and only return a
+	              single status code for overall status
+	0:Ok, 1:Error, 2:Starting/Pending, 99:Installing SO
+HELP_USAGE
 }
 
 # Constants
@@ -301,14 +296,19 @@ is_tty() {
 
 if ! [ "$(id -u)" = 0 ]; then
    echo "${MYNAME}: This command must be run as root"
-   display_help 1
 fi
 
 while getopts ':hq' OPTION; do
   case "$OPTION" in
-    h) display_help 0 ;;
+    h)
+      display_help
+      exit 0
+      ;;
     q) QUIET=true ;;
-    \?) display_help 1 ;;
+    \?)
+      display_help
+      exit 1
+      ;;
   esac
 done
 
