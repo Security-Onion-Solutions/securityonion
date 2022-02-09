@@ -29,7 +29,11 @@
 
 * See this document's [code styling and conventions section](#code-style-and-conventions) below to be sure your PR fits our code requirements prior to submitting.
 
-* Minor bug fixes can be submitted immediately. However, if you are wanting to make more involved changes, please start a [discussion](https://github.com/Security-Onion-Solutions/securityonion/discussions) first and tell us what you are hoping to achieve. If we agree with your goals, then you can submit the PR.
+* Change behavior (fix a bug, add a new feature) separately from refactoring code. Refactor PR's are welcome, but ensure your new code behaves exactly the same as the old.
+
+* **Do not refactor code for non-functional reasons**. If you are submitting a pull request that refactors code, ensure the refactor is improving the functionality of the code you're refactoring (e.g. decreasing complexity, removing reliance on 3rd party tools, improving performance).
+
+* Before submitting a PR with significant changes to the project, [start a discussion](https://github.com/Security-Onion-Solutions/securityonion/discussions/new) explaining what you hope to acheive. The project maintainers will provide feedback and determine whether your goal aligns with the project. 
 
 
 ### Code style and conventions
@@ -38,3 +42,5 @@
 * All new Bash code should pass [ShellCheck](https://www.shellcheck.net/) analysis. Where errors can be *safely* [ignored](https://github.com/koalaman/shellcheck/wiki/Ignore), the relevant disable directive should be accompanied by a brief explanation as to why the error is being ignored.
 
 * **Ensure all YAML (this includes Salt states and pillars) is properly formatted**. The spec for YAML v1.2 can be found [here](https://yaml.org/spec/1.2/spec.html), however there are numerous online resources with simpler descriptions of its formatting rules. 
+
+* **All code of any language should match the style of other code of that same language within the project.** Be sure that any changes you make do not break from the pre-existing style of Security Onion code.
