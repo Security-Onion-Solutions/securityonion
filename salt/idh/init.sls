@@ -8,7 +8,7 @@ temp:
     - group: 939
     - makedirs: True
 
-# Create a config directory
+# Create a log directory
 configdir:
   file.directory:
     - name: /nsm/idh
@@ -27,20 +27,13 @@ idhfiles:
     - replace: False
     - template: jinja
 
-# Build IDH Docker
 so-idh:
-  docker_image.present:
-    - build: /opt/so/saltstack/local/salt/idh
-    - tag: latest
-
-# Set IDH Docker to run
-so-idh-run:
   docker_container.running:
-    - image: so-idh
+    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idh:{{ VERSION }}
+    - hostname: so-idh
     - name: so-idh
     - detach: True
     - network_mode: host
-    - restart_policy: always
     - binds:
       - /nsm/idh:/var/tmp:rw
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
