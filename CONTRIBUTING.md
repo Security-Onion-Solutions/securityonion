@@ -29,7 +29,7 @@
 
 * See this document's [code styling and conventions section](#code-style-and-conventions) below to be sure your PR fits our code requirements prior to submitting.
 
-* Change behavior (fix a bug, add a new feature) separately from refactoring code. Refactor PR's are welcome, but ensure your new code behaves exactly the same as the old.
+* Change behavior (fix a bug, add a new feature) separately from refactoring code. Refactor pull requests are welcome, but ensure your new code behaves exactly the same as the old.
 
 * **Do not refactor code for non-functional reasons**. If you are submitting a pull request that refactors code, ensure the refactor is improving the functionality of the code you're refactoring (e.g. decreasing complexity, removing reliance on 3rd party tools, improving performance).
 
