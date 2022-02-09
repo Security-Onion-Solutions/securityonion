@@ -34,7 +34,6 @@ idhfiles:
 so-idh:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idh:{{ VERSION }}
-    - hostname: so-idh
     - name: so-idh
     - detach: True
     - network_mode: host

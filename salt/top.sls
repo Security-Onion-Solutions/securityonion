@@ -508,7 +508,6 @@ base:
     - match: compound
     - ssl
     - sensoroni
-    - nginx
     - telegraf
     - firewall
     {%- if WAZUH != 0 %}
