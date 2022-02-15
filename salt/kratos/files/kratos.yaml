@@ -1,9 +1,12 @@
 {%- set WEBACCESS = salt['pillar.get']('global:url_base', '') -%}
 {%- set KRATOSKEY = salt['pillar.get']('kratos:kratoskey', '') -%}
 {%- set SESSIONTIMEOUT = salt['pillar.get']('kratos:sessiontimeout', '24h') -%}
+{%- set MFA_ISSUER = salt['pillar.get']('kratos:mfa_issuer', 'Security Onion') -%}
 
 session:
   lifespan: {{ SESSIONTIMEOUT }}
+  whoami:
+    required_aal: highest_available
 
 selfservice:
   methods:
@@ -11,10 +14,15 @@ selfservice:
       enabled: true
       config:
         haveibeenpwned_enabled: false
+    totp:
+      enabled: true
+      config:
+        issuer: {{ MFA_ISSUER }}
 
   flows:
     settings:
       ui_url: https://{{ WEBACCESS }}/?r=/settings
+      required_aal: highest_available
 
     verification:
       ui_url: https://{{ WEBACCESS }}/
