@@ -41,7 +41,7 @@ include:
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
-
+{% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
 
 vm.max_map_count:
   sysctl.present:
@@ -152,8 +152,6 @@ estemplatedir:
     - group: 939
     - makedirs: True
 
-
-
 esrolesdir:
   file.directory:
     - name: /opt/so/conf/elasticsearch/roles
@@ -198,7 +196,26 @@ esyml:
         ESCONFIG: {{ ESCONFIG }}
     - template: jinja
 
-#sync templates to /opt/so/conf/elasticsearch/templates
+escomponenttemplates:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/templates/component
+    - source: salt://elasticsearch/templates/component
+    - user: 930
+    - group: 939
+
+# Auto-generate templates from defaults file
+{% for index, settings in ES_INDEX_SETTINGS.items() %}
+es_index_template_{{index}}:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/templates/index/{{ index }}-template.json
+    - source: salt://elasticsearch/base-template.json.jinja
+    - defaults:
+      TEMPLATE_CONFIG: {{ settings.index_template }}
+    - template: jinja
+{% endfor %}
+
+{% if TEMPLATES %}
+# Sync custom templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
   file.managed:
@@ -212,13 +229,7 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     - user: 930
     - group: 939
 {% endfor %}
-
-escomponenttemplates:
-  file.recurse:
-    - name: /opt/so/conf/elasticsearch/templates/component
-    - source: salt://elasticsearch/templates/component
-    - user: 930
-    - group: 939
+{% endif %}
 
 esroles:
   file.recurse:
@@ -380,7 +391,6 @@ so-elasticsearch-pipelines:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-pipelines-script
 
-{% if TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
@@ -389,7 +399,6 @@ so-elasticsearch-templates:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-{% endif %}
 
 so-elasticsearch-roles-load:
   cmd.run:
