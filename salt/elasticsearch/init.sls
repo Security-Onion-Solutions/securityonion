@@ -37,6 +37,7 @@ include:
   {% set ismanager = True %} {# Solely for the sake of running so-catrust #}
 {% endif %}
 
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
@@ -202,6 +203,7 @@ escomponenttemplates:
     - user: 930
     - group: 939
 
+# Auto-generate templates from defaults file
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
 es_index_template_{{index}}:
   file.managed:
@@ -211,6 +213,23 @@ es_index_template_{{index}}:
       TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
 {% endfor %}
+
+{% if TEMPLATES %}
+# Sync custom templates to /opt/so/conf/elasticsearch/templates
+{% for TEMPLATE in TEMPLATES %}
+es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+  file.managed:
+    - source: salt://elasticsearch/templates/index/{{TEMPLATE}}
+    {% if 'jinja' in TEMPLATE.split('.')[-1] %}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - template: jinja
+    {% else %}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1]}}
+    {% endif %}
+    - user: 930
+    - group: 939
+{% endfor %}
+{% endif %}
 
 esroles:
   file.recurse:
