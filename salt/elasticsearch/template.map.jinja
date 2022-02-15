@@ -1,0 +1,7 @@
+{% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
+{%- set ES_INDEX_SETTINGS = salt['pillar.get']('elasticsearch:index_settings', default=ESCONFIG.elasticsearch.index_settings, merge=True) %}
+{% for index, settings in ES_INDEX_SETTINGS.items() %}
+  {% if settings.index_sorting, False %}
+    {% do settings.index_template.template.settings.index.pop('sort') %}
+  {% endif %}
+{% endfor %}
