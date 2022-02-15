@@ -20,16 +20,14 @@ configdir:
     - group: 939
     - makedirs: True
 
-# Sync IDH files
-idhfiles:
-  file.recurse:
-    - name: /opt/so/conf/idh
-    - user: 0
-    - group: 0
-    - file_mode: 755
-    - source: salt://idh/config
-    - replace: False
+{% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG with context %}
+opencanary_config:
+  file.managed:
+    - name: /opt/so/conf/idh/opencanary.conf
+    - source: salt://idh/idh.conf.jinja
     - template: jinja
+    - defaults:
+        OPENCANARYCONFIG: {{ OPENCANARYCONFIG }}
 
 so-idh:
   docker_container.running:
