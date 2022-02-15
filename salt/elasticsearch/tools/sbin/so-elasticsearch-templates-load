@@ -47,11 +47,24 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 	echo
 fi
 
-cd ${ELASTICSEARCH_TEMPLATES}
+cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
+echo "Loading ECS component templates..."
+for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_component_template/$TEMPLATE-mappings -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+echo
 
-echo "Loading templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+# Load SO-specific component templates
+cd ${ELASTICSEARCH_TEMPLATES}/component/so
+
+echo "Loading Security Onion component templates..."
+for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_component_template/$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+echo
+
+# Load SO index templates
+cd ${ELASTICSEARCH_TEMPLATES}/index
+
+echo "Loading Security Onion index templates..."
+for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_index_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
 echo
 
 cd - >/dev/null
