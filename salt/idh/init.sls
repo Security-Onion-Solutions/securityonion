@@ -38,3 +38,7 @@ so-idh:
     - binds:
       - /nsm/idh:/var/tmp:rw
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
+    - watch:
+      - file: opencanary_config
+    - require:
+      - file: opencanary_config

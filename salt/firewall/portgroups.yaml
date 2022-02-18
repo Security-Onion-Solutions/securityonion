@@ -1,3 +1,8 @@
+{% if grains.role == 'so-idh' %}
+  {% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
+  {% set idh_services = salt['pillar.get']('idh:services', []) %}
+{% endif %}
+
 firewall:
   aliases:
     ports:
@@ -48,15 +53,6 @@ firewall:
       fleet_webui:
         tcp:
           - 443
-      ftp:
-        tcp:
-          - 21
-      git:
-        tcp:
-          - 9418
-      http:
-        tcp:
-          - 80
       influxdb:
         tcp:
           - 8086
@@ -115,3 +111,11 @@ firewall:
       yum:
         tcp:
           - 443
+
+{% if idh_services is defined %}
+  {% for service in idh_services %}
+      idh_{{service}}:
+        tcp:
+          - {{ OPENCANARYCONFIG[service~'.port'] }}          
+  {% endfor %}
+{% endif %}
