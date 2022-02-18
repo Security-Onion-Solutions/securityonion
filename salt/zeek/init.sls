@@ -130,7 +130,7 @@ nodecfg:
 networkscfg:
   file.managed:
     - name: /opt/so/conf/zeek/networks.cfg
-    - source: salt://zeek/files/networks.cfg
+    - source: salt://zeek/files/networks.cfg.jinja
     - user: 937
     - group: 939
     - template: jinja
