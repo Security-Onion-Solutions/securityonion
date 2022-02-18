@@ -969,9 +969,8 @@ if [[ $success != 0 ]]; then SO_ERROR=1; fi
 # Check entire setup log for errors or unexpected salt states and ensure cron jobs are not reporting errors to root's mailbox
 # Ignore "Status .* was not found" due to output from salt http.query or http.wait_for_successful_query states used with retry
 # Uncaught exception, closing connection|Exception in callback None - this is seen during influxdb / http.wait_for_successful_query state for ubuntu reinstall
-if grep -E "ERROR|Result: False" $setup_log | grep -qvE "Status .* was not found|An exception occurred in this state|Uncaught exception, closing connection|Exception in callback None" || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then
+if grep -E "ERROR|Result: False" $setup_log | grep -qvE "Status .* was not found|An exception occurred in this state|Uncaught exception, closing connection|Exception in callback None|deprecation: ERROR" || [[ -s /var/spool/mail/root && "$setup_type" == "iso" ]]; then
 	SO_ERROR=1
-
 	grep --color=never "ERROR" "$setup_log" | grep -qvE "Status .* was not found|An exception occurred in this state|Uncaught exception, closing connection|Exception in callback None" > "$error_log"
 fi
 
