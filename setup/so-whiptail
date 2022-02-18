@@ -717,6 +717,47 @@ whiptail_homenet_sensor() {
 	export HNSENSOR
 }
 
+
+whiptail_idh_services() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_services=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nThe IDH node can mimic several services.\n\nChoose one of the common options along with their default ports (TCP) or select the Custom option to build a customized set of services." 20 75 5 \
+		"Linux Webserver" "Apache (80), FTP (21), SSH (22)" ON \
+		"MySQL Server" "MySQL (3306), SSH (22)" OFF \
+		"MSSQL Server" "Microsoft SQL (1433), VNC (5900)" OFF \
+		"Custom" "Select a custom set of services on next screen" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+
+whiptail_idh_services_custom() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_services=$(whiptail --title "$whiptail_title" --checklist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one or more of the following services along with their default ports (TCP). Some services have additional configuration options, please consult the documentation for further information." 20 75 6 \
+		"FTP       " "TCP/21,   Additional Configuration Available   " OFF \
+		"Git       " "TCP/9418                                       " OFF \
+		"HTTP      " "TCP/80,   Additional Configuration Available   " OFF \
+		"HTTPPROXY " "TCP/8080, Additional Configuration Available   " OFF \
+		"MSSQL     " "TCP/22                                         " OFF \
+		"MySQL     " "TCP/3306, Additional Configuration Available   " OFF \
+		"NTP       " "TCP/123                                        " OFF \
+		"REDIS     " "TCP/6379                                       " OFF \
+		"SNMP      " "TCP/161                                        " OFF \
+		"SSH       " "TCP/22,   Additional Configuration Available   " OFF \
+		"TELNET    " "TCP/23,   Additional Configuration Available   " OFF \
+		"TFTP      " "TCP/69                                         " OFF \
+		"VNC       " "TCP/22                                         " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_install_type() {
 
 	[ -n "$TESTING" ] && return
