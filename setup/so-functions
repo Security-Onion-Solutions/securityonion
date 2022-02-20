@@ -462,7 +462,6 @@ collect_idh_services() {
 		;;
 		'Custom')
 			whiptail_idh_services_custom
-			echo $idh_services
 		;;
 	esac
 }
@@ -884,6 +883,7 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
 	elif [[ "$standalone_or_dist" == 'import' ]]; then
 		req_mem=4
 		req_cores=2
@@ -2850,12 +2850,13 @@ wait_for_salt_minion() {
 }
 
 write_out_idh_services() {
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
 	printf '%s\n'\
 	"idh:"\
-	"  opencanary:"\
-	"    config:" >> "$minion_config"
+	"  services:" >> "$pillar_file"
 	for service in ${idh_services[@]}; do
-      echo "      - $service" >> "$minion_config"
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$pillar_file"
     done
 }
 

@@ -432,6 +432,14 @@ whiptail_end_settings() {
 	Hostname: $HOSTNAME
 	EOM
 
+	if [[ $is_idh ]]; then
+		__append_end_msg "IDH Services Enabled:"
+	   for service in ${idh_services[@]}; do
+		__append_end_msg "- $service"
+      done
+
+	fi
+
 	[[ -n $NODE_DESCRIPTION ]] && __append_end_msg "Description: $NODE_DESCRIPTION"
 
 	[[ $is_airgap ]] && __append_end_msg "Airgap: True"
@@ -832,14 +840,12 @@ whiptail_install_type_dist_existing() {
 
 	local node_msg
 	read -r -d '' node_msg <<- EOM
-	Choose a distributed node type to join to an existing grid.
-	
-	See https://docs.securityonion.net/architecture for details.
+	Choose a distributed node type to join to an existing grid. See https://docs.securityonion.net/architecture for details.
 
 	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 5 \
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 6 \
 		"SENSOR" "Create a forward only sensor " ON \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \

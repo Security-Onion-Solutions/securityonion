@@ -280,6 +280,8 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
 		check_requirements "dist" "fleet"
+	elif [[ $is_idh ]]; then
+		check_requirements "dist" "idh"
 	elif [[ $is_sensor && ! $is_eval ]]; then
 		check_requirements "dist" "sensor"
 	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
@@ -750,6 +752,12 @@ echo "1" > /root/accept_changes
 		logstash_pillar >> $setup_log 2>&1
 	fi
 
+	if [[ $is_idh ]]; then
+		# Write out services to minion pillar file
+		set_progress_str 19 'Generating IDH services pillar'
+		write_out_idh_services
+	fi
+
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
@@ -919,9 +927,6 @@ echo "1" > /root/accept_changes
 	fi
 
 	if [[ $is_idh ]]; then
-		# Write out services to minion pillar file
-		write_out_idh_services
-
 		set_progress_str 79 "$(print_salt_state_apply 'idh')"
 		salt-call state.apply -l info idh >> $setup_log 2>&1
 
