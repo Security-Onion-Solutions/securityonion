@@ -264,6 +264,32 @@ filebeat.inputs:
 
 {%- endif %}
 
+{%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager',  'so-managersearch', 'so-import'] %}
+- type: log
+  paths:
+    - /logs/kratos/kratos.log
+  fields:
+    module: kratos
+    category: host
+    tags: beat-ext
+  processors:
+    - rename:
+        fields:
+          - from: "audience"
+            to: "event.dataset"
+        ignore_missing: true
+    - add_fields:
+        when:
+          not: 
+            has_fields: ['event.dataset']
+        target: ''
+        fields:
+          event.dataset: access
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+{%- endif %}
+
 {%- if grains.role == 'so-idh' %}
 - type: log
   paths:
@@ -271,8 +297,6 @@ filebeat.inputs:
   fields:
     module: opencanary
     dataset: idh
-    category: host
-    tags: beat-ext
   processors:
     - decode_json_fields:
         fields: ["message"]
@@ -301,9 +325,6 @@ filebeat.inputs:
         ignore_missing: true
     - drop_fields:
         fields: '["prospector", "input", "offset", "beat"]'
-  fields_under_root: true
-  clean_removed: false
-  close_removed: false
 {%- endif %}
 
 {%- if INPUTS %}
