@@ -114,8 +114,13 @@ firewall:
 
 {% if idh_services is defined %}
   {% for service in idh_services %}
+  {% if service in ["smnp","ntp", "tftp"] %}
+    {% set proto = 'udp' %}
+  {% else %}
+    {% set proto = 'tcp' %}
+  {% endif %}
       idh_{{service}}:
-        tcp:
-          - {{ OPENCANARYCONFIG[service~'.port'] }}          
+        {{proto}}:
+          - {{ OPENCANARYCONFIG[service~'.port'] }}
   {% endfor %}
 {% endif %}
