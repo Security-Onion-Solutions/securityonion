@@ -273,6 +273,10 @@ filebeat.inputs:
     category: host
     tags: beat-ext
   processors:
+    - decode_json_fields:
+        fields: ["message"]
+        target: ""
+        add_error_key: true
     - rename:
         fields:
           - from: "audience"
@@ -297,6 +301,8 @@ filebeat.inputs:
   fields:
     module: opencanary
     dataset: idh
+    category: host
+    tags: beat-ext
   processors:
     - decode_json_fields:
         fields: ["message"]
@@ -325,6 +331,9 @@ filebeat.inputs:
         ignore_missing: true
     - drop_fields:
         fields: '["prospector", "input", "offset", "beat"]'
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
 {%- endif %}
 
 {%- if INPUTS %}
