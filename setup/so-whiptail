@@ -432,6 +432,14 @@ whiptail_end_settings() {
 	Hostname: $HOSTNAME
 	EOM
 
+	if [[ $is_idh ]]; then
+		__append_end_msg "IDH Services Enabled:"
+	   for service in ${idh_services[@]}; do
+		__append_end_msg "- $service"
+      done
+
+	fi
+
 	[[ -n $NODE_DESCRIPTION ]] && __append_end_msg "Description: $NODE_DESCRIPTION"
 
 	[[ $is_airgap ]] && __append_end_msg "Airgap: True"
@@ -717,6 +725,47 @@ whiptail_homenet_sensor() {
 	export HNSENSOR
 }
 
+
+whiptail_idh_services() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_services=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one of the common options along with their default ports (TCP) or select the Custom option to build a customized set of services." 20 75 5 \
+		"Linux Webserver" "Apache (80), FTP (21), SSH (22)" ON \
+		"MySQL Server" "MySQL (3306), SSH (22)" OFF \
+		"MSSQL Server" "Microsoft SQL (1433), VNC (5900)" OFF \
+		"Custom" "Select a custom set of services on next screen" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+
+whiptail_idh_services_custom() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_services=$(whiptail --title "$whiptail_title" --checklist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one or more of the following services along with their default ports (TCP). Some services have additional configuration options, please consult the documentation for further information." 25 75 8 \
+		"FTP" "  TCP/21,   Additional Configuration Available   " OFF \
+		"Git" "  TCP/9418                                       " OFF \
+		"HTTP" "  TCP/80,   Additional Configuration Available   " OFF \
+		"HTTPPROXY" "  TCP/8080, Additional Configuration Available   " OFF \
+		"MSSQL" "  TCP/1433                                         " OFF \
+		"MySQL" "  TCP/3306, Additional Configuration Available   " OFF \
+		"NTP" "  UDP/123                                        " OFF \
+		"REDIS" "  TCP/6379                                       " OFF \
+		"SNMP" "  UDP/161                                        " OFF \
+		"SSH" "  TCP/22,   Additional Configuration Available   " OFF \
+		"TELNET" "  TCP/23,   Additional Configuration Available   " OFF \
+		"TFTP" "  UDP/69                                         " OFF \
+		"VNC" "  TCP/5900                                         " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_install_type() {
 
 	[ -n "$TESTING" ] && return
@@ -791,18 +840,17 @@ whiptail_install_type_dist_existing() {
 
 	local node_msg
 	read -r -d '' node_msg <<- EOM
-	Choose a distributed node type to join to an existing grid.
-	
-	See https://docs.securityonion.net/architecture for details.
+	Choose a distributed node type to join to an existing grid. See https://docs.securityonion.net/architecture for details.
 
 	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 5 \
+	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 6 \
 		"SENSOR" "Create a forward only sensor " ON \
 		"SEARCHNODE" "Add a search node with parsing " OFF \
 		"FLEET" "Dedicated Fleet Osquery Node " OFF \
 		"HEAVYNODE" "Sensor + Search Node " OFF \
+		"IDH" "Intrusion Detection Honeypot Node " OFF \
 		"RECEIVER" "Receiver Node " OFF \
 		3>&1 1>&2 2>&3
 		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO

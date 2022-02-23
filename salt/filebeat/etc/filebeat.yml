@@ -294,6 +294,48 @@ filebeat.inputs:
   close_removed: false
 {%- endif %}
 
+{%- if grains.role == 'so-idh' %}
+- type: log
+  paths:
+    - /nsm/idh/opencanary.log
+  fields:
+    module: opencanary
+    dataset: idh
+    category: host
+    tags: beat-ext
+  processors:
+    - decode_json_fields:
+        fields: ["message"]
+        target: ""
+        add_error_key: true
+    - drop_fields:
+        when:
+          equals:
+            logtype: 1001
+        fields: ["src_host", "src_port", "dst_host", "dst_port" ]
+        ignore_missing: true
+    - rename:
+        fields:
+          - from: "src_host"
+            to: "source.ip"
+          - from: "src_port"
+            to: "source.port"
+          - from: "dst_host"
+            to: "destination.host"
+          - from: "dst_port"
+            to: "destination.port"
+        ignore_missing: true
+    - convert:
+        fields:
+          - {from: "logtype", to: "event.code", type: "string"}
+        ignore_missing: true
+    - drop_fields:
+        fields: '["prospector", "input", "offset", "beat"]'
+  fields_under_root: true
+  clean_removed: false
+  close_removed: false
+{%- endif %}
+
 {%- if INPUTS %}
 # USER PILLAR DEFINED INPUTS
 {{ INPUTS | yaml(False) }}
@@ -352,7 +394,7 @@ output.logstash:
 
   # The Logstash hosts
   hosts:
-{%- if grains.role in ['so-sensor', 'so-fleet', 'so-node'] %}
+{%- if grains.role in ['so-sensor', 'so-fleet', 'so-node', 'so-idh'] %}
 {%-   set LOGSTASH = namespace() %}
 {%-   set LOGSTASH.count = 0 %}
 {%-   set LOGSTASH.loadbalance = false %}

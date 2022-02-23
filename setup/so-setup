@@ -251,6 +251,10 @@ elif [ "$install_type" = 'FLEET' ]; then
 	is_minion=true
 	is_fleet_standalone=true
 	OSQUERY=1
+elif [ "$install_type" = 'IDH' ]; then
+	is_minion=true
+	is_idh=true
+	IDH=1
 elif [ "$install_type" = 'HELIXSENSOR' ]; then
 	is_helix=true
 elif [ "$install_type" = 'IMPORT' ]; then
@@ -267,11 +271,17 @@ if [[ $is_manager || $is_import ]]; then
 	check_elastic_license
 fi
 
+if [[ $is_idh ]]; then
+	collect_idh_services
+fi
+
 if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
 	elif [[ $is_fleet_standalone ]]; then
 		check_requirements "dist" "fleet"
+	elif [[ $is_idh ]]; then
+		check_requirements "dist" "idh"
 	elif [[ $is_sensor && ! $is_eval ]]; then
 		check_requirements "dist" "sensor"
 	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
@@ -742,6 +752,12 @@ echo "1" > /root/accept_changes
 		logstash_pillar >> $setup_log 2>&1
 	fi
 
+	if [[ $is_idh ]]; then
+		# Write out services to minion pillar file
+		set_progress_str 19 'Generating IDH services pillar'
+		write_out_idh_services
+	fi
+
 
 	if [[ $is_minion ]]; then
 		set_progress_str 20 'Accepting Salt key on manager'
@@ -805,7 +821,7 @@ echo "1" > /root/accept_changes
 	set_progress_str 62 "$(print_salt_state_apply 'common')"
 	salt-call state.apply -l info common >> $setup_log 2>&1
 
-	if [[ ! $is_helix && ! $is_receiver ]]; then
+	if [[ ! $is_helix && ! $is_receiver && ! $is_idh ]]; then
 		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
 	fi
@@ -907,6 +923,12 @@ echo "1" > /root/accept_changes
 	
 		set_progress_str 78 "$(print_salt_state_apply 'so-fleet-setup')"	
 		so-fleet-setup "$FLEETNODEUSER" "$FLEETNODEPASSWD1" >> $setup_log 2>&1
+
+	fi
+
+	if [[ $is_idh ]]; then
+		set_progress_str 79 "$(print_salt_state_apply 'idh')"
+		salt-call state.apply -l info idh >> $setup_log 2>&1
 
 	fi
 

@@ -447,6 +447,25 @@ collect_hostname_validate() {
 	done
 }
 
+collect_idh_services() {
+	whiptail_idh_services
+
+	case "$idh_services" in
+		'Linux Webserver')
+			idh_services=("HTTP" "FTP" "SSH")
+		;;
+		'MySQL Server')
+			idh_services=("MYSQL" "SSH")
+		;;
+		'MSSQL Server')
+			idh_services=("MSSQL" "VNC")
+		;;
+		'Custom')
+			whiptail_idh_services_custom
+		;;
+	esac
+}
+
 collect_int_ip_mask() {
 	whiptail_management_interface_ip_mask
 
@@ -864,6 +883,7 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
 	elif [[ "$standalone_or_dist" == 'import' ]]; then
 		req_mem=4
 		req_cores=2
@@ -1521,7 +1541,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -2659,7 +2679,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
-		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'RECEIVER')
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'IDH' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
@@ -2677,6 +2697,9 @@ set_initial_firewall_policy() {
 					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'FLEET')
+				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
+					;;
+				'IDH')
 				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
 				'RECEIVER')
@@ -2864,6 +2887,17 @@ wait_for_file() {
 
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
+}
+
+write_out_idh_services() {
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	printf '%s\n'\
+	"idh:"\
+	"  services:" >> "$pillar_file"
+	for service in ${idh_services[@]}; do
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$pillar_file"
+    done
 }
 
 # Enable Zeek Logs
