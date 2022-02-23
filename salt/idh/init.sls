@@ -20,6 +20,9 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 
+include:
+  - idh.openssh.config
+
 # IDH State
 
 # Create a config directory
