@@ -1,6 +1,10 @@
 {% if grains.role == 'so-idh' %}
   {% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
+  {% from 'idh/openssh/map.jinja' import openssh_map %}
   {% set idh_services = salt['pillar.get']('idh:services', []) %}
+  {% set ssh_port = openssh_map.config.port %}
+{% else %}
+  {% set ssh_port = 22 %}
 {% endif %}
 
 firewall:
@@ -88,7 +92,7 @@ firewall:
           - 443
       ssh:
         tcp:
-          - 22
+          - {{ ssh_port }}
       strelka_frontend:
         tcp:
           - 57314
