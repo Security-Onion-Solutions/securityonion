@@ -117,7 +117,7 @@ idh-plays:
     - source: salt://idh/plays
     - makedirs: True
   cmd.run:
-    - name: so-playbook-import true
+    - name: so-playbook-import True
     - onchanges:
       - file: /opt/so/conf/soctopus/sigma-import
 {% endif %}
