@@ -4,9 +4,8 @@ include:
   - idh.openssh
 
 {% if grains.os_family == 'RedHat' %}
-sshd_selinux:
+idh_sshd_selinux:
   selinux.port_policy_present:
-    - name: tcp/{{ openssh_map.config.port }}
     - port: {{ openssh_map.config.port }}
     - protocol: tcp
     - sel_type: ssh_port_t
