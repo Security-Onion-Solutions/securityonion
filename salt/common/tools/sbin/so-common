@@ -249,6 +249,7 @@ lookup_salt_value() {
 	group=$2
 	kind=$3
 	output=${4:-newline_values_only}
+	local=$5
 
 	if [ -z "$kind" ]; then
 		kind=pillar
@@ -258,7 +259,11 @@ lookup_salt_value() {
 		group=${group}:
 	fi
 
-	salt-call --no-color  ${kind}.get ${group}${key} --out=${output}
+	if [[ "$local" != "--local" ]] || [[ "$local" != "local" ]]
+		local=""
+	fi
+
+	salt-call --no-color  ${kind}.get ${group}${key} --out=${output} ${local}
 }
 
 lookup_pillar() {
