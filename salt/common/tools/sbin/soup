@@ -245,7 +245,7 @@ check_sudoers() {
 }
 
 check_log_size_limit() {
-
+  echo "called check_log_size_limit"
   local num_minion_pillars
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
   
@@ -255,7 +255,9 @@ check_log_size_limit() {
     fi
   else
     local minion_id
-    minion_id=$(lookup_salt_value "id" "" "grains" "local")
+    echo "getting id grain in check_log_size_limit"
+    minion_id=$(lookup_salt_value "id" "" "grains" "" "local")
+    echo "found minion_id to be $minion_id"
 
     local minion_arr
     IFS='_' read -ra minion_arr <<< "$minion_id"
@@ -263,7 +265,9 @@ check_log_size_limit() {
     local node_type="${minion_arr[0]}"
     
     local current_limit
+    echo "getting log_size_limit pillar in check_log_size_limit"
     current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
+    echo "found log_size_limit to be $current_limit"
     
     local percent
     case $node_type in
