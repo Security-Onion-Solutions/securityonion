@@ -245,7 +245,6 @@ check_sudoers() {
 }
 
 check_log_size_limit() {
-
   local num_minion_pillars
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
   
@@ -255,7 +254,7 @@ check_log_size_limit() {
     fi
   else
     local minion_id
-    minion_id=$(lookup_salt_value "id" "" "grains")
+    minion_id=$(lookup_salt_value "id" "" "grains" "" "local")
 
     local minion_arr
     IFS='_' read -ra minion_arr <<< "$minion_id"
@@ -263,7 +262,15 @@ check_log_size_limit() {
     local node_type="${minion_arr[0]}"
     
     local current_limit
-    current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
+    # since it is possible for the salt-master service to be stopped when this is run, we need to check the pillar values locally
+    # we need to combine default local and default pillars before doing this so we can define --pillar-root in salt-call
+    local epoch_date=$(date +%s%N)
+    mkdir -vp /opt/so/saltstack/soup_tmp_${epoch_date}/
+    cp -r /opt/so/saltstack/default/pillar/ /opt/so/saltstack/soup_tmp_${epoch_date}/
+    # use \cp here to overwrite any pillar files from default with those in local for the tmp directory
+    \cp -r /opt/so/saltstack/local/pillar/ /opt/so/saltstack/soup_tmp_${epoch_date}/
+    current_limit=$(salt-call pillar.get elasticsearch:log_size_limit --local --pillar-root=/opt/so/saltstack/soup_tmp_${epoch_date}/pillar --out=newline_values_only)
+    rm -rf /opt/so/saltstack/soup_tmp_${epoch_date}/
     
     local percent
     case $node_type in
