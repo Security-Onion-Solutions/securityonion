@@ -379,6 +379,15 @@ append_so-elasticsearch_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
 
+so-elasticsearch-templates:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates-load
+    - cwd: /opt/so
+    - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
+      - file: es_sync_scripts
+
 so-elasticsearch-pipelines:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
@@ -390,15 +399,6 @@ so-elasticsearch-pipelines:
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-pipelines-script
-
-so-elasticsearch-templates:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-templates-load
-    - cwd: /opt/so
-    - template: jinja
-    - require:
-      - docker_container: so-elasticsearch
-      - file: es_sync_scripts
 
 so-elasticsearch-roles-load:
   cmd.run:
