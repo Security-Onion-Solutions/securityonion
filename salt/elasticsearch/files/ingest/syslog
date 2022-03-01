@@ -2,147 +2,35 @@
   "description" : "syslog",
   "processors" : [
     {
-      "dissect": {
-        "field": "message",
-        "pattern" : "%{message}",
-        "on_failure": [ { "drop" : { } } ]
-      },
-      "remove": {
-        "field": [ "type", "agent" ],
-        "ignore_failure": true
-      }
-    }, {
-      "grok": {
-        "field": "message",
-          "patterns": [
-            "^<%{INT:syslog.priority:int}>%{TIMESTAMP_ISO8601:syslog.timestamp} +%{IPORHOST:syslog.host} +%{PROG:syslog.program}(?:\\[%{POSINT:syslog.pid:int}\\])?: %{GREEDYDATA:real_message}$",
-
-            "^<%{INT:syslog.priority}>%{DATA:syslog.timestamp} %{WORD:source.application}(\\[%{DATA:pid}\\])?: %{GREEDYDATA:real_message}$",
-
-            "^%{SYSLOGTIMESTAMP:syslog.timestamp} %{SYSLOGHOST:syslog.host} %{SYSLOGPROG:syslog.program}: CEF:0\\|%{DATA:vendor}\\|%{DATA:product}\\|%{GREEDYDATA:message2}$"
-          ],
-          "ignore_failure": true
-      }
-    }, {
-      "script": {
-        "description": "Map syslog priority into facility and level",
-        "lang": "painless",
-        "params" : {
-          "level": [
-            "emerg",
-            "alert",
-            "crit",
-            "err",
-            "warn",
-            "notice",
-            "info",
-            "debug"
-           ],
-           "facility" : [
-             "kern",
-             "user",
-             "mail",
-             "daemon",
-             "auth",
-             "syslog",
-             "lpr",
-             "news",
-             "uucp",
-             "cron",
-             "authpriv",
-             "ftp",
-             "ntp",
-             "security",
-             "console",
-             "solaris-cron",
-             "local0",
-             "local1",
-             "local2",
-             "local3",
-             "local4",
-             "local5",
-             "local6",
-             "local7"
-            ]
+        "dissect": {
+                "field": "message",
+                "pattern" : "%{message}",
+                "on_failure": [ { "drop" : { } } ]
         },
-        "source": "if (ctx['syslog'] != null && ctx['syslog']['priority'] != null) { int p = ctx['syslog']['priority']; int f = p / 8; int l = p - (f * 8); ctx['syslog']['facility'] = [ : ]; ctx['syslog']['level'] = [ : ]; ctx['syslog']['level'].put('code', l); ctx['syslog']['level'].put('name', params.level[l]); ctx['syslog']['facility'].put('code', f); ctx['syslog']['facility'].put('name', params.facility[f]); }"
-      }
-    }, {
-      "set": {
-        "if": "ctx.syslog?.host != null",
-        "field": "host.name",
-        "value": "{{ syslog.host }}",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "if": "ctx.syslog?.program != null",
-        "field": "process.name",
-        "value": "{{ syslog.program }}",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "if": "ctx.syslog?.pid != null",
-        "field": "process.id",
-        "value": "{{ syslog.pid }}",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "if": "ctx.source?.application == 'filterlog'",
-        "field": "dataset",
-        "value": "firewall",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "if": "ctx.vendor != null",
-        "field": "module",
-        "value": "{{ vendor }}",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "if": "ctx.product != null",
-        "field": "dataset",
-        "value": "{{ product }}",
-        "ignore_failure": true
-      }
-    }, {
-      "set": {
-        "field": "event.ingested",
-        "value": "{{ @timestamp }}"
-      }
-    }, {
-      "date": {
-        "if": "ctx.syslog?.timestamp != null",
-        "field": "syslog.timestamp",
-        "target_field": "@timestamp",
-        "formats": ["MMM  d HH:mm:ss", "MMM dd HH:mm:ss", "ISO8601", "UNIX"],
-        "ignore_failure": true
-      }
-    }, {
-      "remove": {
-        "field": ["pid", "program"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    }, {
-      "pipeline": {
-        "if": "ctx.vendor != null && ctx.product != null",
-        "name": "{{ vendor }}.{{ product }}",
-        "ignore_failure": true
-      }
-    }, {
-      "pipeline": {
-        "if": "ctx.dataset == 'firewall'",
-        "name": "filterlog",
-        "ignore_failure": true
-      }
-    }, {
-      "pipeline": { "name": "common" }
-    }
+        "remove": {
+                "field": [ "type", "agent" ],
+                "ignore_failure": true
+        }
+    },
+    {
+        "grok":
+                {
+                        "field": "message",
+                        "patterns": [
+                                        "^<%{INT:syslog.priority}>%{DATA:syslog.timestamp} %{WORD:source.application}(\\[%{DATA:pid}\\])?: %{GREEDYDATA:real_message}$",
+                                        "^%{SYSLOGTIMESTAMP:syslog.timestamp} %{SYSLOGHOST:syslog.host} %{SYSLOGPROG:syslog.program}: CEF:0\\|%{DATA:vendor}\\|%{DATA:product}\\|%{GREEDYDATA:message2}$"
+                                    ],
+                        "ignore_failure": true
+                }
+    },
+    { "set": { "if": "ctx.source?.application == 'filterlog'", "field": "dataset", "value": "firewall", "ignore_failure": true  } },
+    { "set": { "if": "ctx.vendor != null", "field": "module", "value": "{{ vendor }}", "ignore_failure": true } },
+    { "set": { "if": "ctx.product != null", "field": "dataset", "value": "{{ product }}", "ignore_failure": true } },
+    { "set": { "field": "event.ingested",      "value": "{{ @timestamp }}"       } },
+    { "date": { "if": "ctx.syslog?.timestamp != null", "field": "syslog.timestamp",       "target_field": "@timestamp",   "formats": ["MMM  d HH:mm:ss", "MMM dd HH:mm:ss", "ISO8601", "UNIX"], "ignore_failure": true  } },
+    { "remove":         { "field": ["pid", "program"],  "ignore_missing": true, "ignore_failure": true  } },
+    { "pipeline": { "if": "ctx.vendor != null && ctx.product != null", "name": "{{ vendor }}.{{ product }}", "ignore_failure": true } },
+    { "pipeline": { "if": "ctx.dataset == 'firewall'", "name": "filterlog", "ignore_failure": true } },
+    { "pipeline":       { "name": "common"                                             } }
   ]
 }
-
