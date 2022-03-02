@@ -109,14 +109,7 @@ so-playbookruleupdatecron:
     - user: root
     - minute: '1'
     - hour: '6'
-
-so-playbookregencron:
-  cron.present:
-    - name: /usr/sbin/so-playbook-sigma-refresh > /opt/so/log/playbook/regen.log 2>&1
-    - user: root
-    - minute: '55'
-    - hour: '23'
-    
+   
 {% if 'idh' in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
 idh-plays:
   file.recurse:
