@@ -4,12 +4,58 @@
     "ecs_version": "1.12.2"
   },
   "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
+          }
+        },
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
+            ]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
+        }
+      }
+    },
     "mappings": {
       "dynamic_templates": [
         {
           "winlog.event_data": {
             "mapping": {
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "match_mapping_type": "string",
             "path_match": "winlog.event_data.*"
@@ -18,7 +64,13 @@
         {
           "winlog.user_data": {
             "mapping": {
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "match_mapping_type": "string",
             "path_match": "winlog.user_data.*"
@@ -30,475 +82,1177 @@
           "properties": {
             "activity_id": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "api": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "channel": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "computer_name": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "event_data": {
               "properties": {
                 "AuthenticationPackageName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Binary": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "BitlockerUserInputTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "BootMode": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "BootType": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "BuildVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Company": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "CorruptionActionState": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "CreationUtcTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Description": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Detail": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DeviceName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DeviceNameLength": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DeviceTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DeviceVersionMajor": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DeviceVersionMinor": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DriveName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DriverName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DriverNameLength": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "DwordVal": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "EntryCount": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ExtraInfo": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "FailureName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "FailureNameLength": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "FileVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "FinalStatus": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Group": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "IdleImplementation": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "IdleStateCount": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ImpersonationLevel": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "IntegrityLevel": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "IpAddress": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "IpPort": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "KeyLength": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LastBootGood": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LastShutdownGood": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LmPackageName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LogonGuid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LogonId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LogonProcessName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "LogonType": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MajorVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MaximumPerformancePercent": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MemberName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MemberSid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MinimumPerformancePercent": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MinimumThrottlePercent": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "MinorVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "NewProcessId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "NewProcessName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "NewSchemeGuid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "NewTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "NominalFrequency": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Number": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "OldSchemeGuid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "OldTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "OriginalFileName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Path": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PerformanceImplementation": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PreviousCreationUtcTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PreviousTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PrivilegeList": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ProcessId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ProcessName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ProcessPath": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ProcessPid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Product": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PuaCount": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "PuaPolicyId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "QfeVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Reason": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SchemaVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ScriptBlockText": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ServiceName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ServiceVersion": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ShutdownActionType": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ShutdownEventCode": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ShutdownReason": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Signature": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SignatureStatus": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Signed": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "StartTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "State": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Status": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "StopTime": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SubjectDomainName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SubjectLogonId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SubjectUserName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "SubjectUserSid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TSId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetDomainName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetInfo": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetLogonGuid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetLogonId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetServerName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetUserName": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TargetUserSid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TerminalSessionId": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TokenElevationType": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "TransmittedServices": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "UserSid": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "Workstation": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param1": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param2": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param3": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param4": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param5": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param6": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param7": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "param8": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
             "event_id": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "keywords": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "logon": {
               "properties": {
@@ -506,31 +1260,67 @@
                   "properties": {
                     "reason": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "status": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "sub_status": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
             "opcode": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "process": {
               "properties": {
@@ -548,23 +1338,53 @@
             },
             "provider_guid": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "provider_name": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "record_id": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "related_activity_id": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "task": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "time_created": {
               "type": "date"
@@ -573,19 +1393,43 @@
               "properties": {
                 "domain": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "identifier": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },

@@ -4,6 +4,46 @@
     "ecs_version": "1.12.2"
   },
   "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
+          }
+        },
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
+            ]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
+        }
+      }
+    },
     "mappings": {
       "properties": {
         "threat": {
@@ -21,8 +61,9 @@
                           "properties": {
                             "name": {
                               "fields": {
-                                "text": {
-                                  "type": "match_only_text"
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
                                 }
                               },
                               "ignore_above": 1024,
@@ -34,17 +75,35 @@
                     },
                     "confidence": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "description": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "email": {
                       "properties": {
                         "address": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -55,32 +114,68 @@
                         },
                         "attributes": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "code_signature": {
                           "properties": {
                             "digest_algorithm": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "exists": {
                               "type": "boolean"
                             },
                             "signing_id": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "status": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "subject_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "team_id": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "timestamp": {
                               "type": "date"
@@ -101,29 +196,65 @@
                         },
                         "device": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "directory": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "drive_letter": {
                           "ignore_above": 1,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "elf": {
                           "properties": {
                             "architecture": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "byte_order": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "cpu_type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "creation_date": {
                               "type": "date"
@@ -135,34 +266,76 @@
                               "properties": {
                                 "abi_version": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "class": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "data": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "entrypoint": {
                                   "type": "long"
                                 },
                                 "object_version": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "os_abi": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "type": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "version": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 }
                               }
                             },
@@ -179,22 +352,46 @@
                                 },
                                 "flags": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "name": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "physical_offset": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "physical_size": {
                                   "type": "long"
                                 },
                                 "type": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "virtual_address": {
                                   "type": "long"
@@ -209,92 +406,201 @@
                               "properties": {
                                 "sections": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "type": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 }
                               },
                               "type": "nested"
                             },
                             "shared_libraries": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "telfhash": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
                         "extension": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "fork_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "gid": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "group": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "hash": {
                           "properties": {
                             "md5": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "sha1": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "sha256": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "sha512": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "ssdeep": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
                         "inode": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "mime_type": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "mode": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "mtime": {
                           "type": "date"
                         },
                         "name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "owner": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "path": {
                           "fields": {
-                            "text": {
-                              "type": "match_only_text"
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
                             }
                           },
                           "ignore_above": 1024,
@@ -304,31 +610,73 @@
                           "properties": {
                             "architecture": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "company": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "description": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "file_version": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "imphash": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "original_file_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "product": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
@@ -337,8 +685,9 @@
                         },
                         "target_path": {
                           "fields": {
-                            "text": {
-                              "type": "match_only_text"
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
                             }
                           },
                           "ignore_above": 1024,
@@ -346,47 +695,107 @@
                         },
                         "type": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "uid": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "x509": {
                           "properties": {
                             "alternative_names": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "issuer": {
                               "properties": {
                                 "common_name": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "country": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "distinguished_name": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "locality": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "organization": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "organizational_unit": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "state_or_province": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 }
                               }
                             },
@@ -398,11 +807,23 @@
                             },
                             "public_key_algorithm": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "public_key_curve": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "public_key_exponent": {
                               "doc_values": false,
@@ -414,47 +835,107 @@
                             },
                             "serial_number": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "signature_algorithm": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "subject": {
                               "properties": {
                                 "common_name": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "country": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "distinguished_name": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "locality": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "organization": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "organizational_unit": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 },
                                 "state_or_province": {
                                   "ignore_above": 1024,
-                                  "type": "keyword"
+                                  "type": "keyword",
+                                  "fields": {
+                                    "security": {
+                                      "type": "text",
+                                      "analyzer": "es_security_analyzer"
+                                    }
+                                  }
                                 }
                               }
                             },
                             "version_number": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         }
@@ -467,46 +948,106 @@
                       "properties": {
                         "city_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "continent_code": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "continent_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "country_iso_code": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "country_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "location": {
                           "type": "geo_point"
                         },
                         "name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "postal_code": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "region_iso_code": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "region_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "timezone": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -520,7 +1061,13 @@
                       "properties": {
                         "tlp": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -532,11 +1079,23 @@
                     },
                     "provider": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "reference": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "registry": {
                       "properties": {
@@ -544,32 +1103,68 @@
                           "properties": {
                             "bytes": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "strings": {
                               "type": "wildcard"
                             },
                             "type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
                         "hive": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "key": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "path": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "value": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -581,24 +1176,52 @@
                     },
                     "type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "url": {
                       "properties": {
                         "domain": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "extension": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "fragment": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "full": {
                           "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            },
                             "text": {
                               "type": "match_only_text"
                             }
@@ -607,6 +1230,10 @@
                         },
                         "original": {
                           "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            },
                             "text": {
                               "type": "match_only_text"
                             }
@@ -615,7 +1242,13 @@
                         },
                         "password": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "path": {
                           "type": "wildcard"
@@ -625,27 +1258,63 @@
                         },
                         "query": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "registered_domain": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "scheme": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "subdomain": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "top_level_domain": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "username": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -653,37 +1322,85 @@
                       "properties": {
                         "alternative_names": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "issuer": {
                           "properties": {
                             "common_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "country": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "distinguished_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "locality": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organization": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organizational_unit": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "state_or_province": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
@@ -695,11 +1412,23 @@
                         },
                         "public_key_algorithm": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "public_key_curve": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "public_key_exponent": {
                           "doc_values": false,
@@ -711,47 +1440,107 @@
                         },
                         "serial_number": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "signature_algorithm": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "subject": {
                           "properties": {
                             "common_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "country": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "distinguished_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "locality": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organization": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organizational_unit": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "state_or_province": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
                         "version_number": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     }
@@ -762,23 +1551,53 @@
                   "properties": {
                     "atomic": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "field": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "id": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "index": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 }
@@ -787,25 +1606,55 @@
             },
             "framework": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "security": {
+                  "type": "text",
+                  "analyzer": "es_security_analyzer"
+                }
+              }
             },
             "group": {
               "properties": {
                 "alias": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "reference": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -820,8 +1669,9 @@
                       "properties": {
                         "name": {
                           "fields": {
-                            "text": {
-                              "type": "match_only_text"
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
                             }
                           },
                           "ignore_above": 1024,
@@ -833,17 +1683,35 @@
                 },
                 "confidence": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "description": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "email": {
                   "properties": {
                     "address": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -854,32 +1722,68 @@
                     },
                     "attributes": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "code_signature": {
                       "properties": {
                         "digest_algorithm": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "exists": {
                           "type": "boolean"
                         },
                         "signing_id": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "status": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "subject_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "team_id": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "timestamp": {
                           "type": "date"
@@ -900,29 +1804,65 @@
                     },
                     "device": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "directory": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "drive_letter": {
                       "ignore_above": 1,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "elf": {
                       "properties": {
                         "architecture": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "byte_order": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "cpu_type": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "creation_date": {
                           "type": "date"
@@ -934,34 +1874,76 @@
                           "properties": {
                             "abi_version": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "class": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "data": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "entrypoint": {
                               "type": "long"
                             },
                             "object_version": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "os_abi": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "version": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
@@ -978,22 +1960,46 @@
                             },
                             "flags": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "physical_offset": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "physical_size": {
                               "type": "long"
                             },
                             "type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "virtual_address": {
                               "type": "long"
@@ -1008,92 +2014,201 @@
                           "properties": {
                             "sections": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           },
                           "type": "nested"
                         },
                         "shared_libraries": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "telfhash": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
                     "extension": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "fork_name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "gid": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "group": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "hash": {
                       "properties": {
                         "md5": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "sha1": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "sha256": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "sha512": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "ssdeep": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
                     "inode": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "mime_type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "mode": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "mtime": {
                       "type": "date"
                     },
                     "name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "owner": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "path": {
                       "fields": {
-                        "text": {
-                          "type": "match_only_text"
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
                         }
                       },
                       "ignore_above": 1024,
@@ -1103,31 +2218,73 @@
                       "properties": {
                         "architecture": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "company": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "description": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "file_version": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "imphash": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "original_file_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "product": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -1136,8 +2293,9 @@
                     },
                     "target_path": {
                       "fields": {
-                        "text": {
-                          "type": "match_only_text"
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
                         }
                       },
                       "ignore_above": 1024,
@@ -1145,47 +2303,107 @@
                     },
                     "type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "uid": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "x509": {
                       "properties": {
                         "alternative_names": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "issuer": {
                           "properties": {
                             "common_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "country": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "distinguished_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "locality": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organization": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organizational_unit": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "state_or_province": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
@@ -1197,11 +2415,23 @@
                         },
                         "public_key_algorithm": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "public_key_curve": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "public_key_exponent": {
                           "doc_values": false,
@@ -1213,47 +2443,107 @@
                         },
                         "serial_number": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "signature_algorithm": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "subject": {
                           "properties": {
                             "common_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "country": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "distinguished_name": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "locality": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organization": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "organizational_unit": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "state_or_province": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         },
                         "version_number": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     }
@@ -1266,46 +2556,106 @@
                   "properties": {
                     "city_name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "continent_code": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "continent_name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "country_iso_code": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "country_name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "location": {
                       "type": "geo_point"
                     },
                     "name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "postal_code": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "region_iso_code": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "region_name": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "timezone": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -1319,7 +2669,13 @@
                   "properties": {
                     "tlp": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -1331,11 +2687,23 @@
                 },
                 "provider": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "reference": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "registry": {
                   "properties": {
@@ -1343,32 +2711,68 @@
                       "properties": {
                         "bytes": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "strings": {
                           "type": "wildcard"
                         },
                         "type": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
                     "hive": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "key": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "path": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "value": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -1380,24 +2784,52 @@
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "url": {
                   "properties": {
                     "domain": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "extension": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "fragment": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "full": {
                       "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        },
                         "text": {
                           "type": "match_only_text"
                         }
@@ -1406,6 +2838,10 @@
                     },
                     "original": {
                       "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        },
                         "text": {
                           "type": "match_only_text"
                         }
@@ -1414,7 +2850,13 @@
                     },
                     "password": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "path": {
                       "type": "wildcard"
@@ -1424,27 +2866,63 @@
                     },
                     "query": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "registered_domain": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "scheme": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "subdomain": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "top_level_domain": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "username": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -1452,37 +2930,85 @@
                   "properties": {
                     "alternative_names": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "issuer": {
                       "properties": {
                         "common_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "country": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "distinguished_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "locality": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "organization": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "organizational_unit": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "state_or_province": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
@@ -1494,11 +3020,23 @@
                     },
                     "public_key_algorithm": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "public_key_curve": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "public_key_exponent": {
                       "doc_values": false,
@@ -1510,47 +3048,107 @@
                     },
                     "serial_number": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "signature_algorithm": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "subject": {
                       "properties": {
                         "common_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "country": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "distinguished_name": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "locality": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "organization": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "organizational_unit": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "state_or_province": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         }
                       }
                     },
                     "version_number": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 }
@@ -1560,27 +3158,63 @@
               "properties": {
                 "alias": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "platforms": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "reference": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -1588,15 +3222,33 @@
               "properties": {
                 "id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "reference": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -1604,12 +3256,19 @@
               "properties": {
                 "id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "fields": {
-                    "text": {
-                      "type": "match_only_text"
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
                     }
                   },
                   "ignore_above": 1024,
@@ -1617,18 +3276,31 @@
                 },
                 "reference": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "subtechnique": {
                   "properties": {
                     "id": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "name": {
                       "fields": {
-                        "text": {
-                          "type": "match_only_text"
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
                         }
                       },
                       "ignore_above": 1024,
@@ -1636,7 +3308,13 @@
                     },
                     "reference": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 }

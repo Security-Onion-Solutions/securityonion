@@ -4,6 +4,46 @@
     "ecs_version": "1.12.2"
   },
   "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
+          }
+        },
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
+            ]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
+        }
+      }
+    },
     "mappings": {
       "properties": {
         "aws": {
@@ -12,9 +52,9 @@
               "properties": {
                 "additional_eventdata": {
                   "fields": {
-                    "text": {
-                      "norms": false,
-                      "type": "text"
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
                     }
                   },
                   "ignore_above": 1024,
@@ -22,7 +62,13 @@
                 },
                 "api_version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "console_login": {
                   "properties": {
@@ -30,7 +76,13 @@
                       "properties": {
                         "login_to": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "mfa_used": {
                           "type": "boolean"
@@ -58,27 +110,63 @@
                     },
                     "previous_hash_algorithm": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "previous_s3_bucket": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "public_key_fingerprint": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "s3_bucket": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "s3_object": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "signature_algorithm": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "start_time": {
                       "type": "date"
@@ -87,23 +175,53 @@
                 },
                 "error_code": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "error_message": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "event_category": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "event_type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "event_version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "flattened": {
                   "properties": {
@@ -126,25 +244,49 @@
                 },
                 "management_event": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "read_only": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "recipient_account_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "request_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "request_parameters": {
                   "fields": {
-                    "text": {
-                      "norms": false,
-                      "type": "text"
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
                     }
                   },
                   "ignore_above": 1024,
@@ -154,23 +296,41 @@
                   "properties": {
                     "account_id": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "arn": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "response_elements": {
                   "fields": {
-                    "text": {
-                      "norms": false,
-                      "type": "text"
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
                     }
                   },
                   "ignore_above": 1024,
@@ -178,9 +338,9 @@
                 },
                 "service_event_details": {
                   "fields": {
-                    "text": {
-                      "norms": false,
-                      "type": "text"
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
                     }
                   },
                   "ignore_above": 1024,
@@ -188,21 +348,45 @@
                 },
                 "shared_event_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "user_identity": {
                   "properties": {
                     "access_key_id": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "arn": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "invoked_by": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "session_context": {
                       "properties": {
@@ -211,25 +395,55 @@
                         },
                         "mfa_authenticated": {
                           "ignore_above": 1024,
-                          "type": "keyword"
+                          "type": "keyword",
+                          "fields": {
+                            "security": {
+                              "type": "text",
+                              "analyzer": "es_security_analyzer"
+                            }
+                          }
                         },
                         "session_issuer": {
                           "properties": {
                             "account_id": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "arn": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "principal_id": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             },
                             "type": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         }
@@ -237,13 +451,25 @@
                     },
                     "type": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "vpc_endpoint_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -251,7 +477,13 @@
               "properties": {
                 "message": {
                   "norms": false,
-                  "type": "text"
+                  "type": "text",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -259,7 +491,13 @@
               "properties": {
                 "ip_address": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -267,7 +505,13 @@
               "properties": {
                 "action_executed": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "backend": {
                   "properties": {
@@ -277,7 +521,13 @@
                           "properties": {
                             "status_code": {
                               "ignore_above": 1024,
-                              "type": "keyword"
+                              "type": "keyword",
+                              "fields": {
+                                "security": {
+                                  "type": "text",
+                                  "analyzer": "es_security_analyzer"
+                                }
+                              }
                             }
                           }
                         }
@@ -285,11 +535,23 @@
                     },
                     "ip": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "port": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
@@ -304,21 +566,45 @@
                   "properties": {
                     "arn": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     },
                     "serial": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "classification": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "classification_reason": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "connection_time": {
                   "properties": {
@@ -331,33 +617,75 @@
                   "properties": {
                     "reason": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "incoming_tls_alert": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "listener": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "matched_rule_priority": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "name": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "protocol": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "redirect_url": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "request_processing_time": {
                   "properties": {
@@ -375,27 +703,57 @@
                 },
                 "ssl_cipher": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "ssl_protocol": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "target_group": {
                   "properties": {
                     "arn": {
                       "ignore_above": 1024,
-                      "type": "keyword"
+                      "type": "keyword",
+                      "fields": {
+                        "security": {
+                          "type": "text",
+                          "analyzer": "es_security_analyzer"
+                        }
+                      }
                     }
                   }
                 },
                 "target_port": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "target_status_code": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "tls_handshake_time": {
                   "properties": {
@@ -406,15 +764,33 @@
                 },
                 "tls_named_group": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "trace_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -422,75 +798,165 @@
               "properties": {
                 "authentication_type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "bucket": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "bucket_owner": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "bytes_sent": {
                   "type": "long"
                 },
                 "cipher_suite": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "error_code": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "host_header": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "host_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "http_status": {
                   "type": "long"
                 },
                 "key": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "object_size": {
                   "type": "long"
                 },
                 "operation": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "referrer": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "remote_ip": {
                   "type": "ip"
                 },
                 "request_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "request_uri": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "requester": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "signature_version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "tls_version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "total_time": {
                   "type": "long"
@@ -500,11 +966,23 @@
                 },
                 "user_agent": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "version_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             },
@@ -512,23 +990,53 @@
               "properties": {
                 "account_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "action": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "instance_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "interface_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "log_status": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "pkt_dstaddr": {
                   "type": "ip"
@@ -538,27 +1046,63 @@
                 },
                 "subnet_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "tcp_flags": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "tcp_flags_array": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "version": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 },
                 "vpc_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "keyword",
+                  "fields": {
+                    "security": {
+                      "type": "text",
+                      "analyzer": "es_security_analyzer"
+                    }
+                  }
                 }
               }
             }
