@@ -1,213 +1,253 @@
-    {
-        "template": {
-          "mappings": {
-            "properties": {
-              "so_audit_doc_id": {
-                "ignore_above": 1024,
-                "type": "keyword"
-              },
-              "so_related": {
-                "properties": {
-                  "createTime": {
-                    "type": "date"
-                  },
-                  "caseId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "fields": {
-                    "eager_global_ordinals": false,
-                    "ignore_above": 1024,
-                    "index": true,
-                    "type": "flattened",
-                    "index_options": "docs",
-                    "split_queries_on_whitespace": false,
-                    "doc_values": true
-                  },
-                  "userId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  }
-                }
-              },
-              "@timestamp": {
-                "type": "date"
-              },
-              "so_artifactstream": {
-                "properties": {
-                  "createTime": {
-                    "type": "date"
-                  },
-                  "userId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "content": {
-                    "type": "text"
-                  }
-                }
-              },
-              "so_comment": {
-                "properties": {
-                  "createTime": {
-                    "type": "date"
-                  },
-                  "caseId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "userId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  }
-                }
-              },
-              "so_kind": {
-                "ignore_above": 1024,
-                "type": "keyword"
-              },
-              "so_operation": {
-                "ignore_above": 1024,
-                "type": "keyword"
-              },
-              "so_case": {
-                "properties": {
-                  "severity": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "template": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "completeTime": {
-                    "type": "date"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "priority": {
-                    "type": "long"
-                  },
-                  "title": {
-                    "type": "text"
-                  },
-                  "assigneeId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "userId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "tags": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "createTime": {
-                    "type": "date"
-                  },
-                  "tlp": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "startTime": {
-                    "type": "date"
-                  },
-                  "category": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "pap": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "status": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  }
-                }
-              },
-              "so_artifact": {
-                "properties": {
-                  "artifactType": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "groupType": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "sha256": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "streamId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "groupId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "streamLength": {
-                    "type": "long"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "mimeType": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "userId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "tags": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "sha1": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "createTime": {
-                    "type": "date"
-                  },
-                  "caseId": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "tlp": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  },
-                  "ioc": {
-                    "type": "boolean"
-                  },
-                  "value": {
-                    "type": "text",
-                    "fields": {
-                      "keyword": {
-                        "ignore_above": 1024,
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "md5": {
-                    "ignore_above": 1024,
-                    "type": "keyword"
-                  }
-                }
-              }
+{
+  "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
+          }
+        },
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
+            ]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "so_audit_doc_id": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "so_related": {
+          "properties": {
+            "createTime": {
+              "type": "date"
+            },
+            "caseId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "fields": {
+              "eager_global_ordinals": false,
+              "ignore_above": 1024,
+              "index": true,
+              "type": "flattened",
+              "index_options": "docs",
+              "split_queries_on_whitespace": false,
+              "doc_values": true
+            },
+            "userId": {
+              "ignore_above": 1024,
+              "type": "keyword"
             }
           }
         },
-        "_meta": {
-          "ecs_version": "1.12.2"
+        "@timestamp": {
+          "type": "date"
+        },
+        "so_artifactstream": {
+          "properties": {
+            "createTime": {
+              "type": "date"
+            },
+            "userId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "content": {
+              "type": "text"
+            }
+          }
+        },
+        "so_comment": {
+          "properties": {
+            "createTime": {
+              "type": "date"
+            },
+            "caseId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "description": {
+              "type": "text"
+            },
+            "userId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "so_kind": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "so_operation": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "so_case": {
+          "properties": {
+            "severity": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "template": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "completeTime": {
+              "type": "date"
+            },
+            "description": {
+              "type": "text"
+            },
+            "priority": {
+              "type": "long"
+            },
+            "title": {
+              "type": "text"
+            },
+            "assigneeId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "userId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "tags": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "createTime": {
+              "type": "date"
+            },
+            "tlp": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "startTime": {
+              "type": "date"
+            },
+            "category": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "pap": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "status": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "so_artifact": {
+          "properties": {
+            "artifactType": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "groupType": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "sha256": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "streamId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "groupId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "streamLength": {
+              "type": "long"
+            },
+            "description": {
+              "type": "text"
+            },
+            "mimeType": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "userId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "tags": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "sha1": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "createTime": {
+              "type": "date"
+            },
+            "caseId": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "tlp": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "ioc": {
+              "type": "boolean"
+            },
+            "value": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "md5": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
         }
+      }
+    }
+  },
+  "_meta": {
+    "ecs_version": "1.12.2"
+  }
 }

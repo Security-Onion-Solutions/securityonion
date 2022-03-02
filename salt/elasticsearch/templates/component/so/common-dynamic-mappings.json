@@ -1,56 +1,96 @@
 {
-	"template": {
-          "mappings": {
-            "dynamic_templates": [
-              {
-                "ip_address": {
-                  "path_match": "*.ip",
-                  "mapping": {
-                    "type": "ip",
-                    "fields": {
-                      "keyword": {
-                        "ignore_above": 45,
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "match_mapping_type": "string"
-                }
-              },
-              {
-                "port": {
-                  "path_match": "*.port",
-                  "path_unmatch": "*.data.port",
-                  "mapping": {
-                    "type": "integer",
-                    "fields": {
-                      "keyword": {
-                        "ignore_above": 6,
-                        "type": "keyword"
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                "strings": {
-                  "mapping": {
-                    "type": "text",
-                    "fields": {
-                      "security": {
-                        "analyzer": "es_security_analyzer",
-                        "type": "text"
-                      },
-                      "keyword": {
-                        "ignore_above": 32765,
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "match_mapping_type": "string"
-                }
-              }
+  "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
+          }
+        },
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
             ]
           }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
         }
+      }
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "ip_address": {
+            "path_match": "*.ip",
+            "mapping": {
+              "type": "ip",
+              "fields": {
+                "keyword": {
+                  "ignore_above": 45,
+                  "type": "keyword"
+                }
+              }
+            },
+            "match_mapping_type": "string"
+          }
+        },
+        {
+          "port": {
+            "path_match": "*.port",
+            "path_unmatch": "*.data.port",
+            "mapping": {
+              "type": "integer",
+              "fields": {
+                "keyword": {
+                  "ignore_above": 6,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        {
+          "strings": {
+            "mapping": {
+              "type": "text",
+              "fields": {
+                "security": {
+                  "analyzer": "es_security_analyzer",
+                  "type": "text"
+                },
+                "keyword": {
+                  "ignore_above": 32765,
+                  "type": "keyword"
+                }
+              }
+            },
+            "match_mapping_type": "string"
+          }
+        }
+      ]
+    }
+  }
 }
