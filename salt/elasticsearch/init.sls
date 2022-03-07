@@ -269,8 +269,8 @@ es_repo_dir:
       - file: nsmesdir
 
 so-pipelines-reload:
-  cmd.run:
-    - name: rm -r /opt/so/state/espipelines.txt
+  file.absent:
+    - name: /opt/so/state/espipelines.txt
     - onchanges:
       - file: esingestconf
       - file: esingestdynamicconf
@@ -367,9 +367,6 @@ so-elasticsearch:
     - watch:
       - file: cacertz
       - file: esyml
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: so-elasticsearch-pipelines-script
     - require:
       - file: esyml
       - file: eslog4jfile
