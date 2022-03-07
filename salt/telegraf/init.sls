@@ -8,7 +8,7 @@
 include:
   - ssl
 
-# Add Telegraf to monitor all the things.
+# add Telegraf to monitor all the things
 tgraflogdir:
   file.directory:
     - name: /opt/so/log/telegraf
@@ -46,8 +46,8 @@ tgrafconf:
     - source: salt://telegraf/etc/telegraf.conf
     - show_changes: False
 
-#this file will be read by telegraf to send node details(management interface, monitor interface, etc)
-# into influx so that grafan can build dashboards using queries
+# this file will be read by telegraf to send node details (management interface, monitor interface, etc)
+# into influx so that Grafana can build dashboards using queries
 node_config:
   file.managed:
     - name: /opt/so/conf/telegraf/node_config.json
@@ -57,6 +57,7 @@ node_config:
 so-telegraf:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
+    - security_opt: apparmor:unconfined
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
