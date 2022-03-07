@@ -202,7 +202,9 @@ escomponenttemplates:
     - source: salt://elasticsearch/templates/component
     - user: 930
     - group: 939
-
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
+      
 # Auto-generate templates from defaults file
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
 es_index_template_{{index}}:
@@ -212,6 +214,8 @@ es_index_template_{{index}}:
     - defaults:
       TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
 {% endfor %}
 
 {% if TEMPLATES %}
@@ -228,6 +232,8 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     {% endif %}
     - user: 930
     - group: 939
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
 {% endfor %}
 {% endif %}
 
