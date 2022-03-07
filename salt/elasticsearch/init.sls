@@ -268,6 +268,15 @@ es_repo_dir:
     - require:
       - file: nsmesdir
 
+so-pipelines-reload:
+  cmd.run:
+    - name: rm -r /opt/so/state/espipelines.txt
+    - onchanges:
+      - file: esingestconf
+      - file: esingestdynamicconf
+      - file: esyml
+      - file: so-elasticsearch-pipelines-script
+
 auth_users:
   file.managed:
     - name: /opt/so/conf/elasticsearch/users.tmp
@@ -397,11 +406,6 @@ so-elasticsearch-templates:
 so-elasticsearch-pipelines:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
-    - onchanges:
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: esyml
-      - file: so-elasticsearch-pipelines-script
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-pipelines-script

@@ -23,33 +23,40 @@ ELASTICSEARCH_PORT=9200
 ELASTICSEARCH_INGEST_PIPELINES="/opt/so/conf/elasticsearch/ingest/"
 
 # Wait for ElasticSearch to initialize
-echo -n "Waiting for ElasticSearch..."
-COUNT=0
-ELASTICSEARCH_CONNECTED="no"
-while [[ "$COUNT" -le 240 ]]; do
-    {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
-	if [ $? -eq 0 ]; then
-		ELASTICSEARCH_CONNECTED="yes"
+
+if [ ! -f /opt/so/state/espipelines.txt ]; then
+
+  echo -n "Waiting for ElasticSearch..."
+  COUNT=0
+  ELASTICSEARCH_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+      {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+	  if [ $? -eq 0 ]; then
+	  	ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"
 		break
-	else
+	  else
 		((COUNT+=1))
 		sleep 1
 		echo -n "."
-	fi
-done
-if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+	  fi
+    done
+  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 	echo
 	echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
 	echo
+  fi
+
+  cd ${ELASTICSEARCH_INGEST_PIPELINES}
+
+  echo "Loading pipelines..."
+  for i in *; do echo $i; RESPONSE=$({{ ELASTICCURL }} -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
+  echo
+
+  cd - >/dev/null
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/espipelines.txt
+  fi  
+else 
+  exit $RETURN_CODE
 fi
-
-cd ${ELASTICSEARCH_INGEST_PIPELINES}
-
-echo "Loading pipelines..."
-for i in *; do echo $i; RESPONSE=$({{ ELASTICCURL }} -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null); echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi; done
-echo
-
-cd - >/dev/null
-
-exit $RETURN_CODE
