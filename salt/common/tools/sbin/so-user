@@ -46,6 +46,7 @@ role=$3
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
+databaseTimeout=${KRATOS_DB_TIMEOUT:-5000}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
 elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
 elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
@@ -147,10 +148,14 @@ function updatePassword() {
     # Generate password hash
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
+<<<<<<< Updated upstream
     echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), updated_at=datetime('now') where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='password');" | sqlite3 "$databasePath"
     # Deactivate MFA
     echo "delete from identity_credential_identifiers where identity_credential_id=(select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp'));" | sqlite3 "$databasePath"
     echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp');" | sqlite3 "$databasePath"
+=======
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), updated_at=datetime('now') where identity_id='${identityId}';" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+>>>>>>> Stashed changes
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
 }
@@ -175,7 +180,7 @@ function ensureRoleFileExists() {
     if [[ -f "$databasePath" ]]; then
       echo "Migrating roles to new file: $socRolesFile"
 
-      echo "select 'superuser:' || id from identities;" | sqlite3 "$databasePath" \
+      echo "select 'superuser:' || id from identities;" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath" \
         >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read identities from database"
 
@@ -246,8 +251,13 @@ function syncElastic() {
 
   if [[ -f "$databasePath" && -f "$socRolesFile" ]]; then
     # Append the SOC users 
+<<<<<<< Updated upstream
     echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
       "from identity_credential_identifiers ici, identity_credentials ic, identities i, identity_credential_types ict " \
+=======
+    userData=$(echo "select '{\"user\":\"' || ici.identifier || '\", \"data\":' || ic.config || '}'" \
+      "from identity_credential_identifiers ici, identity_credentials ic, identities i " \
+>>>>>>> Stashed changes
       "where " \
       "      ici.identity_credential_id=ic.id " \
       "  and ic.identity_id=i.id " \
@@ -256,22 +266,29 @@ function syncElastic() {
       "  and instr(ic.config, 'hashed_password') " \
       "  and i.state == 'active' " \
       "order by ici.identifier;" | \
-      sqlite3 "$databasePath" | \
-      jq -r '.user + ":" + .data.hashed_password' \
-      >> "$usersTmpFile"
+      sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath")
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
+
+    echo "$userData" | jq -r '.user + ":" + .data.hashed_password' >> "$usersTmpFile"
 
     # Append the user roles
     while IFS="" read -r rolePair || [ -n "$rolePair" ]; do
       userId=$(echo "$rolePair" | cut -d: -f2)
       role=$(echo "$rolePair" | cut -d: -f1)
       echo "select '$role:' || ici.identifier " \
+<<<<<<< Updated upstream
         "from identity_credential_identifiers ici, identity_credentials ic, identity_credential_types ict " \
         "where ici.identity_credential_id=ic.id " \
         "  and ict.id=ic.identity_credential_type_id " \
         "  and ict.name='password' " \
         "  and ic.identity_id = '$userId';" | \
         sqlite3 "$databasePath" >> "$rolesTmpFile"
+=======
+        "from identity_credential_identifiers ici, identity_credentials ic " \
+        "where ici.identity_credential_id=ic.id and ic.identity_id = '$userId';" | \
+        sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath" >> "$rolesTmpFile"
+      [[ $? != 0 ]] && fail "Unable to read user role identifiers from database"
+>>>>>>> Stashed changes
     done < "$socRolesFile"
 
   else
@@ -301,7 +318,8 @@ function syncAll() {
   if [[ -z "$FORCE_SYNC" && -f "$databasePath" && -f "$elasticUsersFile" ]]; then
     usersFileAgeSecs=$(echo $(($(date +%s) - $(date +%s -r "$elasticUsersFile"))))
     staleCount=$(echo "select count(*) from identity_credentials where updated_at >= Datetime('now', '-${usersFileAgeSecs} seconds');" \
-      | sqlite3 "$databasePath")
+      | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath")
+    [[ $? != 0 ]] && fail "Unable to read user count from database"
     if [[ "$staleCount" == "0" && "$elasticRolesFile" -nt "$socRolesFile" ]]; then
       return 1
     fi
