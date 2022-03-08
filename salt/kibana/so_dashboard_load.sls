@@ -4,7 +4,7 @@ include:
 
 dashboard_saved_objects_template:
   file.managed:
-    - name: /opt/so/conf/kibana/saved_objects.ndjson
+    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
     - source: salt://kibana/files/saved_objects.ndjson
     - user: 932
     - group: 939
@@ -27,7 +27,7 @@ so-kibana-dashboard-load:
 {%- if HIGHLANDER %}
 dashboard_saved_objects_template_hl:
   file.managed:
-    - name: /opt/so/conf/kibana/hl.ndjson
+    - name: /opt/so/conf/kibana/hl.ndjson.template
     - source: salt://kibana/files/hl.ndjson
     - user: 932
     - group: 939
