@@ -109,7 +109,7 @@ so-playbookruleupdatecron:
     - user: root
     - minute: '1'
     - hour: '6'
-    
+   
 {% if 'idh' in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
 idh-plays:
   file.recurse:

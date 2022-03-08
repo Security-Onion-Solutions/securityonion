@@ -202,7 +202,9 @@ escomponenttemplates:
     - source: salt://elasticsearch/templates/component
     - user: 930
     - group: 939
-
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
+      
 # Auto-generate templates from defaults file
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
 es_index_template_{{index}}:
@@ -212,6 +214,8 @@ es_index_template_{{index}}:
     - defaults:
       TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
 {% endfor %}
 
 {% if TEMPLATES %}
@@ -228,6 +232,8 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     {% endif %}
     - user: 930
     - group: 939
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
 {% endfor %}
 {% endif %}
 
@@ -261,6 +267,15 @@ es_repo_dir:
     - group: 930
     - require:
       - file: nsmesdir
+
+so-pipelines-reload:
+  file.absent:
+    - name: /opt/so/state/espipelines.txt
+    - onchanges:
+      - file: esingestconf
+      - file: esingestdynamicconf
+      - file: esyml
+      - file: so-elasticsearch-pipelines-script
 
 auth_users:
   file.managed:
@@ -352,9 +367,6 @@ so-elasticsearch:
     - watch:
       - file: cacertz
       - file: esyml
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: so-elasticsearch-pipelines-script
     - require:
       - file: esyml
       - file: eslog4jfile
@@ -391,11 +403,6 @@ so-elasticsearch-templates:
 so-elasticsearch-pipelines:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
-    - onchanges:
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: esyml
-      - file: so-elasticsearch-pipelines-script
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-pipelines-script

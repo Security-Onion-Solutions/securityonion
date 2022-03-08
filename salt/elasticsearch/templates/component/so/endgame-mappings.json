@@ -1,53 +1,93 @@
-    {
-        "template": {
-          "mappings": {
-            "properties": {
-              "endgame": {
-        	"dynamic": false,
-                "properties": {
-                  "data": {
-                    "properties": {
-              	      "malware_classification": {
-                        "properties": {
-                  	  "identifier": {
-                    	    "ignore_above": 1024,
-                    	    "type": "keyword"
-                          }
-                        }
-              	      },
-                      "quarantine_result": {
-                        "properties": {
-                          "local_msg": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                  	  }
-                        }
-                      }
-            	    }
-          	  },
-          	  "event_subtype_full": {
-            	    "ignore_above": 1024,
-            	    "type": "keyword"
-          	  },
-          	  "event_type_full": {
-            	    "ignore_above": 1024,
-            	    "type": "keyword"
-          	  },
-          	  "metadata": {
-            	    "properties": {
-              	      "type": {
-                        "ignore_above": 1024,
-                	"type": "keyword"
-              	      }
-                    }
-          	  }
-        	},
-        	"type": "object"
-              }
-            }
+{
+  "template": {
+    "settings": {
+      "analysis": {
+        "analyzer": {
+          "es_security_analyzer": {
+            "type": "custom",
+            "char_filter": [
+              "whitespace_no_way"
+            ],
+            "filter": [
+              "lowercase",
+              "trim"
+            ],
+            "tokenizer": "keyword"
           }
         },
-        "_meta": {
-          "ecs_version": "1.12.2"
+        "char_filter": {
+          "whitespace_no_way": {
+            "type": "pattern_replace",
+            "pattern": "(\\s)+",
+            "replacement": "$1"
+          }
+        },
+        "filter": {
+          "path_hierarchy_pattern_filter": {
+            "type": "pattern_capture",
+            "preserve_original": true,
+            "patterns": [
+              "((?:[^\\\\]*\\\\)*)(.*)",
+              "((?:[^/]*/)*)(.*)"
+            ]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "path_hierarchy",
+            "delimiter": "\\"
+          }
         }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "endgame": {
+          "dynamic": false,
+          "properties": {
+            "data": {
+              "properties": {
+                "malware_classification": {
+                  "properties": {
+                    "identifier": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "quarantine_result": {
+                  "properties": {
+                    "local_msg": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "event_subtype_full": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "event_type_full": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "metadata": {
+              "properties": {
+                "type": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "_meta": {
+    "ecs_version": "1.12.2"
+  }
 }
