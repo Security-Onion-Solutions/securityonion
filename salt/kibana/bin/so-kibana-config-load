@@ -41,7 +41,7 @@ import() {
 
     # Load saved objects
     RESPONSE=$({{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@"$ndjson_file")
-    echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1;fi
+    echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
 
     if [[ "$RETURN_CODE" != "1" ]]; then
       touch /opt/so/state/kibana_$BASENAME.txt
@@ -60,8 +60,9 @@ update() {
     IFS=$'\r\n' GLOBIGNORE='*' command eval  'LINES=($(cat $1))'
     for i in "${LINES[@]}"; do
       RESPONSE=$({{ ELASTICCURL }} -X PUT "localhost:5601/api/saved_objects/config/7.17.1" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i ")
-      echo $RESPONSE; if [[ "$RESPONSE" == *"error"* ]]; then RETURN_CODE=1; fi
+      echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
     done
+ 
     if [[ "$RETURN_CODE" != "1" ]]; then
       touch /opt/so/state/kibana_$BASENAME.txt
     fi
