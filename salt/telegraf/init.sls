@@ -57,7 +57,6 @@ node_config:
 so-telegraf:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
-    - security_opt: apparmor:unconfined
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
