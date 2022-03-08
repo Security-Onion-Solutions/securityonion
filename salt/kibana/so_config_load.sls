@@ -3,7 +3,7 @@ include:
 
 config_saved_objects:
   file.managed:
-    - name: /opt/so/conf/kibana/config_saved_objects.ndjson
+    - name: /opt/so/conf/kibana/config_saved_objects.ndjson.template
     - source: salt://kibana/files/config_saved_objects.ndjson
     - user: 932
     - group: 939
