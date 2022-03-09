@@ -17,7 +17,7 @@ securitySolution_saved_objects_changes:
 
 so-kibana-securitySolution_saved_objects-load:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load -u /opt/so/conf/kibana/securitySolution_saved_objects.ndjson
+    - name: /usr/sbin/so-kibana-config-load -u /opt/so/conf/kibana/securitySolution_saved_objects.ndjson.template
     - cwd: /opt/so
     - require:
       - sls: kibana
