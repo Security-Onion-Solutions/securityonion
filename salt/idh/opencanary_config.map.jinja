@@ -1,0 +1,9 @@
+{% set idh_services = salt['pillar.get']('idh:services', []) %}
+
+{% import_yaml "idh/defaults/defaults.yaml" as OPENCANARYCONFIG with context %}
+{% for service in idh_services %}
+      {% import_yaml "idh/defaults/" ~ service ~ ".defaults.yaml" as SERVICECONFIG with context %}
+      {% do salt['defaults.merge'](OPENCANARYCONFIG, SERVICECONFIG, in_place=True) %}
+{% endfor %}
+
+{% set OPENCANARYCONFIG = salt['pillar.get']('idh:opencanary:config', default=OPENCANARYCONFIG.idh.opencanary.config, merge=True) %}

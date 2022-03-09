@@ -127,6 +127,14 @@ nodecfg:
     - group: 939
     - template: jinja
 
+networkscfg:
+  file.managed:
+    - name: /opt/so/conf/zeek/networks.cfg
+    - source: salt://zeek/files/networks.cfg.jinja
+    - user: 937
+    - group: 939
+    - template: jinja
+
 #zeekcleanscript:
 #  file.managed:
 #    - name: /usr/local/bin/zeek_clean
@@ -209,6 +217,7 @@ so-zeek:
       - /nsm/zeek/extracted:/nsm/zeek/extracted:rw
       - /opt/so/conf/zeek/local.zeek:/opt/zeek/share/zeek/site/local.zeek:ro
       - /opt/so/conf/zeek/node.cfg:/opt/zeek/etc/node.cfg:ro
+      - /opt/so/conf/zeek/networks.cfg:/opt/zeek/etc/networks.cfg:ro
       - /opt/so/conf/zeek/zeekctl.cfg:/opt/zeek/etc/zeekctl.cfg:ro
       - /opt/so/conf/zeek/policy/securityonion:/opt/zeek/share/zeek/policy/securityonion:ro
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
@@ -219,6 +228,7 @@ so-zeek:
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
+      - file: /opt/so/conf/zeek/networks.cfg
       - file: /opt/so/conf/zeek/zeekctl.cfg
       - file: /opt/so/conf/zeek/policy
       - file: /opt/so/conf/zeek/bpf

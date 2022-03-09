@@ -4,15 +4,22 @@ include:
 
 dashboard_saved_objects_template:
   file.managed:
-    - name: /opt/so/conf/kibana/saved_objects.ndjson
+    - name: /opt/so/conf/kibana/saved_objects.ndjson.template
     - source: salt://kibana/files/saved_objects.ndjson
     - user: 932
     - group: 939
     - show_changes: False
 
+dashboard_saved_objects_changes:
+  file.absent:
+    - names:
+      - /opt/so/state/kibana_saved_objects.txt
+    - onchanges:
+      - file: dashboard_saved_objects_template
+
 so-kibana-dashboard-load:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/saved_objects.ndjson
+    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/saved_objects.ndjson.template
     - cwd: /opt/so
     - require:
       - sls: kibana
@@ -20,15 +27,22 @@ so-kibana-dashboard-load:
 {%- if HIGHLANDER %}
 dashboard_saved_objects_template_hl:
   file.managed:
-    - name: /opt/so/conf/kibana/hl.ndjson
+    - name: /opt/so/conf/kibana/hl.ndjson.template
     - source: salt://kibana/files/hl.ndjson
     - user: 932
     - group: 939
     - show_changes: False
 
+dashboard_saved_objects_hl_changes:
+  file.absent:
+    - names:
+      - /opt/so/state/kibana_hl.txt
+    - onchanges:
+      - file: dashboard_saved_objects_template_hl
+
 so-kibana-dashboard-load_hl:
   cmd.run:
-    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/hl.ndjson
+    - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/hl.ndjson.template
     - cwd: /opt/so
     - require:
       - sls: kibana

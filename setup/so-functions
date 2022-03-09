@@ -447,6 +447,25 @@ collect_hostname_validate() {
 	done
 }
 
+collect_idh_services() {
+	whiptail_idh_services
+
+	case "$idh_services" in
+		'Linux Webserver (NAS Skin)')
+			idh_services=("HTTP" "FTP" "SSH")
+		;;
+		'MySQL Server')
+			idh_services=("MYSQL" "SSH")
+		;;
+		'MSSQL Server')
+			idh_services=("MSSQL" "VNC")
+		;;
+		'Custom')
+			whiptail_idh_services_custom
+		;;
+	esac
+}
+
 collect_int_ip_mask() {
 	whiptail_management_interface_ip_mask
 
@@ -864,6 +883,7 @@ check_requirements() {
 		req_cores=4
 		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
 		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
+		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
 	elif [[ "$standalone_or_dist" == 'import' ]]; then
 		req_mem=4
 		req_cores=2
@@ -929,7 +949,7 @@ check_sos_appliance() {
 compare_main_nic_ip() {
 	if ! [[ $MNIC =~ ^(tun|wg|vpn).*$ ]]; then
 	  if [[ "$MAINIP" != "$MNIC_IP" ]]; then
-			error "[ERROR] Main gateway ($MAINIP) does not match ip address of managament NIC ($MNIC_IP)."
+			error "[ERROR] Main gateway ($MAINIP) does not match ip address of management NIC ($MNIC_IP)."
 
 		  read -r -d '' message <<- EOM
 		  	The IP being routed by Linux is not the IP address assigned to the management interface ($MNIC).
@@ -1223,12 +1243,12 @@ docker_install() {
 		if [ $OSVER == "bionic" ]; then
 		        service docker stop
 			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
-			retry 50 10 "apt-get -y install docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install --allow-downgrades docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
 	        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras
 		elif [ $OSVER == "focal" ]; then
 		        service docker stop
 			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
-			retry 50 10 "apt-get -y install docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
+			retry 50 10 "apt-get -y install --allow-downgrades docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
                         apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras		
 		fi
 	fi
@@ -1521,7 +1541,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 		'HELIXSENSOR')
@@ -1809,52 +1829,101 @@ manager_global() {
 		"  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
-		"      shards: 1"\
+                "      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
+		"      warm: 7"\
+		"      close: 30"\
+		"      delete: 365"\
+		"    so-endgame:"\
+                "      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-firewall:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-flow:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-ids:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-import:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 73000"\
 		"      delete: 73001"\
 		"    so-osquery:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-ossec:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-strelka:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-syslog:"\
-		"      shards: 1"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-zeek:"\
-		"      shards: 5"\
+		"      index_template:"\
+                "        template:"\
+                "          settings:"\
+                "            index:"\
+                "              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 45"\
 		"      delete: 365"\
@@ -2619,7 +2688,7 @@ set_initial_firewall_policy() {
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
             $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
-		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'RECEIVER')
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'IDH' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
 			case "$install_type" in
 				'SENSOR')
@@ -2637,6 +2706,9 @@ set_initial_firewall_policy() {
 					$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/pillar/data/addtotab.sh nodestab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm"
 					;;
 				'FLEET')
+				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
+					;;
+				'IDH')
 				    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost beats_endpoint_ssl "$MAINIP"
 					;;
 				'RECEIVER')
@@ -2824,6 +2896,17 @@ wait_for_file() {
 
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
+}
+
+write_out_idh_services() {
+	local pillar_file="$temp_install_dir"/pillar/minions/"$MINION_ID".sls
+
+	printf '%s\n'\
+	"idh:"\
+	"  services:" >> "$pillar_file"
+	for service in ${idh_services[@]}; do
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$pillar_file"
+    done
 }
 
 # Enable Zeek Logs

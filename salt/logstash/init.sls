@@ -200,9 +200,6 @@ so-logstash:
       - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
     {% endfor %}
   {% endfor %}
-  {% for TEMPLATE in TEMPLATES %}
-      - file: es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}
-  {% endfor %}
     - require:
   {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_filebeat_crt

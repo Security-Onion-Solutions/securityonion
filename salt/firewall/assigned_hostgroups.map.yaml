@@ -653,3 +653,22 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
+  idh:
+    chain:
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+            {% set idh_services = salt['pillar.get']('idh:services', []) %}
+            {% for service in idh_services %}
+              - {{ portgroups['idh_'~service] }}
+            {% endfor %}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          manager:
+            portgroups:
+              - {{ portgroups.ssh }}

@@ -67,6 +67,24 @@ navigatordefaultlayer:
     - replace: False
     - template: jinja
 
+navigatorpreattack:
+  file.managed:
+    - name: /opt/so/conf/navigator/pre-attack.json
+    - source: salt://nginx/files/pre-attack.json
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - replace: False
+
+navigatorenterpriseattack:
+  file.managed:
+    - name: /opt/so/conf/navigator/enterprise-attack.json
+    - source: salt://nginx/files/enterprise-attack.json
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - replace: False
+
 so-nginx:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-nginx:{{ VERSION }}
@@ -83,6 +101,8 @@ so-nginx:
       # ATT&CK Navigator binds
       - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
+      - /opt/so/conf/navigator/enterprise-attack.json:/opt/socore/html/navigator/assets/enterprise-attack.json:ro
+      - /opt/so/conf/navigator/pre-attack.json:/opt/socore/html/navigator/assets/pre-attack.json:ro
   {% endif %}
   {% if ISAIRGAP is sameas true %}
       - /nsm/repo:/opt/socore/html/repo:ro

@@ -1,0 +1,16 @@
+{% import_yaml "idh/defaults/defaults.yaml" as idh_defaults with context %}
+
+{% set openssh_map = salt['grains.filter_by']({
+    'Debian': {
+        'client': 'openssh-client',
+        'server': 'openssh-server',
+        'service': 'ssh',
+        'conf': '/etc/ssh/sshd_config'
+    },
+    'RedHat': {
+        'client': 'openssh-clients',
+        'server': 'openssh-server',
+        'service': 'sshd',
+        'conf': '/etc/ssh/sshd_config'
+    },
+}, merge=salt['pillar.get']('idh:openssh', default=idh_defaults.idh.openssh, merge=True)) %}

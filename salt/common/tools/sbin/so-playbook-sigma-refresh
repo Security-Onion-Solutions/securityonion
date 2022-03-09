@@ -17,11 +17,21 @@
 
 . /usr/sbin/so-common
 
-# Regenerate ElastAlert & update Plays
-docker exec so-soctopus python3 playbook_play-update.py
+if ! [ -f /opt/so/state/playbook_regen_plays ] || [ "$1" = "--force" ]; then
 
-# Delete current Elastalert Rules
-rm /opt/so/rules/elastalert/playbook/*.yaml
+    echo "Refreshing Sigma & regenerating plays... "
 
-# Regenerate Elastalert Rules
-so-playbook-sync
+    # Regenerate ElastAlert & update Plays
+    docker exec so-soctopus python3 playbook_play-update.py
+
+    # Delete current Elastalert Rules
+    rm /opt/so/rules/elastalert/playbook/*.yaml
+
+    # Regenerate Elastalert Rules
+    so-playbook-sync
+    
+    # Create state file
+    touch /opt/so/state/playbook_regen_plays
+else
+  printf "\nState file found, exiting...\nRerun with --force to override.\n"
+fi

@@ -158,7 +158,7 @@ EOF
 }
 
 airgap_update_dockers() {
-  if [[ $is_airgap -eq 0 ]]; then
+  if [[ $is_airgap -eq 0 ]] || [[ ! -z "$ISOLOC" ]]; then
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
@@ -245,7 +245,6 @@ check_sudoers() {
 }
 
 check_log_size_limit() {
-
   local num_minion_pillars
   num_minion_pillars=$(find /opt/so/saltstack/local/pillar/minions/ -type f | wc -l)
   
@@ -255,7 +254,7 @@ check_log_size_limit() {
     fi
   else
     local minion_id
-    minion_id=$(lookup_salt_value "id" "" "grains")
+    minion_id=$(lookup_salt_value "id" "" "grains" "" "local")
 
     local minion_arr
     IFS='_' read -ra minion_arr <<< "$minion_id"
@@ -263,7 +262,15 @@ check_log_size_limit() {
     local node_type="${minion_arr[0]}"
     
     local current_limit
-    current_limit=$(lookup_pillar "log_size_limit" "elasticsearch")
+    # since it is possible for the salt-master service to be stopped when this is run, we need to check the pillar values locally
+    # we need to combine default local and default pillars before doing this so we can define --pillar-root in salt-call
+    local epoch_date=$(date +%s%N)
+    mkdir -vp /opt/so/saltstack/soup_tmp_${epoch_date}/
+    cp -r /opt/so/saltstack/default/pillar/ /opt/so/saltstack/soup_tmp_${epoch_date}/
+    # use \cp here to overwrite any pillar files from default with those in local for the tmp directory
+    \cp -r /opt/so/saltstack/local/pillar/ /opt/so/saltstack/soup_tmp_${epoch_date}/
+    current_limit=$(salt-call pillar.get elasticsearch:log_size_limit --local --pillar-root=/opt/so/saltstack/soup_tmp_${epoch_date}/pillar --out=newline_values_only)
+    rm -rf /opt/so/saltstack/soup_tmp_${epoch_date}/
     
     local percent
     case $node_type in
@@ -403,6 +410,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.50 || "$INSTALLEDVERSION" == 2.3.51 || "$INSTALLEDVERSION" == 2.3.52 || "$INSTALLEDVERSION" == 2.3.60 || "$INSTALLEDVERSION" == 2.3.61 || "$INSTALLEDVERSION" == 2.3.70 ]] && up_to_2.3.80
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
+    [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
     true
 }
 
@@ -415,6 +423,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.40 || "$POSTVERSION" == 2.3.50 || "$POSTVERSION" == 2.3.51 || "$POSTVERSION" == 2.3.52 ]] && post_to_2.3.60
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
+    [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
     true
 }
 
@@ -466,8 +475,16 @@ post_to_2.3.90() {
 
 post_to_2.3.100() {
   echo "Post Processing for 2.3.100"
+  POSTVERSION=2.3.100
+}
+
+post_to_2.3.110() {
+  echo "Post Processing for 2.3.110"
+  echo "Removing old Elasticsearch index templates"
+  [ -d /opt/so/saltstack/default/salt/elasticsearch/templates/so ] && rm -rf /opt/so/saltstack/default/salt/elasticsearch/templates/so
   echo "Updating Kibana dashboards"
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
+  POSTVERSION=2.3.110
 }
 
 stop_salt_master() {
@@ -704,7 +721,6 @@ up_to_2.3.90() {
 }
 
 up_to_2.3.100() {
-  echo "Updating to Security Onion 2.3.100"
   fix_wazuh
   
   echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
@@ -719,6 +735,12 @@ up_to_2.3.100() {
 
   echo "Adding receiver to assigned_hostgroups.local.map.yaml"
   grep -qxF "  receiver:" /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml || sed -i -e '$a\  receiver:' /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml
+}
+
+up_to_2.3.110() {
+  echo "Updating to Security Onion 2.3.110"
+  echo "Updating shard settings for Elasticsearch index templates"
+  sed -i 's|shards|index_template:\n        template:\n          settings:\n            index:\n              number_of_shards|g' /opt/so/saltstack/local/pillar/global.sls
 }
 
 verify_upgradespace() {
@@ -976,6 +998,11 @@ main() {
     # Let's mount the ISO since this is airgap
     airgap_mounted
   else
+    # if not airgap but -f was used
+    if [[ ! -z "$ISOLOC" ]]; then
+      airgap_mounted
+      AGDOCKER=/tmp/soagupdate/docker
+    fi
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
     echo "Removing previous upgrade sources."
     rm -rf $UPDATE_DIR
@@ -1031,6 +1058,10 @@ main() {
       update_centos_repo
       yum clean all
       check_os_updates
+    # if not airgap but -f was used
+    elif [[ ! -z "$ISOLOC" ]]; then
+      airgap_update_dockers
+      unmount_update
     else
       update_registry
       set +e

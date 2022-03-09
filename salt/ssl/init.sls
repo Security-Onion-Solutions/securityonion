@@ -447,7 +447,7 @@ fleetkeyperms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-import', 'so-receiver'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:

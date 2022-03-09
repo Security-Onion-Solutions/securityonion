@@ -118,7 +118,7 @@ base:
     - elasticsearch
     {%- endif %}
     {%- if KIBANA %}
-    - kibana
+    - kibana.so_savedobjects_defaults
     {%- endif %}
     - pcap
     - suricata
@@ -193,7 +193,7 @@ base:
     - redis
     {%- endif %}
     {%- if KIBANA %}
-    - kibana
+    - kibana.so_savedobjects_defaults
     {%- endif %}
     - curator
     {%- if ELASTALERT %}
@@ -260,7 +260,7 @@ base:
     - redis
     {%- endif %}
     {%- if KIBANA %}
-    - kibana
+    - kibana.so_savedobjects_defaults
     {%- endif %}
     - pcap
     - suricata
@@ -361,7 +361,7 @@ base:
     {%- endif %}
     - curator
     {%- if KIBANA %}
-    - kibana
+    - kibana.so_savedobjects_defaults
     {%- endif %}
     {%- if ELASTALERT %}
     - elastalert
@@ -467,7 +467,7 @@ base:
     - elasticsearch
     {%- endif %}
     {%- if KIBANA %}
-    - kibana
+    - kibana.so_savedobjects_defaults
     {%- endif %}
     {%- if FILEBEAT %}
     - filebeat
@@ -503,3 +503,20 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
+
+  '*_idh and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    {%- if WAZUH != 0 %}
+    - wazuh
+    {%- endif %}
+    {%- if FLEETMANAGER or FLEETNODE %}
+    - fleet.install_package
+    {%- endif %}
+    - schedule
+    - docker_clean
+    - filebeat
+    - idh

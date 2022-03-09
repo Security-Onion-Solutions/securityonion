@@ -41,7 +41,7 @@ include:
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
-
+{% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
 
 vm.max_map_count:
   sysctl.present:
@@ -147,7 +147,7 @@ esingestdir:
 
 estemplatedir:
   file.directory:
-    - name: /opt/so/conf/elasticsearch/templates
+    - name: /opt/so/conf/elasticsearch/templates/index
     - user: 930
     - group: 939
     - makedirs: True
@@ -196,20 +196,46 @@ esyml:
         ESCONFIG: {{ ESCONFIG }}
     - template: jinja
 
-#sync templates to /opt/so/conf/elasticsearch/templates
+escomponenttemplates:
+  file.recurse:
+    - name: /opt/so/conf/elasticsearch/templates/component
+    - source: salt://elasticsearch/templates/component
+    - user: 930
+    - group: 939
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
+      
+# Auto-generate templates from defaults file
+{% for index, settings in ES_INDEX_SETTINGS.items() %}
+es_index_template_{{index}}:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/templates/index/{{ index }}-template.json
+    - source: salt://elasticsearch/base-template.json.jinja
+    - defaults:
+      TEMPLATE_CONFIG: {{ settings.index_template }}
+    - template: jinja
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
+{% endfor %}
+
+{% if TEMPLATES %}
+# Sync custom templates to /opt/so/conf/elasticsearch/templates
 {% for TEMPLATE in TEMPLATES %}
 es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
   file.managed:
-    - source: salt://elasticsearch/templates/{{TEMPLATE}}
+    - source: salt://elasticsearch/templates/index/{{TEMPLATE}}
     {% if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
     {% else %}
-    - name: /opt/so/conf/elasticsearch/templates/{{TEMPLATE.split('/')[1]}}
+    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1]}}
     {% endif %}
     - user: 930
     - group: 939
+    - onchanges_in:
+      - cmd: so-elasticsearch-templates
 {% endfor %}
+{% endif %}
 
 esroles:
   file.recurse:
@@ -241,6 +267,15 @@ es_repo_dir:
     - group: 930
     - require:
       - file: nsmesdir
+
+so-pipelines-reload:
+  file.absent:
+    - name: /opt/so/state/espipelines.txt
+    - onchanges:
+      - file: esingestconf
+      - file: esingestdynamicconf
+      - file: esyml
+      - file: so-elasticsearch-pipelines-script
 
 auth_users:
   file.managed:
@@ -332,9 +367,6 @@ so-elasticsearch:
     - watch:
       - file: cacertz
       - file: esyml
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: so-elasticsearch-pipelines-script
     - require:
       - file: esyml
       - file: eslog4jfile
@@ -359,19 +391,6 @@ append_so-elasticsearch_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
 
-so-elasticsearch-pipelines:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
-    - onchanges:
-      - file: esingestconf
-      - file: esingestdynamicconf
-      - file: esyml
-      - file: so-elasticsearch-pipelines-script
-    - require:
-      - docker_container: so-elasticsearch
-      - file: so-elasticsearch-pipelines-script
-
-{% if TEMPLATES %}
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
@@ -380,7 +399,13 @@ so-elasticsearch-templates:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-{% endif %}
+
+so-elasticsearch-pipelines:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
+    - require:
+      - docker_container: so-elasticsearch
+      - file: so-elasticsearch-pipelines-script
 
 so-elasticsearch-roles-load:
   cmd.run:
