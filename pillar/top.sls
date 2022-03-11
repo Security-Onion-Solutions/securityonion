@@ -60,7 +60,7 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
-    - elasticsearch.inedx_templates
+    - elasticsearch.index_templates
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
