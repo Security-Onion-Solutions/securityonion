@@ -1,7 +1,9 @@
 {% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
 {%- set ES_INDEX_SETTINGS = salt['pillar.get']('elasticsearch:index_settings', default=ESCONFIG.elasticsearch.index_settings, merge=True) %}
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
-  {% if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
-    {% do settings.index_template.template.settings.index.pop('sort') %}
+  {% if settings.index_template is defined %}
+    {% if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
+      {% do settings.index_template.template.settings.index.pop('sort') %}
+    {% endif %}
   {% endif %}
 {% endfor %}
