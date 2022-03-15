@@ -153,18 +153,6 @@ check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
 }
 
-check_hive_init() {
-
-	wait_for_file /opt/so/state/thehive.txt 20 5
-	local return_val=$?
-	if [[ $return_val -ne 0 ]]; then
-		return $return_val
-	fi
-
-	docker stop so-thehive
-	docker rm so-thehive
-}
-
 check_manager_state() {
 	echo "Checking state of manager services. This may take a moment..."
 	retry 2 15 "__check_so_status" >> $setup_log 2>&1 && retry 2 15 "__check_salt_master" >> $setup_log 2>&1 && return 0 || return 1
@@ -1499,13 +1487,6 @@ generate_passwords(){
   FLEETSAPASS=$(get_random_value)
   FLEETJWT=$(get_random_value)
   GRAFANAPASS=$(get_random_value)
-  if [[ "$THEHIVE" == "1" ]]; then
-  	HIVEKEY=$(get_random_value)
-  	HIVEPLAYSECRET=$(get_random_value)
-  	CORTEXKEY=$(get_random_value)
-  	CORTEXORGUSERKEY=$(get_random_value)
-  	CORTEXPLAYSECRET=$(get_random_value)
-  fi
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
 }
@@ -1673,7 +1654,6 @@ manager_pillar() {
 		"  es_port: $node_es_port"\
 		"  grafana: $GRAFANA"\
 		"  osquery: $OSQUERY"\
-		"  thehive: $THEHIVE"\
 		"  playbook: $PLAYBOOK"\
 		""\
 		"elasticsearch:"\
@@ -1757,22 +1737,6 @@ manager_global() {
 	else 
 		printf '%s\n'\
 			"  airgap: False"\ >> "$global_pillar"
-	fi
-
-	# Check if TheHive is enabled.  If so, add creds and other details
-	if [[ "$THEHIVE" == "1" ]]; then
-		printf '%s\n'\
-			"  hiveuser: '$WEBUSER'"\
-			"  hivepassword: '$WEBPASSWD1'"\
-			"  hivekey: '$HIVEKEY'"\
-			"  hiveplaysecret: '$HIVEPLAYSECRET'"\
-			"  cortexuser: '$WEBUSER'"\
-			"  cortexpassword: '$WEBPASSWD1'"\
-			"  cortexkey: '$CORTEXKEY'"\
-			"  cortexorgname: 'SecurityOnion'"\
-			"  cortexorguser: 'soadmin'"\
-			"  cortexorguserkey: '$CORTEXORGUSERKEY'"\
-			"  cortexplaysecret: '$CORTEXPLAYSECRET'" >> "$global_pillar"
 	fi
 
 	# Continue adding other details	

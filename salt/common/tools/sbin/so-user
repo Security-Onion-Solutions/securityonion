@@ -476,7 +476,6 @@ case "${operation}" in
     createUser "$email" "${role:-$DEFAULT_ROLE}"
     syncAll
     echo "Successfully added new user to SOC"
-    check_container thehive && echo "$password" | so-thehive-user-add "$email"
     check_container fleet && echo "$password" | so-fleet-user-add "$email"
     ;;
 
@@ -528,7 +527,6 @@ case "${operation}" in
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
-    check_container thehive && so-thehive-user-enable "$email" true
     echo "Fleet user will need to be recreated manually with so-fleet-user-add"
     ;;
 
@@ -540,7 +538,6 @@ case "${operation}" in
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
-    check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-delete "$email"   
     ;;    
 
@@ -552,7 +549,6 @@ case "${operation}" in
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
-    check_container thehive && so-thehive-user-enable "$email" false
     check_container fleet && so-fleet-user-delete "$email"
     ;;
 

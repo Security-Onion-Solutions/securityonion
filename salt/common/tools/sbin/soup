@@ -765,29 +765,6 @@ upgrade_space() {
   fi  
 }
 
-thehive_maint() {
-  echo -n "Waiting for TheHive..."
-  COUNT=0
-  THEHIVE_CONNECTED="no"
-  while [[ "$COUNT" -le 240 ]]; do
-    curl --output /dev/null --silent --head --fail -k "https://localhost/thehive/api/alert"
-      if [ $? -eq 0 ]; then
-        THEHIVE_CONNECTED="yes"
-        echo "connected!"
-        break
-      else
-        ((COUNT+=1))
-        sleep 1
-        echo -n "."
-      fi
-  done
-  if [ "$THEHIVE_CONNECTED" == "yes" ]; then
-    echo "Migrating thehive databases if needed."
-    curl -v -k -XPOST -L "https://localhost/thehive/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
-    curl -v -k -XPOST -L "https://localhost/cortex/api/maintenance/migrate" >> "$SOUP_LOG" 2>&1
-  fi
-}
-
 unmount_update() {
   cd /tmp
   umount /tmp/soagupdate
@@ -1175,7 +1152,6 @@ main() {
     salt-call state.highstate -l info queue=True
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
-    thehive_maint
 
     echo ""
     echo "Upgrade to $NEWVERSION complete."

@@ -17,38 +17,4 @@
 
 . /usr/sbin/so-common
 
-usage() {
-    echo "Usage: $0 <new-user-name>"
-    echo ""
-    echo "Adds a new user to Cortex. The new password will be read from STDIN."
-    exit 1
-}
-
-if [ $# -ne 1 ]; then
-  usage
-fi
-
-USER=$1
-
-CORTEX_KEY=$(lookup_pillar cortexorguserkey)
-CORTEX_API_URL="$(lookup_pillar url_base)/cortex/api"
-CORTEX_ORG_NAME=$(lookup_pillar cortexorgname)
-CORTEX_USER=$USER
-
-# Read password for new user from stdin
-test -t 0
-if [[ $? == 0 ]]; then
-  echo "Enter new password:"
-fi
-read -rs CORTEX_PASS
-
-# Create new user in Cortex
-resp=$(curl -sk -XPOST -H "Authorization: Bearer $CORTEX_KEY" -H "Content-Type: application/json" -L "https://$CORTEX_API_URL/user" -d "{\"name\": \"$CORTEX_USER\",\"roles\": [\"read\",\"analyze\",\"orgadmin\"],\"organization\": \"$CORTEX_ORG_NAME\",\"login\": \"$CORTEX_USER\",\"password\" : \"$CORTEX_PASS\" }")
-if [[ "$resp" =~ \"status\":\"Ok\" ]]; then
-    echo "Successfully added user to Cortex."
-else
-    echo "Unable to add user to Cortex; user might already exist."
-    echo $resp
-    exit 2
-fi
-    
+echo "TheHive and its components are no longer part of Security Onion"

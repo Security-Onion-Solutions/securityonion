@@ -1,6 +1,5 @@
 {% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set WAZUH = salt['pillar.get']('global:wazuh', '0') %}
-{% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
@@ -143,9 +142,6 @@ base:
     - utility
     - schedule
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     - redis
@@ -210,9 +206,6 @@ base:
     - fleet.install_package
     {%- endif %}
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -284,9 +277,6 @@ base:
     - utility
     - schedule
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -376,9 +366,6 @@ base:
     - fleet.install_package
     {%- endif %}
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
