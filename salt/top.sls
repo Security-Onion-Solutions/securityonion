@@ -277,9 +277,6 @@ base:
     - utility
     - schedule
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -369,9 +366,6 @@ base:
     - fleet.install_package
     {%- endif %}
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
