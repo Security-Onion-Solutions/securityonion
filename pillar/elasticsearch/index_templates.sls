@@ -1,0 +1,2 @@
+elasticsearch:
+  index_settings:

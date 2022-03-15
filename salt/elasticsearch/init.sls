@@ -207,6 +207,7 @@ escomponenttemplates:
       
 # Auto-generate templates from defaults file
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
+  {% if settings.index_template is defined %}
 es_index_template_{{index}}:
   file.managed:
     - name: /opt/so/conf/elasticsearch/templates/index/{{ index }}-template.json
@@ -216,6 +217,7 @@ es_index_template_{{index}}:
     - template: jinja
     - onchanges_in:
       - cmd: so-elasticsearch-templates
+  {% endif %}
 {% endfor %}
 
 {% if TEMPLATES %}
