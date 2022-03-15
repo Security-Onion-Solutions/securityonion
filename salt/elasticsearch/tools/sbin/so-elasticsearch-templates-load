@@ -30,7 +30,7 @@ echo -n "Waiting for ElasticSearch..."
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
-    {{ ELASTICCURL }} -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
+      so-elasticsearch-query -k --output /dev/null --silent --head --fail
 	if [ $? -eq 0 ]; then
 		ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"
@@ -50,21 +50,20 @@ fi
 cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
 echo "Loading ECS component templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_component_template/$TEMPLATE-mappings -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
-echo
+for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; so-elasticsearch-query _component_template/$TEMPLATE-mappings -d@$i -XPUT 2>/dev/null; echo; done
 
 # Load SO-specific component templates
 cd ${ELASTICSEARCH_TEMPLATES}/component/so
 
 echo "Loading Security Onion component templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_component_template/$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
 echo
 
 # Load SO index templates
 cd ${ELASTICSEARCH_TEMPLATES}/index
 
 echo "Loading Security Onion index templates..."
-for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; {{ ELASTICCURL }} -k ${ELASTICSEARCH_AUTH} -s -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_index_template/so-$TEMPLATE -H 'Content-Type: application/json' -d@$i 2>/dev/null; echo; done
+for i in *; do TEMPLATE=$(echo $i | cut -d '-' -f2); echo "so-$TEMPLATE"; so-elasticsearch-query _index_template/so-$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
 echo
 
 cd - >/dev/null
