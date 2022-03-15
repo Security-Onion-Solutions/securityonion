@@ -440,7 +440,6 @@ if [[ $is_import ]]; then
 	GRAFANA=${GRAFANA:-0}
 	OSQUERY=${OSQUERY:-0}
 	WAZUH=${WAZUH:-0}
-	THEHIVE=${THEHIVE:-0}
 	PLAYBOOK=${PLAYBOOK:-0}
 fi
 
@@ -937,11 +936,6 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info wazuh >> $setup_log 2>&1
 	fi
 
-	if [[ "$THEHIVE" = 1 ]]; then
-		set_progress_str 80 "$(print_salt_state_apply 'thehive')"
-		salt-call state.apply -l info thehive >> $setup_log 2>&1
-	fi
-
 	if [[ "$STRELKA" = 1 ]]; then
 		if [[ $is_sensor ]]; then
 			set_progress_str 81 "$(print_salt_state_apply 'strelka')"
@@ -1016,11 +1010,6 @@ else
 		if [[ $is_manager ]]; then
 			set_progress_str 98 "Generating archive for setup directory"
 			generate_repo_tarball >> "$setup_log" 2>&1
-		fi
-
-		if [[ $THEHIVE == 1 ]]; then 
-			set_progress_str 99 'Waiting for TheHive to start up'
-			check_hive_init >> $setup_log 2>&1
 		fi
 
 		if [[ -n $LEARN_LOGSCAN_ENABLE ]]; then
