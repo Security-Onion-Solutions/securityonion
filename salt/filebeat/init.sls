@@ -18,8 +18,8 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set LOCALHOSTNAME = salt['grains.get']('host') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% from 'filebeat/map.jinja' import THIRDPARTY with context %}
-{% from 'filebeat/map.jinja' import SO with context %}
+{% from 'filebeat/modules.map.jinja' import THIRDPARTY with context %}
+{% from 'filebeat/modules.map.jinja' import MODULESENABLED with context %}
 {% from 'filebeat/map.jinja' import FILEBEAT_EXTRA_HOSTS with context %}
 {% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
 
@@ -88,21 +88,13 @@ filebeatmoduleconf:
     - template: jinja
     - show_changes: False
 
-sodefaults_module_conf:
+merged_module_conf:
   file.managed:
-    - name: /opt/so/conf/filebeat/modules/securityonion.yml
+    - name: /opt/so/conf/filebeat/modules/modules.yml
     - source: salt://filebeat/etc/module_config.yml.jinja
     - template: jinja
     - defaults:
-        MODULES: {{ SO }}
-
-thirdparty_module_conf:
-  file.managed:
-    - name: /opt/so/conf/filebeat/modules/thirdparty.yml
-    - source: salt://filebeat/etc/module_config.yml.jinja
-    - template: jinja
-    - defaults:
-        MODULES: {{ THIRDPARTY }}
+        MODULES: {{ MODULESENABLED }}
     
 so-filebeat:
   docker_container.running:
@@ -127,14 +119,6 @@ so-filebeat:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
         - 0.0.0.0:5066:5066/tcp
-{% for module in THIRDPARTY.modules.keys() %}
-  {% for submodule in THIRDPARTY.modules[module] %}
-    {% if THIRDPARTY.modules[module][submodule].enabled and THIRDPARTY.modules[module][submodule]["var.syslog_port"] is defined %}
-        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/tcp
-        - {{ THIRDPARTY.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}:{{ THIRDPARTY.modules[module][submodule]["var.syslog_port"] }}/udp
-    {% endif %}
-  {% endfor %}
-{% endfor %}
     - watch:
       - file: filebeatconf
     - require:
