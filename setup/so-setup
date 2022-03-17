@@ -70,8 +70,15 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+detect_os
+
 if [[ "$setup_type" == 'iso' ]]; then
-  is_iso=true
+	if [[ "$OS" == 'centos' ]]; then
+		is_iso=true
+	else
+		echo "Only use 'so-setup iso' for an ISO install on CentOS. Please run 'so-setup network' instead."
+		exit 1
+	fi
 fi
 
 if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
@@ -116,8 +123,6 @@ progress() {
 		cat >> $setup_log 2>&1
 	fi		
 }
-
-detect_os 
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
