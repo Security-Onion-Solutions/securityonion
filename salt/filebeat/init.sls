@@ -95,6 +95,14 @@ merged_module_conf:
     - template: jinja
     - defaults:
         MODULES: {{ MODULESENABLED }}
+
+so_module_conf_remove:
+  file.absent:
+    - name: /opt/so/conf/filebeat/modules/securityonion.yml
+
+thirdyparty_module_conf_remove:
+  file.absent:
+    - name: /opt/so/conf/filebeat/modules/thirdparty.yml
     
 so-filebeat:
   docker_container.running:
