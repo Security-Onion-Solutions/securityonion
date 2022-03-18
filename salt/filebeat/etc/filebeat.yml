@@ -113,7 +113,7 @@ filebeat.inputs:
   fields_under_root: true
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager', 'so-managersearch', 'so-import'] %}
-- type: log
+- type: filestream
   paths:
     - /logs/logscan/alerts.log
   fields:
@@ -130,7 +130,7 @@ filebeat.inputs:
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
-- type: log
+- type: filestream
   paths:
     - /nsm/zeek/logs/current/{{ LOGNAME }}.log
   fields:
@@ -145,7 +145,7 @@ filebeat.inputs:
   clean_removed: true
   close_removed: false
 
-- type: log
+- type: filestream
   paths:
     - /nsm/import/*/zeek/logs/{{ LOGNAME }}.log
   fields:
@@ -169,7 +169,7 @@ filebeat.inputs:
     {%- endfor %}
   {%- endif %}
 
-- type: log
+- type: filestream
   paths:
     - /nsm/suricata/eve*.json
   fields:
@@ -185,7 +185,7 @@ filebeat.inputs:
   clean_removed: false
   close_removed: false
 
-- type: log
+- type: filestream
   paths:
     - /nsm/import/*/suricata/eve*.json
   fields:
@@ -207,7 +207,7 @@ filebeat.inputs:
   clean_removed: false
   close_removed: false
   {%- if STRELKAENABLED == 1 %}
-- type: log
+- type: filestream
   paths:
     - /nsm/strelka/log/strelka.log
   fields:
@@ -228,7 +228,7 @@ filebeat.inputs:
 
 {%- if WAZUHENABLED == 1 %}
 
-- type: log
+- type: filestream
   paths:
     - /wazuh/archives/archives.json
   fields:
@@ -246,7 +246,7 @@ filebeat.inputs:
 
 {%- if FLEETMANAGER or FLEETNODE %}
 
-- type: log
+- type: filestream
   paths:
     - /nsm/osquery/fleet/result.log
   fields:
@@ -265,7 +265,7 @@ filebeat.inputs:
 {%- endif %}
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager',  'so-managersearch', 'so-import'] %}
-- type: log
+- type: filestream
   paths:
     - /logs/kratos/kratos.log
   fields:
@@ -295,7 +295,7 @@ filebeat.inputs:
 {%- endif %}
 
 {%- if grains.role == 'so-idh' %}
-- type: log
+- type: filestream
   paths:
     - /nsm/idh/opencanary.log
   fields:
