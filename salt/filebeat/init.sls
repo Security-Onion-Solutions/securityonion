@@ -146,14 +146,14 @@ so-filebeat:
   {% endfor %}
 {% endfor %}
 {% if grains.role in ES_INCLUDED_NODES %}
-#run_module_setup:
-#  cmd.run:
-#    - name: /usr/sbin/so-filebeat-module-setup
-#    - require:
-#      - file: filebeatmoduleconf
-#      - docker_container: so-filebeat
-#    - onchanges:
-#      - docker_container: so-elasticsearch
+run_module_setup:
+  cmd.run:
+    - name: /usr/sbin/so-filebeat-module-setup
+    - require:
+      - file: filebeatmoduleconf
+      - docker_container: so-filebeat
+    - onchanges:
+      - docker_container: so-elasticsearch
 {% endif %}
 
 append_so-filebeat_so-status.conf:
