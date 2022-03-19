@@ -54,15 +54,13 @@ PIPELINES=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_
 if [[ "$PIPELINES" -lt 5 ]] || [ "$2" != "--force" ]; then
   echo "Setting up ingest pipeline(s)"
 {% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
-{% for module in MODULESMERGED.modules.keys() %}
-  {% for fileset in MODULESMERGED.modules[module] %}
-    {#% if MODULESMERGED.modules[module][fileset].get('enabled', False) %#}
+{%- for module in MODULESMERGED.modules.keys() %}
+  {%- for fileset in MODULESMERGED.modules[module] %}
       echo "{{ module }}.{{ fileset}}"
       docker exec -i so-filebeat filebeat setup --pipelines --modules {{ module }} -M "{{ module }}.{{ fileset }}.enabled=true" -c $FB_MODULE_YML
       sleep 0.5
-    {#% endif %#}
   {% endfor %}
-{% endfor %}
+{%- endfor %}
 else
   exit 0
 fi
