@@ -1,0 +1,39 @@
+{
+  "description": "RITA DNS",
+  "processors": [
+    {
+      "set": {
+        "field": "_index",
+        "value": "so-rita",
+        "override": true
+      }
+    },
+    {
+      "csv": {
+        "field": "message",
+        "target_fields": [
+          "dns.question.name",
+          "dns.question.subdomain_count",
+          "dns.question.count"
+        ]
+      }
+    },
+    {
+      "convert": {
+        "field": "dns.question.subdomain_count",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "dns.question.count",
+        "type": "integer"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "common"
+      }
+    }
+  ]
+}
