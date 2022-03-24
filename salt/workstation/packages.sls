@@ -7,7 +7,7 @@ graphical_extras:
     - pkgs:
       - gnome-classic-session
       - gnome-terminal
-      - nautilus-open-terminal
+      - gnome-terminal-nautilus
       - control-center
       - liberation-mono-fonts
       - file-roller
@@ -37,9 +37,9 @@ workstation_packages:
       - securityonion-foremost
       - chromium
       - securityonion-tcpstat
-      - securityion-tcptrace
+      - securityonion-tcptrace
       - libevent
-      - sslplit
+      - sslsplit
       - securityonion-bittwist
       - perl-IO-Compress 
       - perl-Net-DNS
