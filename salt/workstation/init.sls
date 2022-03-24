@@ -1,2 +1,2 @@
 include:
-  - xwindows
+  - workstation.xwindows
