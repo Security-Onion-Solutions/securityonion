@@ -18,12 +18,28 @@ sensoroniagentconf:
     - mode: 600
     - template: jinja
 
+analyzersdir:
+  file.directory:
+    - name: /opt/so/conf/soc/analyzers
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 sensoronilog:
   file.directory:
     - name: /opt/so/log/sensoroni
     - user: 939
     - group: 939
     - makedirs: True
+
+analyzerscripts:
+  file.recurse:
+    - name: /opt/so/conf/soc/analyzers
+    - user: 939
+    - group: 939
+    - file_mode: 755
+    - template: jinja
+    - source: salt://sensoroni/files/analyzers
 
 so-sensoroni:
   docker_container.running:
@@ -35,6 +51,7 @@ so-sensoroni:
       - /nsm/import:/nsm/import:rw
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/conf/sensoroni/analyzers:/opt/sensoroni/analyzers:ro
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
