@@ -135,7 +135,12 @@ fi
 # Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
 trap 'catch $LINENO' SIGUSR1
 setup_proc="$$"
-catch
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit 1
+}
 automated=no
 progress
 
