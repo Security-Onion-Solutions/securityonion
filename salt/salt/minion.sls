@@ -94,6 +94,7 @@ salt_minion_service:
       - file: set_log_levels
       - file: salt_minion_service_unit_file
 {% endif %}
+    - order: last
 
 
 patch_pkg:
