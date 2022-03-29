@@ -43,7 +43,7 @@ repair_yumdb:
 
 crsynckeys:
   file.recurse:
-    - name: /etc/pki/rpm_gpg
+    - name: /etc/pki/rpm-gpg
     - source: salt://repo/client/files/centos/keys/
 
 {% if not ISAIRGAP %}

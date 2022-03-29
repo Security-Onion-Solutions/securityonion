@@ -35,11 +35,14 @@ base:
   '* and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion
-    - common
     - patch.os.schedule
     - motd
     - salt.minion-check
     - salt.lasthighstate
+
+  'not *_workstation and G@saltversion:{{saltversion}}':
+    - match: compound
+    - common
   
   '*_helixsensor and G@saltversion:{{saltversion}}':
     - match: compound
@@ -507,3 +510,11 @@ base:
     - docker_clean
     - filebeat
     - idh
+
+  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+    - match: compound
+    - workstation
+
+  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+    - match: compound
+    - workstation.remove_gui
