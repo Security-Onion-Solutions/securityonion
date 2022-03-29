@@ -511,6 +511,10 @@ base:
     - filebeat
     - idh
 
-  '*_workstation and G@saltversion:{{saltversion}}':
+  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
     - match: compound
     - workstation
+
+  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+    - match: compound
+    - workstation.remove_gui
