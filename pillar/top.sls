@@ -131,3 +131,6 @@ base:
 {% endif %}
     - global
     - minions.{{ grains.id }}
+
+  '*_workstation':
+    - minions.{{ grains.id }}

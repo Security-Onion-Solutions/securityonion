@@ -66,7 +66,7 @@ set_log_levels:
 
 salt_minion_service_unit_file:
   file.managed:
-    - name: /etc/systemd/system/multi-user.target.wants/salt-minion.service
+    - name: /usr/lib/systemd/system/salt-minion.service
     - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
     - defaults:
