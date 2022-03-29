@@ -169,6 +169,13 @@ calculate_useable_cores() {
 	export lb_procs
 }
 
+catch() {
+	info "Fatal error occurred at $1 in so-setup, failing setup."
+	grep --color=never "ERROR" "$setup_log" > "$error_log"
+	whiptail_setup_failed
+	exit 1
+}
+
 check_admin_pass() {
 	check_pass_match "$ADMINPASS1" "$ADMINPASS2" "APMATCH"
 }
@@ -1780,13 +1787,14 @@ manager_global() {
 		"  rules: 1" >> "$global_pillar"
 		if [[ $is_airgap ]]; then
 		    printf '%s\n'\
-			    "  repos:"\'$PATCHSCHEDULENAME'
+			    "  repos: '$PATCHSCHEDULENAME'"\
 			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
 	    else 
 		    printf '%s\n'\
 		        "  repos:"\
 			    "    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
 	    fi
+
 	printf '%s\n'\
 		"curator:"\
 		"  hot_warm: False"\
@@ -1806,7 +1814,7 @@ manager_global() {
 
 	printf '%s\n'\
 		"  replicas: 0"\
-		"  discovery_nodes: 1"\'$PATCHSCHEDULENAME'
+		"  discovery_nodes: 1"\
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
 		"  cluster_routing_allocation_disk_watermark_low: '95%'"\
@@ -1826,7 +1834,8 @@ manager_global() {
                 "      index_template:"\
                 "        template:"\
                 "          settings:"\
-                "            index:"\'$PATCHSCHEDULENAME'
+                "            index:"\
+				"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
@@ -2056,6 +2065,16 @@ print_salt_state_apply() {
 	local state=$1
 
 	echo "Applying $state Salt state"
+}
+
+progress() {
+	local msg=${1:-'Please wait while installing...'}
+
+	if [ $automated == no ]; then
+		whiptail --title "$whiptail_title" --gauge "$msg" 6 70 0 # append to text
+	else
+		cat >> $setup_log 2>&1
+	fi		
 }
 
 proxy_validate() {

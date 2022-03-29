@@ -99,6 +99,9 @@ if [[ $is_analyst ]]; then
 
 	exit 0
 
+	# If you got this far then you want to join the grid
+	is_minion=true
+
 fi
     
 
@@ -128,23 +131,9 @@ fi
 # Set up handler for setup to exit early (use `kill -SIGUSR1 "$setup_proc"; exit 1` in child scripts)
 trap 'catch $LINENO' SIGUSR1
 setup_proc="$$"
-catch() {
-	info "Fatal error occurred at $1 in so-setup, failing setup."
-	grep --color=never "ERROR" "$setup_log" > "$error_log"
-	whiptail_setup_failed
-	exit 1
-}
-
+catch
 automated=no
-progress() {
-	local msg=${1:-'Please wait while installing...'}
-
-	if [ $automated == no ]; then
-		whiptail --title "$whiptail_title" --gauge "$msg" 6 70 0 # append to text
-	else
-		cat >> $setup_log 2>&1
-	fi		
-}
+progress
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
@@ -178,11 +167,11 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 fi
 
 case "$setup_type" in
-	iso | network) # Accepted values
+	iso | network | analyst) # Accepted values
 		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'" | tee -a $setup_log
+		echo "Invalid install type, must be 'iso', 'network' or 'analyst'." | tee -a $setup_log
 		exit 1
 		;;
 esac
@@ -291,7 +280,7 @@ elif [ "$install_type" = 'RECEIVER' ]; then
 	is_receiver=true
 elif [ "$install_type" = 'ANALYST' ]; then
 	cd .. || exit 255
-	exec bash so-analyst-install
+	exec bash so-setup analyst
 fi
 
 if [[ $is_manager || $is_import ]]; then
@@ -311,7 +300,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "dist" "idh"
 	elif [[ $is_sensor && ! $is_eval ]]; then
 		check_requirements "dist" "sensor"
-	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
+	elif [[ $is_distmanager || $is_minion ]] && [[ ! ( $is_import || $is_analyst ) ]]; then
 		check_requirements "dist"
 	elif [[ $is_import ]]; then
 		check_requirements "import"
@@ -342,9 +331,6 @@ if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_minion ]]; then
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
-	fi
-
-	if [[ $is_minion ]]; then
 		whiptail_ssh_key_copy_notice
 		copy_ssh_key >> $setup_log 2>&1
 	fi
@@ -355,7 +341,7 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
 			is_airgap=true
 		fi
-	elif [[ $is_minion && $is_iso ]]; then
+	elif [[ $is_minion && ( $is_iso || $is_analyst ) ]]; then
 		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
 		airgap_check=$?
 		[[ $airgap_check == 0 ]] && is_airgap=true >> $setup_log 2>&1
@@ -584,7 +570,7 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
-[[ $is_iso ]] && collect_ntp_servers
+[[ ( $is_iso || $is_analyst ) ]] && collect_ntp_servers
 
 if [[ ($is_node || $is_receiver) && ! $is_eval ]]; then
 	whiptail_node_advanced
