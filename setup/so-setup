@@ -72,14 +72,36 @@ done
 
 detect_os
 
+if [ "$setup_type" = 'analyst' ]; then
+    is_analyst=true
+fi
+
 if [[ "$setup_type" == 'iso' ]]; then
-	if [[ "$OS" == 'centos' ]]; then
-		is_iso=true
+	if [[ $is_centos ]]; then
+	    is_iso=true
 	else
 		echo "Only use 'so-setup iso' for an ISO install on CentOS. Please run 'so-setup network' instead."
 		exit 1
 	fi
 fi
+
+# Check to see if this is an analyst install. If it is let's run things differently
+
+if [[ $is_analyst ]]; then
+
+    # Make sure it's CentOS
+    if [[ ! $is_centos ]]; then
+	    echo "Analyst Workstation is only supported on CentOS 7"
+	    exit 1
+	fi
+
+    whiptail_analyst_install
+
+	exit 0
+
+fi
+    
+
 
 if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
 	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
@@ -674,7 +696,7 @@ echo "1" > /root/accept_changes
 	# Import the gpg keys
 	gpg_rpm_import >> $setup_log 2>&1
 	info "Disabling fastestmirror"
-	[[ $OS == 'centos' ]] && disable_fastestmirror
+	[[ $is_centos ]] && disable_fastestmirror
 	if [[ ! $is_airgap ]]; then
 	    securityonion_repo >> $setup_log 2>&1
 	    update_packages >> $setup_log 2>&1
@@ -817,7 +839,7 @@ echo "1" > /root/accept_changes
 	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
 	salt-call state.apply -l info firewall >> $setup_log 2>&1
 
-	if [ $OS = 'centos' ]; then
+	if [[ $is_centos ]]; then
 		set_progress_str 61 'Installing Yum utilities'
 		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
 	fi

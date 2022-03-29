@@ -138,6 +138,26 @@ analyze_system() {
 	logCmd "ip a"
 }
 
+analyst_workstation_pillar() {
+
+	local pillar_file=$temp_install_dir/pillar/minions/$MINION_ID.sls
+
+	# Create the analyst workstation pillar
+	printf '%s\n'\
+	    "host:"\
+        "  mainint: '$INTERFACE'"\
+        "patch:"\
+        "  os:"\
+		"    source: $source"\
+        "    enabled: true"\
+        "    schedule_name: '$PATCHSCHEDULENAME'"\
+		"    splay: 300"\
+        "workstation:"\
+		"  gui:"\
+        "    enabled: true" >> "$pillar_file"
+
+}
+
 calculate_useable_cores() {
 
 	# Calculate reasonable core usage
@@ -1108,6 +1128,7 @@ detect_os() {
 	echo "Detecting Base OS" >> "$log" 2>&1
 	if [ -f /etc/redhat-release ]; then
 		OS=centos
+		is_centos=true
 		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
 			OSVER=7
 		elif grep -q "CentOS Linux release 8" /etc/redhat-release; then
@@ -1207,7 +1228,7 @@ disable_ipv6() {
 
 docker_install() {
 
-	if [ $OS = 'centos' ]; then
+	if [[ $is_centos ]]; then
 		logCmd "yum clean expire-cache"
 		if [[ ! $is_iso ]]; then
 			logCmd "yum -y install docker-ce-20.10.5-3.el7 docker-ce-cli-20.10.5-3.el7 docker-ce-rootless-extras-20.10.5-3.el7 containerd.io-1.4.4-3.1.el7"
@@ -1759,7 +1780,7 @@ manager_global() {
 		"  rules: 1" >> "$global_pillar"
 		if [[ $is_airgap ]]; then
 		    printf '%s\n'\
-			    "  repos:"\
+			    "  repos:"\'$PATCHSCHEDULENAME'
 			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
 	    else 
 		    printf '%s\n'\
@@ -1785,7 +1806,7 @@ manager_global() {
 
 	printf '%s\n'\
 		"  replicas: 0"\
-		"  discovery_nodes: 1"\
+		"  discovery_nodes: 1"\'$PATCHSCHEDULENAME'
 		"  hot_warm_enabled: False"\
 		"  cluster_routing_allocation_disk.threshold_enabled: true"\
 		"  cluster_routing_allocation_disk_watermark_low: '95%'"\
@@ -1805,8 +1826,7 @@ manager_global() {
                 "      index_template:"\
                 "        template:"\
                 "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+                "            index:"\'$PATCHSCHEDULENAME'
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
@@ -2178,7 +2198,7 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $OS == 'centos' ]]; then
+	if [[ $is_centos ]]; then
 		sed -i "/proxy=/d" /etc/yum.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
@@ -2206,7 +2226,7 @@ backup_dir() {
 
 remove_package() {
 	local package_name=$1
-	if [ $OS = 'centos' ]; then
+	if [[ $is_centos ]]; then
 		if rpm -qa | grep -q "$package_name"; then
 			logCmd "yum remove -y $package_name"
 		fi
@@ -2371,7 +2391,7 @@ secrets_pillar(){
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ "$OS" == "centos" ]]; then
+	if [[ $is_centos ]]; then
 		if [[ "$INTERWEBS" == "AIRGAP" ]]; then
 			echo "This is airgap I don't need to add this repo"
 		else
@@ -2462,7 +2482,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [ "$OS" = 'centos' ]; then
+	if [[ $is_centos ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
@@ -2741,7 +2761,7 @@ set_redirect() {
 
 set_updates() {
 	if [ "$MANAGERUPDATES" = '1' ]; then
-		if [ "$OS" = 'centos' ]; then
+		if [[ $is_centos ]]; then
 			if [[ ! $is_airgap ]] && ! ( grep -q "$MSRV" /etc/yum.conf); then
 				if grep -q "proxy=" /etc/yum.conf; then
 					sed -i "s/proxy=.*/proxy=http:\/\/$MSRV:3142/" /etc/yum.conf
@@ -2808,7 +2828,7 @@ update_sudoers() {
 }
 
 update_packages() {
-	if [ "$OS" = 'centos' ]; then
+	if [[ $is_centos ]]; then
 	    logCmd "yum repolist"
         logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
