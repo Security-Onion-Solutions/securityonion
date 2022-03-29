@@ -142,7 +142,15 @@ catch() {
 	exit 1
 }
 automated=no
-progress
+progress() {
+	local msg=${1:-'Please wait while installing...'}
+
+	if [ $automated == no ]; then
+		whiptail --title "$whiptail_title" --gauge "$msg" 6 70 0 # append to text
+	else
+		cat >> $setup_log 2>&1
+	fi		
+}
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
