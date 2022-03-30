@@ -74,6 +74,10 @@ detect_os
 
 if [ "$setup_type" = 'analyst' ]; then
     is_analyst=true
+	# Check to see if this is an ISO
+	if [ -d /root/SecurityOnion ]; then
+	    is_analyst_iso=true
+	fi
 fi
 
 if [[ "$setup_type" == 'iso' ]]; then
@@ -230,6 +234,38 @@ if ! [[ -f $install_opt_file ]]; then
 		echo "User cancelled setup." | tee -a "$setup_log"
 		whiptail_cancel
 	fi
+	if [[ $is_analyst ]]; then
+	    collect_hostname
+	    if [[ $is_analyst_iso ]]; then
+		    # Prompt Network Setup
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+
+			if [ "$address_type" != 'DHCP' ]; then
+				collect_int_ip_mask
+				collect_gateway
+				collect_dns
+				collect_dns_domain
+			fi
+		
+		fi
+	    if [[ ! $is_analyst_iso ]]; then
+            # This should be a network install
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			whiptail_management_nic
+		fi
+		whiptail_network_init_notice
+		network_init
+		printf '%s\n' \
+				"MNIC=$MNIC" \
+				"HOSTNAME=$HOSTNAME" > "$net_init_file"
+		set_main_ip >> $setup_log 2>&1
+		compare_main_nic_ip
+		whiptail_net_setup_complete
+
+	fi
+	    
 	if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
