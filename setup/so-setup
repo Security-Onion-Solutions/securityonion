@@ -461,7 +461,12 @@ detect_cloud
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
-MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+if [[ $is_analyst ]]; then
+    MINION_ID=$(echo "${short_name}_workstation" | tr '[:upper:]' '[:lower:]')
+fi
+if [[ ! $is_analyst ]]; then
+    MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+fi
 export MINION_ID
 
 echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
