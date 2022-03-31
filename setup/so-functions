@@ -2722,6 +2722,13 @@ set_initial_firewall_policy() {
 			# TODO: implement
 			;;
 	esac
+
+	# Add some firewall rules for analyst workstations that get added to the grid
+	if [[ $ is_analyst ]]; then
+	    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+	    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost analyst "$MAINIP"
+    fi
+
 }
 
 # Set up the management interface on the ISO
