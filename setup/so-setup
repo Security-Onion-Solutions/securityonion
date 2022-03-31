@@ -765,17 +765,22 @@ echo "1" > /root/accept_changes
 
 	set_progress_str 5 'Installing Salt and dependencies'
 	saltify 2>> $setup_log
+    
+	if [[ ! $is_analyst ]]; then
+	    set_progress_str 6 'Installing Docker and dependencies'
+	    docker_install >> $setup_log 2>&1
+	fi
 
-	set_progress_str 6 'Installing Docker and dependencies'
-	docker_install >> $setup_log 2>&1
-	
 	set_progress_str 7 'Generating patch pillar'
 	patch_pillar >> $setup_log 2>&1
 
 	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
-	check_sos_appliance >> $setup_log 2>&1
 
+	if [[ ! $is_analyst ]]; then
+	    check_sos_appliance >> $setup_log 2>&1
+    fi
+	
 	update_sudoers_for_testing >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
@@ -853,8 +858,10 @@ echo "1" > /root/accept_changes
 		generate_ca >> $setup_log 2>&1
 	fi
 
-	set_progress_str 24 'Generating SSL'
-	generate_ssl >> $setup_log 2>&1
+	if [[ ! $is_analyst ]]; then
+    	set_progress_str 24 'Generating SSL'
+	    generate_ssl >> $setup_log 2>&1
+    fi
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
@@ -881,18 +888,22 @@ echo "1" > /root/accept_changes
 		echo "Finished so-elastic-auth..." >> $setup_log 2>&1
 	fi
 
-	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
-	salt-call state.apply -l info firewall >> $setup_log 2>&1
-
+	if [[ ! $is_analyst ]]; then
+	    set_progress_str 61 "$(print_salt_state_apply 'firewall')"
+	    salt-call state.apply -l info firewall >> $setup_log 2>&1
+    fi
+    
 	if [[ $is_centos ]]; then
 		set_progress_str 61 'Installing Yum utilities'
 		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
 	fi
 
-	set_progress_str 62 "$(print_salt_state_apply 'common')"
-	salt-call state.apply -l info common >> $setup_log 2>&1
+	if [[ ! $is_analyst ]]; then
+	    set_progress_str 62 "$(print_salt_state_apply 'common')"
+	    salt-call state.apply -l info common >> $setup_log 2>&1
+    fi
 
-	if [[ ! $is_helix && ! $is_receiver && ! $is_idh ]]; then
+	if [[ ! $is_helix && ! $is_receiver && ! $is_idh && ! $is_analyst ]]; then
 		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
 	fi
@@ -1035,11 +1046,13 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info filebeat >> $setup_log 2>&1
 	fi
 
-	set_progress_str 85 'Applying finishing touches'
-	filter_unused_nics >> $setup_log 2>&1
-	network_setup >> $setup_log 2>&1
-	so-ssh-harden >> $setup_log 2>&1
-
+   	if [[ ! $is_analyst ]]; then
+	    set_progress_str 85 'Applying finishing touches'
+	    filter_unused_nics >> $setup_log 2>&1
+	    network_setup >> $setup_log 2>&1
+	    so-ssh-harden >> $setup_log 2>&1
+    fi
+	
 	if [[ $is_manager || $is_import ]]; then
 		set_progress_str 87 'Adding user to SOC'
 		add_web_user >> $setup_log 2>&1
