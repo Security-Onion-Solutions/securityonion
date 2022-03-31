@@ -13,6 +13,12 @@
 {%-   set STENODEFAULT = False %}
 {%- endif %}
 {%- set STENOENABLED = salt['pillar.get']('steno:enabled', STENODEFAULT) %}
+{%- if ROLE in ['eval', 'standalone', 'import', 'manager', 'managersearch'] %}
+{%-   set ANALYZEDEFAULT = True %}
+{%- else %}
+{%-   set ANALYZEDEFAULT = False %}
+{%- endif %}
+{%- set ANALYZEENABLED = salt['pillar.get']('sensoroni:analyze_enabled', ANALYZEDEFAULT) %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
@@ -26,10 +32,12 @@
     "serverUrl": "https://{{ URLBASE }}/sensoroniagents",
     "verifyCert": false,
     "modules": {
+{%- if ANALYZEENABLED %} 
       "analyze": {
         "timeoutMs": {{ ANALYZE_TIMEOUT_MS }},
         "parallelLimit": {{ ANALYZE_PARALLEL_LIMIT }}
       },
+{%- endif %}
       "importer": {},
       "statickeyauth": {
         "apiKey": "{{ SENSORONIKEY }}"

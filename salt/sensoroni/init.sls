@@ -25,6 +25,13 @@ analyzersdir:
     - group: 939
     - makedirs: True
 
+sitepackagesdir:
+  file.directory:
+    - name: /opt/so/conf/sensoroni/site-packages
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 sensoronilog:
   file.directory:
     - name: /opt/so/log/sensoroni
@@ -41,6 +48,15 @@ analyzerscripts:
     - template: jinja
     - source: salt://sensoroni/files/analyzers
 
+sitepackages:
+  file.recurse:
+    - name: /opt/so/conf/sensoroni/site-packages
+    - user: 939
+    - group: 939
+    - file_mode: 755
+    - template: jinja
+    - source: salt://sensoroni/files/site-packages
+
 so-sensoroni:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
@@ -52,6 +68,7 @@ so-sensoroni:
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/sensoroni/analyzers:/opt/sensoroni/analyzers:ro
+      - /opt/so/conf/sensoroni/site-packages:/opt/sensoroni/site-packages:rw
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
