@@ -20,7 +20,7 @@ sensoroniagentconf:
 
 analyzersdir:
   file.directory:
-    - name: /opt/so/conf/soc/analyzers
+    - name: /opt/so/conf/sensoroni/analyzers
     - user: 939
     - group: 939
     - makedirs: True
@@ -34,7 +34,7 @@ sensoronilog:
 
 analyzerscripts:
   file.recurse:
-    - name: /opt/so/conf/soc/analyzers
+    - name: /opt/so/conf/sensoroni/analyzers
     - user: 939
     - group: 939
     - file_mode: 755
