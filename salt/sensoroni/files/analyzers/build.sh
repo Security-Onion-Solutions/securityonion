@@ -3,6 +3,8 @@
 HOME_DIR=$(dirname "$0")
 TARGET_DIR=${1:-.}
 
+PATH=$PATH:/usr/local/bin
+
 if ! which pytest &> /dev/null || ! which flake8 &> /dev/null ; then
 	echo "Missing dependencies. Consider running the following command:"
 	echo "  python -m pip install flake8 pytest pytest-cov"
