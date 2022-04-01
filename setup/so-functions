@@ -49,14 +49,14 @@ airgap_repo() {
 	rm -rf /etc/yum.repos.d/*
 	echo "[airgap_repo]" > /etc/yum.repos.d/airgap_repo.repo
 	if $is_manager; then
-	    echo "baseurl=https://$HOSTNAME/repo" >> /etc/yum.repos.d/airgap_repo.repo
+		echo "baseurl=https://$HOSTNAME/repo" >> /etc/yum.repos.d/airgap_repo.repo
 	else
-        echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/airgap_repo.repo
+		echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/airgap_repo.repo
 	fi
-    echo "gpgcheck=1" >> /etc/yum.repos.d/airgap_repo.repo
-    echo "sslverify=0" >> /etc/yum.repos.d/airgap_repo.repo
-    echo "name=Airgap Repo" >> /etc/yum.repos.d/airgap_repo.repo
-    echo "enabled=1" >> /etc/yum.repos.d/airgap_repo.repo
+	echo "gpgcheck=1" >> /etc/yum.repos.d/airgap_repo.repo
+	echo "sslverify=0" >> /etc/yum.repos.d/airgap_repo.repo
+	echo "name=Airgap Repo" >> /etc/yum.repos.d/airgap_repo.repo
+	echo "enabled=1" >> /etc/yum.repos.d/airgap_repo.repo
 }
 
 airgap_rules() {
@@ -144,11 +144,11 @@ analyst_workstation_pillar() {
 
 	# Create the analyst workstation pillar
 	printf '%s\n'\
-	    "host:"\
-        "  mainint: '$MNIC'"\
-        "workstation:"\
+		"host:"\
+		"  mainint: '$MNIC'"\
+		"workstation:"\
 		"  gui:"\
-        "    enabled: true" >> "$pillar_file"\
+		"    enabled: true" >> "$pillar_file"\
 		"sensoroni:"\
 		"  node_description: '${NODE_DESCRIPTION//\'/''}'" > $pillar_file
 }
@@ -782,7 +782,7 @@ collect_zeek() {
 configure_minion() {
 	local minion_type=$1
 	if [[ $is_analyst ]]; then 
-	    minion_type=workstation
+		minion_type=workstation
 	fi
 	echo "Configuring minion type as $minion_type" >> "$setup_log" 2>&1
 	echo "role: so-$minion_type" > /etc/salt/grains
@@ -792,9 +792,9 @@ configure_minion() {
 	echo "id: '$MINION_ID'" > "$minion_config"
 
 	case "$minion_type" in
-	    'workstation')
-   			echo "master: '$MSRV'" >> "$minion_config"
-            ;;
+		'workstation')
+			echo "master: '$MSRV'" >> "$minion_config"
+			;;
 		'helix')
 			cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
 			echo "master: '$HOSTNAME'" >> "$minion_config"
@@ -1251,15 +1251,15 @@ docker_install() {
 				;;
 		esac
 		if [ $OSVER == "bionic" ]; then
-		        service docker stop
+			service docker stop
 			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install --allow-downgrades docker-ce=5:20.10.5~3-0~ubuntu-bionic docker-ce-cli=5:20.10.5~3-0~ubuntu-bionic docker-ce-rootless-extras=5:20.10.5~3-0~ubuntu-bionic python3-docker" >> "$setup_log" 2>&1 || exit 1
-	        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras
+			apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras
 		elif [ $OSVER == "focal" ]; then
-		        service docker stop
+			service docker stop
 			apt -y purge docker-ce docker-ce-cli docker-ce-rootless-extras
 			retry 50 10 "apt-get -y install --allow-downgrades docker-ce=5:20.10.8~3-0~ubuntu-focal docker-ce-cli=5:20.10.8~3-0~ubuntu-focal docker-ce-rootless-extras=5:20.10.8~3-0~ubuntu-focal python3-docker" >> "$setup_log" 2>&1 || exit 1
-                        apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras		
+			apt-mark hold docker-ce docker-ce-cli docker-ce-rootless-extras		
 		fi
 	fi
 	docker_registry
@@ -1390,9 +1390,9 @@ es_heapsize() {
 		# Set heap size to 33% of available memory
 		ES_HEAP_SIZE=$(( total_mem / 3 ))
 		if [ "$ES_HEAP_SIZE" -ge 25001 ] ; then
-		    ES_HEAP_SIZE="25000m"
+			ES_HEAP_SIZE="25000m"
 		else
-		    ES_HEAP_SIZE=$ES_HEAP_SIZE"m"
+			ES_HEAP_SIZE=$ES_HEAP_SIZE"m"
 		fi
 	fi
 	export ES_HEAP_SIZE
@@ -1750,7 +1750,7 @@ manager_global() {
 		"  managerip: '$MAINIP'" > "$global_pillar"
 	
 	if [[ $HIGHLANDER == 'True' ]]; then
-	    printf '%s\n'\
+		printf '%s\n'\
 		"  highlander: True"\ >> "$global_pillar"
 	fi
 	if [[ $is_airgap ]]; then
@@ -1780,14 +1780,14 @@ manager_global() {
 		"  enabled: $STRELKA"\
 		"  rules: 1" >> "$global_pillar"
 		if [[ $is_airgap ]]; then
-		    printf '%s\n'\
-			    "  repos:"\
-			    "    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
-	    else 
-		    printf '%s\n'\
-		        "  repos:"\
-			    "    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
-	    fi
+			printf '%s\n'\
+				"  repos:"\
+				"    - 'https://$HOSTNAME/repo/rules/strelka'" >> "$global_pillar"
+		else 
+			printf '%s\n'\
+				"  repos:"\
+				"    - 'https://github.com/Neo23x0/signature-base'" >> "$global_pillar"
+		fi
 
 	printf '%s\n'\
 		"curator:"\
@@ -1816,101 +1816,101 @@ manager_global() {
 		"  cluster_routing_allocation_disk_watermark_flood_stage: '98%'"\
 		"  index_settings:"\
 		"    so-beats:"\
-                "      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"      index_template:"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-endgame:"\
-                "      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-				"              number_of_shards: 1"\
+		"      index_template:"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-firewall:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-flow:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-ids:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-import:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 73000"\
 		"      delete: 73001"\
 		"    so-osquery:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-ossec:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-strelka:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-syslog:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 30"\
 		"      delete: 365"\
 		"    so-zeek:"\
 		"      index_template:"\
-                "        template:"\
-                "          settings:"\
-                "            index:"\
-                "              number_of_shards: 1"\
+		"        template:"\
+		"          settings:"\
+		"            index:"\
+		"              number_of_shards: 1"\
 		"      warm: 7"\
 		"      close: 45"\
 		"      delete: 365"\
@@ -2257,28 +2257,28 @@ saltify() {
 		fi
 
 		if [[ ! $is_analyst ]]; then 
-		    case "$install_type" in
-		    	'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
-		    		reserve_group_ids
-		    		if [[ ! $is_iso ]]; then
-		    		  logCmd "yum -y install sqlite curl mariadb-devel"
-		    		fi 
-		    		# Download Ubuntu Keys in case manager updates = 1
-		    		logCmd "mkdir -vp /opt/so/gpg"
-		    		if [[ ! $is_airgap ]]; then
-		    		  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3004.1/SALTSTACK-GPG-KEY.pub"
-		    		  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
-		    		  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-		    		fi
-		    		set_progress_str 7 'Installing salt-master'
-		    		if [[ ! $is_iso ]]; then
-		    		  logCmd "yum -y install salt-master-3004.1"
-		    		fi
-		    		logCmd "systemctl enable salt-master"
-		    		;;
-		    	*)
-		    		;;
-		    esac
+			case "$install_type" in
+				'MANAGER' | 'EVAL' | 'MANAGERSEARCH' | 'FLEET' | 'HELIXSENSOR' | 'STANDALONE'| 'IMPORT')
+					reserve_group_ids
+					if [[ ! $is_iso ]]; then
+					  logCmd "yum -y install sqlite curl mariadb-devel"
+					fi 
+					# Download Ubuntu Keys in case manager updates = 1
+					logCmd "mkdir -vp /opt/so/gpg"
+					if [[ ! $is_airgap ]]; then
+					  logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.saltstack.com/py3/ubuntu/18.04/amd64/archive/3004.1/SALTSTACK-GPG-KEY.pub"
+					  logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
+					  logCmd "wget -q --inet4-only -O /opt/so/gpg/GPG-KEY-WAZUH https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+					fi
+					set_progress_str 7 'Installing salt-master'
+					if [[ ! $is_iso ]]; then
+					  logCmd "yum -y install salt-master-3004.1"
+					fi
+					logCmd "systemctl enable salt-master"
+					;;
+				*)
+					;;
+			esac
 		fi
 		if [[ ! $is_airgap ]]; then
 		  logCmd "yum clean expire-cache"
@@ -2659,8 +2659,8 @@ set_initial_firewall_policy() {
 		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
-            $default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-            $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
 			case "$install_type" in 
 				'EVAL')
 					$default_salt_dir/pillar/data/addtotab.sh evaltab "$MINION_ID" "$MAINIP" "$num_cpu_cores" "$random_uid" "$MNIC" "$filesystem_root" "$filesystem_nsm" "$INTERFACE" True
@@ -2676,7 +2676,7 @@ set_initial_firewall_policy() {
 		'HELIXSENSOR')
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
 			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
-            $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
+			$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost sensor "$MAINIP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'FLEET' | 'IDH' | 'RECEIVER')
 			$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
@@ -2719,9 +2719,9 @@ set_initial_firewall_policy() {
 
 	# Add some firewall rules for analyst workstations that get added to the grid
 	if [[ $is_analyst ]]; then
-	    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
-	    $sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost analyst "$MAINIP"
-    fi
+		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
+		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" sudo $default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost analyst "$MAINIP"
+	fi
 
 }
 
@@ -2842,8 +2842,8 @@ update_sudoers() {
 
 update_packages() {
 	if [[ $is_centos ]]; then
-	    logCmd "yum repolist"
-        logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
+		logCmd "yum repolist"
+		logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
@@ -2903,7 +2903,7 @@ write_out_idh_services() {
 	"  services:" >> "$pillar_file"
 	for service in ${idh_services[@]}; do
 	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$pillar_file"
-    done
+	done
 }
 
 # Enable Zeek Logs
