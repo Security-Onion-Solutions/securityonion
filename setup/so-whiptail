@@ -33,6 +33,23 @@ whiptail_airgap() {
 	INTERWEBS=$(echo "${INTERWEBS^^}" | tr -d ' ')
 }
 
+whiptail_analyst_install() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	
+	Welcome to the Security Onion Analyst Workstation install!
+
+	Would you like to join this workstation to an existing grid?
+
+	NOTE: Selecting "no" will enable X Windows and set it to load at boot.
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 --defaultno
+
+}
+
 whiptail_avoid_default_hostname() {
 	[ -n "$TESTING" ] && return
 
@@ -434,9 +451,9 @@ whiptail_end_settings() {
 
 	if [[ $is_idh ]]; then
 		__append_end_msg "IDH Services Enabled:"
-	   for service in ${idh_services[@]}; do
+		for service in ${idh_services[@]}; do
 		__append_end_msg "- $service"
-      done
+		done
 
 	fi
 
@@ -1545,40 +1562,37 @@ whiptail_patch_schedule_select_hours() {
 
 	[ -n "$TESTING" ] && return
 
-    # Select the hours to patch
-    PATCHSCHEDULEHOURS=$(whiptail --title "$whiptail_title" --checklist \
-    "At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
-    00:00 "" OFF \
-    01:00 "" OFF \
-    02:00 "" ON \
-    03:00 "" OFF \
-    04:00 "" OFF \
-    05:00 "" OFF \
-    06:00 "" OFF \
-    07:00 "" OFF \
-    08:00 "" OFF \
-    09:00 "" OFF \
-    10:00 "" OFF \
-    11:00 "" OFF \
-    12:00 "" OFF \
-    13:00 "" OFF \
-    14:00 "" OFF \
-    15:00 "" OFF \
-    16:00 "" OFF \
-    17:00 "" OFF \
-    18:00 "" OFF \
-    19:00 "" OFF \
-    20:00 "" OFF \
-    21:00 "" OFF \
-    22:00 "" OFF \
-    23:00 "" OFF 3>&1 1>&2 2>&3)
-
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-
-    PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
-
-    IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
+	# Select the hours to patch
+	PATCHSCHEDULEHOURS=$(whiptail --title "$whiptail_title" --checklist \
+	"At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
+	00:00 "" OFF \
+	01:00 "" OFF \
+	02:00 "" ON \
+	03:00 "" OFF \
+	04:00 "" OFF \
+	05:00 "" OFF \
+	06:00 "" OFF \
+	07:00 "" OFF \
+	08:00 "" OFF \
+	09:00 "" OFF \
+	10:00 "" OFF \
+	11:00 "" OFF \
+	12:00 "" OFF \
+	13:00 "" OFF \
+	14:00 "" OFF \
+	15:00 "" OFF \
+	16:00 "" OFF \
+	17:00 "" OFF \
+	18:00 "" OFF \
+	19:00 "" OFF \
+	20:00 "" OFF \
+	21:00 "" OFF \
+	22:00 "" OFF \
+	23:00 "" OFF 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
+	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
 }
 
@@ -1923,10 +1937,10 @@ whiptail_suricata_pins() {
 	done
 
 	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
-	  local PROCS=$(expr $lb_procs / 2)
-      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		local PROCS=$(expr $lb_procs / 2)
+		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
-	  local PROCS=$lb_procs
+		local PROCS=$lb_procs
 	fi
 
 	SURIPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
@@ -2006,10 +2020,10 @@ whiptail_zeek_pins() {
 	done
 
 	if [[ $is_smooshed ]]; then
-	  local PROCS=$(expr $lb_procs / 2)
-      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		local PROCS=$(expr $lb_procs / 2)
+		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
-	  local PROCS=$lb_procs
+		local PROCS=$lb_procs
 	fi
 
 	ZEEKPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
