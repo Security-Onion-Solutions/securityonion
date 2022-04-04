@@ -19,11 +19,36 @@
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
+{% set MAININT = salt['pillar.get']('host:mainint') %}
+{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
+{% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', False) %}
 
 include:
   - idh.openssh.config
 
-# IDH State
+
+# If True, block IDH Services from accepting connections on Managment IP
+{% if RESTRICTIDHSERVICES %}
+  {% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
+  {% set idh_services = salt['pillar.get']('idh:services', []) %}
+
+  {% for service in idh_services %}
+  {% if service in ["smnp","ntp", "tftp"] %}
+    {% set proto = 'udp' %}
+  {% else %}
+    {% set proto = 'tcp' %}
+  {% endif %}
+block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'.port'] }} :
+  iptables.insert:
+    - table: filter
+    - chain: INPUT
+    - jump: DROP
+    - position: 1
+    - proto:  {{ proto }}
+    - dport: {{ OPENCANARYCONFIG[service~'.port'] }}
+    - destination: {{ MAINIP }}
+  {% endfor %}
+{% endif %}
 
 # Create a config directory
 temp:
