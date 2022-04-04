@@ -5,39 +5,42 @@ import sys
 import helpers
 
 
-def buildReq(meta, artifact_value):
-    base_url = meta['baseUrl']
-    url = base_url
-    payload = {"url": artifact_value}
-    return payload, url
+def buildReq(artifact_value):
+    return {"url": artifact_value}
 
 
-def sendReq(meta, payload, url):
+def sendReq(meta, payload):
+    url = meta['baseUrl']
     response = requests.request('POST', url, data=payload)
-    raw = response.json()
-    if raw['query_status'] == "no_results":
-        summaryinfo = "No results available."
-    elif raw['query_status'] == "invalid_url":
-        summaryinfo = "Invalid URL."
+    return response.json()
+
+
+def prepareResults(raw):
     if 'threat' in raw:
-        threat = raw['threat']
-        if threat == 'malware_download':
-            summaryinfo = "Threat: Malware"
+        summary = raw['threat']
+        status = "danger"
+    elif 'query_status' in raw:
+        summary = raw['query_status']
+        if summary == 'no_results':
+            status = "ok"
         else:
-            summaryinfo = threat
-    summary = summaryinfo
-    results = {'response': raw, 'summary': summary}
-    print(json.dumps(results))
+            status = "error"
+    results = {'response': raw, 'summary': summary, 'status': status}
+    return results
+
+
+def analyze(input):
+    meta = helpers.loadMetadata(__file__)
+    data = helpers.parseArtifact(input)
+    helpers.checkSupportedType(meta, data["artifactType"])
+    payload = buildReq(data["value"])
+    response = sendReq(meta, payload)
+    return prepareResults(response)
 
 
 def main():
-    meta = helpers.loadMeta(__file__)
-    data = helpers.loadData(sys.argv[1])
-    helpers.checkSupportedType(meta, data[0])
-    request = buildReq(meta, data[1])
-    payload = request[0]
-    url = request[1]
-    sendReq(meta, payload, url)
+    results = analyze(sys.argv[1])
+    print(json.dumps(results))
 
 
 if __name__ == "__main__":
