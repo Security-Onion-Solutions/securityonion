@@ -889,11 +889,27 @@ upgrade_salt() {
     apt-mark hold "salt-master"
     apt-mark hold "salt-minion"
   fi
+
+  echo "Checking if Salt was upgraded."
+  echo ""
+  # Check that Salt was upgraded
+  SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
+  if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
+    echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+    echo "Once the issue is resolved, run soup again."
+    echo "Exiting."
+    echo ""
+    exit 0
+  else
+    echo "Salt upgrade success."
+    echo ""
+  fi
+
 }
 
 update_repo() {
-  echo "Performing repo changes."
   if [[ "$OS" == "centos" ]]; then
+    echo "Performing repo changes."
     # Import GPG Keys
     gpg_rpm_import
     echo "Disabling fastestmirror."
@@ -945,6 +961,8 @@ verify_latest_update_script() {
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
     fix_wazuh
+  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
+    2_3_10_hotfix_1
   else
     echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
@@ -964,6 +982,26 @@ fix_wazuh() {
   else
     echo "$FILE does not exist, so no changes are necessary."
   fi
+}
+
+#upgrade salt to 3004.1
+2_3_10_hotfix_1() {
+    systemctl_func "stop" "$cron_service_name"
+    # update mine items prior to stopping salt-minion and salt-master
+    update_salt_mine
+    stop_salt_minion
+    stop_salt_master
+    update_repo
+    # Does salt need upgraded. If so update it.
+    if [[ $UPGRADESALT -eq 1 ]]; then
+      echo "Upgrading Salt"
+      # Update the repo files so it can actually upgrade
+      upgrade_salt
+    fi
+    systemctl_func "start" "salt-master"
+    systemctl_func "start" "salt-minion"
+    systemctl_func "start" "$cron_service_name"
+
 }
 
 main() {
@@ -1080,21 +1118,6 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
-    
-      echo "Checking if Salt was upgraded."
-      echo ""
-      # Check that Salt was upgraded
-      SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
-      if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
-        echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
-        echo "Once the issue is resolved, run soup again."
-        echo "Exiting."
-        echo ""
-        exit 0
-      else
-        echo "Salt upgrade success."
-        echo ""
-      fi
     fi
 
     preupgrade_changes
