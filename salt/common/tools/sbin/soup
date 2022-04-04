@@ -497,10 +497,10 @@ stop_salt_master() {
     set +e
     echo ""
     echo "Killing all Salt jobs across the grid."
-    salt \* saltutil.kill_all_jobs
+    salt \* saltutil.kill_all_jobs >> $SOUP_LOG 2>&1
     echo ""
     echo "Killing any queued Salt jobs on the manager."
-    pkill -9 -ef "/usr/bin/python3 /bin/salt"
+    pkill -9 -ef "/usr/bin/python3 /bin/salt" >> $SOUP_LOG 2>&1
     set -e
 
     echo ""
@@ -1003,6 +1003,7 @@ fix_wazuh() {
       # Update the repo files so it can actually upgrade
       upgrade_salt
     fi
+    rm -f /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdbmod.py.patched /opt/so/state/influxdb_retention_policy.py.patched
     systemctl_func "start" "salt-master"
     systemctl_func "start" "salt-minion"
     systemctl_func "start" "$cron_service_name"
