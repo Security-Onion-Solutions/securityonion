@@ -93,8 +93,7 @@ check_err() {
     fi
     set +e
     systemctl_func "start" "$cron_service_name"
-    echo "Ensuring highstate is enabled."
-    salt-call state.enable highstate --local
+    enable_highstate
     exit $exit_code
   fi
 
@@ -364,6 +363,12 @@ clone_to_tmp() {
     echo "Update was unable to pull from github. Please check your internet."
     exit 0
   fi
+}
+
+enable_highstate() {
+    echo "Enabling highstate."
+    salt-call state.enable highstate -l info --local
+    echo ""
 }
 
 generate_and_clean_tarballs() {
@@ -1079,6 +1084,7 @@ main() {
     apply_hotfix
     echo "Hotfix applied"
     update_version
+    enable_highstate
     salt-call state.highstate -l info queue=True
   else
     echo ""
@@ -1173,9 +1179,7 @@ main() {
       echo ""
     fi
 
-    echo "Enabling highstate."
-    salt-call state.enable highstate -l info --local
-    echo ""
+    enable_highstate
 
     echo ""
     echo "Running a highstate. This could take several minutes."
