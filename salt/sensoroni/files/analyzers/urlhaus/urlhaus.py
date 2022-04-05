@@ -18,13 +18,13 @@ def sendReq(meta, payload):
 def prepareResults(raw):
     if 'threat' in raw:
         summary = raw['threat']
-        status = "danger"
+        status = "threat"
     elif 'query_status' in raw:
         summary = raw['query_status']
         if summary == 'no_results':
             status = "ok"
         else:
-            status = "error"
+            status = "caution"
     results = {'response': raw, 'summary': summary, 'status': status}
     return results
 
