@@ -13,7 +13,7 @@ class TestUrlhausMethods(unittest.TestCase):
                 urlhaus.main()
                 expected = '{"foo": "bar"}\n'
                 self.assertEqual(mock_stdout.getvalue(), expected)
-                mock.assert_called_once_with('.')
+                mock.assert_called_once()
 
     def test_buildReq(self):
         result = urlhaus.buildReq("test")
@@ -31,14 +31,14 @@ class TestUrlhausMethods(unittest.TestCase):
         results = urlhaus.prepareResults(raw)
         self.assertEqual(results["response"], raw)
         self.assertEqual(results["summary"], "no_results")
-        self.assertEqual(results["status"], "info")
+        self.assertEqual(results["status"], "ok")
 
     def test_prepareResults_invalidUrl(self):
         raw = {"query_status": "invalid_url"}
         results = urlhaus.prepareResults(raw)
         self.assertEqual(results["response"], raw)
         self.assertEqual(results["summary"], "invalid_url")
-        self.assertEqual(results["status"], "error")
+        self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_threat(self):
         raw = {"query_status": "invalid_url"}  # This is overrided in this scenario
@@ -46,7 +46,7 @@ class TestUrlhausMethods(unittest.TestCase):
         results = urlhaus.prepareResults(raw)
         self.assertEqual(results["response"], raw)
         self.assertEqual(results["summary"], "bad_actor")
-        self.assertEqual(results["status"], "danger")
+        self.assertEqual(results["status"], "threat")
 
     def test_analyze(self):
         output = {"threat": "malware_download"}

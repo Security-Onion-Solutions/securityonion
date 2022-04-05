@@ -1,5 +1,6 @@
 from unittest.mock import patch, MagicMock
 import helpers
+import os
 import unittest
 
 
@@ -14,10 +15,11 @@ class TestHelpersMethods(unittest.TestCase):
 
             result = helpers.checkSupportedType(meta, "bar")
             self.assertFalse(result)
-            mock.assert_called_once_with("No supported type detected!")
+            mock.assert_called_once_with(126)
 
     def test_loadMetadata(self):
-        input = 'urlhaus/urlhaus.py'
+        dir = os.path.dirname(os.path.realpath(__file__))
+        input = dir + '/urlhaus/urlhaus.py'
         data = helpers.loadMetadata(input)
         self.assertEqual(data["name"], "Urlhaus")
 
