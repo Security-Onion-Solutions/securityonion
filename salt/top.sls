@@ -21,16 +21,15 @@ base:
 
   '*':
     - cron.running
+    - repo.client
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test
-    - repo.client
     - salt.minion
 
   'G@os:CentOS and G@saltversion:{{saltversion}}':
     - match: compound
-    - repo.client
     - yum.packages
 
   '* and G@saltversion:{{saltversion}}':
