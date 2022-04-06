@@ -1094,6 +1094,12 @@ main() {
   upgrade_check_salt
   set -e
 
+  if [[ $is_airgap -eq 0 ]]; then
+    update_centos_repo
+    yum clean all
+    check_os_updates
+  fi
+
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
     copy_new_files
@@ -1115,9 +1121,6 @@ main() {
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
-      update_centos_repo
-      yum clean all
-      check_os_updates
     # if not airgap but -f was used
     elif [[ ! -z "$ISOLOC" ]]; then
       airgap_update_dockers
