@@ -435,6 +435,13 @@ collect_hostname_validate() {
 	done
 }
 
+collect_idh_preferences() {
+	IDHMGTRESTRICT='False'
+	whiptail_idh_preferences
+
+	if [[ "$idh_preferences" != "" ]]; then IDHMGTRESTRICT='True'; fi
+}
+
 collect_idh_services() {
 	whiptail_idh_services
 
@@ -2867,6 +2874,7 @@ write_out_idh_services() {
 
 	printf '%s\n'\
 	"idh:"\
+	"  restrict_management_ip: $IDHMGTRESTRICT"\
 	"  services:" >> "$pillar_file"
 	for service in ${idh_services[@]}; do
 	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$pillar_file"

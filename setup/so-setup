@@ -276,10 +276,6 @@ if [[ $is_manager || $is_import ]]; then
 	check_elastic_license
 fi
 
-if [[ $is_idh ]]; then
-	collect_idh_services
-fi
-
 if ! [[ -f $install_opt_file ]]; then
 	if [[ $is_manager && $is_sensor ]]; then
 		check_requirements "standalone"
@@ -326,6 +322,11 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_ssh_key_copy_notice
 		copy_ssh_key >> $setup_log 2>&1
 	fi
+
+	if [[ $is_idh ]]; then
+	  collect_idh_services
+	  collect_idh_preferences
+    fi
 
 	# Check if this is an airgap install
 	if [[ ( $is_manager || $is_import) && $is_iso ]]; then
