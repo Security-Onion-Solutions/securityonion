@@ -885,7 +885,7 @@ upgrade_salt() {
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying apt hold for Salt."
@@ -934,6 +934,20 @@ update_repo() {
       yum clean all
       yum repolist
     fi
+  elif [[ "$OS" == "ubuntu" ]]; then
+    ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
+
+    if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+      OSVER=bionic
+    elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+      OSVER=focal
+    else
+      echo "We do not support your current version of Ubuntu."
+      exit 1
+    fi
+
+    echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+    apt-get update
   fi
 }
 
