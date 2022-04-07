@@ -9,3 +9,7 @@ apt_update:
     - name: apt-get update
     - onchanges:
       - file: saltstack.list
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
