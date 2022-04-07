@@ -7,4 +7,5 @@ saltstack.list:
 apt_update:
   cmd.run:
     - name: apt-get update
-    - onchanges: saltstack.list
+    - onchanges:
+      - file: saltstack.list
