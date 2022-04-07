@@ -1,3 +1,8 @@
+# this removes the repo file left by bootstrap-salt.sh without -r
+remove_salt.list:
+  file.absent:
+    - name: /etc/apt/sources.list.d/salt.list
+
 saltstack.list:
   file.managed:
     - name: /etc/apt/sources.list.d/saltstack.list
