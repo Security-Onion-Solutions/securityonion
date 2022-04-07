@@ -499,7 +499,7 @@ base:
     - ssl
     - sensoroni
     - telegraf
-    - firewall # It's important that this state runs before the IDH state, since the IDH state (optionally) inserts BLOCK rules at position 1
+    - firewall
     {%- if WAZUH != 0 %}
     - wazuh
     {%- endif %}
