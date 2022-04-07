@@ -25,6 +25,7 @@
 
 include:
   - idh.openssh.config
+  - firewall
 
 
 # If True, block IDH Services from accepting connections on Managment IP
