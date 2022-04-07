@@ -39,8 +39,11 @@ def analyze(input):
 
 
 def main():
-    results = analyze(sys.argv[1])
-    print(json.dumps(results))
+    if len(sys.argv) == 2:
+        results = analyze(sys.argv[1])
+        print(json.dumps(results))
+    else:
+        print("ERROR: Missing input JSON")
 
 
 if __name__ == "__main__":

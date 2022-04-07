@@ -1,4 +1,5 @@
 from io import StringIO
+import sys
 from unittest.mock import patch, MagicMock
 from urlhaus import urlhaus
 import unittest
@@ -6,10 +7,16 @@ import unittest
 
 class TestUrlhausMethods(unittest.TestCase):
 
-    def test_main(self):
+    def test_main_missing_input(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            urlhaus.main()
+            self.assertEqual(mock_stdout.getvalue(), "ERROR: Missing input JSON\n")
+
+    def test_main_success(self):
         output = {"foo": "bar"}
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             with patch('urlhaus.urlhaus.analyze', new=MagicMock(return_value=output)) as mock:
+                sys.argv = ["cmd", "input"]
                 urlhaus.main()
                 expected = '{"foo": "bar"}\n'
                 self.assertEqual(mock_stdout.getvalue(), expected)
