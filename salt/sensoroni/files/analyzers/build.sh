@@ -11,5 +11,5 @@ if ! which pytest &> /dev/null || ! which flake8 &> /dev/null ; then
 	exit 1
 fi
 
-flake8 "$TARGET_DIR" --show-source --max-complexity=10 --max-line-length=200 --statistics --doctests --exclude .venv
-pytest "$TARGET_DIR" "--cov=$TARGET_DIR" --doctest-modules --cov-report=term --cov-fail-under=90 --cov-config=${HOME_DIR}/pytest.ini
+flake8 "$TARGET_DIR" "--config=${HOME_DIR}/pytest.ini"
+pytest "$TARGET_DIR" "--cov-config=${HOME_DIR}/pytest.ini" "--cov=$TARGET_DIR" --doctest-modules --cov-report=term --cov-fail-under=100

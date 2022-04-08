@@ -55,6 +55,13 @@ class TestUrlhausMethods(unittest.TestCase):
         self.assertEqual(results["summary"], "bad_actor")
         self.assertEqual(results["status"], "threat")
 
+    def test_prepareResults_error(self):
+        raw = {}
+        results = urlhaus.prepareResults(raw)
+        self.assertEqual(results["response"], raw)
+        self.assertEqual(results["summary"], "internal_failure")
+        self.assertEqual(results["status"], "caution")
+
     def test_analyze(self):
         output = {"threat": "malware_download"}
         artifactInput = '{"value":"foo","artifactType":"url"}'

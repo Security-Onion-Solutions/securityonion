@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import json
 import requests
 import sys
@@ -25,6 +24,9 @@ def prepareResults(raw):
             status = "ok"
         else:
             status = "caution"
+    else:
+        summary = "internal_failure"
+        status = "caution"
     results = {'response': raw, 'summary': summary, 'status': status}
     return results
 

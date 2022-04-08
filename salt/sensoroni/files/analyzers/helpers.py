@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import yaml
 
 
 def checkSupportedType(meta, artifact_type):
@@ -20,3 +21,8 @@ def loadMetadata(file):
     filename = os.path.realpath(file).rsplit('/', 1)[1].split('.')[0]
     with open(str(dir + "/" + filename + ".json"), "r") as metafile:
         return json.load(metafile)
+
+
+def loadConfig(path):
+    with open(str(path), "r") as conffile:
+        return yaml.safe_load(conffile)

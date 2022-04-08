@@ -23,6 +23,11 @@ class TestHelpersMethods(unittest.TestCase):
         data = helpers.loadMetadata(input)
         self.assertEqual(data["name"], "Urlhaus")
 
+    def test_loadConfig(self):
+        dir = os.path.dirname(os.path.realpath(__file__))
+        data = helpers.loadConfig(dir + "/virustotal/virustotal.yaml")
+        self.assertEqual(data["base_url"], "https://www.virustotal.com/api/v3/search?query=")
+
     def test_parseArtifact(self):
         input = '{"value":"foo","artifactType":"bar"}'
         data = helpers.parseArtifact(input)
