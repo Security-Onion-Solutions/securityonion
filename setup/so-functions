@@ -2438,8 +2438,28 @@ set_network_dev_status_list() {
 }
 
 set_main_ip() {
-	MAINIP=$(ip route get 1 | awk '{print $7;exit}')
-	MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+	local count=0
+	local progress='.'
+	local c=0
+	local m=3.3
+	local max_attempts=30
+	echo "Gathering the management IP. "
+	while ! valid_ip4 "$MAINIP" || ! valid_ip4 "$MNIC_IP"; do
+		MAINIP=$(ip route get 1 | awk '{print $7;exit}')
+		MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+		((count=count+1))
+		p=$(awk -vp=$m -vq=$count 'BEGIN{printf "%.0f" ,p * q}')
+		printf "%-*s" $((count+1)) '[' | tr ' ' '#'
+		printf "%*s%3d%%\r"  $((max_attempts-count))  "]" "$p"
+		if [ $count = $max_attempts ]; then
+			echo "ERROR: Could not determine MAINIP or MNIC_IP." >> "$setup_log" 2>&1
+			echo "MAINIP=$MAINIP" >> "$setup_log" 2>&1
+			echo "MNIC_IP=$MNIC_IP" >> "$setup_log" 2>&1
+			whiptail_error_message "The management IP could not be determined. Please check the log at /root/sosetup.log and verify the network configuration. Press OK to exit."
+			exit 1
+		fi
+		sleep 1
+	done
 }
 
 # Add /usr/sbin to everyone's path
