@@ -194,13 +194,13 @@ Users in SOC will be able to view the entire JSON output, therefore it is import
 
 Some of the built-in analyzers use snake_case summary values, instead of human friendly words or phrases. These are identifiers that the SOC UI will use to lookup a localized translation for the user. The use of these identifiers is not required for custom analyzers. In fact, in order for an identifier to be properly localized the translations must exist in the SOC product, which is out of scope of this development guide. That said, the following generic translations might be useful for custom analyzers:
 
-| Identifier         | Language | Translation                |
-| ------------------ | -------- | -------------------------- |
-| `malicious`        | English  | Malicious                  |
-| `suspicious`       | English  | Suspicious                 |
-| `harmless`         | English  | Harmless                   |
-| `internal_failure` | English  | Analyzer Internal Failure  |
-| `timeout`          | English  | Remote Host Timed Out      |
+| Identifier         | English                    |
+| ------------------ | -------------------------- |
+| `malicious`        | Malicious                  |
+| `suspicious`       | Suspicious                 |
+| `harmless`         | Harmless                   |
+| `internal_failure` | Analyzer Internal Failure  |
+| `timeout`          | Remote Host Timed Out      |
 
 #### Timeout
 
