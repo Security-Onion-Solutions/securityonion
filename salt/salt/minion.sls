@@ -32,6 +32,22 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
+
+  {# if we are the salt master #}
+  {% if grains.id.split('_')|first == grains.master %}
+remove_influxdb_continuous_query_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdb_continuous_query.py.patched
+
+remove_influxdbmod_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdbmod.py.patched
+
+remove_influxdb_retention_policy_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdb_retention_policy.py.patched
+  {% endif %}
+
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
