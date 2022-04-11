@@ -101,13 +101,22 @@ if [[ $is_analyst ]]; then
 
 	if ! whiptail_analyst_install; then
 		if [[ $is_analyst_iso ]]; then
-			# Lets make this a standalone
-			echo "Enabling graphical interface and setting it to load at boot"
-			systemctl set-default graphical.target
-			startx
-			exit 0
+			if whiptail_analyst_nongrid_iso; then
+				echo "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				startx
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
 		else
-			analyst_salt_local
+			if whiptail_analyst_nongrid_network; then
+				analyst_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
 		fi
 	fi
 
