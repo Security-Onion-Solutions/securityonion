@@ -120,6 +120,30 @@ check_elastic_license() {
 	fi  
 }
 
+check_salt_master_status() {
+	local timeout=$1
+	echo "Checking if we can talk to the salt master"
+	salt-call state.show_top -t $timeout concurrent=true
+
+	return
+}
+
+check_salt_minion_status() {
+	local timeout=$1
+	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
+	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
+	local status=$?
+	if [ $status -gt 0 ]; then
+		echo "  Minion did not respond" >> "$setup_log" 2>&1
+	else
+		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+	fi
+
+	retrun $status
+}
+
+
+
 copy_new_files() {
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
