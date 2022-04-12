@@ -422,6 +422,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
+    [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
     true
 }
 
@@ -435,6 +436,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
+    [[ "$POSTVERSION" == 2.3.110 ]] && post_to_2.3.120
+
     true
 }
 
@@ -497,6 +500,13 @@ post_to_2.3.110() {
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
   POSTVERSION=2.3.110
 }
+
+post_to_2.3.120() {
+  echo "Post Processing for 2.3.120"
+  POSTVERSION=2.3.120
+}
+
+
 
 stop_salt_master() {
     # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
@@ -749,10 +759,15 @@ up_to_2.3.100() {
 }
 
 up_to_2.3.110() {
-  echo "Updating to Security Onion 2.3.110"
-  echo "Updating shard settings for Elasticsearch index templates"
   sed -i 's|shards|index_template:\n        template:\n          settings:\n            index:\n              number_of_shards|g' /opt/so/saltstack/local/pillar/global.sls
 }
+
+up_to_2.3.120() {
+  # Stop thehive services since these will be broken in .120
+  so-thehive-stop
+  so-thehive-es-stop
+  so-cortex-stop
+  }
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')

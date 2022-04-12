@@ -149,7 +149,14 @@ analyst_salt_local() {
 	logCmd "yum -y update --exclude=salt*"
 
 	salt-call state.apply workstation --local --file-root=../salt/ -l info 2>&1 | tee -a outfile
-	echo "Whiptail to reboot here"
+	read -r -d '' message <<- EOM
+		Finished Analyst workstation installation.
+
+		Press ENTER to reboot.
+	EOM
+
+	whiptail --title "$whiptail_title" --msgbox "$message" 12 75
+	reboot
 	exit 0 
 
 }
@@ -897,6 +904,8 @@ check_requirements() {
 		if [[ -n $nsm_mount ]]; then
 			if [[ "$standalone_or_dist" == 'import' ]]; then
 				req_storage=50
+			elif [[ "$node_type" == 'idh' ]]; then
+			    req_storage=12
 			else
 				req_storage=100
 			fi
@@ -909,6 +918,8 @@ check_requirements() {
 		else
 			if [[ "$standalone_or_dist" == 'import' ]]; then
 				req_storage=50
+			elif [[ "$node_type" == 'idh' ]]; then
+			        req_storage=12
 			else
 				req_storage=200
 			fi
@@ -1508,7 +1519,7 @@ generate_passwords(){
 }
 
 generate_repo_tarball() {
-	mkdir /opt/so/repo
+	mkdir -p /opt/so/repo
 	tar -czf /opt/so/repo/"$SOVERSION".tar.gz -C "$(pwd)/.." .
 }
 
