@@ -31,12 +31,18 @@ copy_new_files() {
 
   # Copy new files over to the salt dir
   cd /tmp/sogh/securityonion
+  VERSION=$(cat VERSION)
   git checkout $BRANCH
+  # We need to overwrite if there is a repo file
+    if [ -d /opt/so/repo ]; then
+      tar -czf /opt/so/repo/"$VERSION".tar.gz -C "$(pwd)/.." .
+    fi
   rsync -a salt $default_salt_dir/
   rsync -a pillar $default_salt_dir/
   chown -R socore:socore $default_salt_dir/salt
   chown -R socore:socore $default_salt_dir/pillar
   chmod 755 $default_salt_dir/pillar/firewall/addfirewall.sh
+
   rm -rf /tmp/sogh
 }
 
