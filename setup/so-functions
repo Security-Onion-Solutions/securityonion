@@ -149,7 +149,14 @@ analyst_salt_local() {
 	logCmd "yum -y update --exclude=salt*"
 
 	salt-call state.apply workstation --local --file-root=../salt/ -l info 2>&1 | tee -a outfile
-	echo "Whiptail to reboot here"
+	read -r -d '' message <<- EOM
+		Finished Analyst workstation installation.
+
+		Press ENTER to reboot.
+	EOM
+
+	whiptail --title "$whiptail_title" --msgbox "$message" 12 75
+	reboot
 	exit 0 
 
 }
