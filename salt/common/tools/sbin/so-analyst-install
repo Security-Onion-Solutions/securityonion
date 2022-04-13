@@ -38,6 +38,8 @@ if [ -f "$pillar_file" ]; then
         echo "##   analyst node on this device will    ##"
         echo "##       make permanent changes to       ##"
         echo "##              the system.              ##"
+        echo "##    A system reboot will be required   ##"
+        echo "##        to complete the install.       ##"
         echo "##                                       ##"
         echo "###########################################"
         echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
@@ -60,9 +62,18 @@ if [ -f "$pillar_file" ]; then
       "    enabled: true"\
 		  "" >> "$pillar_file"
     echo "Applying the workstation state. This could take some time since there are many packages that need to be installed."
-    salt-call state.apply workstation -linfo queue=True
-    echo ""
-    echo "Analyst workstation has been installed!"
+    if salt-call state.apply workstation -linfo queue=True; then # make sure the state ran successfully
+      echo ""
+      echo "Analyst workstation has been installed!"
+      echo
+      echo "Analyst workstation has been installed!"
+      echo "Press ENTER to reboot or Ctrl-C to cancel."
+      read pause
+
+      reboot;
+    else
+      echo "There was an issue applying the workstation state. Please review the log above or at /opt/so/logs/salt/minion."
+    fi
   else # workstation is already added
     echo "The workstation pillar already exists in $pillar_file."
     echo "To enable/disable the gui, set 'workstation:gui:enabled' to true or false in $pillar_file."
