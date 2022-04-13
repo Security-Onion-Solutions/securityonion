@@ -14,8 +14,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{# if this is a manager #}
-{% if grains.master == grains.id.split('_')|first -%}
+{# we only want the script to install the workstation if it is CentOS #}
+{% if grains.os == 'CentOS' -%}
+{#   if this is a manager -#}
+{%   if grains.master == grains.id.split('_')|first -%}
 
 source /usr/sbin/so-common
 doc_workstation_url="https://docs.securityonion.net/en/2.3/analyst-vm.html"
@@ -23,6 +25,33 @@ pillar_file="/opt/so/saltstack/local/pillar/minions/{{grains.id}}.sls"
 
 if [ -f "$pillar_file" ]; then
   if ! grep -q "^workstation:$" "$pillar_file"; then
+
+    FIRSTPASS=yes
+    while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
+      if [[ "$FIRSTPASS" == "yes" ]]; then
+        echo "###########################################"
+        echo "##          ** W A R N I N G **          ##"
+        echo "##    _______________________________    ##"
+        echo "##                                       ##"
+        echo "##    Installing the Security Onion      ##"
+        echo "##   analyst node on this device will    ##"
+        echo "##       make permanent changes to       ##"
+        echo "##              the system.              ##"
+        echo "##                                       ##"
+        echo "###########################################"
+        echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+        FIRSTPASS=no
+      else
+        echo "Please type 'yes' to continue or 'no' to exit."
+      fi      
+      read INSTALL
+    done
+
+    if [[ $INSTALL == "no" ]]; then
+      echo "Exiting analyst node installation."
+      exit 0
+    fi
+    
     # Add workstation pillar to the minion's pillar file
     printf '%s\n'\
       "workstation:"\
@@ -42,11 +71,20 @@ else # if the pillar file doesn't exist
   echo "Could not find $pillar_file and add the workstation pillar."
 fi
 
-{#- if this is not a manager#}
-{% else -%}
+{#-  if this is not a manager #}
+{%   else -%}
 
-echo "Since this is not a manager, the pillar values to enable analyst workstation must be set manually. Please follow the documention at $doc_workstation_url."
+echo "Since this is not a manager, the pillar values to enable analyst workstation must be set manually. Please view the documention at $doc_workstation_url."
 
+{#- endif if this is a manager #}
+{%   endif -%}
+
+{#- if not CentOS #}
+{%- else %}
+
+echo "The Analyst Workstation can only be installed on CentOS. Please view the documention at $doc_workstation_url."
+
+{#- endif grains.os == CentOS #}
 {% endif -%}
 
 exit 0
