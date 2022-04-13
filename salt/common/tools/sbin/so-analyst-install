@@ -14,13 +14,14 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{# we only want the script to install the workstation if it is CentOS #}
+
+doc_workstation_url="https://docs.securityonion.net/en/2.3/analyst-vm.html"
+{# we only want the script to install the workstation if it is CentOS -#}
 {% if grains.os == 'CentOS' -%}
 {#   if this is a manager -#}
 {%   if grains.master == grains.id.split('_')|first -%}
 
 source /usr/sbin/so-common
-doc_workstation_url="https://docs.securityonion.net/en/2.3/analyst-vm.html"
 pillar_file="/opt/so/saltstack/local/pillar/minions/{{grains.id}}.sls"
 
 if [ -f "$pillar_file" ]; then
@@ -51,7 +52,7 @@ if [ -f "$pillar_file" ]; then
       echo "Exiting analyst node installation."
       exit 0
     fi
-    
+
     # Add workstation pillar to the minion's pillar file
     printf '%s\n'\
       "workstation:"\

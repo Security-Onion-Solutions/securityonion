@@ -1,3 +1,6 @@
+{# we only want this state to run it is CentOS #}
+{% if grains.os == 'CentOS' %}
+
 xwindows_group:
   pkg.group_installed:
     - name: X Window System
@@ -45,3 +48,11 @@ workstation_packages:
       - perl-Net-DNS
       - securityonion-chaosreader
       - securityonion-analyst-extras
+
+{% else %}
+
+workstation_packages_os_fail:
+  test.fail_without_changes:
+    - comment: 'SO Analyst Workstation can only be installed on CentOS'
+
+{% endif %}
