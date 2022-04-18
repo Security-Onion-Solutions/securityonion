@@ -34,7 +34,15 @@ check_err() {
   local err_msg="Unhandled error occured, please check $SOUP_LOG for details."
 
   [[ $ERR_HANDLED == true ]] && exit $exit_code
+
   if [[ $exit_code -ne 0 ]]; then
+  
+    set +e
+    systemctl_func "start" "$cron_service_name"
+    systemctl_func "start" "salt-master"
+    systemctl_func "start" "salt-minion"
+    enable_highstate
+
     printf '%s' "Soup failed with error $exit_code: "
     case $exit_code in
       2)
@@ -91,9 +99,7 @@ check_err() {
     if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
       echo "$err_msg"
     fi
-    set +e
-    systemctl_func "start" "$cron_service_name"
-    enable_highstate
+
     exit $exit_code
   fi
 
@@ -416,6 +422,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
+    [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
     true
 }
 
@@ -429,6 +436,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
+    [[ "$POSTVERSION" == 2.3.110 ]] && post_to_2.3.120
+
     true
 }
 
@@ -491,6 +500,14 @@ post_to_2.3.110() {
   salt-call state.apply kibana.so_savedobjects_defaults queue=True
   POSTVERSION=2.3.110
 }
+
+post_to_2.3.120() {
+  echo "Post Processing for 2.3.120"
+  POSTVERSION=2.3.120
+  sed -i '/so-thehive-es/d;/so-thehive/d;/so-cortex/d' /opt/so/conf/so-status/so-status.conf
+}
+
+
 
 stop_salt_master() {
     # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
@@ -728,9 +745,6 @@ up_to_2.3.90() {
 up_to_2.3.100() {
   fix_wazuh
   
-  echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
-  rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
-  
   echo "Adding receiver hostgroup with so-firewall"
   if so-firewall addhostgroup receiver 2>&1 | grep -q 'Already exists'; then
     echo 'receiver hostgroup already exists'
@@ -743,10 +757,15 @@ up_to_2.3.100() {
 }
 
 up_to_2.3.110() {
-  echo "Updating to Security Onion 2.3.110"
-  echo "Updating shard settings for Elasticsearch index templates"
   sed -i 's|shards|index_template:\n        template:\n          settings:\n            index:\n              number_of_shards|g' /opt/so/saltstack/local/pillar/global.sls
 }
+
+up_to_2.3.120() {
+  # Stop thehive services since these will be broken in .120
+  so-thehive-stop
+  so-thehive-es-stop
+  so-cortex-stop
+  }
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
@@ -885,6 +904,8 @@ upgrade_salt() {
   else
     echo "Salt upgrade success."
     echo ""
+    echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
+    rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
   fi
 
 }
@@ -1014,6 +1035,17 @@ main() {
   echo "### Preparing soup at $(date) ###"
   echo ""
 
+  set_os
+  set_cron_service_name
+  if ! check_salt_master_status; then
+  	echo "Could not talk to salt master"
+    echo "Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
+    echo "SOUP will now attempt to start the salt-master service and exit."
+    exit 1
+  fi
+
+  echo "This node can communicate with the salt-master."
+
   echo "Checking to see if this is a manager."
   echo ""
   require_manager
@@ -1049,8 +1081,6 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   echo ""
-  set_os
-  set_cron_service_name
   set_palette
   check_elastic_license
   echo ""
