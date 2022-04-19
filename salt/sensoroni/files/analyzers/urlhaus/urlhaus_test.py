@@ -9,6 +9,7 @@ class TestUrlhausMethods(unittest.TestCase):
 
     def test_main_missing_input(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            sys.argv = ["cmd"]
             urlhaus.main()
             self.assertEqual(mock_stdout.getvalue(), "ERROR: Missing input JSON\n")
 
