@@ -86,7 +86,7 @@ The following example describes the urlhaus metadata content:
 {
   "name": "Urlhaus",                                  <- Unique human-friendly name of this analyzer
   "version": "0.1",                                   <- The version of the analyzer
-  "author": "Wes",                                    <- Author's name, and/or email or other contact information
+  "author": "Security Onion Solutions",               <- Author's name, and/or email or other contact information
   "description": "This analyzer queries URLHaus...",  <- A brief, concise description of the analyzer
   "supportedTypes" :  ["url"],                        <- List of types that must match the SOC observable types
   "baseUrl": "https://urlhaus-api.abuse.ch/v1/url/"   <- Optional hardcoded data used by the analyzer
@@ -126,7 +126,7 @@ Once the analyzer completes its functionality, it must terminate promptly. See t
 
 Analyzers may need dynamic configuration data, such as credentials or other secrets, in order to complete their function. Optional configuration files can provide this information, and are expected to reside in the analyzer's directory. Configuration files are typically written in YAML syntax for ease of modification.
 
-Configuration files for analyzer included with Security Onion will be pillarized, meaning they derive their custom values from the Saltstack pillar data. For example, an analyzer that requires a user supplied credential might contain a config file resembling the following, where Jinja templating syntax is used to extra Salt pillar data:
+Configuration files for analyzers included with Security Onion will be pillarized, meaning they derive their custom values from the Saltstack pillar data. For example, an analyzer that requires a user supplied credential might contain a config file resembling the following, where Jinja templating syntax is used to extra Salt pillar data:
 
 ```yaml
 username: {{ salt['pillar.get']('sensoroni:analyzers:myanalyzer:username', '') }}
@@ -157,7 +157,7 @@ The outcome of the analyzer is reflected in the analyzer's output to `stdout`. T
 
 Additional fields are allowed, and should contain data that is specific to the analyzer. 
 
-Below is an example of a _urlhaus_ analyzer output. Note that the urlhause raw JSON is added to a custom field called "response".
+Below is an example of a _urlhaus_ analyzer output. Note that the urlhaus raw JSON is added to a custom field called "response".
 
 ```json
 {
