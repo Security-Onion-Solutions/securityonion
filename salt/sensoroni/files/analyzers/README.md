@@ -102,7 +102,7 @@ Analyzers will often require the use of third-party packages. For example, if an
 Additionally, to support airgapped users, the dependency packages themselves, and any transitive dependencies, should be placed inside the `source-packages` directory. To obtain the full hierarchy of dependencies, execute the following commands:
 
 ```bash
-pip download -f <my-analyzer-path>/requirements.txt -d <my-analyzer-path>/source-packages
+pip download -r <my-analyzer-path>/requirements.txt -d <my-analyzer-path>/source-packages
 ```
 
 
