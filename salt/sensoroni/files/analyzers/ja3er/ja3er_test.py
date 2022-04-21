@@ -49,7 +49,7 @@ class TestJa3erMethods(unittest.TestCase):
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_info(self):
-        raw = [{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36", "Count": 24874, "Last_seen": "2022-04-08 16:18:38"}, {"Comment": "Opera Linux\n\n", "Reported": "2022-04-20 13:32:49"}, {"Comment": "slamslam\n\n", "Reported": "2022-03-30 04:11:52"}, {"Comment": "Brave browser v1.36.122\n\n", "Reported": "2022-03-28 20:26:42"}]
+        raw = [{"User-Agent": "Blah/5.0", "Count": 24874, "Last_seen": "2022-04-08 16:18:38"}, {"Comment": "Brave browser v1.36.122\n\n", "Reported": "2022-03-28 20:26:42"}]
         results = ja3er.prepareResults(raw)
         self.assertEqual(results["response"], raw)
         self.assertEqual(results["summary"], "Results found.")
