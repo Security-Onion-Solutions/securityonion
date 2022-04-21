@@ -25,6 +25,12 @@ class TestVirusTotalMethods(unittest.TestCase):
                 self.assertEqual(mock_stdout.getvalue(), expected)
                 mock.assert_called_once()
 
+    def checkConfigRequirements(self):
+        conf = {"not_a_key": "abcd12345"}
+        with self.assertRaises(SystemExit) as cm:
+            virustotal.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
     def test_buildHeaders(self):
         result = virustotal.buildHeaders({"api_key": "xyz"})
         self.assertEqual("xyz", result["x-apikey"])

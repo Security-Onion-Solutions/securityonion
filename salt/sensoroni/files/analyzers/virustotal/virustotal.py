@@ -3,6 +3,14 @@ import requests
 import argparse
 import helpers
 import os
+import sys
+
+
+def checkConfigRequirements(conf):
+    if "api_key" not in conf or len(conf['api_key']) == 0:
+        sys.exit(126)
+    else:
+        return True
 
 
 def buildHeaders(conf):
@@ -58,6 +66,7 @@ def prepareResults(raw):
 
 
 def analyze(conf, input):
+    checkConfigRequirements(conf)
     meta = helpers.loadMetadata(__file__)
     data = helpers.parseArtifact(input)
     helpers.checkSupportedType(meta, data["artifactType"])
