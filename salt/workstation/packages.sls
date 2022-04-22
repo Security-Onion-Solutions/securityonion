@@ -26,7 +26,6 @@ workstation_packages:
       - mono-basic
       - mono-winforms
       - expect
-      - securityonion-networkminer
       - wireshark-gnome
       - dsniff
       - hping3
@@ -37,17 +36,20 @@ workstation_packages:
       - tcpdump
       - tcpflow
       - whois
-      - securityonion-foremost
       - chromium
-      - securityonion-tcpstat
-      - securityonion-tcptrace
       - libevent
       - sslsplit
-      - securityonion-bittwist
       - perl-IO-Compress 
       - perl-Net-DNS
+      - securityonion-networkminer
       - securityonion-chaosreader
       - securityonion-analyst-extras
+      - securityonion-bittwist
+      - securityonion-tcpstat
+      - securityonion-tcptrace
+      - securityonion-foremost
+      - securityonion-strelka-oneshot
+      - securityonion-strelka-fileshot
 
 {% else %}
 

@@ -38,12 +38,12 @@ event file_state_remove(f: fa_file)
         if ( !f$info?$extracted || FileExtract::prefix == "" ) {
                 return;
         }
-        # Check some conditions so we know the file is intact:
-        # Check for MD5
-        # Check for total_bytes
-        # Check for missing bytes
-        # Check if timed out
-        if ( !f$info?$md5 || !f?$total_bytes || f$missing_bytes > 0 || f$info$timedout) {
+        # Check if any of the following conditions exist:
+        # - missing MD5
+        # - total_bytes exists (some protocols aren't populating this field) but is 0
+        # - missing bytes
+        # - timed out
+        if ( !f$info?$md5 || (f?$total_bytes && f$total_bytes == 0) || f$missing_bytes > 0 || f$info$timedout) {
           # Delete the file if it didn't pass our requirements check.
 
           local nuke = fmt("rm %s/%s", FileExtract::prefix, f$info$extracted);
