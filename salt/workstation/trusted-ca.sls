@@ -7,7 +7,7 @@
   {% set manager = salt['grains.get']('master') %}
   {% set x509dict = salt['mine.get'](manager | lower~'*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
-      {% if host.split('_')|last in ['manager', 'managersearch', 'standalone', 'import'] %}
+      {% if host.split('_')|last in ['manager', 'managersearch', 'standalone', 'import', 'eval'] %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
         {% do global_ca_server.append(host) %}
       {% endif %}
