@@ -9,7 +9,7 @@ import helpers
 def resolve(config, meta, ip):
     value = str(dns.reversename.from_address(ip)).replace("in-addr.arpa.", config["lookup_host"] + ".")
     resolver = dns.resolver.Resolver()
-    if len(config["nameservers"]) > 0:
+    if len(config["nameservers"]) > 0 and len(config["nameservers"][0]) > 0:
         resolver.nameservers = config["nameservers"]
     try:
         responses = resolver.resolve(value)
