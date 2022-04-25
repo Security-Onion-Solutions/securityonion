@@ -3,6 +3,7 @@
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
 {% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import SALTPACKAGES %}
+{% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
 {% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
@@ -82,7 +83,7 @@ set_log_levels:
 
 salt_minion_service_unit_file:
   file.managed:
-    - name: /etc/systemd/system/multi-user.target.wants/salt-minion.service
+    - name: {{ SYSTEMD_UNIT_FILE }}
     - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
     - defaults:
@@ -110,6 +111,7 @@ salt_minion_service:
       - file: set_log_levels
       - file: salt_minion_service_unit_file
 {% endif %}
+    - order: last
 
 
 patch_pkg:

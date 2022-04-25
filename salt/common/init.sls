@@ -300,8 +300,17 @@ sostatus_log:
     - month: '*'
     - dayweek: '*'
 
-
 {% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
+# Install cron job to determine size of influxdb for telegraf
+'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1':
+  cron.present:
+    - user: root
+    - minute: '*/1'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+    
 # Lock permissions on the backup directory
 backupdir:
   file.directory:

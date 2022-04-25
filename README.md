@@ -1,6 +1,6 @@
-## Security Onion 2.3.110
+## Security Onion 2.3.120
 
-Security Onion 2.3.110 is here!
+Security Onion 2.3.120 is here!
 
 ## Screenshots
 

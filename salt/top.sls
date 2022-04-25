@@ -1,6 +1,5 @@
 {% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set WAZUH = salt['pillar.get']('global:wazuh', '0') %}
-{% set THEHIVE = salt['pillar.get']('manager:thehive', '0') %}
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set FREQSERVER = salt['pillar.get']('manager:freq', '0') %}
 {% set DOMAINSTATS = salt['pillar.get']('manager:domainstats', '0') %}
@@ -35,11 +34,14 @@ base:
   '* and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion
-    - common
     - patch.os.schedule
     - motd
     - salt.minion-check
     - salt.lasthighstate
+
+  'not *_workstation and G@saltversion:{{saltversion}}':
+    - match: compound
+    - common
   
   '*_helixsensor and G@saltversion:{{saltversion}}':
     - match: compound
@@ -142,9 +144,6 @@ base:
     - utility
     - schedule
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     - redis
@@ -209,9 +208,6 @@ base:
     - fleet.install_package
     {%- endif %}
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -283,9 +279,6 @@ base:
     - utility
     - schedule
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -375,9 +368,6 @@ base:
     - fleet.install_package
     {%- endif %}
     - soctopus
-    {%- if THEHIVE != 0 %}
-    - thehive
-    {%- endif %}
     {%- if PLAYBOOK != 0 %}
     - playbook
     {%- endif %}
@@ -519,3 +509,11 @@ base:
     - docker_clean
     - filebeat
     - idh
+
+  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+    - match: compound
+    - workstation
+
+  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+    - match: compound
+    - workstation.remove_gui

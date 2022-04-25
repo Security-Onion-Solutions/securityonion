@@ -33,6 +33,58 @@ whiptail_airgap() {
 	INTERWEBS=$(echo "${INTERWEBS^^}" | tr -d ' ')
 }
 
+whiptail_analyst_install() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	
+	Welcome to the Security Onion Analyst Workstation install!
+
+	Would you like to join this workstation to an existing grid?
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 --defaultno
+
+}
+
+whiptail_analyst_nongrid_iso() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	
+	You have selected this Analyst workstation to be independent.
+
+	Would you still like to have the graphical interface loaded at boot?
+
+	NOTE: Selecting no will exit without making changes.
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 --defaultno
+
+}
+
+whiptail_analyst_nongrid_network() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	
+	You have selected this Analyst workstation to be independent.
+
+	Would you still like to install and load the graphical interface?
+
+	NOTE: Selecting no will exit without making changes.
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 --defaultno
+
+}
+
 whiptail_avoid_default_hostname() {
 	[ -n "$TESTING" ] && return
 
@@ -434,9 +486,9 @@ whiptail_end_settings() {
 
 	if [[ $is_idh ]]; then
 		__append_end_msg "IDH Services Enabled:"
-	   for service in ${idh_services[@]}; do
+		for service in ${idh_services[@]}; do
 		__append_end_msg "- $service"
-      done
+		done
 
 	fi
 
@@ -578,14 +630,16 @@ whiptail_end_settings() {
 		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
 		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
 	else
-		if [[ ! $is_receiver ]]; then
-			__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
-			__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+		if [[ ! $is_analyst ]]; then
+			if [[ ! $is_receiver ]]; then
+				__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
+				__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
+			fi
+			__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
+			__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
+			__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
+			__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
 		fi
-		__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
-		__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
-		__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
-		__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
 	fi
 
 
@@ -725,6 +779,17 @@ whiptail_homenet_sensor() {
 	export HNSENSOR
 }
 
+ whiptail_idh_preferences() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_preferences=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nBy default, the IDH services selected in the previous screen will be bound to all interfaces and IP addresses on this system.\n\nIf you would like to prevent IDH services from being published on this system's management IP, you can select the option below." 20 75 5 \
+		"$MAINIP" "Disable IDH services on this management IP " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
 
 whiptail_idh_services() {
 
@@ -867,23 +932,13 @@ whiptail_install_type_other() {
 
 	[ -n "$TESTING" ] && return
 
-	# so-analyst-install will only work with a working network connection
-	# so only show it on network installs for now
-	if [[ $setup_type == 'network' ]]; then
-		install_type=$(whiptail --title "$whiptail_title" --radiolist \
-		"Choose distributed node type:" 9 65 2 \
-			"ANALYST" "Quit setup and run so-analyst-install " ON \
-			"HELIXSENSOR" "Create a Helix sensor " OFF \
-			3>&1 1>&2 2>&3
+	install_type=$(whiptail --title "$whiptail_title" --radiolist \
+		"Choose node type:" 9 65 2 \
+		"ANALYST" "Setup will run 'so-setup analyst' " ON \
+		"HELIXSENSOR" "Create a Helix sensor " OFF \
+		3>&1 1>&2 2>&3
 		)
-	else
-		install_type=$(whiptail --title "$whiptail_title" --radiolist \
-		"Choose distributed node type:" 8 65 1 \
-			"HELIXSENSOR" "Create a Helix sensor " ON \
-			3>&1 1>&2 2>&3
-		)
-	fi
-
+	
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -1473,6 +1528,14 @@ whiptail_oinkcode() {
 #TODO: helper function to display error message or exit if batch mode
 # exit_if_batch <"Error string"> <Error code (int)>
 
+whiptail_error_message() {
+
+	local error_message=$1 # message to be displayed
+
+	whiptail --title "$whiptail_title" --msgbox "$error_message" 10 75
+
+}
+
 whiptail_passwords_dont_match() {
 
 	whiptail --title "$whiptail_title" --msgbox "Passwords don't match. Please re-enter." 8 75
@@ -1545,40 +1608,37 @@ whiptail_patch_schedule_select_hours() {
 
 	[ -n "$TESTING" ] && return
 
-    # Select the hours to patch
-    PATCHSCHEDULEHOURS=$(whiptail --title "$whiptail_title" --checklist \
-    "At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
-    00:00 "" OFF \
-    01:00 "" OFF \
-    02:00 "" ON \
-    03:00 "" OFF \
-    04:00 "" OFF \
-    05:00 "" OFF \
-    06:00 "" OFF \
-    07:00 "" OFF \
-    08:00 "" OFF \
-    09:00 "" OFF \
-    10:00 "" OFF \
-    11:00 "" OFF \
-    12:00 "" OFF \
-    13:00 "" OFF \
-    14:00 "" OFF \
-    15:00 "" OFF \
-    16:00 "" OFF \
-    17:00 "" OFF \
-    18:00 "" OFF \
-    19:00 "" OFF \
-    20:00 "" OFF \
-    21:00 "" OFF \
-    22:00 "" OFF \
-    23:00 "" OFF 3>&1 1>&2 2>&3)
-
-    local exitstatus=$?
-    whiptail_check_exitstatus $exitstatus
-
-    PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
-
-    IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
+	# Select the hours to patch
+	PATCHSCHEDULEHOURS=$(whiptail --title "$whiptail_title" --checklist \
+	"At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
+	00:00 "" OFF \
+	01:00 "" OFF \
+	02:00 "" ON \
+	03:00 "" OFF \
+	04:00 "" OFF \
+	05:00 "" OFF \
+	06:00 "" OFF \
+	07:00 "" OFF \
+	08:00 "" OFF \
+	09:00 "" OFF \
+	10:00 "" OFF \
+	11:00 "" OFF \
+	12:00 "" OFF \
+	13:00 "" OFF \
+	14:00 "" OFF \
+	15:00 "" OFF \
+	16:00 "" OFF \
+	17:00 "" OFF \
+	18:00 "" OFF \
+	19:00 "" OFF \
+	20:00 "" OFF \
+	21:00 "" OFF \
+	22:00 "" OFF \
+	23:00 "" OFF 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
+	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
 }
 
@@ -1923,10 +1983,10 @@ whiptail_suricata_pins() {
 	done
 
 	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
-	  local PROCS=$(expr $lb_procs / 2)
-      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		local PROCS=$(expr $lb_procs / 2)
+		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
-	  local PROCS=$lb_procs
+		local PROCS=$lb_procs
 	fi
 
 	SURIPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
@@ -1978,7 +2038,7 @@ whiptail_you_sure() {
 	read -r -d '' you_sure_text <<- EOM
 		Welcome to Security Onion Setup!
 
-		You can use Setup for lots of different use cases from a small standalone installation to a large distributed deployment for your enterprise. Don't forget to review the documentation at:
+		You can use Setup for several different use cases, from a small standalone installation to a large distributed deployment for your enterprise. Don't forget to review the documentation at:
 		https://docs.securityonion.net
 
 		Setup uses keyboard navigation and you can use arrow keys to move around.  Certain screens may provide a list and ask you to select one or more items from that list.  You can use [SPACE] to select items and [ENTER] to proceed to the next screen.
@@ -2006,10 +2066,10 @@ whiptail_zeek_pins() {
 	done
 
 	if [[ $is_smooshed ]]; then
-	  local PROCS=$(expr $lb_procs / 2)
-      if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
+		local PROCS=$(expr $lb_procs / 2)
+		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
 	else
-	  local PROCS=$lb_procs
+		local PROCS=$lb_procs
 	fi
 
 	ZEEKPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )

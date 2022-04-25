@@ -33,6 +33,8 @@ while [[ "$COUNT" -le 240 ]]; do
 	if [ $? -eq 0 ]; then
 		ELASTICSEARCH_CONNECTED="yes"
 		echo "connected!"
+		# Check cluster health once connected
+		so-elasticsearch-query _cluster/health?wait_for_status=yellow > /dev/null 2>&1
 		break
 	else
 		((COUNT+=1))
@@ -48,7 +50,7 @@ fi
 
 cd ${ELASTICSEARCH_ROLES}
 
-echo "Loading templates..."
+echo "Loading roles..."
 for role in *; do
 	name=$(echo "$role" | cut -d. -f1)
 	so-elasticsearch-query _security/role/$name -XPUT -d @"$role"

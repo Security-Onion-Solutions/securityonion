@@ -13,7 +13,12 @@ tgraflogdir:
   file.directory:
     - name: /opt/so/log/telegraf
     - makedirs: True
-
+    - user: 939
+    - group: 939
+    - recurse:
+      - user
+      - group
+      
 tgrafetcdir:
   file.directory:
     - name: /opt/so/conf/telegraf/etc
@@ -29,7 +34,7 @@ tgrafsyncscripts:
     - name: /opt/so/conf/telegraf/scripts
     - user: root
     - group: 939
-    - file_mode: 700
+    - file_mode: 770
     - template: jinja
     - source: salt://telegraf/scripts
 {% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
@@ -57,6 +62,8 @@ node_config:
 so-telegraf:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
+    - user: 939
+    - group_add: 939,920
     - environment:
       - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc

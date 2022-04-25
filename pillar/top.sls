@@ -15,12 +15,12 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
-    - elasticsearch.search
+    - elasticsearch.index_templates
 
   '*_manager':
     - logstash
     - logstash.manager
-    - elasticsearch.manager
+    - elasticsearch.index_templates
 
   '*_manager or *_managersearch':
     - match: compound
@@ -46,7 +46,7 @@ base:
     - zeeklogs
     - secrets
     - healthcheck.eval
-    - elasticsearch.eval
+    - elasticsearch.index_templates
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
@@ -60,7 +60,7 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
-    - elasticsearch.search
+    - elasticsearch.index_templates
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
@@ -106,7 +106,7 @@ base:
   '*_searchnode':
     - logstash
     - logstash.search
-    - elasticsearch.search
+    - elasticsearch.index_templates
     - elasticsearch.auth
     - global
     - minions.{{ grains.id }}
@@ -122,7 +122,7 @@ base:
   '*_import':
     - zeeklogs
     - secrets
-    - elasticsearch.eval
+    - elasticsearch.index_templates
 {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
 {% endif %}
@@ -130,4 +130,7 @@ base:
     - kibana.secrets
 {% endif %}
     - global
+    - minions.{{ grains.id }}
+
+  '*_workstation':
     - minions.{{ grains.id }}

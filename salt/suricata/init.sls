@@ -36,12 +36,12 @@ suricatagroup:
     - name: suricata
     - gid: 940
 
-# Add ES user
+# Add Suricata user
 suricata:
   user.present:
     - uid: 940
     - gid: 940
-    - home: /opt/so/conf/suricata
+    - home: /nsm/suricata
     - createhome: False
 
 suridir:
