@@ -5,15 +5,16 @@ Security Onion provides a means for performing data analysis on varying inputs. 
 ## Supported Observable Types
 The built-in analyzers support the following observable types:
 
-| Name                    | Domain | Hash  | IP    | JA3   | URL   |
-| ------------------------|--------|-------|-------|-------|-------|
-| Alienvault OTX          |&check; |&check;|&check;|&cross;|&check;|
-| Greynoise               |&cross; |&cross;|&check;|&cross;|&cross;|
-| JA3er                   |&cross; |&cross;|&cross;|&check;|&cross;|
-| LocalFile               |&check; |&check;|&check;|&check;|&check;|
-| Spamhaus                |&cross; |&cross;|&check;|&cross;|&cross;|
-| Urlhaus                 |&cross; |&cross;|&cross;|&cross;|&check;|
-| Virustotal              |&check; |&check;|&check;|&cross;|&check;|
+| Name                    | Domain | Hash  | IP    | JA3   | Other | URI   |  URL  | User Agent |
+| ------------------------|--------|-------|-------|-------|-------|-------|-------|-------|
+| Alienvault OTX          |&check; |&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Greynoise               |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
+| JA3er                   |&cross; |&cross;|&cross;|&check;|&cross;|&cross;|&cross;|&cross;|
+| LocalFile               |&check; |&check;|&check;|&check;|&check;|&cross;|&check;|&cross;|
+| Pulsedive               |&check; |&check;|&check;|&cross;|&cross;|&check;|&check;|&check;|
+| Spamhaus                |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
+| Urlhaus                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Virustotal              |&check; |&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
 
 ## Developer Guide
 
