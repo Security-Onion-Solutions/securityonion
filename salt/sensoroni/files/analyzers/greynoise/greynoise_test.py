@@ -37,7 +37,7 @@ class TestGreynoiseMethods(unittest.TestCase):
             conf = {"base_url": "https://myurl/", "api_key": "abcd1234", "api_version": "community"}
             ip = "192.168.1.1"
             response = greynoise.sendReq(conf=conf, meta=meta, ip=ip)
-            mock.assert_called_once_with("GET", "https://myurl/v3/community/192.168.1.1")
+            mock.assert_called_once_with("GET", headers={'key': 'abcd1234'}, url="https://myurl/v3/community/192.168.1.1")
             self.assertIsNotNone(response)
 
     def test_sendReq_investigate(self):
@@ -46,7 +46,7 @@ class TestGreynoiseMethods(unittest.TestCase):
             conf = {"base_url": "https://myurl/", "api_key": "abcd1234", "api_version": "investigate"}
             ip = "192.168.1.1"
             response = greynoise.sendReq(conf=conf, meta=meta, ip=ip)
-            mock.assert_called_once_with("GET", "https://myurl/v2/noise/context/192.168.1.1")
+            mock.assert_called_once_with("GET", headers={'key': 'abcd1234'}, url="https://myurl/v2/noise/context/192.168.1.1")
             self.assertIsNotNone(response)
 
     def test_sendReq_automate(self):
@@ -55,7 +55,7 @@ class TestGreynoiseMethods(unittest.TestCase):
             conf = {"base_url": "https://myurl/", "api_key": "abcd1234", "api_version": "automate"}
             ip = "192.168.1.1"
             response = greynoise.sendReq(conf=conf, meta=meta, ip=ip)
-            mock.assert_called_once_with("GET", "https://myurl/v2/noise/context/192.168.1.1")
+            mock.assert_called_once_with("GET", headers={'key': 'abcd1234'}, url="https://myurl/v2/noise/context/192.168.1.1")
             self.assertIsNotNone(response)
 
     def test_prepareResults_invalidIP(self):

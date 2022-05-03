@@ -19,7 +19,8 @@ def sendReq(conf, meta, ip):
         url = url + 'v3/community/' + ip
     elif conf['api_version'] == 'investigate' or 'automate':
         url = url + 'v2/noise/context/' + ip
-    response = requests.request('GET', url)
+    headers = {"key": conf['api_key']}
+    response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
 
