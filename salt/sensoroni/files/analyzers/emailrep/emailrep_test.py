@@ -5,7 +5,7 @@ from emailrep import emailrep
 import unittest
 
 
-class TestGreynoiseMethods(unittest.TestCase):
+class TestEmailRepMethods(unittest.TestCase):
 
     def test_main_missing_input(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
