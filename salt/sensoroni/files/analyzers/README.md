@@ -15,6 +15,7 @@ The built-in analyzers support the following observable types:
 | Pulsedive               |&check; |&check;|&check;|&cross;|&cross;|&cross;|&check;|&check;|&check;|
 | Spamhaus                |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|
 | Urlhaus                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Urlscan                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
 | Virustotal              |&check; |&check;|&check;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
 
 ## Developer Guide
