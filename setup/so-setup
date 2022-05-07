@@ -70,9 +70,70 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-if [[ "$setup_type" == 'iso' ]]; then
-  is_iso=true
+detect_os
+is_analyst=
+if [ "$setup_type" = 'analyst' ]; then
+    is_analyst=true
+    # Check to see if this is an ISO
+    if [ -d /root/SecurityOnion ]; then
+        is_analyst_iso=true
+    fi
 fi
+
+if [[ "$setup_type" == 'iso' ]]; then
+	if [[ $is_centos ]]; then
+		is_iso=true
+	else
+		echo "Only use 'so-setup iso' for an ISO install on CentOS. Please run 'so-setup network' instead."
+		exit 1
+	fi
+fi
+
+# Check to see if this is an analyst install. If it is let's run things differently
+
+if [[ $is_analyst ]]; then
+
+	# Make sure it's CentOS
+	if [[ ! $is_centos ]]; then
+		echo "Analyst Workstation is only supported on CentOS 7"
+		exit 1
+	fi
+
+	if ! whiptail_analyst_install; then
+		if [[ $is_analyst_iso ]]; then
+			if whiptail_analyst_nongrid_iso; then
+				# Remove setup from auto launching
+				parse_install_username
+				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+				echo "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				startx
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
+		else
+			if whiptail_analyst_nongrid_network; then
+				echo ""
+				echo ""
+				echo "Kicking off the automated setup of the analyst workstation. This can take a while depending on your network connection."
+				echo ""
+				echo ""
+				analyst_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
+		fi
+	fi
+
+	# If you got this far then you want to join the grid
+	is_minion=true
+
+fi
+    
+
 
 if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
 	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
@@ -105,7 +166,6 @@ catch() {
 	whiptail_setup_failed
 	exit 1
 }
-
 automated=no
 progress() {
 	local msg=${1:-'Please wait while installing...'}
@@ -116,8 +176,6 @@ progress() {
 		cat >> $setup_log 2>&1
 	fi		
 }
-
-detect_os 
 
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
 	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
@@ -151,11 +209,11 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 fi
 
 case "$setup_type" in
-	iso | network) # Accepted values
+	iso | network | analyst) # Accepted values
 		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
 		;;
 	*)
-		echo "Invalid install type, must be 'iso' or 'network'" | tee -a $setup_log
+		echo "Invalid install type, must be 'iso', 'network' or 'analyst'." | tee -a $setup_log
 		exit 1
 		;;
 esac
@@ -197,6 +255,37 @@ if ! [[ -f $install_opt_file ]]; then
 		echo "User cancelled setup." | tee -a "$setup_log"
 		whiptail_cancel
 	fi
+	if [[ $is_analyst ]]; then
+		collect_hostname
+		if [[ $is_analyst_iso ]]; then
+			# Prompt Network Setup
+			whiptail_management_nic
+			whiptail_dhcp_or_static
+			
+			if [ "$address_type" != 'DHCP' ]; then
+				collect_int_ip_mask
+				collect_gateway
+				collect_dns
+				collect_dns_domain
+			fi
+		
+		fi
+		if [[ ! $is_analyst_iso ]]; then
+			# This should be a network install
+			whiptail_network_notice
+			whiptail_dhcp_warn
+			whiptail_management_nic
+		fi
+		whiptail_network_init_notice
+		network_init
+		printf '%s\n' \
+			"MNIC=$MNIC" \
+			"HOSTNAME=$HOSTNAME" > "$net_init_file"
+		set_main_ip
+		compare_main_nic_ip
+
+	fi
+
 	if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
@@ -207,14 +296,16 @@ if ! [[ -f $install_opt_file ]]; then
 			printf '%s\n' \
 				"MNIC=$MNIC" \
 				"HOSTNAME=$HOSTNAME" > "$net_init_file"
-			set_main_ip >> $setup_log 2>&1
+			set_main_ip
 			compare_main_nic_ip
 			whiptail_net_setup_complete
 		else
 			true
 		fi
 	fi
-	whiptail_install_type
+	if [[ ! $is_analyst ]]; then
+		whiptail_install_type
+	fi
 else
 	source $install_opt_file
 fi
@@ -263,16 +354,13 @@ elif [ "$install_type" = 'RECEIVER' ]; then
 	is_minion=true
 	is_receiver=true
 elif [ "$install_type" = 'ANALYST' ]; then
-	cd .. || exit 255
-	exec bash so-analyst-install
+	if [ "$setup_type" != 'analyst' ]; then
+		exec bash so-setup analyst
+	fi
 fi
 
 if [[ $is_manager || $is_import ]]; then
 	check_elastic_license
-fi
-
-if [[ $is_idh ]]; then
-	collect_idh_services
 fi
 
 if ! [[ -f $install_opt_file ]]; then
@@ -284,7 +372,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "dist" "idh"
 	elif [[ $is_sensor && ! $is_eval ]]; then
 		check_requirements "dist" "sensor"
-	elif [[ $is_distmanager || $is_minion ]] && [[ ! $is_import ]]; then
+	elif [[ $is_distmanager || $is_minion ]] && [[ ! ( $is_import || $is_analyst ) ]]; then
 		check_requirements "dist"
 	elif [[ $is_import ]]; then
 		check_requirements "import"
@@ -309,18 +397,20 @@ if ! [[ -f $install_opt_file ]]; then
 		network_init
 	fi
 
-	set_main_ip >> $setup_log 2>&1
+	set_main_ip
 	compare_main_nic_ip
 
 	if [[ $is_minion ]]; then
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
-	fi
-
-	if [[ $is_minion ]]; then
 		whiptail_ssh_key_copy_notice
 		copy_ssh_key >> $setup_log 2>&1
 	fi
+
+	if [[ $is_idh ]]; then
+	  collect_idh_services
+	  collect_idh_preferences
+    fi
 
 	# Check if this is an airgap install
 	if [[ ( $is_manager || $is_import) && $is_iso ]]; then
@@ -328,7 +418,7 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
 			is_airgap=true
 		fi
-	elif [[ $is_minion && $is_iso ]]; then
+	elif [[ $is_minion && ( $is_iso || $is_analyst ) ]]; then
 		$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" [[ -f /etc/yum.repos.d/airgap_repo.repo ]] >> $setup_log 2>&1
 		airgap_check=$?
 		[[ $airgap_check == 0 ]] && is_airgap=true >> $setup_log 2>&1
@@ -394,7 +484,12 @@ detect_cloud
 
 short_name=$(echo "$HOSTNAME" | awk -F. '{print $1}')
 
-MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+if [[ $is_analyst ]]; then
+	MINION_ID=$(echo "${short_name}_workstation" | tr '[:upper:]' '[:lower:]')
+fi
+if [[ ! $is_analyst ]]; then
+	MINION_ID=$(echo "${short_name}_${install_type}" | tr '[:upper:]' '[:lower:]')
+fi
 export MINION_ID
 
 echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
@@ -557,7 +652,7 @@ if [[ $is_sensor && ! $is_eval ]]; then
 	fi
 fi
 
-[[ $is_iso ]] && collect_ntp_servers
+[[ ( $is_iso || $is_analyst ) ]] && collect_ntp_servers
 
 if [[ ($is_node || $is_receiver) && ! $is_eval ]]; then
 	whiptail_node_advanced
@@ -615,7 +710,9 @@ echo "1" > /root/accept_changes
 
 	[[ ${#ntp_servers[@]} -gt 0 ]] && configure_ntp >> $setup_log 2>&1
 
-	reserve_ports
+	if [[ ! $is_analyst ]]; then
+	    reserve_ports
+	fi
 	
 	set_path
 
@@ -645,8 +742,12 @@ echo "1" > /root/accept_changes
 	if [[ $is_manager && ! $is_eval ]]; then
 		add_soremote_user_manager >> $setup_log 2>&1
 	fi
-
-	host_pillar >> $setup_log 2>&1
+    if [[ ! $is_analyst ]]; then
+        host_pillar >> $setup_log 2>&1
+    fi
+    if [[ $is_analyst ]]; then
+        analyst_workstation_pillar
+    fi
 	ntp_pillar >> $setup_log 2>&1
 
 
@@ -669,12 +770,12 @@ echo "1" > /root/accept_changes
 	# Import the gpg keys
 	gpg_rpm_import >> $setup_log 2>&1
 	info "Disabling fastestmirror"
-	[[ $OS == 'centos' ]] && disable_fastestmirror
+	[[ $is_centos ]] && disable_fastestmirror
 	if [[ ! $is_airgap ]]; then
-	    securityonion_repo >> $setup_log 2>&1
-	    update_packages >> $setup_log 2>&1
+		securityonion_repo >> $setup_log 2>&1
+		update_packages >> $setup_log 2>&1
 	else
-	    airgap_repo >> $setup_log 2>&1
+		airgap_repo >> $setup_log 2>&1
 	fi
 
 	if [[ $is_sensor || $is_helix || $is_import ]]; then
@@ -693,17 +794,22 @@ echo "1" > /root/accept_changes
 
 	set_progress_str 5 'Installing Salt and dependencies'
 	saltify 2>> $setup_log
+    
+	if [[ ! $is_analyst ]]; then
+		set_progress_str 6 'Installing Docker and dependencies'
+		docker_install >> $setup_log 2>&1
+	fi
 
-	set_progress_str 6 'Installing Docker and dependencies'
-	docker_install >> $setup_log 2>&1
-	
 	set_progress_str 7 'Generating patch pillar'
 	patch_pillar >> $setup_log 2>&1
 
 	set_progress_str 8 'Initializing Salt minion'
 	configure_minion "$minion_type" >> $setup_log 2>&1
-	check_sos_appliance >> $setup_log 2>&1
 
+	if [[ ! $is_analyst ]]; then
+		check_sos_appliance >> $setup_log 2>&1
+	fi
+	
 	update_sudoers_for_testing >> $setup_log 2>&1
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
@@ -781,8 +887,10 @@ echo "1" > /root/accept_changes
 		generate_ca >> $setup_log 2>&1
 	fi
 
-	set_progress_str 24 'Generating SSL'
-	generate_ssl >> $setup_log 2>&1
+	if [[ ! $is_analyst ]]; then
+		set_progress_str 24 'Generating SSL'
+		generate_ssl >> $setup_log 2>&1
+	fi
 
 	if [[ $is_manager || $is_helix || $is_import ]]; then
 		set_progress_str 25 'Configuring firewall'
@@ -809,18 +917,22 @@ echo "1" > /root/accept_changes
 		echo "Finished so-elastic-auth..." >> $setup_log 2>&1
 	fi
 
-	set_progress_str 61 "$(print_salt_state_apply 'firewall')"
-	salt-call state.apply -l info firewall >> $setup_log 2>&1
+	if [[ ! $is_analyst ]]; then
+		set_progress_str 61 "$(print_salt_state_apply 'firewall')"
+		salt-call state.apply -l info firewall >> $setup_log 2>&1
+	fi
 
-	if [ $OS = 'centos' ]; then
+	if [[ $is_centos ]]; then
 		set_progress_str 61 'Installing Yum utilities'
 		salt-call state.apply -l info yum.packages >> $setup_log 2>&1
 	fi
 
-	set_progress_str 62 "$(print_salt_state_apply 'common')"
-	salt-call state.apply -l info common >> $setup_log 2>&1
+	if [[ ! $is_analyst ]]; then
+		set_progress_str 62 "$(print_salt_state_apply 'common')"
+		salt-call state.apply -l info common >> $setup_log 2>&1
+	fi
 
-	if [[ ! $is_helix && ! $is_receiver && ! $is_idh ]]; then
+	if [[ ! $is_helix && ! $is_receiver && ! $is_idh && ! $is_analyst ]]; then
 		set_progress_str 62 "$(print_salt_state_apply 'nginx')"
 		salt-call state.apply -l info nginx >> $setup_log 2>&1
 	fi
@@ -918,6 +1030,8 @@ echo "1" > /root/accept_changes
 			set_progress_str 77 "$(print_salt_state_apply 'fleet.event_update-custom-hostname')"
 			pillar_override="{\"global\":{\"fleet_custom_hostname\": \"$FLEETCUSTOMHOSTNAME\"}}"
 			salt-call state.apply -l info fleet.event_update-custom-hostname pillar="$pillar_override" >> $setup_log 2>&1
+			rm -f /etc/pki/managerssl.crt
+			salt-call state.apply -l info ssl >> $setup_log 2>&1
 		fi
 	
 		set_progress_str 78 "$(print_salt_state_apply 'so-fleet-setup')"	
@@ -961,14 +1075,21 @@ echo "1" > /root/accept_changes
 		salt-call state.apply -l info filebeat >> $setup_log 2>&1
 	fi
 
-	set_progress_str 85 'Applying finishing touches'
-	filter_unused_nics >> $setup_log 2>&1
-	network_setup >> $setup_log 2>&1
-	so-ssh-harden >> $setup_log 2>&1
-
+	if [[ ! $is_analyst ]]; then
+		set_progress_str 85 'Applying finishing touches'
+		filter_unused_nics >> $setup_log 2>&1
+		network_setup >> $setup_log 2>&1
+		so-ssh-harden >> $setup_log 2>&1
+	fi
+	
 	if [[ $is_manager || $is_import ]]; then
 		set_progress_str 87 'Adding user to SOC'
 		add_web_user >> $setup_log 2>&1
+	fi
+	
+	if [[ $is_analyst ]]; then
+		# Remove access to the manager from the analyst workstation
+		rm -rf /root/.ssh/so.key*
 	fi
 
 	set_progress_str 90 'Enabling checkin at boot'
@@ -1018,9 +1139,9 @@ else
 		fi
 
 		if [[ -n $ENDGAMEHOST ]]; then
-                        set_progress_str 99 'Configuring firewall for Endgame SMP'
-                        so-firewall --apply includehost endgame $ENDGAMEHOST   >> $setup_log 2>&1
-                fi
+			set_progress_str 99 'Configuring firewall for Endgame SMP'
+			so-firewall --apply includehost endgame $ENDGAMEHOST   >> $setup_log 2>&1
+		fi
 
 	} | whiptail_gauge_post_setup "Running post-installation steps..."
 

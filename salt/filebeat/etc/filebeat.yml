@@ -10,6 +10,7 @@
 {%- set ZEEKVER = salt['pillar.get']('global:mdengine', 'COMMUNITY') %}
 {%- set WAZUHENABLED = salt['pillar.get']('global:wazuh', '0') %}
 {%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
+{%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) -%}
 {%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
 {%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
 {%- set FBMEMEVENTS = salt['pillar.get']('filebeat:mem_events', 2048) -%}
@@ -265,6 +266,54 @@ filebeat.inputs:
   clean_removed: false
   close_removed: false
 
+{%- endif %}
+
+{%- if RITAENABLED %}
+- type: filestream
+  paths:
+    - /nsm/rita/beacons.csv
+  exclude_lines: ['^Score', '^Source', '^Domain', '^No results']
+  fields:
+    module: rita
+    dataset: beacon
+    category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  pipeline: "rita.beacon"
+  index: "so-rita"
+
+- type: filestream
+  paths:
+    - /nsm/rita/long-connections.csv
+    - /nsm/rita/open-connections.csv
+  exclude_lines: ['^Source', '^No results']
+  fields:
+    module: rita
+    dataset: connection
+    category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  pipeline: "rita.connection"
+  index: "so-rita"
+
+- type: filestream
+  paths:
+    - /nsm/rita/exploded-dns.csv
+  exclude_lines: ['^Domain', '^No results']
+  fields:
+    module: rita
+    dataset: dns
+    category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  pipeline: "rita.dns"
+  index: "so-rita"
 {%- endif %}
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager',  'so-managersearch', 'so-import'] %}

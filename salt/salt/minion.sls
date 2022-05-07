@@ -3,6 +3,7 @@
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
 {% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import SALTPACKAGES %}
+{% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
 {% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
@@ -31,6 +32,22 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
+
+  {# if we are the salt master #}
+  {% if grains.id.split('_')|first == grains.master %}
+remove_influxdb_continuous_query_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdb_continuous_query.py.patched
+
+remove_influxdbmod_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdbmod.py.patched
+
+remove_influxdb_retention_policy_state_file:
+  file.absent:
+    - name: /opt/so/state/influxdb_retention_policy.py.patched
+  {% endif %}
+
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
@@ -66,7 +83,7 @@ set_log_levels:
 
 salt_minion_service_unit_file:
   file.managed:
-    - name: /etc/systemd/system/multi-user.target.wants/salt-minion.service
+    - name: {{ SYSTEMD_UNIT_FILE }}
     - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
     - defaults:
@@ -94,6 +111,7 @@ salt_minion_service:
       - file: set_log_levels
       - file: salt_minion_service_unit_file
 {% endif %}
+    - order: last
 
 
 patch_pkg:

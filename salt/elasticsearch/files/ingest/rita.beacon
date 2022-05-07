@@ -1,0 +1,127 @@
+{
+  "description": "RITA Beacons",
+  "processors": [
+    {
+      "set": {
+        "field": "_index",
+        "value": "so-rita",
+        "override": true
+      }
+    },
+    {
+      "csv": {
+        "field": "message",
+        "target_fields": [
+          "beacon.score",
+          "source.ip",
+          "destination.ip",
+          "network.connections",
+          "network.average_bytes",
+          "beacon.interval.range",
+          "beacon.size.range",
+          "beacon.interval.top",
+          "beacon.size.top",
+          "beacon.interval.top_count",
+          "beacon.size.top_count",
+          "beacon.interval.skew",
+          "beacon.size.skew",
+          "beacon.interval.dispersion",
+          "beacon.size.dispersion",
+          "network.bytes"
+        ]
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.connections",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.average_bytes",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.range",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.size.range",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.top",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.size.top",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.top_count",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.size.top_count",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.skew",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.size.skew",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.dispersion",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.size.dispersion",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.bytes",
+        "type": "integer"
+      }
+    },
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "dataset",        "value": "alert", "override": true }},
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "rule.name",        "value": "Potential C2 Beacon Activity", "override": true }},
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "event.severity",        "value": 3, "override": true }},
+    {
+      "pipeline": {
+        "name": "common"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "description": "RITA Connections",
+  "processors": [
+    {
+      "set": {
+        "field": "_index",
+        "value": "so-rita",
+        "override": true
+      }
+    },
+    {
+      "dissect": {
+        "field": "message",
+        "pattern": "%{source.ip},%{destination.ip},%{network.port}:%{network.protocol}:%{network.service},%{connection.duration},%{connection.state}"
+      }
+    },
+    {
+      "convert": {
+        "field": "connection.duration",
+        "type": "float"
+      }
+    },
+    {
+      "set": {
+        "field": "event.duration",
+        "value": "{{ connection.duration }}",
+        "override": true
+      }
+    },
+    {
+      "pipeline": {
+        "name": "common"
+      }
+    }
+  ]
+}

@@ -34,7 +34,15 @@ check_err() {
   local err_msg="Unhandled error occured, please check $SOUP_LOG for details."
 
   [[ $ERR_HANDLED == true ]] && exit $exit_code
+
   if [[ $exit_code -ne 0 ]]; then
+  
+    set +e
+    systemctl_func "start" "$cron_service_name"
+    systemctl_func "start" "salt-master"
+    systemctl_func "start" "salt-minion"
+    enable_highstate
+
     printf '%s' "Soup failed with error $exit_code: "
     case $exit_code in
       2)
@@ -91,10 +99,7 @@ check_err() {
     if [[ $exit_code -ge 64 && $exit_code -le 113 ]]; then
       echo "$err_msg"
     fi
-    set +e
-    systemctl_func "start" "$cron_service_name"
-    echo "Ensuring highstate is enabled."
-    salt-call state.enable highstate --local
+
     exit $exit_code
   fi
 
@@ -366,6 +371,12 @@ clone_to_tmp() {
   fi
 }
 
+enable_highstate() {
+    echo "Enabling highstate."
+    salt-call state.enable highstate -l info --local
+    echo ""
+}
+
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -411,6 +422,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
+    [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
     true
 }
 
@@ -424,6 +436,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.60 || "$POSTVERSION" == 2.3.61 || "$POSTVERSION" == 2.3.70 || "$POSTVERSION" == 2.3.80 ]] && post_to_2.3.90
     [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
+    [[ "$POSTVERSION" == 2.3.110 ]] && post_to_2.3.120
+
     true
 }
 
@@ -487,15 +501,23 @@ post_to_2.3.110() {
   POSTVERSION=2.3.110
 }
 
+post_to_2.3.120() {
+  echo "Post Processing for 2.3.120"
+  POSTVERSION=2.3.120
+  sed -i '/so-thehive-es/d;/so-thehive/d;/so-cortex/d' /opt/so/conf/so-status/so-status.conf
+}
+
+
+
 stop_salt_master() {
     # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
     set +e
     echo ""
     echo "Killing all Salt jobs across the grid."
-    salt \* saltutil.kill_all_jobs
+    salt \* saltutil.kill_all_jobs >> $SOUP_LOG 2>&1
     echo ""
     echo "Killing any queued Salt jobs on the manager."
-    pkill -9 -ef "/usr/bin/python3 /bin/salt"
+    pkill -9 -ef "/usr/bin/python3 /bin/salt" >> $SOUP_LOG 2>&1
     set -e
 
     echo ""
@@ -723,9 +745,6 @@ up_to_2.3.90() {
 up_to_2.3.100() {
   fix_wazuh
   
-  echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
-  rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
-  
   echo "Adding receiver hostgroup with so-firewall"
   if so-firewall addhostgroup receiver 2>&1 | grep -q 'Already exists'; then
     echo 'receiver hostgroup already exists'
@@ -738,10 +757,15 @@ up_to_2.3.100() {
 }
 
 up_to_2.3.110() {
-  echo "Updating to Security Onion 2.3.110"
-  echo "Updating shard settings for Elasticsearch index templates"
   sed -i 's|shards|index_template:\n        template:\n          settings:\n            index:\n              number_of_shards|g' /opt/so/saltstack/local/pillar/global.sls
 }
+
+up_to_2.3.120() {
+  # Stop thehive services since these will be broken in .120
+  so-thehive-stop
+  so-thehive-es-stop
+  so-cortex-stop
+  }
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')
@@ -857,7 +881,7 @@ upgrade_salt() {
     echo ""
     set +e
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying apt hold for Salt."
@@ -866,11 +890,29 @@ upgrade_salt() {
     apt-mark hold "salt-master"
     apt-mark hold "salt-minion"
   fi
+
+  echo "Checking if Salt was upgraded."
+  echo ""
+  # Check that Salt was upgraded
+  SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
+  if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
+    echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
+    echo "Once the issue is resolved, run soup again."
+    echo "Exiting."
+    echo ""
+    exit 0
+  else
+    echo "Salt upgrade success."
+    echo ""
+    echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
+    rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
+  fi
+
 }
 
 update_repo() {
-  echo "Performing repo changes."
   if [[ "$OS" == "centos" ]]; then
+    echo "Performing repo changes."
     # Import GPG Keys
     gpg_rpm_import
     echo "Disabling fastestmirror."
@@ -890,6 +932,21 @@ update_repo() {
       yum clean all
       yum repolist
     fi
+  elif [[ "$OS" == "ubuntu" ]]; then
+    ubuntu_version=$(grep VERSION_ID /etc/os-release | awk -F '[ "]' '{print $2}')
+
+    if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
+      OSVER=bionic
+    elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+      OSVER=focal
+    else
+      echo "We do not support your current version of Ubuntu."
+      exit 1
+    fi
+
+    rm -f /etc/apt/sources.list.d/salt.list
+    echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+    apt-get update
   fi
 }
 
@@ -922,6 +979,8 @@ verify_latest_update_script() {
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
     fix_wazuh
+  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
+    2_3_10_hotfix_1
   else
     echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
@@ -943,6 +1002,28 @@ fix_wazuh() {
   fi
 }
 
+#upgrade salt to 3004.1
+2_3_10_hotfix_1() {
+    systemctl_func "stop" "$cron_service_name"
+    # update mine items prior to stopping salt-minion and salt-master
+    update_salt_mine
+    stop_salt_minion
+    stop_salt_master
+    update_repo
+    # Does salt need upgraded. If so update it.
+    if [[ $UPGRADESALT -eq 1 ]]; then
+      echo "Upgrading Salt"
+      # Update the repo files so it can actually upgrade
+      upgrade_salt
+    fi
+    rm -f /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdbmod.py.patched /opt/so/state/influxdb_retention_policy.py.patched
+    systemctl_func "start" "salt-master"
+    salt-call state.apply salt.python3-influxdb -l info
+    systemctl_func "start" "salt-minion"
+    systemctl_func "start" "$cron_service_name"
+
+}
+
 main() {
   trap 'check_err $?' EXIT
   
@@ -953,6 +1034,17 @@ main() {
 
   echo "### Preparing soup at $(date) ###"
   echo ""
+
+  set_os
+  set_cron_service_name
+  if ! check_salt_master_status; then
+  	echo "Could not talk to salt master"
+    echo "Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
+    echo "SOUP will now attempt to start the salt-master service and exit."
+    exit 1
+  fi
+
+  echo "This node can communicate with the salt-master."
 
   echo "Checking to see if this is a manager."
   echo ""
@@ -989,8 +1081,6 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   echo ""
-  set_os
-  set_cron_service_name
   set_palette
   check_elastic_license
   echo ""
@@ -1012,12 +1102,19 @@ main() {
   upgrade_check_salt
   set -e
 
+  if [[ $is_airgap -eq 0 ]]; then
+    update_centos_repo
+    yum clean all
+    check_os_updates
+  fi
+
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
     update_version
+    enable_highstate
     salt-call state.highstate -l info queue=True
   else
     echo ""
@@ -1032,9 +1129,6 @@ main() {
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
-      update_centos_repo
-      yum clean all
-      check_os_updates
     # if not airgap but -f was used
     elif [[ ! -z "$ISOLOC" ]]; then
       airgap_update_dockers
@@ -1057,21 +1151,6 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
-    
-      echo "Checking if Salt was upgraded."
-      echo ""
-      # Check that Salt was upgraded
-      SALTVERSIONPOSTUPGRADE=$(salt --versions-report | grep Salt: | awk '{print $2}')
-      if [[ "$SALTVERSIONPOSTUPGRADE" != "$NEWSALTVERSION" ]]; then
-        echo "Salt upgrade failed. Check of indicators of failure in $SOUP_LOG."
-        echo "Once the issue is resolved, run soup again."
-        echo "Exiting."
-        echo ""
-        exit 0
-      else
-        echo "Salt upgrade success."
-        echo ""
-      fi
     fi
 
     preupgrade_changes
@@ -1127,9 +1206,7 @@ main() {
       echo ""
     fi
 
-    echo "Enabling highstate."
-    salt-call state.enable highstate -l info --local
-    echo ""
+    enable_highstate
 
     echo ""
     echo "Running a highstate. This could take several minutes."
