@@ -18,6 +18,23 @@ The built-in analyzers support the following observable types:
 | Urlscan                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
 | Virustotal              |&check; |&check;|&check;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
 
+## Authentication
+Many analyzers require authentication, via an API key or similar. The table below illustrates which analyzers require authentication.
+
+| Name                    | Authn Req'd|
+--------------------------|------------|
+[Alienvault OTX](https://otx.alienvault.com/api)            |&check;|
+[EmailRep](https://emailrep.io/key)                  |&check;|
+[Greynoise](https://www.greynoise.io/plans/community)                 |&check;|
+JA3er                     |&cross;|
+LocalFile                 |&cross;|
+[Pulsedive](https://pulsedive.com/api/)                 |&check;|
+Spamhaus                  |&cross;|
+Urlhaus                   |&cross;|
+[Urlscan](https://urlscan.io/docs/api/)                   |&check;|
+[Virustotal](https://developers.virustotal.com/reference/overview)                |&check;|
+
+
 ## Developer Guide
 
 ### Python
