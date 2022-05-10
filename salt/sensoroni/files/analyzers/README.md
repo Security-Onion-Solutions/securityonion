@@ -23,16 +23,16 @@ Many analyzers require authentication, via an API key or similar. The table belo
 
 | Name                    | Authn Req'd|
 --------------------------|------------|
-[Alienvault OTX](https://otx.alienvault.com/api)            |&check;|
+[AlienVault OTX](https://otx.alienvault.com/api)            |&check;|
 [EmailRep](https://emailrep.io/key)                  |&check;|
-[Greynoise](https://www.greynoise.io/plans/community)                 |&check;|
+[GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
 JA3er                     |&cross;|
 LocalFile                 |&cross;|
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 Spamhaus                  |&cross;|
 Urlhaus                   |&cross;|
 [Urlscan](https://urlscan.io/docs/api/)                   |&check;|
-[Virustotal](https://developers.virustotal.com/reference/overview)                |&check;|
+[VirusTotal](https://developers.virustotal.com/reference/overview)                |&check;|
 
 
 ## Developer Guide
