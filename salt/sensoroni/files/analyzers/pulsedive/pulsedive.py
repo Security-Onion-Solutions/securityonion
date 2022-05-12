@@ -14,7 +14,7 @@ def checkConfigRequirements(conf):
 
 
 def buildReq(conf, artifactType, artifactValue):
-    indicatorTypes = ["domain", "hash", "ip" "url"]
+    indicatorTypes = ["domain", "hash", "ip", "url"]
     if artifactType in indicatorTypes:
         url = conf['base_url'] + '/info.php'
         params = {"key": conf["api_key"], "indicator": artifactValue}
@@ -53,19 +53,17 @@ def prepareResults(raw):
                 for r in raw['results']:
                     risk = r['risk']
                     classified.append(classification.get(risk))
-        else:
+        elif "risk" in raw:
             classified.append(classification.get(raw['risk']))
-
+        elif "error" in raw and raw["error"] == "Indicator not found.":
+            classified.append("no_results")
     if classified.count('malicious') > 0:
         summary = "malicious"
         status = "threat"
     elif classified.count('suspicious') > 0:
         summary = "suspicious"
         status = "caution"
-    elif classified.count('harmless') > 0:
-        summary = "harmless"
-        status = "ok"
-    elif classified.count('none') > 0:
+    elif classified.count('harmless') or classified.count('none') > 0:
         summary = "harmless"
         status = "ok"
     elif classified.count('unknown') > 0:

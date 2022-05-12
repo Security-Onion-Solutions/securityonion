@@ -104,6 +104,13 @@ class TestVirusTotalMethods(unittest.TestCase):
         self.assertEqual(results["summary"], "harmless")
         self.assertEqual(results["status"], "ok")
 
+    def test_prepareResults_indicator_not_Found(self):
+        raw = {"error": "Indicator not found."}
+        results = pulsedive.prepareResults(raw)
+        self.assertEqual(results["response"], raw)
+        self.assertEqual(results["summary"], "no_results")
+        self.assertEqual(results["status"], "ok")
+
     def test_prepareResults_error(self):
         raw = {}
         results = pulsedive.prepareResults(raw)
