@@ -31,10 +31,10 @@ def prepareResults(raw):
     elif "status" in raw:
         if raw["reason"] == "invalid email":
             status = "caution"
-            summary = "Invalid email address."
+            summary = "invalid_input"
         if "exceeded daily limit" in raw["reason"]:
             status = "caution"
-            summary = "Exceeded daily request limit."
+            summary = "excessive_usage"
     else:
         status = "caution"
         summary = "internal_failure"

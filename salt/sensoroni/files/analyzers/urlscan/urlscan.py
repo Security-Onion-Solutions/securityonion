@@ -54,7 +54,7 @@ def prepareResults(raw):
             summary = "suspicious"
         else:
             status = "info"
-            summary = "Scan complete."
+            summary = "analysis_complete"
     else:
         status = "caution"
         summary = "internal_failure"

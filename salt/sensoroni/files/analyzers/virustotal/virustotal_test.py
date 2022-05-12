@@ -25,7 +25,7 @@ class TestVirusTotalMethods(unittest.TestCase):
                 self.assertEqual(mock_stdout.getvalue(), expected)
                 mock.assert_called_once()
 
-    def checkConfigRequirements(self):
+    def test_checkConfigRequirements(self):
         conf = {"not_a_key": "abcd12345"}
         with self.assertRaises(SystemExit) as cm:
             virustotal.checkConfigRequirements(conf)

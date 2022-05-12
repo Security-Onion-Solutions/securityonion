@@ -44,7 +44,7 @@ def prepareResults(response):
                 summaryinfo = "harmless"
             elif reputation > 0 and reputation < 50:
                 status = "ok"
-                summaryinfo = "Likely Harmless"
+                summaryinfo = "likely_harmless"
             elif reputation >= 50 and reputation < 75:
                 status = "caution"
                 summaryinfo = "suspicious"
@@ -53,7 +53,7 @@ def prepareResults(response):
                 summaryinfo = "malicious"
         else:
             status = "info"
-            summaryinfo = "Analysis complete."
+            summaryinfo = "analyzer_analysis_complete"
     else:
         raw = {}
         status = "caution"

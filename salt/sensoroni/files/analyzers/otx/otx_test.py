@@ -25,7 +25,7 @@ class TestOtxMethods(unittest.TestCase):
                 self.assertEqual(mock_stdout.getvalue(), expected)
                 mock.assert_called_once()
 
-    def checkConfigRequirements(self):
+    def test_checkConfigRequirements(self):
         conf = {"not_a_key": "abcd12345"}
         with self.assertRaises(SystemExit) as cm:
             otx.checkConfigRequirements(conf)
@@ -119,7 +119,7 @@ class TestOtxMethods(unittest.TestCase):
                  }
         results = otx.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Likely Harmless")
+        self.assertEqual(results["summary"], "likely_harmless")
         self.assertEqual(results["status"], "ok")
 
     def test_prepareResults_suspicious(self):
@@ -210,7 +210,7 @@ class TestOtxMethods(unittest.TestCase):
               }
         results = otx.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Analysis complete.")
+        self.assertEqual(results["summary"], "analyzer_analysis_complete")
         self.assertEqual(results["status"], "info")
 
     def test_prepareResults_error(self):
