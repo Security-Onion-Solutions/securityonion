@@ -38,21 +38,28 @@ class TestJa3erMethods(unittest.TestCase):
         raw = {"error": "Sorry no values found"}
         results = ja3er.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "No results found.")
+        self.assertEqual(results["summary"], "no_results")
         self.assertEqual(results["status"], "ok")
 
     def test_prepareResults_invalidHash(self):
         raw = {"error": "Invalid hash"}
         results = ja3er.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Invalid hash.")
+        self.assertEqual(results["summary"], "invalid_input")
+        self.assertEqual(results["status"], "caution")
+
+    def test_prepareResults_internal_failure(self):
+        raw = {"error": "unknown"}
+        results = ja3er.prepareResults(raw)
+        self.assertEqual(results["response"], raw)
+        self.assertEqual(results["summary"], "internal_failure")
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_info(self):
         raw = [{"User-Agent": "Blah/5.0", "Count": 24874, "Last_seen": "2022-04-08 16:18:38"}, {"Comment": "Brave browser v1.36.122\n\n", "Reported": "2022-03-28 20:26:42"}]
         results = ja3er.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Results found.")
+        self.assertEqual(results["summary"], "suspicious")
         self.assertEqual(results["status"], "info")
 
     def test_analyze(self):
@@ -61,5 +68,5 @@ class TestJa3erMethods(unittest.TestCase):
         conf = {"base_url": "myurl/"}
         with patch('ja3er.ja3er.sendReq', new=MagicMock(return_value=output)) as mock:
             results = ja3er.analyze(conf, artifactInput)
-            self.assertEqual(results["summary"], "Results found.")
+            self.assertEqual(results["summary"], "suspicious")
             mock.assert_called_once()

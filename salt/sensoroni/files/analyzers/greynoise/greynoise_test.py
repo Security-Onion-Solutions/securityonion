@@ -62,7 +62,7 @@ class TestGreynoiseMethods(unittest.TestCase):
         raw = {"message": "Request is not a valid routable IPv4 address"}
         results = greynoise.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Invalid IP address.")
+        self.assertEqual(results["summary"], "invalid_input")
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_not_found(self):
@@ -90,7 +90,7 @@ class TestGreynoiseMethods(unittest.TestCase):
         raw = {"ip": "221.4.62.149", "noise": "true", "riot": "false", "classification": "unknown", "name": "unknown", "link": "https://viz.gn.io", "last_seen": "2022-04-26", "message": "Success"}
         results = greynoise.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Results found.")
+        self.assertEqual(results["summary"], "suspicious")
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_unknown_message(self):
@@ -113,5 +113,5 @@ class TestGreynoiseMethods(unittest.TestCase):
         conf = {"base_url": "myurl/", "api_key": "abcd1234", "api_version": "community"}
         with patch('greynoise.greynoise.sendReq', new=MagicMock(return_value=output)) as mock:
             results = greynoise.analyze(conf, artifactInput)
-            self.assertEqual(results["summary"], "Results found.")
+            self.assertEqual(results["summary"], "suspicious")
             mock.assert_called_once()

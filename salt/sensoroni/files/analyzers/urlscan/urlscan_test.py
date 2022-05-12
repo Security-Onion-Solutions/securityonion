@@ -96,7 +96,7 @@ class TestUrlScanMethods(unittest.TestCase):
         raw = {"requests": [{"request": {"requestId": "3"}}], "verdicts": {"overall": {"score": 0, "malicious": False, "hasVerdicts": False}}}
         results = urlscan.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Scan complete.")
+        self.assertEqual(results["summary"], "analysis_complete")
         self.assertEqual(results["status"], "info")
 
     def test_prepareResults_error(self):
@@ -116,6 +116,6 @@ class TestUrlScanMethods(unittest.TestCase):
         with patch('urlscan.urlscan.sendReq', new=MagicMock(return_value=output_req)) as mock_req:
             with patch('urlscan.urlscan.getReport', new=MagicMock(return_value=output_report)) as mock_report:
                 results = urlscan.analyze(conf, artifactInput)
-                self.assertEqual(results["summary"], "Scan complete.")
+                self.assertEqual(results["summary"], "analysis_complete")
                 mock_req.assert_called_once()
                 mock_report.assert_called_once()

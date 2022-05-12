@@ -44,7 +44,7 @@ class TestEmailRepMethods(unittest.TestCase):
         raw = {"status": "fail", "reason": "invalid email"}
         results = emailrep.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Invalid email address.")
+        self.assertEqual(results["summary"], "invalid_input")
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_not_suspicious(self):
@@ -65,7 +65,7 @@ class TestEmailRepMethods(unittest.TestCase):
         raw = {"status": "fail", "reason": "exceeded daily limit. please wait 24 hrs or visit emailrep.io/key for an api key."}
         results = emailrep.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "Exceeded daily request limit.")
+        self.assertEqual(results["summary"], "excessive_usage")
         self.assertEqual(results["status"], "caution")
 
     def test_prepareResults_error(self):
