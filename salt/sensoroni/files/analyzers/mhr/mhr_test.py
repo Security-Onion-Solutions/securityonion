@@ -53,7 +53,7 @@ class TestMHRMethods(unittest.TestCase):
         raw = {"hash": "14af04b8e69682782607a0c5796ca56999eda6b3", "last_seen": "NO_DATA", "av_detection_percentage": 0}
         results = mhr.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "No results found.")
+        self.assertEqual(results["summary"], "no_results")
         self.assertEqual(results["status"], "ok")
 
     def test_prepareResults_harmless(self):

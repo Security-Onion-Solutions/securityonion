@@ -26,7 +26,7 @@ def prepareResults(raw):
     if raw and "last_seen" in raw:
         if raw["last_seen"] == "NO_DATA":
             status = "ok"
-            summary = "No results found."
+            summary = "no_results"
         elif raw["av_detection_percentage"] < 1:
             status = "ok"
             summary = "harmless"
