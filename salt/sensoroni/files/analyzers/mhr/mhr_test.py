@@ -89,5 +89,5 @@ class TestMHRMethods(unittest.TestCase):
         artifactInput = '{"value": "14af04b8e69682782607a0c5796ca56999eda6b3", "artifactType": "hash"}'
         with patch('mhr.mhr.sendReq', new=MagicMock(return_value=output)) as mock:
             results = mhr.analyze(artifactInput)
-            self.assertEqual(results["summary"], "No results found.")
+            self.assertEqual(results["summary"], "no_results")
             mock.assert_called_once()
