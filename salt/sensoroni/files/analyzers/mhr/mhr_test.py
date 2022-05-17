@@ -36,7 +36,7 @@ class TestMHRMethods(unittest.TestCase):
             mock.assert_called_once_with(options, hash, flags)
             self.assertIsNotNone(response)
             self.assertEqual(response, {"hash": "84af04b8e69682782607a0c5796ca56999eda6b3", "last_seen": "2019-15-07 03:30:33", "av_detection_percentage": 35})
- 
+
     def test_sendReqNoData(self):
         output = "84af04b8e69682782607a0c5796ca5696b3 NO_DATA"
         hash = "abcd1234"
