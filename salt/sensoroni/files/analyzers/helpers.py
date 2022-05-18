@@ -1,7 +1,6 @@
 import json
 import os
 import sys
-import yaml
 
 
 def checkSupportedType(meta, artifact_type):
@@ -24,5 +23,6 @@ def loadMetadata(file):
 
 
 def loadConfig(path):
+    import yaml
     with open(str(path), "r") as conffile:
         return yaml.safe_load(conffile)
