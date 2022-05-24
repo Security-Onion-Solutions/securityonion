@@ -7,7 +7,7 @@ Submit an email address to EmailRepIO for analysis.
 
 ``api_key`` - API key used for communication with the EmailRepIO API
 
-This value should be set in the pillar, like so:
+This value should be set in the ``sensoroni`` pillar, like so:
 
 ```
 sensoroni:

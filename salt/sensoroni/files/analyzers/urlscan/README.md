@@ -10,7 +10,7 @@ Submit a URL to Urlscan for analysis.
 ``visibility`` - Determines whether or not scan results are visibile publicly. Defaults to ``public``
 ``timeout`` - Time to wait for scan results. Defaults to ``180``s
 
-This value should be set in the pillar, like so:
+This value should be set in the ``sensoroni`` pillar, like so:
 
 ```
 sensoroni:

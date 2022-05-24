@@ -20,7 +20,7 @@ MatchValue,MatchDescription,MatchReference
 abcd1234,ThisIsADescription,https://siteabouthings.abc
 ```
 
-The ``file_path`` value(s) should be set in the pillar, like so:
+The ``file_path`` value(s) should be set in the ``sensoroni`` pillar, like so:
 
 ```
 sensoroni:

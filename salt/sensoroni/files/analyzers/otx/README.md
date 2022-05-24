@@ -7,7 +7,7 @@ Submit a domain, hash, IP, or URL to Alienvault OTX for analysis.
 
 ``api_key`` - API key used for communication with the Alienvault API
 
-This value should be set in the pillar, like so:
+This value should be set in the ``sensoroni`` pillar, like so:
 
 ```
 sensoroni:

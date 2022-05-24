@@ -9,7 +9,7 @@ Submit an IP address to Greynoise for analysis.
 ``api_version`` - Version of Greynoise API. Default is ``community``
 
 
-This value should be set in the pillar, like so:
+This value should be set in the ``sensoroni`` pillar, like so:
 
 ```
 sensoroni:
