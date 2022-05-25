@@ -1,7 +1,7 @@
-# Virustotal
+# Pulsedive
 
 ## Description
-Submit a domain, hash, IP, or URL to Virustotal for analysis.
+Search Pulsedive for a domain, hash, IP, URI, URL, or User Agent.
 
 ## Configuration Requirements
 
@@ -12,6 +12,6 @@ This value should be set in the ``sensoroni`` pillar, like so:
 ```
 sensoroni:
   analyzers:
-    virustotal:
+    pulsedive:
       api_key: $yourapikey
 ```
