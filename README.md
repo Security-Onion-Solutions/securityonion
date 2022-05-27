@@ -14,7 +14,7 @@ Hunt
 ![Hunt](./assets/images/screenshots/hunt.png)
 
 Cases
-![Cases](./assets/images/screenshots/cases.png)
+![Cases](./assets/images/screenshots/cases-comments.png)
 
 ### Release Notes
 
