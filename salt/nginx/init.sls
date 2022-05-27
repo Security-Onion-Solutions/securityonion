@@ -50,7 +50,7 @@ nginxtmp:
 
 navigatorconfig:
   file.managed:
-    - name: /opt/so/conf/navigator/navigator_config.json
+    - name: /opt/so/conf/navigator/config.json
     - source: salt://nginx/files/navigator_config.json
     - user: 939
     - group: 939
@@ -59,7 +59,7 @@ navigatorconfig:
 
 navigatordefaultlayer:
   file.managed:
-    - name: /opt/so/conf/navigator/nav_layer_playbook.json
+    - name: /opt/so/conf/navigator/layers/nav_layer_playbook.json
     - source: salt://nginx/files/nav_layer_playbook.json
     - user: 939
     - group: 939
@@ -69,7 +69,7 @@ navigatordefaultlayer:
 
 navigatorpreattack:
   file.managed:
-    - name: /opt/so/conf/navigator/pre-attack.json
+    - name: /opt/so/conf/navigator/layers/pre-attack.json
     - source: salt://nginx/files/pre-attack.json
     - user: 939
     - group: 939
@@ -78,7 +78,7 @@ navigatorpreattack:
 
 navigatorenterpriseattack:
   file.managed:
-    - name: /opt/so/conf/navigator/enterprise-attack.json
+    - name: /opt/so/conf/navigator/layers/enterprise-attack.json
     - source: salt://nginx/files/enterprise-attack.json
     - user: 939
     - group: 939
@@ -99,10 +99,8 @@ so-nginx:
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
-      - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
-      - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
-      - /opt/so/conf/navigator/enterprise-attack.json:/opt/socore/html/navigator/assets/enterprise-attack.json:ro
-      - /opt/so/conf/navigator/pre-attack.json:/opt/socore/html/navigator/assets/pre-attack.json:ro
+      - /opt/so/conf/navigator/layers/:/opt/socore/html/navigator/assets/so:ro
+      - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
   {% endif %}
   {% if ISAIRGAP is sameas true %}
       - /nsm/repo:/opt/socore/html/repo:ro
