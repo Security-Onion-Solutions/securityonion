@@ -42,6 +42,15 @@ query_updatwebhooks:
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
 
+query_updatename:
+  mysql_query.run:
+    - database: playbook
+    - query:    "update custom_fields set name = 'Custom Filter' where id = 21;"
+    - connection_host: {{ MAINIP }}
+    - connection_port: 3306
+    - connection_user: root
+    - connection_pass: {{ MYSQLPASS }}   
+
 query_updatepluginurls:
   mysql_query.run:
     - database: playbook
