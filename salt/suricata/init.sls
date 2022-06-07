@@ -111,6 +111,14 @@ surithresholding:
     - group: 940
     - template: jinja
 
+classification_config:
+  file.managed:
+    - name: /opt/so/conf/suricata/classification.config
+    - source: salt://suricata/files/classification.config.jinja
+    - user: 940
+    - group: 940
+    - template: jinja
+
 # BPF compilation and configuration
 {% if BPF_NIDS %}
    {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" "),cwd='/root') %}
@@ -148,6 +156,7 @@ so-suricata:
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
+      - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
@@ -159,10 +168,12 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+      - file: classification_config
     - require:
       - file: suriconfig
       - file: surithresholding
       - file: suribpf
+      - file: classification_config
 
   {% else %} {# if Suricata isn't enabled, then stop and remove the container #}
     - force: True

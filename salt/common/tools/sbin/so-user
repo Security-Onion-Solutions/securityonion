@@ -44,7 +44,7 @@ operation=$1
 email=$2
 role=$3
 
-kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434}
+kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434/admin}
 databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
 databaseTimeout=${KRATOS_DB_TIMEOUT:-5000}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
@@ -408,7 +408,7 @@ function migrateLockedUsers() {
   # This is a migration function to convert locked users from prior to 2.3.90
   # to inactive users using the newer Kratos functionality. This should only
   # find locked users once.
-  lockedEmails=$(curl -s http://localhost:4434/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
+  lockedEmails=$(curl -s ${kratosUrl}/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
   if [[ -n "$lockedEmails" ]]; then
     echo "Disabling locked users..."
     for email in $lockedEmails; do
