@@ -36,13 +36,13 @@ def prepareResults(raw):
                     summary = "malicious"
                 elif "unknown" in raw['classification']:
                     status = "caution"
-                    summary = "Results found."
+                    summary = "suspicious"
         elif "IP not observed scanning the internet or contained in RIOT data set." in raw["message"]:
             status = "ok"
             summary = "no_results"
         elif "Request is not a valid routable IPv4 address" in raw["message"]:
             status = "caution"
-            summary = "Invalid IP address."
+            summary = "invalid_input"
         else:
             status = "info"
             summary = raw["message"]

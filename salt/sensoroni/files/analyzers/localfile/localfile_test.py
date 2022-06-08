@@ -86,7 +86,7 @@ class TestLocalfileMethods(unittest.TestCase):
               ]
         results = localfile.prepareResults(raw)
         self.assertEqual(results["response"], raw)
-        self.assertEqual(results["summary"], "One or more matches found.")
+        self.assertEqual(results["summary"], "suspicious")
         self.assertEqual(results["status"], "info")
 
     def test_prepareResults_error(self):
@@ -115,5 +115,5 @@ class TestLocalfileMethods(unittest.TestCase):
         conf = {"file_path": "/home/intel.csv"}
         with patch('localfile.localfile.searchFile', new=MagicMock(return_value=output)) as mock:
             results = localfile.analyze(conf, artifactInput)
-            self.assertEqual(results["summary"], "One or more matches found.")
+            self.assertEqual(results["summary"], "suspicious")
             mock.assert_called_once()

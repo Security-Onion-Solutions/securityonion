@@ -15,16 +15,16 @@ def prepareResults(raw):
     if "error" in raw:
         if "Sorry" in raw["error"]:
             status = "ok"
-            summary = "No results found."
+            summary = "no_results"
         elif "Invalid hash" in raw["error"]:
             status = "caution"
-            summary = "Invalid hash."
+            summary = "invalid_input"
         else:
             status = "caution"
             summary = "internal_failure"
     else:
         status = "info"
-        summary = "Results found."
+        summary = "suspicious"
     results = {'response': raw, 'summary': summary, 'status': status}
     return results
 

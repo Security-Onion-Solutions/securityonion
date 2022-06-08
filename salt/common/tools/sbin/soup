@@ -423,6 +423,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
     [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
+    [[ "$INSTALLEDVERISON" == 2.3.120 ]] && up_to_2.3.130
     true
 }
 
@@ -437,6 +438,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.90 || "$POSTVERSION" == 2.3.91 ]] && post_to_2.3.100
     [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
     [[ "$POSTVERSION" == 2.3.110 ]] && post_to_2.3.120
+    [[ "$POSTVERSION" == 2.3.120 ]] && post_to_2.3.130
+    
 
     true
 }
@@ -505,6 +508,11 @@ post_to_2.3.120() {
   echo "Post Processing for 2.3.120"
   POSTVERSION=2.3.120
   sed -i '/so-thehive-es/d;/so-thehive/d;/so-cortex/d' /opt/so/conf/so-status/so-status.conf
+}
+
+post_to_2.3.130() {
+  echo "Post Processing for 2.3.130"
+  POSTVERSION=2.3.130
 }
 
 
@@ -765,7 +773,12 @@ up_to_2.3.120() {
   so-thehive-stop
   so-thehive-es-stop
   so-cortex-stop
-  }
+}
+
+up_to_2.3.130() {
+  # Remove file for nav update
+  rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
+}
 
 verify_upgradespace() {
   CURRENTSPACE=$(df -BG / | grep -v Avail | awk '{print $4}' | sed 's/.$//')

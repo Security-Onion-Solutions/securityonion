@@ -43,7 +43,7 @@ def prepareResults(raw):
             summary = "no_results"
         else:
             status = "info"
-            summary = "One or more matches found."
+            summary = "suspicious"
     else:
         raw = {}
         status = "caution"

@@ -270,6 +270,7 @@ filebeat.inputs:
 
 {%- if RITAENABLED %}
 - type: filestream
+  id: rita-beacon
   paths:
     - /nsm/rita/beacons.csv
   exclude_lines: ['^Score', '^Source', '^Domain', '^No results']
@@ -285,6 +286,7 @@ filebeat.inputs:
   index: "so-rita"
 
 - type: filestream
+  id: rita-connection
   paths:
     - /nsm/rita/long-connections.csv
     - /nsm/rita/open-connections.csv
@@ -301,6 +303,7 @@ filebeat.inputs:
   index: "so-rita"
 
 - type: filestream
+  id: rita-dns
   paths:
     - /nsm/rita/exploded-dns.csv
   exclude_lines: ['^Domain', '^No results']
@@ -446,6 +449,13 @@ output.logstash:
 
   # The Logstash hosts
   hosts:
+{# dont let filebeat send to a node designated as dmz #}
+{% import_yaml 'logstash/dmz_nodes.yaml' as dmz_nodes -%}
+{% if dmz_nodes.logstash.dmz_nodes -%}
+{%   set dmz_nodes = dmz_nodes.logstash.dmz_nodes -%}
+{% else -%}
+{%   set dmz_nodes = [] -%}
+{% endif -%}
 {%- if grains.role in ['so-sensor', 'so-fleet', 'so-node', 'so-idh'] %}
 {%-   set LOGSTASH = namespace() %}
 {%-   set LOGSTASH.count = 0 %}
@@ -454,8 +464,10 @@ output.logstash:
 {%-   for node_type, node_details in node_data.items() | sort -%}
 {%-     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
 {%-       for hostname in node_data[node_type].keys() %}
-{%-         set LOGSTASH.count = LOGSTASH.count + 1 %}
+{%-         if hostname not in dmz_nodes %}
+{%-           set LOGSTASH.count = LOGSTASH.count + 1 %}
     - "{{ hostname }}:5644" #{{ node_details[hostname].ip }}
+{%-         endif %}
 {%-       endfor %}
 {%-     endif %}
 {%-     if LOGSTASH.count > 1 %}
