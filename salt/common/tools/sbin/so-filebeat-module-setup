@@ -49,19 +49,18 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
 fi
 echo "Testing to see if the pipelines are already applied"
 ESVER=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT" |jq .version.number |tr -d \")
-PIPELINES=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"/_ingest/pipeline/filebeat-$ESVER-suricata-eve-pipeline | jq . | wc -c)
+PIPELINES=$({{ ELASTICCURL }} -sk https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"/_ingest/pipeline/filebeat-$ESVER-elasticsearch-server-pipeline | jq . | wc -c)
 
-if [[ "$PIPELINES" -lt 5 ]]; then
+if [[ "$PIPELINES" -lt 5 ]] || [ "$2" != "--force" ]; then
   echo "Setting up ingest pipeline(s)"
-
-  for MODULE in activemq apache auditd aws azure barracuda bluecoat cef checkpoint cisco coredns crowdstrike cyberark cylance elasticsearch envoyproxy f5 fortinet gcp google_workspace googlecloud gsuite haproxy ibmmq icinga iis imperva infoblox iptables juniper kafka kibana logstash microsoft mongodb mssql mysql nats netscout nginx o365 okta osquery panw postgresql rabbitmq radware redis santa snort snyk sonicwall sophos squid suricata system threatintel tomcat traefik zeek zscaler
-  do
-    echo "Loading $MODULE"
-    docker exec -i so-filebeat filebeat setup modules -pipelines -modules $MODULE -c $FB_MODULE_YML
-    sleep 2
-  done
+{% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
+{%- for module in MODULESMERGED.modules.keys() %}
+  {%- for fileset in MODULESMERGED.modules[module] %}
+      echo "{{ module }}.{{ fileset}}"
+      docker exec -i so-filebeat filebeat setup --pipelines --modules {{ module }} -M "{{ module }}.{{ fileset }}.enabled=true" -c $FB_MODULE_YML
+      sleep 0.5
+  {% endfor %}
+{%- endfor %}
 else
   exit 0
 fi
-
-

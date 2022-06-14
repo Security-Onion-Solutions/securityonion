@@ -1,0 +1,18 @@
+{% import_yaml 'filebeat/thirdpartydefaults.yaml' as TPDEFAULTS %}
+{% import_yaml 'filebeat/securityoniondefaults.yaml' as SODEFAULTS %}
+{% set THIRDPARTY = salt['pillar.get']('filebeat:third_party_filebeat', default=TPDEFAULTS.third_party_filebeat, merge=True) %}
+{% set SO = salt['pillar.get']('filebeat:securityonion_filebeat', default=SODEFAULTS.securityonion_filebeat, merge=True) %}
+{% set MODULESMERGED = salt['defaults.merge'](SO, THIRDPARTY, in_place=False) %}
+
+{% set MODULESENABLED = [] %}
+{% for module in MODULESMERGED.modules.keys() %}
+  {% set ENABLEDFILESETS = {} %}                               
+  {% for fileset in MODULESMERGED.modules[module] %}                        
+    {% if MODULESMERGED.modules[module][fileset].get('enabled', False) %}  
+      {% do ENABLEDFILESETS.update({'module': module, fileset: MODULESMERGED.modules[module][fileset]}) %}
+    {% endif %}
+  {% endfor %}
+  {% if ENABLEDFILESETS|length > 0 %}
+    {% do MODULESENABLED.append(ENABLEDFILESETS) %}
+  {% endif %}
+{% endfor %}
