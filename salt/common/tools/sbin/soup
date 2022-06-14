@@ -422,8 +422,9 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
-    [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
-    [[ "$INSTALLEDVERISON" == 2.3.120 ]] && up_to_2.3.130
+    [[ "$INSTALLEDVERSION" == 2.3.110 ]] && up_to_2.3.120
+    [[ "$INSTALLEDVERSION" == 2.3.120 ]] && up_to_2.3.130
+    [[ "$INSTALLEDVERSION" == 2.3.130 ]] && up_to_2.3.140
     true
 }
 
@@ -778,6 +779,37 @@ up_to_2.3.120() {
 up_to_2.3.130() {
   # Remove file for nav update
   rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
+}
+
+up_to_2.3.140() {
+  ## Deleting Elastalert indices to prevent issues with upgrade to Elastic 8 ##
+  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+  # Wait for ElasticSearch to initialize
+  echo -n "Waiting for ElasticSearch..."
+  COUNT=0
+  ELASTICSEARCH_CONNECTED="no" 
+  while [[ "$COUNT" -le 240 ]]; do
+    so-elasticsearch-query -k --output /dev/null
+      if [ $? -eq 0 ]; then
+        ELASTICSEARCH_CONNECTED="yes"
+        echo "connected!"
+          break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+  done
+  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+    echo
+    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    echo
+    exit 1
+   fi
+   
+   # Delete Elastalert indices
+   for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do so-elasticsearch-query $i -XDELETE; done
+   ##
 }
 
 verify_upgradespace() {
