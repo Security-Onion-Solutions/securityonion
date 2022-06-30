@@ -26,7 +26,7 @@ class TestLocalfileMethods(unittest.TestCase):
                 mock.assert_called_once()
 
     def test_checkConfigRequirements_present(self):
-        conf = {"file_path": ['intel.csv']}
+        conf = {"file_path": "['intel.csv']"}
         self.assertTrue(localfile.checkConfigRequirements(conf))
 
     def test_checkConfigRequirements_not_present(self):
@@ -36,7 +36,7 @@ class TestLocalfileMethods(unittest.TestCase):
         self.assertEqual(cm.exception.code, 126)
 
     def test_checkConfigRequirements_empty(self):
-        conf = {"file_path": ""}
+        conf = {"file_path": "[]"}
         with self.assertRaises(SystemExit) as cm:
             localfile.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
