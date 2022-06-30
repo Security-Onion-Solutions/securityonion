@@ -26,7 +26,7 @@ class TestLocalfileMethods(unittest.TestCase):
                 mock.assert_called_once()
 
     def test_checkConfigRequirements_present(self):
-        conf = {"file_path": "['intel.csv']"}
+        conf = {"file_path": ['intel.csv']}
         self.assertTrue(localfile.checkConfigRequirements(conf))
 
     def test_checkConfigRequirements_not_present(self):
