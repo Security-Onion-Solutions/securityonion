@@ -36,7 +36,7 @@ class TestLocalfileMethods(unittest.TestCase):
         self.assertEqual(cm.exception.code, 126)
 
     def test_checkConfigRequirements_empty(self):
-        conf = {"file_path": "[]"}
+        conf = {"file_path": ""}
         with self.assertRaises(SystemExit) as cm:
             localfile.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
