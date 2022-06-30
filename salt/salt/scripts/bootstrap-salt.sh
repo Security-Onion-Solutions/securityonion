@@ -4221,8 +4221,13 @@ install_centos_stable() {
     local minion='salt-minion'
     local syndic='salt-syndic'
 
-    if echo "$STABLE_REV" | grep -q "archive";then
-        local ver=$(echo "$STABLE_REV"|awk -F/ '{print $2}')
+    if echo "$STABLE_REV" | grep -q "archive";then # point release being applied
+        local ver=$(echo "$STABLE_REV"|awk -F/ '{print $2}') # strip archive/
+    elif echo "$STABLE_REV" | grep -vq "archive|latest";then # latest or major version(3003, 3004, etc) being applie
+        local ver=$STABLE_REV
+    fi
+
+    if [ ! -z $ver ]; then
         cloud+="-$ver"
         master+="-$ver"
         minion+="-$ver"
