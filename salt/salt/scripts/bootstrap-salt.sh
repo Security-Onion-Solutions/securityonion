@@ -4223,7 +4223,7 @@ install_centos_stable() {
 
     if echo "$STABLE_REV" | grep -q "archive";then # point release being applied
         local ver=$(echo "$STABLE_REV"|awk -F/ '{print $2}') # strip archive/
-    elif echo "$STABLE_REV" | grep -vq "archive|latest";then # latest or major version(3003, 3004, etc) being applie
+    elif echo "$STABLE_REV" | egrep -vq "archive|latest";then # latest or major version(3003, 3004, etc) being applie
         local ver=$STABLE_REV
     fi
 
