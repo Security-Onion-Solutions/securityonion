@@ -17,7 +17,7 @@ def searchFile(artifact, csvfiles):
     dir = os.path.dirname(os.path.realpath(__file__))
     found = []
     for f in csvfiles:
-        filename = dir + "/" + f.strip("'")
+        filename = dir + "/" + f
         with open(filename, "r") as csvfile:
             csvdata = csv.DictReader(csvfile)
             for row in csvdata:
@@ -58,7 +58,7 @@ def analyze(conf, input):
     meta = helpers.loadMetadata(__file__)
     data = helpers.parseArtifact(input)
     helpers.checkSupportedType(meta, data["artifactType"])
-    search = searchFile(data["value"], conf['file_path'].strip("[]").split(', '))
+    search = searchFile(data["value"], conf['file_path'])
     results = prepareResults(search)
     return results
 
