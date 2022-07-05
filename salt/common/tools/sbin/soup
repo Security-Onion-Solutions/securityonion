@@ -377,6 +377,18 @@ enable_highstate() {
     echo ""
 }
 
+es_version_check() {
+  CHECK_ES=$(echo $INSTALLEDVERSION | aek -F. '{print $3}'
+  if [ "$CHECK_ES" -lt "110" ]; then
+    echo "In order to update to the latest version of Security Onion you need to at least be on version 2.3.110. We recommend installing 2.3.130."
+    echo ""
+    echo "To install 2.3.130 via the internet use the following command:"
+    echo "sudo BRANCH=2.3.130-20220607 soup"
+    echo "If you are an airgap userplease download 2.3.130 from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso"
+    echo "*** YOU WILL NEED TO RUN THE SOUP COMMAND TWICE! ***"
+    exit 0
+}
+
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -1081,6 +1093,7 @@ main() {
   echo ""
 
   set_os
+  es_version_check
   set_cron_service_name
   if ! check_salt_master_status; then
   	echo "Could not talk to salt master"
