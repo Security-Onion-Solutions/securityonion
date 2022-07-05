@@ -377,6 +377,22 @@ enable_highstate() {
     echo ""
 }
 
+es_version_check() {
+    CHECK_ES=$(echo $INSTALLEDVERSION | awk -F. '{print $3}')
+  
+    if [ "$CHECK_ES" -lt "110" ]; then
+      echo "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version 2.3.130 before updating to 2.3.140 or higher."
+      echo ""
+      echo "If your deployment has Internet access, you can use the following command to update to 2.3.130:"
+      echo "sudo BRANCH=2.3.130-20220607 soup"
+      echo ""
+      echo "Otherwise, if your deployment is configured for airgap, you can instead download the 2.3.130 ISO image from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso."
+      echo ""
+      echo "*** Once you have updated to 2.3.130, you can then update to 2.3.140 or higher as you would normally. ***"
+      exit 0
+    fi
+}
+
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -1081,6 +1097,7 @@ main() {
   echo ""
 
   set_os
+  es_version_check
   set_cron_service_name
   if ! check_salt_master_status; then
   	echo "Could not talk to salt master"
