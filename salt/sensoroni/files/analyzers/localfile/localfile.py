@@ -58,7 +58,7 @@ def analyze(conf, input):
     meta = helpers.loadMetadata(__file__)
     data = helpers.parseArtifact(input)
     helpers.checkSupportedType(meta, data["artifactType"])
-    search = searchFile(data["value"], conf['file_path'].strip('][').split(', ')) 
+    search = searchFile(data["value"], conf['file_path'].strip('][').split(', '))
     results = prepareResults(search)
     return results
 
