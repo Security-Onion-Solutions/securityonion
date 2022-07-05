@@ -17,13 +17,16 @@ class TestLocalfileMethods(unittest.TestCase):
 
     def test_main_success(self):
         output = {"foo": "bar"}
+        conf = {"file_path": ["somefile.csv"]}
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             with patch('localfile.localfile.analyze', new=MagicMock(return_value=output)) as mock:
-                sys.argv = ["cmd", "input"]
-                localfile.main()
-                expected = '{"foo": "bar"}\n'
-                self.assertEqual(mock_stdout.getvalue(), expected)
-                mock.assert_called_once()
+                with patch('helpers.loadConfig', new=MagicMock(return_value=conf)) as lcmock:
+                    sys.argv = ["cmd", "input"]
+                    localfile.main()
+                    expected = '{"foo": "bar"}\n'
+                    self.assertEqual(mock_stdout.getvalue(), expected)
+                    mock.assert_called_once()
+                    lcmock.assert_called_once()
 
     def test_checkConfigRequirements_present(self):
         conf = {"file_path": "['intel.csv']"}
