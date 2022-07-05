@@ -112,7 +112,7 @@ class TestLocalfileMethods(unittest.TestCase):
                    }
                  ]
         artifactInput = '{"value":"foo","artifactType":"url"}'
-        conf = {"file_path": "/home/intel.csv"}
+        conf = {"file_path": "['intel.csv']"}
         with patch('localfile.localfile.searchFile', new=MagicMock(return_value=output)) as mock:
             results = localfile.analyze(conf, artifactInput)
             self.assertEqual(results["summary"], "suspicious")
