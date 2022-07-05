@@ -378,15 +378,19 @@ enable_highstate() {
 }
 
 es_version_check() {
-  CHECK_ES=$(echo $INSTALLEDVERSION | awk -F. '{print $3}')
-  if [ "$CHECK_ES" -lt "110" ]; then
-    echo "In order to update to the latest version of Security Onion you need to at least be on version 2.3.110. We recommend installing 2.3.130."
-    echo ""
-    echo "To install 2.3.130 via the internet use the following command:"
-    echo "sudo BRANCH=2.3.130-20220607 soup"
-    echo "If you are an airgap userplease download 2.3.130 from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso"
-    echo "*** YOU WILL NEED TO RUN THE SOUP COMMAND TWICE! ***"
-    exit 0
+    CHECK_ES=$(echo $INSTALLEDVERSION | awk -F. '{print $3}')
+  
+    if [ "$CHECK_ES" -lt "110" ]; then
+      echo "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version 2.3.130 before updating to 2.3.140 or higher."
+      echo ""
+      echo "If your deployment has Internet access, you can use the following command to update to 2.3.130:
+sudo BRANCH=2.3.130-20220607 soup"
+      echo ""
+      echo "Otherwise, if your deployment is configured for airgap, you can instead download the 2.3.130 ISO image from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso."
+      echo ""
+      echo "*** Once you have updated to 2.3.130, you can then update to 2.3.140 or higher as you would normally. ***"
+      exit 0
+    fi
 }
 
 generate_and_clean_tarballs() {
