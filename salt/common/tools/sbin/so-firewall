@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import re
 import subprocess
 import sys
 import time
@@ -71,7 +72,14 @@ def checkApplyOption(options):
 
 def loadYaml(filename):
   file = open(filename, "r")
-  return yaml.safe_load(file.read())
+  content = file.read()
+
+  # Remove Jinja templating
+  content = content.replace("{{ ssh_port }}", "22")
+  pattern = r'.*({%|{{|}}|%}).*'
+  content = re.sub(pattern, "", content)
+
+  return yaml.safe_load(content)
 
 def writeYaml(filename, content):
   file = open(filename, "w")
