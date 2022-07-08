@@ -27,6 +27,7 @@ hostgroupsFilename = "/opt/so/saltstack/local/salt/firewall/hostgroups.local.yam
 portgroupsFilename = "/opt/so/saltstack/local/salt/firewall/portgroups.local.yaml"
 defaultPortgroupsFilename = "/opt/so/saltstack/default/salt/firewall/portgroups.yaml"
 supportedProtocols = ['tcp', 'udp']
+readonly = False
 
 def showUsage(options, args):
   print('Usage: {} [OPTIONS] <COMMAND> [ARGS...]'.format(sys.argv[0]))
@@ -71,17 +72,26 @@ def checkApplyOption(options):
     return apply(None, None)
 
 def loadYaml(filename):
+  global readonly
+
   file = open(filename, "r")
   content = file.read()
 
-  # Remove Jinja templating
-  content = content.replace("{{ ssh_port }}", "22")
-  pattern = r'.*({%|{{|}}|%}).*'
-  content = re.sub(pattern, "", content)
+  # Remove Jinja templating (for read-only operations)
+  if "{%" in content or "{{" in content:
+    content = content.replace("{{ ssh_port }}", "22")
+    pattern = r'.*({%|{{|}}|%}).*'
+    content = re.sub(pattern, "", content)
+    readonly = True
 
   return yaml.safe_load(content)
 
 def writeYaml(filename, content):
+  global readonly
+
+  if readonly:
+    raise Exception("Cannot write yaml file that has been flagged as read-only")  
+
   file = open(filename, "w")
   return yaml.dump(content, file)
 
