@@ -105,9 +105,7 @@ populate_container_lists() {
         # TODO: look into using docker templates instead of curl and jq
         #  Ex docker ps --format "{{.Names}}\t{{.State}}"
         # TODO: convert the output to an associtive array
-        mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/v1.40/containers/json?all=1 \
-            | jq -c '.[] | { Name: .Names[0], State: .State }' \
-            | tr -d '/{"}')
+        mapfile -t docker_raw_list < <(docker ps --format "{{.Names}}\t{{.State}}")
     else
         exit 1
     fi
@@ -116,8 +114,8 @@ populate_container_lists() {
     local container_state=""
 
     for line in "${docker_raw_list[@]}"; do
-        container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
-        container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
+        container_name="$( echo $line | awk '{print $1}' )" # Get value in the first search group (container names)
+        container_state="$( echo $line | awk '{print $2}' )" # Get value in the second search group (container states)
 
         temp_container_name_list+=( "${container_name}" )
         temp_container_state_list+=( "${container_state}" )
