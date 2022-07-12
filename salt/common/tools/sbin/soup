@@ -389,8 +389,20 @@ es_version_check() {
       echo "Otherwise, if your deployment is configured for airgap, you can instead download the 2.3.130 ISO image from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso."
       echo ""
       echo "*** Once you have updated to 2.3.130, you can then update to 2.3.140 or higher as you would normally. ***"
-      exit 0
+      exit 1
     fi
+}
+
+es_indices_check() {
+  echo "Checking for unsupported Elasticsearch indices..."
+  UNSUPPORTED_INDICES=$(for INDEX in $(so-elasticsearch-indices-list | awk '{print $3}'); do so-elasticsearch-query $INDEX/_settings?human |grep '"created_string":"6' | jq -r 'keys'[0]; done)
+  if [ -z "$UNSUPPORTED_INDICES" ]; then
+    echo "No unsupported indices found."
+  else
+    echo "The following indices were created with Elasticsearch 6, and are not supported when upgrading to Elasticsearch 8. These indices may need to be deleted, migrated, or re-indexed before proceeding with the upgrade. Please see https://docs.securityonion.net/en/2.3/elasticsearch.html for more details."
+    echo
+    echo "$UNSUPPORTED_INDICES"
+    exit 1
 }
 
 generate_and_clean_tarballs() {
@@ -1157,6 +1169,7 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   es_version_check
+  es_indices_check
   echo ""
   set_palette
   check_elastic_license
