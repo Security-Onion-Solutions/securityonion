@@ -127,7 +127,14 @@ so-filebeat:
         - 0.0.0.0:514:514/udp
         - 0.0.0.0:514:514/tcp
         - 0.0.0.0:5066:5066/tcp
- 
+{% for module in MODULESMERGED.modules.keys() %}
+  {% for submodule in MODULESMERGED.modules[module] %}
+    {% if MODULESMERGED.modules[module][submodule].enabled and MODULESMERGED.modules[module][submodule]["var.syslog_port"] is defined %}
+        - {{ MODULESMERGED.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}/tcp
+        - {{ MODULESMERGED.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}/udp
+    {% endif %}
+  {% endfor %}
+{% endfor %}
     - watch:
       - file: filebeatconf
     - require:
@@ -137,14 +144,7 @@ so-filebeat:
       - x509: conf_filebeat_crt
       - x509: conf_filebeat_key
       - x509: trusttheca
-{% for module in MODULESMERGED.modules.keys() %}
-  {% for submodule in MODULESMERGED.modules[module] %}
-    {% if MODULESMERGED.modules[module][submodule].enabled and MODULESMERGED.modules[module][submodule]["var.syslog_port"] is defined %}
-        - {{ MODULESMERGED.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}/tcp
-        - {{ MODULESMERGED.modules[module][submodule].get("var.syslog_host", "0.0.0.0") }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}:{{ MODULESMERGED.modules[module][submodule]["var.syslog_port"] }}/udp
-    {% endif %}
-  {% endfor %}
-{% endfor %}
+
 {% if grains.role in ES_INCLUDED_NODES %}
 run_module_setup:
   cmd.run:
