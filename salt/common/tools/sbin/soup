@@ -393,6 +393,18 @@ es_version_check() {
     fi
 }
 
+es_indices_check() {
+  echo "Checking for unsupported Elasticsearch indices..."
+  UNSUPPORTED_INDICES=$(for INDEX in $(so-elasticsearch-indices-list | awk '{print $3}'); do so-elasticsearch-query $INDEX/_settings?human |grep '"created_string":"7' | jq -r 'keys'[0]; done)
+  if [ -z "$UNSUPPORTED_INDICES" ]; then
+    echo "No unsupported indices found."
+  else
+    echo "The following indices were created with Elasticsearch 6, and are not supported when upgrading to Elasticsearch 8. These indices may need to be deleted, migrated, or re-indexed before proceeding with the upgrade. Please see https://docs.securityonion.net/en/2.3/elasticsearch.html for more details."
+    echo
+    echo "$UNSUPPORTED_INDICES"
+    exit 0
+}
+
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -1157,6 +1169,7 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
   es_version_check
+  es_indices_check
   echo ""
   set_palette
   check_elastic_license
