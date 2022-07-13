@@ -107,6 +107,10 @@ wait_for_elasticsearch:
   cmd.run:
     - name: so-elasticsearch-wait
 
+is_elasticsearch_v8:
+  cmd.shell:
+    - name: "so-elasticsearch-query / | jq -r '.version.number[0:1]' | grep -q 8" #if not 8 do not start ES
+
 so-elastalert:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
@@ -123,6 +127,7 @@ so-elastalert:
       - {{MANAGER_URL}}:{{MANAGER_IP}}
     - require:
       - cmd: wait_for_elasticsearch
+      - cmd: is_elasticsearch_v8
       - file: elastarules
       - file: elastalogdir
       - file: elastacustmodulesdir
