@@ -851,6 +851,13 @@ up_to_2.3.140() {
    
    # Delete Elastalert indices
    for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do so-elasticsearch-query $i -XDELETE; done
+   # Check to ensure Elastalert indices have been deleted
+   RESPONSE=$(so-elasticsearch-query elastalert*)
+   if [[ "$RESPONSE" == "{}" ]]; then
+     echo "Elastalert indices have been deleted."
+   else
+     fail "Something went wrong. Could not delete the Elastalert indices. Exiting."
+   fi
    ##
    INSTALLEDVERSION=2.3.140
 }
