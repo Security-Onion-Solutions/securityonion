@@ -377,6 +377,35 @@ enable_highstate() {
     echo ""
 }
 
+es_version_check() {
+    CHECK_ES=$(echo $INSTALLEDVERSION | awk -F. '{print $3}')
+  
+    if [ "$CHECK_ES" -lt "110" ]; then
+      echo "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version 2.3.130 before updating to 2.3.140 or higher."
+      echo ""
+      echo "If your deployment has Internet access, you can use the following command to update to 2.3.130:"
+      echo "sudo BRANCH=2.3.130-20220607 soup"
+      echo ""
+      echo "Otherwise, if your deployment is configured for airgap, you can instead download the 2.3.130 ISO image from https://download.securityonion.net/file/securityonion/securityonion-2.3.130-20220607.iso."
+      echo ""
+      echo "*** Once you have updated to 2.3.130, you can then update to 2.3.140 or higher as you would normally. ***"
+      exit 1
+    fi
+}
+
+es_indices_check() {
+  echo "Checking for unsupported Elasticsearch indices..."
+  UNSUPPORTED_INDICES=$(for INDEX in $(so-elasticsearch-indices-list | awk '{print $3}'); do so-elasticsearch-query $INDEX/_settings?human |grep '"created_string":"6' | jq -r 'keys'[0]; done)
+  if [ -z "$UNSUPPORTED_INDICES" ]; then
+    echo "No unsupported indices found."
+  else
+    echo "The following indices were created with Elasticsearch 6, and are not supported when upgrading to Elasticsearch 8. These indices may need to be deleted, migrated, or re-indexed before proceeding with the upgrade. Please see https://docs.securityonion.net/en/2.3/soup.html#elastic-8 for more details."
+    echo
+    echo "$UNSUPPORTED_INDICES"
+    exit 1
+  fi
+}
+
 generate_and_clean_tarballs() {
   local new_version
   new_version=$(cat $UPDATE_DIR/VERSION)
@@ -422,8 +451,9 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.80 ]] && up_to_2.3.90
     [[ "$INSTALLEDVERSION" == 2.3.90 || "$INSTALLEDVERSION" == 2.3.91 ]] && up_to_2.3.100
     [[ "$INSTALLEDVERSION" == 2.3.100 ]] && up_to_2.3.110
-    [[ "$INSTALLEDVERISON" == 2.3.110 ]] && up_to_2.3.120
-    [[ "$INSTALLEDVERISON" == 2.3.120 ]] && up_to_2.3.130
+    [[ "$INSTALLEDVERSION" == 2.3.110 ]] && up_to_2.3.120
+    [[ "$INSTALLEDVERSION" == 2.3.120 ]] && up_to_2.3.130
+    [[ "$INSTALLEDVERSION" == 2.3.130 ]] && up_to_2.3.140
     true
 }
 
@@ -439,6 +469,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.100 ]] && post_to_2.3.110
     [[ "$POSTVERSION" == 2.3.110 ]] && post_to_2.3.120
     [[ "$POSTVERSION" == 2.3.120 ]] && post_to_2.3.130
+    [[ "$POSTVERSION" == 2.3.130 ]] && post_to_2.3.140
     
 
     true
@@ -513,6 +544,14 @@ post_to_2.3.120() {
 post_to_2.3.130() {
   echo "Post Processing for 2.3.130"
   POSTVERSION=2.3.130
+}
+
+post_to_2.3.140() {
+  echo "Post Processing for 2.3.140"
+  FORCE_SYNC=true so-user sync
+  so-kibana-restart
+  so-kibana-space-defaults
+  POSTVERSION=2.3.140
 }
 
 
@@ -762,10 +801,13 @@ up_to_2.3.100() {
 
   echo "Adding receiver to assigned_hostgroups.local.map.yaml"
   grep -qxF "  receiver:" /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml || sed -i -e '$a\  receiver:' /opt/so/saltstack/local/salt/firewall/assigned_hostgroups.local.map.yaml
+  
+  INSTALLEDVERSION=2.3.100
 }
 
 up_to_2.3.110() {
   sed -i 's|shards|index_template:\n        template:\n          settings:\n            index:\n              number_of_shards|g' /opt/so/saltstack/local/pillar/global.sls
+  INSTALLEDVERSION=2.3.110
 }
 
 up_to_2.3.120() {
@@ -773,11 +815,52 @@ up_to_2.3.120() {
   so-thehive-stop
   so-thehive-es-stop
   so-cortex-stop
+  INSTALLEDVERSION=2.3.120
 }
 
 up_to_2.3.130() {
   # Remove file for nav update
   rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
+  INSTALLEDVERSION=2.3.130
+}
+
+up_to_2.3.140() {
+  ## Deleting Elastalert indices to prevent issues with upgrade to Elastic 8 ##
+  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+  # Wait for ElasticSearch to initialize
+  echo -n "Waiting for ElasticSearch..."
+  COUNT=0
+  ELASTICSEARCH_CONNECTED="no" 
+  while [[ "$COUNT" -le 240 ]]; do
+    so-elasticsearch-query / -k --output /dev/null
+      if [ $? -eq 0 ]; then
+        ELASTICSEARCH_CONNECTED="yes"
+        echo "connected!"
+          break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+  done
+  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+    echo
+    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    echo
+    exit 1
+   fi
+   
+   # Delete Elastalert indices
+   for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do so-elasticsearch-query $i -XDELETE; done
+   # Check to ensure Elastalert indices have been deleted
+   RESPONSE=$(so-elasticsearch-query elastalert*)
+   if [[ "$RESPONSE" == "{}" ]]; then
+     echo "Elastalert indices have been deleted."
+   else
+     fail "Something went wrong. Could not delete the Elastalert indices. Exiting."
+   fi
+   ##
+   INSTALLEDVERSION=2.3.140
 }
 
 verify_upgradespace() {
@@ -958,7 +1041,7 @@ update_repo() {
     fi
 
     rm -f /etc/apt/sources.list.d/salt.list
-    echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt $OSVER main" > /etc/apt/sources.list.d/saltstack.list
+    echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt3004.2/ $OSVER main" > /etc/apt/sources.list.d/saltstack.list
     apt-get update
   fi
 }
@@ -1093,6 +1176,8 @@ main() {
   fi
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
+  es_version_check
+  es_indices_check
   echo ""
   set_palette
   check_elastic_license

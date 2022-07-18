@@ -238,7 +238,7 @@ function syncElastic() {
   syncElasticSystemUser "$authPillarJson" "so_monitor_user"  "$usersTmpFile"
 
   syncElasticSystemRole "$authPillarJson" "so_elastic_user"  "superuser" "$rolesTmpFile"
-  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "superuser" "$rolesTmpFile"
+  syncElasticSystemRole "$authPillarJson" "so_kibana_user"   "kibana_system" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_logstash_user" "superuser" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_beats_user"    "superuser" "$rolesTmpFile"
   syncElasticSystemRole "$authPillarJson" "so_monitor_user"  "remote_monitoring_collector" "$rolesTmpFile"
@@ -437,7 +437,7 @@ function updateStatus() {
     state="inactive"
   fi
   body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
-  response=$(curl -fSsL -XPUT "${kratosUrl}/identities/$identityId" -d "$body")
+  response=$(curl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
   [[ $? != 0 ]] && fail "Unable to update user"
 }
 

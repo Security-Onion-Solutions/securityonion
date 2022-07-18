@@ -201,8 +201,8 @@ so-curatorclusterclose:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
     - user: root
-    - minute: '2'
-    - hour: '*/1'
+    - minute: '5'
+    - hour: '1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
@@ -211,8 +211,8 @@ so-curatorclusterdelete:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-delete.log 2>&1
     - user: root
-    - minute: '2'
-    - hour: '*/1'
+    - minute: '5'
+    - hour: '1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
@@ -221,8 +221,8 @@ so-curatorclusterwarm:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-warm > /opt/so/log/curator/cron-warm.log 2>&1
     - user: root
-    - minute: '2'
-    - hour: '*/1'
+    - minute: '5'
+    - hour: '1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'

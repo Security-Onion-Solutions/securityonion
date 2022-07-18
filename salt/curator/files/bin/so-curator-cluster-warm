@@ -24,21 +24,18 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
-{% from 'filebeat/map.jinja' import THIRDPARTY with context %}
-{% from 'filebeat/map.jinja' import SO with context %}
+{% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-zeek-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-beats-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-firewall-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ids-warm.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-import-warm.yml > /dev/null 2>&1; 
+docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-import-warm.yml > /dev/null 2>&1;
+docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-kratos-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-osquery-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ossec-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-strelka-warm.yml > /dev/null 2>&1; 
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-syslog-warm.yml > /dev/null 2>&1;
-{% for INDEX in THIRDPARTY.modules.keys() -%}
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-{{ INDEX }}-warm.yml > /dev/null 2>&1;
-{% endfor -%}
-{% for INDEX in SO.modules.keys() -%}
+{% for INDEX in MODULESMERGED.modules.keys() -%}
 docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-{{ INDEX }}-warm.yml > /dev/null 2>&1{% if not loop.last %};{% endif %}
 {% endfor -%}

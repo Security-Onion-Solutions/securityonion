@@ -1,6 +1,7 @@
+#!/bin/bash
 . /usr/sbin/so-common
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
-wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+wait_for_web_response "http://localhost:5601/api/spaces/space/default" "default" 300 "{{ ELASTICCURL }}"
 ## This hackery will be removed if using Elastic Auth ##
 
 # Let's snag a cookie from Kibana
@@ -12,6 +13,6 @@ echo "Setting up default Space:"
 {% if HIGHLANDER %}
 {{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["enterpriseSearch"]} ' >> /opt/so/log/kibana/misc.log
 {% else %}
-{{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["ml","enterpriseSearch","siem","logs","infrastructure","apm","uptime","monitoring","stackAlerts","actions","fleet"]} ' >> /opt/so/log/kibana/misc.log
+{{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X PUT "localhost:5601/api/spaces/space/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d' {"id":"default","name":"Default","disabledFeatures":["ml","enterpriseSearch","siem","logs","infrastructure","apm","uptime","monitoring","stackAlerts","actions","fleet","fleetv2","securitySolutionCases"]} ' >> /opt/so/log/kibana/misc.log
 {% endif %}
 echo

@@ -15,8 +15,9 @@ function ci() {
         exit 1
     fi
 
+    pip install pytest pytest-cov
     flake8 "$TARGET_DIR" "--config=${HOME_DIR}/pytest.ini"
-    pytest "$TARGET_DIR" "--cov-config=${HOME_DIR}/pytest.ini" "--cov=$TARGET_DIR" --doctest-modules --cov-report=term --cov-fail-under=100
+    python3 -m pytest "--cov-config=${HOME_DIR}/pytest.ini" "--cov=$TARGET_DIR" --doctest-modules --cov-report=term --cov-fail-under=100  "$TARGET_DIR" 
 }
 
 function download() {

@@ -14,4 +14,5 @@ logstash:
         - so/9700_output_strelka.conf.jinja
         - so/9800_output_logscan.conf.jinja
         - so/9801_output_rita.conf.jinja
+        - so/9802_output_kratos.conf.jinja
         - so/9900_output_endgame.conf.jinja

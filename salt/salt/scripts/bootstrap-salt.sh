@@ -4216,17 +4216,35 @@ install_centos_stable_deps() {
 install_centos_stable() {
     __PACKAGES=""
 
+    local cloud='salt-cloud'
+    local master='salt-master'
+    local minion='salt-minion'
+    local syndic='salt-syndic'
+
+    if echo "$STABLE_REV" | grep -q "archive";then # point release being applied
+        local ver=$(echo "$STABLE_REV"|awk -F/ '{print $2}') # strip archive/
+    elif echo "$STABLE_REV" | egrep -vq "archive|latest";then # latest or major version(3003, 3004, etc) being applie
+        local ver=$STABLE_REV
+    fi
+
+    if [ ! -z $ver ]; then
+        cloud+="-$ver"
+        master+="-$ver"
+        minion+="-$ver"
+        syndic+="-$ver"
+    fi
+
     if [ "$_INSTALL_CLOUD" -eq $BS_TRUE ];then
-        __PACKAGES="${__PACKAGES} salt-cloud"
+        __PACKAGES="${__PACKAGES} $cloud"
     fi
     if [ "$_INSTALL_MASTER" -eq $BS_TRUE ];then
-        __PACKAGES="${__PACKAGES} salt-master"
+        __PACKAGES="${__PACKAGES} $master"
     fi
     if [ "$_INSTALL_MINION" -eq $BS_TRUE ]; then
-        __PACKAGES="${__PACKAGES} salt-minion"
+        __PACKAGES="${__PACKAGES} $minion"
     fi
     if [ "$_INSTALL_SYNDIC" -eq $BS_TRUE ];then
-        __PACKAGES="${__PACKAGES} salt-syndic"
+        __PACKAGES="${__PACKAGES} $syndic"
     fi
 
     # shellcheck disable=SC2086
