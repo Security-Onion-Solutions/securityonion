@@ -850,28 +850,31 @@ up_to_2.3.140() {
     echo
     exit 1
    fi
-   
-   # Delete Elastalert indices
-   for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}');
-   do
-     so-elasticsearch-query $i -XDELETE;
+   CHECK_COUNT=0
+   while [[ "$CHECK_COUNT" -le 2 ]]; do
+     # Delete Elastalert indices
+     for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do
+       so-elasticsearch-query $i -XDELETE;
+     done
+
+     # Check to ensure Elastalert indices are deleted
+     COUNT=0
+     ELASTALERT_INDICES_DELETED="no"
+     while [[ "$COUNT" -le 240 ]]; do
+       RESPONSE=$(so-elasticsearch-query elastalert*)
+       if [[ "$RESPONSE" == "{}" ]]; then
+         ELASTALERT_INDICES_DELETED="yes"
+         echo "Elastalert indices successfully deleted."
+         break
+       else
+         ((COUNT+=1))
+         sleep 1
+         echo -n "."
+       fi
+     done
+     ((CHECK_COUNT+=1))
    done
 
-   # Check to ensure Elastalert indices are deleted
-   COUNT=0
-   ELASTALERT_INDICES_DELETED="no"
-   while [[ "$COUNT" -le 240 ]]; do
-     RESPONSE=$(so-elasticsearch-query elastalert*)
-     if [[ "$RESPONSE" == "{}" ]]; then
-       ELASTALERT_INDICES_DELETED="yes"
-       echo "Elastalert indices successfully deleted."
-       break
-     else
-       ((COUNT+=1))
-       sleep 1
-       echo -n "."
-     fi
-   done
 
    # If we were unable to delete the Elastalert indices, exit the script
    if [ "$ELASTALERT_INDICES_DELETED" == "no" ]; then
