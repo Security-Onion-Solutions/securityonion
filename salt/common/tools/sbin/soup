@@ -374,10 +374,9 @@ clone_to_tmp() {
 elastalert_indices_check() {
 
   # Stop Elastalert to prevent Elastalert indices from being re-created
-  so-elastalert-stop
-  
-  # Deleting Elastalert indices to prevent issues with upgrade to Elastic 8 ##
-  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+  if grep -q "^so-elastalert$" /opt/so/conf/so-status/so-status.conf ; then
+    so-elastalert-stop || true
+  fi
   
   # Wait for ElasticSearch to initialize
   echo -n "Waiting for ElasticSearch..."
@@ -403,8 +402,9 @@ elastalert_indices_check() {
     echo
     exit 1
   fi
-  
+
   # Check Elastalert indices
+  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
   CHECK_COUNT=0
   while [[ "$CHECK_COUNT" -le 2 ]]; do
     # Delete Elastalert indices
