@@ -118,6 +118,7 @@ filebeat.inputs:
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager', 'so-managersearch', 'so-import'] %}
 - type: filestream
+  id: logscan
   paths:
     - /logs/logscan/alerts.log
   fields:
@@ -135,6 +136,7 @@ filebeat.inputs:
   {%- if ZEEKVER != 'SURICATA' %}
     {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
 - type: filestream
+  id: zeek-{{ LOGNAME }}
   paths:
     - /nsm/zeek/logs/current/{{ LOGNAME }}.log
   fields:
@@ -150,6 +152,7 @@ filebeat.inputs:
   close_removed: false
 
 - type: filestream
+  id: import-zeek={{ LOGNAME }}
   paths:
     - /nsm/import/*/zeek/logs/{{ LOGNAME }}.log
   fields:
@@ -174,6 +177,7 @@ filebeat.inputs:
   {%- endif %}
 
 - type: filestream
+  id: suricata-eve
   paths:
     - /nsm/suricata/eve*.json
   fields:
@@ -190,6 +194,7 @@ filebeat.inputs:
   close_removed: false
 
 - type: filestream
+  id: import-suricata
   paths:
     - /nsm/import/*/suricata/eve*.json
   fields:
@@ -212,6 +217,7 @@ filebeat.inputs:
   close_removed: false
   {%- if STRELKAENABLED == 1 %}
 - type: filestream
+  id: strelka
   paths:
     - /nsm/strelka/log/strelka.log
   fields:
@@ -233,6 +239,7 @@ filebeat.inputs:
 {%- if WAZUHENABLED == 1 %}
 
 - type: filestream
+  id: wazuh
   paths:
     - /wazuh/archives/archives.json
   fields:
@@ -251,6 +258,7 @@ filebeat.inputs:
 {%- if FLEETMANAGER or FLEETNODE %}
 
 - type: filestream
+  id: osquery
   paths:
     - /nsm/osquery/fleet/result.log
   fields:
@@ -321,12 +329,12 @@ filebeat.inputs:
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-manager',  'so-managersearch', 'so-import'] %}
 - type: filestream
+  id: kratos
   paths:
     - /logs/kratos/kratos.log
   fields:
     module: kratos
     category: host
-    tags: beat-ext
   processors:
     - decode_json_fields:
         fields: ["message"]
@@ -344,6 +352,7 @@ filebeat.inputs:
         target: ''
         fields:
           event.dataset: access
+  pipeline: "kratos"
   fields_under_root: true
   clean_removed: false
   close_removed: false
@@ -351,6 +360,7 @@ filebeat.inputs:
 
 {%- if grains.role == 'so-idh' %}
 - type: filestream
+  id: idh
   paths:
     - /nsm/idh/opencanary.log
   fields:
@@ -439,6 +449,12 @@ output.elasticsearch:
     - index: "so-logscan"
       when.contains:
         module: "logscan"
+    - index: "so-elasticsearch-%{+YYYY.MM.dd}"
+      when.contains:
+        event.module: "elasticsearch"
+    - index: "so-kibana-%{+YYYY.MM.dd}"
+      when.contains:
+        event.module: "kibana"
   
 setup.template.enabled: false
   {%- else %}

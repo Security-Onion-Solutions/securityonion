@@ -84,7 +84,9 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     {%- if FLEETMANAGER or FLEETNODE %}
     - fleet.install_package
     {%- endif %}
@@ -433,7 +435,9 @@ base:
     - redis
     - fleet
     - fleet.install_package
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - schedule
     - docker_clean
 
@@ -507,7 +511,9 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - idh
 
   'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':

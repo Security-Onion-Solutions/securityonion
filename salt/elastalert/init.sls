@@ -129,6 +129,9 @@ so-elastalert:
       - file: elastaconf
     - watch:
       - file: elastaconf
+    - onlyif:
+      - "so-elasticsearch-query / | jq -r '.version.number[0:1]' | grep -q 8" {# only run this state if elasticsearch is version 8 #}
+
 
 append_so-elastalert_so-status.conf:
   file.append:
