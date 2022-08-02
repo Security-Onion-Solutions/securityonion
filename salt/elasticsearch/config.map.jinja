@@ -1,5 +1,6 @@
 {% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
 
 {% if not salt['pillar.get']('elasticsearch:auth:enabled', False) %}
   {% do ESCONFIG.elasticsearch.config.xpack.security.authc.anonymous.update({'username': 'anonymous_user', 'roles': 'superuser', 'authz_exception': 'true'}) %}
@@ -31,6 +32,10 @@
     {% if HIGHLANDER %}
         {% do ESCONFIG.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
     {% endif %}
+{% endif %}
+
+{% if ISAIRGAP %}
+  {% do ESCONFIG.elasticsearch.config.ingest.geoip.downloader.update({'enabled': false}) %}
 {% endif %}
 
 {# merge with the elasticsearch pillar #}
