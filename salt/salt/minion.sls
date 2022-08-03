@@ -86,6 +86,7 @@ salt_minion_service_start_delay:
     - name: /etc/systemd/system/salt-minion.service.d/start-delay.conf
     - source: salt://salt/service/start-delay.conf.jinja
     - template: jinja
+    - makedirs: True
     - defaults:
         service_start_delay: {{ service_start_delay }}
     - onchanges_in:
