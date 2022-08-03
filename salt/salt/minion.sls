@@ -109,7 +109,7 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
-      - file: salt_minion_service_unit_file
+      - file: salt_minion_service_start_delay
 {% endif %}
     - order: last
 
