@@ -81,6 +81,14 @@ set_log_levels:
       - "log_level: error"
       - "log_level_logfile: error"
 
+delete_pre_150_start_delay:
+  file.line:
+    - name: {{ SYSTEMD_UNIT_FILE }}
+    - match: ^ExecStartPre=*
+    - mode: delete
+    - onchanges_in:
+      - module: systemd_reload
+
 salt_minion_service_start_delay:
   file.managed:
     - name: /etc/systemd/system/salt-minion.service.d/start-delay.conf
