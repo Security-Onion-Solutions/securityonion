@@ -203,7 +203,7 @@ check_airgap() {
 
 check_local_mods() {
   local salt_local=/opt/so/saltstack/local
-
+  local_ignore_arr=("/opt/so/saltstack/local/salt/zeek/policy/intel/intel.dat")
   local_mod_arr=()
 
   while IFS= read -r -d '' local_file; do
@@ -211,8 +211,10 @@ check_local_mods() {
     default_file="${DEFAULT_SALT_DIR}${stripped_path}"
     if [[ -f $default_file ]]; then
       file_diff=$(diff "$default_file" "$local_file" )
-      if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
-        local_mod_arr+=( "$local_file" )
+      if [[ ! " ${local_ignore_arr[*]} " =~ " ${local_file} " ]]; then
+        if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
+          local_mod_arr+=( "$local_file" )
+        fi
       fi
     fi
   done< <(find $salt_local -type f -print0)
@@ -223,11 +225,24 @@ check_local_mods() {
       echo "  $file_str"
     done
     echo ""
-    echo "To reference this list later, check $SOUP_LOG"
-    sleep 10
+    echo "To reference this list later, check $SOUP_LOG".
+    echo
+    if [[ -z $UNATTENDED ]]; then
+      while true; do
+        read -p "Please review the local modifications shown above as they may cause problems during or after the update.
+
+Would you like to proceed with the update anyway?
+
+If so, type 'YES'. Otherwise, type anything else to exit SOUP." yn
+
+        case $yn in
+          [yY][eE][sS] ) echo "Local modifications accepted.  Continuing..."; break;;
+          * ) exit 0;;
+        esac
+      done
+    fi
   fi
 }
-
 # {% endraw %}
 
 check_pillar_items() {
@@ -1230,6 +1245,7 @@ main() {
 
   echo "Let's see if we need to update Security Onion."
   upgrade_check
+  check_local_mods
   upgrade_space
 
   echo "Checking for Salt Master and Minion updates."
