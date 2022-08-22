@@ -81,11 +81,20 @@ set_log_levels:
       - "log_level: error"
       - "log_level_logfile: error"
 
-salt_minion_service_unit_file:
-  file.managed:
+delete_pre_150_start_delay:
+  file.line:
     - name: {{ SYSTEMD_UNIT_FILE }}
-    - source: salt://salt/service/salt-minion.service.jinja
+    - match: ^ExecStartPre=*
+    - mode: delete
+    - onchanges_in:
+      - module: systemd_reload
+
+salt_minion_service_start_delay:
+  file.managed:
+    - name: /etc/systemd/system/salt-minion.service.d/start-delay.conf
+    - source: salt://salt/service/start-delay.conf.jinja
     - template: jinja
+    - makedirs: True
     - defaults:
         service_start_delay: {{ service_start_delay }}
     - onchanges_in:
@@ -109,7 +118,7 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
-      - file: salt_minion_service_unit_file
+      - file: salt_minion_service_start_delay
 {% endif %}
     - order: last
 

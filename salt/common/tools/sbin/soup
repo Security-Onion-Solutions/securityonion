@@ -203,7 +203,7 @@ check_airgap() {
 
 check_local_mods() {
   local salt_local=/opt/so/saltstack/local
-
+  local_ignore_arr=("/opt/so/saltstack/local/salt/zeek/policy/intel/intel.dat")
   local_mod_arr=()
 
   while IFS= read -r -d '' local_file; do
@@ -211,8 +211,10 @@ check_local_mods() {
     default_file="${DEFAULT_SALT_DIR}${stripped_path}"
     if [[ -f $default_file ]]; then
       file_diff=$(diff "$default_file" "$local_file" )
-      if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
-        local_mod_arr+=( "$local_file" )
+      if [[ ! " ${local_ignore_arr[*]} " =~ " ${local_file} " ]]; then
+        if [[ $(echo "$file_diff" | grep -c "^<") -gt 0 ]]; then
+          local_mod_arr+=( "$local_file" )
+        fi
       fi
     fi
   done< <(find $salt_local -type f -print0)
@@ -223,11 +225,24 @@ check_local_mods() {
       echo "  $file_str"
     done
     echo ""
-    echo "To reference this list later, check $SOUP_LOG"
-    sleep 10
+    echo "To reference this list later, check $SOUP_LOG".
+    echo
+    if [[ -z $UNATTENDED ]] && ! [[ "${1}" == "skip-prompt" ]]; then
+      while true; do
+        read -p "Please review the local modifications shown above as they may cause problems during or after the update.
+
+Would you like to proceed with the update anyway?
+
+If so, type 'YES'. Otherwise, type anything else to exit SOUP. " yn
+
+        case $yn in
+          [yY][eE][sS] ) echo "Local modifications accepted.  Continuing..."; break;;
+          * ) exit 0;;
+        esac
+      done
+    fi
   fi
 }
-
 # {% endraw %}
 
 check_pillar_items() {
@@ -372,12 +387,7 @@ clone_to_tmp() {
 }
 
 elastalert_indices_check() {
-
-  # Stop Elastalert to prevent Elastalert indices from being re-created
-  if grep -q "^so-elastalert$" /opt/so/conf/so-status/so-status.conf ; then
-    so-elastalert-stop || true
-  fi
-  
+  echo "Checking Elastalert indices for compatibility..."
   # Wait for ElasticSearch to initialize
   echo -n "Waiting for ElasticSearch..."
   COUNT=0
@@ -394,8 +404,8 @@ elastalert_indices_check() {
         echo -n "."
       fi
   done
-  
-  # Unable to connect to Elasticsearch 
+
+  # Unable to connect to Elasticsearch
   if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
     echo
     echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
@@ -403,39 +413,51 @@ elastalert_indices_check() {
     exit 1
   fi
 
-  # Check Elastalert indices
-  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
-  CHECK_COUNT=0
-  while [[ "$CHECK_COUNT" -le 2 ]]; do
-    # Delete Elastalert indices
-    for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do
-      so-elasticsearch-query $i -XDELETE;
+  MAJOR_ES_VERSION=$(so-elasticsearch-query / | jq -r .version.number | cut -d '.' -f1)
+  if [[ "$MAJOR_ES_VERSION" -lt "8" ]]; then
+
+    # Stop Elastalert to prevent Elastalert indices from being re-created
+    if grep -q "^so-elastalert$" /opt/so/conf/so-status/so-status.conf ; then
+      so-elastalert-stop || true
+    fi
+
+    # Check Elastalert indices
+    echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+    CHECK_COUNT=0
+    while [[ "$CHECK_COUNT" -le 2 ]]; do
+      # Delete Elastalert indices
+      for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do
+        so-elasticsearch-query $i -XDELETE;
+         done
+
+      # Check to ensure Elastalert indices are deleted
+      COUNT=0
+      ELASTALERT_INDICES_DELETED="no"
+      while [[ "$COUNT" -le 240 ]]; do
+        RESPONSE=$(so-elasticsearch-query "elastalert*")
+        if [[ "$RESPONSE" == "{}" ]]; then
+          ELASTALERT_INDICES_DELETED="yes"
+          break
+        else
+          ((COUNT+=1))
+          sleep 1
+          echo -n "."
+        fi
+      done
+      ((CHECK_COUNT+=1))
     done
 
-    # Check to ensure Elastalert indices are deleted
-    COUNT=0
-    ELASTALERT_INDICES_DELETED="no"
-    while [[ "$COUNT" -le 240 ]]; do
-      RESPONSE=$(so-elasticsearch-query elastalert*)
-      if [[ "$RESPONSE" == "{}" ]]; then
-        ELASTALERT_INDICES_DELETED="yes"
-        echo "Elastalert indices successfully deleted."
-        break
-      else
-        ((COUNT+=1))
-        sleep 1
-        echo -n "."
-      fi
-    done
-    ((CHECK_COUNT+=1))
-  done
-
-  # If we were unable to delete the Elastalert indices, exit the script
-  if [ "$ELASTALERT_INDICES_DELETED" == "no" ]; then
-    echo
-    echo -e "Unable to connect to delete Elastalert indices. Exiting."
-    echo
-    exit 1
+    # If we were unable to delete the Elastalert indices, exit the script
+    if [ "$ELASTALERT_INDICES_DELETED" == "yes" ]; then
+      echo "Elastalert indices successfully deleted."
+    else
+      echo
+      echo -e "Unable to connect to delete Elastalert indices. Exiting."
+      echo
+      exit 1
+    fi
+  else
+    echo "Major Elasticsearch version is 8 or greater...skipping Elastalert index maintenance."
   fi
 }
 
@@ -448,7 +470,7 @@ enable_highstate() {
 es_version_check() {
     CHECK_ES=$(echo $INSTALLEDVERSION | awk -F. '{print $3}')
   
-    if [ "$CHECK_ES" -lt "110" ]; then
+    if [[ "$CHECK_ES" -lt "110" ]]; then
       echo "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version 2.3.130 before updating to 2.3.140 or higher."
       echo ""
       echo "If your deployment has Internet access, you can use the following command to update to 2.3.130:"
@@ -1218,6 +1240,7 @@ main() {
   set_palette
   check_elastic_license
   echo ""
+  check_local_mods
   check_os_updates
 
   echo "Generating new repo archive"
@@ -1382,7 +1405,7 @@ main() {
     fi
 
     echo "Checking for local modifications."
-    check_local_mods
+    check_local_mods skip-prompt
 
     echo "Checking sudoers file."
     check_sudoers
