@@ -1,24 +1,15 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states and grains.role not in ['so-manager', 'so-managersearch'] %}
 
 {% from "suricata/map.jinja" import SURICATAOPTIONS with context %}
 
 {% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
@@ -111,14 +102,6 @@ surithresholding:
     - group: 940
     - template: jinja
 
-classification_config:
-  file.managed:
-    - name: /opt/so/conf/suricata/classification.config
-    - source: salt://suricata/files/classification.config.jinja
-    - user: 940
-    - group: 940
-    - template: jinja
-
 # BPF compilation and configuration
 {% if BPF_NIDS %}
    {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" "),cwd='/root') %}
@@ -156,7 +139,6 @@ so-suricata:
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
-      - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
@@ -168,12 +150,10 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
-      - file: classification_config
     - require:
       - file: suriconfig
       - file: surithresholding
       - file: suribpf
-      - file: classification_config
 
   {% else %} {# if Suricata isn't enabled, then stop and remove the container #}
     - force: True

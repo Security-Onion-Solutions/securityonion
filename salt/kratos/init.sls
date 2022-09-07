@@ -1,9 +1,11 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 # Add Kratos Group
 kratosgroup:
@@ -51,7 +53,7 @@ kratos_yaml:
 
 so-kratos:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kratos:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kratos:{{ GLOBALS.so_version }}
     - hostname: kratos
     - name: so-kratos
     - binds:
@@ -78,7 +80,7 @@ append_so-kratos_so-status.conf:
 
 wait_for_kratos:
   http.wait_for_successful_query:
-    - name: 'http://{{ MANAGER }}:4434/'
+    - name: 'http://{{ GLOBALS.manager }}:4434/'
     - ssl: True
     - verify_ssl: False
     - status:

@@ -16,8 +16,8 @@
 {% if sls in allowed_states %}
 
 {% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
+{% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 {% set ENGINE = salt['pillar.get']('global:mdengine', '') %}

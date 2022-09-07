@@ -1,10 +1,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) %}
-{% set FLEETNODE = salt['pillar.get']('global:fleet_node', False) %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
+{% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
@@ -50,7 +48,7 @@ nginxtmp:
 
 navigatorconfig:
   file.managed:
-    - name: /opt/so/conf/navigator/config.json
+    - name: /opt/so/conf/navigator/navigator_config.json
     - source: salt://nginx/files/navigator_config.json
     - user: 939
     - group: 939
@@ -59,7 +57,7 @@ navigatorconfig:
 
 navigatordefaultlayer:
   file.managed:
-    - name: /opt/so/conf/navigator/layers/nav_layer_playbook.json
+    - name: /opt/so/conf/navigator/nav_layer_playbook.json
     - source: salt://nginx/files/nav_layer_playbook.json
     - user: 939
     - group: 939
@@ -69,7 +67,7 @@ navigatordefaultlayer:
 
 navigatorpreattack:
   file.managed:
-    - name: /opt/so/conf/navigator/layers/pre-attack.json
+    - name: /opt/so/conf/navigator/pre-attack.json
     - source: salt://nginx/files/pre-attack.json
     - user: 939
     - group: 939
@@ -78,7 +76,7 @@ navigatorpreattack:
 
 navigatorenterpriseattack:
   file.managed:
-    - name: /opt/so/conf/navigator/layers/enterprise-attack.json
+    - name: /opt/so/conf/navigator/enterprise-attack.json
     - source: salt://nginx/files/enterprise-attack.json
     - user: 939
     - group: 939
@@ -94,16 +92,17 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /opt/so/conf/fleet/packages:/opt/socore/html/packages
-  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
+      - /opt/so/conf/elastic-fleet/so_agent-installers:/opt/socore/html/packages
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
-      - /opt/so/conf/navigator/layers/:/opt/socore/html/navigator/assets/so:ro
-      - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
-  {% endif %}
-  {% if ISAIRGAP is sameas true %}
+      - /opt/so/conf/navigator/navigator_config.json:/opt/socore/html/navigator/assets/config.json:ro
+      - /opt/so/conf/navigator/nav_layer_playbook.json:/opt/socore/html/navigator/assets/playbook.json:ro
+      - /opt/so/conf/navigator/enterprise-attack.json:/opt/socore/html/navigator/assets/enterprise-attack.json:ro
+      - /opt/so/conf/navigator/pre-attack.json:/opt/socore/html/navigator/assets/pre-attack.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
+  
   {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
@@ -112,15 +111,12 @@ so-nginx:
   {% if ISAIRGAP is sameas true %}
       - 7788:7788
   {% endif %}
-  {%- if FLEETMANAGER or FLEETNODE %}
-      - 8090:8090
-  {%- endif %}
     - watch:
       - file: nginxconf
       - file: nginxconfdir
     - require:
       - file: nginxconf
-  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
       - x509: managerssl_key
       - x509: managerssl_crt
       - file: navigatorconfig

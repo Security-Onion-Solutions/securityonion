@@ -21,7 +21,7 @@
 {% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
 {% from 'filebeat/modules.map.jinja' import MODULESENABLED with context %}
 {% from 'filebeat/map.jinja' import FILEBEAT_EXTRA_HOSTS with context %}
-{% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-node', 'so-heavynode', 'so-import'] %}
+{% set ES_INCLUDED_NODES = ['so-eval', 'so-standalone', 'so-managersearch', 'so-searchnode', 'so-heavynode', 'so-import'] %}
 
 include:
   - ssl

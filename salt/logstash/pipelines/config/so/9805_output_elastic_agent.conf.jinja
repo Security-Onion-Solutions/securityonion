@@ -1,0 +1,17 @@
+{%- set ES = salt['grains.get']('master') -%}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+output {
+  if "elastic-agent" in [tags] and "import" not in [tags] {
+      elasticsearch {
+        hosts => "{{ ES }}"
+        ecs_compatibility => v8
+        data_stream => true
+        user => "{{ ES_USER }}"
+        password => "{{ ES_PASS }}"
+        ssl => true
+        ssl_certificate_verification => false
+      }
+  }
+}
+

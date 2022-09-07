@@ -8,7 +8,7 @@ kibana:
       publicBaseUrl: https://{{salt['pillar.get']('global:url_base')}}/kibana
     elasticsearch:
       hosts:
-        - https://{{salt['pillar.get']('manager:mainip')}}:9200
+        - https://{{salt['pillar.get']('global:managerip')}}:9200
       ssl:
         verificationMode: none
       requestTimeout: 90000
@@ -33,3 +33,60 @@ kibana:
       reporting:
         kibanaServer:
           hostname: localhost
+      fleet:
+        packages:
+         - name: fleet_server
+           version: latest
+         - name: osquery_manager
+           version: latest
+         - name: system
+           version: latest
+         - name: windows
+           version: latest
+        agentPolicies:
+          - name: SO-Manager
+            id: so-manager
+            description: "SO Manager Fleet Server Policy"
+            namespace: default
+            is_default_fleet_server: true
+            monitoring_enabled: ['logs']
+            package_policies:
+              - name: fleet-server_manager
+                package:
+                  name: fleet_server
+          - name: SO-Grid-Nodes
+            id: so-grid-nodes
+            description: "SO Grid Node Policy"
+            namespace: default
+            monitoring_enabled: ['logs']
+            package_policies:
+              - name: osquery-grid-nodes
+                package:
+                  name: osquery_manager
+              - name: system-grid-nodes
+                package:
+                  name: system
+                inputs:
+                  - type: system/metrics
+                    enabled: false
+          - name: Endpoints-Initial
+            id: endpoints
+            description: "Initial Endpoint Policy"
+            namespace: default
+            monitoring_enabled: ['logs']
+            package_policies:
+              - name: system-endpoints
+                package:
+                  name: system
+                inputs:
+                  - type: system/metrics
+                    enabled: false
+              - name: osquery-endpoints
+                package:
+                  name: osquery_manager
+              - name: windows-endpoints
+                package:
+                  name: windows
+                inputs:
+                  - type: windows/metrics
+                    enabled: false

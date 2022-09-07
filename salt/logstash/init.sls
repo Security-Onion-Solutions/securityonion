@@ -1,48 +1,30 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-  {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-  {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-  {% set MANAGER = salt['grains.get']('master') %}
-  {% set MANAGERIP = salt['pillar.get']('global:managerip') %}
+  {% from 'logstash/map.jinja' import REDIS_NODES with context %}
+  {% from 'vars/globals.map.jinja' import GLOBALS %}
 
   # Logstash Section - Decide which pillar to use
-  {% set lsheap = salt['pillar.get']('logstash_settings:lsheap', '') %}
-  {% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
-    {% set freq = salt['pillar.get']('manager:freq', '0') %}
-    {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
-    {% set nodetype = salt['grains.get']('role', '')  %}
-  {% elif grains['role'] == 'so-helix' %}
-    {% set freq = salt['pillar.get']('manager:freq', '0') %}
-    {% set dstats = salt['pillar.get']('manager:domainstats', '0') %}
-    {% set nodetype = salt['grains.get']('role', '')  %}
+  {% set lsheap = salt['pillar.get']('logstash_settings:lsheap') %}
+  {% if GLOBALS.role in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+    {% set nodetype = GLOBALS.role  %}
   {% endif %}
 
   {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
   {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
   {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
-  {% from 'logstash/map.jinja' import REDIS_NODES with context %}
-
 include:
   - ssl
-{% if grains.role not in ['so-receiver'] %}
+  {% if GLOBALS.role not in ['so-receiver'] %}
   - elasticsearch
-{% endif %}
+  {% endif %}
 
 # Create the logstash group
 logstashgroup:
@@ -150,7 +132,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-logstash:{{ VERSION }}
+    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash
@@ -171,24 +153,22 @@ so-logstash:
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-  {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+  {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
   {% endif %}
-  {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+  {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
   {% else %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
   {% endif %}
-  {% if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-node'] %}
+  {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
   {% endif %}
-  {%- if grains['role'] == 'so-eval' %}
+  {%- if GLOBALS.role == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
-      - /nsm/wazuh/logs/alerts:/wazuh/alerts:ro
-      - /nsm/wazuh/logs/archives:/wazuh/archives:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
   {%- endif %}

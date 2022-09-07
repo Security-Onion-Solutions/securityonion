@@ -1,20 +1,14 @@
-## Security Onion 2.3.140
+## Security Onion 2.3.120
 
-Security Onion 2.3.140 is here!
+Security Onion 2.3.120 is here!
 
 ## Screenshots
 
 Alerts
-![Alerts](./assets/images/screenshots/alerts.png)
-
-Dashboards
-![Dashboards](./assets/images/screenshots/dashboards.png)
+![Alerts](./assets/images/screenshots/alerts-1.png)
 
 Hunt
-![Hunt](./assets/images/screenshots/hunt.png)
-
-Cases
-![Cases](./assets/images/screenshots/cases-comments.png)
+![Hunt](./assets/images/screenshots/hunt-1.png)
 
 ### Release Notes
 

@@ -7,7 +7,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
-{% import_yaml 'grafana/defaults.yaml' as default_settings %}
+{% import_yaml 'grafana/grafana_defaults.yaml' as default_settings %}
 {% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}

@@ -1,0 +1,50 @@
+{% import 'vars/init.map.jinja' as INIT %}
+
+{% from 'vars/' ~ INIT.GRAINS.role.split('-')[1] ~ '.map.jinja' import ROLE_GLOBALS %} {# role is so-role so we have to split off the 'so' #}
+
+{%
+  set GLOBALS = {
+    'hostname': INIT.GRAINS.nodename,
+    'is_manager': false,
+    'manager': INIT.GRAINS.master,
+    'minion_id': INIT.GRAINS.id,
+    'node_ip': INIT.GRAINS.ip_interfaces.get(INIT.PILLAR.host.mainint)[0],
+    'role': INIT.GRAINS.role,
+    'airgap': INIT.PILLAR.global.airgap,
+    'ids': INIT.PILLAR.global.ids,
+    'image_repo': INIT.PILLAR.global.imagerepo,
+    'repo_host': INIT.PILLAR.global.repo_host,
+    'registry_host': INIT.PILLAR.global.registry_host,
+    'manager_ip': INIT.PILLAR.global.managerip,
+    'md_engine': INIT.PILLAR.global.mdengine,
+    'pipeline': INIT.PILLAR.global.pipeline,
+    'so_version': INIT.PILLAR.global.soversion,
+    'url_base': INIT.PILLAR.global.url_base,
+    'docker_range': INIT.PILLAR.docker.range,
+    'application_urls': {},
+    'manager_roles': [
+      'so-eval',
+      'so-import',
+      'so-manager',
+      'so-managersearch',
+      'so-standalone'
+    ]
+  }
+%}
+
+{%
+  do GLOBALS.update({
+    'application_urls': {
+      'kratos': 'http://' ~ GLOBALS.manager_ip ~ ':4434/',
+      'elastic': 'https://' ~ GLOBALS.manager_ip ~ ':9200/',
+      'influxdb': 'https://' ~ GLOBALS.manager_ip ~ ':8086/'
+    }
+  })
+%}
+
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+{%   do GLOBALS.update({'is_manager': true}) %}
+{% endif %}
+
+
+{% do salt['defaults.merge'](GLOBALS, ROLE_GLOBALS, merge_lists=False, in_place=True) %}

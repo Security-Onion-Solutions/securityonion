@@ -1,18 +1,19 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set manager = salt['grains.get']('master') %}
-{% set managerip = salt['pillar.get']('global:managerip', '') %}
-{% set HOSTNAME = salt['grains.get']('host') %}
+
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
-{% set MAININT = salt['pillar.get']('host:mainint') %}
-{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
-{% set CUSTOM_FLEET_HOSTNAME = salt['pillar.get']('global:fleet_custom_hostname', None) %}
 {% if grains.role in ['so-heavynode'] %}
-  {% set COMMONNAME = salt['grains.get']('host') %}
+  {% set COMMONNAME = GLOBALS.hostname %}
 {% else %}
-  {% set COMMONNAME = manager %}
+  {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
 {% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'helixsensor'] %}
@@ -23,7 +24,7 @@ include:
 {% else %}
 include:
   - ca.dirs
-    {% set x509dict = salt['mine.get'](manager | lower~'*', 'x509.get_pem_entries') %}
+    {% set x509dict = salt['mine.get'](GLOBALS.manager | lower~'*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
@@ -53,25 +54,10 @@ m2cryptopkgs:
     {% endif %}
 {% endif %}
 
-removefbcertdir:
-  file.absent:
-    - name: /etc/pki/filebeat.crt 
-    - onlyif: "test -d /etc/pki/filebeat.crt"
-
-removefbp8dir:
-  file.absent:
-    - name: /etc/pki/filebeat.p8 
-    - onlyif: "test -d /etc/pki/filebeat.p8"
-
-removeesp12dir:
-  file.absent:
-    - name: /etc/pki/elasticsearch.p12
-    - onlyif: "test -d /etc/pki/elasticsearch.p12"
-    
 influxdb_key:
   x509.private_key_managed:
     - name: /etc/pki/influxdb.key
-    - CN: {{ HOSTNAME }}
+    - CN: {{ GLOBALS.hostname }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -93,8 +79,8 @@ influxdb_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
     - public_key: /etc/pki/influxdb.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} 
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }} 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -121,7 +107,7 @@ influxkeyperms:
 redis_key:
   x509.private_key_managed:
     - name: /etc/pki/redis.key
-    - CN: {{ HOSTNAME }}
+    - CN: {{ GLOBALS.hostname }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -140,10 +126,10 @@ redis_crt:
   x509.certificate_managed:
     - name: /etc/pki/redis.crt
     - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - signing_policy: registry
     - public_key: /etc/pki/redis.key
-    - CN: {{ HOSTNAME }}
+    - CN: {{ GLOBALS.hostname }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -192,8 +178,8 @@ etc_filebeat_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /etc/pki/filebeat.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -251,7 +237,7 @@ fbcrtlink:
 registry_key:
   x509.private_key_managed:
     - name: /etc/pki/registry.key
-    - CN: {{ manager }}
+    - CN: {{ GLOBALS.manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -271,10 +257,10 @@ registry_crt:
   x509.certificate_managed:
     - name: /etc/pki/registry.crt
     - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ manager }}, IP:{{ managerip }} 
+    - subjectAltName: DNS:{{ GLOBALS.manager }}, IP:{{ GLOBALS.manager_ip }} 
     - signing_policy: registry
     - public_key: /etc/pki/registry.key
-    - CN: {{ manager }}
+    - CN: {{ GLOBALS.manager }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -319,8 +305,8 @@ regkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -356,7 +342,7 @@ elasticp12perms:
 managerssl_key:
   x509.private_key_managed:
     - name: /etc/pki/managerssl.key
-    - CN: {{ manager }}
+    - CN: {{ GLOBALS.manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -378,8 +364,8 @@ managerssl_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
     - public_key: /etc/pki/managerssl.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -401,53 +387,10 @@ msslkeyperms:
 
   {% endif %}
 
-# Create a private key and cert for OSQuery
-fleet_key:
-  x509.private_key_managed:
-    - name: /etc/pki/fleet.key
-    - CN: {{ HOSTNAME }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
-    - prereq:
-      - x509: /etc/pki/fleet.crt
-    {%- endif %}
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-fleet_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/fleet.crt
-    - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }},IP:{{ MAINIP }}{% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }}{% endif %}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-fleetkeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/fleet.key
-    - mode: 640
-    - group: 939
 
 {% endif %}
 
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-node', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:
@@ -479,8 +422,8 @@ conf_filebeat_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
     - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -519,105 +462,11 @@ chownfilebeatp8:
     
 {% endif %}
 
-{% if grains['role'] == 'so-fleet' %}
-
-managerssl_key:
-  x509.private_key_managed:
-    - name: /etc/pki/managerssl.key
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
-    - prereq:
-      - x509: /etc/pki/managerssl.crt
-    {%- endif %}
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-# Create a cert for the reverse proxy
-managerssl_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/managerssl.crt
-    - ca_server: {{ ca_server }}
-    - signing_policy: managerssl
-    - public_key: /etc/pki/managerssl.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-msslkeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/managerssl.key
-    - mode: 640
-    - group: 939
-
-# Create a private key and cert for Fleet
-fleet_key:
-  x509.private_key_managed:
-    - name: /etc/pki/fleet.key
-    - CN: {{ manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/fleet.key') -%}
-    - prereq:
-      - x509: /etc/pki/fleet.crt
-    {%- endif %}
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-fleet_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/fleet.crt
-    - signing_private_key: /etc/pki/fleet.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }} {% if CUSTOM_FLEET_HOSTNAME != None %},DNS:{{ CUSTOM_FLEET_HOSTNAME }} {% endif %}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/fleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-fleetkeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/fleet.key
-    - mode: 640
-    - group: 939
-
-{% endif %}
-
-{% if grains['role'] == 'so-node' %}
+{% if grains['role'] == 'so-searchnode' %}
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ manager }}
+    - CN: {{ GLOBALS.manager }}
     - bits: 4096
     - days_remaining: 0
     - days_valid: 820
@@ -637,8 +486,8 @@ fleetkeyperms:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
     - public_key: /etc/pki/elasticsearch.key
-    - CN: {{ HOSTNAME }}
-    - subjectAltName: DNS:{{ HOSTNAME }}, IP:{{ MAINIP }}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
     - days_valid: 820
     - backup: True

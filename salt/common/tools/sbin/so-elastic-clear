@@ -1,20 +1,12 @@
 #!/bin/bash
 #
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+{%- set NODEIP = salt['pillar.get']('host:mainip', '') -%}
 . /usr/sbin/so-common
 
 SKIP=0
@@ -50,7 +42,7 @@ done
 if [ $SKIP -ne 1 ]; then
         # List indices
         echo 
-        {{ ELASTICCURL }} -k -L https://{{ NODEIP }}:9200/_cat/indices?v
+        curl -K /opt/so/conf/elasticsearch/curl.config -k -L https://{{ NODEIP }}:9200/_cat/indices?v
         echo
         # Inform user we are about to delete all data
         echo
@@ -89,10 +81,10 @@ fi
 # Delete data
 echo "Deleting data..."
 
-INDXS=$({{ ELASTICCURL }} -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
+INDXS=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
 for INDX in ${INDXS}
 do
-    {{ ELASTICCURL }} -XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
+    curl -K /opt/so/conf/elasticsearch/curl.config-XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
 #Start Logstash/Filebeat

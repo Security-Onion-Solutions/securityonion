@@ -29,6 +29,7 @@ soclogdir:
     - group: 939
     - makedirs: True
 
+
 socactions:
   file.managed:
     - name: /opt/so/conf/soc/menu.actions.json
@@ -38,10 +39,11 @@ socactions:
     - mode: 600
     - template: jinja
 
+
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
-    - source: salt://soc/files/soc/soc.json
+    - source: salt://soc/files/soc/soc.json.jinja
     - user: 939
     - group: 939
     - mode: 600

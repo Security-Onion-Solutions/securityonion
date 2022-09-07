@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+. /usr/sbin/so-common
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 --role=<ROLE> --ip=<IP ADDRESS>"
+  echo ""
+  echo " Example: so-firewall-minion --role=manager --ip=192.168.254.100"
+  echo ""
+  exit 1
+fi
+
+for i in "$@"; do
+	case $i in
+		-r=*|--role=*)
+			ROLE="${i#*=}"
+			shift 
+			;;
+		-i=*|--ip=*)
+			IP="${i#*=}"
+			shift 
+			;;
+		-*|--*)
+			echo "Unknown option $i"
+			exit 1
+			;;
+		*)
+		;;
+	esac
+done
+
+ROLE=${ROLE^^}
+
+if [ -z "$ROLE" ]; then
+    echo "Please specify a role with --role="
+    exit 1
+fi
+if [ -z "$IP" ]; then
+    echo "Please specify an IP address with --ip="
+    exit 1
+fi
+
+	case "$ROLE" in
+
+        'MANAGER')
+			so-firewall includehost manager "$IP"
+			so-firewall --apply includehost minion "$IP"
+			;;
+		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
+			so-firewall includehost manager "$IP"
+			so-firewall includehost minion "$IP"
+			so-firewall includehost sensor "$IP"
+			so-firewall --apply includehost search_node "$IP"
+			;;
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'IDH' | 'RECEIVER')
+			so-firewall includehost minion "$IP"
+			case "$ROLE" in
+				'SENSOR')
+					so-firewall --apply includehost sensor "$IP"
+					;;
+				'SEARCHNODE')
+					so-firewall --apply includehost search_node "$IP"
+					;;
+				'HEAVYNODE')
+					so-firewall includehost sensor "$IP"
+					so-firewall --apply includehost heavy_node "$IP"
+					;;
+				'IDH')
+				    so-firewall --apply includehost beats_endpoint_ssl "$IP"
+					;;
+				'RECEIVER')
+					so-firewall --apply includehost receiver "$IP"
+                    ;;
+           	esac
+			;;
+    esac

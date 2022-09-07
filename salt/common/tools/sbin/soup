@@ -1,19 +1,10 @@
 #!/bin/bash
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
 
@@ -368,6 +359,74 @@ clone_to_tmp() {
   if [ ! -f $UPDATE_DIR/VERSION ]; then
     echo "Update was unable to pull from github. Please check your internet."
     exit 0
+  fi
+}
+
+elastalert_indices_check() {
+
+  # Stop Elastalert to prevent Elastalert indices from being re-created
+  if grep -q "^so-elastalert$" /opt/so/conf/so-status/so-status.conf ; then
+    so-elastalert-stop || true
+  fi
+  
+  # Wait for ElasticSearch to initialize
+  echo -n "Waiting for ElasticSearch..."
+  COUNT=0
+  ELASTICSEARCH_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+    so-elasticsearch-query / -k --output /dev/null
+      if [ $? -eq 0 ]; then
+        ELASTICSEARCH_CONNECTED="yes"
+        echo "connected!"
+          break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+  done
+  
+  # Unable to connect to Elasticsearch 
+  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+    echo
+    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    echo
+    exit 1
+  fi
+
+  # Check Elastalert indices
+  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+  CHECK_COUNT=0
+  while [[ "$CHECK_COUNT" -le 2 ]]; do
+    # Delete Elastalert indices
+    for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do
+      so-elasticsearch-query $i -XDELETE;
+    done
+
+    # Check to ensure Elastalert indices are deleted
+    COUNT=0
+    ELASTALERT_INDICES_DELETED="no"
+    while [[ "$COUNT" -le 240 ]]; do
+      RESPONSE=$(so-elasticsearch-query elastalert*)
+      if [[ "$RESPONSE" == "{}" ]]; then
+        ELASTALERT_INDICES_DELETED="yes"
+        echo "Elastalert indices successfully deleted."
+        break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+    done
+    ((CHECK_COUNT+=1))
+  done
+
+  # If we were unable to delete the Elastalert indices, exit the script
+  if [ "$ELASTALERT_INDICES_DELETED" == "no" ]; then
+    echo
+    echo -e "Unable to connect to delete Elastalert indices. Exiting."
+    echo
+    exit 1
   fi
 }
 
@@ -825,40 +884,7 @@ up_to_2.3.130() {
 }
 
 up_to_2.3.140() {
-  ## Deleting Elastalert indices to prevent issues with upgrade to Elastic 8 ##
-  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
-  # Wait for ElasticSearch to initialize
-  echo -n "Waiting for ElasticSearch..."
-  COUNT=0
-  ELASTICSEARCH_CONNECTED="no" 
-  while [[ "$COUNT" -le 240 ]]; do
-    so-elasticsearch-query / -k --output /dev/null
-      if [ $? -eq 0 ]; then
-        ELASTICSEARCH_CONNECTED="yes"
-        echo "connected!"
-          break
-      else
-        ((COUNT+=1))
-        sleep 1
-        echo -n "."
-      fi
-  done
-  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
-    echo
-    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
-    echo
-    exit 1
-   fi
-   
-   # Delete Elastalert indices
-   for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do so-elasticsearch-query $i -XDELETE; done
-   # Check to ensure Elastalert indices have been deleted
-   RESPONSE=$(so-elasticsearch-query elastalert*)
-   if [[ "$RESPONSE" == "{}" ]]; then
-     echo "Elastalert indices have been deleted."
-   else
-     fail "Something went wrong. Could not delete the Elastalert indices. Exiting."
-   fi
+   elastalert_indices_check
    ##
    INSTALLEDVERSION=2.3.140
 }
@@ -1178,6 +1204,7 @@ main() {
   verify_latest_update_script
   es_version_check
   es_indices_check
+  elastalert_indices_check
   echo ""
   set_palette
   check_elastic_license
