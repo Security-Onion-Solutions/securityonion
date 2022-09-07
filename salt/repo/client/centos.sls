@@ -1,27 +1,15 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
 {% from 'repo/client/map.jinja' import ABSENTFILES with context %}
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
-{% set managerupdates = salt['pillar.get']('global:managerupdate', 0) %}
 {% set role = grains.id.split('_') | last %}
-
-# from airgap state
-{% if ISAIRGAP and grains.os == 'CentOS' %}
 {% set MANAGER = salt['grains.get']('master') %}
-airgapyum:
-  file.managed:
-    - name: /etc/yum/yum.conf
-    - source: salt://repo/client/files/centos/airgap/yum.conf
+{% if grains['os'] == 'CentOS' %}
 
-airgap_repo:
-  pkgrepo.managed:
-    - humanname: Airgap Repo
-    - baseurl: https://{{ MANAGER }}/repo
-    - gpgcheck: 0
-    - sslverify: 0
-
-{% endif %}
-
-# from airgap and common
 {% if ABSENTFILES|length > 0%}
   {% for file in ABSENTFILES  %}
 {{ file }}:
@@ -32,9 +20,20 @@ airgap_repo:
   {% endfor %}
 {% endif %}
 
-# from common state
-# Remove default Repos
-{% if grains['os'] == 'CentOS' %}
+cleanyum:
+  cmd.run:
+    - name: 'yum clean all'
+    - onchanges:
+      - so_repo
+      
+yumconf:
+  file.managed:
+    - name: /etc/yum.conf
+    - source: salt://repo/client/files/centos/yum.conf.jinja
+    - mode: 644
+    - template: jinja
+    - show_changes: False
+
 repair_yumdb:
   cmd.run:
     - name: 'mv -f /var/lib/rpm/__db* /tmp && yum clean all'
@@ -46,53 +45,35 @@ crsynckeys:
     - name: /etc/pki/rpm_gpg
     - source: salt://repo/client/files/centos/keys/
 
-{% if not ISAIRGAP %}
-    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
-remove_securityonionrepocache:
-  file.absent:
-    - name: /etc/yum.repos.d/securityonioncache.repo
-    {% endif %}
 
-    {% if role not in ['eval', 'standalone', 'import', 'manager', 'managersearch'] and managerupdates == 1 %}
-remove_securityonionrepo:
-  file.absent:
-    - name: /etc/yum.repos.d/securityonion.repo
-    {% endif %}
+  {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] %}
+so_repo:
+  pkgrepo.managed:
+    - name: securityonion
+    - humanname: Security Onion Repo
+    - baseurl: file:///nsm/repo/
+    - enabled: 1
+    - gpgcheck: 1
 
-crsecurityonionrepo:
-  file.managed:
-    {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] or managerupdates == 0 %}
-    - name: /etc/yum.repos.d/securityonion.repo
-    - source: salt://repo/client/files/centos/securityonion.repo
-    {% else %}
-    - name: /etc/yum.repos.d/securityonioncache.repo
-    - source: salt://repo/client/files/centos/securityonioncache.repo
-    {% endif %}
-    - mode: 644
+  {% else %}
+so_repo:
+  pkgrepo.managed:
+    - name: securityonion
+    - humanname: Security Onion Repo
+    - baseurl: https://{{ MANAGER }}/repo
+    - enabled: 1
+    - gpgcheck: 1 
 
-yumconf:
-  file.managed:
-    - name: /etc/yum.conf
-    - source: salt://repo/client/files/centos/yum.conf.jinja
-    - mode: 644
-    - template: jinja
-    - show_changes: False
-
-cleanairgap:
-  file.absent:
-    - name: /etc/yum.repos.d/airgap_repo.repo
-{% endif %}
-
-cleanyum:
-  cmd.run:
-    - name: 'yum clean metadata'
-    - onchanges:
-{% if ISAIRGAP %}
-      - file: airgapyum
-      - pkgrepo: airgap_repo
-{% else %}
-      - file: crsecurityonionrepo
-      - file: yumconf
-{% endif %}
+  {% endif %}
 
 {% endif %}
+  
+# TODO: Add a pillar entry for custom repos
+
+
+
+
+
+
+
+

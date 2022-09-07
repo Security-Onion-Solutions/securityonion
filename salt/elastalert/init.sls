@@ -1,17 +1,6 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
-
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
@@ -23,16 +12,8 @@
 {%- set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
 {%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
 
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
-  {% set esalert = salt['pillar.get']('manager:elastalert', '1') %}
-  {% set esip = salt['pillar.get']('manager:mainip', '') %}
-  {% set esport = salt['pillar.get']('manager:es_port', '') %}
-{% elif grains['role'] == 'so-node' %}
-  {% set esalert = salt['pillar.get']('elasticsearch:elastalert', '0') %}
-{% endif %}
 
 # Elastalert
-{% if esalert == 1 %}
 
 # Create the group
 elastagroup:
@@ -137,8 +118,6 @@ append_so-elastalert_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elastalert
-
-{% endif %}
 
 {% else %}
 

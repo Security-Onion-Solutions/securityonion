@@ -1,15 +1,15 @@
-{% if grains['role'] in ['so-node', 'so-heavynode'] %}
-  {%- set elasticsearch = salt['pillar.get']('elasticsearch:mainip', '') -%}
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{% if grains['role'] in ['so-searchnode', 'so-heavynode'] %}
+  {%- set elasticsearch = salt['pillar.get']('host:mainip', '') -%}
 {% elif grains['role'] in ['so-eval', 'so-managersearch', 'so-standalone', 'so-manager'] %}
-  {%- set elasticsearch = salt['pillar.get']('manager:mainip', '') -%}
+  {%- set elasticsearch = salt['pillar.get']('global:managerip', '') -%}
 {%- endif %}
-{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
 {%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
 {%-   set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
-{%- else %}
-{%-   set ES_USER = '' %}
-{%-   set ES_PASS = '' %}
-{%- endif %}
 
 ---
 # Remember, leave a key empty if there is no value.  None will be a string,
@@ -18,10 +18,8 @@ client:
   hosts:
     - {{elasticsearch}}
   port: 9200
-{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
   username: "{{ ES_USER }}"
   password: "{{ ES_PASS }}"
-{%- endif %}
   url_prefix:
   use_ssl: True
   certificate:

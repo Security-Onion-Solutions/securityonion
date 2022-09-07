@@ -1,15 +1,16 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+
 {% set REMOVECURATORCRON = False %}
-{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
-{% set HOTWARM = salt['pillar.get']('elasticsearch:hot_warm_enabled', False) %}
 
-{% if grains['role'] in ['so-eval', 'so-node', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
-  {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+{% if grains['role'] in ['so-eval', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
   {% from "curator/map.jinja" import CURATOROPTIONS with context %}
 # Curator
 # Create the group
@@ -74,8 +75,6 @@ curcloseddeldel:
     - group: 939
     - mode: 755
     - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 curclose:
   file.managed:
@@ -123,8 +122,7 @@ curclustercwarm:
 
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
-  {% if CURATOROPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-curator:{{ VERSION }}
+    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-curator:{{ GLOBALS.so_version }}
     - start: {{ CURATOROPTIONS.start }}
     - hostname: curator
     - name: so-curator
@@ -139,70 +137,13 @@ so-curator:
       - file: actionconfs
       - file: curconf
       - file: curlogdir
-  {% else %}
-    - force: True
-  {% endif %}
 
-  {% if CURATOROPTIONS.manage_sostatus %}
-append_so-curator_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-curator
-    - unless: grep -q so-curator /opt/so/conf/so-status/so-status.conf
-
-    {% if not CURATOROPTIONS.start %}
-so-curator_so-status.disabled:
-  file.comment:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-curator$
-
-      # need to remove cronjobs here since curator is disabled
-      {% set REMOVECURATORCRON = True %}    
-    {% else %}
-delete_so-curator_so-status.disabled:
-  file.uncomment:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-curator$
-
-    {% endif %}
-
-  {% else %}
-delete_so-curator_so-status:
-  file.line:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - match: ^so-curator$
-    - mode: delete
-
-    # need to remove cronjobs here since curator is disabled
-    {% set REMOVECURATORCRON = True %}
-
-  {% endif %}
-
-  {% if REMOVECURATORCRON %}
-so-curatorcloseddeletecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
-    - user: root
-
-so-curatorclosecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
-    - user: root
-
-so-curatordeletecron:
-  cron.absent:
-    - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
-    - user: root
-
-  {% else %}
-
-    {% if TRUECLUSTER is sameas true %}  
 so-curatorclusterclose:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
     - user: root
-    - minute: '5'
-    - hour: '1'
+    - minute: '2'
+    - hour: '*/1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
@@ -211,56 +152,22 @@ so-curatorclusterdelete:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-delete.log 2>&1
     - user: root
-    - minute: '5'
-    - hour: '1'
+    - minute: '2'
+    - hour: '*/1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
-        {% if HOTWARM is sameas true %}
+
 so-curatorclusterwarm:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-warm > /opt/so/log/curator/cron-warm.log 2>&1
     - user: root
-    - minute: '5'
-    - hour: '1'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-        {% endif %}
-
-    {% else %}
-so-curatorcloseddeletecron:
-  cron.present:
-    - name: /usr/sbin/so-curator-closed-delete > /opt/so/log/curator/cron-closed-delete.log 2>&1
-    - user: root
-    - minute: '*/5'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
-so-curatorclosecron:
-  cron.present:
-    - name: /usr/sbin/so-curator-close > /opt/so/log/curator/cron-close.log 2>&1
-    - user: root
-    - minute: '*/5'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
-so-curatordeletecron:
-  cron.present:
-    - name: /usr/sbin/so-curator-delete > /opt/so/log/curator/cron-delete.log 2>&1
-    - user: root
-    - minute: '*/5'
-    - hour: '*'
+    - minute: '2'
+    - hour: '*/1'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
   
-    {% endif %}
-  {% endif %}
 {% endif %}
 
 {% else %}

@@ -81,10 +81,10 @@ set_log_levels:
       - "log_level: error"
       - "log_level_logfile: error"
 
-salt_minion_service_start_delay:
+salt_minion_service_unit_file:
   file.managed:
-    - name: /etc/systemd/system/salt-minion.service.d/start-delay.conf
-    - source: salt://salt/service/start-delay.conf.jinja
+    - name: {{ SYSTEMD_UNIT_FILE }}
+    - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
     - defaults:
         service_start_delay: {{ service_start_delay }}

@@ -1,10 +1,12 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
@@ -73,19 +75,17 @@ kibanabin:
     - source: salt://kibana/bin/so-kibana-config-load
     - mode: 755
     - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
     - hostname: kibana
     - user: kibana
     - environment:
-      - ELASTICSEARCH_HOST={{ MANAGER }}
+      - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200
-      - MANAGER={{ MANAGER }}
+      - MANAGER={{ GLOBALS.manager }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw

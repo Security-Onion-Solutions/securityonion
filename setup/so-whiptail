@@ -1,19 +1,10 @@
 #!/bin/bash
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 whiptail_airgap() {
 
@@ -31,6 +22,9 @@ whiptail_airgap() {
 	whiptail_check_exitstatus $exitstatus
 
 	INTERWEBS=$(echo "${INTERWEBS^^}" | tr -d ' ')
+	if [[ "$INTERWEBS" == 'AIRGAP' ]]; then
+		is_airgap=true
+	fi
 }
 
 whiptail_analyst_install() {
@@ -97,29 +91,6 @@ whiptail_avoid_default_hostname() {
 	whiptail --title "$whiptail_title" \
 		--yesno "$message" 11 75 \
 		--yes-button "Use Anyway" --no-button "Change" --defaultno
-}
-
-whiptail_basic_suri() {
-
-	[ -n "$TESTING" ] && return
-
-	BASICSURI=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the number of Suricata processes:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_basic_zeek() {
-
-	[ -n "$TESTING" ] && return
-
-	BASICZEEK=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the number of Zeek processes:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_bond_nics_mtu() {
@@ -190,70 +161,6 @@ whiptail_create_admin_user_password2() {
 
 	ADMINPASS2=$(whiptail --title "$whiptail_title" --passwordbox \
 	"Re-enter a password for $ADMINUSER:" 10 60 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_create_fleet_node_user() {
-
-	[ -n "$TESTING" ] && return
-
-	FLEETNODEUSER=$(whiptail --title "$whiptail_title" --inputbox \
-	"Please enter an email for use as the username for the Fleet admin user:" 10 60 "$1" 3>&1 1>&2 2>&3)
-
-}
-
-whiptail_create_fleet_node_user_password1() {
-
-	[ -n "$TESTING" ] && return
-
-	FLEETNODEPASSWD1=$(whiptail --title "$whiptail_title" --passwordbox \
-	"Enter a password for $FLEETNODEUSER:" 10 60 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_create_fleet_node_user_password2() {
-
-	[ -n "$TESTING" ] && return
-
-	FLEETNODEPASSWD2=$(whiptail --title "$whiptail_title" --passwordbox \
-	"Re-enter a password for $FLEETNODEUSER:" 10 60 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_create_soremote_user() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --msgbox "Set a password for the soremote user. This account is used for adding sensors remotely." 8 75
-
-}
-
-whiptail_create_soremote_user_password1() {
-
-	[ -n "$TESTING" ] && return
-
-	SOREMOTEPASS1=$(whiptail --title "$whiptail_title" --passwordbox \
-	"Enter a password for user soremote:" 10 75 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_create_soremote_user_password2() {
-
-	[ -n "$TESTING" ] && return	
-
-	SOREMOTEPASS2=$(whiptail --title "$whiptail_title" --passwordbox \
-	"Re-enter a password for user soremote:" 10 75 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -430,49 +337,6 @@ whiptail_dockernet_net() {
 
 }
 
-whiptail_enable_components() {
-
-	[ -n "$TESTING" ] && return
-
-	GRAFANA=0
-	OSQUERY=0
-	WAZUH=0
-	THEHIVE=0
-	PLAYBOOK=0
-	STRELKA=0
-
-description="Choose optional services to be enabled for this installation. Be aware that the more services you enable the more RAM that is required."
-if [[ $is_eval ]]; then
-	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"$description" 20 75 8 \
-	GRAFANA "Enable Grafana for system monitoring" ON \
-	OSQUERY "Enable Fleet with osquery" ON \
-	WAZUH "Enable Wazuh" ON \
-	PLAYBOOK "Enable Playbook" ON \
-	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
-else
-	COMPONENTS=$(whiptail --title "$whiptail_title" --checklist \
-	"$description" 20 75 7 \
-	OSQUERY "Enable Fleet with osquery" ON \
-	WAZUH "Enable Wazuh" ON \
-	PLAYBOOK "Enable Playbook" ON \
-	STRELKA "Enable Strelka" ON 3>&1 1>&2 2>&3)
-	export "GRAFANA=1"
-fi
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	COMPONENTS=$(echo "$COMPONENTS" | tr -d '"')
-
-	IFS=' ' read -ra COMPONENTS <<< "$COMPONENTS"
-
-	# Set any variables to 1 if they exist in COMPONENTS
-	for component in "${COMPONENTS[@]}"; do
-    	export "$component=1"
-	done
-}
-
 whiptail_end_settings() {
 	[ -n "$TESTING" ] && return
 
@@ -483,15 +347,6 @@ whiptail_end_settings() {
 	Node Type: $install_type
 	Hostname: $HOSTNAME
 	EOM
-
-	if [[ $is_idh ]]; then
-		__append_end_msg "IDH Services Enabled:"
-		for service in ${idh_services[@]}; do
-		__append_end_msg "- $service"
-		done
-
-	fi
-
 	[[ -n $NODE_DESCRIPTION ]] && __append_end_msg "Description: $NODE_DESCRIPTION"
 
 	[[ $is_airgap ]] && __append_end_msg "Airgap: True"
@@ -500,7 +355,6 @@ whiptail_end_settings() {
 		__append_end_msg "Manager Hostname: $MSRV"
 		__append_end_msg "Manager IP: $MSRVIP"
 	fi
-
 
 	[[ $is_iso ]] && __append_end_msg "Network: $address_type"
 
@@ -536,12 +390,6 @@ whiptail_end_settings() {
 		for net in "${homenet_arr[@]}"; do
 			__append_end_msg "  - $net"
 		done
-	elif [[ -n $HNSENSOR ]]; then
-		__append_end_msg "Home Network(s):"
-		IFS="," read -r -a homenet_arr <<< "$HNSENSOR"
-		for net in "${homenet_arr[@]}"; do
-			__append_end_msg "  - $net"
-		done
 	fi
 
 	[[ -n $REDIRECTIT ]] && __append_end_msg "Access URL: https://${REDIRECTIT}"
@@ -550,98 +398,13 @@ whiptail_end_settings() {
 
 	[[ -n $WEBUSER ]] && __append_end_msg "Web User: $WEBUSER"
 
-	[[ -n $FLEETNODEUSER ]] && __append_end_msg "Fleet User: $FLEETNODEUSER"
-	
-	[[ -n $FLEETCUSTOMHOSTNAME ]] && __append_end_msg "Fleet Custom Hostname: $FLEETCUSTOMHOSTNAME"
-
-	if [[ $is_manager ]]; then
-		__append_end_msg "Enabled Optional Components:"
-		for component in "${COMPONENTS[@]}"; do
-			__append_end_msg "  - $component"
-		done
-	fi
-	
-	# METADATA / IDS
-
-	if [[ -n $ZEEKVERSION ]]; then
-		local md_tool_string=${ZEEKVERSION,;}
-		md_tool_string=${md_tool_string^}
-
-		__append_end_msg "Metadata Tool: $md_tool_string"
-	fi
-
-	[[ -n $RULESETUP ]] && __append_end_msg "IDS Ruleset: $RULESETUP"
-	[[ -n $OINKCODE ]] && __append_end_msg "Oinkcode: $OINKCODE"
-
-	# PATCH SCHEDULE
-
-	if [[ -n $PATCHSCHEDULENAME ]]; then
-		__append_end_msg "Patch Schedule:"
-		if [[ $PATCHSCHEDULENAME == 'auto'|| $PATCHSCHEDULENAME == 'manual' ]]; then
-			__append_end_msg "  Type: $PATCHSCHEDULENAME"
-		else
-			__append_end_msg "  Name: $PATCHSCHEDULENAME"
-		fi
-		if [[ ${#PATCHSCHEDULEDAYS[@]} -gt 0 ]]; then
-			__append_end_msg "  Day(s):"
-			for day in "${PATCHSCHEDULEDAYS[@]}"; do
-				__append_end_msg "    - $day"
-			done
-		fi
-		if [[ ${#PATCHSCHEDULEHOURS[@]} -gt 0 ]]; then
-			__append_end_msg "  Hours(s):"
-			for hour in "${PATCHSCHEDULEHOURS[@]}"; do
-				__append_end_msg "    - $hour"
-			done
-		fi
-	fi
-
-	# MISC
-
-	[[ $is_helix ]] && __append_end_msg "Helix API key: $HELIXAPIKEY"
 	[[ -n $DOCKERNET ]] && __append_end_msg "Docker network: $DOCKERNET"
-	if [[ -n $MANAGERUPDATES ]]; then
-		__append_end_msg "OS Package Updates: Manager"
-	else
-		__append_end_msg "OS Package Updates: Open"
-	fi
 	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
 		__append_end_msg "NTP Servers:"
 		for server in "${ntp_servers[@]}"; do
 			__append_end_msg "  - $server"
 		done
 	fi
-
-	if [[ $NSMSETUP != 'ADVANCED' ]]; then
-		[[ -n $BASICZEEK ]] && __append_end_msg "Zeek Processes: $BASICZEEK"
-		[[ -n $BASICSURI ]] && __append_end_msg "Suricata Processes: $BASICSURI"
-	fi
-
-	# ADVANCED OR REGULAR
-
-	if [[ $NODESETUP == 'NODEADVANCED' ]]; then
-		__append_end_msg "Advanced Node Settings:"
-		if [[ ! $is_receiver ]]; then
-			__append_end_msg "  Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
-			__append_end_msg "  Elasticsearch Storage Space: ${log_size_limit}GB"
-		fi
-		__append_end_msg "  Logstash Heap Size: $NODE_LS_HEAP_SIZE"
-		__append_end_msg "  Logstash Worker Count: $LSPIPELINEWORKERS"
-		__append_end_msg "  Logstash Batch Size: $LSPIPELINEBATCH"
-		__append_end_msg "  Logstash Input Threads: $LSINPUTTHREADS"
-	else
-		if [[ ! $is_analyst ]]; then
-			if [[ ! $is_receiver ]]; then
-				__append_end_msg "Elasticsearch Heap Size: $NODE_ES_HEAP_SIZE"
-				__append_end_msg "Elasticsearch Storage Space: ${log_size_limit}GB"
-			fi
-			__append_end_msg "Logstash Heap Size: $NODE_LS_HEAP_SIZE"
-			__append_end_msg "Logstash Worker Count: $LSPIPELINEWORKERS"
-			__append_end_msg "Logstash Batch Size: $LSPIPELINEBATCH"
-			__append_end_msg "Logstash Input Threads: $LSINPUTTHREADS"
-		fi
-	fi
-
 
 	# ADVANCED
 	if [[ $MANAGERADV == 'ADVANCED' ]]; then
@@ -652,26 +415,6 @@ whiptail_end_settings() {
 			for log in "${BLOGS[@]}"; do
 				__append_end_msg "    - $log"
 			done
-		fi
-	fi
-
-	if [[ $NSMSETUP == 'ADVANCED' ]]; then
-		__append_end_msg "Advanced NSM Settings:"
-		if [[ ${#ZEEKPINS[@]} -gt 0 ]]; then
-			local zeek_pin_str
-			for core in "${ZEEKPINS[@]}"; do
-				zeek_pin_str="${zeek_pin_str}${core},"
-			done
-			zeek_pin_str=${zeek_pin_str%,}
-			__append_end_msg "  Zeek Pinned Cores: ${zeek_pin_str}"
-		fi
-		if [[ ${#SURIPINS[@]} -gt 0 ]]; then
-			local suri_pin_str
-			for core in "${SURIPINS[@]}"; do
-				suri_pin_str="${suri_pin_str}${core},"
-			done
-			suri_pin_str=${suri_pin_str%,}
-			__append_end_msg "  Suricata Pinned Cores: ${suri_pin_str}"
 		fi
 	fi
 
@@ -700,30 +443,6 @@ __append_end_msg() {
 	EOM
 }
 
-whiptail_eval_adv() {
-
-	[ -n "$TESTING" ] && return
-
-	EVALADVANCED=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose your eval install:" 20 75 4 \
-	"BASIC" "Install basic components for evaluation" ON  \
-	"ADVANCED" "Choose additional components to be installed" OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_fleet_custom_hostname() {
-
-	[ -n "$TESTING" ] && return
-
-	FLEETCUSTOMHOSTNAME=$(whiptail --title "$whiptail_title" --inputbox \
-	"What FQDN should osquery clients use for connections to this Fleet node? Leave blank if the local system hostname will be used." 10 60 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
 whiptail_gauge_post_setup() {
 
 	if [ -n "$TESTING" ]; then
@@ -733,102 +452,6 @@ whiptail_gauge_post_setup() {
 
 		whiptail --title "$whiptail_title" --gauge "$msg" 6 60 96
 	fi
-}
-
-whiptail_helix_apikey() {
-
-	[ -n "$TESTING" ] && return
-
-	HELIXAPIKEY=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter your Helix API Key: \n \nThis can be set later using so-helix-apikey" 10 75 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus
-
-}
-
-#TODO: Combine these two functions
-
-whiptail_homenet_manager() {
-
-	[ -n "$TESTING" ] && return
-
-	HNMANAGER=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter your home network(s), separating CIDR blocks with a comma (,):" 10 75 "$1" 3>&1 1>&2 2>&3)
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	export HNMANAGER
-}
-
-whiptail_homenet_sensor_inherit() {
-	[ -n "$TESTING" ] && return
-
-	# Ask to inherit from manager
-	whiptail --title "$whiptail_title" --yesno "Do you want to inherit the HOME_NET from the Manager?" 8 75
-}
-
-whiptail_homenet_sensor() {
-	[ -n "$TESTING" ] && return
-
-	HNSENSOR=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter your home network(s), separating CIDR blocks with a comma (,):" 10 75 "$1" 3>&1 1>&2 2>&3)
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	export HNSENSOR
-}
-
- whiptail_idh_preferences() {
-
-	[ -n "$TESTING" ] && return
-
-	idh_preferences=$(whiptail --title "$whiptail_title" --radiolist \
-		"\nBy default, the IDH services selected in the previous screen will be bound to all interfaces and IP addresses on this system.\n\nIf you would like to prevent IDH services from being published on this system's management IP, you can select the option below." 20 75 5 \
-		"$MAINIP" "Disable IDH services on this management IP " OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_idh_services() {
-
-	[ -n "$TESTING" ] && return
-
-	idh_services=$(whiptail --title "$whiptail_title" --radiolist \
-		"\nThe IDH node can mimic many different services.\n\nChoose one of the common options along with their default ports (TCP) or select the Custom option to build a customized set of services." 20 75 5 \
-		"Linux Webserver (NAS Skin)" "Apache (80), FTP (21), SSH (22)" ON \
-		"MySQL Server" "MySQL (3306), SSH (22)" OFF \
-		"MSSQL Server" "Microsoft SQL (1433), VNC (5900)" OFF \
-		"Custom" "Select a custom set of services" OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-
-whiptail_idh_services_custom() {
-
-	[ -n "$TESTING" ] && return
-
-	idh_services=$(whiptail --title "$whiptail_title" --checklist \
-		"\nThe IDH node can mimic many different services.\n\nChoose one or more of the following services along with their default ports. Some services have additional configuration options, please consult the documentation for further information." 25 75 8 \
-		"FTP" "  TCP/21,   Additional Configuration Available   " OFF \
-		"Git" "  TCP/9418                                       " OFF \
-		"HTTP" "  TCP/80,   Additional Configuration Available   " OFF \
-		"HTTPPROXY" "  TCP/8080, Additional Configuration Available   " OFF \
-		"MSSQL" "  TCP/1433                                         " OFF \
-		"MySQL" "  TCP/3306, Additional Configuration Available   " OFF \
-		"NTP" "  UDP/123                                        " OFF \
-		"REDIS" "  TCP/6379                                       " OFF \
-		"SNMP" "  UDP/161                                        " OFF \
-		"SSH" "  TCP/22,   Additional Configuration Available   " OFF \
-		"TELNET" "  TCP/23,   Additional Configuration Available   " OFF \
-		"TFTP" "  UDP/69                                         " OFF \
-		"VNC" "  TCP/5900                                         " OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
 }
 
 whiptail_install_type() {
@@ -868,8 +491,8 @@ whiptail_install_type_dist() {
 	[ -n "$TESTING" ] && return
 
 	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to \nan existing deployment?" 11 75 2 \
-		"New Deployment         " "Create a new Security Onion deployment" \
 		"Existing Deployment    " "Join to an existing Security Onion deployment " \
+		"New Deployment         " "Create a new Security Onion deployment" \
 		 3>&1 1>&2 2>&3
 	)
 	local exitstatus=$?
@@ -923,10 +546,40 @@ whiptail_install_type_dist_existing() {
 		# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
 		# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
 	)
+	if [ "$install_type" = 'EVAL' ]; then
+		is_eval=true
+		STRELKARULES=1
+	elif [ "$install_type" = 'STANDALONE' ]; then
+		is_sensor=true
+	elif [ "$install_type" = 'MANAGERSEARCH' ]; then
+		is_standalone=true
+		is_elasticsearch=true
+	elif [ "$install_type" = 'MANAGER' ]; then
+		is_manager=true
+	elif [ "$install_type" = 'SENSOR' ]; then
+		is_sensor=true
+	elif [[ "$install_type" =~ ^('SEARCHNODE'|'HOTNODE'|'WARMNODE')$ ]]; then
+		is_elasticsearch=true
+	elif [ "$install_type" = 'HEAVYNODE' ]; then
+		is_heavy=true
+	elif [ "$install_type" = 'FLEET' ]; then
+		is_fleet=true
+	elif [ "$install_type" = 'IDH' ]; then
+		is_idh=true
+	elif [ "$install_type" = 'IMPORT' ]; then
+		is_import=true
+	elif [ "$install_type" = 'RECEIVER' ]; then
+		is_receiver=true
+	elif [ "$install_type" = 'ANALYST' ]; then
+		if [ "$setup_type" != 'analyst' ]; then
+			exec bash so-setup analyst
+		fi
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
+
 
 whiptail_install_type_other() {
 
@@ -1256,73 +909,6 @@ whiptail_manager_adv() {
 
 }
 
-# Ask if you want to do true clustering
-whiptail_manager_adv_escluster(){
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --yesno \
-	"Do you want to set up a traditional ES cluster for using replicas and/or Hot-Warm indices? Recommended only for those who have experience with ES clustering! " 12 75
-
-}
-
-# Get a cluster name
-whiptail_manager_adv_escluster_name(){
-
-	[ -n "$TESTING" ] && return
-
-	ESCLUSTERNAME=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter a name for your ES cluster!" 10 75 "$1" 3>&1 1>&2 2>&3)
-}
-
-# Ask which additional components to install
-whiptail_manager_adv_service_zeeklogs() {
-
-	[ -n "$TESTING" ] && return
-
-	BLOGS=$(whiptail --title "$whiptail_title" --checklist "Please select logs to send:" 24 75 12 \
-	"conn" "Connection Logging" ON \
-	"dce_rpc" "RPC Logs" ON \
-	"dhcp" "DHCP Logs" ON \
-	"dnp3" "DNP3 Logs" ON \
-	"dns" "DNS Logs" ON \
-	"dpd" "DPD Logs" ON \
-	"files" "Files Logs" ON \
-	"ftp" "FTP Logs" ON \
-	"http" "HTTP Logs" ON \
-	"intel" "Intel Hits Logs" ON \
-	"irc" "IRC Chat Logs" ON \
-	"kerberos" "Kerberos Logs" ON \
-	"modbus" "MODBUS Logs" ON \
-	"notice" "Zeek Notice Logs" ON \
-	"ntlm" "NTLM Logs" ON \
-	"pe" "PE Logs" ON \
-	"radius" "Radius Logs" ON \
-	"rfb" "RFB Logs" ON \
-	"rdp" "RDP Logs" ON \
-	"sip" "SIP Logs" ON \
-	"smb_files" "SMB Files Logs" ON \
-	"smb_mapping" "SMB Mapping Logs" ON \
-	"smtp" "SMTP Logs" ON \
-	"snmp" "SNMP Logs" ON \
-	"ssh" "SSH Logs" ON \
-	"ssl" "SSL Logs" ON \
-	"syslog" "Syslog Logs" ON \
-	"tunnel" "Tunnel Logs" ON \
-	"weird" "Zeek Weird Logs" ON \
-	"mysql" "MySQL Logs" ON \
-	"socks" "SOCKS Logs" ON \
-	"x509" "x.509 Logs" ON 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	BLOGS=$(echo "$BLOGS" | tr -d '"')
-
-	IFS=' ' read -ra BLOGS <<< "$BLOGS"
-
-}
-
 whiptail_manager_error() {
 
 	[ -n "$TESTING" ] && return
@@ -1352,8 +938,23 @@ whiptail_manager_updates_warning() {
 
 whiptail_manager_unreachable() {
 	[ -n "$TESTING" ] && return
+
+	local msg
+	read -r -d '' msg <<- EOM
+	Setup is unable to access the manager at this time.
+
+	Run the following on the manger:
 	
-	whiptail --title "$whiptail_title" --msgbox "Setup cannot determine if $1 is listening on port 22. Please check the address entered and try again." 7 75
+	so-firewall-minion --role=$install_type --ip=$MAINIP
+	Would you like to retry?
+	EOM
+	whiptail --title "$whiptail_title" --yesno "$msg" 20 75
+	local status=$?
+	if [[ "$status" == 1 ]]; then
+		whiptail_cancel
+	else
+		check_manager_connection
+	fi
 }
 
 whiptail_metadata_tool() {
@@ -1381,20 +982,6 @@ whiptail_metadata_tool() {
 	ZEEKVERSION=$(echo "${ZEEKVERSION^^}" | tr -d ' ')
 }
 
-whiptail_nids() {
-
-	[ -n "$TESTING" ] && return
-
-	NIDS=$(whiptail --title "$whiptail_title" --radiolist \
-	"Choose which IDS to run: \n\n(Snort 3.0 support will be added once it is out of beta.)" 25 75 4 \
-	"Suricata" "Suricata" ON  \
-	"Snort" "Placeholder for Snort 3.0  " OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
 whiptail_network_notice() {
 
 	[ -n "$TESTING" ] && return
@@ -1412,20 +999,6 @@ whiptail_net_reinit() {
 	whiptail --title "$whiptail_title" --yesno "The management interface has already been configured. Do you want to reconfigure it?" 8 75
 }
 
-whiptail_node_advanced() {
-
-	[ -n "$TESTING" ] && return
-
-	NODESETUP=$(whiptail --title "$whiptail_title" --radiolist \
-	"What type of config would you like to use?:" 20 75 4 \
-	"NODEBASIC" "Install Search Node with recommended settings" ON \
-	"NODEADVANCED" "Advanced Node Setup" OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
 whiptail_node_description() {
 	[ -n "$TESTING" ] && return
 
@@ -1434,67 +1007,6 @@ whiptail_node_description() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_node_es_heap() {
-
-	[ -n "$TESTING" ] && return
-
-	NODE_ES_HEAP_SIZE=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter ES heap size:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_node_ls_heap() {
-
-	[ -n "$TESTING" ] && return
-
-	NODE_LS_HEAP_SIZE=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter Logstash heap size:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_node_ls_input_threads() {
-
-	[ -n "$TESTING" ] && return
-
-	LSINPUTTHREADS=$(whiptail --title "$whiptail_title" --inputbox \
-		"Enter number of Logstash input threads:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-		local exitstatus=$?
-		whiptail_check_exitstatus $exitstatus
-
-}
-
-
-whiptail_node_ls_pipline_batchsize() {
-
-	[ -n "$TESTING" ] && return
-
-	LSPIPELINEBATCH=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter Logstash pipeline batch size:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_node_ls_pipeline_worker() {
-
-	[ -n "$TESTING" ] && return
-
-	LSPIPELINEWORKERS=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter number of Logstash pipeline workers:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_ntp_ask() {
@@ -1513,18 +1025,6 @@ whiptail_ntp_servers() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_oinkcode() {
-
-	[ -n "$TESTING" ] && return
-
-	OINKCODE=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter your ET Pro or oinkcode:" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
 #TODO: helper function to display error message or exit if batch mode
 # exit_if_batch <"Error string"> <Error code (int)>
 
@@ -1539,106 +1039,6 @@ whiptail_error_message() {
 whiptail_passwords_dont_match() {
 
 	whiptail --title "$whiptail_title" --msgbox "Passwords don't match. Please re-enter." 8 75
-
-}
-
-whiptail_patch_name_new_schedule() {
-
-	[ -n "$TESTING" ] && return
-
-	PATCHSCHEDULENAME=$(whiptail --title "$whiptail_title" --inputbox \
-	"What name do you want to give this OS patch schedule? This schedule needs to be named uniquely. Available schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_patch_schedule() {
-
-	[ -n "$TESTING" ] && return
-
-	patch_schedule=$(whiptail --title "$whiptail_title" --radiolist \
-		"Choose OS patch schedule.\n\nThis schedule will update the operating system packages but will NOT update Security Onion related tools such as Zeek, Elasticsearch, Kibana, SaltStack, etc." 20 75 5 \
-		"Automatic" "Updates installed every 8 hours if available" ON \
-		"Manual" "Updates will be installed manually" OFF \
-		"Import Schedule" "Import named schedule on following screen" OFF \
-		"New Schedule" "Configure and name new schedule on next screen" OFF 3>&1 1>&2 2>&3 )
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_patch_schedule_import() {
-
-	[ -n "$TESTING" ] && return
-
-	unset PATCHSCHEDULENAME
-	PATCHSCHEDULENAME=$(whiptail --title "$whiptail_title" --inputbox \
-	"Enter the name of the OS patch schedule you want to inherit. \nAvailable schedules can be found on the manager under /opt/so/salt/patch/os/schedules/<schedulename>.yml" 10 75 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_patch_schedule_select_days() {
-	
-	[ -n "$TESTING" ] && return
-
-	 # Select the days to patch
-	PATCHSCHEDULEDAYS=$(whiptail --title "$whiptail_title" --checklist \
-	"Which days do you want to apply OS patches?" 15 75 8 \
-	Monday "" OFF \
-	Tuesday "" ON \
-	Wednesday "" OFF \
-	Thursday "" OFF \
-	Friday "" OFF \
-	Saturday "" OFF \
-	Sunday "" OFF 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	PATCHSCHEDULEDAYS=$(echo "$PATCHSCHEDULEDAYS" | tr -d '"')
-
-	IFS=' ' read -ra PATCHSCHEDULEDAYS <<< "$PATCHSCHEDULEDAYS"
-
-}
-
-whiptail_patch_schedule_select_hours() {
-
-	[ -n "$TESTING" ] && return
-
-	# Select the hours to patch
-	PATCHSCHEDULEHOURS=$(whiptail --title "$whiptail_title" --checklist \
-	"At which time, UTC, do you want to apply OS patches on the selected days?" 22 75 13 \
-	00:00 "" OFF \
-	01:00 "" OFF \
-	02:00 "" ON \
-	03:00 "" OFF \
-	04:00 "" OFF \
-	05:00 "" OFF \
-	06:00 "" OFF \
-	07:00 "" OFF \
-	08:00 "" OFF \
-	09:00 "" OFF \
-	10:00 "" OFF \
-	11:00 "" OFF \
-	12:00 "" OFF \
-	13:00 "" OFF \
-	14:00 "" OFF \
-	15:00 "" OFF \
-	16:00 "" OFF \
-	17:00 "" OFF \
-	18:00 "" OFF \
-	19:00 "" OFF \
-	20:00 "" OFF \
-	21:00 "" OFF \
-	22:00 "" OFF \
-	23:00 "" OFF 3>&1 1>&2 2>&3)
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-	PATCHSCHEDULEHOURS=$(echo "$PATCHSCHEDULEHOURS" | tr -d '"')
-	IFS=' ' read -ra PATCHSCHEDULEHOURS <<< "$PATCHSCHEDULEHOURS"
 
 }
 
@@ -1719,23 +1119,6 @@ whiptail_requirements_error() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_rule_setup() {
-
-	[ -n "$TESTING" ] && return
-
-	# Get pulled pork info
-	RULESETUP=$(whiptail --title "$whiptail_title" --radiolist \
-	"Which IDS ruleset would you like to use?\n\nThis manager server is responsible for downloading the IDS ruleset from the Internet.\n\nSensors then pull a copy of this ruleset from the manager server.\n\nIf you select a commercial ruleset, it is your responsibility to purchase enough licenses for all of your sensors in compliance with your vendor's policies." 20 75 4 \
-	"ETOPEN" "Emerging Threats Open" ON \
-	"ETPRO" "Emerging Threats PRO" OFF \
-	"TALOS" "Snort Subscriber ruleset - Experimental" OFF \
-	3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
 }
 
 whiptail_sensor_config() {
@@ -1903,36 +1286,6 @@ whiptail_so_allow() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_ssh_key_copy_notice() {
-	[ -n "$TESTING" ] && return
-
-	read -r -d '' message <<- EOM
-		Setup will now copy the ssh key for soremote to the manager. This will bring you to the command line temporarily to accept the manager's ED25519 certificate and enter the password for soremote.
-
-		Select OK to continue.
-	EOM
-
-	whiptail --title "$whiptail_title" --msgbox "$message" 11 75
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_ssh_warning() {
-	[ -n "$TESTING" ] && return
-
-	local msg
-
-	read -r -d '' msg <<- EOM
-	NOTE: You will receive a warning upon SSH reconnect that the host key has changed.
-
-	This is expected due to hardening of the OpenSSH server config.
-	
-	The host key algorithm will now be ED25519, follow the instructions given by your SSH client to remove the old key fingerprint then retry the connection.
-	EOM
-
-	whiptail --msgbox "$msg" 14 75
-}
-
 whiptail_storage_requirements() {
 	local mount=$1
 	local current_val=$2
@@ -1959,47 +1312,6 @@ whiptail_storage_requirements() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_strelka_rules() {
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" --yesno "Do you want to enable the default YARA rules for Strelka?" 8 75
-
-	local exitstatus=$?
-
-	if [[ $exitstatus == 0 ]]; then export STRELKARULES=1; fi
-}
-
-whiptail_suricata_pins() {
-
-	[ -n "$TESTING" ] && return
-
-	local filtered_core_list
-	readarray -t filtered_core_list <<< "$(echo "${cpu_core_list[@]}" "${ZEEKPINS[@]}" | xargs -n1 | sort | uniq -u | awk '{print $1}')"
-
-	local filtered_core_str=()
-	for item in "${filtered_core_list[@]}"; do
-		filtered_core_str+=("$item" "")
-	done
-
-	if [[ $is_node && $is_sensor && ! $is_eval ]]; then
-		local PROCS=$(expr $lb_procs / 2)
-		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
-	else
-		local PROCS=$lb_procs
-	fi
-
-	SURIPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Suricata to:" 20 75 12 "${filtered_core_str[@]}" 3>&1 1>&2 2>&3 )
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	SURIPINS=$(echo "$SURIPINS" | tr -d '"')
-
-	IFS=' ' read -ra SURIPINS <<< "$SURIPINS"
-
-}
-
-# shellcheck disable=2120
 whiptail_uppercase_warning() {
 
 	[ -n "$TESTING" ] && return
@@ -2054,29 +1366,4 @@ whiptail_you_sure() {
 	local exitstatus=$?
 	return $exitstatus
 
-}
-
-whiptail_zeek_pins() {
-
-	[ -n "$TESTING" ] && return
-
-	local cpu_core_list_whiptail=()
-	for item in "${cpu_core_list[@]}"; do
-		cpu_core_list_whiptail+=("$item" "OFF")
-	done
-
-	if [[ $is_smooshed ]]; then
-		local PROCS=$(expr $lb_procs / 2)
-		if [ "$PROCS" -lt 1 ]; then PROCS=1; else PROCS=$PROCS; fi
-	else
-		local PROCS=$lb_procs
-	fi
-
-	ZEEKPINS=$(whiptail --noitem --title "$whiptail_title" --checklist "Please select $PROCS cores to pin Zeek to:" 20 75 12 "${cpu_core_list_whiptail[@]}" 3>&1 1>&2 2>&3 )
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-	ZEEKPINS=$(echo "$ZEEKPINS" | tr -d '"')
-
-	IFS=' ' read -ra ZEEKPINS <<< "$ZEEKPINS"
 }

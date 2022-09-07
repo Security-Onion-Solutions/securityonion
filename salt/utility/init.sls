@@ -1,8 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 
 {% if sls in allowed_states %}
-  {% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
-
+  
 # This state is for checking things
   {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
 # Make sure Cross Cluster is good. Will need some logic once we have hot/warm
@@ -12,9 +11,7 @@ crossclusterson:
     - cwd: /opt/so
     - source: salt://utility/bin/crossthestreams
     - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
-
+  
   {% endif %}
   {% if grains['role'] in ['so-eval', 'so-import'] %}
 fixsearch:
@@ -23,8 +20,6 @@ fixsearch:
     - cwd: /opt/so
     - source: salt://utility/bin/eval
     - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
   {% endif %}
 
 {% else %}

@@ -1,0 +1,42 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'soc/defaults.map.jinja' import SOCDEFAULTS with context %}
+{% set SOCMERGED = salt['pillar.get']('soc', SOCDEFAULTS, merge=true) %}
+
+{# if SOCMERGED.server.modules.cases == httpcase details come from the soc pillar #}
+{% if SOCMERGED.server.modules.cases != 'soc' %}
+{%   do SOCMERGED.server.modules.elastic.update({'casesEnabled': false}) %}
+{%   do SOCMERGED.client.update({'casesEnabled': false}) %}
+{%   do SOCMERGED.client.hunt.update({'escalateRelatedEventsEnabled': false}) %}
+{%   do SOCMERGED.client.alerts.update({'escalateRelatedEventsEnabled': false}) %}
+{%   if SOCMERGED.server.modules.cases == 'elasticcases' %}
+{%     do SOCMERGED.server.modules.update({
+         'elasticcases': {
+           'hostUrl': 'https://' ~ GLOBALS.manager_ip ~ ':5601',
+           'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user,
+           'password': GLOBALS.elasticsearch.auth.users.so_elastic_user.pass,
+         }
+       }) %}
+{%   endif %}
+{% endif %}
+{# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
+{% do SOCMERGED.server.modules.pop('cases') %}
+
+{# change some options if this is airgap #}
+{% if GLOBALS.airgap %}
+{%   do SOCMERGED.client.update({
+       'docsUrl': '/docs/',
+       'cheatsheetUrl': '/docs/cheatsheet.pdf',
+       'releaseNotesUrl': '/docs/#release-notes'
+    }) 
+%}
+{% endif %}
+
+{% if pillar.manager.playbook == 0 %}
+{%   do SOCMERGED.client.inactiveTools.append('toolPlaybook') %}
+{% endif %}
+
+{% do SOCMERGED.client.inactiveTools.append('toolFleet') %}
+
+{% if pillar.manager.grafana == 0 %}
+{%   do SOCMERGED.client.inactiveTools.append('toolGrafana') %}
+{% endif %}

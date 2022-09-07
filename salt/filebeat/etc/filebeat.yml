@@ -7,12 +7,9 @@
 {%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 {%- set HOSTNAME = salt['grains.get']('host', '') %}
-{%- set ZEEKVER = salt['pillar.get']('global:mdengine', 'COMMUNITY') %}
-{%- set WAZUHENABLED = salt['pillar.get']('global:wazuh', '0') %}
+{%- set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
 {%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) -%}
-{%- set FLEETMANAGER = salt['pillar.get']('global:fleet_manager', False) -%}
-{%- set FLEETNODE = salt['pillar.get']('global:fleet_node', False) -%}
 {%- set FBMEMEVENTS = salt['pillar.get']('filebeat:mem_events', 2048) -%}
 {%- set FBMEMFLUSHMINEVENTS = salt['pillar.get']('filebeat:mem_flush_min_events', 2048) -%}
 {%- set FBLSWORKERS = salt['pillar.get']('filebeat:ls_workers', 1) -%}
@@ -236,46 +233,6 @@ filebeat.inputs:
   {%- endif %}
 {%- endif %}
 
-{%- if WAZUHENABLED == 1 %}
-
-- type: filestream
-  id: wazuh
-  paths:
-    - /wazuh/archives/archives.json
-  fields:
-    module: ossec
-    category: host
-  processors:
-  - drop_fields:
-      fields: ["source", "prospector", "input", "offset", "beat"]
-  pipeline: "ossec"
-  fields_under_root: true
-  clean_removed: false
-  close_removed: false
-
-{%- endif %}
-
-{%- if FLEETMANAGER or FLEETNODE %}
-
-- type: filestream
-  id: osquery
-  paths:
-    - /nsm/osquery/fleet/result.log
-  fields:
-    module: osquery
-    dataset: query_result
-    category: host
-
-  processors:
-  - drop_fields:
-      fields: ["source", "prospector", "input", "offset", "beat"]
-
-  fields_under_root: true
-  clean_removed: false
-  close_removed: false
-
-{%- endif %}
-
 {%- if RITAENABLED %}
 - type: filestream
   id: rita-beacon
@@ -420,10 +377,8 @@ output.{{ type }}:
 output.elasticsearch:
   enabled: true
   hosts: ["https://{{ MANAGER }}:9200"]
-{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
   username: "{{ ES_USER }}"
   password: "{{ ES_PASS }}"
-{%- endif %}
   ssl.certificate_authorities: ["/usr/share/filebeat/intraca.crt"]
   pipelines:
     - pipeline: "%{[module]}.%{[dataset]}"
@@ -472,7 +427,7 @@ output.logstash:
 {% else -%}
 {%   set dmz_nodes = [] -%}
 {% endif -%}
-{%- if grains.role in ['so-sensor', 'so-fleet', 'so-node', 'so-idh'] %}
+{%- if grains.role in ['so-sensor', 'so-fleet', 'so-searchnode', 'so-idh'] %}
 {%-   set LOGSTASH = namespace() %}
 {%-   set LOGSTASH.count = 0 %}
 {%-   set LOGSTASH.loadbalance = false %}

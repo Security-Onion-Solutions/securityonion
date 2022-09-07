@@ -2,10 +2,10 @@
 {% if sls in allowed_states %}
 
 {% set role = grains.id.split('_') | last %}
-{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 
 include:
   - common.soup_scripts
+  - common.packages
 {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
@@ -14,11 +14,6 @@ include:
 rmvariablesfile:
   file.absent:
     - name: /tmp/variables.txt
-
-dockergroup:
-  group.present:
-    - name: docker
-    - gid: 920
 
 # Add socore Group
 socoregroup:
@@ -88,92 +83,6 @@ vimconfig:
     - source: salt://common/files/vimrc
     - replace: False
 
-# Install common packages
-{% if grains['os'] != 'CentOS' %}     
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - apache2-utils
-      - wget
-      - ntpdate
-      - jq
-      - python3-docker
-      - curl
-      - ca-certificates
-      - software-properties-common
-      - apt-transport-https
-      - openssl
-      - netcat
-      - python3-mysqldb
-      - sqlite3
-      - libssl-dev
-      - python3-dateutil
-      - python3-m2crypto
-      - python3-mysqldb
-      - python3-packaging
-      - python3-lxml
-      - git
-      - vim
-
-heldpackages:
-  pkg.installed:
-    - pkgs:
-    {% if grains['oscodename'] == 'bionic' %}
-      - containerd.io: 1.4.4-1
-      - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
-    {% elif grains['oscodename'] == 'focal' %}
-      - containerd.io: 1.4.9-1
-      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
-    {% endif %}
-    - hold: True
-    - update_holds: True
-
-{% else %}
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - wget
-      - ntpdate
-      - bind-utils
-      - jq
-      - tcpdump
-      - httpd-tools
-      - net-tools
-      - curl
-      - sqlite
-      - mariadb-devel
-      - nmap-ncat
-      - python3
-      - python36-docker
-      - python36-dateutil
-      - python36-m2crypto
-      - python36-mysql
-      - python36-packaging
-      - python36-lxml
-      - yum-utils
-      - device-mapper-persistent-data
-      - lvm2
-      - openssl
-      - git
-      - vim-enhanced
-
-heldpackages:
-  pkg.installed:
-    - pkgs:
-      - containerd.io: 1.4.4-3.1.el7
-      - docker-ce: 3:20.10.5-3.el7
-      - docker-ce-cli: 1:20.10.5-3.el7
-      - docker-ce-rootless-extras: 20.10.5-3.el7
-    - hold: True
-    - update_holds: True
-{% endif %}
-
 # Always keep these packages up to date
 
 alwaysupdated:
@@ -188,7 +97,6 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
-{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -200,7 +108,6 @@ elastic_curl_config:
     - require:
       - file: elastic_curl_config_distributed
   {% endif %}
-{% endif %}
 
 # Sync some Utilities
 utilsyncscripts:
@@ -211,10 +118,6 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
-    - defaults:
-        ELASTICCURL: 'curl'
-    - context:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
     - exclude_pat:
         - so-common
         - so-firewall
@@ -338,32 +241,6 @@ soversionfile:
     - template: jinja
     
 {% endif %}
-
-# Manager daemon.json
-docker_daemon:
-  file.managed:
-    - source: salt://common/files/daemon.json
-    - name: /etc/docker/daemon.json
-    - template: jinja 
-
-# Make sure Docker is always running
-docker:
-  service.running:
-    - enable: True
-    - watch:
-      - file: docker_daemon
-
-# Reserve OS ports for Docker proxy in case boot settings are not already applied/present
-# 55000 = Wazuh, 57314 = Strelka, 47760-47860 = Zeek
-dockerapplyports:
-    cmd.run:
-      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314,47760-47860"; fi
-
-# Reserve OS ports for Docker proxy
-dockerreserveports:
-  file.managed:
-    - source: salt://common/files/99-reserved-ports.conf
-    - name: /etc/sysctl.d/99-reserved-ports.conf
 
 {% if salt['grains.get']('sosmodel', '') %}
   {% if grains['os'] == 'CentOS' %}     

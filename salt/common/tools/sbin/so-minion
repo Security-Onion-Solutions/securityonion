@@ -1,0 +1,258 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+. /usr/sbin/so-common
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 -o=<operation> -m=[id]"
+  echo ""
+  echo " where <operation> is one of the following:"
+  echo ""
+  echo "     list: Lists all keys with hashes"
+  echo "   accept: Accepts a new key and adds the minion files"
+  echo "   delete: Removes the key and deletes the minion files"
+  echo "   reject: Rejects a key"
+  echo ""
+  exit 1
+fi
+
+for i in "$@"; do
+	case $i in
+		-o=*|--operation=*)
+			OPERATION="${i#*=}"
+			shift 
+			;;
+		-m=*|--minionid=*)
+			MINION_ID="${i#*=}"
+			shift 
+			;;
+		-e=*|--esheap=*)
+			ES_HEAP_SIZE="${i#*=}"
+			shift
+			;;
+		-n=*|--mgmtnic=*)
+			MNIC="${i#*=}"
+			shift
+			;;
+		-d=*|--description=*)
+			NODE_DESCRIPTION="${i#*=}"
+			shift
+			;;
+		-a=*|--monitor=*)
+			INTERFACE="${i#*=}"
+			shift
+			;;
+		-i=*|--ip=*)
+			MAINIP="${i#*=}"
+			shift
+			;;		
+		-*|--*)
+			echo "Unknown option $i"
+			exit 1
+			;;
+		*)
+		;;
+	esac
+done
+
+PILLARFILE=/opt/so/saltstack/local/pillar/minions/$MINION_ID.sls
+ADVPILLARFILE=/opt/so/saltstack/local/pillar/minions/adv_$MINION_ID.sls
+
+function getinstallinfo() {
+	# Pull from file
+	INSTALLVARS=$(sudo salt "$MINION_ID" cp.get_file_str /opt/so/install.txt --out=newline_values_only)
+	source <(echo $INSTALLVARS)
+}
+
+function listminions() {
+	salt-key list -F --out=json
+	exit $?
+}
+
+function rejectminion() {
+	salt-key -y -r $MINION_ID
+	exit $?
+}
+
+function acceptminion() {
+	salt-key -y -a $MINION_ID
+}
+
+function deleteminion() {
+	salt-key -y -d $MINION_ID
+}
+
+function deleteminionfiles () {
+	rm -f $PILLARFILE
+	rm -f $ADVPILLARFILE
+}
+
+# Create the minion file
+function create_minion_files() {
+	mkdir -p /opt/so/saltstack/local/pillar/minions
+    touch $ADVPILLARFILE
+	if [ -f "$PILLARFILE" ]; then
+		rm $PILLARFILE
+	fi
+}
+
+# Add Elastic settings to the minion file
+function add_elastic_to_minion() {
+    printf '%s\n'\
+		"elasticsearch:"\
+		"  esheap: '$ES_HEAP_SIZE'"\
+		"  config:"\
+		"    node:"\
+		"      attr:"\
+		"        box_type: hot"\
+		"  " >> $PILLARFILE
+}
+
+# Analyst Workstation
+function add_analyst_to_minion() {
+    printf '%s\n'\
+		"host:"\
+		"  mainint: '$MNIC'"\
+		"workstation:"\
+		"  gui:"\
+		"    enabled: true"\
+		"sensoroni:"\
+		"  node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
+}
+
+# Add basic host info to the minion file
+function add_host_to_minion() {
+    printf '%s\n'\
+    "host:"\
+	"  mainip: '$MAINIP'"\
+    "  mainint: '$MNIC'" >> $PILLARFILE
+}
+
+# Add sensoroni specific information - Can we pull node_adrees from the host pillar?
+function add_sensoroni_to_minion() {
+
+	printf '%s\n'\
+    "sensoroni:"\
+		"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
+        "  " >> $PILLARFILE
+}	
+
+# Patch pillar settings.
+function add_patch_pillar_to_minion() {
+
+	printf '%s\n'\
+		"patch:"\
+		"  os:"\
+		"    source: '$source'"\
+		"    schedule_name: '$PATCHSCHEDULENAME'"\
+		"    enabled: True"\
+		"    splay: 300"\
+		"" >> $PILLARFILE
+
+}
+
+# Sensor settings for the minion pillar
+function add_sensor_to_minion() {
+	echo "sensor:" >> $PILLARFILE
+	echo "  interface: '$INTERFACE'" >> $PILLARFILE
+	echo "  zeekpin: False" >> $PILLARFILE
+	echo "  zeekpins:" >> $PILLARFILE
+	echo "    - 1" >> $PILLARFILE
+	echo "  zeek_lbprocs: $CORECOUNT" >> $PILLARFILE
+	echo "  suripin: False" >> $PILLARFILE
+	echo "  suripins:" >> $PILLARFILE
+	echo "    - 2" >> $PILLARFILE
+	echo "  suriprocs: $CORECOUNT"  >> $PILLARFILE
+	echo "  mtu: 9000" >> $PILLARFILE
+	echo "  uniqueid: $(date '+%s')" >> $PILLARFILE
+	echo "steno:" >> $PILLARFILE
+	echo "  stenopin: False" >> $PILLARFILE
+	echo "  stenopins:" >> $PILLARFILE
+	echo "    - 3" >> $PILLARFILE
+	echo "  enabled: True" >> $PILLARFILE
+	echo "  disks:" >> $PILLARFILE
+	echo "    - '/some/path'" >> $PILLARFILE
+}
+
+function createSTANDALONE() {
+	add_elastic_to_minion
+	add_sensor_to_minion
+}
+
+function createMASTER() {
+	add_elastic_to_minion
+}
+
+function createMASTERSEARCH() {
+	add_elastic_to_minion
+}
+
+function createHEAVYNODE() {
+	add_elastic_to_minion
+	add_sensor_to_minion
+}
+
+function createEVAL() {
+	add_elastic_to_minion
+	add_sensor_to_minion
+}
+
+function createSENSOR() {
+	add_sensor_to_minion
+}
+
+function createSEARCHNODE() {
+	add_elastic_to_minion
+}
+
+function createIDHNODE() {
+	echo "Nothing custom needed for IDH nodes"
+}
+
+function testConnection() {
+	salt "$MINION_ID" test.ping
+	local ret=$?
+	if [[ $ret != 0 ]]; then
+		echo "The Minion has been accepted but is not online. Try again later"
+		exit 1
+	fi
+}
+
+if [[ "$OPERATION" = 'list' ]]; then
+	listminions
+fi
+
+if [[ "$OPERATION" = 'delete' ]]; then
+	deleteminionfiles
+	deleteminion
+fi
+
+if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
+	# Skip this if its setup
+	if [ $OPERATION != 'setup' ]; then
+		# Accept the salt key
+		acceptminion
+		# Let the keys echange
+		sleep 3
+		# Need logic here to try and salt ping.. If it doesn't work need to do something
+		testConnection
+		# Pull the info from the file to build what is needed
+		getinstallinfo
+	fi
+	# Check to see if nodetype is set
+	if [ -z $NODETYPE ]; then
+		echo "No node type specified"
+		exit 1
+	fi
+	create_minion_files
+	add_host_to_minion
+	add_patch_pillar_to_minion
+	add_sensoroni_to_minion
+	create$NODETYPE
+	echo "Minion file created for $MINION_ID"	
+fi
