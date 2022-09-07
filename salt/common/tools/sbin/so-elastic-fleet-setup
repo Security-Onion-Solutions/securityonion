@@ -55,12 +55,17 @@ printf "\n\n"
 #-H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
 #-d  '{"name":"Endpoints-Initalization","id":"endpoints","description":"Initial Endpoint Policy","namespace":"default","monitoring_enabled":["logs"]}'
 
+ENDPOINTSENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-default")) | .api_key')
+GRIDNODESENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes")) | .api_key')
+
 # Store needed data in minion pillar
 pillar_file=/opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
 printf '%s\n'\
     "elasticfleet:"\
     "  server:"\
     "    es_token: '$ESTOKEN'"\
+    "    endpoints_enrollment: '$ENDPOINTSENROLLMENTOKEN'"\
+    "    grid_enrollment: '$GRIDNODESENROLLMENTOKEN'"\
     "    url: '{{ GLOBALS.manager_ip }}'"\
     "" >> "$pillar_file"
 
@@ -78,4 +83,4 @@ cd securityonion-image/so-elastic-agent-builder
 docker build -t so-elastic-agent-builder .
 
 so-elastic-agent-gen-installers
-/opt/so/conf/elastic-fleet/so_agent-installers/so-elastic-agent_linux
+salt-call state.apply elastic-fleet.install_agent_grid

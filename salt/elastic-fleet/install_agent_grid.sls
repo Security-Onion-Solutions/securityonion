@@ -2,12 +2,14 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
 
+{%- set GRIDNODETOKEN = salt['pillar.get']('elasticfleet:server:grid_enrollment') -%}
 
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% if not AGENT_STATUS  %}
 
 run_installer:
-  cmd.run:
+  cmd.script:
     - name: salt://elastic-fleet/files/so_agent-installers/so-elastic-agent_linux
+    - args: -token={{ GRIDNODETOKEN }}
 
 {% endif %}
