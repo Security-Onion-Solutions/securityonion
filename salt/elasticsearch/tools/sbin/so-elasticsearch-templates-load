@@ -1,9 +1,7 @@
 #!/bin/bash
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
-# https://securityonion.net/license; you may not use this file except in compliance with the
-# Elastic License 2.0.
-
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
 
 
 {%- set mainint = salt['pillar.get']('host:mainint') %}
@@ -43,6 +41,11 @@ cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
 echo "Loading ECS component templates..."
 for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; so-elasticsearch-query _component_template/$TEMPLATE-mappings -d@$i -XPUT 2>/dev/null; echo; done
+
+cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
+
+echo "Loading Elastic Agent component templates..."
+for i in *; do TEMPLATE=${i::-5}; echo "so-$TEMPLATE"; so-elasticsearch-query _component_template/so-$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
 
 # Load SO-specific component templates
 cd ${ELASTICSEARCH_TEMPLATES}/component/so
