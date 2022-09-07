@@ -1,7 +1,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 
 {% if sls in allowed_states %}
-  
   {% if grains['role'] in ['so-eval', 'so-import'] %}
 fixsearch:
   cmd.script:
