@@ -7,7 +7,7 @@
 {% if not AGENT_STATUS  %}
 
 run_installer:
-  cmd.run:
-    - name: salt://elastic-fleet/files/so_agent-installers/so-elastic-agent_linux
+  cmd.script:
+    - name: salt://elastic-fleet/files/so_agent-installers/so-elastic-agent_linux 
 
 {% endif %}
