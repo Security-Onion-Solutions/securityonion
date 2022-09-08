@@ -92,6 +92,13 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+salt-relay:
+  cmd.run:
+  - env: 
+    - SOC_PIPE: /opt/sensoroni/salt.pipe
+  - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+  - unless: ps -ef | grep salt-relay | grep -v grep
+
 so-soc:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
@@ -106,6 +113,7 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
+      - /opt/so/conf/soc/salt.pipe:/opt/sensoroni/salt.pipe:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
