@@ -30,16 +30,6 @@ soclogdir:
     - makedirs: True
 
 
-socactions:
-  file.managed:
-    - name: /opt/so/conf/soc/menu.actions.json
-    - source: salt://soc/files/soc/menu.actions.json
-    - user: 939
-    - group: 939
-    - mode: 600
-    - template: jinja
-
-
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json

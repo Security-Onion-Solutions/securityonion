@@ -5,9 +5,9 @@
 {# if SOCMERGED.server.modules.cases == httpcase details come from the soc pillar #}
 {% if SOCMERGED.server.modules.cases != 'soc' %}
 {%   do SOCMERGED.server.modules.elastic.update({'casesEnabled': false}) %}
-{%   do SOCMERGED.client.update({'casesEnabled': false}) %}
-{%   do SOCMERGED.client.hunt.update({'escalateRelatedEventsEnabled': false}) %}
-{%   do SOCMERGED.client.alerts.update({'escalateRelatedEventsEnabled': false}) %}
+{%   do SOCMERGED.server.client.update({'casesEnabled': false}) %}
+{%   do SOCMERGED.server.client.hunt.update({'escalateRelatedEventsEnabled': false}) %}
+{%   do SOCMERGED.server.client.alerts.update({'escalateRelatedEventsEnabled': false}) %}
 {%   if SOCMERGED.server.modules.cases == 'elasticcases' %}
 {%     do SOCMERGED.server.modules.update({
          'elasticcases': {
@@ -23,7 +23,7 @@
 
 {# change some options if this is airgap #}
 {% if GLOBALS.airgap %}
-{%   do SOCMERGED.client.update({
+{%   do SOCMERGED.server.client.update({
        'docsUrl': '/docs/',
        'cheatsheetUrl': '/docs/cheatsheet.pdf',
        'releaseNotesUrl': '/docs/#release-notes'
@@ -32,11 +32,25 @@
 {% endif %}
 
 {% if pillar.manager.playbook == 0 %}
-{%   do SOCMERGED.client.inactiveTools.append('toolPlaybook') %}
+{%   do SOCMERGED.server.client.inactiveTools.append('toolPlaybook') %}
 {% endif %}
 
-{% do SOCMERGED.client.inactiveTools.append('toolFleet') %}
+{% do SOCMERGED.server.client.inactiveTools.append('toolFleet') %}
 
 {% if pillar.manager.grafana == 0 %}
-{%   do SOCMERGED.client.inactiveTools.append('toolGrafana') %}
+{%   do SOCMERGED.server.client.inactiveTools.append('toolGrafana') %}
+{% endif %}
+
+{% if pillar.global.endgamehost is defined %}
+{%   set endgame_dict = { 
+       "name": "Endgame", 
+       "description": "Endgame Endpoint Investigation and Response", 
+       "icon": "fa-external-link-alt", 
+       "target": "_blank",
+       "links": ["https://{{ pillar.global.endgamehost }}/endpoints/{:agent.id}"]
+     }
+%}
+{%   for action in SOCMERGED.server.client.job.actions %}
+{%     do SOCMERGED.server.client.job.actions.update(action, endgame_dict)%}
+{%   endfor %}
 {% endif %}
