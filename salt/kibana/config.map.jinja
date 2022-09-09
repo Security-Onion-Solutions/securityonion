@@ -1,6 +1,9 @@
 {% import_yaml 'kibana/defaults.yaml' as KIBANACONFIG with context %}
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
+{% do KIBANACONFIG.kibana.config.server.update({'publicBaseUrl': 'https://' ~ pillar.global.url_base ~ '/kibana'}) %}
+{% do KIBANACONFIG.kibana.config.elasticsearch.update({'hosts': ['https://' ~ pillar.global.managerip ~ ':9200']}) %}
+
 {% do KIBANACONFIG.kibana.config.elasticsearch.update({'username': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:user'), 'password': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:pass')}) %}
 
 {% if salt['pillar.get']('kibana:secrets') %}

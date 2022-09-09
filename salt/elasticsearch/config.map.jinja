@@ -31,6 +31,9 @@
 
 {# merge with the elasticsearch pillar #}
 {% set ESCONFIG = salt['pillar.get']('elasticsearch:config', default=ESCONFIG.elasticsearch.config, merge=True) %}
+{% do ESCONFIG.elasticsearch.config.node.update({'name': grains.host}) %}
+{% do ESCONFIG.elasticsearch.config.cluster.update({'name': grains.host}) %}
+{% do ESCONFIG.elasticsearch.config.transport.update({'publish_host': grains.host}) %}
 
 {% if salt['pillar.get']('elasticsearch:config:path:repo', False) %}
   {% for repo in pillar.elasticsearch.config.path.repo %}
