@@ -104,6 +104,7 @@ so-soc:
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/conf/soc/salt.pipe:/opt/sensoroni/salt.pipe:rw
+      - /opt/so/saltstack:/opt/so/saltstack:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
