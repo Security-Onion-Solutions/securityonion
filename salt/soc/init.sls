@@ -30,16 +30,6 @@ soclogdir:
     - makedirs: True
 
 
-socactions:
-  file.managed:
-    - name: /opt/so/conf/soc/menu.actions.json
-    - source: salt://soc/files/soc/menu.actions.json
-    - user: 939
-    - group: 939
-    - mode: 600
-    - template: jinja
-
-
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
@@ -92,6 +82,13 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+salt-relay:
+  cmd.run:
+  - env: 
+    - SOC_PIPE: /opt/sensoroni/salt.pipe
+  - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+  - unless: ps -ef | grep salt-relay | grep -v grep
+
 so-soc:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
@@ -106,6 +103,8 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
+      - /opt/so/conf/soc/salt.pipe:/opt/sensoroni/salt.pipe:rw
+      - /opt/so/saltstack:/opt/so/saltstack:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
