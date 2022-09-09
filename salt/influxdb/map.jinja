@@ -1,0 +1,9 @@
+{% import_yaml 'influxdb/defaults.yaml' as INFLUXDB %}
+{% set measurements = salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" 2> /root/measurement_query.log | jq -r .results[0].series[0].values[]?[0] 2>> /root/measurement_query.log', shell='/bin/bash') %}
+
+{% if measurements|length > 0 %}
+{%   do INFLUXDB.influxdb.downsample.so_long_term.update('measurements': [])%}
+{%   for measurement in measurements.splitlines() %}
+{%     do INFLUXDB.influxdb.downsample.so_long_term.measurements.append(measurement)%}
+{%   endfor %}
+{% endif %}
