@@ -15,17 +15,12 @@ elasticfleetdir:
     - name: /opt/so/conf/elastic-fleet/state
     - makedirs: True
 
-elasticagentinstallersdir:
-  file.directory:
-    - name: /opt/so/conf/elastic-fleet/so_agent-installers
-    - makedirs: True
-
   {% if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
     - image: docker.elastic.co/beats/elastic-agent:8.4.1
     - name: so-elastic-fleet
-    - hostname: elastic-fleet-{{ GLOBALS.hostname }}
+    - hostname: Fleet-{{ GLOBALS.hostname }}
     - detach: True
     - user: root
     - extra_hosts:
