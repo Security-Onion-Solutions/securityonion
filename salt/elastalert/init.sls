@@ -4,7 +4,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% from 'elastalert/elastalert_config.map.jinja' import elastalert_defaults as elastalert_config with context %}
+{% from 'elastalert/elastalert_config.map.jinja' import ELASTALERT as elastalert_config with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
