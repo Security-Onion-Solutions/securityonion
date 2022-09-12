@@ -76,6 +76,7 @@ if [ "$setup_type" = 'analyst' ]; then
 fi
 
 # Make sure if ISO is specified that we are dealing with CentOS or Rocky
+title "Detecting if this is an ISO install"
 if [[ "$setup_type" == 'iso' ]]; then
 	if [[ $is_centos || $is_rocky ]]; then
 		is_iso=true
@@ -87,10 +88,11 @@ fi
 
 # Check to see if this is an analyst install. If it is let's run things differently
 if [[ $is_analyst ]]; then
+	title "This is an analyst workstation install"
 
 	# Make sure it's CentOS or Rocky Linux
 	if [[ ! $is_centos ]]; then
-		echo "Analyst Workstation is only supported on CentOS 7 or Rocky Linux 8"
+		info "Analyst Workstation is only supported on CentOS 7 or Rocky Linux 8"
 		exit 1
 	fi
 
@@ -100,7 +102,7 @@ if [[ $is_analyst ]]; then
 				# Remove setup from auto launching
 				parse_install_username
 				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-				echo "Enabling graphical interface and setting it to load at boot"
+				info "Enabling graphical interface and setting it to load at boot"
 				systemctl set-default graphical.target
 				startx
 				exit 0
@@ -110,11 +112,11 @@ if [[ $is_analyst ]]; then
 			fi
 		else
 			if whiptail_analyst_nongrid_network; then
-				echo ""
-				echo ""
-				echo "Kicking off the automated setup of the analyst workstation. This can take a while depending on your network connection."
-				echo ""
-				echo ""
+				info ""
+				info ""
+				info "Kicking off the automated setup of the analyst workstation. This can take a while depending on your network connection."
+				info ""
+				info ""
 				analyst_salt_local
 			else
 				# Abort!
@@ -132,15 +134,16 @@ if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ 
 	exec bash /root/manager_setup/securityonion/setup/so-setup "${original_args[@]}"
 fi
 
+title "Checking to see if install has run before"
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 
-	# Move last setup log to backup
+	info "Old setup detected. Moving the last setup.log to setup.log.bak"
 	mv "$setup_log" "$setup_log.bak"
 	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
 fi
 
-# Figure out the user id that is running the install
+title "Parsing Username for Install"
 parse_install_username
 
 if ! [ -f $install_opt_file ]; then
@@ -176,7 +179,7 @@ progress() {
 
 # If using automation let's do automation things.
 if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
-	echo "Preselecting variable values based on automated setup: $automation" >> $setup_log 2>&1
+	info "Preselecting variable values based on automated setup: $automation"
 	source automation/$automation
 	automated=yes
 
@@ -184,24 +187,26 @@ if [[ -f automation/$automation && $(basename $automation) == $automation ]]; th
 	attempts=60
 	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
 	while [ $? -ne 0 ]; do
-		ip a >> $setup_log 2>&1
+		logCmd "ip a" 
 		if [ $attempt -gt $attempts ]; then
-			echo "Network unavailable - setup cannot continue" >> $setup_log 2>&1
+			error "Network unavailable - setup cannot continue" 
 			exit 1
 		fi
-		echo "Waiting for network to come up (attempt $attempt of $attempts)" >> $setup_log 2>&1
+		info "Waiting for network to come up (attempt $attempt of $attempts)"
 		attempt=$((attempt + 1))
+		info "Sleeping 10s to try again"
 		sleep 10;
-		ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
+		logCmd 'ip a | grep "$MNIC:" | grep "state UP"' 
 	done
-	echo "Network is up on $MNIC" >> $setup_log 2>&1
+	info "Network is up on $MNIC"
 
 	if [[ ! $is_iso ]]; then
-		echo "Installing sshpass for automated testing." >> $setup_log 2>&1
+		# We might not need this any more
+		info "Installing sshpass for automated testing."
 		if [ "$OS" == ubuntu ]; then
 			retry 50 10 "apt-get -y install sshpass" >> $setup_log 2>&1 || exit 1
 		else
-			yum -y install sshpass >> $setup_log 2>&1
+			logCmd "yum -y install sshpass"
 		fi
 	fi
 fi
@@ -209,10 +214,10 @@ fi
 # Make sure the setup type is suppoted.
 case "$setup_type" in
 	iso | network | analyst) # Accepted values
-		echo "Beginning Security Onion $setup_type install" >> $setup_log 2>&1
+		info "Beginning Security Onion $setup_type install"
 		;;
 	*)
-		echo "Invalid install type, must be 'iso', 'network' or 'analyst'." | tee -a $setup_log
+		error "Invalid install type, must be 'iso', 'network' or 'analyst'."
 		exit 1
 		;;
 esac
@@ -232,15 +237,15 @@ dmesg -D
 # https://github.com/Security-Onion-Solutions/securityonion/issues/1084
 if [ "$automated" == no ]; then
 	TTY=$(tty)
-	echo "Setup is running on TTY $TTY" >> $setup_log 2>&1
+	info "Setup is running on TTY $TTY"
 	if echo $TTY | grep -q "/dev/tty"; then 
 		CONSOLEBLANK=$(cat /sys/module/kernel/parameters/consoleblank)
-		echo "Kernel consoleblank value before: $CONSOLEBLANK" >> $setup_log 2>&1
+		info "Kernel consoleblank value before: $CONSOLEBLANK"
 		if [ $CONSOLEBLANK -gt 0 ]; then 
-			echo "Running 'setterm -blank 0' for TTY $TTY" >> $setup_log 2>&1
+			info "Running 'setterm -blank 0' for TTY $TTY" 
 			TERM=linux setterm -blank 0 >$TTY <$TTY
 			CONSOLEBLANK=$(cat /sys/module/kernel/parameters/consoleblank)
-			echo "Kernel consoleblank value after: $CONSOLEBLANK" >> $setup_log 2>&1
+			info "Kernel consoleblank value after: $CONSOLEBLANK"
 		fi
 	fi
 fi
@@ -250,7 +255,7 @@ if ! [[ -f $install_opt_file ]]; then
 	if (whiptail_you_sure); then
 		true
 	else
-		echo "User cancelled setup." | tee -a "$setup_log"
+		error "User cancelled setup."
 		whiptail_cancel
 	fi
 	# If this is an analyst install lets streamline the process. 
@@ -328,7 +333,7 @@ if ! [[ -f $install_opt_file ]]; then
 		detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
-		echo "Verifying all network devices are managed by Network Manager that should be" >> "$setup_log" 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
 		set_network_dev_status_list
 		whiptail_sensor_nics
@@ -349,7 +354,7 @@ if ! [[ -f $install_opt_file ]]; then
 		detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
-		echo "Verifying all network devices are managed by Network Manager that should be" >> "$setup_log" 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
 		set_network_dev_status_list
 		whiptail_sensor_nics
@@ -367,7 +372,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_airgap
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
-		echo "Verifying all network devices are managed by Network Manager that should be" >> "$setup_log" 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
 		set_network_dev_status_list
 		calculate_useable_cores
@@ -384,7 +389,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_airgap
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
-		echo "Verifying all network devices are managed by Network Manager that should be" >> "$setup_log" 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
 		set_network_dev_status_list
 		calculate_useable_cores
@@ -466,15 +471,15 @@ if ! [[ -f $install_opt_file ]]; then
 			configure_network_sensor
 		fi
 		# Configure NTP
-		echo "Configuring NTP"
+		info "Configuring NTP"
 		[[ ${#ntp_servers[@]} -gt 0 ]] && configure_ntp >> $setup_log 2>&1
 		# Reserve the ports that SO needs
-		echo "Reserving ports"
+		info "Reserving ports"
 		reserve_ports
-		echo "Setting Paths"
+		info "Setting Paths"
 		# Set the paths
 		set_path
-		echo "Checking if this is a re-install"
+		info "Checking if this is a re-install"
 		# Check to see if its a reinstall. THIS NEEDS REVIEW
 		if [[ $is_reinstall ]]; then
 			reinstall_init
@@ -482,19 +487,19 @@ if ! [[ -f $install_opt_file ]]; then
 		echo "Disable auto start of setup"
 		# Disable the setup from prompting at login
 		disable_auto_start
-		echo "Setting the version"
+		info "Setting the version"
 		# Set the version
 		mark_version
-		echo "Clearing the old manager"
+		info "Clearing the old manager"
 		# Remove old manager if re-install
 		clear_manager
-		echo "Generating Secrets"
+		info "Generating Secrets"
 		# Generate passwords
 		generate_passwords
-		echo "Populating the secrets pillar"
+		info "Populating the secrets pillar"
 		# Create the secrets pillar
 		secrets_pillar
-		echo "Add socore user"
+		info "Add socore user"
 		# Add the socore user
 		add_socore_user_manager
 		
@@ -502,7 +507,7 @@ if ! [[ -f $install_opt_file ]]; then
 		setup_salt_master_dirs
 		create_manager_pillars
 
-		echo "Generating the minion pillar"
+		info "Generating the minion pillar"
 		# Create the minion defaults
 
 		export NODETYPE=$install_type
@@ -516,7 +521,7 @@ if ! [[ -f $install_opt_file ]]; then
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
 		export INTERFACE="bond0"
 		so-minion -o=setup 
-		echo "Creating Global SLS"
+		title "Creating Global SLS"
 
 		if [[ $is_airgap ]]; then
 			# Airgap Rules
@@ -525,7 +530,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 		manager_pillar
 
-		zeek_logs_enabled
 		# Set up the repo to point to local file https://access.redhat.com/solutions/1355683
 		# reposync down the files is network and createrepo if CentOS
 		# Import the GPG keys
@@ -558,20 +562,23 @@ if ! [[ -f $install_opt_file ]]; then
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
 		mkdir -p /opt/so/conf/so-status/ 
 		touch /opt/so/conf/so-status/so-status.conf
-		echo "Importing Registry Docker" 
+		title "Importing Registry Docker" 
 		import_registry_docker
-		echo "Applying the registry state"
+		title "Applying the registry state"
 		salt-call state.apply -l info registry
-		echo "Seeding the docker registry"
+		title "Seeding the docker registry"
 		docker_seed_registry
-		echo "Applying the manager state"
+		title "Applying the manager state"
 		salt-call state.apply -l info manager 
 		salt-call state.apply -l info firewall
 		salt-call state.highstate -l info
 		add_web_user
+		info "Restarting SOC to pick up initial user"
+		so-soc-restart
 		so-elastic-fleet-setup
-		echo "Setting up Playbook"
+		title "Setting up Playbook"
 		so-playbook-reset
+		checkin_at_boot
 		whiptail_setup_complete
 	else
 		es_heapsize
@@ -583,7 +590,7 @@ if ! [[ -f $install_opt_file ]]; then
 		reserve_ports
 		# Set the version
 		mark_version
-		echo "Clearing the old manager"
+		info "Clearing the old manager"
 		# Remove old manager if re-install
 		clear_manager		
 		gpg_rpm_import
@@ -592,6 +599,7 @@ if ! [[ -f $install_opt_file ]]; then
 		saltify
 		configure_minion "$minion_type"
 		drop_install_options
+		checkin_at_boot
 		whiptail_setup_complete
 	fi
 

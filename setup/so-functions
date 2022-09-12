@@ -13,7 +13,7 @@ log() {
 	msg=$1
 	level=${2:-I}
 	now=$(TZ=GMT date +"%Y-%m-%dT%H:%M:%SZ")
-	echo -e "$now | $level | $msg" >> "$setup_log" 2>&1
+	echo -e "$now | $level | $msg" 2>&1 | tee -a "$setup_log"
 }
 
 error() {
@@ -31,7 +31,7 @@ title() {
 logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
-	$cmd >> "$setup_log" 2>&1
+	$cmd 2>&1 | tee -a $setup_log
 }
 ### End Logging Section ###
 
@@ -58,7 +58,7 @@ add_admin_user() {
 }
 
 add_mngr_ip_to_hosts() {
-	echo "Adding $MSRV to /etc/hosts with IP: $MSRVIP" >> "$setup_log" 2>&1
+	info "Adding $MSRV to /etc/hosts with IP: $MSRVIP"
 	echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
@@ -70,7 +70,7 @@ addtotab_generate_templates() {
 		printf '%s\n'\
 		"$i:"\
 		"" > "$addtotab_path"/$i.sls
-		echo "Added $i Template"
+		info "Added $i Template"
 	done
 
 }
@@ -82,11 +82,11 @@ add_socore_user_manager() {
 add_web_user() {
 	wait_for_file /opt/so/conf/kratos/db/db.sqlite 30 5
 	{
-		echo "Attempting to add administrator user for web interface...";
+		info "Attempting to add administrator user for web interface...";
 		export SKIP_STATE_APPLY=true
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER" "superuser";
 		unset SKIP_STATE_APPLY
-		echo "Add user result: $?";
+		info "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
 }
 
@@ -154,13 +154,13 @@ check_admin_pass() {
 }
 
 check_manager_state() {
-	echo "Checking state of manager services. This may take a moment..."
+	info "Checking state of manager services. This may take a moment..."
 	retry 2 15 "__check_so_status" >> $setup_log 2>&1 && retry 2 15 "__check_salt_master" >> $setup_log 2>&1 && return 0 || return 1
 }
 
 check_manager_connection() {
 	# See if you can curl the manager. If not you can either try again or continue
-	echo "Checking manager connectivity"	
+	info "Checking manager connectivity"	
 	man_test_err=$(curl -k -L -sS https://$MSRVIP/repo --connect-timeout 5 2>&1)
 	
 	local ret=$?
@@ -217,7 +217,7 @@ check_pass_match() {
 check_service_status() {
 
 	local service_name=$1
-	echo "Checking service $service_name status" >> "$setup_log" 2>&1
+	info "Checking service $service_name status"
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
@@ -239,7 +239,7 @@ clear_manager() {
 	# This only happens if you re-install the manager.
 	if [ -f /etc/salt/pki/minion/minion_master.pub ]; then
 		{
-			echo "Clearing old Salt master key";
+			info "Clearing old Salt master key";
 			rm -f /etc/salt/pki/minion/minion_master.pub;
 			systemctl -q restart salt-minion;
 		} >> "$setup_log" 2>&1
@@ -397,7 +397,7 @@ collect_mngr_hostname() {
 	# Remove the manager from /etc/hosts incase a user entered the wrong IP when prompted 
 	# and they are going through the installer again
 	if [[ "$HOSTNAME" != "$MSRV" ]]; then
-		echo "Removing $MSRV from /etc/hosts if present." >> "$setup_log" 2>&1
+		info "Removing $MSRV from /etc/hosts if present."
 		sed -i "/$MSRV/d" /etc/hosts
 	fi
 
@@ -611,7 +611,7 @@ configure_minion() {
 	if [[ $is_analyst ]]; then 
 		minion_type=workstation
 	fi
-	echo "Configuring minion type as $minion_type" >> "$setup_log" 2>&1
+	info "Configuring minion type as $minion_type" 
 	echo "role: so-$minion_type" > /etc/salt/grains
 	
 	local minion_config=/etc/salt/minion
@@ -695,7 +695,7 @@ configure_ntp() {
 checkin_at_boot() {
 	local minion_config=/etc/salt/minion
 
-	echo "Enabling checkin at boot" >> "$setup_log" 2>&1
+	info "Enabling checkin at boot" 
 	echo "startup_states: highstate" >> "$minion_config"
 }
 
@@ -780,7 +780,7 @@ check_sos_appliance() {
 	# Lets see if this is a SOS Appliance
 	if [ -f "/etc/SOSMODEL" ]; then
 	  local MODEL=$(cat /etc/SOSMODEL)
-	  echo "Found SOS Model $MODEL"
+	  info "Found SOS Model $MODEL"
 	  echo "sosmodel: $MODEL" >> /etc/salt/grains
 	fi
 }
@@ -812,7 +812,7 @@ compare_versions() {
 	manager_ver=$($sshcmd -i /root/.ssh/so.key soremote@"$MSRV" cat /etc/soversion)
 
 	if [[ $manager_ver == '' ]]; then
-		echo "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again." | tee -a "$setup_log"
+		info "Could not determine version of Security Onion running on manager $MSRV. Please check your network settings and run setup again."
 		exit 1
 	fi
 
@@ -821,7 +821,7 @@ compare_versions() {
 }
 
 configure_network_sensor() {
-	echo "Setting up sensor interface" >> "$setup_log" 2>&1
+	info "Setting up sensor interface"
 
 	if [[ $is_cloud ]]; then 
 		local nmcli_con_args=( "type" "ethernet" )
@@ -879,7 +879,7 @@ copy_minion_tmp_files() {
 
 	case "$install_type" in
 		'MANAGER' | 'EVAL' | 'HELIXSENSOR' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			echo "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
+			info "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 			cp -Rv "$temp_install_dir"/pillar/ $local_salt_dir/ >> "$setup_log" 2>&1
 			if [ -d "$temp_install_dir"/salt ] ; then
 				cp -Rv "$temp_install_dir"/salt/ $local_salt_dir/ >> "$setup_log" 2>&1
@@ -887,7 +887,7 @@ copy_minion_tmp_files() {
 			;;
 		*)
 			{
-				echo "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
+				info "scp pillar and salt files in $temp_install_dir to manager $local_salt_dir";
 				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/pillar;
 				$sshcmd -i /root/.ssh/so.key soremote@"$MSRV" mkdir -p /tmp/"$MINION_ID"/schedules;
 				$scpcmd -prv -i /root/.ssh/so.key "$temp_install_dir"/pillar/minions/* soremote@"$MSRV":/tmp/"$MINION_ID"/pillar/;
@@ -900,12 +900,12 @@ copy_minion_tmp_files() {
 			} >> "$setup_log" 2>&1
 			;;
 	esac
-	echo "Syncing all salt modules." >> "$setup_log" 2>&1
+	info "Syncing all salt modules."
 	salt-call saltutil.sync_modules >> "$setup_log" 2>&1
 }
 
 create_local_directories() {
-	echo "Creating local pillar and salt directories"
+	info "Creating local pillar and salt directories"
 	PILLARSALTDIR=${SCRIPTDIR::-5}
 	for i in "pillar" "salt"; do
 		for d in $(find $PILLARSALTDIR/$i -type d); do
@@ -950,15 +950,12 @@ create_repo() {
 }
 
 detect_cloud() {
-  echo "Testing if setup is running on a cloud instance..." | tee -a "$setup_log"
+  info "Testing if setup is running on a cloud instance..."
   if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then export is_cloud="true"; fi
 }
 
 detect_os() {
-	local log=${1:-${setup_log}}
-
-	# Detect Base OS
-	echo "Detecting Base OS" >> "$log" 2>&1
+	title "Detecting Base OS"
 	if [ -f /etc/redhat-release ]; then
 		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
 			OS=centos
@@ -970,9 +967,9 @@ detect_os() {
 			OSVER=8
 			is_rocky=true
 			pkgman="dnf"
-			echo "We currently do not support Rocky Linux $OSVER but we are working on it!"
+			info "We currently do not support Rocky Linux $OSVER but we are working on it!"
 		else
-			echo "We do not support the version of CentOS you are trying to use."
+			info "We do not support the version of CentOS you are trying to use."
 			exit 1
 		fi
 
@@ -983,16 +980,16 @@ detect_os() {
 		elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
 			OSVER=focal
 		else
-			echo "We do not support your current version of Ubuntu."
+			info "We do not support your current version of Ubuntu."
 			exit 1
 		fi
 
 	else
-		echo "We were unable to determine if you are using a supported OS."
+		info "We were unable to determine if you are using a supported OS."
 		exit 1
 	fi
 
-	echo "Found OS: $OS $OSVER" >> "$log" 2>&1
+	info "Found OS: $OS $OSVER" >> "$log" 2>&1
 
 }
 
@@ -1064,7 +1061,7 @@ disable_ipv6() {
 
 docker_registry() {
 
-	echo "Setting up Docker Registry" >> "$setup_log" 2>&1
+	info "Setting up Docker Registry"
 	mkdir -p /etc/docker >> "$setup_log" 2>&1
 	# This will get applied so docker can attempt to start
 	if [ -z "$DOCKERNET" ]; then
@@ -1084,7 +1081,7 @@ docker_registry() {
 		"    }"\
 		"  ]"\
 		"}" > /etc/docker/daemon.json
-	echo "Docker Registry Setup - Complete" >> "$setup_log" 2>&1
+	info "Docker Registry Setup - Complete"
 
 }
 
@@ -1133,7 +1130,7 @@ download_repo_tarball() {
 	if ! [ -f /root/manager_setup/"$manager_ver".tar.gz ]; then
 		rm -rf $install_opt_file
 		local message="Could not download $manager_ver.tar.gz from manager, please check your network settings and verify the file /opt/so/repo/$manager_ver.tar.gz exists on the manager." 
-		echo "$message" | tee -a "$setup_log"
+		info "$message"
 		exit 1
 	fi
 
@@ -1279,10 +1276,10 @@ firewall_generate_templates() {
 
 generate_ca() {
 	{
-		echo "Building Certificate Authority";
+		info "Building Certificate Authority";
 		salt-call state.apply ca;
 
-		echo "Confirming existence of the CA certificate"
+		info "Confirming existence of the CA certificate"
 		openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates
 	} >> "$setup_log" 2>&1
 }
@@ -1294,7 +1291,7 @@ generate_ssl() {
 		if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
 			wait_for_salt_minion
 		fi
-		echo "Applying SSL state";
+		info "Applying SSL state";
 		salt-call state.apply ssl;
 	} >> "$setup_log" 2>&1
 }
@@ -1345,7 +1342,7 @@ get_minion_type() {
 
 install_cleanup() {
 	if [ -f "$temp_install_dir" ]; then
-		echo "Installer removing the following files:"
+		info "Installer removing the following files:"
 		ls -lR "$temp_install_dir"
 
 		# Clean up after ourselves
@@ -1367,7 +1364,7 @@ install_cleanup() {
 	fi
 
 	if [[ -z $SO_ERROR ]]; then
-		echo "Setup completed at $(date)" >> "$setup_log" 2>&1
+		info "Setup completed at $(date)" 
 	fi
 }
 
@@ -1641,12 +1638,12 @@ networking_needful() {
 
 network_setup() {
 	{
-		echo "Finishing up network setup";
+		info "Finishing up network setup";
 
-		echo "... Copying 99-so-checksum-offload-disable";
-		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable ;
+		info "... Copying 99-so-checksum-offload-disable";
+		cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 
-		echo "... Modifying 99-so-checksum-offload-disable";
+		info "... Modifying 99-so-checksum-offload-disable";
 		sed -i "s/\$MNIC/${INTERFACE}/g" /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable;
 	} >> "$setup_log" 2>&1
 }
@@ -1718,7 +1715,7 @@ patch_schedule_os_new() {
 print_salt_state_apply() {
 	local state=$1
 
-	echo "Applying $state Salt state"
+	info "Applying $state Salt state"
 }
 
 process_installtype() {
@@ -1754,7 +1751,7 @@ process_installtype() {
 }
 
 proxy_validate() {
-	echo "Testing proxy..."
+	info "Testing proxy..."
 	local test_url="https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS"
 	proxy_test_err=$(curl -sS "$test_url" --proxy "$so_proxy" --connect-timeout 5 2>&1) # set short connection timeout so user doesn't sit waiting for proxy test to timeout
 	local ret=$?
@@ -1788,10 +1785,10 @@ reserve_group_ids() {
 reserve_ports() {
 	# These are also set via salt but need to be set pre-install to avoid conflicts before salt runs
 	if ! sysctl net.ipv4.ip_local_reserved_ports | grep 55000 | grep 57314; then
-		echo "Reserving ephemeral ports used by Security Onion components to avoid collisions"
+		info "Reserving ephemeral ports used by Security Onion components to avoid collisions"
 		sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314"
 	else
-		echo "Ephemeral ports already reserved"
+		info "Ephemeral ports already reserved"
 	fi
 }
 
@@ -1827,7 +1824,7 @@ reinstall_init() {
 			local count=0
 			while check_service_status "$service"; do
 				if [[ $count -gt $service_retry_count ]]; then
-					echo "Could not stop $service after 1 minute, exiting setup."
+					info "Could not stop $service after 1 minute, exiting setup."
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
@@ -1886,7 +1883,7 @@ reset_proxy() {
 	
 	[[ -f /etc/systemd/system/docker.service.d/http-proxy.conf ]] && rm -f /etc/systemd/system/docker.service.d/http-proxy.conf
 	systemctl daemon-reload
-	command -v docker &> /dev/null && echo "Restarting Docker..." | tee -a "$setup_log" && systemctl restart docker
+	command -v docker &> /dev/null && info "Restarting Docker..." && logCmd "systemctl restart docker"
 	
 	[[ -f /root/.docker/config.json ]] && rm -f /root/.docker/config.json
 
@@ -1904,7 +1901,7 @@ restore_file() {
 	dst=$2
 	if [ -f "$src" ]; then
 		[ ! -d "$dst" ] && mkdir -v -p "$dst"
-		echo "Restoring $src to $dst." >> "$setup_log" 2>&1
+		info "Restoring $src to $dst."
 		cp -v "$src" "$dst" >> "$setup_log" 2>&1
 	fi
 }
@@ -1984,7 +1981,7 @@ securityonion_repo() {
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
 		logCmd "yum -v -y update centos-release"
-		echo "Backing up the .repo files that were added by the centos-release package."
+		info "Backing up the .repo files that were added by the centos-release package."
 		logCmd "find /etc/yum.repos.d/ -type f -not -name 'securityonion*repo' -print0 | xargs -0 -I {} mv -bvf {} /root/oldrepos/"
 		logCmd "yum repolist all"
 	fi
@@ -1996,12 +1993,12 @@ repo_sync_local() {
 	REPOSYNC=$(rpm -qa | grep createrepo | wc -l)
 	if [[ ! "$REPOSYNC" -gt 0 ]]; then
 		# Install reposync
-		echo "Installing createrepo"
+		info "Installing createrepo"
 		logCmd "yum -y install yum-utils createrepo"
 	else
-		echo "We have what we need to sync"
+		info "We have what we need to sync"
 	fi
-	echo "Backing up old repos"
+	info "Backing up old repos"
 	mkdir -p /nsm/repo
 	mkdir -p /root/reposync_cache
 	echo "[main]" > /root/repodownload.conf
@@ -2037,7 +2034,7 @@ saltify() {
 		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
 		if [[ "$RUSALTY" -gt 0 ]]; then
 			# Salt is already installed.
-			echo "salt is installed" 
+			info "salt is installed" 
 		else
 			# Install salt
 			if [[ $waitforstate ]]; then 
@@ -2061,7 +2058,7 @@ salt_firstcheckin() {
 # Create an secrets pillar so that passwords survive re-install
 secrets_pillar(){
   if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
-	echo "Creating Secrets Pillar" >> "$setup_log" 2>&1
+	info "Creating Secrets Pillar"
 	mkdir -p $local_salt_dir/pillar
 	printf '%s\n'\
 		"secrets:"\
@@ -2085,7 +2082,7 @@ set_main_ip() {
 	local c=0
 	local m=3.3
 	local max_attempts=30
-	echo "Gathering the management IP. "
+	info "Gathering the management IP. "
 	while ! valid_ip4 "$MAINIP" || ! valid_ip4 "$MNIC_IP"; do
 		MAINIP=$(ip route get 1 | awk '{print $7;exit}')
 		MNIC_IP=$(ip a s "$MNIC" | grep -oE 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
@@ -2094,9 +2091,9 @@ set_main_ip() {
 		printf "%-*s" $((count+1)) '[' | tr ' ' '#'
 		printf "%*s%3d%%\r"  $((max_attempts-count))  "]" "$p"
 		if [ $count = $max_attempts ]; then
-			echo "ERROR: Could not determine MAINIP or MNIC_IP." >> "$setup_log" 2>&1
-			echo "MAINIP=$MAINIP" >> "$setup_log" 2>&1
-			echo "MNIC_IP=$MNIC_IP" >> "$setup_log" 2>&1
+			info "ERROR: Could not determine MAINIP or MNIC_IP."
+			info "MAINIP=$MAINIP"
+			info "MNIC_IP=$MNIC_IP"
 			whiptail_error_message "The management IP could not be determined. Please check the log at /root/sosetup.log and verify the network configuration. Press OK to exit."
 			exit 1
 		fi
@@ -2120,7 +2117,7 @@ set_minion_info() {
 	fi
 	export MINION_ID
 
-	echo "MINION_ID = $MINION_ID" >> $setup_log 2>&1
+	info "MINION_ID = $MINION_ID"
 
 	minion_type=$(get_minion_type)
 }
@@ -2208,7 +2205,7 @@ setup_salt_master_dirs() {
 		cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/ >> "$setup_log" 2>&1
 	fi
 
-	echo "Chown the salt dirs on the manager for socore" >> "$setup_log" 2>&1
+	info "Chown the salt dirs on the manager for socore"
 	chown -R socore:socore /opt/so
 }
 
@@ -2412,7 +2409,7 @@ so_add_user() {
 	local home_dir=$4
 	if [ "$5" ]; then local pass=$5; fi
 
-	echo "Add $username user" >> "$setup_log" 2>&1
+	info "Add $username user"
 	groupadd --gid "$gid" "$username"
 	useradd -m --uid "$uid" --gid "$gid" --home-dir "$home_dir" "$username"
 
@@ -2438,7 +2435,7 @@ update_sudoers() {
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/data/addtotab.sh" | tee -a /etc/sudoers
 		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/manager/files/add_minion.sh" | tee -a /etc/sudoers
 	else
-		echo "User soremote already granted sudo privileges" >> "$setup_log" 2>&1
+		info "User soremote already granted sudo privileges"
 	fi
 }
 
@@ -2456,7 +2453,7 @@ update_packages() {
 # This is used for development to speed up network install tests.
 use_turbo_proxy() {
 	if [[ ! $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE)$ ]]; then
-		echo "turbo is not supported on this install type" >> $setup_log 2>&1
+		info "turbo is not supported on this install type"
 		return
 	fi
 
@@ -2482,103 +2479,18 @@ wait_for_file() {
 
 	while [[ $cur_attempts -lt $max_attempts ]]; do
 		if [ -f "$filename" ]; then
-			echo "File $filename found at $date" >> "$setup_log" 2>&1
+			info "File $filename found at $date"
 			return 0
 		else
 			((cur_attempts++))
-			echo "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..." >> "$setup_log" 2>&1
+			info "File $filename does not exist; waiting ${wait_interval}s then checking again ($cur_attempts/$max_attempts)..."
 			sleep "$wait_interval"
 		fi
 	done
-	echo "Could not find $filename after waiting ${total_time}s" >> "$setup_log" 2>&1
+	info "Could not find $filename after waiting ${total_time}s"
 	return 1
 }
 
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
-}
-
-# Enable Zeek Logs
-zeek_logs_enabled() {
-	echo "Enabling Zeek Logs" >> "$setup_log" 2>&1
-
-	local zeeklogs_pillar=$local_salt_dir/pillar/zeek/zeeklogs.sls
-
-	printf '%s\n'\
-		"zeeklogs:"\
-		"  enabled:" > "$zeeklogs_pillar"
-
-	if [ "$MANAGERADV" = 'ADVANCED' ]; then
-		for BLOG in "${BLOGS[@]}"; do
-			echo "    - $BLOG" | tr -d '"' >> "$zeeklogs_pillar"
-		done
-	elif [ "$install_type" == "EVAL" ]  || [ "$install_type" == "IMPORT" ]; then
-		printf '%s\n'\
-			"    - conn"\
-			"    - dce_rpc"\
-			"    - dhcp"\
-			"    - dnp3"\
-			"    - dns"\
-			"    - dpd"\
-			"    - files"\
-			"    - ftp"\
-			"    - http"\
-			"    - intel"\
-			"    - irc"\
-			"    - kerberos"\
-			"    - modbus"\
-			"    - notice"\
-			"    - ntlm"\
-			"    - pe"\
-			"    - radius"\
-			"    - rfb"\
-			"    - rdp"\
-			"    - sip"\
-			"    - smb_files"\
-			"    - smb_mapping"\
-			"    - smtp"\
-			"    - snmp"\
-			"    - ssh"\
-			"    - ssl"\
-			"    - syslog"\
-			"    - tunnel"\
-			"    - weird"\
-			"    - mysql"\
-			"    - socks"\
-			"    - x509" >> "$zeeklogs_pillar"
-	# Disable syslog log by default
-	else
-		printf '%s\n'\
-			"    - conn"\
-			"    - dce_rpc"\
-			"    - dhcp"\
-			"    - dnp3"\
-			"    - dns"\
-			"    - dpd"\
-			"    - files"\
-			"    - ftp"\
-			"    - http"\
-			"    - intel"\
-			"    - irc"\
-			"    - kerberos"\
-			"    - modbus"\
-			"    - notice"\
-			"    - ntlm"\
-			"    - pe"\
-			"    - radius"\
-			"    - rfb"\
-			"    - rdp"\
-			"    - sip"\
-			"    - smb_files"\
-			"    - smb_mapping"\
-			"    - smtp"\
-			"    - snmp"\
-			"    - ssh"\
-			"    - ssl"\
-			"    - tunnel"\
-			"    - weird"\
-			"    - mysql"\
-			"    - socks"\
-			"    - x509" >> "$zeeklogs_pillar"
-	fi
 }
