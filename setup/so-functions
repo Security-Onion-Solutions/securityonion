@@ -822,7 +822,12 @@ copy_salt_master_config() {
 		logCmd "cp ../files/salt/master/master /etc/salt/master"
 		logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	fi
-
+	info "Copying pillar and salt files in '$temp_install_dir' to '$local_salt_dir'"
+	logCmd "cp -Rv '$temp_install_dir'/pillar/ '$local_salt_dir'/"
+	if [ -d "$temp_install_dir"/salt ] ; then
+		logCmd "cp -Rv '$temp_install_dir'/salt/ $local_salt_dir/"
+	fi
+	
 	# Restart the service so it picks up the changes
 	logCmd "systemctl daemon-reload"
 	logCmd "systemctl restart salt-master"
