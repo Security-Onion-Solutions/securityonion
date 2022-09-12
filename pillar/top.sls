@@ -45,7 +45,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_sensor':
-    - zeek.zeeklogs
     - healthcheck.sensor
     - soc_global
     - adv_global
@@ -53,7 +52,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_eval':
-    - zeel.zeeklogs
     - secrets
     - healthcheck.eval
     - elasticsearch.index_templates
@@ -82,7 +80,6 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
-    - zeek.zeeklogs
     - secrets
     - healthcheck.standalone
     - soc_global
@@ -94,7 +91,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_heavynode':
-    - zeek.zeeklogs
     - elasticsearch.auth
     - soc_global
     - minions.{{ grains.id }}
@@ -131,7 +127,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_import':
-    - zeek.zeeklogs
     - secrets
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
