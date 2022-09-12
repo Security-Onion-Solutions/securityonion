@@ -534,40 +534,39 @@ if ! [[ -f $install_opt_file ]]; then
 		copy_salt_master_config
 		configure_minion "$minion_type"
 
-		salt-key -yd "$MINION_ID" #delete the minion key if it already exists
-		salt-call state.show_top >> /dev/null 2>&1 #talk to the salt-master so the minion key is created on the salt-master
-		salt-key -ya "$MINION_ID" #accept the key
+		logCmd "salt-key -yd '$MINION_ID'"
+		logCmd "salt-call state.show_top"
+		logCmd "salt-key -ya '$MINION_ID'"
 
-		salt-call state.apply salt.helper-packages
-		salt-call state.apply common.packages
-		salt-call state.apply common
-		salt-call state.apply docker
-		# Set the initial firewall policy
-		firewall_generate_templates;
+		logCmd "salt-call state.apply salt.helper-packages"
+		logCmd "salt-call state.apply common.packages"
+		logCmd "salt-call state.apply common"
+		logCmd "salt-call state.apply docker"
+		firewall_generate_templates
 		set_initial_firewall_policy
 
 		generate_ca
 		generate_ssl
 
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
-		mkdir -p /opt/so/conf/so-status/ 
-		touch /opt/so/conf/so-status/so-status.conf
+		logCmd "mkdir -p /opt/so/conf/so-status/ "
+		logCmd "touch /opt/so/conf/so-status/so-status.conf"
 		title "Importing Registry Docker" 
 		import_registry_docker
 		title "Applying the registry state"
-		salt-call state.apply -l info registry
+		logCmd "salt-call state.apply -l info registry"
 		title "Seeding the docker registry"
 		docker_seed_registry
 		title "Applying the manager state"
-		salt-call state.apply -l info manager 
-		salt-call state.apply -l info firewall
-		salt-call state.highstate -l info
+		logCmd "salt-call state.apply -l info manager" 
+		logCmd "salt-call state.apply -l info firewall"
+		logCmd "salt-call state.highstate -l info"
 		add_web_user
 		info "Restarting SOC to pick up initial user"
-		so-soc-restart
-		so-elastic-fleet-setup
+		logCmd "so-soc-restart"
+		logCmd "so-elastic-fleet-setup"
 		title "Setting up Playbook"
-		so-playbook-reset
+		logCmd "so-playbook-reset"
 		checkin_at_boot
 		whiptail_setup_complete
 	else
