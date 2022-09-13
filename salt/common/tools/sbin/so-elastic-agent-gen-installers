@@ -6,6 +6,8 @@
 
 #so-elastic-agent-gen-installers $FleetHost $EnrollmentToken 
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
 . /usr/sbin/so-common
 
 ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints")) | .api_key')
@@ -27,6 +29,6 @@ do
     --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elastic-fleet/files/so_agent-installers/,target=/output/ \
-    so-elastic-agent-builder go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
+    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
     printf "\n $OS Installer Generated..."
 done
