@@ -33,98 +33,97 @@ suricata:
       enabled: "yes"
       interval: 30
     outputs:
-      - fast:
+      fast:
+        enabled: "no"
+        filename: fast.log
+        append: "yes"
+      eve-log:
+        enabled: "yes"
+        filetype: regular
+        filename: /nsm/eve-%Y-%m-%d-%H:%M.json
+        rotate-interval: hour
+        pcap-file: false
+        community-id: true
+        community-id-seed: 0
+        xff:
           enabled: "no"
-          filename: fast.log
-          append: "yes"
-      - eve-log:
-          enabled: "yes"
-          filetype: regular
-          filename: /nsm/eve-%Y-%m-%d-%H:%M.json
-          rotate-interval: hour
-          pcap-file: false
-          community-id: true
-          community-id-seed: 0
-          xff:
-            enabled: "no"
-            mode: extra-data
-            deployment: reverse
-            header: X-Forwarded-For
-          types:
-            - alert:
-                payload: "no"
-                payload-buffer-size: 4kb
-                payload-printable: "yes"
-                packet: "yes"
-                metadata: 
-                    app-layer: false
-                    flow: false
-                    rule:
-                      metadata: true
-                      raw: true
-                tagged-packets: "no"
-      - unified2-alert:
-          enabled: "no"
-      - http-log:
-          enabled: "no"
-          filename: http.log
-          append: "yes"
-      - tls-log:
-          enabled: "no"
-          filename: tls.log
-          append: "yes"
-      - tls-store:
-          enabled: "no"
-      - pcap-log:
-          enabled: "no"
-          filename: log.pcap
-          limit: 1000mb
-          max-files: 2000
-          compression: none
-   
+          mode: extra-data
+          deployment: reverse
+          header: X-Forwarded-For
+        types:
+          - alert:
+              payload: "no"
+              payload-buffer-size: 4kb
+              payload-printable: "yes"
+              packet: "yes"
+              metadata: 
+                app-layer: false
+                flow: false
+                rule:
+                  metadata: true
+                  raw: true
+              tagged-packets: "no"
+      unified2-alert:
+        enabled: "no"
+      http-log:
+        enabled: "no"
+        filename: http.log
+        append: "yes"
+      tls-log:
+        enabled: "no"
+        filename: tls.log
+        append: "yes"
+      tls-store:
+        enabled: "no"
+      pcap-log:
+        enabled: "no"
+        filename: log.pcap
+        limit: 1000mb
+        max-files: 2000
+        compression: none
           mode: normal
-          use-stream-depth: "no"
-          honor-pass-rules: "no"
-      - alert-debug:
+        use-stream-depth: "no"
+        honor-pass-rules: "no"
+      alert-debug:
+        enabled: "no"
+        filename: alert-debug.log
+        append: "yes"
+      alert-prelude:
+        enabled: "no"
+        profile: suricata
+        log-packet-content: "no"
+        log-packet-header: "yes"
+      stats:
+        enabled: "yes"
+        filename: stats.log
+        append: "yes"
+        totals: "yes"
+        threads: "no"
+        null-values: "yes"
+      syslog:
+        enabled: "no"
+        facility: local5
+      drop:
+        enabled: "no"
+      file-store:
+        version: 2
+        enabled: "no"
+        xff:
           enabled: "no"
-          filename: alert-debug.log
-          append: "yes"
-      - alert-prelude:
-          enabled: "no"
-          profile: suricata
-          log-packet-content: "no"
-          log-packet-header: "yes"
-      - stats:
-          enabled: "yes"
-          filename: stats.log
-          append: "yes"
-          totals: "yes"
-          threads: "no"
-          null-values: "yes"
-      - syslog:
-          enabled: "no"
-          facility: local5
-      - drop:
-          enabled: "no"
-      - file-store:
-          version: 2
-          enabled: "no"
-          xff:
-            enabled: "no"
-            mode: extra-data
-            deployment: reverse
-            header: X-Forwarded-For
-      - tcp-data:
-          enabled: "no"
-          type: file
-          filename: tcp-data.log
-      - http-body-data:
+          mode: extra-data
+          deployment: reverse
+          header: X-Forwarded-For
+      tcp-data:
+        enabled: "no"
+        type: file
+        filename: tcp-data.log
+      http-body-data:
           enabled: "no"
           type: file
           filename: http-data.log
-      - lua:
-          enabled: "no"
-          scripts:
+      lua:
+        enabled: "no"
+        scripts:
     logging:
       default-log-level: notice
       outputs:
@@ -397,25 +396,11 @@ suricata:
       locks:
         enabled: "no"
         filename: lock_stats.log
-        append: "yes"
-    
+        append: "yes"    
       pcap-log:
         enabled: "no"
         filename: pcaplog_stats.log
         append: "yes"
-    nfq:
-    nflog:
-      - group: 2
-        buffer-size: 18432
-      - group: default
-        qthreshold: 1
-        qtimeout: 100
-        max-size: 20000
-    capture:
-    netmap:
-     - interface: eth2
-     - interface: default
-    ipfw:
     default-rule-path: /etc/suricata/rules
     rule-files:
       - all.rules
