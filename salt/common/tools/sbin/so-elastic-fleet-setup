@@ -20,10 +20,12 @@ curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fle
 printf "\n\n"
 
 # Create Logstash Output payload
-cp /etc/ssl/certs/intca.crt /opt/so/conf/filebeat/etc/pki/
-LOGSTASHCRT=$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt)
-LOGSTASHKEY=$(openssl rsa -in  /opt/so/conf/filebeat/etc/pki/filebeat.key)
-LOGSTASHCA=$(openssl x509 -in  /opt/so/conf/filebeat/etc/pki/intca.crt)
+mkdir /opt/so/conf/elastic-fleet/certs
+cp /etc/ssl/certs/intca.crt /opt/so/conf/elastic-fleet/certs
+cp /etc/pki/elasticfleet* /opt/so/conf/elastic-fleet/certs
+LOGSTASHCRT=$(openssl x509 -in /opt/so/conf/elastic-fleet/certs/elasticfleet.crt)
+LOGSTASHKEY=$(openssl rsa -in  /opt/so/conf/elastic-fleet/certs/elasticfleet.key)
+LOGSTASHCA=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
 JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \

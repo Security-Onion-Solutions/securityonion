@@ -28,7 +28,7 @@ so-elastic-fleet:
     - port_bindings:
       - 0.0.0.0:8220:8220
     - binds:
-      - /opt/so/conf/filebeat/etc/pki:/etc/pki:ro
+      - /opt/so/conf/elastic-fleet/certs:/etc/pki:ro
       - /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
     - environment:
       - FLEET_SERVER_ENABLE=true
@@ -37,8 +37,8 @@ so-elastic-fleet:
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID={{ FLEETSERVERPOLICY }}
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/intca.crt
-      - FLEET_SERVER_CERT=/etc/pki/filebeat.crt
-      - FLEET_SERVER_CERT_KEY=/etc/pki/filebeat.key
+      - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
+      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
       - FLEET_CA=/etc/pki/intca.crt
   {% endif %}
 
