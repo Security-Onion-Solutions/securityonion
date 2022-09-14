@@ -152,6 +152,88 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+etc_elasticfleet_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet.key
+    - CN: {{ COMMONNAME }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet.key') -%}
+    - prereq:
+      - x509: etc_elasticfleet_crt
+    {%- endif %}
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+
+# Request a cert and drop it where it needs to go to be distributed
+etc_elasticfleet_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - public_key: /etc/pki/elasticfleet.key
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+{% if grains.role not in ['so-heavynode'] %}
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticfleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet.key -topk8 -out /etc/pki/elasticfleet.p8 -nocrypt"
+    - onchanges:
+      - x509: etc_elasticfleet_key
+
+efperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet.key
+    - mode: 640
+    - group: 939
+
+chownilogstashelasticfleetp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet.p8
+    - mode: 640
+    - user: 947
+    - group: 939
+
+# Create Symlinks to the keys so I can distribute it to all the things
+elasticfleetdircerts:
+  file.directory:
+    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs
+    - makedirs: True
+
+efkeylink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs/elasticfleet.p8
+    - target: /etc/pki/elasticfleet.p8
+    - user: socore
+    - group: socore
+
+efcrtlink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs/elasticfleet.crt
+    - target: /etc/pki/elasticfleet.crt
+    - user: socore
+    - group: socore
+{% endif %}
+
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:

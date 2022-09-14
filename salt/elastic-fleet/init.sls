@@ -10,25 +10,49 @@
 {% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
 {% set FLEETURL = salt['pillar.get']('elasticfleet:server:url') %}
 
-elasticfleetdir:
+# Add EA Group
+elasticsagentgroup:
+  group.present:
+    - name: elastic-agent
+    - gid: 947
+
+# Add EA user
+elastic-agent:
+  user.present:
+    - uid: 947
+    - gid: 947
+    - home: /opt/so/conf/elastic-fleet
+    - createhome: False
+
+eaconfdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet
+    - user: 947
+    - group: 939
+    - makedirs: True
+
+eastatedir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/state
+    - user: 947
+    - group: 939
     - makedirs: True
+
 
   {% if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
-    - image: docker.elastic.co/beats/elastic-agent:8.4.1
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
     - name: so-elastic-fleet
     - hostname: Fleet-{{ GLOBALS.hostname }}
     - detach: True
-    - user: root
+    - user: 947
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
       - 0.0.0.0:8220:8220
     - binds:
-      - /opt/so/conf/filebeat/etc/pki:/etc/pki:ro
+      - /opt/so/conf/elastic-fleet/certs:/etc/pki:ro
       - /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
     - environment:
       - FLEET_SERVER_ENABLE=true
@@ -37,8 +61,8 @@ so-elastic-fleet:
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID={{ FLEETSERVERPOLICY }}
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/intca.crt
-      - FLEET_SERVER_CERT=/etc/pki/filebeat.crt
-      - FLEET_SERVER_CERT_KEY=/etc/pki/filebeat.key
+      - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
+      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
       - FLEET_CA=/etc/pki/intca.crt
   {% endif %}
 
