@@ -10,15 +10,39 @@
 {% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
 {% set FLEETURL = salt['pillar.get']('elasticfleet:server:url') %}
 
-elasticfleetdir:
+# Add EA Group
+elasticsagentgroup:
+  group.present:
+    - name: elastic-agent
+    - gid: 947
+
+# Add EA user
+elastic-agent:
+  user.present:
+    - uid: 947
+    - gid: 947
+    - home: /opt/so/conf/elastic-fleet
+    - createhome: False
+
+eaconfdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet
+    - user: 947
+    - group: 939
+    - makedirs: True
+
+eastatedir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/state
+    - user: 947
+    - group: 939
     - makedirs: True
+
 
   {% if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
-    - image: docker.elastic.co/beats/elastic-agent:8.4.1
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
     - name: so-elastic-fleet
     - hostname: Fleet-{{ GLOBALS.hostname }}
     - detach: True

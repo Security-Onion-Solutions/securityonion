@@ -210,7 +210,7 @@ chownilogstashelasticfleetp8:
     - replace: False
     - name: /etc/pki/elasticfleet.p8
     - mode: 640
-    - user: 931
+    - user: 947
     - group: 939
 
 # Create Symlinks to the keys so I can distribute it to all the things
