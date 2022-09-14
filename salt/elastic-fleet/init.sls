@@ -46,7 +46,7 @@ so-elastic-fleet:
     - name: so-elastic-fleet
     - hostname: Fleet-{{ GLOBALS.hostname }}
     - detach: True
-    - user: root
+    - user: 947
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
