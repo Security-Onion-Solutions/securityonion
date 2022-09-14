@@ -176,7 +176,7 @@ etc_elasticfleet_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet.crt
     - ca_server: {{ ca_server }}
-    - signing_policy: fleet
+    - signing_policy: elasticfleet
     - public_key: /etc/pki/elasticfleet.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
@@ -214,7 +214,7 @@ chownilogstashelasticfleetp8:
     - group: 939
 
 # Create Symlinks to the keys so I can distribute it to all the things
-elasticfleetdir:
+elasticfleetdircerts:
   file.directory:
     - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs
     - makedirs: True
