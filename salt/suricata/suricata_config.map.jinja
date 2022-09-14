@@ -1,7 +1,17 @@
 {% import_yaml 'suricata/defaults.yaml' as suricata_defaults with context %}
-{% import_yaml 'suricata/suricata_meta.yaml' as suricata_meta with context %}
-{% set suricata_pillar = salt['pillar.get']('suricata:config', {}) %}
-
-
+{% set suricata_pillar = pillar.suricata %}
+{% set surimerge = salt['defaults.merge'](suricata_defaults, suricata_pillar, in_place=False)
+{% load_yaml as afpacket %}
+af-packet:
+  - interface: {{ surimerge.suricata.config.af-packet.interface }}
+    cluster-id: {{ surimerge.suricata.config.af-packet.cluster-id }}
+    cluster-type: {{ surimerge.suricata.config.af-packet.cluster-type }}
+    defrag: {{ surimerge.suricata.config.af-packet.defrag }}
+    use-mmap: {{ surimerge.suricata.config.af-packet.use-mmap }}
+    threads: {{ surimerge.suricata.config.af-packet.threads }}
+    tpacket-v3: {{ surimerge.suricata.config.af-packet.tpacket-v3 }}
+    ring-size: {{ surimerge.suricata.config.af-packet.ring-size }}
+{% endload %}
+{% do suricata_defaults.suricata.config.update({'af-packet': afpacket}) %}
 
 {% do salt['defaults.merge'](suricata_defaults.suricata.config, suricata_pillar, in_place=True) %}
