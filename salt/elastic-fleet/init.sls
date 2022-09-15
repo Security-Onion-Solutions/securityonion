@@ -66,6 +66,11 @@ so-elastic-fleet:
       - FLEET_CA=/etc/pki/intca.crt
   {% endif %}
 
+append_so-elastic-fleet_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-elastic-fleet
+
 {% else %}
 
 {{sls}}_state_not_allowed:
