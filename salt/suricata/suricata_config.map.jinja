@@ -1,6 +1,7 @@
 {% import_yaml 'suricata/defaults.yaml' as suricata_defaults with context %}
 {% set suricata_pillar = pillar.suricata %}
 {% set surimerge = salt['defaults.merge'](suricata_defaults, suricata_pillar, in_place=False) %}
+
 {% load_yaml as afpacket %}
 af-packet:
   - interface: {{ surimerge.suricata.config['af-packet'].interface }}
@@ -15,12 +16,8 @@ af-packet:
 {% do suricata_defaults.suricata.config.update({'af-packet': afpacket}) %}
 
 {% load_yaml as outputs %}
-outputs:
-  - fast:
-    enabled: {{ surimerge.suricata.config.outputs.fast.enabled }}
-    filename: {{ surimerge.suricata.config.outputs.fast.filename }}
-    append: {{ surimerge.suricata.config.outputs.fast.append }}
-  - eve-log
-    enabled: {{ surimerge.suricata.config.outputs['eve-log'].enabled }}
+{% for le, ld in surimerge.suricata.config.outputs.items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
 {% endload %}
 {% do suricata_defaults.suricata.config.update({'outputs': outputs}) %}
