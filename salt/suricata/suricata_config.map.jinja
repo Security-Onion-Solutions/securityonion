@@ -1,70 +1,22 @@
 {% import_yaml 'suricata/defaults.yaml' as suricata_defaults with context %}
-{% import_yaml 'suricata/suricata_meta.yaml' as suricata_meta with context %}
-{% from 'suricata/afpacket.map.jinja' import afpacket %}
-{% set suricata_pillar = salt['pillar.get']('suricata:config', {}) %}
-{% set default_evelog_index = [] %}
-{% set default_filestore_index = [] %}
-{% set surimeta_evelog_index = [] %}
-{% set surimeta_filestore_index = [] %}
+{% set suricata_pillar = pillar.suricata %}
+{% set surimerge = salt['defaults.merge'](suricata_defaults, suricata_pillar, in_place=False) %}
 
-{% if salt['pillar.get']('sensor:hnsensor') %}
-  {% load_yaml as homenet %}
-HOME_NET: "[{{salt['pillar.get']('sensor:hnsensor')}}]"
-  {% endload %}
-{% else %}
-  {% load_yaml as homenet %}
-HOME_NET: "[{{salt['pillar.get']('global:hnmanager', '')}}]"
-  {% endload %}
-{% endif %}
+{% load_yaml as afpacket %}
+- interface: {{ surimerge.suricata.config['af-packet'].interface }}
+  cluster-id: {{ surimerge.suricata.config['af-packet']['cluster-id'] }}
+  cluster-type: {{ surimerge.suricata.config['af-packet']['cluster-type'] }}
+  defrag: {{ surimerge.suricata.config['af-packet'].defrag }}
+  use-mmap: {{ surimerge.suricata.config['af-packet']['use-mmap'] }}
+  threads: {{ surimerge.suricata.config['af-packet'].threads }}
+  tpacket-v3: {{ surimerge.suricata.config['af-packet']['tpacket-v3'] }}
+  ring-size: {{ surimerge.suricata.config['af-packet']['ring-size'] }}
+{% endload %}
+{% do suricata_defaults.suricata.config.update({'af-packet': afpacket}) %}
 
-{% set hardware_header = 15 %}
-{% set default_packet_size = salt['grains.filter_by']({
-    '*_eval': {
-      'default-packet-size': salt['pillar.get']('sensor:mtu', 1500) + hardware_header,
-    },
-    '*_helixsensor': {
-      'default-packet-size': salt['pillar.get']('sensor:mtu', 9000) + hardware_header,
-    },
-    '*': {
-      'default-packet-size': salt['pillar.get']('sensor:mtu', 1500) + hardware_header,
-    },
-},grain='id') %}
-
-{# Find the index of eve-log so it can be updated later #}
-{% for li in suricata_defaults.suricata.config.outputs %}
-  {% if 'eve-log' in li.keys() %}
-    {% do default_evelog_index.append(loop.index0) %}
-  {% endif %}
-  {% if 'file-store' in li.keys() %}
-    {% do default_filestore_index.append(loop.index0) %}
-  {% endif %}
+{% load_yaml as outputs %}
+{% for le, ld in surimerge.suricata.config.outputs.items() %}
+  - {{ le }}: {{ ld }}
 {% endfor %}
-{% set default_evelog_index = default_evelog_index[0]  %}
-{% set default_filestore_index = default_filestore_index[0]  %}
-
-{# Find the index of eve-log so it can be grabbed later #}
-{% for li in suricata_meta.suricata.config.outputs %}
-  {% if 'eve-log' in li.keys() %}
-    {% do surimeta_evelog_index.append(loop.index0) %}
-  {% endif %}
-  {% if 'file-store' in li.keys() %}
-    {% do surimeta_filestore_index.append(loop.index0) %}
-  {% endif %}
-{% endfor %}
-{% set surimeta_evelog_index = surimeta_evelog_index[0] %}
-{% set surimeta_filestore_index = surimeta_filestore_index[0] %}
-
-{% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
-  {% do suricata_defaults.suricata.config.outputs[default_evelog_index]['eve-log'].types.extend(suricata_meta.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
-  {% do suricata_defaults.suricata.config.outputs[default_filestore_index]['file-store'].update({'enabled':suricata_meta.suricata.config.outputs[surimeta_filestore_index]['file-store']['enabled']}) %}
-{% endif %}
-
-{% do suricata_defaults.suricata.config.update(default_packet_size) %}
-{% do suricata_defaults.suricata.config.update(afpacket) %}
-{% do suricata_defaults.suricata.config.vars['address-groups'].update(homenet) %}
-{% if salt['pillar.get']('sensor:suriprocs', salt['pillar.get']('sensor:suripins', {})) %}
-  {% from 'suricata/threading.map.jinja' import cpu_affinity with context %}
-  {% do suricata_defaults.suricata.config.threading.update(cpu_affinity) %}
-{% endif %}
-
-{% do salt['defaults.merge'](suricata_defaults.suricata.config, suricata_pillar, in_place=True) %}
+{% endload %}
+{% do suricata_defaults.suricata.config.update({'outputs': outputs}) %}

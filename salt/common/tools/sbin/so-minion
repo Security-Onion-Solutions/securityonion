@@ -5,8 +5,9 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
+if [ $OPERATION != 'setup' ]; then
 . /usr/sbin/so-common
+fi
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 -o=<operation> -m=[id]"
@@ -160,23 +161,14 @@ function add_patch_pillar_to_minion() {
 function add_sensor_to_minion() {
 	echo "sensor:" >> $PILLARFILE
 	echo "  interface: '$INTERFACE'" >> $PILLARFILE
-	echo "  zeekpin: False" >> $PILLARFILE
-	echo "  zeekpins:" >> $PILLARFILE
-	echo "    - 1" >> $PILLARFILE
-	echo "  zeek_lbprocs: $CORECOUNT" >> $PILLARFILE
-	echo "  suripin: False" >> $PILLARFILE
-	echo "  suripins:" >> $PILLARFILE
-	echo "    - 2" >> $PILLARFILE
-	echo "  suriprocs: $CORECOUNT"  >> $PILLARFILE
 	echo "  mtu: 9000" >> $PILLARFILE
-	echo "  uniqueid: $(date '+%s')" >> $PILLARFILE
-	echo "steno:" >> $PILLARFILE
-	echo "  stenopin: False" >> $PILLARFILE
-	echo "  stenopins:" >> $PILLARFILE
-	echo "    - 3" >> $PILLARFILE
-	echo "  enabled: True" >> $PILLARFILE
-	echo "  disks:" >> $PILLARFILE
-	echo "    - '/some/path'" >> $PILLARFILE
+	echo "zeek:" >> $PILLARFILE
+	echo "    config:" >> $PILLARFILE
+	echo "        lb_procs: '$CORECOUNT'" >> $PILLARFILE
+	echo "suricata:" >> $PILLARFILE
+	echo "    config:" >> $PILLARFILE
+	echo "        af-packet:" >> $PILLARFILE
+	echo "            threads: '$CORECOUNT'" >> $PILLARFILE
 }
 
 function createSTANDALONE() {

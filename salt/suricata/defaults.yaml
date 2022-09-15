@@ -1,5 +1,28 @@
 suricata:
   config:
+    threading:
+        set-cpu-affinity: 'no'
+        detect-thread-ratio: 1.0
+        cpu-affinity:
+            - management-cpu-set:
+                cpu: []
+            - receive-cpu-set:
+                cpu: []
+            - worker-cpu-set:
+                cpu: []
+                mode: exclusive
+                threads: 1
+                prio:
+                    default: high
+    af-packet:
+        interface: bond0
+        cluster-id: 59
+        cluster-type: cluster_flow
+        defrag: true
+        use-mmap: true
+        threads: 1
+        tpacket-v3: true
+        ring-size: 5000
     vars:
       address-groups:
         HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
@@ -125,11 +148,6 @@ suricata:
           enabled: "no"
           facility: local5
           format: "[%i] <%d> -- "
-    pcap:
-      - interface: eth0
-      - interface: default
-    pcap-file:
-      checksum-checks: auto
     app-layer:
       protocols:
         krb5:
@@ -227,6 +245,14 @@ suricata:
           enabled: "yes"
         sip:
           enabled: "yes"
+        rfb:
+          enabled: 'yes'
+          detection-ports:
+            dp: 5900, 5901, 5902, 5903, 5904, 5905, 5906, 5907, 5908, 5909
+        mqtt:
+          enabled: 'no'
+        http2:
+          enabled: 'no'
     asn1-max-frames: 256
     run-as:
       user: suricata
@@ -348,9 +374,6 @@ suricata:
           include-mpm-stats: false
     mpm-algo: auto
     spm-algo: auto
-    threading:
-      set-cpu-affinity: "yes"
-      detect-thread-ratio: 1.0
     luajit:
       states: 128
 

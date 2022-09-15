@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% from "zeek/map.jinja" import ZEEKOPTIONS with context %}
+{% from "zeek/config.map.jinja" import ZEEKOPTIONS with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}

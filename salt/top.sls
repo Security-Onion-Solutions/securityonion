@@ -114,7 +114,6 @@ base:
     {%- endif %}
     - docker_clean
     - pipeline.load
-    - learn
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -160,7 +159,6 @@ base:
     - playbook
     - docker_clean
     - pipeline.load
-    - learn
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -215,7 +213,6 @@ base:
     - docker_clean
     - elastic-fleet
     - pipeline.load
-    - learn
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -281,7 +278,6 @@ base:
     - playbook
     - docker_clean
     - pipeline.load
-    - learn
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -348,7 +344,6 @@ base:
     - schedule
     - docker_clean
     - pipeline.load
-    - learn
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
