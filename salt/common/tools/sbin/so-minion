@@ -209,10 +209,12 @@ function createIDHNODE() {
 }
 
 function testConnection() {
-	salt "$MINION_ID" test.ping
+	retry 5 10 "salt '$MINION_ID' test.ping" 0
 	local ret=$?
 	if [[ $ret != 0 ]]; then
 		echo "The Minion has been accepted but is not online. Try again later"
+		echo "Deleting the key"
+		deleteminion
 		exit 1
 	fi
 }
