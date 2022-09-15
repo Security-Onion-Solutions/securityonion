@@ -53,7 +53,7 @@ bpfcompilationfailure:
 stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
-    - source: salt://pcap/files/config
+    - source: salt://pcap/files/config.jinja
     - user: stenographer
     - group: stenographer
     - mode: 644
