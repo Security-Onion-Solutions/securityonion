@@ -1,16 +1,10 @@
-{%- set INTERFACE = salt['pillar.get']('sensor:interface') %}
-{%- set DISKFREEPERCENTAGE = salt['pillar.get']('pcap:config:diskfreepercentage') %}
-{%- set MAXFILES = salt['pillar.get']('pcap:config:maxdirectoryfiles') %}
-{%- set BLOCKS = salt['pillar.get']('pcap:config:blocks') %}
-{%- set FILEMB = salt['pillar.get']('pcap:config:preallocate_file_mb') %}
-{%- set AIOPS = salt['pillar.get']('pcap:config:aiops') %} 
 {
   "Threads": [
-    { "PacketsDirectory": "/nsm/pcap", "IndexDirectory": "/nsm/pcapindex", "MaxDirectoryFiles": {{ MAXFILES }}, "DiskFreePercentage": {{ DISKFREEPERCENTAGE }} }
+    { "PacketsDirectory": "/nsm/pcap", "IndexDirectory": "/nsm/pcapindex", "MaxDirectoryFiles": {{ PCAPMERGED.pcap.config.maxdirectoryfiles }}, "DiskFreePercentage": {{ PCAPMERGED.pcap.config.DISKFREEPERCENTAGE }} }
   , "StenotypePath": "/usr/bin/stenotype"
-  , "Interface": "{{ INTERFACE }}"
+  , "Interface": "{{ pillar.sensor.interface }}"
   , "Port": 1234
   , "Host": "127.0.0.1"
-  , "Flags": ["-v", "--blocks={{ BLOCKS }}", "--preallocate_file_mb={{ FILEMB }}", "--aiops={{ AIOPS }}", "--uid=stenographer", "--gid=stenographer"{{ BPF_COMPILED }}]
+  , "Flags": ["-v", "--blocks={{ PCAPMERGED.pcap.config.blocks }}", "--preallocate_file_mb={{ PCAPMERGED.pcap.config.preallocate_file_mb }}", "--aiops={{ PCAPMERGED.pcap.config.aiops }}", "--uid=stenographer", "--gid=stenographer"{{ BPF_COMPILED }}]
   , "CertPath": "/etc/stenographer/certs"
 }

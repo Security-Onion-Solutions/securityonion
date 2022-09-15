@@ -7,6 +7,7 @@
 {% if sls in allowed_states %}
 
 {% from "pcap/map.jinja" import STENOOPTIONS with context %}
+{% from "pcap/config.map.jinja" import PCAPMERGED with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -58,6 +59,7 @@ stenoconf:
     - mode: 644
     - template: jinja
     - defaults:
+        PCAPMERGED: {{ PCAPMERGED }}
         BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 stenoca:
