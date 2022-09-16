@@ -1,0 +1,19 @@
+module Filterconn;
+
+export {
+     global ignore_services: set[string] = {"dns", "krb", "krb_tcp"};
+  }
+
+hook Conn::log_policy(rec: Conn::Info, id: Log::ID, filter: Log::Filter)
+    {
+    # Record only connections not in the ignored services
+    if ( ! rec?$service || rec$service in ignore_services )
+        break;
+    }
+
+event zeek_init()
+{
+    Log::remove_default_filter(Conn::LOG);
+    local filter: Log::Filter = [$name="conn-filter"];
+    Log::add_filter(Conn::LOG, filter);
+}
