@@ -13,7 +13,7 @@
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
+{% set BPF_STENO = salt['pillar.get']('bpf:pcap', None) %}
 {% set BPF_COMPILED = "" %}
 
 # PCAP Section

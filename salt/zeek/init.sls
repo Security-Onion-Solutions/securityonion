@@ -11,7 +11,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
+{% set BPF_ZEEK = salt['pillar.get']('bpf:zeek', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface') %}
 
