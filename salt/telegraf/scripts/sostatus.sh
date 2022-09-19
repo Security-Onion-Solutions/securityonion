@@ -11,12 +11,11 @@
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     SOSTATUSLOG=/var/log/sostatus/status.log
-    SOSTATUSCODE=$(jq -r .status_code /var/log/sostatus/status.log)
-    SOSTATUSJSON=$(cat /var/log/sostatus/status.log)
+    SOSTATUSCODE=$(jq -r .status_code $SOSTATUSLOG)
+    SOSTATUSJSON=$(cat $SOSTATUSLOG | sed 's/"/\\"/g')
 
     if [ -f "$SOSTATUSLOG" ]; then
-        echo "sostatus status=$SOSTATUSCODE"
-        echo "sostatus json=$SOSTATUSJSON"
+        echo "sostatus status=$SOSTATUSCODE,json=\"$SOSTATUSJSON\""
     else
         exit 0
     fi
