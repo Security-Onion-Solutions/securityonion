@@ -1,6 +1,4 @@
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 sensoroniconfdir:
   file.directory:
@@ -43,7 +41,7 @@ analyzerscripts:
 
 so-sensoroni:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
+    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - network_mode: host
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw

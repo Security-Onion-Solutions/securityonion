@@ -7,12 +7,13 @@
 {% if sls in allowed_states %}
 
 {% from "pcap/map.jinja" import STENOOPTIONS with context %}
+{% from "pcap/config.map.jinja" import PCAPMERGED with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
+{% set BPF_STENO = salt['pillar.get']('bpf:pcap', None) %}
 {% set BPF_COMPILED = "" %}
 
 # PCAP Section
@@ -52,12 +53,13 @@ bpfcompilationfailure:
 stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
-    - source: salt://pcap/files/config
+    - source: salt://pcap/files/config.jinja
     - user: stenographer
     - group: stenographer
     - mode: 644
     - template: jinja
     - defaults:
+        PCAPMERGED: {{ PCAPMERGED }}
         BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 stenoca:
