@@ -1,6 +1,7 @@
 base:
   '*':
     - patch.needs_restarting
+    - ntp
     - logrotate
     - docker.soc_docker
     - docker.adv_docker

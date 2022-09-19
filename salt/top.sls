@@ -22,6 +22,7 @@ base:
   '*':
     - cron.running
     - repo.client
+    - ntp
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
