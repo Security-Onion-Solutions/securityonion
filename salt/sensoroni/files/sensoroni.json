@@ -1,10 +1,7 @@
-{%- set URLBASE = salt['pillar.get']('global:url_base') %}
-{%- set DESCRIPTION = salt['pillar.get']('sensoroni:node_description', '') %}
-{%- set MODEL = salt['grains.get']('sosmodel', '') %}
-{%- set ADDRESS = salt['pillar.get']('sensoroni:node_address') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
 {%- set ANALYZE_TIMEOUT_MS = salt['pillar.get']('sensoroni:analyze_timeout_ms', 900000) %}
 {%- set ANALYZE_PARALLEL_LIMIT = salt['pillar.get']('sensoroni:analyze_parallel_limit', 5) %}
-{%- set SENSORONIKEY = salt['pillar.get']('sensoroni:sensoronikey', '') %}
 {%- set CHECKININTERVALMS = salt['pillar.get']('sensoroni:node_checkin_interval_ms', 10000) %}
 {%- set ROLE = grains.id.split('_') | last %}
 {%- if ROLE in ['eval', 'standalone', 'sensor', 'heavynode'] %}
@@ -23,13 +20,13 @@
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
   "agent": {
-    "nodeId": "{{ grains.host | lower }}",
-    "role": "{{ grains.role }}",
-    "description": {{ DESCRIPTION | tojson }},
-    "address": "{{ ADDRESS }}",
-    "model": "{{ MODEL }}",
+    "nodeId": "{{ GLOBALS.hostname | lower }}",
+    "role": "{{ GLOBALS.role }}",
+    "description": {{ GLOBALS.description | tojson }},
+    "address": "{{ GLOBALS.node_ip }}",
+    "model": "{{ GLOBLAS.so_model }}",
     "pollIntervalMs": {{ CHECKININTERVALMS if CHECKININTERVALMS else 10000 }},
-    "serverUrl": "https://{{ URLBASE }}/sensoroniagents",
+    "serverUrl": "https://{{ GLOBALS.url_base }}/sensoroniagents",
     "verifyCert": false,
     "modules": {
 {%- if ANALYZEENABLED %} 
@@ -40,7 +37,7 @@
 {%- endif %}
       "importer": {},
       "statickeyauth": {
-        "apiKey": "{{ SENSORONIKEY }}"
+        "apiKey": "{{ GLOBALS.sensoroni_key }}"
 {%- if STENOENABLED %} 
       },     
       "stenoquery": {
