@@ -346,6 +346,15 @@ append_so-elasticsearch_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
 
+so-es-cluster-settings:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-cluster-settings
+    - cwd: /opt/so
+    - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
+      - file: es_sync_scripts
+
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
