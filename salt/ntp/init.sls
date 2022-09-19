@@ -10,7 +10,7 @@ chronyconf:
     - source: salt://ntp/chrony.conf
     - template: jinja
     - defaults:
-      - NTPCONFIG: {{ NTPCONFIG.ntp }}
+        NTPCONFIG: {{ NTPCONFIG.ntp }}
 
 chronyd:
   service.running:
