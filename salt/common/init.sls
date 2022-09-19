@@ -192,9 +192,16 @@ sostatus_log:
   file.managed:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
-    
+
+common_pip_dependencies:
+  pip.installed:
+    - user: root
+    - pkgs: 
+      - rich
+    - target: /usr/lib64/python3.6/site-packages
+
 # Install sostatus check cron
-'/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
+'/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1':
   cron.present:
     - user: root
     - minute: '*/1'
