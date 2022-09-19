@@ -7,6 +7,7 @@
 {% if sls in allowed_states %}
 
 {% from "zeek/config.map.jinja" import ZEEKOPTIONS with context %}
+{% from "zeek/config.map.jinja" import ZEEKMERGED with context %}
 
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
@@ -14,8 +15,6 @@
 {% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface') %}
-
-{% set ZEEK = salt['pillar.get']('zeek', {}) %}
 
 # Zeek Salt State
 
@@ -107,16 +106,18 @@ zeekctlcfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
+        ZEEKCTL: {{ ZEEKMERGED.zeek.config.zeekctl | tojson }}
 
 # Sync node.cfg
 nodecfg:
   file.managed:
     - name: /opt/so/conf/zeek/node.cfg
-    - source: salt://zeek/files/node.cfg
+    - source: salt://zeek/files/node.cfg,jinja
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        ZEEKNODE: {{ ZEEKMERGED.zeek.config.node }}
 
 networkscfg:
   file.managed:
