@@ -123,6 +123,13 @@ utilsyncscripts:
         - so-firewall
         - so-image-common
         - soup
+        - so-status
+
+so-status_script:
+  file.managed:
+    - name: /usr/sbin/so-status
+    - source: salt://common/tools/sbin/so-status
+    - mode: 755
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup
