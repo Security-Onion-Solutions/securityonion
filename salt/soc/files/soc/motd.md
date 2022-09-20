@@ -6,22 +6,8 @@ If you're ready to dive in, take a look at the [Alerts](/#/alerts) interface to 
 
 ## What's New 
 
-To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/#release-notes) link.
+To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/release-notes.html) link.
 
 ## Customize This Space
 
-Make this area your own by customizing the content. The content is stored in the `motd.md` file, which uses the common Markdown (.md) format. To learn more about the format, please see [markdownguide.org](https://www.markdownguide.org/).
-
-To customize this content, login to the manager via SSH and execute the following command:
-
-```bash
-sudo cp /opt/so/saltstack/default/salt/soc/files/soc/motd.md /opt/so/saltstack/local/salt/soc/files/soc/
-```
-
-Then edit the new file as desired using your favorite text editor. 
-
-Finally, restart SOC to make the changes take effect:
-
-```bash
-sudo so-soc-restart
-```
+Make this area your own by customizing the content in the [Config](/#/config) interface.
