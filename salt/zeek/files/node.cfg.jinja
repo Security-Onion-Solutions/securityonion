@@ -1,3 +1,4 @@
+{%- if NODE.pins or NODE.lb_procs %}
 [manager]
 type=manager
 host=localhost
@@ -15,17 +16,17 @@ type=worker
 host=localhost
 interface=af_packet::{{ NODE.interface }}
 lb_method=custom
-  {%- if NODE.lbprocs %}
-lb_procs={{ NODE.lbprocs }}
+  {%- if NODE.lb_procs %}
+lb_procs={{ NODE.lb_procs }}
     {%- else %}
-lb_procs={{ NODE.zeek_pins | length }}
+lb_procs={{ NODE.pins | length }}
   {%- endif %}
-  {%- if NODE.zeek_pins %}
-pin_cpus={{ NODE.zeek_pins | join(", ") }}
+  {%- if NODE.pins %}
+pin_cpus={{ NODE.pins | join(", ") }}
   {%- endif %}
 af_packet_fanout_id=23
 af_packet_fanout_mode=AF_Packet::FANOUT_HASH
-af_packet_buffer_size={{ NODE.zeek_buffer }}
+af_packet_buffer_size={{ NODE.buffer }}
 {%- else %}
 [zeeksa]
 type=standalone
