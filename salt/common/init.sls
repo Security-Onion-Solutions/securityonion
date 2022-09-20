@@ -123,6 +123,13 @@ utilsyncscripts:
         - so-firewall
         - so-image-common
         - soup
+        - so-status
+
+so-status_script:
+  file.managed:
+    - name: /usr/sbin/so-status
+    - source: salt://common/tools/sbin/so-status
+    - mode: 755
 
 {% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
 # Add sensor cleanup
@@ -192,9 +199,16 @@ sostatus_log:
   file.managed:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
-    
+
+common_pip_dependencies:
+  pip.installed:
+    - user: root
+    - pkgs: 
+      - rich
+    - target: /usr/lib64/python3.6/site-packages
+
 # Install sostatus check cron
-'/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
+'/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1':
   cron.present:
     - user: root
     - minute: '*/1'

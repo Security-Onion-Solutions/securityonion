@@ -12,7 +12,7 @@
 {% set VERSION = salt['pillar.get']('global:soversion') %}
 {% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% set BPF_NIDS = salt['pillar.get']('nids:bpf') %}
+{% set BPF_NIDS = salt['pillar.get']('bpf:suricata', None) %}
 {% set BPF_STATUS = 0  %}
 
 {# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
