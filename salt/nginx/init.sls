@@ -1,10 +1,6 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap') %}
 
 include:
   - ssl
@@ -85,7 +81,7 @@ navigatorenterpriseattack:
 
 so-nginx:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-nginx:{{ VERSION }}
+    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
     - hostname: so-nginx
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -108,9 +104,6 @@ so-nginx:
     - port_bindings:
       - 80:80
       - 443:443
-  {% if ISAIRGAP is sameas true %}
-      - 7788:7788
-  {% endif %}
     - watch:
       - file: nginxconf
       - file: nginxconfdir

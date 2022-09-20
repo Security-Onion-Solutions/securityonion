@@ -117,6 +117,7 @@ so-grafana-dashboard-folder-delete:
         TEMPLATES: {{GRAFANA_SETTINGS.dashboards[dashboard].templating.list}}
         TITLE: {{ GRAFANA_SETTINGS.dashboards[dashboard].get('title', dashboard| capitalize) }}
         ID: {{ loop.index }}
+        UID: {{ dashboard }}
 {% endfor %}
 
 so-grafana:
