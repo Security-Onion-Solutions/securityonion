@@ -6,15 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'vars/globals.map.jinja' import GLOBALS with context %}
 {% from "zeek/config.map.jinja" import ZEEKOPTIONS with context %}
 {% from "zeek/config.map.jinja" import ZEEKMERGED with context %}
 
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
 {% set BPF_STATUS = 0  %}
-{% set INTERFACE = salt['pillar.get']('sensor:interface') %}
 
 # Zeek Salt State
 
@@ -76,6 +72,8 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        FILE_EXTRACTION: {{ ZEEKMERGED.file_extraction }}
 
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
@@ -117,7 +115,7 @@ nodecfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKNODE: {{ ZEEKMERGED.zeek.config.node }}
+        NODE: {{ ZEEKMERGED.zeek.config.node }}
 
 networkscfg:
   file.managed:
@@ -126,6 +124,8 @@ networkscfg:
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        NETWORKS: {{ ZEEKMERGED.zeek.networks }}
 
 #zeekcleanscript:
 #  file.managed:
@@ -159,8 +159,8 @@ zeekpacketlosscron:
     - dayweek: '*'
 
 # BPF compilation and configuration
-{% if BPF_ZEEK %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" "),cwd='/root') %}
+{% if ZEEKMERGED.zeek.bpf %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKMERGED.zeek.bpf|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
@@ -178,7 +178,7 @@ zeekbpf:
     - user: 940
     - group: 940
 {% if BPF_STATUS %}
-    - contents_pillar: zeek:bpf
+    - contents: {{ ZEEKMERGED.bpf }}
 {% else %}
     - contents:
       - "ip or not ip"
@@ -193,12 +193,12 @@ localzeek:
     - group: 939
     - template: jinja
     - defaults:
-        LOCAL: {{ ZEEK.local | tojson }}
+        LOCAL: {{ ZEEKMERGED.zeek.config.local | tojson }}
 
 so-zeek:
   docker_container.{{ ZEEKOPTIONS.status }}:
   {% if ZEEKOPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
+    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: {{ ZEEKOPTIONS.start }}
     - privileged: True
     - ulimits:

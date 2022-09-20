@@ -13,22 +13,22 @@ host=localhost
 [worker-1]
 type=worker
 host=localhost
-interface=af_packet::{{ ZEEKNODE.interface }}
+interface=af_packet::{{ NODE.interface }}
 lb_method=custom
-  {%- if ZEEKNODE.lbprocs %}
-lb_procs={{ ZEEKNODE.lbprocs }}
+  {%- if NODE.lbprocs %}
+lb_procs={{ NODE.lbprocs }}
     {%- else %}
-lb_procs={{ ZEEKNODE.zeek_pins | length }}
+lb_procs={{ NODE.zeek_pins | length }}
   {%- endif %}
-  {%- if ZEEKNODE.zeek_pins %}
-pin_cpus={{ ZEEKNODE.zeek_pins | join(", ") }}
+  {%- if NODE.zeek_pins %}
+pin_cpus={{ NODE.zeek_pins | join(", ") }}
   {%- endif %}
 af_packet_fanout_id=23
 af_packet_fanout_mode=AF_Packet::FANOUT_HASH
-af_packet_buffer_size={{ ZEEKNODE.zeek_buffer }}
+af_packet_buffer_size={{ NODE.zeek_buffer }}
 {%- else %}
 [zeeksa]
 type=standalone
 host=localhost
-interface={{ ZEEKNODE.interface }}
+interface={{ NODE.interface }}
 {%- endif %}

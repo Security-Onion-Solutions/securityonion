@@ -1,9 +1,8 @@
+{% from 'vars/sensor.map.jinja' import GLOBALS %}
 {% import_yaml 'zeek/defaults.yaml' as zeek_defaults with context %}
-{% set zeek_pillar = pillar.zeek %}
-{% do ZEEKMERGED.zeek.config.node.update({'interface': pillar.sensor.interface})%} {# update this first so user can specify a differet interface with pillar.zeek.config.node.interface #}
+{% set zeek_pillar = salt['pillar.get']('zeek', []) %}
+{% do ZEEKMERGED.zeek.config.node.update({'interface': GLOBALS.sensor.interface}) %} {# update this first so user can specify a differet interface with pillar.zeek.config.node.interface #}
 {% set ZEEKMERGED = salt['defaults.merge'](zeek_defaults, zeek_pillar, in_place=False) %}
-
-
 
 {% set ZEEKOPTIONS = {} %}
 {% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
