@@ -73,7 +73,7 @@ zeekpolicysync:
     - group: 939
     - template: jinja
     - defaults:
-        FILE_EXTRACTION: {{ ZEEKMERGED.file_extraction }}
+        FILE_EXTRACTION: {{ ZEEKMERGED.zeek.file_extraction }}
 
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
@@ -110,7 +110,7 @@ zeekctlcfg:
 nodecfg:
   file.managed:
     - name: /opt/so/conf/zeek/node.cfg
-    - source: salt://zeek/files/node.cfg,jinja
+    - source: salt://zeek/files/node.cfg.jinja
     - user: 937
     - group: 939
     - template: jinja
@@ -125,7 +125,7 @@ networkscfg:
     - group: 939
     - template: jinja
     - defaults:
-        NETWORKS: {{ ZEEKMERGED.zeek.networks }}
+        NETWORKS: {{ ZEEKMERGED.zeek.config.networks }}
 
 #zeekcleanscript:
 #  file.managed:
