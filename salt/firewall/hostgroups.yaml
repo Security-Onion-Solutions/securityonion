@@ -1,0 +1,23 @@
+{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+firewall:
+  hostgroups:
+    anywhere:
+      ips:
+        delete:
+        insert:
+          - 0.0.0.0/0
+    dockernet:
+      ips:
+        delete:
+        insert:
+          - {{ DNET }}/24
+    localhost:
+      ips:
+        delete:
+        insert:
+          - 127.0.0.1
+    self:
+      ips:
+        delete:
+        insert:
+          - {{ salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] }}
