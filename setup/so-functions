@@ -2171,16 +2171,13 @@ set_initial_firewall_policy() {
 
 		case "$install_type" in
 			'MANAGER')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost minion "$MAINIP"
+				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=manager --ip=$MAINIP --apply=true
 				;;
 			'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost manager "$MAINIP"
-				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost minion "$MAINIP"
-				$default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensor "$MAINIP"
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --apply includehost search_node "$MAINIP"
+				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
 				;;
 		esac
+	fi
 }
 
 # Set up the management interface on the ISO
