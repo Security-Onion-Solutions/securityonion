@@ -64,7 +64,7 @@ soc:
         remoteHostUrls: []
         username:
         password:
-        index: '*:so-*,*:endgame-*'
+        index: '*:so-*,*:endgame-*,*:logs-*'
         cacheMs: 300000
         verifyCert: false
         casesEnabled: true
@@ -93,7 +93,7 @@ soc:
     client:
       docsUrl: /docs/
       cheatsheetUrl: /docs/cheatsheet.pdf
-      releaseNotesUrl: /docs/#release-notes
+      releaseNotesUrl: /docs/release-notes.html
       apiTimeoutMs: 0
       webSocketTimeoutMs: 0
       tipTimeoutMs: 0
@@ -656,10 +656,53 @@ soc:
             - destination.geo.country_iso_code
             - user.name
             - source.ip
+          '::process_terminated':
+            - soc_timestamp
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::file_create':
+            - soc_timestamp
+            - file.target
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::registry_value_set':
+            - soc_timestamp
+            - winlog.event_data.TargetObject
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::process_creation':
+            - soc_timestamp
+            - process.command_line
+            - process.pid
+            - process.parent.executable
+            - process.working_directory
+          '::registry_create_delete':
+            - soc_timestamp
+            - winlog.event_data.TargetObject
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::dns_query':
+            - soc_timestamp
+            - dns.query.name
+            - dns.answers.name
+            - process.executable
+            - winlog.computer_name
+          '::file_create_stream_hash':
+            - soc_timestamp
+            - file.target
+            - hash.md5
+            - hash.sha256
+            - process.executable
+            - process.pid
+            - winlog.computer_name
         queryBaseFilter:
         queryToggleFilters:
           - name: caseExcludeToggle
-            filter: NOT _index:\"*:so-case*\"
+            filter: 'NOT _index:"*:so-case*"'
             enabled: true
         queries:
           - name: Default Query
@@ -680,6 +723,9 @@ soc:
           - name: NIDS Alerts
             description: Show all NIDS alerts grouped by alert
             query: 'event.category: network AND event.dataset: alert | groupby rule.category rule.gid rule.uuid rule.name'
+          - name: Osquery - Live Query
+            description: Show all Osquery Live Query results
+            query: 'event.dataset: osquery_manager.result | groupby action_data.id action_data.query | groupby host.hostname'
           - name: Wazuh/OSSEC Alerts
             description: Show all Wazuh alerts at Level 5 or higher grouped by category
             query: 'event.module:ossec AND event.dataset:alert AND rule.level:>4 | groupby rule.category rule.name'
@@ -794,9 +840,6 @@ soc:
           - name: NTLM
             description: NTLM grouped by computer name
             query: 'event.dataset:ntlm | groupby ntlm.server.dns.name'
-          - name: Osquery Live Queries
-            description: Osquery Live Query results grouped by computer name
-            query: 'event.dataset:live_query | groupby host.hostname'
           - name: PE
             description: PE files list
             query: 'event.dataset:pe | groupby file.machine file.os file.subsystem'
@@ -1373,9 +1416,52 @@ soc:
             - destination.geo.country_iso_code
             - user.name
             - source.ip
+          '::process_terminated': 
+            - soc_timestamp
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::file_create': 
+            - soc_timestamp
+            - file.target
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::registry_value_set': 
+            - soc_timestamp
+            - winlog.event_data.TargetObject
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::process_creation':
+            - soc_timestamp
+            - process.command_line
+            - process.pid
+            - process.parent.executable
+            - process.working_directory
+          '::registry_create_delete':
+            - soc_timestamp
+            - winlog.event_data.TargetObject
+            - process.executable
+            - process.pid
+            - winlog.computer_name
+          '::dns_query':
+            - soc_timestamp
+            - dns.query.name
+            - dns.answers.name
+            - process.executable
+            - winlog.computer_name
+          '::file_create_stream_hash':
+            - soc_timestamp
+            - file.target
+            - hash.md5
+            - hash.sha256
+            - process.executable
+            - process.pid
+            - winlog.computer_name
         queryBaseFilter:
         queryToggleFilters:
-          - name: caseExcludeToggle,
+          - name: caseExcludeToggle
             filter: 'NOT _index:"*:so-case*"'
             enabled: true
         queries:
@@ -1454,9 +1540,6 @@ soc:
           - name: NTLM
             description: NTLM logs
             query: 'event.dataset:ntlm | groupby ntlm.server.dns.name | groupby ntlm.server.nb.name | groupby ntlm.server.tree.name | groupby ntlm.success | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Osquery Live Queries
-            description: Osquery Live Query results
-            query: 'event.dataset:live_query | groupby host.hostname'
           - name: PE
             description: PE files list
             query: 'event.dataset:pe | groupby file.machine | groupby file.os | groupby file.subsystem | groupby file.section_names | groupby file.is_exe | groupby file.is_64bit'
@@ -1601,7 +1684,7 @@ soc:
             - so_case.severity
             - so_case.assigneeId
             - so_case.createTime
-        queryBaseFilter: '_index:\"*:so-case\" AND so_kind:case'
+        queryBaseFilter: '_index:"*:so-case" AND so_kind:case'
         queryToggleFilters: []
         queries:
           - name: Open Cases

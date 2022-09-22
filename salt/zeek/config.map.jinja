@@ -1,3 +1,9 @@
+{% from 'vars/sensor.map.jinja' import ROLE_GLOBALS %}
+{% import_yaml 'zeek/defaults.yaml' as zeek_defaults with context %}
+{% set zeek_pillar = salt['pillar.get']('zeek', []) %}
+{% set ZEEKMERGED = salt['defaults.merge'](zeek_defaults, zeek_pillar, in_place=False) %}
+{% do ZEEKMERGED.zeek.config.node.update({'interface': ROLE_GLOBALS.sensor.interface}) %}
+
 {% set ZEEKOPTIONS = {} %}
 {% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
 

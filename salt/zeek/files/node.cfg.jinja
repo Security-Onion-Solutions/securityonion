@@ -1,0 +1,35 @@
+{%- if NODE.pins or NODE.lb_procs %}
+[manager]
+type=manager
+host=localhost
+
+[logger]
+type=logger
+host=localhost
+
+[proxy]
+type=proxy
+host=localhost
+
+[worker-1]
+type=worker
+host=localhost
+interface=af_packet::{{ NODE.interface }}
+lb_method=custom
+  {%- if NODE.lb_procs %}
+lb_procs={{ NODE.lb_procs }}
+    {%- else %}
+lb_procs={{ NODE.pins | length }}
+  {%- endif %}
+  {%- if NODE.pins %}
+pin_cpus={{ NODE.pins | join(", ") }}
+  {%- endif %}
+af_packet_fanout_id=23
+af_packet_fanout_mode=AF_Packet::FANOUT_HASH
+af_packet_buffer_size={{ NODE.buffer }}
+{%- else %}
+[zeeksa]
+type=standalone
+host=localhost
+interface={{ NODE.interface }}
+{%- endif %}

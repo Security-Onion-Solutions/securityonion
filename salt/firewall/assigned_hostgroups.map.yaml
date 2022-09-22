@@ -1,0 +1,567 @@
+{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{% import_yaml 'firewall/portgroups.yaml' as portgroups %}
+{% set portgroups = portgroups.firewall.aliases.ports %}
+{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False)  %}
+
+role:
+  eval:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.playbook }}
+              - {{ portgroups.mysql }}
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.cortex }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.cortex_es_rest }}
+              - {{ portgroups.cortex_es_node }}
+          minion:
+            portgroups:
+              - {{ portgroups.acng }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          strelka_frontend:
+            portgroups:
+              - {{ portgroups.strelka_frontend }}
+          syslog:
+            portgroups:
+              - {{ portgroups.syslog }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+  manager:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.playbook }}
+              - {{ portgroups.mysql }}
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.cortex }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.cortex_es_rest }}
+              - {{ portgroups.cortex_es_node }}
+              {% if ISAIRGAP is sameas true %}
+              - {{ portgroups.agrules }}
+              {% endif %}
+          minion:
+            portgroups:
+              - {{ portgroups.acng }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              {% if ISAIRGAP is sameas true %}
+              - {{ portgroups.yum }}
+              {% endif %}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.beats_5644 }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.beats_5644 }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          syslog:
+            portgroups:
+              - {{ portgroups.syslog }}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          endgame:
+            portgroups:
+              - {{ portgroups.endgame }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+  managersearch:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.playbook }}
+              - {{ portgroups.mysql }}
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.cortex }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.cortex_es_rest }}
+              - {{ portgroups.cortex_es_node }}
+          minion:
+            portgroups:
+              - {{ portgroups.acng }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          endgame:
+            portgroups:
+              - {{ portgroups.endgame }}
+          syslog:
+            portgroups:
+              - {{ portgroups.syslog }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+  standalone:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.playbook }}
+              - {{ portgroups.mysql }}
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.cortex }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.cortex_es_rest }}
+              - {{ portgroups.cortex_es_node }}
+          minion:
+            portgroups:
+              - {{ portgroups.acng }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_node }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          endgame:
+            portgroups:
+              - {{ portgroups.endgame }}
+          strelka_frontend:
+            portgroups:
+              - {{ portgroups.strelka_frontend }}
+          syslog:
+            portgroups:
+              - {{ portgroups.syslog }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+  helixsensor:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.playbook }}
+              - {{ portgroups.mysql }}
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.cortex }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.cortex_es_rest }}
+              - {{ portgroups.cortex_es_node }}
+          minion:
+            portgroups:
+              - {{ portgroups.acng }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_node }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+  searchnode:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          {% if TRUE_CLUSTER %}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+          {% endif %}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+  sensor:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          strelka_frontend:
+            portgroups:
+              - {{ portgroups.strelka_frontend }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+  heavynode:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          self:
+            portgroups:
+              - {{ portgroups.syslog}}
+          strelka_frontend:
+            portgroups:
+              - {{ portgroups.strelka_frontend }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+  import:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          manager:
+            portgroups:
+              - {{ portgroups.kibana }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+          minion:
+            portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.sensoroni }}
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_node }}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          elasticsearch_rest:
+            portgroups:
+              - {{ portgroups.elasticsearch_rest }}
+          analyst:
+            portgroups:
+              - {{ portgroups.nginx }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          minion:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+
+  receiver:
+    chain:
+      DOCKER-USER:
+        hostgroups:
+          sensors:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.beats_5644 }}
+          self:
+            portgroups:
+              - {{ portgroups.redis }}
+              - {{ portgroups.syslog}}
+              - {{ portgroups.beats_5644 }}
+          syslog:
+            portgroups:
+              - {{ portgroups.syslog }}
+          beats_endpoint:
+            portgroups:
+              - {{ portgroups.beats_5044 }}
+          beats_endpoint_ssl:
+            portgroups:
+              - {{ portgroups.beats_5644 }}
+          endgame:
+            portgroups:
+              - {{ portgroups.endgame }}
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+              - {{ portgroups.ssh }}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+  idh:
+    chain:
+      INPUT:
+        hostgroups:
+          anywhere:
+            portgroups:
+            {% set idh_services = salt['pillar.get']('idh:services', []) %}
+            {% for service in idh_services %}
+              - {{ portgroups['idh_'~service] }}
+            {% endfor %}
+          dockernet:
+            portgroups:
+              - {{ portgroups.all }}
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
+          manager:
+            portgroups:
+              - {{ portgroups.ssh }}
