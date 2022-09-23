@@ -1,11 +1,11 @@
 {% set role = grains.id.split('_') | last %}
 {% set translated_pillar_assigned_hostgroups = {} %}
 
-{% import_yaml 'firewall/portgroups.yaml' as default_portgroups %}
-{% set default_portgroups = default_portgroups.firewall.aliases.ports %}
+{% import_yaml 'firewall/ports/ports.yaml' as default_portgroups %}
+{% set default_portgroups = default_portgroups.firewall.ports %}
 {% import_yaml 'firewall/portgroups.local.yaml' as local_portgroups %}
-{% if local_portgroups.firewall.aliases.ports %}
-  {% set local_portgroups = local_portgroups.firewall.aliases.ports %}
+{% if local_portgroups.firewall.ports %}
+  {% set local_portgroups = local_portgroups.firewall.ports %}
 {% else %}
   {% set local_portgroups = {} %}
 {% endif %}
@@ -13,7 +13,33 @@
 {% set defined_portgroups = portgroups %}
 
 {% import_yaml 'firewall/hostgroups.yaml' as default_hostgroups %}
-{% import_yaml 'firewall/hostgroups.local.yaml' as local_hostgroups %}
+{#% import_yaml 'firewall/hostgroups.local.yaml' as local_hostgroups %#}
+{% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
+{% set hostgroup_list = [
+         'analyst',
+         'analyst_workstations',
+         'eval',
+         'heavynodes',
+         'idh',
+         'manager',
+         'receivers',
+         'searchnodes',
+         'sensors',
+         'standalone',
+         'beats_endpoint',
+         'beats_endpoint_ssl',
+         'elasticsearch_rest',
+         'elastic_agent_endpoint',
+         'endgame',
+         'strelka_frontend',
+         'syslog'
+       ]
+%}
+{% for hg in hostgroup_list %}
+{%   import_text 'firewall/hostgroups/' ~ hg as hg_ips %}
+{%   do local_hostgroups.firewall.hostgroups.update({hg: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
+{% endfor %}
+
 {% set hostgroups = salt['defaults.merge'](default_hostgroups.firewall.hostgroups, local_hostgroups.firewall.hostgroups, in_place=False) %}
 
 {# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}

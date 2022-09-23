@@ -507,6 +507,18 @@ valid_hostname() {
 	[[ $hostname =~ ^[a-zA-Z0-9\-]+$ ]] && [[ $hostname != 'localhost' ]] && return 0 || return 1
 }
 
+verify_ip4() {
+        local ip=$1
+        # Is this an IP or CIDR?
+        if grep -qP "^[^/]+/[^/]+$" <<< $ip; then
+                # Looks like a CIDR
+                valid_ip4_cidr_mask "$ip"
+        else
+                # We know this is not a CIDR - Is it an IP?
+                valid_ip4 "$ip"
+        fi
+}
+
 valid_ip4() {
 	local ip=$1
 

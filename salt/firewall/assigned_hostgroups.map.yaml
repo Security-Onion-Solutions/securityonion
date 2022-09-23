@@ -1,7 +1,7 @@
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
-{% import_yaml 'firewall/portgroups.yaml' as portgroups %}
-{% set portgroups = portgroups.firewall.aliases.ports %}
-{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False)  %}
+{% import_yaml 'firewall/ports/ports.yaml' as portgroups %}
+{% set portgroups = portgroups.firewall.ports %}
+{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', True)  %}
 
 role:
   eval:
@@ -14,32 +14,20 @@ role:
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.sensoroni }}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -77,9 +65,6 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
   manager:
     chain:
       DOCKER-USER:
@@ -90,39 +75,24 @@ role:
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
               {% if ISAIRGAP is sameas true %}
               - {{ portgroups.agrules }}
               {% endif %}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.sensoroni }}
-              {% if ISAIRGAP is sameas true %}
-              - {{ portgroups.yum }}
-              {% endif %}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
-          heavy_node:
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
           self:
@@ -157,9 +127,6 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
   managersearch:
     chain:
       DOCKER-USER:
@@ -170,33 +137,20 @@ role:
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.sensoroni }}
-              - {{ portgroups.yum }}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -234,46 +188,53 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
   standalone:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          standalone:
             portgroups:
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.endgame }}
+              - {{ portgroups.strelka_frontend }}
+          sensors:
             portgroups:
-              - {{ portgroups.acng }}
               - {{ portgroups.docker_registry }}
               - {{ portgroups.influxdb }}
               - {{ portgroups.sensoroni }}
-              - {{ portgroups.yum }}              
-          sensor:
-            portgroups:
+              - {{ portgroups.yum }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+          heavynodes:
             portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -314,7 +275,16 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
+          standalone:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          sensors:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
             portgroups:
               - {{ portgroups.salt_manager }}
   helixsensor:
@@ -328,22 +298,13 @@ role:
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.sensoroni }}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.elasticsearch_node }}
@@ -367,9 +328,6 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
   searchnode:
     chain:
       DOCKER-USER:
@@ -386,7 +344,7 @@ role:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
           {% if TRUE_CLUSTER %}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.elasticsearch_node }}
           {% endif %}
@@ -468,15 +426,11 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.sensoroni }}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.elasticsearch_node }}
@@ -503,18 +457,14 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
-
   receiver:
     chain:
       DOCKER-USER:
         hostgroups:
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.beats_5644 }}
