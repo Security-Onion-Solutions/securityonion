@@ -30,7 +30,7 @@ rulesdir:
 synclocalnidsrules:
   file.recurse:
     - name: /opt/so/rules/nids/
-    - source: salt://idstools/
+    - source: salt://idstools/rules/
     - user: 939
     - group: 939
     - show_changes: False

@@ -131,7 +131,11 @@ filebeat.inputs:
 
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
-    {%- for LOGNAME in salt['pillar.get']('zeeklogs:enabled', '')  %}
+  {% import_yaml 'filebeat/defaults.yaml' as FBD with context %}
+
+  {% set FBCONFIG = salt['pillar.get']('filebeat:zeek_logs_enabled', default=FBD.filebeat, merge=True) %}
+
+    {%- for LOGNAME in FBCONFIG.zeek_logs_enabled %}
 - type: filestream
   id: zeek-{{ LOGNAME }}
   paths:
