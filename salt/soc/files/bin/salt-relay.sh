@@ -55,7 +55,6 @@ function manage_minion() {
 function manage_user() {
   request=$1
   op=$(echo "$request" | jq -r .operation)
-  email=$(echo "$request" | jq -r .email)
 
   case "$op" in
     add)
@@ -66,27 +65,27 @@ function manage_user() {
       lastName=$(echo "$request" | jq -r .lastName)
       note=$(echo "$request" | jq -r .note)
       log "Performing user '$op' for user '$email' with firstname '$firstName', lastname '$lastName', note '$note' and role '$role'"
-      response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role")
+      response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
       exit_code=$?
       ;;
     add|enable|disable|delete)
       email=$(echo "$request" | jq -r .email)
       log "Performing user '$op' for user '$email'"
-      response=$(so-user "$op" --email "$email")
+      response=$(so-user "$op" --email "$email" --skip-sync)
       exit_code=$?
       ;;
     addrole|delrole)
       email=$(echo "$request" | jq -r .email)
       role=$(echo "$request" | jq -r .role)
       log "Performing '$op' for user '$email' with role '$role'"
-      response=$(so-user "$op" --email "$email" --role "$role")
+      response=$(so-user "$op" --email "$email" --role "$role" --skip-sync)
       exit_code=$?
       ;;
     password)
       email=$(echo "$request" | jq -r .email)
       password=$(echo "$request" | jq -r .password)
       log "Performing '$op' operation for user '$email'"
-      response=$(echo "$password" | so-user "$op" --email "$email")
+      response=$(echo "$password" | so-user "$op" --email "$email" --skip-sync)
       exit_code=$?
       ;;
     profile)
@@ -96,6 +95,11 @@ function manage_user() {
       note=$(echo "$request" | jq -r .note)
       log "Performing '$op' update for user '$email' with firstname '$firstName', lastname '$lastName', and note '$note'"
       response=$(so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note")
+      exit_code=$?
+      ;;
+    sync)
+      log "Performing '$op'"
+      response=$(so-user "$op")
       exit_code=$?
       ;;
     *)
@@ -119,12 +123,14 @@ function manage_salt() {
 
   case "$op" in
     state)
+      log "Performing '$op' for '$state'"
       state=$(echo "$request" | jq -r .state)
-      response=$(salt-call state.apply "$state" queue=True)
+      response=$(salt '*' state.apply "$state" queue=True)
       exit_code=$?
       ;;
     highstate)
-      response=$(salt-call state.highstate queue=True)
+      log "Performing '$op'"
+      response=$(salt '*' state.highstate queue=True)
       exit_code=$?
       ;;
     *)

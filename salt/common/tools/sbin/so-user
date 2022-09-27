@@ -27,20 +27,27 @@ function usage() {
               --firstName <firstName>   (defaults to blank)"
               --lastName <lastName>     (defaults to blank)"
               --note <note>             (defaults to blank)"
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
    addrole: Grants a role to an existing user"
             Required parameters: "
               --email <email>"
               --role <role>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
    delrole: Removes a role from an existing user"
             Required parameters: "
               --email <email>"
               --role <role>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
   password: Updates a user's password and disables MFA"
             Required parameters: "
               --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
     profile: Updates a user's profile information"
             Required parameters: "
@@ -54,10 +61,14 @@ function usage() {
     enable: Enables a user"
             Required parameters: "
               --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
    disable: Disables a user"
             Required parameters: "
               --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
   
   validate: Validates that the given email address and password are acceptable"
             Required parameters: "
@@ -104,6 +115,9 @@ while [[ $# -gt 0 ]]; do
     --note) 
       note=$1
       shift
+      ;;
+    --skip-sync) 
+      SKIP_SYNC=1
       ;;
     *) 
       echo "Encountered unexpected parameter: $param"
@@ -290,6 +304,8 @@ function syncElasticSystemRole() {
 }
 
 function syncElastic() {
+  [[ -n $SKIP_SYNC ]] && return
+
   echo "Syncing users and roles between SOC and Elastic..."
 
   usersTmpFile="${elasticUsersFile}.tmp"
