@@ -69,7 +69,7 @@ add_web_user() {
 	{
 		info "Attempting to add administrator user for web interface...";
 		export SKIP_STATE_APPLY=true
-		echo "$WEBPASSWD1" | /usr/sbin/so-user add "$WEBUSER" "superuser";
+		echo "$WEBPASSWD1" | /usr/sbin/so-user add --email "$WEBUSER" --role "superuser";
 		unset SKIP_STATE_APPLY
 		info "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
@@ -550,7 +550,7 @@ collect_so_allow() {
 collect_webuser_inputs() {
 	whiptail_create_web_user
 
-	while ! so-user valemail "$WEBUSER" >> "$setup_log" 2>&1; do
+	while ! so-user valemail --email "$WEBUSER" >> "$setup_log" 2>&1; do
 		whiptail_invalid_user_warning
 		whiptail_create_web_user "$WEBUSER"
 	done
