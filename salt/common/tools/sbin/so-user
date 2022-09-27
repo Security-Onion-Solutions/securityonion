@@ -370,9 +370,9 @@ function syncElastic() {
     mv "${rolesTmpFile}" "${elasticRolesFile}"
 
     if [[ -z "$SKIP_STATE_APPLY" ]]; then
-      echo "Elastic state will be re-applied to affected minions. This may take several minutes..."
+      echo "Elastic state will be re-applied to affected minions. This will run in the background and may take several minutes to complete."
       echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
-      salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-searchnode or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+      salt --async -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-searchnode or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
     fi
   else
     echo "Newly generated users/roles files are incomplete; aborting."

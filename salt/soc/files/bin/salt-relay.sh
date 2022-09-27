@@ -120,17 +120,21 @@ function manage_user() {
 function manage_salt() {
   request=$1
   op=$(echo "$request" | jq -r .operation)
+  minion=$(echo "$request" | jq -r .minion)
+  if [[ -s $minion ]]; then
+    minion=$(cat /etc/salt/minion | grep "id:" | awk '{print $2}')
+  fi
 
   case "$op" in
     state)
-      log "Performing '$op' for '$state'"
+      log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$(salt '*' state.apply "$state" queue=True)
+      response=$(salt --async $minion state.apply "$state" queue=True)
       exit_code=$?
       ;;
     highstate)
-      log "Performing '$op'"
-      response=$(salt '*' state.highstate queue=True)
+      log "Performing '$op' on minion '$minion'"
+      response=$(salt --async $minion state.highstate queue=True)
       exit_code=$?
       ;;
     *)
