@@ -10,7 +10,7 @@ soc:
     - name: actionCorrelate
       description: actionCorrelateHelp
       icon: fab fa-searchengin
-      target:
+      target: ''
       links:
         - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module event.dataset'
         - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module event.dataset'
@@ -22,13 +22,14 @@ soc:
     - name: actionPcap
       description: actionPcapHelp
       icon: fa-stream
-      target:
+      target: ''
       links:
         - '/joblookup?esid={:soc_id}&time={:@timestamp}'
         - '/joblookup?ncid={:network.community_id}&time={:@timestamp}'
       categories:
         - hunt
         - alerts
+        - dashboards
     - name: actionCyberChef
       description: actionCyberChefHelp
       icon: fas fa-bread-slice
@@ -143,6 +144,7 @@ soc:
           link: /navigator/
       hunt:
         advanced: true
+        aggregationActionsEnabled: true
         groupItemsPerPage: 10
         groupFetchLimit: 10
         eventItemsPerPage: 10
@@ -699,7 +701,7 @@ soc:
             - process.executable
             - process.pid
             - winlog.computer_name
-        queryBaseFilter:
+        queryBaseFilter: ''
         queryToggleFilters:
           - name: caseExcludeToggle
             filter: 'NOT _index:"*:so-case*"'
@@ -708,198 +710,263 @@ soc:
           - name: Default Query
             description: Show all events grouped by the origin host
             query: '* | groupby observer.name'
+            showSubtitle: true
           - name: Log Type
             description: Show all events grouped by module and dataset
             query: '* | groupby event.module event.dataset'
+            showSubtitle: true
           - name: SOC Auth
             description: Users authenticated to SOC grouped by IP address and identity
             query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby http_request.headers.x-real-ip identity_id'
+            showSubtitle: true
           - name: Elastalerts
             description: ''
             query: '_type:elastalert | groupby rule.name'
+            showSubtitle: true
           - name: Alerts
             description: Show all alerts grouped by alert source
             query: 'event.dataset: alert | groupby event.module'
+            showSubtitle: true
           - name: NIDS Alerts
             description: Show all NIDS alerts grouped by alert
             query: 'event.category: network AND event.dataset: alert | groupby rule.category rule.gid rule.uuid rule.name'
+            showSubtitle: true
           - name: Osquery - Live Query
             description: Show all Osquery Live Query results
             query: 'event.dataset: osquery_manager.result | groupby action_data.id action_data.query | groupby host.hostname'
+            showSubtitle: true
           - name: Wazuh/OSSEC Alerts
             description: Show all Wazuh alerts at Level 5 or higher grouped by category
             query: 'event.module:ossec AND event.dataset:alert AND rule.level:>4 | groupby rule.category rule.name'
+            showSubtitle: true
           - name: Wazuh/OSSEC Alerts
             description: Show all Wazuh alerts at Level 4 or lower grouped by category
             query: 'event.module:ossec AND event.dataset:alert AND rule.level:<5 | groupby rule.category rule.name'
+            showSubtitle: true
           - name: Wazuh/OSSEC Users and Commands
             description: Show all Wazuh alerts grouped by username and command line
             query: 'event.module:ossec AND event.dataset:alert | groupby user.escalated.keyword process.command_line'
+            showSubtitle: true
           - name: Wazuh/OSSEC Processes
             description: Show all Wazuh alerts grouped by process name
             query: 'event.module:ossec AND event.dataset:alert | groupby process.name'
+            showSubtitle: true
           - name: Sysmon Events
             description: Show all Sysmon logs grouped by event type
             query: 'event.module:sysmon | groupby event.dataset'
+            showSubtitle: true
           - name: Sysmon Usernames
             description: Show all Sysmon logs grouped by username
             query: 'event.module:sysmon | groupby event.dataset, user.name.keyword'
+            showSubtitle: true
           - name: Strelka
             description: Show all Strelka logs grouped by file type
             query: 'event.module:strelka | groupby file.mime_type'
+            showSubtitle: true
           - name: Zeek Notice
             description: Show notices from Zeek
             query: 'event.dataset:notice | groupby notice.note notice.message'
+            showSubtitle: true
           - name: Connections
             description: Connections grouped by IP and Port
             query: 'event.dataset:conn | groupby source.ip destination.ip network.protocol destination.port'
+            showSubtitle: true
           - name: Connections
             description: Connections grouped by Service
             query: 'event.dataset:conn | groupby network.protocol destination.port'
+            showSubtitle: true
           - name: Connections
             description: Connections grouped by destination country
             query: 'event.dataset:conn | groupby destination.geo.country_name'
+            showSubtitle: true
           - name: Connections
             description: Connections grouped by source country
             query: 'event.dataset:conn | groupby source.geo.country_name'
+            showSubtitle: true
           - name: DCE_RPC
             description: DCE_RPC grouped by operation
             query: 'event.dataset:dce_rpc | groupby dce_rpc.operation'
+            showSubtitle: true
           - name: DHCP
             description: DHCP leases
             query: 'event.dataset:dhcp | groupby host.hostname client.address'
+            showSubtitle: true
           - name: DHCP
             description: DHCP grouped by message type
             query: 'event.dataset:dhcp | groupby dhcp.message_types'
+            showSubtitle: true
           - name: DNP3
             description: DNP3 grouped by reply
             query: 'event.dataset:dnp3 | groupby dnp3.fc_reply'
+            showSubtitle: true
           - name: DNS
             description: DNS queries grouped by port
             query: 'event.dataset:dns | groupby dns.query.name destination.port'
+            showSubtitle: true
           - name: DNS
             description: DNS queries grouped by type
             query: 'event.dataset:dns | groupby dns.query.type_name destination.port'
+            showSubtitle: true
           - name: DNS
             description: DNS queries grouped by response code
             query: 'event.dataset:dns | groupby dns.response.code_name destination.port'
+            showSubtitle: true
           - name: DNS
             description: DNS highest registered domain
             query: 'event.dataset:dns | groupby dns.highest_registered_domain.keyword destination.port'
+            showSubtitle: true
           - name: DNS
             description: DNS grouped by parent domain
             query: 'event.dataset:dns | groupby dns.parent_domain.keyword destination.port'
+            showSubtitle: true
           - name: DPD
             description: Dynamic Protocol Detection errors
             query: 'event.dataset:dpd | groupby error.reason'
+            showSubtitle: true
           - name: Files
             description: Files grouped by mimetype
             query: 'event.dataset:file | groupby file.mime_type source.ip'
+            showSubtitle: true
           - name: Files
             description: Files grouped by source
             query: 'event.dataset:file | groupby file.source source.ip'
+            showSubtitle: true
           - name: FTP
             description: FTP grouped by command and argument
             query: 'event.dataset:ftp | groupby ftp.command ftp.argument'
+            showSubtitle: true
           - name: FTP
             description: FTP grouped by username and argument
             query: 'event.dataset:ftp | groupby ftp.user ftp.argument'
+            showSubtitle: true
           - name: HTTP
             description: HTTP grouped by destination port
             query: 'event.dataset:http | groupby destination.port'
+            showSubtitle: true
           - name: HTTP
             description: HTTP grouped by status code and message
             query: 'event.dataset:http | groupby http.status_code http.status_message'
+            showSubtitle: true
           - name: HTTP
             description: HTTP grouped by method and user agent
             query: 'event.dataset:http | groupby http.method http.useragent'
+            showSubtitle: true
           - name: HTTP
             description: HTTP grouped by virtual host
             query: 'event.dataset:http | groupby http.virtual_host'
+            showSubtitle: true
           - name: HTTP
             description: HTTP with exe downloads
             query: 'event.dataset:http AND (file.resp_mime_types:dosexec OR file.resp_mime_types:executable) | groupby http.virtual_host'
+            showSubtitle: true
           - name: Intel
             description: Intel framework hits grouped by indicator
             query: 'event.dataset:intel | groupby intel.indicator.keyword'
+            showSubtitle: true
           - name: IRC
             description: IRC grouped by command
             query: 'event.dataset:irc | groupby irc.command.type'
+            showSubtitle: true
           - name: KERBEROS
             description: KERBEROS grouped by service
             query: 'event.dataset:kerberos | groupby kerberos.service'
+            showSubtitle: true
           - name: MODBUS
             description: MODBUS grouped by function
             query: 'event.dataset:modbus | groupby modbus.function'
+            showSubtitle: true
           - name: MYSQL
             description: MYSQL grouped by command
             query: 'event.dataset:mysql | groupby mysql.command'
+            showSubtitle: true
           - name: NOTICE
             description: Zeek notice logs grouped by note and message
             query: 'event.dataset:notice | groupby notice.note notice.message'
+            showSubtitle: true
           - name: NTLM
             description: NTLM grouped by computer name
             query: 'event.dataset:ntlm | groupby ntlm.server.dns.name'
+            showSubtitle: true
           - name: PE
             description: PE files list
             query: 'event.dataset:pe | groupby file.machine file.os file.subsystem'
+            showSubtitle: true
           - name: RADIUS
             description: RADIUS grouped by username
             query: 'event.dataset:radius | groupby user.name.keyword'
+            showSubtitle: true
           - name: RDP
             description: RDP grouped by client name
             query: 'event.dataset:rdp | groupby client.name'
+            showSubtitle: true
           - name: RFB
             description: RFB grouped by desktop name
             query: 'event.dataset:rfb | groupby rfb.desktop.name.keyword'
+            showSubtitle: true
           - name: Signatures
             description: Zeek signatures grouped by signature id
             query: 'event.dataset:signatures | groupby signature_id'
+            showSubtitle: true
           - name: SIP
             description: SIP grouped by user agent
             query: 'event.dataset:sip | groupby client.user_agent'
+            showSubtitle: true
           - name: SMB_Files
             description: SMB files grouped by action
             query: 'event.dataset:smb_files | groupby file.action'
+            showSubtitle: true
           - name: SMB_Mapping
             description: SMB mapping grouped by path
             query: 'event.dataset:smb_mapping | groupby smb.path'
+            showSubtitle: true
           - name: SMTP
             description: SMTP grouped by subject
             query: 'event.dataset:smtp | groupby smtp.subject'
+            showSubtitle: true
           - name: SNMP
             description: SNMP grouped by version and string
             query: 'event.dataset:snmp | groupby snmp.community snmp.version'
+            showSubtitle: true
           - name: Software
             description: List of software seen on the network
             query: 'event.dataset:software | groupby software.type software.name'
+            showSubtitle: true
           - name: SSH
             description: SSH grouped by version and client
             query: 'event.dataset:ssh | groupby ssh.version ssh.client'
+            showSubtitle: true
           - name: SSL
             description: SSL grouped by version and server name
             query: 'event.dataset:ssl | groupby ssl.version ssl.server_name'
+            showSubtitle: true
           - name: SYSLOG
             description: 'SYSLOG grouped by severity and facility '
             query: 'event.dataset:syslog | groupby syslog.severity_label syslog.facility_label'
+            showSubtitle: true
           - name: Tunnel
             description: Tunnels grouped by type and action
             query: 'event.dataset:tunnel | groupby tunnel.type event.action'
+            showSubtitle: true
           - name: Weird
             description: Zeek weird log grouped by name
             query: 'event.dataset:weird | groupby weird.name'
+            showSubtitle: true
           - name: x509
             description: x.509 grouped by key length and name
             query: 'event.dataset:x509 | groupby x509.certificate.key.length x509.san_dns'
+            showSubtitle: true
           - name: x509
             description: x.509 grouped by name and issuer
             query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.issuer'
+            showSubtitle: true
           - name: x509
             description: x.509 grouped by name and subject
             query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.subject'
+            showSubtitle: true
           - name: Firewall
             description: Firewall events grouped by action
             query: 'event.dataset:firewall | groupby rule.action'
+            showSubtitle: true
       dashboards:
         advanced: true
         groupItemsPerPage: 10
@@ -1459,7 +1526,7 @@ soc:
             - process.executable
             - process.pid
             - winlog.computer_name
-        queryBaseFilter:
+        queryBaseFilter: ''
         queryToggleFilters:
           - name: caseExcludeToggle
             filter: 'NOT _index:"*:so-case*"'
@@ -1607,7 +1674,8 @@ soc:
         ackEnabled: true
         escalateEnabled: true
         escalateRelatedEventsEnabled: true
-        eventfields:
+        aggregationActionsEnabled: true
+        eventFields:
           default:
             - soc_timestamp
             - rule.name
@@ -1664,6 +1732,7 @@ soc:
             query: '*'
       cases:
         advanced: false
+        aggregationActionsEnabled: false
         groupItemsPerPage: 50
         groupFetchLimit: 100
         eventItemsPerPage: 50
@@ -1698,6 +1767,7 @@ soc:
           - name: Templates
             query: 'so_case.category:template'
       case:
+        analyzerNodeId: 
         mostRecentlyUsedLimit: 5
         renderAbbreviatedCount: 30
         presets:
@@ -1752,8 +1822,9 @@ soc:
             customEnabled: true
           tlp:
             labels:
-                - white
+                - clear
                 - green
                 - amber
+                - amber+strict
                 - red
             customEnabled: false
