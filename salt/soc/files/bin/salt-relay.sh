@@ -109,7 +109,7 @@ function manage_user() {
   esac
 
   if [[ exit_code -eq 0 ]]; then
-    log "Successful command execution"
+    log "Successful command execution: $response"
     $(echo "true" > "${SOC_PIPE}")
   else
     log "Unsuccessful command execution: $response ($exit_code)"
@@ -150,7 +150,7 @@ function manage_salt() {
   esac
 
   if [[ exit_code -eq 0 ]]; then
-    log "Successful command execution"
+    log "Successful command execution: $response"
     $(echo "true" > "${SOC_PIPE}")
   else
     log "Unsuccessful command execution: $response ($exit_code)"
