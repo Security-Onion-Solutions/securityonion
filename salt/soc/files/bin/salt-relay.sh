@@ -121,7 +121,7 @@ function manage_salt() {
   request=$1
   op=$(echo "$request" | jq -r .operation)
   minion=$(echo "$request" | jq -r .minion)
-  if [[ -s $minion ]]; then
+  if [[ -s $minion || "$minion" == "null" ]]; then
     minion=$(cat /etc/salt/minion | grep "id:" | awk '{print $2}')
   fi
 
@@ -136,6 +136,12 @@ function manage_salt() {
       log "Performing '$op' on minion '$minion'"
       response=$(salt --async $minion state.highstate queue=True)
       exit_code=$?
+      ;;
+    activejobs)
+      log "Querying active salt jobs"
+      response=$(salt-run jobs.active -out json -l quiet)
+      $(echo "$response" > "${SOC_PIPE}")
+      return
       ;;
     *)
       response="Unsupported salt operation: $op"
