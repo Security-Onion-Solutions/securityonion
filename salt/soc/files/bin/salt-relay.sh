@@ -122,19 +122,19 @@ function manage_salt() {
   op=$(echo "$request" | jq -r .operation)
   minion=$(echo "$request" | jq -r .minion)
   if [[ -s $minion || "$minion" == "null" ]]; then
-    minion=$(cat /etc/salt/minion | grep "id:" | awk '{print $2}')
+    minion=$(cat /etc/salt/minion | grep "id:" | awk '{print $2}' | sed "s/'//g")
   fi
 
   case "$op" in
     state)
       log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$(salt --async $minion state.apply "$state" queue=True)
+      response=$(salt --async "$minion" state.apply "$state" queue=True)
       exit_code=$?
       ;;
     highstate)
-      log "Performing '$op' on minion '$minion'"
-      response=$(salt --async $minion state.highstate queue=True)
+      log "Performing '$op' on minion $minion"
+      response=$(salt --async "$minion" state.highstate queue=True)
       exit_code=$?
       ;;
     activejobs)
