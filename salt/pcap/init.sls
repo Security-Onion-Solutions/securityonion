@@ -6,12 +6,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "pcap/map.jinja" import STENOOPTIONS with context %}
 {% from "pcap/config.map.jinja" import PCAPMERGED with context %}
-
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
 {% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
 {% set BPF_STENO = salt['pillar.get']('bpf:pcap', None) %}
 {% set BPF_COMPILED = "" %}
@@ -106,7 +103,7 @@ stenolog:
 so-steno:
   docker_container.{{ STENOOPTIONS.status }}:
   {% if STENOOPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-steno:{{ GLOBALS.so_version }}
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
     - privileged: True

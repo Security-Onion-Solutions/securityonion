@@ -81,7 +81,7 @@ navigatorenterpriseattack:
 
 so-nginx:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
     - hostname: so-nginx
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro

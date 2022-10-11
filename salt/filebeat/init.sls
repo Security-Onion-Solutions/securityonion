@@ -5,10 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set LOCALHOSTNAME = salt['grains.get']('host') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
 {% from 'filebeat/modules.map.jinja' import MODULESENABLED with context %}
 {% from 'filebeat/map.jinja' import FILEBEAT_EXTRA_HOSTS with context %}
@@ -97,7 +94,7 @@ thirdyparty_module_conf_remove:
     
 so-filebeat:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-filebeat:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-filebeat:{{ GLOBALS.so_version }}
     - hostname: so-filebeat
     - user: root
     - extra_hosts: {{ FILEBEAT_EXTRA_HOSTS }}

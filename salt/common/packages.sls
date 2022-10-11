@@ -1,4 +1,6 @@
-{% if grains['os'] != 'CentOS' %}     
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+{% if GLOBALS.os != 'CentOS' %}     
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -23,8 +25,6 @@ commonpkgs:
       - git
       - vim-enhanced
       - python3-docker
-
-
 {% else %}
 commonpkgs:
   pkg.installed:
@@ -57,5 +57,4 @@ commonpkgs:
       - git
       - vim-enhanced
       - yum-plugin-versionlock
-
 {% endif %}

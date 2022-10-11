@@ -5,18 +5,12 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MAININT = salt['pillar.get']('host:mainint') %}
-{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', False) %}
 
 include:
   - idh.openssh.config
   - firewall
-
 
 # If True, block IDH Services from accepting connections on Managment IP
 {% if RESTRICTIDHSERVICES %}
@@ -37,7 +31,7 @@ block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'.port'] }} :
     - position: 1
     - proto:  {{ proto }}
     - dport: {{ OPENCANARYCONFIG[service~'.port'] }}
-    - destination: {{ MAINIP }}
+    - destination: {{ GLOBALS.node_ip }}
   {% endfor %}
 {% endif %}
 
@@ -68,7 +62,7 @@ opencanary_config:
 
 so-idh:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idh:{{ VERSION }}
+    - image: {{ GLOBALS.manger }}:5000/{{ GLOBALS.image_repo }}/so-idh:{{ GLOBALS.so_version }}
     - name: so-idh
     - detach: True
     - network_mode: host

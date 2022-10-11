@@ -1,9 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - ssl
@@ -37,7 +35,7 @@ tgrafsyncscripts:
     - file_mode: 770
     - template: jinja
     - source: salt://telegraf/scripts
-{% if salt['pillar.get']('global:mdengine', 'ZEEK') == 'SURICATA' %}
+{% if GLOBALS.md_engine == 'SURICATA' %}
     - exclude_pat: zeekcaptureloss.sh
 {% endif %}
 
@@ -50,6 +48,8 @@ tgrafconf:
     - template: jinja
     - source: salt://telegraf/etc/telegraf.conf
     - show_changes: False
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # this file will be read by telegraf to send node details (management interface, monitor interface, etc)
 # into influx so that Grafana can build dashboards using queries
@@ -61,7 +61,7 @@ node_config:
 
 so-telegraf:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-telegraf:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-telegraf:{{ GLOBALS.so_version }}
     - user: 939
     - group_add: 939,920
     - environment:

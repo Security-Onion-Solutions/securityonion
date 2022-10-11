@@ -1,6 +1,4 @@
 #!/bin/bash
-{% set ES = salt['pillar.get']('manager:mainip', '') %}
-{% set MANAGER = salt['grains.get']('master') %}
 
 ELASTICSEARCH_PORT=9200
 
@@ -32,5 +30,5 @@ fi
 CLUSTER_SETTINGS=$(so-elasticsearch-query _cluster/settings | jq .persistent.cluster.remote)
 if [[ ! -z "$CLUSTER_SETTINGS" ]]; then
   echo "Applying cross cluster search config..."
-  so-elasticsearch-query _cluster/settings -d "{\"persistent\": {\"cluster\": {\"remote\": {\"{{ MANAGER }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}" -XPUT
+  so-elasticsearch-query _cluster/settings -d "{\"persistent\": {\"cluster\": {\"remote\": {\"{{ GLOBALS.manager }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}" -XPUT
 fi

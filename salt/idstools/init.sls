@@ -2,10 +2,9 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
-{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set proxy = salt['pillar.get']('manager:proxy') %}
 
 include:
@@ -29,7 +28,7 @@ so-ruleupdatecron:
 
 so-idstools:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-idstools:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-idstools:{{ GLOBALS.so_version }}
     - hostname: so-idstools
     - user: socore
     {% if proxy %}

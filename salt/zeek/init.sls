@@ -198,7 +198,7 @@ localzeek:
 so-zeek:
   docker_container.{{ ZEEKOPTIONS.status }}:
   {% if ZEEKOPTIONS.status == 'running' %}
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: {{ ZEEKOPTIONS.start }}
     - privileged: True
     - ulimits:

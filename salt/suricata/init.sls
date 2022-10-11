@@ -6,12 +6,10 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states and grains.role not in ['so-manager', 'so-managersearch'] %}
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "suricata/map.jinja" import SURICATAOPTIONS with context %}
 
-{% set interface = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% set interface = salt['pillar.get']('sensor:interface') %}
 {% set BPF_NIDS = salt['pillar.get']('bpf:suricata', None) %}
 {% set BPF_STATUS = 0  %}
 
@@ -131,7 +129,7 @@ suribpf:
 so-suricata:
   docker_container.{{ SURICATAOPTIONS.status }}:
   {% if SURICATAOPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-suricata:{{ GLOBALS.so_version }}
     - start: {{ SURICATAOPTIONS.start }}
     - privileged: True
     - environment:
@@ -177,8 +175,9 @@ delete_so-suricata_so-status.disabled:
     - regex: ^so-suricata$
   {% endif %}
 
-/usr/local/bin/surirotate:
+surirotate:
   cron.absent:
+    - name: /usr/local/bin/surirotate
     - user: root
     - minute: '11'
     - hour: '*'

@@ -9,13 +9,12 @@
 include:
   - ssl
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 {% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
 {% from 'logstash/map.jinja' import REDIS_NODES with context %}
-
-{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 vm.max_map_count:
   sysctl.present:
@@ -51,6 +50,8 @@ es_sync_scripts:
     - source: salt://elasticsearch/tools/sbin
     - exclude_pat:
         - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 so-elasticsearch-pipelines-script:
   file.managed:
@@ -59,7 +60,6 @@ so-elasticsearch-pipelines-script:
     - user: 930
     - group: 939
     - mode: 754
-    - template: jinja
 
 # Move our new CA over so Elastic and Logstash can use SSL with the internal CA
 catrustdir:
@@ -283,7 +283,7 @@ auth_users_roles_inode:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch

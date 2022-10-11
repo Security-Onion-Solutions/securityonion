@@ -1,3 +1,4 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
 {% from 'logstash/map.jinja' import REDIS_NODES with context %}
 
@@ -9,7 +10,7 @@
     {% if HIGHLANDER %}
         {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'transform']) %}
     {% endif %}
-    {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
+    {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
     {% for SN in REDIS_NODES.keys() %}
       {% do ESCONFIG.elasticsearch.config.discovery.seed_hosts.append(SN) %}
     {% endfor %}
@@ -23,15 +24,15 @@
         {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
   {% endif %}
   {% do ESCONFIG.elasticsearch.config.node.attr.update({'box_type': 'hot'}) %}
-  {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [grains.master]}}) %}
+  {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
 {% endif %}
 {% if HIGHLANDER %}
       {% do ESCONFIG.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
 {% endif %}
 
-{% do ESCONFIG.elasticsearch.config.node.update({'name': grains.host}) %}
-{% do ESCONFIG.elasticsearch.config.cluster.update({'name': grains.host}) %}
-{% do ESCONFIG.elasticsearch.config.transport.update({'publish_host': grains.host}) %}
+{% do ESCONFIG.elasticsearch.config.node.update({'name': GLOBALS.hostname}) %}
+{% do ESCONFIG.elasticsearch.config.cluster.update({'name': GLOBALS.hostname}) %}
+{% do ESCONFIG.elasticsearch.config.transport.update({'publish_host': GLOBALS.hostname}) %}
 
 {# merge with the elasticsearch pillar #}
 {% set ESCONFIG = salt['pillar.get']('elasticsearch:config', default=ESCONFIG.elasticsearch.config, merge=True) %}
