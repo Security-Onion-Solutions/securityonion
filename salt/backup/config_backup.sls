@@ -14,7 +14,7 @@ config_backup_script:
     - name: /usr/sbin/so-config-backup
     - user: root
     - group: root
-    - file_mode: 755
+    - mode: 755
     - template: jinja
     - source: salt://backup/tools/sbin/so-config-backup.jinja
     - defaults:
