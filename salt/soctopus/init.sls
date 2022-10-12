@@ -20,6 +20,8 @@ soctopus-sync:
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 soctopusconf:
   file.managed:

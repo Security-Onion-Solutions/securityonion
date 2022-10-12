@@ -30,6 +30,8 @@ cascriptsync:
     - group: 939
     - mode: 750
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # Run the CA magic
 cascriptfun:
