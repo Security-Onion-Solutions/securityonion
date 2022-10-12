@@ -16,7 +16,7 @@ config_backup_script:
     - group: root
     - file_mode: 755
     - template: jinja
-    - source: salt://backup/tools/sbin
+    - source: salt://backup/tools/sbin/so-config-backup.jinja
     - defaults:
         BACKUPLOCATIONS: {{ BACKUP_MERGED.locations }}
   

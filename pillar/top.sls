@@ -43,6 +43,8 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - backup.soc_backup
+    - backup.adv_backup
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -67,6 +69,8 @@ base:
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
+    - backup.soc_backup
+    - backup.adv_backup
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -89,6 +93,8 @@ base:
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
+    - backup.soc_backup
+    - backup.adv_backup
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -140,6 +146,8 @@ base:
     - soc_global
     - adv_global
     - manager.soc_manager
+    - backup.soc_backup
+    - backup.adv_backup
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
