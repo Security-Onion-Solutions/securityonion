@@ -1,14 +1,14 @@
 {% import 'vars/init.map.jinja' as INIT %}
 
 {%
-
   set ELASTICSEARCH_GLOBALS = {
     'elasticsearch': {
-      'auth': INIT.PILLAR.elasticsearch.auth,
       'es_cluster_name': INIT.PILLAR.elasticsearch.config.cluster.name,
       'es_heap': INIT.PILLAR.elasticsearch.esheap
     }
   }
-
-
 %}
+
+{% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
+{%   do ELASTICSEARCH_GLOBALS.elasticsearch.append({'auth': PILLAR.elasticsearch.auth}) %}
+{% endif %}
