@@ -62,7 +62,7 @@ opencanary_config:
 
 so-idh:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-idh:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-idh:{{ GLOBALS.so_version }}
     - name: so-idh
     - detach: True
     - network_mode: host
