@@ -1,4 +1,6 @@
-{% if grains['os'] != 'CentOS' %}    
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+{% if GLOBALS.os != 'CentOS' %}    
 saltpymodules:
   pkg.installed:
     - pkgs:
@@ -17,7 +19,7 @@ salt_bootstrap:
     - source: salt://salt/scripts/bootstrap-salt.sh
     - mode: 755
 
-{% if grains.os == 'CentOS'  %}
+{% if GLOBALS.os == 'CentOS'  %}
 remove_salt-2019-2-5.repo:
   file.absent:
     - name: /etc/yum.repos.d/salt-2019-2-5.repo

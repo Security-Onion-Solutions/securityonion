@@ -1,3 +1,4 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
@@ -96,8 +97,10 @@ salt_minion_service_unit_file:
 mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
-    - source: salt://salt/etc/minion.d/mine_functions.conf
+    - source: salt://salt/etc/minion.d/mine_functions.conf.jinja
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:

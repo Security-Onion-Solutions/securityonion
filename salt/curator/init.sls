@@ -6,12 +6,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
-
+{% from "curator/map.jinja" import CURATOROPTIONS %}
 {% set REMOVECURATORCRON = False %}
 
-{% if grains['role'] in ['so-eval', 'so-managersearch', 'so-heavynode', 'so-standalone', 'so-manager'] %}
-  {% from "curator/map.jinja" import CURATOROPTIONS with context %}
 # Curator
 # Create the group
 curatorgroup:
@@ -122,7 +119,7 @@ curclustercwarm:
 
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-curator:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-curator:{{ GLOBALS.so_version }}
     - start: {{ CURATOROPTIONS.start }}
     - hostname: curator
     - name: so-curator
@@ -167,8 +164,6 @@ so-curatorclusterwarm:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
-  
-{% endif %}
 
 {% else %}
 

@@ -5,10 +5,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-{%- set VERSION = salt['pillar.get']('global:soversion', '') %}
-{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{%- set MANAGER = salt['grains.get']('master') %}
 . /usr/sbin/so-common
 
 # Exit on errors, since all lines must succeed
@@ -16,7 +12,7 @@ set -e
 
 # Check to see if we have extracted the ca cert.
 if [ ! -f /opt/so/saltstack/local/salt/common/cacerts ]; then
-    docker run -v /etc/pki/ca.crt:/etc/ssl/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }} -keystore /usr/share/elasticsearch/jdk/lib/security/cacerts -alias SOSCA -import -file /etc/ssl/ca.crt -storepass changeit -noprompt
+    docker run -v /etc/pki/ca.crt:/etc/ssl/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }} -keystore /usr/share/elasticsearch/jdk/lib/security/cacerts -alias SOSCA -import -file /etc/ssl/ca.crt -storepass changeit -noprompt
     docker cp so-elasticsearchca:/usr/share/elasticsearch/jdk/lib/security/cacerts /opt/so/saltstack/local/salt/common/cacerts
     docker cp so-elasticsearchca:/etc/ssl/certs/ca-certificates.crt /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
     docker rm so-elasticsearchca

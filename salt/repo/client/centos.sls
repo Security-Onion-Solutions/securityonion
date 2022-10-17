@@ -3,12 +3,11 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'repo/client/map.jinja' import ABSENTFILES with context %}
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
-{% set role = grains.id.split('_') | last %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% if grains['os'] == 'CentOS' %}
+
+{% if GLOBALS.os == 'CentOS' %}
 
 {% if ABSENTFILES|length > 0%}
   {% for file in ABSENTFILES  %}
@@ -46,7 +45,7 @@ crsynckeys:
     - source: salt://repo/client/files/centos/keys/
 
 
-  {% if role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] %}
+  {% if GLOBALS.role in GLOBALS.manager_roles %}
 so_repo:
   pkgrepo.managed:
     - name: securityonion
@@ -60,7 +59,7 @@ so_repo:
   pkgrepo.managed:
     - name: securityonion
     - humanname: Security Onion Repo
-    - baseurl: https://{{ MANAGER }}/repo
+    - baseurl: https://{{ GLOBALS.manager }}/repo
     - enabled: 1
     - gpgcheck: 1 
 

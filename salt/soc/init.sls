@@ -1,9 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - manager.sync_es_users
@@ -91,7 +89,7 @@ salt-relay:
 
 so-soc:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - hostname: soc
     - name: so-soc
     - binds:

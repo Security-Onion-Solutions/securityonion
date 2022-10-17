@@ -1,14 +1,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 so-tcpreplay:
   docker_container.running:
     - network_mode: "host"
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-tcpreplay:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-tcpreplay:{{ GLOBALS.so_version }}
     - name: so-tcpreplay
     - user: root
     - interactive: True

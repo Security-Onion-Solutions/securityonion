@@ -42,6 +42,8 @@ kratossync:
     - group: 928
     - file_mode: 600
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 kratos_schema:
   file.exists:

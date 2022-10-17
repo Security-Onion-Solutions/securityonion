@@ -41,7 +41,7 @@ analyzerscripts:
 
 so-sensoroni:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - network_mode: host
     - binds:
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw

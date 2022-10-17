@@ -64,6 +64,10 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
       {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
     - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
+        ES_USER: {{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') }}
+        ES_PASS: {{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') }}
       {% else %}
     - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1]}}
       {% endif %}
@@ -132,7 +136,7 @@ lslogdir:
 
 so-logstash:
   docker_container.running:
-    - image: {{ GLOBALS.manager }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
     - hostname: so-logstash
     - name: so-logstash
     - user: logstash

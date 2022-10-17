@@ -1,8 +1,6 @@
-{% set role = grains.role %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set REDIS_NODES = [] %}
-{% set mainint = salt['pillar.get']('host:mainint') %}
-{% set localhostip = salt['grains.get']('ip_interfaces').get(mainint)[0] %}
-{% if role in ['so-searchnode', 'so-standalone', 'so-managersearch'] %}
+{% if GLOBALS.role in ['so-searchnode', 'so-standalone', 'so-managersearch'] %}
   {% set node_data = salt['pillar.get']('logstash:nodes') %}
   {% for node_type, node_details in node_data.items() | sort %}
     {% if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
@@ -12,5 +10,5 @@
     {% endif %}
   {% endfor %}
 {% else %}
-  {% do REDIS_NODES.append({grains.host:localhostip}) %}
+  {% do REDIS_NODES.append({GLOBALS.hostname:GLOBALS.node_ip}) %}
 {% endif %}

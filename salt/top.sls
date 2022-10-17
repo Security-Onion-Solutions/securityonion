@@ -74,6 +74,7 @@ base:
     - registry
     - sensoroni
     - manager
+    - backup.config_backup
     - nginx
     - telegraf
     - influxdb
@@ -131,6 +132,7 @@ base:
     - kratos
     - firewall
     - manager
+    - backup.config_backup
     - idstools
     - suricata.manager
     - mysql
@@ -153,7 +155,6 @@ base:
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
-    - curator
     - utility
     - schedule
     - soctopus
@@ -169,6 +170,7 @@ base:
     - registry
     - sensoroni
     - manager
+    - backup.config_backup
     - nginx
     - telegraf
     - influxdb
@@ -228,7 +230,6 @@ base:
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
-    - curator
     {%- if FILEBEAT %}
     - filebeat
     {%- endif %}
@@ -251,6 +252,7 @@ base:
     - kratos
     - firewall
     - manager
+    - backup.config_backup
     - idstools
     - suricata.manager
     - mysql

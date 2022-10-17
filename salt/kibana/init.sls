@@ -75,6 +75,8 @@ kibanabin:
     - source: salt://kibana/bin/so-kibana-config-load
     - mode: 755
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # Start the kibana docker
 so-kibana:

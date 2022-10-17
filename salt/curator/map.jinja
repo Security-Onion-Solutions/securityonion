@@ -1,10 +1,9 @@
 {% set CURATOROPTIONS = {} %}
 {% set ENABLED = salt['pillar.get']('curator:enabled', True) %}
-{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
 {% do CURATOROPTIONS.update({'manage_sostatus': True}) %}
 
 # don't start the docker container if curator is disabled via pillar
-{% if not ENABLED or (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}
+{% if not ENABLED %}
   {% do CURATOROPTIONS.update({'start': False}) %}
   {% do CURATOROPTIONS.update({'status': 'absent'}) %}
   {% if (TRUECLUSTER and grains.id.split('_')|last == 'searchnode') or (not TRUECLUSTER and grains.id.split('_')|last == 'manager') %}

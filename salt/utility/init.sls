@@ -8,6 +8,8 @@ fixsearch:
     - cwd: /opt/so
     - source: salt://utility/bin/eval
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
   {% endif %}
 
 {% else %}

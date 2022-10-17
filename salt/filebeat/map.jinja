@@ -1,7 +1,6 @@
-{% set role = grains.role %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% set role = GLOBALS.role %}
 {% set FILEBEAT_EXTRA_HOSTS = [] %}
-{% set mainint = salt['pillar.get']('host:mainint') %}
-{% set localhostip = salt['grains.get']('ip_interfaces').get(mainint)[0] %}
 {% if role in ['so-sensor', 'so-fleet', 'so-searchnode', 'so-idh'] %}
   {% set node_data = salt['pillar.get']('logstash:nodes') %}
   {% for node_type, node_details in node_data.items() | sort %}
@@ -13,4 +12,4 @@
   {% endfor %}
 {% endif %}
 
-{% do FILEBEAT_EXTRA_HOSTS.append({grains.host:localhostip}) %}
+{% do FILEBEAT_EXTRA_HOSTS.append({GLOBALS.hostname:GLOBALS.node_ip}) %}

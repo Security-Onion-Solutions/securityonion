@@ -6,12 +6,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-{% set VERSION = salt['pillar.get']('global:soversion') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
-{% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
 {% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
 {% set IGNORELIST = salt['pillar.get']('strelka:ignore', strelka_config.strelka.ignore, merge=True, merge_nested_lists=True) %}
 
@@ -59,7 +55,7 @@ remove_rule_{{ IGNOREDRULE }}:
     - name: /opt/so/conf/strelka/rules/signature-base/{{ IGNOREDRULE }}
       {% endfor %}
 
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
+{% if grains['role'] in GLOBALS.manager_roles %}
 strelkarepos:
   file.managed:
     - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
@@ -111,7 +107,7 @@ strelkaportavailable:
 
 strelka_coordinator:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-coordinator
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
@@ -124,7 +120,7 @@ append_so-strelka-coordinator_so-status.conf:
 
 strelka_gatekeeper:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-gatekeeper
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
@@ -137,7 +133,7 @@ append_so-strelka-gatekeeper_so-status.conf:
 
 strelka_frontend:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-frontend:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-frontend:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /nsm/strelka/log/:/var/log/strelka/:rw
@@ -154,7 +150,7 @@ append_so-strelka-frontend_so-status.conf:
 
 strelka_backend:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-backend:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-backend:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/:/etc/yara/:ro
@@ -169,7 +165,7 @@ append_so-strelka-backend_so-status.conf:
 
 strelka_manager:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-manager:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
@@ -182,7 +178,7 @@ append_so-strelka-manager_so-status.conf:
 
 strelka_filestream:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-strelka-filestream:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-filestream:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
@@ -200,7 +196,7 @@ strelka_zeek_extracted_sync_old:
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/ > /dev/null 2>&1'
     - minute: '*'
 
-{% if ENGINE == "SURICATA" %}
+{% if GLOBALS.md_engine == "SURICATA" %}
 
 strelka_suricata_extracted_sync:
   cron.present:

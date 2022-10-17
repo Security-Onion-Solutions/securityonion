@@ -1,10 +1,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
 {% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
 {% import_yaml 'grafana/grafana_defaults.yaml' as default_settings %}
@@ -78,6 +77,8 @@ grafana-datasources-config:
     - template: jinja
     - source: salt://grafana/etc/datasources/influxdb.yaml
     - makedirs: True
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 grafana-config:
   file.managed:
@@ -122,7 +123,7 @@ so-grafana-dashboard-folder-delete:
 
 so-grafana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-grafana:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-grafana:{{ GLOBALS.so_version }}
     - hostname: grafana
     - user: socore
     - binds:

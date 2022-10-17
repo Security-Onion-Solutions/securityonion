@@ -4,16 +4,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'elastalert/elastalert_config.map.jinja' import ELASTALERT as elastalert_config with context %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
-{%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
-
-
-# Elastalert
 
 # Create the group
 elastagroup:
@@ -90,7 +82,7 @@ wait_for_elasticsearch:
 
 so-elastalert:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastalert:{{ GLOBALS.so_version }}
     - hostname: elastalert
     - name: so-elastalert
     - user: so-elastalert
@@ -101,7 +93,7 @@ so-elastalert:
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
     - extra_hosts:
-      - {{MANAGER_URL}}:{{MANAGER_IP}}
+      - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
     - require:
       - cmd: wait_for_elasticsearch
       - file: elastarules

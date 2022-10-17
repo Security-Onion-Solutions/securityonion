@@ -1,12 +1,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set role = grains.id.split('_') | last %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - common.soup_scripts
   - common.packages
-{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+{% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
@@ -104,7 +104,7 @@ elastic_curl_config:
     - mode: 600
     - show_changes: False
     - makedirs: True
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  {% if GLOBALS.role in GLOBALS.manager_roles %}
     - require:
       - file: elastic_curl_config_distributed
   {% endif %}
@@ -131,7 +131,7 @@ so-status_script:
     - source: salt://common/tools/sbin/so-status
     - mode: 755
 
-{% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
+{% if GLOBALS.role in GLOBALS.sensor_roles %}
 # Add sensor cleanup
 /usr/sbin/so-sensor-clean:
   cron.present:
@@ -208,8 +208,9 @@ common_pip_dependencies:
     - target: /usr/lib64/python3.6/site-packages
 
 # Install sostatus check cron
-'/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1':
+sostatus_check_cron:
   cron.present:
+    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
     - user: root
     - minute: '*/1'
     - hour: '*'
@@ -217,36 +218,8 @@ common_pip_dependencies:
     - month: '*'
     - dayweek: '*'
 
-{% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
-# Install cron job to determine size of influxdb for telegraf
-'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1':
-  cron.present:
-    - user: root
-    - minute: '*/1'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-    
-# Lock permissions on the backup directory
-backupdir:
-  file.directory:
-    - name: /nsm/backup
-    - user: 0
-    - group: 0
-    - makedirs: True
-    - mode: 700
-  
-# Add config backup
-/usr/sbin/so-config-backup > /dev/null 2>&1:
-  cron.present:
-    - user: root
-    - minute: '1'
-    - hour: '0'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-{% else %}
+{% if GLOBALS.role not in ['eval', 'manager', 'managersearch', 'standalone'] %}
+
 soversionfile:
   file.managed:
     - name: /etc/soversion
@@ -256,8 +229,8 @@ soversionfile:
     
 {% endif %}
 
-{% if salt['grains.get']('sosmodel', '') %}
-  {% if grains['os'] == 'CentOS' %}     
+{% if GLOBALS.so_model %}
+  {% if GLOBALS.os == 'CentOS' %}     
 # Install Raid tools
 raidpkgs:
   pkg.installed:
@@ -268,8 +241,9 @@ raidpkgs:
   {% endif %}
 
 # Install raid check cron
-/usr/sbin/so-raid-status > /dev/null 2>&1:
+so_raid_status:
   cron.present:
+    - name: '/usr/sbin/so-raid-status > /dev/null 2>&1'
     - user: root
     - minute: '*/15'
     - hour: '*'
