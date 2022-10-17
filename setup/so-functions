@@ -946,17 +946,17 @@ installer_prereq_packages() {
 		logCmd "systemctl start NetworkManager"
 	elif [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
-		retry 50 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
-			retry 50 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
+			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
 				systemctl enable NetworkManager
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
 		if ! command -v curl > /dev/null 2>&1; then
-			retry 50 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+			retry 150 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
 		fi
 	fi
 }
@@ -1826,7 +1826,7 @@ remove_package() {
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
-			retry 50 10 "apt purge -y \"$package_name\""
+			retry 150 10 "apt purge -y \"$package_name\""
 		fi
 	fi
 }
@@ -2259,8 +2259,8 @@ update_packages() {
 		logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
 		logCmd "yum -y install yum-utils"
 	else
-		retry 50 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
-		retry 50 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
 
