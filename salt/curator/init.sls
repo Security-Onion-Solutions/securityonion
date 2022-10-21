@@ -7,6 +7,7 @@
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "curator/map.jinja" import CURATOROPTIONS %}
+{% from "curator/map.jinja" import CURATORMERGED %}
 {% set REMOVECURATORCRON = False %}
 
 # Curator
@@ -45,6 +46,9 @@ actionconfs:
     - user: 934
     - group: 939
     - template: jinja
+    - defaults:
+        CURATORMERGED: {{ CURATORMERGED }}
+        
 
 curconf:
   file.managed:
