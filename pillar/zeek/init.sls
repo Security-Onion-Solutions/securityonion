@@ -48,6 +48,10 @@ zeek:
       - securityonion/bpfconf
       - securityonion/communityid
       - securityonion/file-extraction
+      - bzar
+      - oui-logging
+      - icsnpp-modbus
+      - icsnpp-dnp3
     '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
