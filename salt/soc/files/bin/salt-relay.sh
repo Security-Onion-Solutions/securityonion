@@ -56,57 +56,69 @@ function manage_user() {
   request=$1
   op=$(echo "$request" | jq -r .operation)
 
-  case "$op" in
-    add)
-      email=$(echo "$request" | jq -r .email)
-      password=$(echo "$request" | jq -r .password)
-      role=$(echo "$request" | jq -r .role)
-      firstName=$(echo "$request" | jq -r .firstName)
-      lastName=$(echo "$request" | jq -r .lastName)
-      note=$(echo "$request" | jq -r .note)
-      log "Performing user '$op' for user '$email' with firstname '$firstName', lastname '$lastName', note '$note' and role '$role'"
-      response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
-      exit_code=$?
-      ;;
-    add|enable|disable|delete)
-      email=$(echo "$request" | jq -r .email)
-      log "Performing user '$op' for user '$email'"
-      response=$(so-user "$op" --email "$email" --skip-sync)
-      exit_code=$?
-      ;;
-    addrole|delrole)
-      email=$(echo "$request" | jq -r .email)
-      role=$(echo "$request" | jq -r .role)
-      log "Performing '$op' for user '$email' with role '$role'"
-      response=$(so-user "$op" --email "$email" --role "$role" --skip-sync)
-      exit_code=$?
-      ;;
-    password)
-      email=$(echo "$request" | jq -r .email)
-      password=$(echo "$request" | jq -r .password)
-      log "Performing '$op' operation for user '$email'"
-      response=$(echo "$password" | so-user "$op" --email "$email" --skip-sync)
-      exit_code=$?
-      ;;
-    profile)
-      email=$(echo "$request" | jq -r .email)
-      firstName=$(echo "$request" | jq -r .firstName)
-      lastName=$(echo "$request" | jq -r .lastName)
-      note=$(echo "$request" | jq -r .note)
-      log "Performing '$op' update for user '$email' with firstname '$firstName', lastname '$lastName', and note '$note'"
-      response=$(so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note")
-      exit_code=$?
-      ;;
-    sync)
-      log "Performing '$op'"
-      response=$(so-user "$op")
-      exit_code=$?
-      ;;
-    *)
-      response="Unsupported user operation: $op"
-      exit_code=1
-      ;;
-  esac
+  max_tries=10
+  tries=0
+  while [[ $tries -lt $max_tries ]]; do
+    case "$op" in
+      add)
+        email=$(echo "$request" | jq -r .email)
+        password=$(echo "$request" | jq -r .password)
+        role=$(echo "$request" | jq -r .role)
+        firstName=$(echo "$request" | jq -r .firstName)
+        lastName=$(echo "$request" | jq -r .lastName)
+        note=$(echo "$request" | jq -r .note)
+        log "Performing user '$op' for user '$email' with firstname '$firstName', lastname '$lastName', note '$note' and role '$role'"
+        response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
+        exit_code=$?
+        ;;
+      add|enable|disable|delete)
+        email=$(echo "$request" | jq -r .email)
+        log "Performing user '$op' for user '$email'"
+        response=$(so-user "$op" --email "$email" --skip-sync)
+        exit_code=$?
+        ;;
+      addrole|delrole)
+        email=$(echo "$request" | jq -r .email)
+        role=$(echo "$request" | jq -r .role)
+        log "Performing '$op' for user '$email' with role '$role'"
+        response=$(so-user "$op" --email "$email" --role "$role" --skip-sync)
+        exit_code=$?
+        ;;
+      password)
+        email=$(echo "$request" | jq -r .email)
+        password=$(echo "$request" | jq -r .password)
+        log "Performing '$op' operation for user '$email'"
+        response=$(echo "$password" | so-user "$op" --email "$email" --skip-sync)
+        exit_code=$?
+        ;;
+      profile)
+        email=$(echo "$request" | jq -r .email)
+        firstName=$(echo "$request" | jq -r .firstName)
+        lastName=$(echo "$request" | jq -r .lastName)
+        note=$(echo "$request" | jq -r .note)
+        log "Performing '$op' update for user '$email' with firstname '$firstName', lastname '$lastName', and note '$note'"
+        response=$(so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note")
+        exit_code=$?
+        ;;
+      sync)
+        log "Performing '$op'"
+        response=$(so-user "$op")
+        exit_code=$?
+        ;;
+      *)
+        response="Unsupported user operation: $op"
+        exit_code=1
+        ;;
+    esac
+
+    tries=$((tries+1))
+    if [[ "$response" == "Another process is using so-user"* ]]; then
+      log "Retrying after brief delay to let so-user unlock ($tries/$max_tries)"
+      sleep 5
+    else
+      break
+    fi
+  done
 
   if [[ exit_code -eq 0 ]]; then
     log "Successful command execution: $response"
