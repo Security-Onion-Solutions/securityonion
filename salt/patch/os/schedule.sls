@@ -1,76 +1,36 @@
-{% if salt['pillar.get']('patch:os:schedule_name') %}
-    {% set patch_os_pillar = salt['pillar.get']('patch:os') %}
-    {% set schedule_name = patch_os_pillar.schedule_name %}
-    {% set splay = patch_os_pillar.get('splay', 300) %}
+{% from 'patch/os/schedules/map.jinja' import PATCHMERGED %}
 
-    {% if schedule_name != 'manual' and schedule_name != 'auto' %}
-      {% import_yaml "patch/os/schedules/"~schedule_name~".yml" as os_schedule %}
-
-      {% if patch_os_pillar.enabled %}
+{% if PATCHMERGED.os.enabled %}
+  {% set SCHEDULE_TO_RUN = PATCHMERGED.os.schedule_to_run %}
 
 patch_os_schedule:
   schedule.present:
     - function: state.sls
     - job_args:
       - patch.os
+    - splay: {{PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].splay}}
+    - return_job: True
+  {# check if *day is in the schedule #}
+  {% if PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].schedule.keys() | select("match", ".*day") | list | length  > 0 %}
+
     - when:
-        {% for days in os_schedule.patch.os.schedule %}
-          {% for day, times in days.items() %}
-            {% for time in times %}
+        {% for day, times in PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].schedule.items() %}
+          {% for time in times %}
         - {{day}} {{time}}
             {% endfor %}
-          {% endfor %}
         {% endfor %}
-    - splay: {{splay}}
-    - return_job: True
+  {# check if days, hours, minutes is in the schedule #}
+  {% elif PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].schedule.keys() | select("match", "days|hours|minutes") | list | length > 0 %}
+    {% set DHM = PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].schedule.keys() | first %}
 
-      {% else %}
+    - {{DHM}}: {{ PATCHMERGED.os.schedules[SCHEDULE_TO_RUN].schedule[DHM] }}
 
-disable_patch_os_schedule:
-  schedule.disabled:
-    - name: patch_os_schedule
+  {% endif %}
 
-      {% endif %}
-
-
-    {% elif schedule_name == 'auto' %}
-
-      {% if patch_os_pillar.enabled %}
-
-patch_os_schedule:
-  schedule.present:
-    - function: state.sls
-    - job_args:
-      - patch.os
-    - hours: {{ patch_os_pillar.get('hours', 8) }} 
-    - splay: {{splay}}
-    - return_job: True
-
-      {% else %}
-
-disable_patch_os_schedule:
-  schedule.disabled:
-    - name: patch_os_schedule
-
-      {% endif %}
-
-    {% elif schedule_name == 'manual' %}
+{% else %}
 
 remove_patch_os_schedule:
   schedule.absent:
     - name: patch_os_schedule
-
-    {% endif %}
-
-{% else %}
-
-no_patch_os_schedule_name_set:
-  test.fail_without_changes:
-    - name: "Set a pillar value for patch:os:schedule_name in this minion's .sls file. If an OS patch schedule is not listed as enabled in show_schedule output below, then OS patches will need to be applied manually until this is corrected."
-
-show_patch_os_schedule:
-  module.run:
-    - schedule.is_enabled:
-      - name: patch_os_schedule
 
 {% endif %}
