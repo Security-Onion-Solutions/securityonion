@@ -76,6 +76,7 @@ zeekextractcompletedir:
   file.directory:
     - name: /nsm/zeek/extracted/complete
     - user: 937
+    - group: 939
     - makedirs: True
 
 # Sync the policies
