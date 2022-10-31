@@ -79,7 +79,7 @@ strelkarepos:
 {% endif %}
 
 strelkadatadir:
-   file.directory:
+  file.directory:
     - name: /nsm/strelka
     - user: 939
     - group: 939
@@ -93,21 +93,21 @@ strelkalogdir:
     - makedirs: True
 
 strelkaprocessed:
-   file.directory:
+  file.directory:
     - name: /nsm/strelka/processed
     - user: 939
     - group: 939
     - makedirs: True
 
 strelkastaging:
-   file.directory:
+  file.directory:
     - name: /nsm/strelka/staging
     - user: 939
     - group: 939
     - makedirs: True
 
 strelkaunprocessed:
-   file.directory:
+  file.directory:
     - name: /nsm/strelka/unprocessed
     - user: 939
     - group: 939
@@ -115,8 +115,36 @@ strelkaunprocessed:
 
 # Check to see if Strelka frontend port is available
 strelkaportavailable:
-    cmd.run:
-      - name: netstat -utanp | grep ":57314" | grep -qvE 'docker|TIME_WAIT' && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
+  cmd.run:
+    - name: netstat -utanp | grep ":57314" | grep -qvE 'docker|TIME_WAIT' && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
+
+# Filecheck Section
+filecheck_history:
+  file.directory:
+    - name: /nsm/strelka/history
+    - user: 939
+    - group: 939
+
+filecheck_conf:
+  file.managed:
+    - name: /opt/so/conf/strelka/filecheck.yaml
+    - source: salt://strelka/filecheck/filecheck.yaml
+    - template: jinja
+
+filecheck_script:
+  file.managed:
+    - name: /opt/so/conf/strelka/filecheck
+    - source: salt://strelka/filecheck/filecheck
+    - user: 939
+    - group: 939
+    - mode: 755
+
+filecheck_run:
+  cmd.run:
+    - name: 'python3 /opt/so/conf/strelka/filecheck &'
+    - unless: ps -ef | grep filecheck | grep -v grep
+
+# End Filecheck Section
 
 strelka_coordinator:
   docker_container.running:
@@ -212,7 +240,7 @@ strelka_zeek_extracted_sync_old:
 {% if ENGINE == "SURICATA" %}
 
 strelka_suricata_extracted_sync:
-  cron.present:
+  cron.absent:
     - user: root
     - identifier: zeek-extracted-strelka-sync
     - name: '[ -d /nsm/suricata/extracted/ ] && find /nsm/suricata/extracted/* -not \( -path /nsm/suricata/extracted/tmp -prune \) -type f -print0 | xargs -0 -I {} mv {} /nsm/strelka/unprocessed/ > /dev/null 2>&1'
@@ -220,7 +248,7 @@ strelka_suricata_extracted_sync:
 
 {% else %}
 strelka_zeek_extracted_sync:
-  cron.present:
+  cron.absent:
     - user: root
     - identifier: zeek-extracted-strelka-sync
     - name: '[ -d /nsm/zeek/extracted/complete/ ] && mv /nsm/zeek/extracted/complete/* /nsm/strelka/unprocessed/ > /dev/null 2>&1'
