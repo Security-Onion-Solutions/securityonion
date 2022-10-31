@@ -143,6 +143,7 @@ filecheck_run:
   cmd.run:
     - name: 'python3 /opt/so/conf/strelka/filecheck'
     - bg: True
+    - runas: 939
     - unless: ps -ef | grep filecheck | grep -v grep
 
 # End Filecheck Section
