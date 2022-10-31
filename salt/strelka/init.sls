@@ -119,11 +119,19 @@ strelkaportavailable:
     - name: netstat -utanp | grep ":57314" | grep -qvE 'docker|TIME_WAIT' && PROCESS=$(netstat -utanp | grep ":57314" | uniq) && echo "Another process ($PROCESS) appears to be using port 57314.  Please terminate this process, or reboot to ensure a clean state so that Strelka can start properly." && exit 1 || exit 0
 
 # Filecheck Section
+filecheck_logdir:
+  file.directory:
+    - name: /opt/so/log/strelka
+    - user: 939
+    - group: 939
+    - makedirs: True
+    
 filecheck_history:
   file.directory:
     - name: /nsm/strelka/history
     - user: 939
     - group: 939
+    - makedirs: True
 
 filecheck_conf:
   file.managed:
