@@ -154,6 +154,10 @@ filecheck_run:
     - runas: socore
     - unless: ps -ef | grep filecheck | grep -v grep
 
+filcheck_history_clean:
+  cron.present:
+    - name: '/usr/bin/find /nsm/strelka/history/ -type f -mtime +2 -exec rm {} + > /dev/null 2>&1>'
+    - minute: '33'
 # End Filecheck Section
 
 strelka_coordinator:
