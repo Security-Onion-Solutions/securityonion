@@ -157,7 +157,7 @@ commonpkgs:
       - python36-mysql
       - python36-packaging
       - python36-lxml
-      - python36-watchdog
+      - securityonion-python36-watchdog
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
