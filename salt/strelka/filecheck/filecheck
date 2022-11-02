@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+import os
+import time
+import hashlib
+import logging
+import yaml
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+with open("/opt/so/conf/strelka/filecheck.yaml", "r") as ymlfile:
+    cfg = yaml.load(ymlfile)
+
+extract_path = cfg["filecheck"]["extract_path"]
+historypath = cfg["filecheck"]["historypath"]
+strelkapath = cfg["filecheck"]["strelkapath"]
+logfile = cfg["filecheck"]["logfile"]
+
+logging.basicConfig(filename=logfile, filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+
+def checkexisting():
+    for file in os.listdir(extract_path):
+        filename = os.path.join(extract_path, file)
+        logging.info("Processing existing file " + filename)
+        checksum(filename) 
+
+def checksum(filename):
+    with open(filename, 'rb') as afile:
+        shawnuff = hashlib.sha1()
+        buf = afile.read(8192)
+        while len(buf) > 0:
+            shawnuff.update(buf)
+            buf = afile.read(8192)
+        hizash=shawnuff.hexdigest()
+        process(filename, hizash)
+
+def process(filename, hizash):
+    if os.path.exists(historypath + hizash):
+        logging.info(filename + " Already exists.. removing")
+        os.remove(filename)
+    else:
+        # Write the file
+        logging.info(filename + " is new. Creating a record and sending to Strelka")
+        with open(os.path.join(historypath + hizash), 'w') as fp:
+            pass
+        head, tail = os.path.split(filename)
+
+        # Move the file
+        os.rename(filename, strelkapath + tail)
+
+class CreatedEventHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        filename = event.src_path
+        logging.info("Found new file")
+        checksum(filename)
+
+if __name__ == "__main__":
+
+    checkexisting()
+    event_handler =CreatedEventHandler()
+
+    observer = Observer()
+    observer.schedule(event_handler, extract_path, recursive=True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
