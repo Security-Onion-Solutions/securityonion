@@ -68,6 +68,7 @@ suridatadir:
     - name: /nsm/suricata/extracted
     - user: 940
     - group: 939
+    - mode: 770
     - makedirs: True
 
 surirulesync:
