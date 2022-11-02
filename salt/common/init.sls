@@ -113,7 +113,6 @@ commonpkgs:
       - python3-mysqldb
       - python3-packaging
       - python3-lxml
-      - python3-watchdog
       - git
       - vim
 
@@ -157,7 +156,6 @@ commonpkgs:
       - python36-mysql
       - python36-packaging
       - python36-lxml
-      - securityonion-python36-watchdog
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
