@@ -31,7 +31,7 @@ strelkapkgs:
     - pkgs:
       - python3-watchdog
 {% else %}
-commonpkgs:
+strelkapkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
