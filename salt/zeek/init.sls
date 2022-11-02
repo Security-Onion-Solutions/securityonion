@@ -56,12 +56,15 @@ zeekextractdir:
     - name: /nsm/zeek/extracted
     - user: 937
     - group: 939
+    - mode: 770
     - makedirs: True
 
 zeekextractcompletedir:
   file.directory:
     - name: /nsm/zeek/extracted/complete
     - user: 937
+    - group: 939
+    - mode: 770
     - makedirs: True
 
 # Sync the policies
