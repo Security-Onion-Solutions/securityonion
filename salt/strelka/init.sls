@@ -24,6 +24,20 @@
 {% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
 {% set IGNORELIST = salt['pillar.get']('strelka:ignore', strelka_config.strelka.ignore, merge=True, merge_nested_lists=True) %}
 
+{% if grains['os'] != 'CentOS' %}     
+strelkapkgs:
+  pkg.installed:
+    - skip_suggestions: True
+    - pkgs:
+      - python3-watchdog
+{% else %}
+commonpkgs:
+  pkg.installed:
+    - skip_suggestions: True
+    - pkgs:
+      - securityonion-python36-watchdog
+{% endif %}
+    
 # Strelka config
 strelkaconfdir:
   file.directory:
