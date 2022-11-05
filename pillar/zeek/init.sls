@@ -53,6 +53,7 @@ zeek:
       - icsnpp-modbus
       - icsnpp-dnp3
       - icsnpp-bacnet
+      - icsnpp-bsap
     '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
