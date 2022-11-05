@@ -54,6 +54,8 @@ zeek:
       - icsnpp-dnp3
       - icsnpp-bacnet
       - icsnpp-bsap
+      - icsnpp-ethercat
+      - icsnpp-enip
     '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
