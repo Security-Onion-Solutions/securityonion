@@ -47,7 +47,7 @@ event file_state_remove(f: fa_file)
           # Delete the file if it didn't pass our requirements check.
 
           local nuke = fmt("rm %s/%s", FileExtract::prefix, f$info$extracted);
-          when ( local nukeit = Exec::run([$cmd=nuke]) )
+          when [nuke] ( local nukeit = Exec::run([$cmd=nuke]) )
                     {
                     }
                     return;
@@ -58,7 +58,7 @@ event file_state_remove(f: fa_file)
         local dest = fmt("%scomplete/%s-%s-%s.%s", FileExtract::prefix, f$source, f$id, f$info$md5, extension);
         # Copy it to the $prefix/complete folder then delete it. I got some weird results with moving when it came to watchdog in python.
         local cmd = fmt("cp %s/%s %s && rm %s/%s", FileExtract::prefix, orig, dest, FileExtract::prefix, orig);
-      when ( local result = Exec::run([$cmd=cmd]) )
+      when [cmd] ( local result = Exec::run([$cmd=cmd]) )
                 {
                 }
       f$info$extracted = dest;
