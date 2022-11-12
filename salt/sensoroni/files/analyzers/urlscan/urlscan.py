@@ -77,7 +77,7 @@ def analyze(conf, input):
 
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
-    parser = argparse.ArgumentParser(description='Search Alienvault OTX for a given artifact')
+    parser = argparse.ArgumentParser(description='Search urlscan for a given artifact')
     parser.add_argument('artifact', help='the artifact represented in JSON format')
     parser.add_argument('-c', '--config', metavar="CONFIG_FILE", default=dir + "/urlscan.yaml", help='optional config file to use instead of the default config file')
 
