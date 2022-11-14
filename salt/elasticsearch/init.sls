@@ -290,6 +290,8 @@ so-elasticsearch:
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
+    - bridge:
+      - ipv4_address: {{ SOMETHING }}
     - extra_hosts:  {{ REDIS_NODES }} 
     - environment:
       {% if REDIS_NODES | length == 1 %}
