@@ -10,6 +10,7 @@ include:
   - ssl
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
