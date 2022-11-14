@@ -291,7 +291,7 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - bridge:
-      - ipv4_address: {{ SOMETHING }}
+      - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
     - extra_hosts:  {{ REDIS_NODES }} 
     - environment:
       {% if REDIS_NODES | length == 1 %}
