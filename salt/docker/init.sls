@@ -3,6 +3,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% from 'docker/docker.map.jinja' import DOCKER %}
+
 dockergroup:
   group.present:
     - name: docker
@@ -50,3 +52,7 @@ dockerreserveports:
     - source: salt://common/files/99-reserved-ports.conf
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
+sosnet:
+  docker_network.present:
+    - subnet: {{ DOCKER.sosnet }}
+    - gateway: {{ DOCKER.sosbip }} 

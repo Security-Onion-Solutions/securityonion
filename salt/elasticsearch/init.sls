@@ -290,7 +290,9 @@ so-elasticsearch:
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
-    - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
     - extra_hosts:  {{ REDIS_NODES }} 
     - environment:
       {% if REDIS_NODES | length == 1 %}
