@@ -18,6 +18,7 @@ commonpkgs:
       - createrepo
       - python3-lxml
       - python3-packaging
+      - python3-watchdog
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
@@ -50,6 +51,7 @@ commonpkgs:
       - python36-mysql
       - python36-packaging
       - python36-lxml
+      - securityonion-python36-watchdog
       - yum-utils
       - device-mapper-persistent-data
       - lvm2

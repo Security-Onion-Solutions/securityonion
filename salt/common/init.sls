@@ -33,15 +33,15 @@ socore:
 soconfperms:
   file.directory:
     - name: /opt/so/conf
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 sostatusconf:
   file.directory:
     - name: /opt/so/conf/so-status
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 so-status.conf:
@@ -52,8 +52,8 @@ so-status.conf:
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 so_log_perms:
