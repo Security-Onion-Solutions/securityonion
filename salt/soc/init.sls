@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
   - manager.sync_es_users
@@ -92,6 +93,9 @@ so-soc:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - hostname: soc
     - name: so-soc
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
