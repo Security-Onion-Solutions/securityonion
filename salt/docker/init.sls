@@ -54,5 +54,5 @@ dockerreserveports:
 
 sosnet:
   docker_network.present:
-    - subnet: {{ DOCKER.sosnet }}
+    - subnet: {{ DOCKER.sosrange }}
     - gateway: {{ DOCKER.sosbip }} 
