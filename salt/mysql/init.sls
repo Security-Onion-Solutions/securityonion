@@ -5,8 +5,8 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql') %}
 
 # MySQL Setup
@@ -84,6 +84,9 @@ so-mysql:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-mysql:{{ GLOBALS.so_version }}
     - hostname: so-mysql
     - user: socore
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
     - port_bindings:
       - 0.0.0.0:3306:3306
     - environment:

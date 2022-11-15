@@ -1,5 +1,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
@@ -47,6 +48,9 @@ so-influxdb:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-influxdb:{{ GLOBALS.so_version }}
     - hostname: influxdb
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-influxdb'].ip }}
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false
     - binds:
