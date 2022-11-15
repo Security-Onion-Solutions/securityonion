@@ -58,6 +58,6 @@ sos_docker_net:
     - subnet: {{ DOCKER.sosrange }}
     - gateway: {{ DOCKER.sosbip }}
     - options:
-        com.docker.network.bridge.name: sosbridge
-        com.docker.network.driver.mtu: 1500
-        com.docker.network.bridge.enable_ip_masquerade: true
+        com.docker.network.bridge.name: 'sosbridge'
+        com.docker.network.driver.mtu: '1500'
+        com.docker.network.bridge.enable_ip_masquerade: 'true'
