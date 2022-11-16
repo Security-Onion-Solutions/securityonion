@@ -22,8 +22,7 @@ elastic-agent-pr:
 
 so-elastic-fleet-package-registry:
   docker_container.running:
-    #- image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
-    - image: docker.elastic.co/package-registry/distribution:8.4.1
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-fleet-package-registry:{{ GLOBALS.so_version }}
     - name: so-elastic-fleet-package-registry
     - hostname: Fleet-package-reg-{{ GLOBALS.hostname }}
     - detach: True
