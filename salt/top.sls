@@ -191,6 +191,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
+    - elastic-fleet-package-registry
     {%- if KIBANA %}
     - kibana.so_savedobjects_defaults
     {%- endif %}
