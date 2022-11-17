@@ -80,13 +80,7 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
-salt-relay:
-  cmd.run:
-  - env: 
-    - SOC_PIPE: /opt/sensoroni/salt.pipe
-  - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1'
-  - bg: True
-  - unless: ps -ef | grep salt-relay | grep -v grep
+
 
 so-soc:
   docker_container.running:
