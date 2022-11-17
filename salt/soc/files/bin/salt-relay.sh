@@ -6,7 +6,7 @@
 
 PIPE_OWNER=${PIPE_OWNER:-socore}
 PIPE_GROUP=${PIPE_GROUP:-socore}
-SOC_PIPE=${SOC_PIPE_REQUEST:-/opt/so/conf/soc/salt.pipe}
+SOC_PIPE=${SOC_PIPE_REQUEST:-/opt/so/conf/soc/salt/pipe}
 
 function log() {
   echo "$(date) | $1"
