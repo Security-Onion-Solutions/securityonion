@@ -135,11 +135,9 @@ filecheck_script:
     - mode: 755
 
 filecheck_run:
-  cmd.run:
-    - name: 'python3 /opt/so/conf/strelka/filecheck'
-    - bg: True
-    - runas: socore
-    - unless: ps -ef | grep filecheck | grep -v grep
+  cron.present:
+    - name: 'ps -ef | grep filecheck | grep -v grep || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
+    - user: socore
 
 filcheck_history_clean:
   cron.present:
