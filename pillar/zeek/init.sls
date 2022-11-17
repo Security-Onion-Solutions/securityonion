@@ -53,6 +53,7 @@ zeek:
       - icsnpp-modbus
       - icsnpp-dnp3
       - icsnpp-bacnet
+      - icsnpp-bsap
       - icsnpp-ethercat
       - icsnpp-enip
       - icsnpp-opcua-binary
