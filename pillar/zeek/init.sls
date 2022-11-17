@@ -56,6 +56,11 @@ zeek:
       - icsnpp-ethercat
       - icsnpp-enip
       - icsnpp-opcua-binary
+      - icsnpp-s7comm
+      - zeek-plugin-tds
+      - zeek-plugin-profinet
+      - zeek-spicy-wireguard
+      - zeek-spicy-stun
     '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
