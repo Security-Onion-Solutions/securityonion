@@ -1,0 +1,13 @@
+{
+  "description" : "zeek.stun_nat",
+  "processors" : [
+    { "remove":   { "field": ["host"],                                                                                          "ignore_failure": true } },
+    { "json":     { "field": "message",			             "target_field": "message2",		                "ignore_failure": true} },
+    { "rename":   { "field": "message2.proto",               "target_field": "network.protocol",                           "ignore_missing": true } },
+    { "rename":   { "field": "message2.is_orig",                  "target_field": "stun.is_orig",                      "ignore_missing": true } },
+    { "rename":   { "field": "message2.wan_addrs",         "target_field": "stun.wan.addresses",                     "ignore_missing": true } },
+    { "rename":   { "field": "message2.wan_ports",               "target_field": "stun.wan.ports",                "ignore_missing": true } },
+    { "rename":   { "field": "message2.lan_addrs",    "target_field": "stun.lan.addresses",        "ignore_missing": true } },
+    { "pipeline": { "name": "zeek.common" } }
+  ]
+}
