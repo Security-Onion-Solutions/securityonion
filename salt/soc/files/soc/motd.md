@@ -6,7 +6,7 @@ If you're ready to dive in, take a look at the [Alerts](/#/alerts) interface to 
 
 ## What's New 
 
-To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/#release-notes) link.
+To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/release-notes.html) link.
 
 ## Customize This Space
 
