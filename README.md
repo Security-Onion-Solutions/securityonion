@@ -1,6 +1,6 @@
-## Security Onion 2.4.0
+## Security Onion 2.4
 
-Security Onion 2.4.0 is here!
+Security Onion 2.4 is here!
 
 ## Screenshots
 
