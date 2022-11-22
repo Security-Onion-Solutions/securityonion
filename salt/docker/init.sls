@@ -61,4 +61,4 @@ sos_docker_net:
         com.docker.network.bridge.name: 'sosbridge'
         com.docker.network.driver.mtu: '1500'
         com.docker.network.bridge.enable_ip_masquerade: 'true'
-    - unless: `docker network ls | grep sosnet`
+    - unless: 'docker network ls | grep sosnet'
