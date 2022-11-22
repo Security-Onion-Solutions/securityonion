@@ -28,6 +28,12 @@ soclogdir:
     - group: 939
     - makedirs: True
 
+socsaltdir:
+  file.directory:
+    - name: /opt/so/conf/soc/salt
+    - user: 939
+    - group: 939
+    - makedirs: True
 
 socconfig:
   file.managed:
@@ -82,11 +88,8 @@ socusersroles:
       - sls: manager.sync_es_users
 
 salt-relay:
-  cmd.run:
-  - env: 
-    - SOC_PIPE: /opt/sensoroni/salt.pipe
-  - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
-  - unless: ps -ef | grep salt-relay | grep -v grep
+  cron.present:
+  - name: 'ps -ef | grep salt-relay | grep -v grep || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
 
 so-soc:
   docker_container.running:
@@ -105,7 +108,7 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
-      - /opt/so/conf/soc/salt.pipe:/opt/sensoroni/salt.pipe:rw
+      - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
     {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:

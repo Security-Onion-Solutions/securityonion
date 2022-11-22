@@ -1,0 +1,17 @@
+{
+  "description" : "zeek.ecat_aoe_info",
+  "processors" : [
+    { "remove":         { "field": ["host"],     "ignore_failure": true                                                                  } },
+    { "json":		{ "field": "message",			"target_field": "message2",		"ignore_failure": true	} },
+    { "rename": 	{ "field": "message2.targetid", 		"target_field": "destination.mac",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.targetport", 	"target_field": "destination.port",		"ignore_missing": true 	} },
+    { "convert":        { "field": "destination.port",       "type": "integer",                     "ignore_missing": true  } },
+    { "rename": 	{ "field": "message2.senderid", 		"target_field": "source.mac",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.senderport", 	"target_field": "source.port",		"ignore_missing": true 	} },
+    { "convert":        { "field": "source.port",       "type": "integer",                     "ignore_missing": true  } },
+    { "rename": 	{ "field": "message2.cmd", 		"target_field": "ecat.command",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.stateflags", 	"target_field": "ecat.state.flags",		"ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.data", 		"target_field": "ecat.data",		"ignore_missing": true 	} },
+    { "pipeline":       { "name": "zeek.common"                                                                                   } }
+  ]
+}
