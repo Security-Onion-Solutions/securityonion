@@ -48,7 +48,6 @@ zeek:
       - securityonion/bpfconf
       - securityonion/communityid
       - securityonion/file-extraction
-      - bzar
       - oui-logging
       - icsnpp-modbus
       - icsnpp-dnp3
