@@ -24,6 +24,15 @@
 {% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
 {% set IGNORELIST = salt['pillar.get']('strelka:ignore', strelka_config.strelka.ignore, merge=True, merge_nested_lists=True) %}
 
+{% if ENGINE == "SURICATA" %}
+  {% set filecheck_runas = 'suricata' %}
+  {% set filecheck_groupid = 940 %}
+{% else %}
+  {% set filecheck_runas = 'socore' %}
+  {% set filecheck_groupid = 939 %}
+{% endif %}
+
+
 {% if grains['os'] != 'CentOS' %}     
 strelkapkgs:
   pkg.installed:
@@ -124,7 +133,8 @@ strelkaunprocessed:
   file.directory:
     - name: /nsm/strelka/unprocessed
     - user: 939
-    - group: 939
+    - group: {{ filecheck_groupid }}
+    - mode 775
     - makedirs: True
 
 # Check to see if Strelka frontend port is available
@@ -137,14 +147,14 @@ filecheck_logdir:
   file.directory:
     - name: /opt/so/log/strelka
     - user: 939
-    - group: 939
+    - group: {{ filecheck_groupid }}
     - makedirs: True
     
 filecheck_history:
   file.directory:
     - name: /nsm/strelka/history
     - user: 939
-    - group: 939
+    - group: {{ filecheck_groupid }}
     - makedirs: True
 
 filecheck_conf:
@@ -158,13 +168,13 @@ filecheck_script:
     - name: /opt/so/conf/strelka/filecheck
     - source: salt://strelka/filecheck/filecheck
     - user: 939
-    - group: 939
+    - group: {{ filecheck_groupid }}
     - mode: 755
 
 filecheck_run:
   cron.present:
     - name: 'ps -ef | grep filecheck | grep -v grep || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
-    - user: socore
+    - user: {{ filecheck_runas }}
 
 filcheck_history_clean:
   cron.present:

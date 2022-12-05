@@ -31,14 +31,21 @@ extract_path = cfg["filecheck"]["extract_path"]
 historypath = cfg["filecheck"]["historypath"]
 strelkapath = cfg["filecheck"]["strelkapath"]
 logfile = cfg["filecheck"]["logfile"]
+recycle_secs = cfg["filecheck"].get("recycle_secs", 300)
 
 logging.basicConfig(filename=logfile, filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 def checkexisting():
-    for file in os.listdir(extract_path):
-        filename = os.path.join(extract_path, file)
-        logging.info("Processing existing file " + filename)
-        checksum(filename) 
+    for root, dirs, files in os.walk(extract_path):
+        for file in files:
+            try:
+                path = os.path.join(root, file)
+                filename = os.path.join(extract_path, path)
+                if os.path.isfile(filename):
+                    logging.info("Processing existing file: " + filename)
+                    checksum(filename) 
+            except Exception as err:
+                logging.error("Failed to process file: " + file)
 
 def checksum(filename):
     with open(filename, 'rb') as afile:
@@ -67,24 +74,32 @@ def process(filename, hizash):
 class CreatedEventHandler(FileSystemEventHandler):
     def on_created(self, event):
         filename = event.src_path
-        logging.info("Found new file")
+        logging.info("Found new file: " + filename)
         checksum(filename)
 
 if __name__ == "__main__":
+    logging.info("Starting filecheck")
 
     checkexisting()
-    event_handler =CreatedEventHandler()
 
+    event_handler =CreatedEventHandler()
     observer = Observer()
 
-    logging.info("Starting filecheck")
-    observer.schedule(event_handler, extract_path, recursive=True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
+    shutdown = False
+    while not shutdown:
+        logging.info("Scheduling observer")
+        observer.schedule(event_handler, extract_path, recursive=True)
+        observer.start()
+        try:
+            time.sleep(recycle_secs)
+        except KeyboardInterrupt:
+            logging.warn("User requested shutdown")
+            shutdown = True
+
         observer.stop()
-    observer.join()
+        observer.join()
+
+        if not shutdown:
+            logging.info("Recycling observer to pick up new subdirectories")
 
     logging.info("Exiting filecheck")
