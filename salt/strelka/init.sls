@@ -164,7 +164,7 @@ filecheck_conf:
 
 filecheck_script:
   file.managed:
-    - name: /usr/sbin/filecheck
+    - name: /opt/so/conf/strelka/filecheck
     - source: salt://strelka/filecheck/filecheck
     - user: 939
     - group: 939
