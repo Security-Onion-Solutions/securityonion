@@ -48,6 +48,19 @@ zeek:
       - securityonion/bpfconf
       - securityonion/communityid
       - securityonion/file-extraction
+      - oui-logging
+      - icsnpp-modbus
+      - icsnpp-dnp3
+      - icsnpp-bacnet
+      - icsnpp-ethercat
+      - icsnpp-enip
+      - icsnpp-opcua-binary
+      - icsnpp-bsap
+      - icsnpp-s7comm
+      - zeek-plugin-tds
+      - zeek-plugin-profinet
+      - zeek-spicy-wireguard
+      - zeek-spicy-stun
     '@load-sigs':
       - frameworks/signatures/detect-windows-shells
     redef:
