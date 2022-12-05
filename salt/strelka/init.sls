@@ -26,12 +26,9 @@
 
 {% if ENGINE == "SURICATA" %}
   {% set filecheck_runas = 'suricata' %}
-  {% set filecheck_groupid = 940 %}
 {% else %}
   {% set filecheck_runas = 'socore' %}
-  {% set filecheck_groupid = 939 %}
 {% endif %}
-
 
 {% if grains['os'] != 'CentOS' %}     
 strelkapkgs:
@@ -133,7 +130,7 @@ strelkaunprocessed:
   file.directory:
     - name: /nsm/strelka/unprocessed
     - user: 939
-    - group: {{ filecheck_groupid }}
+    - group: 939
     - mode: 775
     - makedirs: True
 
@@ -147,14 +144,16 @@ filecheck_logdir:
   file.directory:
     - name: /opt/so/log/strelka
     - user: 939
-    - group: {{ filecheck_groupid }}
+    - group: 939
+    - mode: 775
     - makedirs: True
     
 filecheck_history:
   file.directory:
     - name: /nsm/strelka/history
     - user: 939
-    - group: {{ filecheck_groupid }}
+    - group: 939
+    - mode: 775
     - makedirs: True
 
 filecheck_conf:
@@ -165,10 +164,10 @@ filecheck_conf:
 
 filecheck_script:
   file.managed:
-    - name: /opt/so/conf/strelka/filecheck
+    - name: /usr/sbin/filecheck
     - source: salt://strelka/filecheck/filecheck
     - user: 939
-    - group: {{ filecheck_groupid }}
+    - group: 939
     - mode: 755
 
 filecheck_run:

@@ -44,6 +44,12 @@ suricata:
     - home: /nsm/suricata
     - createhome: False
 
+suricatasocoregroup:
+  group.present:
+    - gid: 939
+    - addusers:
+      - suricata
+
 suridir:
   file.directory:
     - name: /opt/so/conf/suricata
