@@ -36,26 +36,27 @@ recycle_secs = cfg["filecheck"].get("recycle_secs", 300)
 logging.basicConfig(filename=logfile, filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 def checkexisting():
+    logging.info("Checking for existing files");
     for root, dirs, files in os.walk(extract_path):
         for file in files:
             try:
                 path = os.path.join(root, file)
                 filename = os.path.join(extract_path, path)
-                if os.path.isfile(filename):
-                    logging.info("Processing existing file: " + filename)
-                    checksum(filename) 
+                checksum(filename) 
             except Exception as err:
                 logging.error("Failed to process file: " + file)
 
 def checksum(filename):
-    with open(filename, 'rb') as afile:
-        shawnuff = hashlib.sha1()
-        buf = afile.read(8192)
-        while len(buf) > 0:
-            shawnuff.update(buf)
+    if os.path.isfile(filename) && "/tmp/" not in filename:
+        with open(filename, 'rb') as afile:
+            logging.info("Processing file: " + filename)
+            shawnuff = hashlib.sha1()
             buf = afile.read(8192)
-        hizash=shawnuff.hexdigest()
-        process(filename, hizash)
+            while len(buf) > 0:
+                shawnuff.update(buf)
+                buf = afile.read(8192)
+            hizash=shawnuff.hexdigest()
+            process(filename, hizash)
 
 def process(filename, hizash):
     if os.path.exists(historypath + hizash):
@@ -73,10 +74,7 @@ def process(filename, hizash):
 
 class CreatedEventHandler(FileSystemEventHandler):
     def on_created(self, event):
-        filename = event.src_path
-        if os.path.isfile(filename):
-            logging.info("Found new file: " + filename)
-            checksum(filename)
+        checksum(event.src_path)
 
 if __name__ == "__main__":
     logging.info("Starting filecheck")
