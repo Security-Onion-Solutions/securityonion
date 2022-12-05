@@ -134,7 +134,7 @@ strelkaunprocessed:
     - name: /nsm/strelka/unprocessed
     - user: 939
     - group: {{ filecheck_groupid }}
-    - mode 775
+    - mode: 775
     - makedirs: True
 
 # Check to see if Strelka frontend port is available
