@@ -44,8 +44,9 @@ suricata:
     - home: /nsm/suricata
     - createhome: False
 
-suricatasocoregroup:
+socoregroupwithsuricata:
   group.present:
+    - name: socore
     - gid: 939
     - addusers:
       - suricata
