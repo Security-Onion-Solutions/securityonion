@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
 import os
+import shutil
 import time
 import hashlib
 import logging
@@ -20,24 +21,32 @@ extract_path = cfg["filecheck"]["extract_path"]
 historypath = cfg["filecheck"]["historypath"]
 strelkapath = cfg["filecheck"]["strelkapath"]
 logfile = cfg["filecheck"]["logfile"]
+recycle_secs = cfg["filecheck"].get("recycle_secs", 300)
 
 logging.basicConfig(filename=logfile, filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 def checkexisting():
-    for file in os.listdir(extract_path):
-        filename = os.path.join(extract_path, file)
-        logging.info("Processing existing file " + filename)
-        checksum(filename) 
+    logging.info("Checking for existing files");
+    for root, dirs, files in os.walk(extract_path):
+        for file in files:
+            try:
+                path = os.path.join(root, file)
+                filename = os.path.join(extract_path, path)
+                checksum(filename) 
+            except Exception as err:
+                logging.error("Failed to process file: " + file)
 
 def checksum(filename):
-    with open(filename, 'rb') as afile:
-        shawnuff = hashlib.sha1()
-        buf = afile.read(8192)
-        while len(buf) > 0:
-            shawnuff.update(buf)
+    if os.path.isfile(filename) and "/tmp/" not in filename:
+        with open(filename, 'rb') as afile:
+            logging.info("Processing file: " + filename)
+            shawnuff = hashlib.sha1()
             buf = afile.read(8192)
-        hizash=shawnuff.hexdigest()
-        process(filename, hizash)
+            while len(buf) > 0:
+                shawnuff.update(buf)
+                buf = afile.read(8192)
+            hizash=shawnuff.hexdigest()
+            process(filename, hizash)
 
 def process(filename, hizash):
     if os.path.exists(historypath + hizash):
@@ -51,29 +60,39 @@ def process(filename, hizash):
         head, tail = os.path.split(filename)
 
         # Move the file
-        os.rename(filename, strelkapath + tail)
+        shutil.move(filename, strelkapath + tail)
 
 class CreatedEventHandler(FileSystemEventHandler):
     def on_created(self, event):
-        filename = event.src_path
-        logging.info("Found new file")
-        checksum(filename)
+        logging.info("File create detected: " + event.src_path)
+        checksum(event.src_path)
+
+    def on_moved(self, event):
+        logging.info("File move detected: " + event.src_path + " -> " + event.dest_path)
+        checksum(event.dest_path)
 
 if __name__ == "__main__":
+    logging.info("Starting filecheck")
 
-    checkexisting()
     event_handler =CreatedEventHandler()
 
-    observer = Observer()
+    shutdown = False
+    while not shutdown:
+        checkexisting()
+        logging.info("Scheduling observer")
+        observer = Observer()
+        observer.schedule(event_handler, extract_path, recursive=True)
+        observer.start()
+        try:
+            time.sleep(recycle_secs)
+        except KeyboardInterrupt:
+            logging.warn("User requested shutdown")
+            shutdown = True
 
-    logging.info("Starting filecheck")
-    observer.schedule(event_handler, extract_path, recursive=True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
         observer.stop()
-    observer.join()
+        observer.join()
+
+        if not shutdown:
+            logging.info("Recycling observer to pick up new subdirectories")
 
     logging.info("Exiting filecheck")
