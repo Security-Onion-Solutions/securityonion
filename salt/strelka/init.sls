@@ -170,6 +170,12 @@ filecheck_script:
     - group: 939
     - mode: 755
 
+filecheck_restart:
+  cmd.run:
+    - name: pkill -f "python3 /opt/so/conf/strelka/filecheck"
+    - onchanges:
+      - file: filecheck_script
+
 filecheck_run:
   cron.present:
     - name: 'ps -ef | grep filecheck | grep -v grep || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
