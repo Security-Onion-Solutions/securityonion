@@ -172,7 +172,7 @@ filecheck_script:
 
 filecheck_restart:
   cmd.run:
-    - name: kill $(ps -ef | grep filecheck | grep -v grep | grep -v tail | awk '{print $2}')
+    - name: pkill -f "python3 /opt/so/conf/strelka/filecheck"
     - onchanges:
       - file: filecheck_script
 
