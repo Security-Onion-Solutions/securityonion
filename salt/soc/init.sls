@@ -88,7 +88,7 @@ socusersroles:
 
 salt-relay:
   cron.present:
-  - name: 'ps -ef | grep salt-relay.sh | grep -v grep &> /dev/null || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+  - name: 'ps -ef | grep salt-relay.sh | grep -v grep > /dev/null 2>&1 || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
 
 so-soc:
   docker_container.running:

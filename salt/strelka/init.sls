@@ -154,7 +154,7 @@ filecheck_restart:
 
 filecheck_run:
   cron.present:
-    - name: 'ps -ef | grep filecheck | grep -v grep &> /dev/null >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
+    - name: 'ps -ef | grep filecheck | grep -v grep > /dev/null 2>&1 || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
     - user: {{ filecheck_runas }}
 
 filcheck_history_clean:
