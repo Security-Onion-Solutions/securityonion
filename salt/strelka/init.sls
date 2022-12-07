@@ -185,7 +185,7 @@ filecheck_oldcronremoval:
 
 filecheck_run:
   cron.present:
-    - name: 'pgrep -f "python3 /opt/so/conf/strelka/filecheck" &> /dev/null || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
+    - name: 'ps -ef | grep filecheck | grep -v grep &> /dev/null || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
     - user: {{ filecheck_runas }}
 
 filcheck_history_clean:
