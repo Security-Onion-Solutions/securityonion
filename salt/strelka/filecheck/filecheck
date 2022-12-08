@@ -74,17 +74,21 @@ def process(filename, hizash):
 
 class CreatedEventHandler(FileSystemEventHandler):
     def on_created(self, event):
+        logging.info("File create detected: " + event.src_path)
         checksum(event.src_path)
+
+    def on_moved(self, event):
+        logging.info("File move detected: " + event.src_path + " -> " + event.dest_path)
+        checksum(event.dest_path)
 
 if __name__ == "__main__":
     logging.info("Starting filecheck")
-
-    checkexisting()
 
     event_handler =CreatedEventHandler()
 
     shutdown = False
     while not shutdown:
+        checkexisting()
         logging.info("Scheduling observer")
         observer = Observer()
         observer.schedule(event_handler, extract_path, recursive=True)
