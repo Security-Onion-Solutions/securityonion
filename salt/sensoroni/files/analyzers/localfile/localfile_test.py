@@ -3,7 +3,6 @@ import sys
 from unittest.mock import patch, MagicMock
 from localfile import localfile
 import unittest
-import helpers
 
 
 class TestLocalfileMethods(unittest.TestCase):
