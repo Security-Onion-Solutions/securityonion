@@ -10,6 +10,11 @@ def checkSupportedType(meta, artifact_type):
         return True
 
 
+def verifyNonEmptyListValue(conf, key):
+    if key not in conf or not isinstance(conf[key], list) or len(conf[key]) == 0:
+        sys.exit(126)
+
+
 def parseArtifact(artifact):
     data = json.loads(artifact)
     return data
