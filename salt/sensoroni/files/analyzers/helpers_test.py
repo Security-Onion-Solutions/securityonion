@@ -36,5 +36,5 @@ class TestHelpersMethods(unittest.TestCase):
  
     def test_verifyNonEmptyListValue(self):
         conf = {"file_path": ['testfile.csv']}
-        pathkey = 'file_path'
-        self.assertTrue(conf, pathkey)
+        path = 'file_path'
+        self.assertTrue(conf, path)
