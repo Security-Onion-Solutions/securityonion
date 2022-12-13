@@ -33,7 +33,7 @@ class TestHelpersMethods(unittest.TestCase):
         data = helpers.parseArtifact(input)
         self.assertEqual(data["artifactType"], "bar")
         self.assertEqual(data["value"], "foo")
-    
+ 
     def test_verifyNonEmptyListValue(self):
         conf = {"file_path": ['testfile.csv']}
         key = 'file_path'
