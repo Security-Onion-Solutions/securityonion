@@ -1,16 +1,8 @@
 import json
 import helpers
 import os
-import sys
 import argparse
 import csv
-
-
-def checkConfigRequirements(conf):
-    if "file_path" not in conf or len(conf['file_path']) == 0:
-        sys.exit(126)
-    else:
-        return True
 
 
 def searchFile(artifact, csvfiles):
@@ -54,7 +46,7 @@ def prepareResults(raw):
 
 
 def analyze(conf, input):
-    checkConfigRequirements(conf)
+    helpers.verifyNonEmptyListValue(conf, 'file_path')
     meta = helpers.loadMetadata(__file__)
     data = helpers.parseArtifact(input)
     helpers.checkSupportedType(meta, data["artifactType"])
