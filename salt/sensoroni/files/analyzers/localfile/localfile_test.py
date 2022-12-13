@@ -28,22 +28,6 @@ class TestLocalfileMethods(unittest.TestCase):
                     mock.assert_called_once()
                     lcmock.assert_called_once()
 
-    def test_checkConfigRequirements_present(self):
-        conf = {"file_path": "['intel.csv']"}
-        self.assertTrue(localfile.checkConfigRequirements(conf))
-
-    def test_checkConfigRequirements_not_present(self):
-        conf = {"not_a_file_path": "blahblah"}
-        with self.assertRaises(SystemExit) as cm:
-            localfile.checkConfigRequirements(conf)
-        self.assertEqual(cm.exception.code, 126)
-
-    def test_checkConfigRequirements_empty(self):
-        conf = {"file_path": ""}
-        with self.assertRaises(SystemExit) as cm:
-            localfile.checkConfigRequirements(conf)
-        self.assertEqual(cm.exception.code, 126)
-
     def test_searchFile_multiple_found(self):
         artifact = "abcd1234"
         results = localfile.searchFile(artifact, ["localfile_test.csv"])
@@ -115,7 +99,7 @@ class TestLocalfileMethods(unittest.TestCase):
                    }
                  ]
         artifactInput = '{"value":"foo","artifactType":"url"}'
-        conf = {"file_path": "/home/intel.csv"}
+        conf = {"file_path": ['/home/intel.csv']}
         with patch('localfile.localfile.searchFile', new=MagicMock(return_value=output)) as mock:
             results = localfile.analyze(conf, artifactInput)
             self.assertEqual(results["summary"], "suspicious")
