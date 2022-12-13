@@ -33,3 +33,14 @@ class TestHelpersMethods(unittest.TestCase):
         data = helpers.parseArtifact(input)
         self.assertEqual(data["artifactType"], "bar")
         self.assertEqual(data["value"], "foo")
+
+    def test_verifyNonEmptyListValue(self):
+        conf = {"file_path": ['testfile.csv']}
+        path = 'file_path'
+        self.assertTrue(conf, path)
+
+    def test_verifyNonEmptyListValueIsEmpty(self):
+        conf = {"file_path": ""}
+        with self.assertRaises(SystemExit) as cm:
+            helpers.verifyNonEmptyListValue(conf, 'file_path')
+            self.assertEqual(cm.exception.code, 126)
