@@ -551,6 +551,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.180 ]] && up_to_2.3.181
     [[ "$INSTALLEDVERSION" == 2.3.181 ]] && up_to_2.3.182
     [[ "$INSTALLEDVERSION" == 2.3.182 ]] && up_to_2.3.190
+    [[ "$INSTALLEDVERSION" == 2.3.190 ]] && up_to_2.3.200
     true
 }
 
@@ -574,6 +575,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.180 ]] && post_to_2.3.181
     [[ "$POSTVERSION" == 2.3.181 ]] && post_to_2.3.182
     [[ "$POSTVERSION" == 2.3.182 ]] && post_to_2.3.190
+    [[ "$POSTVERSION" == 2.3.190 ]] && post_to_2.3.200
 
     true
 }
@@ -690,6 +692,11 @@ post_to_2.3.182() {
 post_to_2.3.190() {
   echo "Nothing to do for .190"
   POSTVERSION=2.3.190
+}
+
+post_to_2.3.200() {
+  echo "Nothing to do for .200"
+  POSTVERSION=2.3.200
 }
 
 stop_salt_master() {
@@ -1003,6 +1010,23 @@ up_to_2.3.190() {
     chmod 770 /nsm/zeek/extracted/complete
   fi
   INSTALLEDVERSION=2.3.190
+}
+
+up_to_2.3.200() {
+  echo "Upgrading to 2.3.200"
+  if [ ! -d /nsm/kratos ]; then
+    mkdir /nsm/kratos
+    chown -R kratos:kratos /nsm/kratos
+    chmod 700 /nsm/kratos
+  fi
+  if [ ! -d /nsm/kratos/db ]; then
+    echo "Moving Kratos DB to /nsm partition..."
+    mv /opt/so/conf/kratos/db /nsm/kratos/
+    echo "Move completed successfully"
+  else
+    echo "WARNING: /nsm/kratos/db already exists. This is unexpected and could result in SOC users no longer being able to login."
+  fi
+  INSTALLEDVERSION=2.3.200
 }
 
 verify_upgradespace() {
