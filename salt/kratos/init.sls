@@ -31,7 +31,7 @@ kratosdbdir:
     - name: /nsm/kratos/db
     - user: 928
     - group: 928
-    - mode 700
+    - mode: 700
     - makedirs: True
 
 kratoslogdir:
