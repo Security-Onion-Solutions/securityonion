@@ -8,6 +8,8 @@ base:
     - docker.adv_docker
     - sensoroni.soc_sensoroni
     - sensoroni.adv_sensoroni
+    - telegraf.soc_telegraf
+    - telegraf.adv_telegraf
 
   '* and not *_eval and not *_import':
     - logstash.nodes
