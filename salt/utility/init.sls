@@ -1,4 +1,5 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% if sls in allowed_states %}
   {% if grains['role'] in ['so-eval', 'so-import'] %}
