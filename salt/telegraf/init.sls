@@ -1,7 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'telegraf/config.map.jinja' import TGMERGED %}
 
 include:
   - ssl
@@ -50,6 +50,7 @@ tgrafconf:
     - show_changes: False
     - defaults:
         GLOBALS: {{ GLOBALS }}
+        TGMERGED: {{ TGMERGED }}
 
 # this file will be read by telegraf to send node details (management interface, monitor interface, etc)
 # into influx so that Grafana can build dashboards using queries
