@@ -47,8 +47,6 @@ so-influxdb:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-influxdb:{{ GLOBALS.so_version }}
     - hostname: influxdb
-    - environment:
-      - INFLUXDB_HTTP_LOG_ENABLED=false
     - binds:
       - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
