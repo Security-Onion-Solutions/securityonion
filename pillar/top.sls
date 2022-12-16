@@ -64,10 +64,11 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
-    - kibana.secrets
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
-    - soc_global
+    - kibana.secrets
     {% endif %}
+    - soc_global
+    - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
