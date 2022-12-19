@@ -146,9 +146,12 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
+    - kratos.soc_kratos
+    - elasticsearch.soc_elasticsearch
+    - manager.soc_manager
+    - soc.soc_soc
     - soc_global
     - adv_global
-    - manager.soc_manager
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
