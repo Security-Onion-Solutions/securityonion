@@ -45,6 +45,10 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - redis.soc_telegraf
+    - redis.adv_telegraf
+    - influxdb.soc_telegraf
+    - influxdb.adv_telegraf
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
