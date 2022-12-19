@@ -1,7 +1,11 @@
-{% import_yaml 'influx.defaults.yaml' as influx %}
+{%- import_yaml 'influx/defaults.yaml' as influx %}
 
 {%- for header in influx.influxdb.config.keys() %}
+{%-   if header in ['graphite', 'collectd', 'opentsdb', 'udp'] %}
+[[{{header}}]]
+{%- else %}
 [{{header}}]
+{%- endif %}
 {%-   for k, v in influx.influxdb.config[header].items() %}
 {#-     is v a list? #}
 {%-     if v is iterable and (v is not string and v is not mapping) %}
