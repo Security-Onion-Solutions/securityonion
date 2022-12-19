@@ -41,7 +41,7 @@ influxdbconf:
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://influxdb/etc/influxdb.conf
+    - source: salt://influxdb/etc/influxdb.conf.jinja
 
 so-influxdb:
   docker_container.running:
