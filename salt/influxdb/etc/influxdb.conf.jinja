@@ -1,12 +1,13 @@
-{%- import_yaml 'influxdb/defaults.yaml' as influx %}
+{%- import_yaml 'influxdb/defaults.yaml' as INFLUXDEFAULTS %}
+{%- set INFLUXMERGED = salt['pillar.get']('influxdb', default=INFLUXDEFAULTS.influxdb, merge=true) %}
 
-{%- for header in influx.influxdb.config.keys() %}
+{%- for header in INFLUXMERGED.config.keys() %}
 {%-   if header in ['graphite', 'collectd', 'opentsdb', 'udp'] %}
 [[{{header}}]]
 {%-   else %}
 [{{header}}]
 {%-   endif %}
-{%-   for k, v in influx.influxdb.config[header].items() %}
+{%-   for k, v in INFLUXMERGED.config[header].items() %}
 {#-     is v a list? #}
 {%-     if v is iterable and (v is not string and v is not mapping) %}
   {{k}} = [
@@ -14,14 +15,12 @@
       "{{li}}",
 {%-       endfor %}
   ]
-{%-     else %}
-{%-       if v is string %}
+{%-     elif v is string %}
   {{k}} = "{{v}}"
-{%-       elif v is boolean %}
+{%-     elif v is boolean %}
   {{k}} = {{v|string|lower}}
-{%-       else %}
+{%-     else %}
   {{k}} = {{v}}
-{%-       endif %}
 {%-     endif %}
 {%-   endfor %}
 {%- endfor %}
