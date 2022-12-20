@@ -44,7 +44,7 @@ kratoslogdir:
     - makedirs: True
 
 kratosschema:
-  file.recurse:
+  file.managed:
     - name: /opt/so/conf/kratos/schema.json
     - source: salt://kratos/files/schema.json
     - user: 928
