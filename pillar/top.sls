@@ -99,10 +99,10 @@ base:
     - soc_global
     - kratos.soc_kratos
     - kratos.adv_kratos
-    - redis.soc_telegraf
-    - redis.adv_telegraf
-    - influxdb.soc_telegraf
-    - influxdb.adv_telegraf
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
