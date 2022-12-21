@@ -36,7 +36,7 @@ redislogdir:
 redisconf:
   file.managed:
     - name: /opt/so/conf/redis/etc/redis.conf
-    - source: salt://redis/etc/redis.conf
+    - source: salt://redis/etc/redis.conf.jinja
     - user: 939
     - group: 939
     - template: jinja

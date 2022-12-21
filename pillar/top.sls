@@ -14,7 +14,7 @@ base:
   '* and not *_eval and not *_import':
     - logstash.nodes
 
-  '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
+  '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
 
@@ -45,6 +45,12 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
@@ -72,6 +78,12 @@ base:
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
+    - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
@@ -93,6 +105,11 @@ base:
     - healthcheck.standalone
     - soc_global
     - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
@@ -154,6 +171,12 @@ base:
     - adv_global
     - backup.soc_backup
     - backup.adv_backup
+    - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 

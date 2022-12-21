@@ -43,24 +43,24 @@ kratoslogdir:
     - group: 928
     - makedirs: True
 
-kratossync:
-  file.recurse:
-    - name: /opt/so/conf/kratos
-    - source: salt://kratos/files
+kratosschema:
+  file.managed:
+    - name: /opt/so/conf/kratos/schema.json
+    - source: salt://kratos/files/schema.json
     - user: 928
     - group: 928
-    - file_mode: 600
+    - mode: 600
+
+kratosconfig:
+  file.managed:
+    - name: /opt/so/conf/kratos/kratos.yaml
+    - source: salt://kratos/files/kratos.yaml.jinja
+    - user: 928
+    - group: 928
+    - mode: 600
     - template: jinja
     - defaults:
         GLOBALS: {{ GLOBALS }}
-
-kratos_schema:
-  file.exists:
-    - name: /opt/so/conf/kratos/schema.json
-  
-kratos_yaml:
-  file.exists:
-    - name: /opt/so/conf/kratos/kratos.yaml
 
 so-kratos:
   docker_container.running:
@@ -77,10 +77,11 @@ so-kratos:
       - 0.0.0.0:4434:4434
     - restart_policy: unless-stopped
     - watch:
-      - file: /opt/so/conf/kratos
+      - file: kratosschema
+      - file: kratosconfig
     - require:
-      - file: kratos_schema
-      - file: kratos_yaml
+      - file: kratosschema
+      - file: kratosconfig
       - file: kratoslogdir
       - file: kratosdir
 
