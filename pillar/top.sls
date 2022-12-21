@@ -47,10 +47,10 @@ base:
     - soc.adv_soc
     - kratos.soc_kratos
     - kratos.adv_kratos
-    - redis.soc_telegraf
-    - redis.adv_telegraf
-    - influxdb.soc_telegraf
-    - influxdb.adv_telegraf
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
@@ -77,6 +77,12 @@ base:
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
+    - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
