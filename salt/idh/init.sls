@@ -5,6 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% import_yaml 'docker/defaults.yaml' as DOCKERDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', False) %}
 

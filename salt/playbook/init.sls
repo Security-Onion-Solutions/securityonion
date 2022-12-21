@@ -5,8 +5,8 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql') -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db') -%}
 
@@ -80,6 +80,9 @@ so-playbook:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-playbook:{{ GLOBALS.so_version }}
     - hostname: playbook
     - name: so-playbook
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
     - environment:

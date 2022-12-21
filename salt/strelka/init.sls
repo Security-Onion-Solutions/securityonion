@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 {% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
@@ -168,6 +168,9 @@ strelka_coordinator:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-coordinator
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
       - 0.0.0.0:6380:6379
@@ -181,6 +184,9 @@ strelka_gatekeeper:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-gatekeeper
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
       - 0.0.0.0:6381:6379
@@ -198,6 +204,9 @@ strelka_frontend:
       - /nsm/strelka/log/:/var/log/strelka/:rw
     - privileged: True
     - name: so-strelka-frontend
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-frontend'].ip }}
     - command: strelka-frontend
     - port_bindings:
       - 0.0.0.0:57314:57314
@@ -214,6 +223,9 @@ strelka_backend:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/:/etc/yara/:ro
     - name: so-strelka-backend
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-backend'].ip }}
     - command: strelka-backend
     - restart_policy: on-failure
 
@@ -228,6 +240,9 @@ strelka_manager:
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-manager'].ip }}
     - command: strelka-manager
 
 append_so-strelka-manager_so-status.conf:
@@ -242,6 +257,9 @@ strelka_filestream:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-strelka-filestream'].ip }}
     - command: strelka-filestream
 
 append_so-strelka-filestream_so-status.conf:

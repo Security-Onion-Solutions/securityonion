@@ -4,6 +4,7 @@
 # Elastic License 2.0.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set proxy = salt['pillar.get']('manager:proxy') %}
 
@@ -31,6 +32,9 @@ so-idstools:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-idstools:{{ GLOBALS.so_version }}
     - hostname: so-idstools
     - user: socore
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-idstools'].ip }}
     {% if proxy %}
     - environment:
       - http_proxy={{ proxy }}

@@ -5,6 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 # Add Kratos Group
@@ -67,6 +68,9 @@ so-kratos:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kratos:{{ GLOBALS.so_version }}
     - hostname: kratos
     - name: so-kratos
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-kratos'].ip }}
     - binds:
       - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro

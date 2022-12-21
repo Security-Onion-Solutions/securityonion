@@ -6,19 +6,19 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'logstash/map.jinja' import REDIS_NODES with context %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
-  {% from 'logstash/map.jinja' import REDIS_NODES with context %}
-  {% from 'vars/globals.map.jinja' import GLOBALS %}
-
-  # Logstash Section - Decide which pillar to use
-  {% set lsheap = salt['pillar.get']('logstash_settings:lsheap') %}
-  {% if GLOBALS.role in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
+# Logstash Section - Decide which pillar to use
+{% set lsheap = salt['pillar.get']('logstash_settings:lsheap') %}
+{% if GLOBALS.role in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
     {% set nodetype = GLOBALS.role  %}
-  {% endif %}
+{% endif %}
 
-  {% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
-  {% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
-  {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
+{% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
+{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 
 include:
   - ssl
@@ -139,6 +139,9 @@ so-logstash:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
     - hostname: so-logstash
     - name: so-logstash
+    - networks:
+      - sosnet:
+        - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
     - extra_hosts: {{ REDIS_NODES }}
     - environment:
