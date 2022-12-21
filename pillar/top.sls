@@ -14,7 +14,7 @@ base:
   '* and not *_eval and not *_import':
     - logstash.nodes
 
-  '*_eval or *_helixsensor or *_heavynode or *_sensor or *_standalone or *_import':
+  '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
 
@@ -45,6 +45,8 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - kratos.soc_kratos
+    - kratos.adv_kratos
     - redis.soc_telegraf
     - redis.adv_telegraf
     - influxdb.soc_telegraf
@@ -96,6 +98,11 @@ base:
     - healthcheck.standalone
     - soc_global
     - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_telegraf
+    - redis.adv_telegraf
+    - influxdb.soc_telegraf
+    - influxdb.adv_telegraf
     - elasticsearch.soc_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
