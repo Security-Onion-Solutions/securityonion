@@ -49,7 +49,7 @@ kratosschema:
     - source: salt://kratos/files/schema.json
     - user: 928
     - group: 928
-    - file_mode: 600
+    - mode: 600
 
 kratosconfig:
   file.managed:
@@ -57,7 +57,7 @@ kratosconfig:
     - source: salt://kratos/files/kratos.yaml.jinja
     - user: 928
     - group: 928
-    - file_mode: 600
+    - mode: 600
     - template: jinja
     - defaults:
         GLOBALS: {{ GLOBALS }}
