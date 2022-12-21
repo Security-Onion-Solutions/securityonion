@@ -167,6 +167,12 @@ base:
     - manager.soc_manager
     - backup.soc_backup
     - backup.adv_backup
+    - kratos.soc_kratos
+    - kratos.adv_kratos
+    - redis.soc_redis
+    - redis.adv_redis
+    - influxdb.soc_influxdb
+    - influxdb.adv_influxdb
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
