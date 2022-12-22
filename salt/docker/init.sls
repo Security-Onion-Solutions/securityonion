@@ -20,6 +20,17 @@ dockerheldpackages:
     - hold: True
     - update_holds: True
 
+#disable docker from managing iptables
+iptables_disabled:
+  file.managed:
+    - name: /etc/systemd/system/docker.service.d/iptables-disabled.conf
+    - source: salt://docker/files/iptables-disabled.conf
+    - makedirs: True
+  cmd.run:
+    - name: systemctl daemon-reload
+    - onchanges:
+      - file: iptables_disabled
+
 # Make sure etc/docker exists
 dockeretc:
   file.directory:
