@@ -4,7 +4,7 @@
 
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
 {% import_yaml 'influxdb/defaults.yaml' as default_settings %}
 {% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
 {% from 'salt/map.jinja' import PYTHON3INFLUX with context %}
