@@ -140,7 +140,7 @@ so-logstash:
     - hostname: so-logstash
     - name: so-logstash
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
     - extra_hosts: {{ REDIS_NODES }}

@@ -38,7 +38,7 @@
 -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 -A OUTPUT -j OUTPUT_direct
 -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
--A POSTROUTING -s {{DOCKER.range}} ! -o sosnet -j MASQUERADE
+-A POSTROUTING -s {{DOCKER.range}} ! -o sosbridge -j MASQUERADE
 -A POSTROUTING -j POSTROUTING_direct
 -A POSTROUTING -j POSTROUTING_ZONES_SOURCE
 -A POSTROUTING -j POSTROUTING_ZONES
@@ -48,14 +48,14 @@
 -A POSTROUTING -s {{DOCKER.containers[container].ip}}/32 -d {{DOCKER.containers[container].ip}}/32 -p {{proto}} -m {{proto}} --dport {{port}} -j MASQUERADE
 {%-   endfor %}
 {%- endfor %}
--A DOCKER -i sosnet -j RETURN
+-A DOCKER -i sosbridge -j RETURN
 {%- for container in NODE_CONTAINERS %}
 {%-   for port, proto in DOCKER.containers[container].ports.items() %}
--A DOCKER ! -i sosnet -p {{proto}} -m {{proto}} --dport {{port}} -j DNAT --to-destination {{DOCKER.containers[container].ip}}:{{port}}
+-A DOCKER ! -i sosbridge -p {{proto}} -m {{proto}} --dport {{port}} -j DNAT --to-destination {{DOCKER.containers[container].ip}}:{{port}}
 {%-   endfor %}
 {%- endfor %}
 
--A POSTROUTING_ZONES -o sosnet -g POST_docker
+-A POSTROUTING_ZONES -o sosbridge -g POST_docker
 -A POSTROUTING_ZONES -o bond0 -g POST_public
 -A POSTROUTING_ZONES -o eth1 -g POST_public
 -A POSTROUTING_ZONES -o eth0 -g POST_public
@@ -66,7 +66,7 @@
 -A POST_public -j POST_public_log
 -A POST_public -j POST_public_deny
 -A POST_public -j POST_public_allow
--A PREROUTING_ZONES -i sosnet -g PRE_docker
+-A PREROUTING_ZONES -i sosbridge -g PRE_docker
 -A PREROUTING_ZONES -i bond0 -g PRE_public
 -A PREROUTING_ZONES -i eth1 -g PRE_public
 -A PREROUTING_ZONES -i eth0 -g PRE_public
@@ -107,7 +107,7 @@ COMMIT
 -A FORWARD -j FORWARD_direct
 -A OUTPUT -j OUTPUT_direct
 -A POSTROUTING -j POSTROUTING_direct
--A PREROUTING_ZONES -i sosnet -g PRE_docker
+-A PREROUTING_ZONES -i sosbridge -g PRE_docker
 -A PREROUTING_ZONES -i bond0 -g PRE_public
 -A PREROUTING_ZONES -i eth1 -g PRE_public
 -A PREROUTING_ZONES -i eth0 -g PRE_public
@@ -151,7 +151,7 @@ COMMIT
 -A PREROUTING -j PREROUTING_ZONES_SOURCE
 -A PREROUTING -j PREROUTING_ZONES
 -A OUTPUT -j OUTPUT_direct
--A PREROUTING_ZONES -i sosnet -g PRE_docker
+-A PREROUTING_ZONES -i sosbridge -g PRE_docker
 -A PREROUTING_ZONES -i bond0 -g PRE_public
 -A PREROUTING_ZONES -i eth1 -g PRE_public
 -A PREROUTING_ZONES -i eth0 -g PRE_public
@@ -239,10 +239,10 @@ COMMIT
 -A INPUT -j LOGGING
 -A FORWARD -j DOCKER-USER
 -A FORWARD -j DOCKER-ISOLATION-STAGE-1
--A FORWARD -o sosnet -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -o sosnet -j DOCKER
--A FORWARD -i sosnet ! -o sosnet -j ACCEPT
--A FORWARD -i sosnet -o sosnet -j ACCEPT
+-A FORWARD -o sosbridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -o sosbridge -j DOCKER
+-A FORWARD -i sosbridge ! -o sosbridge -j ACCEPT
+-A FORWARD -i sosbridge -o sosbridge -j ACCEPT
 -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -i lo -j ACCEPT
 -A FORWARD -j FORWARD_direct
@@ -255,19 +255,19 @@ COMMIT
 -A OUTPUT -o lo -j ACCEPT
 -A OUTPUT -j OUTPUT_direct
 -A OUTPUT -p icmp -m icmp --icmp-type 14 -j DROP
--A DOCKER-ISOLATION-STAGE-1 -i sosnet ! -o sosnet -j DOCKER-ISOLATION-STAGE-2
+-A DOCKER-ISOLATION-STAGE-1 -i sosbridge ! -o sosbridge -j DOCKER-ISOLATION-STAGE-2
 -A DOCKER-ISOLATION-STAGE-1 -j RETURN
--A DOCKER-ISOLATION-STAGE-2 -o sosnet -j DROP
+-A DOCKER-ISOLATION-STAGE-2 -o sosbridge -j DROP
 -A DOCKER-ISOLATION-STAGE-2 -j RETURN
--A DOCKER-USER ! -i sosnet -o sosnet -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A DOCKER-USER ! -i sosnet -o sosnet -j LOGGING
+-A DOCKER-USER ! -i sosbridge -o sosbridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-USER ! -i sosbridge -o sosbridge -j LOGGING
 -A DOCKER-USER -j RETURN
--A FORWARD_IN_ZONES -i sosnet -g FWDI_docker
+-A FORWARD_IN_ZONES -i sosbridge -g FWDI_docker
 -A FORWARD_IN_ZONES -i bond0 -g FWDI_public
 -A FORWARD_IN_ZONES -i eth1 -g FWDI_public
 -A FORWARD_IN_ZONES -i eth0 -g FWDI_public
 -A FORWARD_IN_ZONES -g FWDI_public
--A FORWARD_OUT_ZONES -o sosnet -g FWDO_docker
+-A FORWARD_OUT_ZONES -o sosbridge -g FWDO_docker
 -A FORWARD_OUT_ZONES -o bond0 -g FWDO_public
 -A FORWARD_OUT_ZONES -o eth1 -g FWDO_public
 -A FORWARD_OUT_ZONES -o eth0 -g FWDO_public
@@ -287,7 +287,7 @@ COMMIT
 -A FWDO_public -j FWDO_public_log
 -A FWDO_public -j FWDO_public_deny
 -A FWDO_public -j FWDO_public_allow
--A INPUT_ZONES -i sosnet -g IN_docker
+-A INPUT_ZONES -i sosbridge -g IN_docker
 -A INPUT_ZONES -i bond0 -g IN_public
 -A INPUT_ZONES -i eth1 -g IN_public
 -A INPUT_ZONES -i eth0 -g IN_public

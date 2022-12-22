@@ -49,7 +49,7 @@ so-elastic-fleet:
     - detach: True
     - user: 947
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-elastic-fleet'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}

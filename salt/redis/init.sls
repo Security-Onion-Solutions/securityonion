@@ -47,7 +47,7 @@ so-redis:
     - hostname: so-redis
     - user: socore
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
     - port_bindings:
       - 0.0.0.0:6379:6379

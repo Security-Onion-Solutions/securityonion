@@ -169,7 +169,7 @@ strelka_coordinator:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-coordinator
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
@@ -185,7 +185,7 @@ strelka_gatekeeper:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-gatekeeper
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
@@ -205,7 +205,7 @@ strelka_frontend:
     - privileged: True
     - name: so-strelka-frontend
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-frontend'].ip }}
     - command: strelka-frontend
     - port_bindings:
@@ -224,7 +224,7 @@ strelka_backend:
       - /opt/so/conf/strelka/rules/:/etc/yara/:ro
     - name: so-strelka-backend
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-backend'].ip }}
     - command: strelka-backend
     - restart_policy: on-failure
@@ -241,7 +241,7 @@ strelka_manager:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-manager'].ip }}
     - command: strelka-manager
 
@@ -258,7 +258,7 @@ strelka_filestream:
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-filestream'].ip }}
     - command: strelka-filestream
 

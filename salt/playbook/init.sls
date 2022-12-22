@@ -81,7 +81,7 @@ so-playbook:
     - hostname: playbook
     - name: so-playbook
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw

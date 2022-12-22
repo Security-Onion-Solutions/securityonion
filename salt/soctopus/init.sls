@@ -64,7 +64,7 @@ so-soctopus:
     - hostname: soctopus
     - name: so-soctopus
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-soctopus'].ip }}
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro

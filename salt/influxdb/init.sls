@@ -49,7 +49,7 @@ so-influxdb:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-influxdb:{{ GLOBALS.so_version }}
     - hostname: influxdb
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-influxdb'].ip }}
     - environment:
       - INFLUXDB_HTTP_LOG_ENABLED=false

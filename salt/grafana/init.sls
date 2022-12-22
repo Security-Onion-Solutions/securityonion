@@ -126,7 +126,7 @@ so-grafana:
     - hostname: grafana
     - user: socore
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-grafana'].ip }}
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw

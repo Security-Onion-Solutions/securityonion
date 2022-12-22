@@ -85,7 +85,7 @@ so-mysql:
     - hostname: so-mysql
     - user: socore
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
     - port_bindings:
       - 0.0.0.0:3306:3306

@@ -33,7 +33,7 @@ so-idstools:
     - hostname: so-idstools
     - user: socore
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-idstools'].ip }}
     {% if proxy %}
     - environment:

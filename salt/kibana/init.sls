@@ -83,7 +83,7 @@ so-kibana:
     - hostname: kibana
     - user: kibana
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-kibana'].ip }}
     - environment:
       - ELASTICSEARCH_HOST={{ GLOBALS.manager }}

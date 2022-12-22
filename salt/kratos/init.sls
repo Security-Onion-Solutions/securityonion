@@ -69,7 +69,7 @@ so-kratos:
     - hostname: kratos
     - name: so-kratos
     - networks:
-      - sosnet:
+      - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-kratos'].ip }}
     - binds:
       - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
