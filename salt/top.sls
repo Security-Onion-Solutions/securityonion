@@ -328,6 +328,8 @@ base:
     - manager
     - nginx
     - soc
+    - influxdb
+    - telegraf
     - kratos
     - firewall
     - idstools
