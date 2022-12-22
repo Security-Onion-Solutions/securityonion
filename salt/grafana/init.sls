@@ -9,7 +9,7 @@
 {% import_yaml 'grafana/grafana_defaults.yaml' as default_settings %}
 {% set GRAFANA_SETTINGS = salt['grains.filter_by'](default_settings, default='grafana', merge=salt['pillar.get']('grafana', {})) %}
 
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] or (grains.role == 'so-eval' and GRAFANA == 1) %}
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval'] %}
 
 {% set ALLOWED_DASHBOARDS = ['overview', 'standalone', 'manager', 'managersearch', 'sensor', 'searchnode', 'heavynode', 'eval', 'receiver'] %}
 {% set DASHBOARDS = ['overview'] %}
