@@ -128,6 +128,8 @@ so-curator:
     - hostname: curator
     - name: so-curator
     - user: curator
+    - networks:
+      - sosbridge: []
     - interactive: True
     - tty: True
     - binds:
