@@ -1209,6 +1209,7 @@ generate_passwords(){
   GRAFANAPASS=$(get_random_value)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
+  REDISPASS=$(get_random_value)
 }
 
 generate_interface_vars() {
@@ -1496,7 +1497,10 @@ docker_pillar() {
 redis_pillar() {
 	title "Create the redis pillar file"
 	touch $adv_redis_pillar_file
-	touch $redis_pillar_file
+	printf '%s\n'\
+		"redis:"\
+		"  config:"\
+		"    requirepass: '$REDISPASS'" > $redis_pillar_file
 }
 
 influxdb_pillar() {

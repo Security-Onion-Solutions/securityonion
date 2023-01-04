@@ -1,9 +1,10 @@
-{% set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') -%}
-{% set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) -%}
-{% from 'logstash/map.jinja' import REDIS_NODES with context -%}
+{%- set THREADS = salt['pillar.get']('logstash_settings:ls_input_threads', '') %}
+{%- set BATCH = salt['pillar.get']('logstash_settings:ls_pipeline_batch_size', 125) %}
+{%- from 'logstash/map.jinja' import REDIS_NODES with context %}
+{%- set REDIS_PASS = salt['pillar.get']('redis:config:requirepass') %}
 
-{% for index in range(REDIS_NODES|length) -%}
-{%   for host in REDIS_NODES[index] -%}
+{%- for index in range(REDIS_NODES|length) %}
+{%-   for host in REDIS_NODES[index] %}
 input {
         redis {
                 host => '{{ host }}'
@@ -14,6 +15,7 @@ input {
                 type => 'redis-input'
                 threads => {{ THREADS }}
                 batch_count => {{ BATCH }}
+                password => {{ REDIS_PASS }}
         }
 }
 {%   endfor %}
