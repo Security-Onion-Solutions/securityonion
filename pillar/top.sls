@@ -121,6 +121,7 @@ base:
   '*_heavynode':
     - elasticsearch.auth
     - soc_global
+    - redis.soc_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -137,6 +138,7 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - redis.soc_redis
     - soc_global
     - adv_global
     - minions.{{ grains.id }}
@@ -149,6 +151,8 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - redis.soc_redis
+    - redis.adv_redis
     - soc_global
     - adv_global
     - minions.{{ grains.id }}
