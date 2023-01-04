@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from "curator/map.jinja" import CURATOROPTIONS %}
 {% from "curator/map.jinja" import CURATORMERGED %}
 {% set REMOVECURATORCRON = False %}
@@ -129,7 +130,8 @@ so-curator:
     - name: so-curator
     - user: curator
     - networks:
-      - sosbridge: []
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-curator'].ip }}
     - interactive: True
     - tty: True
     - binds:
