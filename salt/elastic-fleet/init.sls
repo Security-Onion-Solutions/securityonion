@@ -38,6 +38,15 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+eafleetbin:
+  file.managed:
+    - name: /usr/sbin/so-fleet-integration-policy-load
+    - source: salt://elastic-fleet/bin/so-fleet-integration-policy-load
+    - mode: 755
+    - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
+
 
   {% if SERVICETOKEN != '' %}
 so-elastic-fleet:
