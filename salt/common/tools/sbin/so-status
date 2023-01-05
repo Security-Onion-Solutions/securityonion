@@ -173,7 +173,6 @@ parse_status() {
     fi
 }
 
-
 print_line() {
     local service_name="${1}"
     local service_state="" ; service_state="$( parse_status "${1}" "${2}" )"
@@ -224,69 +223,68 @@ main() {
     is_tty
     # if running from salt
     if [ "$CALLER" == 'salt-call' ] ||  [ "$CALLER" == 'salt-minion' ]; then
-      printf "\n"
-      printf "Checking Docker status\n\n"
+        printf "\n"
+        printf "Checking Docker status\n\n"
 
-      systemctl is-active --quiet docker
-      if [[ $? = 0 ]]; then
-          print_line "Docker" "running"
-      else
-          print_line "Docker" "exited"
-      fi
+        systemctl is-active --quiet docker
+        if [[ $? = 0 ]]; then
+            print_line "Docker" "running"
+        else
+            print_line "Docker" "exited"
+        fi
 
-      populate_container_lists
+        populate_container_lists
 
-      printf "\nChecking container statuses\n\n"
+        printf "\nChecking container statuses\n\n"
 
-      local num_containers=${#container_name_list[@]}
+        local num_containers=${#container_name_list[@]}
 
-      for i in $(seq 0 $(($num_containers - 1 ))); do
-          print_line ${container_name_list[$i]} ${container_state_list[$i]}
-      done
+        for i in $(seq 0 $(($num_containers - 1 ))); do
+            print_line ${container_name_list[$i]} ${container_state_list[$i]}
+        done
 
-      printf "\n"
+        printf "\n"
 
     # else if running from a terminal
     else
+        if [ "$QUIET" = true ]; then
+            if [ $SYSTEM_START_TIME -lt $LAST_SOSETUP_LOG ]; then
+                exit 99
+            fi
+            print_or_parse="parse_status"
+        else
+            print_or_parse="print_line"
 
-      if [ "$QUIET" = true ]; then
-          if [ $SYSTEM_START_TIME -lt $LAST_SOSETUP_LOG ]; then
-            exit 99
-          fi
-          print_or_parse="parse_status"
-      else
-          print_or_parse="print_line"
+            if (( __tty == 1 )) ; then
+                local bold; bold="$(tput bold)"
+                local focus_color; focus_color="$(tput setaf 4)"
+                local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
+            fi
+            printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking Docker status"
+        fi
 
-          if (( __tty == 1 )) ; then
-          local bold; bold="$(tput bold)"
-          local focus_color; focus_color="$(tput setaf 4)"
-          local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
-          fi
-          printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking Docker status"
-      fi
+        systemctl is-active --quiet docker
+        if [[ $? = 0 ]]; then
+            ${print_or_parse} "Docker" "running"
+        else
+            ${print_or_parse} "Docker" "exited"
+        fi
 
-      systemctl is-active --quiet docker
-      if [[ $? = 0 ]]; then
-          ${print_or_parse} "Docker" "running"
-      else
-          ${print_or_parse} "Docker" "exited"
-      fi
+        populate_container_lists
 
-      populate_container_lists
+        if [ "$QUIET" = false ]; then
+            printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking container statuses"
+        fi
 
-      if [ "$QUIET" = false ]; then
-          printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking container statuses"
-      fi
+        local num_containers=${#container_name_list[@]}
 
-      local num_containers=${#container_name_list[@]}
+        for i in $(seq 0 $(($num_containers - 1 ))); do
+            ${print_or_parse} ${container_name_list[$i]} ${container_state_list[$i]}
+        done
 
-      for i in $(seq 0 $(($num_containers - 1 ))); do
-          ${print_or_parse} ${container_name_list[$i]} ${container_state_list[$i]}
-      done
-
-      if [ "$QUIET" = false ]; then
-          printf "\n"
-      fi
+        if [ "$QUIET" = false ]; then
+            printf "\n"
+        fi
     fi
 }
 
