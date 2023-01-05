@@ -19,11 +19,13 @@
 display_help() {
 cat <<HELP_USAGE
 
-    $0  [-h] [-q|--quiet]
+    $0  [-h] [-q|--quiet] [-j]
 
    -h             Show this message.
    -q|--quiet     Suppress the output and only return a
-	              single status code for overall status
+	              single status code for overall status.
+   -j             Output statuses as a stream of JSON
+                  objects.
 	0:Ok, 1:Error, 2:Starting/Pending, 99:Installing SO
 HELP_USAGE
 }
@@ -35,6 +37,7 @@ fi
 
 # Constants
 QUIET=false
+JSON_OUTPUT=false
 EXITCODE=0
 SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
 # file populated by salt.lasthighstate state at end of successful highstate run
@@ -297,13 +300,14 @@ is_tty() {
 
 # {% endraw %}
 
-while getopts ':hq' OPTION; do
+while getopts ':hqj' OPTION; do
   case "$OPTION" in
     h)
       display_help
       exit 0
       ;;
     q) QUIET=true ;;
+    j) JSON_OUTPUT=true ;;
     \?)
       display_help
       exit 1
