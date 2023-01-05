@@ -1,5 +1,6 @@
 {% import_yaml 'soc/defaults.yaml' as SOCDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER -%}
 
 {% for module, application_url in GLOBALS.application_urls.items() %}
 {%   do SOCDEFAULTS.soc.server.modules[module].update({'hostUrl': application_url}) %}
@@ -18,7 +19,7 @@
 {%   do SOCDEFAULTS.soc.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.manager_ip ~ ':8086'}) %}
 {% endif %}
 
-{% do SOCDEFAULTS.soc.server.modules.statickeyauth.update({'anonymousCidr': GLOBALS.docker_range, 'apiKey': pillar.sensoroni.sensoronikey}) %}
+{% do SOCDEFAULTS.soc.server.modules.statickeyauth.update({'anonymousCidr': DOCKER.sosrange, 'apiKey': pillar.sensoroni.sensoronikey}) %}
 
 {% do SOCDEFAULTS.soc.server.client.case.update({'analyzerNodeId': GLOBALS.minion_id}) %}
 
