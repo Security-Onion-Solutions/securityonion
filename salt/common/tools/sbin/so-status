@@ -179,55 +179,66 @@ parse_status() {
 print_line() {
     local service_name="${1}"
     local service_state="" ; service_state="$( parse_status "${1}" "${2}" )"
-    # XXX: What will we do if tput isn't avalable?
-    local line=""
-    local PADDING_CONSTANT=""
-    local columns=35 # value used if not printing to a tty
 
-    if (( __tty == 1 )); then
-        local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
-        local bold; bold="$(tput bold)"
-        local red; red="$(tput setaf 1)"
-        local green; green="$(tput setaf 2)"
-        local yellow; yellow="$(tput setaf 3)"
-        PADDING_CONSTANT=15 # whitespace + brackets + 1
+    if [ "$JSON_OUTPUT" = false ]; then
+        # XXX: What will we do if tput isn't avalable?
+        local line=""
+        local PADDING_CONSTANT=""
+        local columns=35 # value used if not printing to a tty
 
-        columns=$(tput cols)
+        if (( __tty == 1 )); then
+            local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
+            local bold; bold="$(tput bold)"
+            local red; red="$(tput setaf 1)"
+            local green; green="$(tput setaf 2)"
+            local yellow; yellow="$(tput setaf 3)"
+            PADDING_CONSTANT=15 # whitespace + brackets + 1
+
+            columns=$(tput cols)
+        fi
+
+        # construct a line of '------' so that the names and states are all aligned
+        linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
+        for i in $(seq 0 "${linewidth}"); do
+        line="${line}-"
+        done
+
+        if [[ $service_state = "$ERROR_STRING" ]] \
+            || [[ $service_state = "$MISSING_STRING" ]]; then
+            state_color="${red:-}"
+            if [[ "$EXITCODE" -eq 0 ]]; then
+                EXITCODE=1
+            fi
+        elif [[ $service_state = "$SUCCESS_STRING" ]]; then
+            state_color="${green:-}"
+        elif [[ $service_state = "$PENDING_STRING" ]] \
+            || [[ $service_state = "$DISABLED_STRING" ]] \
+            || [[ $service_state = "$STARTING_STRING" ]] \
+            || [[ $service_state = "$WAIT_START_STRING" ]]; then
+                state_color="${yellow:-}"
+                EXITCODE=2
+        fi
+
+        service_state="${bold:-}${state_color:-}${service_state}${reset_attr:-}"
+        line="${bold:-}${state_color:-}${line:-}${reset_attr:-}"
+        printf "    %s %s [ %s ]    \n" "${service_name}" "${line:-}" "${service_state}"
+    else
+        jq --seq -ncM \
+            --arg name "$service_name" \
+            --arg state "$service_state" \
+            '{name: $name, state: $state}'
     fi
-
-    # construct a line of '------' so that the names and states are all aligned
-    linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
-    for i in $(seq 0 "${linewidth}"); do
-      line="${line}-"
-    done
-
-    if [[ $service_state = "$ERROR_STRING" ]] \
-        || [[ $service_state = "$MISSING_STRING" ]]; then
-          state_color="${red:-}"
-          if [[ "$EXITCODE" -eq 0 ]]; then
-              EXITCODE=1
-          fi
-    elif [[ $service_state = "$SUCCESS_STRING" ]]; then
-        state_color="${green:-}"
-    elif [[ $service_state = "$PENDING_STRING" ]] \
-        || [[ $service_state = "$DISABLED_STRING" ]] \
-        || [[ $service_state = "$STARTING_STRING" ]] \
-        || [[ $service_state = "$WAIT_START_STRING" ]]; then
-            state_color="${yellow:-}"
-            EXITCODE=2
-    fi
-
-    service_state="${bold:-}${state_color:-}${service_state}${reset_attr:-}"
-    line="${bold:-}${state_color:-}${line:-}${reset_attr:-}"
-    printf "    %s %s [ %s ]    \n" "${service_name}" "${line:-}" "${service_state}"
 }
 
 main() {
     is_tty
     # if running from salt
     if [ "$CALLER" == 'salt-call' ] ||  [ "$CALLER" == 'salt-minion' ]; then
-        printf "\n"
-        printf "Checking Docker status\n\n"
+
+        if [ "$JSON_OUTPUT" = false ]; then
+            printf "\n"
+            printf "Checking Docker status\n\n"
+        fi
 
         systemctl is-active --quiet docker
         if [[ $? = 0 ]]; then
@@ -238,7 +249,9 @@ main() {
 
         populate_container_lists
 
-        printf "\nChecking container statuses\n\n"
+        if [ "$JSON_OUTPUT" = false ]; then
+            printf "\nChecking container statuses\n\n"
+        fi
 
         local num_containers=${#container_name_list[@]}
 
@@ -258,12 +271,14 @@ main() {
         else
             print_or_parse="print_line"
 
-            if (( __tty == 1 )) ; then
-                local bold; bold="$(tput bold)"
-                local focus_color; focus_color="$(tput setaf 4)"
-                local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
+            if [ "$JSON_OUTPUT" = false ]; then
+                if (( __tty == 1 )) ; then
+                    local bold; bold="$(tput bold)"
+                    local focus_color; focus_color="$(tput setaf 4)"
+                    local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
+                fi
+                printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking Docker status"
             fi
-            printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking Docker status"
         fi
 
         systemctl is-active --quiet docker
@@ -275,7 +290,7 @@ main() {
 
         populate_container_lists
 
-        if [ "$QUIET" = false ]; then
+        if [ "$QUIET" = false ] && [ "$JSON_OUTPUT" = false ]; then
             printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking container statuses"
         fi
 
@@ -285,7 +300,7 @@ main() {
             ${print_or_parse} ${container_name_list[$i]} ${container_state_list[$i]}
         done
 
-        if [ "$QUIET" = false ]; then
+        if [ "$QUIET" = false ] && [ "$JSON_OUTPUT" = false ]; then
             printf "\n"
         fi
     fi
