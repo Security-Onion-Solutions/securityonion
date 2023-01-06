@@ -1217,6 +1217,7 @@ generate_passwords(){
   GRAFANAPASS=$(get_random_value)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
+  REDISPASS=$(get_random_value)
 }
 
 generate_interface_vars() {
@@ -1376,6 +1377,13 @@ telegraf_pillar() {
 manager_pillar() {
 	touch $adv_manager_pillar_file
 	title "Create the manager pillar"
+	if [[ $is_import ]]; then
+		GRAFANA=0
+		PLAYBOOK=0
+	else
+		GRAFANA=1
+		PLAYBOOK=1
+	fi
 	printf '%s\n'\
 		"manager:"\
 		"  proxy: '$so_proxy'"\
@@ -1441,8 +1449,9 @@ create_global() {
 	# Continue adding other details	
 	echo "  imagerepo: '$IMAGEREPO'" >> $global_pillar_file
 	echo "  pipeline: 'redis'" >> $global_pillar_file
-	echo "  repo_host: '$MAINIP'" >> $global_pillar_file
-	echo "  registry_host: '$MAINIP'" >> $global_pillar_file
+	echo "  repo_host: '$HOSTNAME'" >> $global_pillar_file
+	echo "  influxdb_host: '$HOSTNAME'" >> $global_pillar_file
+	echo "  registry_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  endgamehost: '$ENDGAMEHOST'" >> $global_pillar_file
 }
 
@@ -1508,7 +1517,10 @@ docker_pillar() {
 redis_pillar() {
 	title "Create the redis pillar file"
 	touch $adv_redis_pillar_file
-	touch $redis_pillar_file
+	printf '%s\n'\
+		"redis:"\
+		"  config:"\
+		"    requirepass: '$REDISPASS'" > $redis_pillar_file
 }
 
 influxdb_pillar() {
