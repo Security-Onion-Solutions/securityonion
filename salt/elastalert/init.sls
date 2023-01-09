@@ -86,6 +86,9 @@ so-elastalert:
     - hostname: elastalert
     - name: so-elastalert
     - user: so-elastalert
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-elastalert'].ip }}
     - detach: True
     - binds:
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
