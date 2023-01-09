@@ -5,6 +5,7 @@
 {% if sls in allowed_states %}
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'elastalert/elastalert_config.map.jinja' import ELASTALERT as elastalert_config with context %}
 
 # Create the group
