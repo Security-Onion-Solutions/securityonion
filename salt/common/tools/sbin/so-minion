@@ -206,7 +206,7 @@ function createSTANDALONE() {
 }
 
 function testConnection() {
-	retry 5 10 "salt '$MINION_ID' test.ping" 0
+	retry 15 3 "salt '$MINION_ID' test.ping" 0
 	local ret=$?
 	if [[ $ret != 0 ]]; then
 		echo "The Minion has been accepted but is not online. Try again later"
@@ -230,9 +230,7 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	if [ $OPERATION != 'setup' ]; then
 		# Accept the salt key
 		acceptminion
-		# Let the keys echange
-		sleep 3
-		# Need logic here to try and salt ping.. If it doesn't work need to do something
+		# Test to see if the minion was accepted
 		testConnection
 		# Pull the info from the file to build what is needed
 		getinstallinfo
