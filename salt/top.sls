@@ -8,7 +8,7 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
+{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', False) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
@@ -62,7 +62,9 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
+    {%- if FILEBEAT %}
     - filebeat
+    {%- endif %}
     - schedule
     - docker_clean
 
