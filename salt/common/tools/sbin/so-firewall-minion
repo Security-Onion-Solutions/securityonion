@@ -49,33 +49,30 @@ fi
 	case "$ROLE" in
 
         'MANAGER')
-			so-firewall includehost manager "$IP"
-			so-firewall --apply includehost minion "$IP"
+			so-firewall --role=manager --ip="$IP"
 			;;
 		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			so-firewall includehost manager "$IP"
-			so-firewall includehost minion "$IP"
-			so-firewall includehost sensor "$IP"
-			so-firewall --apply includehost search_node "$IP"
+			so-firewall --role=manager --ip="$IP"
+			so-firewall --role=sensors --ip="$IP"
+			so-firewall --apply --role=searchnodes --ip="$IP"
 			;;
 		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'IDH' | 'RECEIVER')
-			so-firewall includehost minion "$IP"
 			case "$ROLE" in
 				'SENSOR')
-					so-firewall --apply includehost sensor "$IP"
+					so-firewall --apply --role=sensors --ip="$IP"
 					;;
 				'SEARCHNODE')
-					so-firewall --apply includehost search_node "$IP"
+					so-firewall --apply --role=searchnodes --ip="$IP"
 					;;
 				'HEAVYNODE')
-					so-firewall includehost sensor "$IP"
-					so-firewall --apply includehost heavy_node "$IP"
+					so-firewall --role=sensors --ip="$IP"
+					so-firewall --apply --role=heavynodes --ip="$IP"
 					;;
 				'IDH')
-				    so-firewall --apply includehost beats_endpoint_ssl "$IP"
+				    so-firewall --apply --role=beats_endpoint_ssl --ip="$IP"
 					;;
 				'RECEIVER')
-					so-firewall --apply includehost receiver "$IP"
+					so-firewall --apply --role=receivers --ip="$IP"
                     ;;
            	esac
 			;;

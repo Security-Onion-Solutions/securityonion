@@ -254,11 +254,16 @@ collect_dns_domain() {
 
 collect_dockernet() {
 	if ! whiptail_dockernet_check; then
-		whiptail_dockernet_net "172.17.0.0"
+		whiptail_dockernet_sosnet "172.17.1.0"
+		whiptail_dockernet_nososnet "172.17.0.0"
 
 		while ! valid_ip4 "$DOCKERNET"; do
 			whiptail_invalid_input
-			whiptail_dockernet_net "$DOCKERNET"
+			whiptail_dockernet_nonsosnet "$DOCKERNET"
+		done
+		while ! valid_ip4 "$DOCKERNET2"; do
+			whiptail_invalid_input
+			whiptail_dockernet_sosnet "$DOCKERNET2"
 		done
 	fi
 }
@@ -996,6 +1001,9 @@ docker_registry() {
 	if [ -z "$DOCKERNET" ]; then
 		DOCKERNET=172.17.0.0
 	fi
+	if [ -z "$DOCKERNET2" ]; then
+		DOCKERNET2=172.17.1.0
+	fi
 	# Make the host use the manager docker registry
 	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
 	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
@@ -1410,9 +1418,12 @@ create_global() {
 
 	if [ -z "$DOCKERNET" ]; then
 		DOCKERNET=172.17.0.0
+		DOCKERNET2=172.17.1.0
 		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
 	else
 		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
+		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
 	fi
 
 	if [ -f "$global_pillar_file" ]; then
@@ -1497,6 +1508,8 @@ docker_pillar() {
 	touch $adv_docker_pillar_file
 	printf '%s\n'\
 		"docker:"\
+		"  sosrange: '$DOCKERNET2/24'"\
+		"  sosbip: '$DOCKER2BIP'"\
 		"  range: '$DOCKERNET/24'"\
 		"  bip: '$DOCKERBIP'" > $docker_pillar_file
 }
@@ -1952,6 +1965,15 @@ repo_sync_local() {
 	echo "enabled=1" >> /root/repodownload.conf
 	echo "gpgcheck=1" >> /root/repodownload.conf
 	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
+
+	REPOSYNC=$(rpm -qa | grep createrepo | wc -l)
+	if [[ ! "$REPOSYNC" -gt 0 ]]; then
+		# Install reposync
+		info "Installing createrepo"
+		logCmd "yum -y install -c /root/repodownload.conf yum-utils createrepo"
+	else
+		info "We have what we need to sync"
+	fi
 
 	logCmd "reposync --norepopath -n -g -l -d -m -c /root/repodownload.conf -r securityonionsync --download-metadata -p /nsm/repo/"
 	

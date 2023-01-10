@@ -1,0 +1,90 @@
+{% from 'docker/docker.map.jinja' import DOCKER -%}
+{% from 'firewall/containers.map.jinja' import NODE_CONTAINERS -%}
+{% from 'firewall/map.jinja' import hostgroups with context -%}
+{% from 'firewall/map.jinja' import assigned_hostgroups with context -%}
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+:DOCKER - [0:0]
+-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+-A POSTROUTING -s {{DOCKER.sosrange}} ! -o sosbridge -j MASQUERADE
+{%- for container in NODE_CONTAINERS %}
+{%-   if DOCKER.containers[container].ports is defined %}
+{%-     for port, proto in DOCKER.containers[container].ports.items() %}
+-A POSTROUTING -s {{DOCKER.containers[container].ip}}/32 -d {{DOCKER.containers[container].ip}}/32 -p {{proto}} -m {{proto}} --dport {{port}} -j MASQUERADE
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+-A DOCKER -i sosbridge -j RETURN
+{%- for container in NODE_CONTAINERS %}
+{%-   if DOCKER.containers[container].ports is defined %}
+{%-     for port, proto in DOCKER.containers[container].ports.items() %}
+-A DOCKER ! -i sosbridge -p {{proto}} -m {{proto}} --dport {{port}} -j DNAT --to-destination {{DOCKER.containers[container].ip}}:{{port}}
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+
+COMMIT
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+:DOCKER - [0:0]
+:DOCKER-ISOLATION-STAGE-1 - [0:0]
+:DOCKER-ISOLATION-STAGE-2 - [0:0]
+:DOCKER-USER - [0:0]
+:LOGGING - [0:0]
+
+{%- set count = namespace(value=0) %}
+{%- for chain, hg in assigned_hostgroups.chain.items() %}
+  {%- for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
+    {%- for action in ['insert', 'delete' ] %}
+      {%- if hostgroups[hostgroup].ips[action] %}
+        {%- for ip in hostgroups[hostgroup].ips[action] %}
+          {%- for portgroup in portgroups.portgroups %}
+            {%- for proto, ports in portgroup.items() %}
+              {%- for port in ports %}
+                {%- set count.value = count.value + 1 %}
+-A {{chain}} -s {{ip}} -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
+              {%- endfor %}
+            {%- endfor %}
+          {%- endfor %}
+        {%- endfor %}
+      {%- endif %}
+    {%- endfor %}
+  {%- endfor %}
+{%- endfor %}
+
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m conntrack --ctstate INVALID -j DROP
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -j LOGGING
+-A FORWARD -j DOCKER-USER
+-A FORWARD -j DOCKER-ISOLATION-STAGE-1
+-A FORWARD -o sosbridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -o sosbridge -j DOCKER
+-A FORWARD -i sosbridge ! -o sosbridge -j ACCEPT
+-A FORWARD -i sosbridge -o sosbridge -j ACCEPT
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -p icmp -m icmp --icmp-type 14 -j DROP
+
+{%- for container in NODE_CONTAINERS %}
+{%-   if DOCKER.containers[container].ports is defined %}
+{%-     for port, proto in DOCKER.containers[container].ports.items() %}
+-A DOCKER -d {{DOCKER.containers[container].ip}}/32 ! -i sosbridge -o sosbridge -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+
+-A DOCKER-ISOLATION-STAGE-1 -i sosbridge ! -o sosbridge -j DOCKER-ISOLATION-STAGE-2
+-A DOCKER-ISOLATION-STAGE-1 -j RETURN
+-A DOCKER-ISOLATION-STAGE-2 -o sosbridge -j DROP
+-A DOCKER-ISOLATION-STAGE-2 -j RETURN
+-A DOCKER-USER ! -i sosbridge -o sosbridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-USER -j RETURN
+-A LOGGING -m limit --limit 2/min -j LOG --log-prefix "IPTables-dropped: "
+-A LOGGING -j DROP
+COMMIT

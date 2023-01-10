@@ -1,6 +1,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
   - ssl
@@ -83,6 +84,9 @@ so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
     - hostname: so-nginx
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw

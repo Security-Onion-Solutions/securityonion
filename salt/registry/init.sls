@@ -1,5 +1,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
   - ssl
@@ -37,6 +38,9 @@ so-dockerregistry:
   docker_container.running:
     - image: ghcr.io/security-onion-solutions/registry:latest
     - hostname: so-registry
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-dockerregistry'].ip }}
     - restart_policy: always
     - port_bindings:
       - 0.0.0.0:5000:5000

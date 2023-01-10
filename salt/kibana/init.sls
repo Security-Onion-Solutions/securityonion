@@ -5,12 +5,10 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
-
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
-
 {% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
 
 # Add ES Group
@@ -84,6 +82,9 @@ so-kibana:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
     - hostname: kibana
     - user: kibana
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-kibana'].ip }}
     - environment:
       - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200

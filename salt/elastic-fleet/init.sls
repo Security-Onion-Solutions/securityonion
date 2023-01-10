@@ -4,6 +4,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 # These values are generated during node install and stored in minion pillar
 {% set SERVICETOKEN = salt['pillar.get']('elasticfleet:server:es_token','') %}
@@ -47,6 +48,9 @@ so-elastic-fleet:
     - hostname: Fleet-{{ GLOBALS.hostname }}
     - detach: True
     - user: 947
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-elastic-fleet'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
