@@ -16,8 +16,6 @@ iptables_config:
 iptables_restore:
   cmd.run:
     - name: iptables-restore < /etc/sysconfig/iptables
-    - onchanges:
-        - file: iptables_config
 
 {% else %}
 
