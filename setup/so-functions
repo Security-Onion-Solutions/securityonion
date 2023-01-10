@@ -1935,15 +1935,6 @@ securityonion_repo() {
 repo_sync_local() {
 	# Sync the repo from the the SO repo locally.
 	# Check for reposync
-	REPOSYNC=$(rpm -qa | grep createrepo | wc -l)
-	if [[ ! "$REPOSYNC" -gt 0 ]]; then
-		# Install reposync
-		info "Installing createrepo"
-		logCmd "yum install -y -c /root/repodownload.conf --disablerepo='*' --enablerepo='securityonionsync' yum-utils createrepo"
-	else
-		info "We have what we need to sync"
-	fi
-	info "Backing up old repos"
 	mkdir -p /nsm/repo
 	mkdir -p /root/reposync_cache
 	echo "[main]" > /root/repodownload.conf
@@ -1970,14 +1961,14 @@ repo_sync_local() {
 	if [[ ! "$REPOSYNC" -gt 0 ]]; then
 		# Install reposync
 		info "Installing createrepo"
-		logCmd "yum -y install -c /root/repodownload.conf yum-utils createrepo"
+		logCmd "yum install -y -c /root/repodownload.conf --disablerepo='*' --enablerepo='securityonionsync' yum-utils createrepo"
 	else
 		info "We have what we need to sync"
 	fi
 
 	logCmd "reposync --norepopath -n -g -l -d -m -c /root/repodownload.conf -r securityonionsync --download-metadata -p /nsm/repo/"
 	
-
+	
 	# After the download is complete run createrepo
 	create_repo
 
