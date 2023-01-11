@@ -1529,6 +1529,22 @@ influxdb_pillar() {
 	touch $influxdb_pillar_file
 }
 
+make_some_dirs() {
+	mkdir -p /nsm
+	mkdir -p "$default_salt_dir"
+	mkdir -p "$local_salt_dir"
+	mkdir -p $local_salt_dir/pillar/minions
+	mkdir -p $local_salt_dir/salt/firewall/hostgroups
+	mkdir -p $local_salt_dir/salt/firewall/portgroups
+	mkdir -p $local_salt_dir/salt/firewall/ports
+
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf filebeat logstash soc manager kratos idstools idh elastalert;do
+	mkdir -p $local_salt_dir/pillar/$THEDIR
+	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
+	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
+	done
+}
+
 mark_version() {
 	title "Marking the current version"
 	echo "$SOVERSION" > /etc/soversion

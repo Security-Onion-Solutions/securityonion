@@ -1104,6 +1104,23 @@ whiptail_proxy_auth_pass() {
 	whiptail_check_exitstatus $exitstatus
 }
 
+whiptail_reinstall() {
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+	Setup has detected a previous install. Continuing the install will remove the previous install configuration.
+
+	Would you like to continue?
+	EOM
+
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 \
+		--yes-button "Continue" --no-button "Exit" --defaultno
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_requirements_error() {
 
 	local requirement_needed=$1

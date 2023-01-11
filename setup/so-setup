@@ -137,10 +137,11 @@ fi
 title "Checking to see if install has run before"
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
-
+	whiptail_reinstall
 	info "Old setup detected. Moving the last setup.log to setup.log.bak"
 	mv "$setup_log" "$setup_log.bak"
 	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
+	reinstall_init
 fi
 
 title "Parsing Username for Install"
@@ -318,7 +319,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "manager"
 		networking_needful
 		collect_dockernet
-		whiptail_airgap
+		if [[ $is_iso ]]; then
+			whiptail_airgap
+		fi
 		detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
@@ -338,7 +341,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "manager"
 		networking_needful
 		collect_dockernet
-		whiptail_airgap
+		if [[ $is_iso ]]; then
+			whiptail_airgap
+		fi
 		detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
@@ -357,7 +362,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "manager"
 		networking_needful
 		collect_dockernet
-		whiptail_airgap
+		if [[ $is_iso ]]; then
+			whiptail_airgap
+		fi
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -374,7 +381,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_requirements "manager"
 		networking_needful
 		collect_dockernet
-		whiptail_airgap
+		if [[ $is_iso ]]; then
+			whiptail_airgap
+		fi
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -436,7 +445,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		check_requirements "import"
 		networking_needful
-		whiptail_airgap
+		if [[ $is_iso ]]; then
+			whiptail_airgap
+		fi
 		detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
@@ -459,6 +470,8 @@ if ! [[ -f $install_opt_file ]]; then
 	fi
 
 	if [[ $waitforstate ]]; then
+		touch /root/accept_changes
+		make_some_dirs
 		percentage=0
 		es_heapsize
 		ls_heapsize
@@ -473,11 +486,6 @@ if ! [[ -f $install_opt_file ]]; then
 		info "Setting Paths"
 		# Set the paths
 		set_path
-		info "Checking if this is a re-install"
-		# Check to see if its a reinstall. THIS NEEDS REVIEW
-		if [[ $is_reinstall ]]; then
-			reinstall_init
-		fi
 		echo "Disable auto start of setup"
 		# Disable the setup from prompting at login
 		disable_auto_start
@@ -579,6 +587,8 @@ if ! [[ -f $install_opt_file ]]; then
 		set_initial_firewall_access
 		whiptail_setup_complete
 	else
+		touch /root/accept_changes
+		mkdir -p /nsm
 		es_heapsize
 		ls_heapsize
 		generate_interface_vars
