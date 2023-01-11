@@ -20,15 +20,15 @@ echo "Setting up default Security Onion package policies for Elastic Agent..."
 echo "Setting up Suricata package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "suricata-logs", "name": "suricata-logs", "description": "Suricata integration", "namespace": "suricata_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/suricata/eve*.json" ], "data_stream.dataset": "alert", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: suricata", "custom": "pipeline: suricata.common" }}}}}}'
 
+# Import - Suricata
+echo "Settings up Suricata import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "alert", "tags": ["import"], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
+
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {% import_yaml 'filebeat/defaults.yaml' as FBD with context %}
     {% set FBCONFIG = salt['pillar.get']('filebeat:zeek_logs_enabled', default=FBD.filebeat, merge=True) %}
     {%- for LOGNAME in FBCONFIG.zeek_logs_enabled %}
-
-# Import - Suricata
-echo "Settings up Suricata import package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "alert", "tags": ["import"], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
 
 # Set up Zeek {{ LOGNAME }} logs
 echo "Setting up Zeek {{ LOGNAME }} package policy..."
