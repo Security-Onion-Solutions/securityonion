@@ -1107,10 +1107,16 @@ whiptail_proxy_auth_pass() {
 whiptail_reinstall() {
 	[ -n "$TESTING" ] && return
 
-	whiptail --title "$whiptail_title" --yesno "Setup has detected a previous install. Do you want to continue?
-	
-	Continuing will overwrite the previous install. " 10 60
-	
+	read -r -d '' message <<- EOM
+	Setup has detected a previous install. Continuing the install will remove the previous install configuration.
+
+	Would you like to continue?
+	EOM
+
+	whiptail --title "$whiptail_title" \
+		--yesno "$message" 11 75 \
+		--yes-button "Continue" --no-button "Exit" --defaultno
+
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 }
