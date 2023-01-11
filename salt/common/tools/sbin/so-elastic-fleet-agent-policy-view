@@ -1,0 +1,14 @@
+#/bin/bash
+. /usr/sbin/so-common
+
+POLICY_ID=$1
+
+# Let's snag a cookie from Kibana
+SESSIONCOOKIE=$(curl -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
+echo "Viewing agent policy $POLICY_ID"
+
+# View agent policy
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$POLICY_ID/full" | jq
+
+echo
