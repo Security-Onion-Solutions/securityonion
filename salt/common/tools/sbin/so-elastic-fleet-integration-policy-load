@@ -1,0 +1,84 @@
+#/bin/bash
+
+. /usr/sbin/so-common
+
+{%- set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
+{%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
+{%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) -%}
+
+wait_for_web_response "http://localhost:5601/api/spaces/space/default" "default" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+## This hackery will be removed if using Elastic Auth ##
+
+# Let's snag a cookie from Kibana
+SESSIONCOOKIE=$(curl -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
+# Disable certain Features from showing up in the Kibana UI
+echo
+echo "Setting up default Security Onion package policies for Elastic Agent..."
+
+# Set up Suricata logs
+echo "Setting up Suricata package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "suricata-logs", "name": "suricata-logs", "description": "Suricata integration", "namespace": "suricata_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/suricata/eve*.json" ], "data_stream.dataset": "alert", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: suricata", "custom": "pipeline: suricata.common" }}}}}}'
+
+{%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
+  {%- if ZEEKVER != 'SURICATA' %}
+    {% import_yaml 'filebeat/defaults.yaml' as FBD with context %}
+    {% set FBCONFIG = salt['pillar.get']('filebeat:zeek_logs_enabled', default=FBD.filebeat, merge=True) %}
+    {%- for LOGNAME in FBCONFIG.zeek_logs_enabled %}
+
+# Import - Suricata
+echo "Settings up Suricata import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "alert", "tags": ["import"], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
+
+# Set up Zeek {{ LOGNAME }} logs
+echo "Setting up Zeek {{ LOGNAME }} package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "zeek-{{ LOGNAME }}", "description": "Zeek {{ LOGNAME }} logs", "namespace": "zeek_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/zeek/logs/current/{{ LOGNAME }}.log" ], "data_stream.dataset": "{{ LOGNAME }}", "tags": [], "processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek", "custom": "pipeline: zeek.{{ LOGNAME }}" }}}}}}'
+echo
+
+# Import - Zeek
+echo "Setting up Zeek import {{ LOGNAME }} package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-zeek-{{ LOGNAME }}-logs", "name": "import-zeek-{{ LOGNAME }}-logs", "description": "Import Zeek {{ LOGNAME }} logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/zeek/logs/{{ LOGNAME }}.log"], "data_stream.dataset": "{{ LOGNAME }}", "tags": ["import"], "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: zeek\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: zeek.{{ LOGNAME }}" } } } } } }'
+
+    {%- endfor %}
+  {%- endif %}
+{%- endif %}
+
+# Strelka logs
+echo "Setting up Strelka package policy"
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "strelka-logs", "name": "strelka-logs", "description": "Strelka logs", "namespace": "strelka_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/strelka/log/strelka.log" ], "data_stream.dataset": "file", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: strelka", "custom": "pipeline: strelka.file" }}}}}}'
+
+# Syslog TCP Port 514
+echo "Setting up Syslog TCP package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "tcp", "version": "1.5.0" }, "id": "syslog-tcp-514", "name": "syslog-tcp-514", "description": "Syslog Over TCP Port 514", "namespace": "syslog_so", "inputs": { "tcp-tcp": { "enabled": true, "streams": { "tcp.generic": { "enabled": true, "vars": { "listen_address": "0.0.0.0", "listen_port": "514", "data_stream.dataset": "syslog", "pipeline": "syslog", "processors": "- add_fields:\n    target: event\n    fields:\n      module: syslog", "tags": [ "syslog" ], "syslog_options": "field: message\n#format: auto\n#timezone: Local\n" } } } } } }'
+
+# Syslog UDP Port 514
+echo "Setting up Syslog UDP package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "udp", "version": "1.5.0" }, "id": "syslog-udp-514", "name": "syslog-udp-514", "description": "Syslog over UDP Port 514", "namespace": "syslog_so", "inputs": { "udp-udp": { "enabled": true, "streams": { "udp.generic": { "enabled": true, "vars": { "listen_address": "0.0.0.0", "listen_port": "514", "data_stream.dataset": "syslog", "pipeline": "syslog", "max_message_size": "10KiB", "keep_null": false, "processors": "- add_fields:\n    target: event\n    fields: \n      module: syslog\n", "tags": [ "syslog" ], "syslog_options": "field: message\n#format: auto\n#timezone: Local\n" } } } } } }'
+
+# Kratos logs
+echo "Setting up Kratos package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "kratos-logs", "name": "kratos-logs", "description": "Kratos logs", "namespace": "kratos_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kratos/kratos.log" ], "data_stream.dataset": "access", "tags": [],"processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- rename:\n    fields:\n      - from: \"audience\"\n        to: \"event.dataset\"\n    ignore_missing: true\n- add_fields:\n    when:\n      not: \n        has_fields: ['event.dataset']\n    target: ''\n    fields:\n      event.dataset: access", "custom": "pipeline: kratos" }}}}}}'
+
+# RITA Beacon logs
+echo "Setting up RITA Beacon package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "rita-beacon-logs", "name": "rita-beacon-logs", "description": "RITA Beacon logs", "namespace": "rita_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/rita/beacons.csv" ], "data_stream.dataset": "beacon", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: rita", "custom": "pipeline: rita.beacon" }}}}}}'
+
+# RITA Connection Logs
+echo "Setting up RITA connection  package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "rita-connection-logs", "name": "rita-connection-logs", "description": "RITA Connection logs", "namespace": "rita_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/rita/long-connections.csv" ], "data_stream.dataset": "connections", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: rita", "custom": "pipeline: rita.connections" }}}}}}'
+
+# RITA DNS Logs
+echo "Setting up RITA DNS package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "rita-exploded-dns-logs", "name": "rita-exploded-dns-logs", "description": "RITA Exploded DNS logs", "namespace": "rita_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/rita/exploded-dns.csv" ], "data_stream.dataset": "exploded_dns", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: rita", "custom": "pipeline: rita.dns" }}}}}}'
+
+# Elasticsearch logs
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "elasticsearch", "version": "1.0.0" }, "id": "elasticsearch-logs", "name": "elasticsearch-logs", "description": "Elasticsearch Logs", "namespace": "default", "inputs": { "elasticsearch-logfile": { "enabled": true, "streams": { "elasticsearch.audit": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_audit.json" ] } }, "elasticsearch.deprecation": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_deprecation.json" ] } }, "elasticsearch.gc": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/gc.log.[0-9]*", "/var/log/elasticsearch/gc.log" ] } }, "elasticsearch.server": { "enabled": true, "vars": { "paths": [ "/opt/so/log/elasticsearch/*.log" ] } }, "elasticsearch.slowlog": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_index_search_slowlog.json", "/var/log/elasticsearch/*_index_indexing_slowlog.json" ] } } } }, "elasticsearch-elasticsearch/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:9200" ], "scope": "node" }, "streams": { "elasticsearch.stack_monitoring.ccr": { "enabled": false }, "elasticsearch.stack_monitoring.cluster_stats": { "enabled": false }, "elasticsearch.stack_monitoring.enrich": { "enabled": false }, "elasticsearch.stack_monitoring.index": { "enabled": false }, "elasticsearch.stack_monitoring.index_recovery": { "enabled": false, "vars": { "active.only": true } }, "elasticsearch.stack_monitoring.index_summary": { "enabled": false }, "elasticsearch.stack_monitoring.ml_job": { "enabled": false }, "elasticsearch.stack_monitoring.node": { "enabled": false }, "elasticsearch.stack_monitoring.node_stats": { "enabled": false }, "elasticsearch.stack_monitoring.pending_tasks": { "enabled": false }, "elasticsearch.stack_monitoring.shard": { "enabled": false } } } } }'
+
+# Logstash logs
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "logstash", "version": "2.0.0" }, "id": "logstash-logs", "name": "logstash-logs", "description": "Logstash logs", "namespace": "default", "inputs": { "logstash-logfile": { "enabled": true, "streams": { "logstash.log": { "enabled": true, "vars": { "paths": [ "/opt/so/logs/logstash/logstash.log" ] } }, "logstash.slowlog": { "enabled": false, "vars": { "paths": [ "/var/log/logstash/logstash-slowlog-plain*.log", "/var/log/logstash/logstash-slowlog-json*.log" ] } } } }, "logstash-logstash/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:9600" ], "period": "10s" }, "streams": { "logstash.stack_monitoring.node": { "enabled": false }, "logstash.stack_monitoring.node_stats": { "enabled": false } } } } }'
+
+# Kibana logs
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "kibana", "version": "2.0.0" }, "id": "kibana-logs", "name": "kibana-logs", "description": "Kibana logs", "namespace": "default", "inputs": { "kibana-logfile": { "enabled": true, "streams": { "kibana.audit": { "enabled": false, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } }, "kibana.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } } } }, "kibana-kibana/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:5601" ] }, "streams": { "kibana.stack_monitoring.cluster_actions": { "enabled": false }, "kibana.stack_monitoring.cluster_rules": { "enabled": false }, "kibana.stack_monitoring.node_actions": { "enabled": false }, "kibana.stack_monitoring.node_rules": { "enabled": false }, "kibana.stack_monitoring.stats": { "enabled": false }, "kibana.stack_monitoring.status": { "enabled": false } } } } }'
+
+# Redis logs
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "redis", "version": "1.4.0" }, "id": "redis-logs", "name": "redis-logs", "description": "Redis logs", "namespace": "default", "inputs": { "redis-logfile": { "enabled": true, "streams": { "redis.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/redis/redis.log" ], "tags": [ "redis-log" ], "preserve_original_event": false } } } }, "redis-redis": { "enabled": false, "streams": { "redis.slowlog": { "enabled": false, "vars": { "hosts": [ "127.0.0.1:6379" ], "password": "" } } } }, "redis-redis/metrics": { "enabled": false, "vars": { "hosts": [ "127.0.0.1:6379" ], "idle_timeout": "20s", "maxconn": 10, "network": "tcp", "password": "" }, "streams": { "redis.info": { "enabled": false, "vars": { "period": "10s" } }, "redis.key": { "enabled": false, "vars": { "key.patterns": "- limit: 20\n  pattern: '*'\n", "period": "10s" } }, "redis.keyspace": { "enabled": false, "vars": { "period": "10s" } } } } } }'
