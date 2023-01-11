@@ -117,7 +117,6 @@ base:
     - redis
     {%- endif %}
     - docker_clean
-    - pipeline.load
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -162,7 +161,6 @@ base:
     - soctopus
     - playbook
     - docker_clean
-    - pipeline.load
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -218,7 +216,6 @@ base:
     - playbook
     - docker_clean
     - elastic-fleet
-    - pipeline.load
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -238,7 +235,6 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
-    - pipeline.load
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -283,7 +279,6 @@ base:
     - soctopus
     - playbook
     - docker_clean
-    - pipeline.load
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -318,7 +313,6 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
-    - pipeline.load
   
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
@@ -351,7 +345,6 @@ base:
     - zeek
     - schedule
     - docker_clean
-    - pipeline.load
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
