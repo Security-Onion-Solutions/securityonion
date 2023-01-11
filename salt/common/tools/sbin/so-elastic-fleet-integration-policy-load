@@ -4,7 +4,7 @@
 
 {%- set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {%- set STRELKAENABLED = salt['pillar.get']('strelka:enabled', '0') %}
-{%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) -%}
+{%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) %}
 
 wait_for_web_response "http://localhost:5601/api/spaces/space/default" "default" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
 ## This hackery will be removed if using Elastic Auth ##
@@ -24,6 +24,7 @@ curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POS
 echo "Settings up Suricata import package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "alert", "tags": ["import"], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
 
+# Zeek logs
 {%- if grains['role'] in ['so-eval', 'so-standalone', 'so-sensor',  'so-helix', 'so-heavynode', 'so-import'] %}
   {%- if ZEEKVER != 'SURICATA' %}
     {% import_yaml 'filebeat/defaults.yaml' as FBD with context %}
@@ -35,9 +36,8 @@ echo "Setting up Zeek {{ LOGNAME }} package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "zeek-{{ LOGNAME }}", "description": "Zeek {{ LOGNAME }} logs", "namespace": "zeek_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/zeek/logs/current/{{ LOGNAME }}.log" ], "data_stream.dataset": "{{ LOGNAME }}", "tags": [], "processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek", "custom": "pipeline: zeek.{{ LOGNAME }}" }}}}}}'
 echo
 
-# Import - Zeek
 echo "Setting up Zeek import {{ LOGNAME }} package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-zeek-{{ LOGNAME }}-logs", "name": "import-zeek-{{ LOGNAME }}-logs", "description": "Import Zeek {{ LOGNAME }} logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/zeek/logs/{{ LOGNAME }}.log"], "data_stream.dataset": "{{ LOGNAME }}", "tags": ["import"], "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: zeek\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: zeek.{{ LOGNAME }}" } } } } } }'
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-zeek-{{ LOGNAME }}-logs", "name": "import-zeek-{{ LOGNAME }}-logs", "description": "Import Zeek {{ LOGNAME }} logs", "namespace": "import_so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/zeek/logs/{{ LOGNAME }}.log"], "data_stream.dataset": "{{ LOGNAME }}", "tags": ["import"], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true", "custom": "pipeline: zeek.{{ LOGNAME }}" } } } } } }'
 
     {%- endfor %}
   {%- endif %}
