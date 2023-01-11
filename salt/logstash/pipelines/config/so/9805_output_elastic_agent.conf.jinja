@@ -1,14 +1,28 @@
 output {
   if "elastic-agent" in [tags] and "import" not in [tags] {
-      elasticsearch {
-        hosts => "{{ GLOBALS.manager }}"
-        ecs_compatibility => v8
-        data_stream => true
-        user => "{{ ES_USER }}"
-        password => "{{ ES_PASS }}"
-        ssl => true
-        ssl_certificate_verification => false
+      if [metadata][pipeline] {
+        elasticsearch {
+          hosts => "{{ GLOBALS.manager }}"
+          ecs_compatibility => v8
+          data_stream => true
+          user => "{{ ES_USER }}"
+          password => "{{ ES_PASS }}"
+          pipeline => "%{[metadata][pipeline]}"
+          ssl => true
+          ssl_certificate_verification => false
+        }
       }
+      else {
+        elasticsearch {
+          hosts => "{{ GLOBALS.manager }}"
+          ecs_compatibility => v8
+          data_stream => true
+          user => "{{ ES_USER }}"
+          password => "{{ ES_PASS }}"
+          ssl => true
+          ssl_certificate_verification => false    
+        }
+     }
   }
 }
 
