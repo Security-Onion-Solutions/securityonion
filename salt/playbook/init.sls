@@ -5,8 +5,8 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {%- set MYSQLPASS = salt['pillar.get']('secrets:mysql') -%}
 {%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db') -%}
 
@@ -18,7 +18,7 @@ create_playbookdbuser:
   mysql_user.present:
     - name: playbookdbuser
     - password: {{ PLAYBOOKPASS }}
-    - host: "{{ GLOBALS.docker_range.split('/')[0] }}/255.255.255.0"
+    - host: "{{ DOCKER.sosrange.split('/')[0] }}/255.255.255.0"
     - connection_host: {{ GLOBALS.manager_ip }}
     - connection_port: 3306
     - connection_user: root
@@ -27,7 +27,7 @@ create_playbookdbuser:
 query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
-    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ GLOBALS.docker_range.split('/')[0] }}/255.255.255.0';"
+    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DOCKER.sosrange.split('/')[0] }}/255.255.255.0';"
     - connection_host: {{ GLOBALS.manager_ip }}
     - connection_port: 3306
     - connection_user: root
@@ -80,6 +80,9 @@ so-playbook:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-playbook:{{ GLOBALS.so_version }}
     - hostname: playbook
     - name: so-playbook
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
     - environment:

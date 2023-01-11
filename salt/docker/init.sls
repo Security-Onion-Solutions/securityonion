@@ -3,6 +3,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% from 'docker/docker.map.jinja' import DOCKER %}
+
 dockergroup:
   group.present:
     - name: docker
@@ -17,6 +19,17 @@ dockerheldpackages:
       - docker-ce-rootless-extras: 20.10.5-3.el7
     - hold: True
     - update_holds: True
+
+#disable docker from managing iptables
+iptables_disabled:
+  file.managed:
+    - name: /etc/systemd/system/docker.service.d/iptables-disabled.conf
+    - source: salt://docker/files/iptables-disabled.conf
+    - makedirs: True
+  cmd.run:
+    - name: systemctl daemon-reload
+    - onchanges:
+      - file: iptables_disabled
 
 # Make sure etc/docker exists
 dockeretc:
@@ -50,3 +63,15 @@ dockerreserveports:
     - source: salt://common/files/99-reserved-ports.conf
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
+sos_docker_net:
+  docker_network.present:
+    - name: sosbridge
+    - subnet: {{ DOCKER.sosrange }}
+    - gateway: {{ DOCKER.sosbip }}
+    - options:
+        com.docker.network.bridge.name: 'sosbridge'
+        com.docker.network.driver.mtu: '1500'
+        com.docker.network.bridge.enable_ip_masquerade: 'true'
+        com.docker.network.bridge.enable_icc: 'true'
+        com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
+    - unless: 'docker network ls | grep sosbridge'

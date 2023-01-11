@@ -5,6 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
 {% from 'filebeat/modules.map.jinja' import MODULESENABLED with context %}
@@ -97,6 +98,9 @@ so-filebeat:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-filebeat:{{ GLOBALS.so_version }}
     - hostname: so-filebeat
     - user: root
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-filebeat'].ip }}
     - extra_hosts: {{ FILEBEAT_EXTRA_HOSTS }}
     - binds:
       - /nsm:/nsm:ro

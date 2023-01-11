@@ -1,8 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
-
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
 {% set ADMINPASS = salt['pillar.get']('secrets:grafana_admin') %}
 
@@ -126,6 +125,9 @@ so-grafana:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-grafana:{{ GLOBALS.so_version }}
     - hostname: grafana
     - user: socore
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-grafana'].ip }}
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
       - /opt/so/conf/grafana/etc/grafana.ini:/etc/grafana/grafana.ini:ro

@@ -317,6 +317,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_dockernet
 		whiptail_airgap
 		detect_cloud
 		set_minion_info
@@ -336,6 +337,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_dockernet
 		whiptail_airgap
 		detect_cloud
 		set_minion_info
@@ -354,6 +356,7 @@ if ! [[ -f $install_opt_file ]]; then
 		waitforstate=true
 		check_requirements "manager"
 		networking_needful
+		collect_dockernet
 		whiptail_airgap
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
@@ -370,6 +373,7 @@ if ! [[ -f $install_opt_file ]]; then
 		waitforstate=true
 		check_requirements "manager"
 		networking_needful
+		collect_dockernet
 		whiptail_airgap
 		detect_cloud
 		set_default_log_size >> $setup_log 2>&1
@@ -548,6 +552,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 		generate_ca
 		generate_ssl
+		logCmd "salt-call state.apply -l info firewall"
 
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
 		logCmd "mkdir -p /opt/so/conf/so-status/ "
@@ -560,7 +565,6 @@ if ! [[ -f $install_opt_file ]]; then
 		docker_seed_registry
 		title "Applying the manager state"
 		logCmd "salt-call state.apply -l info manager" 
-		logCmd "salt-call state.apply -l info firewall"
 		logCmd "salt-call state.highstate -l info"
 		add_web_user
 		info "Restarting SOC to pick up initial user"

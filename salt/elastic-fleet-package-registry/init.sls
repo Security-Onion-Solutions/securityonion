@@ -4,6 +4,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 # Add Group
 elasticsagentprgroup:
@@ -27,6 +28,9 @@ so-elastic-fleet-package-registry:
     - hostname: Fleet-package-reg-{{ GLOBALS.hostname }}
     - detach: True
     - user: 948
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-elastic-fleet-package-registry'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:

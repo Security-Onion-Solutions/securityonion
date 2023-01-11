@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
@@ -46,6 +46,9 @@ so-redis:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - hostname: so-redis
     - user: socore
+    - networks:
+      - sosbridge:
+        - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
     - port_bindings:
       - 0.0.0.0:6379:6379
       - 0.0.0.0:9696:9696
