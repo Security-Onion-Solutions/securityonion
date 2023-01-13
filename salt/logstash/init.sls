@@ -147,9 +147,9 @@ so-logstash:
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     - port_bindings:
-  {% for BINDING in DOCKER_OPTIONS.port_bindings %}
+      {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
       - {{ BINDING }}
-  {% endfor %}
+      {% endfor %}
     - binds:
       - /opt/so/conf/elasticsearch/templates/:/templates/:ro
       - /opt/so/conf/logstash/etc/:/usr/share/logstash/config/:ro

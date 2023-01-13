@@ -34,7 +34,9 @@ so-elastic-fleet-package-registry:
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
-      - 0.0.0.0:8080:8080
+      {% for BINDING in DOCKER.containers['so-elastic-fleet-package-registry'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-elastic-fleet-package-registry_so-status.conf:
   file.append:

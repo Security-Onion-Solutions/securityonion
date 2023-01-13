@@ -117,7 +117,9 @@ so-soc:
       {%- endfor %}
       {%- endif %}
     - port_bindings:
-      - 0.0.0.0:9822:9822
+      {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: /opt/so/conf/soc/*
     - require:

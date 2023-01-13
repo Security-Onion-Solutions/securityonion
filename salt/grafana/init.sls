@@ -138,7 +138,9 @@ so-grafana:
     - environment:
       - GF_SECURITY_ADMIN_PASSWORD={{ ADMINPASS }}
     - port_bindings:
-      - 0.0.0.0:3000:3000
+      {% for BINDING in DOCKER.containers['so-grafana'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: /opt/so/conf/grafana/*
     - require:

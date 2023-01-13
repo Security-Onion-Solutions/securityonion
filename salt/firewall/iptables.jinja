@@ -2,6 +2,46 @@
 {% from 'firewall/containers.map.jinja' import NODE_CONTAINERS -%}
 {% from 'firewall/map.jinja' import hostgroups with context -%}
 {% from 'firewall/map.jinja' import assigned_hostgroups with context -%}
+{%- set PR = [] %}
+{%- set D1 = [] %}
+{%- set D2 = [] %}
+{%- for container in NODE_CONTAINERS %}
+{%-   set IP = DOCKER.containers[container].ip %}
+{%-   if DOCKER.containers[container].port_bindings is defined %}
+{%-     for binding in DOCKER.containers[container].port_bindings %}
+{#-       cant split int so we convert to string #}
+{%-       set binding = binding|string %}
+{#-          split the port binding by /. if proto not specified, default is tcp #}
+{%-         set binding_split = binding.split('/') %}
+{%-         if binding_split | length > 1 %}
+{%-           set proto = binding_split[1] %}
+{%-         else %}
+{%-           set proto = 'tcp' %}
+{%-         endif %}
+{%-         set bsa = binding_split[0].split(':') %}
+{%-         set bindip = '' %}
+{%-         set hostPort = '' %}
+{%-         set containerPort = '' %}
+{%-         if bsa | length == 3 %}
+{%-           set bindip = bsa[0] %}
+{%-           set hostPort = bsa[1] %}
+{%-           set containerPort = bsa[2] %}
+{%-         endif %}
+{%-         if bsa | length == 2 %}
+{%-           set hostPort = bsa[0] %}
+{%-           set containerPort = bsa[1] %}
+{%-         endif %}
+{%-         do PR.append("-A POSTROUTING -s " ~ DOCKER.containers[container].ip ~ "/32 -d " ~ DOCKER.containers[container].ip ~ "/32 -p " ~  proto ~ " -m " ~ proto  ~ " --dport " ~ containerPort ~ " -j MASQUERADE") %}
+{%-         if bindip | length and bindip != '0.0.0.0' %}
+{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i sosbridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-         else %}
+{%-           do D1.append("-A DOCKER ! -i sosbridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-         endif %}
+{%-         do D2.append("-A DOCKER -d " ~ DOCKER.containers[container].ip ~ "/32 ! -i sosbridge -o sosbridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+
 *nat
 :PREROUTING ACCEPT [0:0]
 :INPUT ACCEPT [0:0]
@@ -11,20 +51,12 @@
 -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
 -A POSTROUTING -s {{DOCKER.sosrange}} ! -o sosbridge -j MASQUERADE
-{%- for container in NODE_CONTAINERS %}
-{%-   if DOCKER.containers[container].ports is defined %}
-{%-     for port, proto in DOCKER.containers[container].ports.items() %}
--A POSTROUTING -s {{DOCKER.containers[container].ip}}/32 -d {{DOCKER.containers[container].ip}}/32 -p {{proto}} -m {{proto}} --dport {{port}} -j MASQUERADE
-{%-     endfor %}
-{%-   endif %}
+{%- for rule in PR %}
+{{ rule }}
 {%- endfor %}
 -A DOCKER -i sosbridge -j RETURN
-{%- for container in NODE_CONTAINERS %}
-{%-   if DOCKER.containers[container].ports is defined %}
-{%-     for port, proto in DOCKER.containers[container].ports.items() %}
--A DOCKER ! -i sosbridge -p {{proto}} -m {{proto}} --dport {{port}} -j DNAT --to-destination {{DOCKER.containers[container].ip}}:{{port}}
-{%-     endfor %}
-{%-   endif %}
+{%- for rule in D1 %}
+{{ rule }}
 {%- endfor %}
 
 COMMIT
@@ -71,12 +103,8 @@ COMMIT
 -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A OUTPUT -p icmp -m icmp --icmp-type 14 -j DROP
 
-{%- for container in NODE_CONTAINERS %}
-{%-   if DOCKER.containers[container].ports is defined %}
-{%-     for port, proto in DOCKER.containers[container].ports.items() %}
--A DOCKER -d {{DOCKER.containers[container].ip}}/32 ! -i sosbridge -o sosbridge -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
-{%-     endfor %}
-{%-   endif %}
+{%- for rule in D2 %}
+{{ rule }}
 {%- endfor %}
 
 -A DOCKER-ISOLATION-STAGE-1 -i sosbridge ! -o sosbridge -j DOCKER-ISOLATION-STAGE-2

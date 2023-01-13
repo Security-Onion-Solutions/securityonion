@@ -88,7 +88,9 @@ so-mysql:
       - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
     - port_bindings:
-      - 0.0.0.0:3306:3306
+      {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - environment:
       - MYSQL_ROOT_HOST={{ GLOBALS.manager_ip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
