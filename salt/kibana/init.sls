@@ -95,7 +95,9 @@ so-kibana:
       - /opt/so/conf/kibana/customdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
-      - 0.0.0.0:5601:5601
+      {% for BINDING in DOCKER.containers['so-kibana'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: kibanaconfig
 

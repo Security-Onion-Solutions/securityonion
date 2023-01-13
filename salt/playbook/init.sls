@@ -91,7 +91,9 @@ so-playbook:
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
     - port_bindings:
-      - 0.0.0.0:3200:3000
+      {% for BINDING in DOCKER.containers['so-playbook'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-playbook_so-status.conf:
   file.append:

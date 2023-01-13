@@ -77,8 +77,9 @@ so-kratos:
       - /opt/so/log/kratos/:/kratos-log:rw
       - /nsm/kratos/db:/kratos-data:rw
     - port_bindings:
-      - 0.0.0.0:4433:4433
-      - 0.0.0.0:4434:4434
+      {% for BINDING in DOCKER.containers['so-kratos'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - restart_policy: unless-stopped
     - watch:
       - file: kratosschema

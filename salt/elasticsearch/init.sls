@@ -304,8 +304,9 @@ so-elasticsearch:
       - nofile=65536:65536
       - nproc=4096
     - port_bindings:
-      - 0.0.0.0:9200:9200
-      - 0.0.0.0:9300:9300
+      {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro

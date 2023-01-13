@@ -50,8 +50,9 @@ so-redis:
       - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
     - port_bindings:
-      - 0.0.0.0:6379:6379
-      - 0.0.0.0:9696:9696
+      {% for BINDING in DOCKER.containers['so-redis'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro

@@ -60,7 +60,9 @@ so-influxdb:
       - /etc/pki/influxdb.crt:/etc/ssl/influxdb.crt:ro
       - /etc/pki/influxdb.key:/etc/ssl/influxdb.key:ro
     - port_bindings:
-      - 0.0.0.0:8086:8086
+      {% for BINDING in DOCKER.containers['so-influxdb'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: influxdbconf
     - require:

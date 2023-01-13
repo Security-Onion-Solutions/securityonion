@@ -116,9 +116,9 @@ so-filebeat:
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/intraca.crt:ro
       - /opt/so/log:/logs:ro
     - port_bindings:
-        - 0.0.0.0:514:514/udp
-        - 0.0.0.0:514:514/tcp
-        - 0.0.0.0:5066:5066/tcp
+      {% for BINDING in DOCKER.containers['so-filebeat'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 {% for module in MODULESMERGED.modules.keys() %}
   {% for submodule in MODULESMERGED.modules[module] %}
     {% if MODULESMERGED.modules[module][submodule].enabled and MODULESMERGED.modules[module][submodule]["var.syslog_port"] is defined %}

@@ -54,7 +54,9 @@ so-elastic-fleet:
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
-      - 0.0.0.0:8220:8220
+      {% for BINDING in DOCKER.containers['so-elastic-fleet'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/conf/elastic-fleet/certs:/etc/pki:ro
       - /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw

@@ -76,7 +76,9 @@ so-soctopus:
       - /nsm/repo/rules/sigma:/soctopus/sigma
       {% endif %}
     - port_bindings:
-      - 0.0.0.0:7000:7000
+      {% for BINDING in DOCKER.containers['so-soctopus'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - extra_hosts:
       - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
     - require:

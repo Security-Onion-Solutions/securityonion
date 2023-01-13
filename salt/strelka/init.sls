@@ -173,7 +173,9 @@ strelka_coordinator:
         - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
-      - 0.0.0.0:6380:6379
+      {% for BINDING in DOCKER.containers['so-strelka-cordinator'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-strelka-coordinator_so-status.conf:
   file.append:
@@ -189,7 +191,9 @@ strelka_gatekeeper:
         - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
-      - 0.0.0.0:6381:6379
+      {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-strelka-gatekeeper_so-status.conf:
   file.append:
@@ -209,7 +213,9 @@ strelka_frontend:
         - ipv4_address: {{ DOCKER.containers['so-strelka-frontend'].ip }}
     - command: strelka-frontend
     - port_bindings:
-      - 0.0.0.0:57314:57314
+      {% for BINDING in DOCKER.containers['so-strelka-frontend'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-strelka-frontend_so-status.conf:
   file.append:

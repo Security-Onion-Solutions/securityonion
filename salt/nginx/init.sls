@@ -106,8 +106,9 @@ so-nginx:
   {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
-      - 80:80
-      - 443:443
+      {% for BINDING in DOCKER.containers['so-nginx'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: nginxconf
       - file: nginxconfdir
