@@ -173,7 +173,7 @@ strelka_coordinator:
         - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-strelka-cordinator'].port_bindings %}
+      {% for BINDING in DOCKER.containers['so-strelka-coordinator'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
 
