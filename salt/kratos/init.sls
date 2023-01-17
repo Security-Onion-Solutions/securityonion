@@ -20,9 +20,18 @@ kratos:
     
 kratosdir:
   file.directory:
-    - name: /opt/so/conf/kratos/db
+    - name: /nsm/kratos
     - user: 928
     - group: 928
+    - mode: 700
+    - makedirs: True
+
+kratosdbdir:
+  file.directory:
+    - name: /nsm/kratos/db
+    - user: 928
+    - group: 928
+    - mode: 700
     - makedirs: True
 
 kratoslogdir:
@@ -58,7 +67,7 @@ so-kratos:
       - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
       - /opt/so/log/kratos/:/kratos-log:rw
-      - /opt/so/conf/kratos/db:/kratos-data:rw
+      - /nsm/kratos/db:/kratos-data:rw
     - port_bindings:
       - 0.0.0.0:4433:4433
       - 0.0.0.0:4434:4434

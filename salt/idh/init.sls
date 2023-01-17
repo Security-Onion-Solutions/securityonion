@@ -1,5 +1,5 @@
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright 2014-2023 Security Onion Solutions, LLC
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -54,10 +54,26 @@ block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'.port'] }} :
 # Create a config directory
 temp:
   file.directory:
-    - name: /opt/so/conf/idh
+    - name: /opt/so/conf/idh/http-skins
     - user: 939
     - group: 939
     - makedirs: True
+
+# Copy over default http skins
+copyoverhttpskins:
+  file.recurse:
+    - name: /opt/so/conf/idh/http-skins
+    - user: 939
+    - group: 939
+    - source: salt://idh/skins/http/opencanary
+
+# Copy over custom http skins
+copyovercustomhttpskins:
+  file.recurse:
+    - name: /opt/so/conf/idh/http-skins
+    - user: 939
+    - group: 939
+    - source: salt://idh/skins/http/custom
 
 # Create a log directory
 configdir:
@@ -85,6 +101,7 @@ so-idh:
     - binds:
       - /nsm/idh:/var/tmp:rw
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
+      - /opt/so/conf/idh/http-skins:/usr/local/lib/python3.6/site-packages/opencanary/modules/data/http/skin:ro
     - watch:
       - file: opencanary_config
     - require:
