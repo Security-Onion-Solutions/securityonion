@@ -19,6 +19,7 @@ dockerheldpackages:
       - docker-ce-rootless-extras: 20.10.5-3.el7
     - hold: True
     - update_holds: True
+    - reload_modules: True
 
 #disable docker from managing iptables
 iptables_disabled:
