@@ -57,6 +57,67 @@ elasticsearch:
         elasticsearch:
           deprecation: ERROR
   index_settings:
+    so-logs:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-*"
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+              lifecycle:
+                name: logs
+              codec: best_compression
+              routing:
+                allocation:
+                  include:
+                    _tier_preferences: data_hot
+              query:
+                default_field:
+                - message
+          mappings:
+            dynamic_templates:
+            - match_ip:
+                match: ip
+                match_mapping_type: string
+                mapping:
+          allow_custom_routing: false
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+              lifecycle:
+                name: logs
+              codec: best_compression
+              routing:
+                allocation:
+                  include:
+                    _tier_preferences: data_hot
+              query:
+                default_field:
+                - message
+          mappings:
+            dynamic_templates:
+            - match_ip:
+                match: ip
+                match_mapping_type: string
+                mapping:
+                  type: ip
+            - match_message:
+                match: message
+                match_mapping_type: string
+                mapping:
+                  type: match_only_text
+            - strings_as_keyword:
+                match_mapping_type: string
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+        priority: 125
     so-logs-elastic_agent.apm_server:
       index_sorting: False
       index_template:
