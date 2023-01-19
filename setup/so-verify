@@ -35,9 +35,20 @@ whipit() {
 
 # Check entire setup log for errors or unexpected salt states
 log_has_errors() {
+    # Ignore salt mast cached public key and minion failed to auth because this is a test 
+    # to see if the salt key had already been accepted.
+
+    # Ignore failed to connect to ::1 since we have most curls wrapped in a retry.
+
+    # Ignore perl-Error- since that is the name of a Perl package SO installs.
+
+    # Ignore Failed: 0 since that is the salt state output, and we detect state failures
+    # via Result: False already.
+    
     grep -E "FAILED|Failed|failed|ERROR|Error|Result: False" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
         grep -vE "Minion failed to authenticate with the master" | \
+        grep -vE "Failed to connect to ::1" | \
         grep -vE "perl-Error-" | \
         grep -vE "Failed:\s*?[0-9]+" | \
         grep -vE "Status .* was not found" | \
