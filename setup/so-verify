@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+cd "$(dirname "$0")" || exit 255
+
+source ../salt/common/tools/sbin/so-common
+source ./so-functions
+source ./so-whiptail
+source ./so-variables
+
+setup_type=$1
+
+setup_in_progress() {
+    ps -ef | grep so-setup | grep -v grep &> /dev/null
+}
+
+using_iso() {
+    if [ "$setup_type" == "iso" ]; then
+        return 0
+    fi
+    return 0
+}
+
+whipit() {
+	if [[ $exit_code -eq 0 ]]; then
+		whiptail_setup_complete
+	else
+		whiptail_setup_failed
+	fi
+}
+
+# Check entire setup log for errors or unexpected salt states
+log_has_errors() {
+    # Ignore salt mast cached public key and minion failed to auth because this is a test 
+    # to see if the salt key had already been accepted.
+
+    # Ignore failed to connect to ::1 since we have most curls wrapped in a retry.
+
+    # Ignore perl-Error- since that is the name of a Perl package SO installs.
+
+    # Ignore Failed: 0 since that is the salt state output, and we detect state failures
+    # via Result: False already.
+    
+    grep -E "FAILED|Failed|failed|ERROR|Error|Result: False" "$setup_log" | \
+        grep -vE "The Salt Master has cached the public key for this node" | \
+        grep -vE "Minion failed to authenticate with the master" | \
+        grep -vE "Failed to connect to ::1" | \
+        grep -vE "perl-Error-" | \
+        grep -vE "Failed:\s*?[0-9]+" | \
+        grep -vE "Status .* was not found" | \
+        grep -vE "Uncaught exception, closing connection" | \
+        grep -vE "Exception in callback None" | \
+        grep -vE "deprecation: ERROR" | \
+        grep -vE "code: 100" | \
+        grep -vE "Running scope as unit" &> "$error_log"
+    
+    if [[ $? -eq 0 ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# For ISO installs, we know nothing else can be running on this server, so there should be
+# nothing in any mail spool dir.
+cron_error_in_mail_spool() {
+    if find /var/spool/mail/ -type f -size +0 &> /dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# so-setup must return a 0 exit code, indicating all containers are up and healthy. Will retry for a limited
+# time before giving up.
+status_failed() {
+    max_retries=120
+    wait_secs=10
+    retry_attempts=0
+    while ! so-status -q; do
+        if [[ $retry_attempts -eq $max_retries ]]; then
+            return 0
+        fi
+        retry_attempts=$((retry_attempts+1))
+        echo "INFO: so-status returned non-zero exit code; will retry in $wait_secs seconds ($retry_attempts/$max_retries)"
+        sleep $wait_secs
+    done
+    return 1
+}
+
+main() {
+    exit_code=0
+    if log_has_errors; then 
+    	echo "WARNING: Errors detected during setup"
+        exit_code=1
+    elif using_iso && cron_error_in_mail_spool; then
+    	echo "WARNING: Unexpected cron job output in mail spool"
+        exit_code=1
+    elif is_manager_node && status_failed; then
+        echo "WARNING: Containers are not in a healthy state"
+        exit_code=1
+    else
+	    echo "Successfully completed setup!"
+	fi
+
+    setup_in_progress && whipit $exit_code
+
+    exit $exit_code
+}
+
+main

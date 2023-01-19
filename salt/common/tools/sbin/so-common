@@ -225,31 +225,17 @@ init_monitor() {
 }
 
 is_manager_node() {
-	# Check to see if this is a manager node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'manager' ] && return 0
-	[ $role == 'managersearch' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "manager|eval|managersearch|standalone|import" &> /dev/null
 }
 
 is_sensor_node() {
 	# Check to see if this is a sensor (forward) node
-	role=$(lookup_role)
 	is_single_node_grid && return 0
-	[ $role == 'sensor' ] && return 0
-	[ $role == 'heavynode' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "sensor|heavynode|helix" &> /dev/null
 }
 
 is_single_node_grid() {
-	role=$(lookup_role)
-	[ $role == 'eval' ] && return 0
-	[ $role == 'standalone' ] && return 0
-	[ $role == 'import' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "eval|standalone|import" &> /dev/null
 }
 
 lookup_bond_interfaces() {
