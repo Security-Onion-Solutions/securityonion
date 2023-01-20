@@ -2382,7 +2382,11 @@ wait_for_salt_minion() {
 }
 
 verify_setup() {
-	if logCmd ./so-verify "$setup_type"; then
+	info "Verifying setup"
+	output=$(./so-verify "$setup_type" 2>&1)
+	result=$?
+	echo "$output" >> "$setup_log"
+	if [[ $result -eq 0 ]]; then
 		whiptail_setup_complete
 	else
 		whiptail_setup_failed
