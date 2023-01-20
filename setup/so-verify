@@ -9,28 +9,15 @@ cd "$(dirname "$0")" || exit 255
 
 source ../salt/common/tools/sbin/so-common
 source ./so-functions
-source ./so-whiptail
 source ./so-variables
 
 setup_type=$1
-
-setup_in_progress() {
-    ps -ef | grep so-setup | grep -v grep &> /dev/null
-}
 
 using_iso() {
     if [ "$setup_type" == "iso" ]; then
         return 0
     fi
     return 0
-}
-
-whipit() {
-	if [[ $exit_code -eq 0 ]]; then
-		whiptail_setup_complete
-	else
-		whiptail_setup_failed
-	fi
 }
 
 # Check entire setup log for errors or unexpected salt states
@@ -44,7 +31,7 @@ log_has_errors() {
 
     # Ignore Failed: 0 since that is the salt state output, and we detect state failures
     # via Result: False already.
-    
+
     grep -E "FAILED|Failed|failed|ERROR|Error|Result: False" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
         grep -vE "Minion failed to authenticate with the master" | \
@@ -104,8 +91,6 @@ main() {
     else
 	    echo "Successfully completed setup!"
 	fi
-
-    setup_in_progress && whipit $exit_code
 
     exit $exit_code
 }
