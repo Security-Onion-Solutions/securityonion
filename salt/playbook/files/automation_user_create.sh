@@ -2,8 +2,6 @@
 # {%- set admin_pass = salt['pillar.get']('secrets:playbook_admin', None) -%}
 # {%- set automation_pass = salt['pillar.get']('secrets:playbook_automation', None) %}
 
-set -e
-
 local_salt_dir=/opt/so/saltstack/local
 
 try_count=6
