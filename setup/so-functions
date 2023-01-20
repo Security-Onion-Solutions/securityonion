@@ -2380,3 +2380,11 @@ wait_for_file() {
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
 }
+
+verify_setup() {
+	if logCmd ./so-verify "$setup_type"; then
+		whiptail_setup_complete
+	else
+		whiptail_setup_failed
+	fi
+}
