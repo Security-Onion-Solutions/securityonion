@@ -218,6 +218,11 @@ sostatus_check_cron:
     - month: '*'
     - dayweek: '*'
 
+remove_post_setup_cron:
+  cron.absent:
+    - name: 'salt-call state.highstate'
+    - identifier: post_setup_cron
+
 {% if GLOBALS.role not in ['eval', 'manager', 'managersearch', 'standalone'] %}
 
 soversionfile:
