@@ -17,7 +17,7 @@ using_iso() {
     if [ "$setup_type" == "iso" ]; then
         return 0
     fi
-    return 0
+    return 1
 }
 
 # Check entire setup log for errors or unexpected salt states
@@ -54,7 +54,8 @@ log_has_errors() {
 # For ISO installs, we know nothing else can be running on this server, so there should be
 # nothing in any mail spool dir.
 cron_error_in_mail_spool() {
-    if find /var/spool/mail/ -type f -size +0 &> /dev/null; then
+    count=$(find /var/spool/mail/ -type f -size +0 | wc -l)
+    if [[ $count -ne 0 ]]; then
         return 0
     fi
     return 1
