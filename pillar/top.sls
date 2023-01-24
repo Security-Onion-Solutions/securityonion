@@ -10,6 +10,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - node_data.ips
 
   '* and not *_eval and not *_import':
     - logstash.nodes
