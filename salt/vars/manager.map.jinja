@@ -1,0 +1,15 @@
+{% from 'vars/elasticsearch.map.jinja' import ELASTICSEARCH_GLOBALS %}
+{% from 'vars/logstash.map.jinja' import LOGSTASH_GLOBALS %}
+
+{% set ROLE_GLOBALS = {} %}
+
+{% set MANAGER_GLOBALS =
+   [
+     ELASTICSEARCH_GLOBALS,
+     LOGSTASH_GLOBALS
+   ]
+%}
+
+{% for sg in MANAGER_GLOBALS %}
+{%   do salt['defaults.merge'](ROLE_GLOBALS, sg, merge_lists=False, in_place=True) %}
+{% endfor %}
