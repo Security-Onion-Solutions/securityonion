@@ -1990,6 +1990,42 @@ repo_sync_local() {
 }
 
 saltify() {
+	if [[ $is_ubuntu ]]; then
+
+		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
+		update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 
+		local pkg_arr=(
+			'apache2-utils'
+			'ca-certificates'
+			'curl'
+			'software-properties-common'
+			'apt-transport-https'
+			'openssl'
+			'netcat'
+			'jq'
+		)
+		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || exit 1
+
+		# Add SO Saltstack Repo
+		logCmd "wget -q --inet4-only -O - https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub | apt-key add -"
+		echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
+
+		# Add Docker Repo
+		logCmd "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -" 
+		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
+		
+		# Ain't nothing but a GPG 
+		mkdir -p "$temp_install_dir"/gpg 
+		apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub
+		apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH 
+
+		retry 150 20 "apt-get update" "" "Err:" || exit 1
+		retry 150 20 "apt-get -y install salt-minion=3004.2+ds-1 salt-common=3004.2+ds-1" || exit 1
+		retry 150 20 "apt-mark hold salt-minion salt-common" || exit 1
+		retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+
+	fi
+		
 	if [[ $is_centos ]]; then
 		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
 		if [[ "$RUSALTY" -gt 0 ]]; then
