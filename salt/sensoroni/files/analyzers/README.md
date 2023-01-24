@@ -3,6 +3,7 @@
 Security Onion provides a means for performing data analysis on varying inputs. This data can be any data of interest sourced from event logs. Examples include hostnames, IP addresses, file hashes, URLs, etc. The analysis is conducted by one or more analyzers that understand that type of input. Analyzers come with the default installation of Security Onion. However, it is also possible to add additional analyzers to extend the analysis across additional areas or data types.
 
 ## Supported Observable Types
+
 The built-in analyzers support the following observable types:
 
 | Name                    | Domain | Hash  | IP    | Mail  | Other | URI   |  URL  | User Agent |
@@ -20,6 +21,7 @@ The built-in analyzers support the following observable types:
 | WhoisLookup             |&check; |&cross;|&cross;|&cross;|&cross;|&check;|&cross;|&cross;|
 
 ## Authentication
+
 Many analyzers require authentication, via an API key or similar. The table below illustrates which analyzers require authentication.
 
 | Name                    | Authn Req'd|
