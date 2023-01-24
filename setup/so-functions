@@ -2007,18 +2007,20 @@ saltify() {
 		)
 		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || exit 1
 
+		logCmd "mkdir -vp /opt/so/gpg"
+		logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt/SALTSTACK-GPG-KEY.pub"
+		logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
+
 		# Add SO Saltstack Repo
 		logCmd "wget -q --inet4-only -O - https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub | apt-key add -"
-		echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
+		echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/focal main" > /etc/apt/sources.list.d/saltstack.list
+		curl -fsSL -o /usr/share/keyrings/salt-archive-keyring.gpg https://repo.saltproject.io/py3/ubuntu/20.04/amd64/3004/salt-archive-keyring.gpg
 
 		# Add Docker Repo
 		logCmd "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -" 
 		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
 		
 		# Ain't nothing but a GPG 
-		mkdir -p "$temp_install_dir"/gpg 
-		apt-key add "$temp_install_dir"/gpg/SALTSTACK-GPG-KEY.pub
-		apt-key add "$temp_install_dir"/gpg/GPG-KEY-WAZUH 
 
 		retry 150 20 "apt-get update" "" "Err:" || exit 1
 		retry 150 20 "apt-get -y install salt-minion=3004.2+ds-1 salt-common=3004.2+ds-1" || exit 1
