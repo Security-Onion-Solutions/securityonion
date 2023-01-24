@@ -376,6 +376,16 @@ base:
     {%- endif %}
     - idh
 
+  '*_fleet and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    - elastic-fleet
+    - schedule
+    - docker_clean
+
   'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
     - match: compound
     - workstation

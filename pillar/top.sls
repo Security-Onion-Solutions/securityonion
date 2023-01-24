@@ -184,6 +184,12 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
+  '*_fleet':
+    - backup.soc_backup
+    - backup.adv_backup
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+
   '*_workstation':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
