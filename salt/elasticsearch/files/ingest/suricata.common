@@ -9,12 +9,11 @@
     { "rename":{ "field": "message2.dest_ip",       "target_field": "destination.ip",  "ignore_failure": true  } },
     { "rename":{ "field": "message2.dest_port",       "target_field": "destination.port",  "ignore_failure": true  } },
     { "rename":         { "field": "message2.community_id",        "target_field": "network.community_id",     "ignore_missing": true  } },
-    { "remove":{ "field": "dataset", 						"ignore_failure": true	} },
-    { "rename":{ "field": "message2.event_type",		"target_field": "dataset",		"ignore_failure": true 	} },
+    { "set":         { "field": "event.dataset",        "value": "{{ message2.event_type }}"  } },
     { "set":         { "field": "observer.name",        "value": "{{agent.name}}"  } },
     { "set":         { "field": "event.ingested",        "value": "{{@timestamp}}"  } },
     { "date": { "field": "message2.timestamp", "target_field": "@timestamp", "formats": ["ISO8601", "UNIX"], "timezone": "UTC", "ignore_failure": true } },
     { "remove":{ "field": "agent", 						"ignore_failure": true	} },
-    { "pipeline": { "if": "ctx?.dataset != null", "name": "suricata.{{dataset}}" } }
+    { "pipeline": { "if": "ctx?.event?.dataset != null", "name": "suricata.{{event.dataset}}" } }
   ]
 }
