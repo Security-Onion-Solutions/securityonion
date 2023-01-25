@@ -24,11 +24,15 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
 
   '*_manager':
     - logstash
     - logstash.manager
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
 
   '*_manager or *_managersearch':
@@ -98,6 +102,7 @@ base:
     - logstash.manager
     - logstash.search
     - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
@@ -139,6 +144,8 @@ base:
   '*_searchnode':
     - logstash
     - logstash.search
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
@@ -153,6 +160,8 @@ base:
   '*_receiver':
     - logstash
     - logstash.receiver
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
