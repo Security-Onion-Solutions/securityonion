@@ -52,6 +52,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
@@ -77,6 +79,7 @@ base:
     - soc_global
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - kratos.soc_kratos
@@ -112,6 +115,7 @@ base:
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - backup.soc_backup
@@ -170,6 +174,7 @@ base:
     {% endif %}
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - soc_global
