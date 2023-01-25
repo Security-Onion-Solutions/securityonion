@@ -1,6 +1,33 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% if GLOBALS.os != 'CentOS' %}     
+{% if GLOBALS.os == 'Ubuntu' %}
+commonpkgs:
+  pkg.installed:
+    - skip_suggestions: True
+    - pkgs:
+      - chrony
+      - apache2-utils
+      - wget
+      - ntpdate
+      - jq
+      - python3-docker
+      - curl
+      - ca-certificates
+      - software-properties-common
+      - apt-transport-https
+      - openssl
+      - netcat
+      - python3-mysqldb
+      - sqlite3
+      - libssl-dev
+      - python3-dateutil
+      - python3-m2crypto
+      - python3-mysqldb
+      - python3-packaging
+      - python3-lxml
+      - git
+      - vim
+{% elif GLOBALS.os == 'Rocky' %}     
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
