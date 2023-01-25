@@ -5,6 +5,7 @@ commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
+      - chrony
       - apache2-utils
       - wget
       - ntpdate
