@@ -344,7 +344,6 @@ base:
     - zeek
     - schedule
     - docker_clean
-    - elastic-fleet
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
