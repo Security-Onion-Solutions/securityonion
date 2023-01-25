@@ -4,12 +4,25 @@
 # Elastic License 2.0.
 
 {% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
 
 dockergroup:
   group.present:
     - name: docker
     - gid: 920
 
+{% if GLOBALS.os == 'Ubuntu' %}
+dockerheldpackages:
+  pkg.installed:
+    - pkgs:
+      - containerd.io: 1.4.9-1
+      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
+      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
+      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
+    - hold: True
+    - update_holds: True
+{% else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
@@ -19,6 +32,7 @@ dockerheldpackages:
       - docker-ce-rootless-extras: 20.10.5-3.el7
     - hold: True
     - update_holds: True
+{% endif %}
 
 #disable docker from managing iptables
 iptables_disabled:

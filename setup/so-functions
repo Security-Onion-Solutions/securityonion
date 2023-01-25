@@ -909,10 +909,9 @@ detect_os() {
 
 	elif [ -f /etc/os-release ]; then
 		OS=ubuntu
-		if grep -q "UBUNTU_CODENAME=bionic" /etc/os-release; then
-			OSVER=bionic
-		elif grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
 			OSVER=focal
+			is_ubuntu=true
 		else
 			info "We do not support your current version of Ubuntu."
 			exit 1
@@ -1992,6 +1991,43 @@ repo_sync_local() {
 }
 
 saltify() {
+	if [[ $is_ubuntu ]]; then
+
+		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
+		update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 
+		local pkg_arr=(
+			'apache2-utils'
+			'ca-certificates'
+			'curl'
+			'software-properties-common'
+			'apt-transport-https'
+			'openssl'
+			'netcat'
+			'jq'
+		)
+		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || exit 1
+
+		logCmd "mkdir -vp /opt/so/gpg"
+		logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
+		logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
+		logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
+		logCmd "apt-key add /opt/so/gpg/docker.pub"
+
+		# Add SO Saltstack Repo
+		echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
+
+		# Add Docker Repo
+		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
+		
+		# Ain't nothing but a GPG 
+
+		retry 150 20 "apt-get update" "" "Err:" || exit 1
+		retry 150 20 "apt-get -y install salt-minion=3004.2+ds-1 salt-common=3004.2+ds-1" || exit 1
+		retry 150 20 "apt-mark hold salt-minion salt-common" || exit 1
+		retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+
+	fi
+		
 	if [[ $is_centos ]]; then
 		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
 		if [[ "$RUSALTY" -gt 0 ]]; then
@@ -2305,6 +2341,22 @@ so_add_user() {
 	fi
 }
 
+ubuntu_check() {
+	if [[ $OS == "ubuntu" ]]; then
+		if [[ $waitforstate ]]; then
+			whiptail_ubuntu_notsupported
+			exit 1
+		else
+		    if [[ $UBUNTUINSTALL == "needtoupgrade" ]]; then
+				whiptail_ubuntu_warning
+			else
+				whiptail_ubuntu_notsupported
+				exit 1
+			fi
+		fi
+	fi
+}
+
 update_sudoers_for_testing() {
 	if [ -n "$TESTING" ]; then
 		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
@@ -2383,9 +2435,10 @@ wait_for_salt_minion() {
 
 verify_setup() {
 	info "Verifying setup"
-	output=$(./so-verify "$setup_type" 2>&1)
+	set -o pipefail
+	./so-verify "$setup_type" 2>&1 | tee -a $setup_log
 	result=$?
-	echo "$output" >> "$setup_log"
+	set +o pipefail
 	if [[ $result -eq 0 ]]; then
 		whiptail_setup_complete
 	else
