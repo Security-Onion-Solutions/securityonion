@@ -2383,9 +2383,10 @@ wait_for_salt_minion() {
 
 verify_setup() {
 	info "Verifying setup"
-	output=$(./so-verify "$setup_type" 2>&1)
+	set -o pipefail
+	./so-verify "$setup_type" 2>&1 | tee -a $setup_log
 	result=$?
-	echo "$output" >> "$setup_log"
+	set +o pipefail
 	if [[ $result -eq 0 ]]; then
 		whiptail_setup_complete
 	else
