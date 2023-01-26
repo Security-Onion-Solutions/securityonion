@@ -116,7 +116,7 @@ so-soc:
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
       {%- endfor %}
-      {%- endif %}
+    {%- endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
       - {{ BINDING }}
