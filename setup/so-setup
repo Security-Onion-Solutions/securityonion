@@ -142,6 +142,7 @@ if [[ -f /root/accept_changes ]]; then
 	mv "$setup_log" "$setup_log.bak"
 	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
 	reinstall_init
+	reset_proxy
 fi
 
 title "Parsing Username for Install"
@@ -319,6 +320,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -342,6 +344,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -364,6 +367,7 @@ if ! [[ -f $install_opt_file ]]; then
 		ubuntu_check
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -385,6 +389,7 @@ if ! [[ -f $install_opt_file ]]; then
 		ubuntu_check
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -490,6 +495,9 @@ if ! [[ -f $install_opt_file ]]; then
 		percentage=0
 		es_heapsize
 		ls_heapsize
+		if [[ $needs_proxy ]]; then
+			set_proxy
+		fi
 		set_redirect
 		# Generate Interface Vars
 		generate_interface_vars
@@ -595,9 +603,9 @@ if ! [[ -f $install_opt_file ]]; then
 		add_web_user
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
+		title "Setting up Elastic Fleet"
+                logCmd "so-elastic-fleet-setup"
 		if [[ ! $is_import ]]; then
-			title "Setting up Elastic Fleet"
-			logCmd "so-elastic-fleet-setup"
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"
 		fi

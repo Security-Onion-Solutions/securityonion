@@ -816,34 +816,15 @@ whiptail_net_method() {
 	)
 	local proxy_desc="proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment."
 
-	if [[ $is_minion ]]; then
-		read -r -d '' options_msg <<- EOM
+	read -r -d '' options_msg <<- EOM
 		${options_msg}
-
-		"Direct + Manager" - all traffic passes to the Internet normally, but ${pkg_mngr} updates will instead be pulled from ${mngr_article} manager. 
-
 		"Proxy" - ${proxy_desc}
+	EOM
+	options+=(
+		" Proxy " ""
+	)
 
-		"Proxy + Manager" - proxy all traffic from the "Proxy" option except ${pkg_mngr} updates, which will instead pull from the manager.
-		EOM
-		
-		options+=(
-			" Direct + Manager " ""
-			" Proxy " ""
-			" Proxy + Manager " ""
-		)
-		local height=25
-	else
-		read -r -d '' options_msg <<- EOM
-			${options_msg}
-
-			"Proxy" - ${proxy_desc}
-		EOM
-		options+=(
-			" Proxy " ""
-		)
-		local height=17
-	fi
+	local height=17
 
 	local msg
 	read -r -d '' msg <<- EOM
