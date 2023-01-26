@@ -110,8 +110,9 @@ so-soc:
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
-    {%- if salt['pillar.get']('nodestab', {}) %}
     - extra_hosts:
+      - {{GLOBALS.influxdb_host}}:{{pillar.node_data[GLOBALS.influxdb_host].ip}}
+    {%- if salt['pillar.get']('nodestab', {}) %}
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
       {%- endfor %}

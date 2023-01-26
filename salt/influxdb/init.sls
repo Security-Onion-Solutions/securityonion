@@ -94,10 +94,10 @@ wait_for_influxdb:
     - ssl: True
     - verify_ssl: False
     - status: 200
-    - timeout: 30
+    - timeout: 10
     - retry:
-        attempts: 5
-        interval: 60
+        attempts: 20
+        interval: 5
     - require:
       - docker_container: so-influxdb
 

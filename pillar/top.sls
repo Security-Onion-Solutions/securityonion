@@ -10,6 +10,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - node_data.ips
 
   '* and not *_eval and not *_import':
     - logstash.nodes
@@ -23,11 +24,15 @@ base:
     - logstash
     - logstash.manager
     - logstash.search
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
 
   '*_manager':
     - logstash
     - logstash.manager
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
 
   '*_manager or *_managersearch':
@@ -51,6 +56,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - backup.soc_backup
     - backup.adv_backup
     - minions.{{ grains.id }}
@@ -76,6 +83,7 @@ base:
     - soc_global
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - kratos.soc_kratos
@@ -94,6 +102,7 @@ base:
     - logstash.manager
     - logstash.search
     - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
@@ -111,6 +120,7 @@ base:
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - backup.soc_backup
@@ -134,6 +144,8 @@ base:
   '*_searchnode':
     - logstash
     - logstash.search
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
@@ -148,6 +160,8 @@ base:
   '*_receiver':
     - logstash
     - logstash.receiver
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -169,6 +183,7 @@ base:
     {% endif %}
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     - manager.soc_manager
     - soc.soc_soc
     - soc_global

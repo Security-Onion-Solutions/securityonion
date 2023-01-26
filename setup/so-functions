@@ -200,7 +200,7 @@ check_service_status() {
 }
 
 check_web_pass() {
-	info Making sure web credential passwords match
+	info "Making sure web credential passwords match"
 	check_pass_match "$WEBPASSWD1" "$WEBPASSWD2" "WPMATCH"
 }
 
@@ -1301,15 +1301,7 @@ idh_pillar() {
 logstash_pillar() {
 	# Create the logstash advanced pillar
 	touch $adv_logstash_pillar_file
-	title "Create the logstash pillar"
-	printf '%s\n'\
-		"logstash_settings:"\
-		"  ls_host: '$HOSTNAME'"\
-		"  ls_pipeline_batch_size: 125"\
-		"  ls_input_threads: 1"\
-		"  lsheap: $NODE_LS_HEAP_SIZE"\
-		"  ls_pipeline_workers: $num_cpu_cores"\
-		"" > "$logstash_pillar_file"
+	touch $logstash_pillar_file
 }
 
 # Set Logstash heap size based on total memory
@@ -1333,10 +1325,6 @@ ls_heapsize() {
 	esac
 	export LS_HEAP_SIZE
 
-	if [[ "$install_type" =~ ^(EVAL|MANAGERSEARCH|STANDALONE)$ ]]; then
-		NODE_LS_HEAP_SIZE=$LS_HEAP_SIZE
-		export NODE_LS_HEAP_SIZE
-	fi
 }
 
 idstools_pillar() {
@@ -1881,6 +1869,9 @@ drop_install_options() {
 	NODETYPE=${install_type^^}
 	echo "NODETYPE=$NODETYPE" >> /opt/so/install.txt
 	echo "CORECOUNT=$lb_procs" >> /opt/so/install.txt
+	echo "LSHOSTNAME=$HOSTNAME" >> /opt/so/install.txt
+	echo "LSHEAP=$LS_HEAP_SIZE" >> /opt/so/install.txt
+	echo "CPUCORES=$num_cpu_cores" >> /opt/so/install.txt
 }
 
 remove_package() {
