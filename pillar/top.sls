@@ -155,7 +155,6 @@ base:
     - adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
-    - data.nodestab
 
   '*_receiver':
     - logstash
