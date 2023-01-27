@@ -1,6 +1,7 @@
 {
   "description" : "zeek.sip",
   "processors" : [
+    { "set": { "field": "event.dataset", "value": "sip" } },
     { "remove":         { "field": ["host"],     "ignore_failure": true                                                                  } },
     { "json":		{ "field": "message",			"target_field": "message2",		"ignore_failure": true	} },
     { "rename": 	{ "field": "message2.trans_depth", 	"target_field": "sip.transaction.depth",		"ignore_missing": true 	} },

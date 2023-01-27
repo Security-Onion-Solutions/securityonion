@@ -142,6 +142,7 @@ if [[ -f /root/accept_changes ]]; then
 	mv "$setup_log" "$setup_log.bak"
 	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
 	reinstall_init
+	reset_proxy
 fi
 
 title "Parsing Username for Install"
@@ -314,10 +315,12 @@ if ! [[ -f $install_opt_file ]]; then
 	# If you are a manager ask ALL the manager things here. I know there is code re-use but this makes it easier to add new roles.
 	if [[ $is_eval ]]; then
 		waitforstate=true
+		ubuntu_check
 		monints=true
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -336,10 +339,12 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 	elif [[ $is_standalone ]]; then
 		waitforstate=true
+		ubuntu_check
 		monints=true
 		check_elastic_license
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
@@ -359,13 +364,16 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_manager ]]; then
 		check_elastic_license
 		waitforstate=true
+		ubuntu_check
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
 		fi
 		detect_cloud
+		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
@@ -378,13 +386,16 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_managersearch ]]; then
 		check_elastic_license
 		waitforstate=true
+		ubuntu_check
 		check_requirements "manager"
 		networking_needful
+		collect_net_method
 		collect_dockernet
 		if [[ $is_iso ]]; then
 			whiptail_airgap
 		fi
 		detect_cloud
+		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
@@ -395,6 +406,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
+		ubuntu_check
 		monints=true
 		check_requirements "sensor"
 		calculate_useable_cores
@@ -422,6 +434,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_searchnode ]]; then
+		ubuntu_check
 		check_requirements "elasticsearch"
 		networking_needful
 		check_network_manager_conf
@@ -434,6 +447,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_heavynode ]]; then
+		ubuntu_check
 		monints=true
 		check_requirements "heavynode"
 		calculate_useable_cores
@@ -441,17 +455,21 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
+		set_minion_info
 		whiptail_end_settings
 
 	elif [[ $is_idh ]]; then
+		ubuntu_check
 		check_requirements "idh"
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
+		set_minion_info
 		whiptail_end_settings
 
 	elif [[ $is_import ]]; then
+		ubuntu_check
 		waitforstate=true
 		monints=true
 		check_elastic_license
@@ -473,11 +491,13 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_receiver ]]; then
+		ubuntu_check
 		check_requirements "receiver"
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
+		set_minion_info
 		whiptail_end_settings
 	fi
 
@@ -487,6 +507,9 @@ if ! [[ -f $install_opt_file ]]; then
 		percentage=0
 		es_heapsize
 		ls_heapsize
+		if [[ $needs_proxy ]]; then
+			set_proxy
+		fi
 		set_redirect
 		# Generate Interface Vars
 		generate_interface_vars
@@ -535,6 +558,9 @@ if ! [[ -f $install_opt_file ]]; then
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
 		export INTERFACE="bond0"
 		export CORECOUNT=$lb_procs
+		export LSHOSTNAME=$HOSTNAME
+		export LSHEAP=$LS_HEAP_SIZE
+		export CPUCORES=$num_cpu_cores
 		logCmd "so-minion -o=setup" 
 		title "Creating Global SLS"
 
@@ -589,9 +615,9 @@ if ! [[ -f $install_opt_file ]]; then
 		add_web_user
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
+		title "Setting up Elastic Fleet"
+                logCmd "so-elastic-fleet-setup"
 		if [[ ! $is_import ]]; then
-			title "Setting up Elastic Fleet"
-			logCmd "so-elastic-fleet-setup"
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"
 		fi
@@ -620,6 +646,7 @@ if ! [[ -f $install_opt_file ]]; then
 		configure_minion "$minion_type"
 		drop_install_options
 		checkin_at_boot
+		logCmd "salt-call state.apply setup.highstate_cron --local --file-root=../salt/"
 		verify_setup
 	fi
 
