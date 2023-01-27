@@ -5,7 +5,7 @@
 {% from 'docker/docker.map.jinja' import DOCKER %}
 
 # These values are generated during node install and stored in minion pillar
-{% set SERVICETOKEN = salt['pillar.get']('elasticfleet:server:es_token','AAEAAWVsYXN0aWMvZmxlZXQtc2VydmVyL3Rva2VuLTE2NzQzMzE3MTE4MDE6MGRHZDBnd2xRZDJBX0hLVjd2TnJBdw') %}
+{% set SERVICETOKEN = salt['pillar.get']('elasticfleet:server:es_token','') %}
 {% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
 
 # Add EA Group
