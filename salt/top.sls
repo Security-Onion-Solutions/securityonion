@@ -382,6 +382,7 @@ base:
     - sensoroni
     - telegraf
     - firewall
+    - logstash
     - elastic-fleet
     - schedule
     - docker_clean

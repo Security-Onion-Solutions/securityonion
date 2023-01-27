@@ -22,7 +22,7 @@
 
 include:
   - ssl
-  {% if GLOBALS.role not in ['so-receiver'] %}
+  {% if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch
   {% endif %}
 

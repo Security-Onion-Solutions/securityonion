@@ -119,6 +119,25 @@ function add_elastic_to_minion() {
 		"  " >> $PILLARFILE
 }
 
+# Add Elastic Fleet Server settings to the minion file
+function add_fleet_to_minion() {
+
+    # Create ES Token for Fleet server (Curl to Kibana API)
+	# TODO: Add error handling
+    ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
+
+	# Create Logstash Certs
+
+
+    # Write out settings to minion file
+    printf '%s\n'\
+		"logstash_settings:"\
+		"  lsheap: '500m'"\
+		"fleet-server:"\
+		"  ES-Token: '$ESTOKEN'"\
+		"  " >> $PILLARFILE
+}
+
 # Analyst Workstation
 function add_analyst_to_minion() {
     printf '%s\n'\
@@ -168,6 +187,10 @@ function add_sensor_to_minion() {
 function createEVAL() {
 	add_elastic_to_minion
 	add_sensor_to_minion
+}
+
+function createFLEET() {
+	add_fleet_to_minion
 }
 
 function createIDHNODE() {
