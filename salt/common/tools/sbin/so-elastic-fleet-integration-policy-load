@@ -31,6 +31,13 @@ echo "Setting up Zeek package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "zeek-logs", "description": "Zeek logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/zeek/logs/current/*.log"], "data_stream.dataset": "zeek", "tags": [], "processors": "- dissect:\n    tokenizer: \"/nsm/zeek/logs/current/%{pipeline}.log\"\n    field: \"log.file.path\"\n    trim_chars: \".log\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\");\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        pipeline: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"", "custom": "exclude_files: [\"broker|capture_loss|ecat_arp_info|loaded_scripts|packet_filter|stats|stderr|stdout.log$\"]\n" } } } } } }'
 echo
 
+
+# Import - EVTX
+echo
+echo "Setting up EVTX import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "package": { "name": "log", "version": "1.1.0" }, "name": "import-evtx-logs", "namespace": "so", "description": "Import Windows EVTX logs", "policy_id": "so-grid-nodes", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/import/*/evtx/data.json" ], "data_stream.dataset": "import", "custom": "pipeline: import.wel", "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/evtx/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n- add_fields:\n    target: event\n    fields:\n      module: windows_eventlog\n      imported: true", "tags": [] } } } } } }'
+echo
+
 # Import - Suricata logs
 echo
 echo "Setting up Suricata import package policy..."
@@ -44,6 +51,7 @@ curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POS
 echo
 
 # Strelka logs
+echo
 echo "Setting up Strelka package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "strelka-logs", "name": "strelka-logs", "description": "Strelka logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/strelka/log/strelka.log" ], "data_stream.dataset": "file", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: strelka", "custom": "pipeline: strelka.file" }}}}}}'
 echo
