@@ -15,7 +15,7 @@ include:
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 {% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
-{% from 'logstash/map.jinja' import REDIS_NODES with context %}
+{% from 'logstash/map.jinja' import LOGSTASH_NODES %}
 
 vm.max_map_count:
   sysctl.present:
@@ -293,9 +293,9 @@ so-elasticsearch:
     - networks:
       - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
-    - extra_hosts:  {{ REDIS_NODES }} 
+    - extra_hosts:  {{ LOGSTASH_NODES }}
     - environment:
-      {% if REDIS_NODES | length == 1 %}
+      {% if LOGSTASH_NODES | length == 1 %}
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true

@@ -1,18 +1,18 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
-{% from 'logstash/map.jinja' import REDIS_NODES with context %}
+{% from 'logstash/map.jinja' import LOGSTASH_NODES with context %}
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
 {% if grains.id.split('_') | last in ['manager','managersearch'] %}
-    {% if REDIS_NODES | length > 1 %}
+    {% if LOGSTASH_NODES | length > 1 %}
     {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client']}) %}
     {% if HIGHLANDER %}
         {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'transform']) %}
     {% endif %}
-    {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
-    {% for SN in REDIS_NODES.keys() %}
-      {% do ESCONFIG.elasticsearch.config.discovery.seed_hosts.append(SN) %}
+    {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': []}}) %}
+    {% for NODE in LOGSTASH_NODES %}
+      {% do ESCONFIG.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
     {% endfor %}
   {% endif %}
   {% if grains.id.split('_') | last == 'manager' %}
