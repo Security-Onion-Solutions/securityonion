@@ -128,6 +128,8 @@ so-grafana:
     - networks:
       - sosbridge:
         - ipv4_address: {{ DOCKER.containers['so-grafana'].ip }}
+    - extra_hosts:
+      - {{GLOBALS.influxdb_host}}:{{pillar.node_data[GLOBALS.influxdb_host].ip}}
     - binds:
       - /nsm/grafana:/var/lib/grafana:rw
       - /opt/so/conf/grafana/etc/grafana.ini:/etc/grafana/grafana.ini:ro

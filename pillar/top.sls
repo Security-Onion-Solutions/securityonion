@@ -147,6 +147,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -155,7 +157,6 @@ base:
     - adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
-    - data.nodestab
 
   '*_receiver':
     - logstash
