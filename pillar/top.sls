@@ -204,6 +204,10 @@ base:
     - adv_global
     - backup.soc_backup
     - backup.adv_backup
+    - logstash
+    - logstash.fleet
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
