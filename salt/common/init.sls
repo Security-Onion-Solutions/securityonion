@@ -110,7 +110,6 @@ commonpkgs:
       - libssl-dev
       - python3-dateutil
       - python3-m2crypto
-      - python3-mysqldb
       - python3-packaging
       - python3-lxml
       - git
@@ -153,7 +152,7 @@ commonpkgs:
       - python36-docker
       - python36-dateutil
       - python36-m2crypto
-      - python36-mysql
+      - python36-mysql: 1.3.12-2.el7
       - python36-packaging
       - python36-lxml
       - yum-utils
