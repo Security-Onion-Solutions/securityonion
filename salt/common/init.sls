@@ -152,7 +152,6 @@ commonpkgs:
       - python36-docker
       - python36-dateutil
       - python36-m2crypto
-      - python36-mysql: 1.3.12-2.el7
       - python36-packaging
       - python36-lxml
       - yum-utils
@@ -169,6 +168,7 @@ heldpackages:
       - docker-ce: 3:20.10.5-3.el7
       - docker-ce-cli: 1:20.10.5-3.el7
       - docker-ce-rootless-extras: 20.10.5-3.el7
+      - python36-mysql: 1.3.12-2.el7
     - hold: True
     - update_holds: True
 {% endif %}
