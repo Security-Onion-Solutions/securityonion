@@ -18,7 +18,7 @@ create_playbookdbuser:
   mysql_user.present:
     - name: playbookdbuser
     - password: {{ PLAYBOOKPASS }}
-    - host: "{{ DOCKER.sosrange.split('/')[0] }}/255.255.255.0"
+    - host: "{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0"
     - connection_host: {{ GLOBALS.manager_ip }}
     - connection_port: 3306
     - connection_user: root
@@ -27,7 +27,7 @@ create_playbookdbuser:
 query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
-    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DOCKER.sosrange.split('/')[0] }}/255.255.255.0';"
+    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0';"
     - connection_host: {{ GLOBALS.manager_ip }}
     - connection_port: 3306
     - connection_user: root
