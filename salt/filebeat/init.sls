@@ -99,7 +99,7 @@ so-filebeat:
     - hostname: so-filebeat
     - user: root
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-filebeat'].ip }}
     - extra_hosts: {{ FILEBEAT_EXTRA_HOSTS }}
     - binds:

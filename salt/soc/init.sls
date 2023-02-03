@@ -97,7 +97,7 @@ so-soc:
     - hostname: soc
     - name: so-soc
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
