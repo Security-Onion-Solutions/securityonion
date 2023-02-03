@@ -148,11 +148,12 @@ for PCAP in "$@"; do
     # generate IDS alerts and write them to standard pipeline
     echo "- analyzing traffic with Suricata"
     suricata "${PCAP}" $HASH
-
-    # generate Zeek logs and write them to a unique subdirectory in /nsm/import/bro/
+    {% if salt['pillar.get']('global:mdengine') == 'ZEEK' %}
+    # generate Zeek logs and write them to a unique subdirectory in /nsm/import/zeek/
     # since each run writes to a unique subdirectory, there is no need for a lock file
     echo "- analyzing traffic with Zeek"
     zeek "${PCAP}" $HASH
+    {% endif %}
 
     START=$(pcapinfo "${PCAP}" -a |grep "First packet time:" | awk '{print $4}')
     END=$(pcapinfo "${PCAP}" -e |grep "Last packet time:" | awk '{print $4}')
