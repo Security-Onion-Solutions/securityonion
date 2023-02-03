@@ -130,7 +130,7 @@ so-curator:
     - name: so-curator
     - user: curator
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-curator'].ip }}
     - interactive: True
     - tty: True

@@ -291,7 +291,7 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
     - extra_hosts:  {{ LOGSTASH_NODES }}
     - environment:

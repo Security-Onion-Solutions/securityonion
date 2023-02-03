@@ -126,7 +126,7 @@ so-grafana:
     - hostname: grafana
     - user: socore
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-grafana'].ip }}
     - extra_hosts:
       - {{GLOBALS.influxdb_host}}:{{pillar.node_data[GLOBALS.influxdb_host].ip}}

@@ -39,7 +39,7 @@ so-dockerregistry:
     - image: ghcr.io/security-onion-solutions/registry:latest
     - hostname: so-registry
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-dockerregistry'].ip }}
     - restart_policy: always
     - port_bindings:

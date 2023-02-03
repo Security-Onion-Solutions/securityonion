@@ -88,7 +88,7 @@ so-elastalert:
     - name: so-elastalert
     - user: so-elastalert
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elastalert'].ip }}
     - detach: True
     - binds:
