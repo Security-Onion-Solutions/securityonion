@@ -1152,22 +1152,26 @@ filter_unused_nics() {
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
+	nic_list_management=()
 	for nic in "${filtered_nics[@]}"; do
 		local nic_mac=$(cat "/sys/class/net/${nic}/address" 2>/dev/null)
 		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
 			1)
 				nic_list+=("$nic" "$nic_mac  Link UP " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link UP " )
 				;;
 			0)
 				nic_list+=("$nic" "$nic_mac  Link DOWN " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link DOWN " )
 				;;
 			*)
 				nic_list+=("$nic" "$nic_mac  Link UNKNOWN " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link UNKNOWN " )
 				;;
 		esac
 	done
 
-	export nic_list
+	export nic_list nic_list_management
 }
 
 # Generate Firewall Templates
