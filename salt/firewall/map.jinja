@@ -3,7 +3,7 @@
 
 {% import_yaml 'firewall/ports/ports.yaml' as default_portgroups %}
 {% set default_portgroups = default_portgroups.firewall.ports %}
-{% import_yaml 'firewall/portgroups.local.yaml' as local_portgroups %}
+{% import_yaml 'firewall/ports/ports.local.yaml' as local_portgroups %}
 {% if local_portgroups.firewall.ports %}
   {% set local_portgroups = local_portgroups.firewall.ports %}
 {% else %}
@@ -15,30 +15,14 @@
 {% import_yaml 'firewall/hostgroups.yaml' as default_hostgroups %}
 {#% import_yaml 'firewall/hostgroups.local.yaml' as local_hostgroups %#}
 {% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
-{% set hostgroup_list = [
-         'analyst',
-         'analyst_workstations',
-         'eval',
-         'heavynodes',
-         'idh',
-         'manager',
-         'managersearch',
-         'receivers',
-         'searchnodes',
-         'sensors',
-         'standalone',
-         'beats_endpoint',
-         'beats_endpoint_ssl',
-         'elasticsearch_rest',
-         'elastic_agent_endpoint',
-         'endgame',
-         'strelka_frontend',
-         'syslog'
-       ]
-%}
+
+{% set hostgroup_list =  salt['cp.list_master'](prefix='firewall/hostgroups') %}
+{% do hostgroup_list.remove('firewall/hostgroups.local.yaml') %}
+{% do hostgroup_list.remove('firewall/hostgroups.yaml') %}
+
 {% for hg in hostgroup_list %}
-{%   import_text 'firewall/hostgroups/' ~ hg as hg_ips %}
-{%   do local_hostgroups.firewall.hostgroups.update({hg: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
+{%   import_text hg as hg_ips %}
+{%   do local_hostgroups.firewall.hostgroups.update({hg.split('/')[2]: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
 {% endfor %}
 
 {% set hostgroups = salt['defaults.merge'](default_hostgroups.firewall.hostgroups, local_hostgroups.firewall.hostgroups, in_place=False) %}
