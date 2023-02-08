@@ -50,11 +50,11 @@ so-influxdb:
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=so
-      - DOCKER_INFLUXDB_INIT_PASSWORD={{ password }}
+      - DOCKER_INFLUXDB_INIT_PASSWORD={{ PASSWORD }}
       - DOCKER_INFLUXDB_INIT_ORG="Security Onion"
       - DOCKER_INFLUXDB_INIT_BUCKET=telegraf/so_short_term
       - DOCKER_INFLUXDB_INIT_RETENTION=30d
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ token }}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ TOKEN }}
     - binds:
       - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/config.yaml:/conf/config.yaml:ro
