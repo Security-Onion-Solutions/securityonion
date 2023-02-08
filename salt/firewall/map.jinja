@@ -12,20 +12,16 @@
 {% set portgroups = salt['defaults.merge'](default_portgroups, local_portgroups, in_place=False) %}
 {% set defined_portgroups = portgroups %}
 
-{% import_yaml 'firewall/hostgroups.yaml' as default_hostgroups %}
-{#% import_yaml 'firewall/hostgroups.local.yaml' as local_hostgroups %#}
 {% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
 
 {% set hostgroup_list =  salt['cp.list_master'](prefix='firewall/hostgroups') %}
-{% do hostgroup_list.remove('firewall/hostgroups.local.yaml') %}
-{% do hostgroup_list.remove('firewall/hostgroups.yaml') %}
 
 {% for hg in hostgroup_list %}
 {%   import_text hg as hg_ips %}
 {%   do local_hostgroups.firewall.hostgroups.update({hg.split('/')[2]: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
 {% endfor %}
 
-{% set hostgroups = salt['defaults.merge'](default_hostgroups.firewall.hostgroups, local_hostgroups.firewall.hostgroups, in_place=False) %}
+{% set hostgroups = local_hostgroups.firewall.hostgroups %}
 
 {# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}
 {% if salt['pillar.get']('firewall:assigned_hostgroups:chain') %}
