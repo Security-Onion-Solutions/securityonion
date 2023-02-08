@@ -3,10 +3,9 @@
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
 {% set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
 {% set TOKEN = salt['pillar.get']('secrets:influx_token') %}
-
-{% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
 
 include:
   - salt.minion
@@ -88,6 +87,8 @@ get_influxdb_size:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+{% endif %}
 
 {% else %}
 
