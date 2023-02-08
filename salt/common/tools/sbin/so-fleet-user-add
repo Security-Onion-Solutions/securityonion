@@ -53,8 +53,10 @@ if [[ $? -ne 0 ]]; then
     exit 2
 fi
 
+TEMPPW=$FLEET_SA_PW!
+
 # Create New User
-CREATE_OUTPUT=$(docker exec so-fleet fleetctl user create --email $USER_EMAIL --name $USER_EMAIL --password $USER_PASS --global-role admin 2>&1)
+CREATE_OUTPUT=$(docker exec so-fleet fleetctl user create --email $USER_EMAIL --name $USER_EMAIL --password $TEMPPW --global-role admin 2>&1)
 
 if [[ $? -eq 0 ]]; then
     echo "Successfully added user to Fleet"
@@ -63,6 +65,9 @@ else
     echo "$CREATE_OUTPUT"
     exit 2
 fi
+
+# Reset New User Password to user supplied password
+echo "$USER_PW" | so-fleet-user-update "$USER_EMAIL"
 
 # Disable forced password reset
 MYSQL_OUTPUT=$(docker exec so-mysql mysql -u root --password=$MYSQL_PW fleet -e \
