@@ -1,0 +1,15 @@
+#/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+{%- set NODEIP = salt['pillar.get']('host:mainip', '') %}
+
+if [ "$1" == "" ]; then
+        curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L https://{{ NODEIP }}:9200/_all/_ilm/explain | jq .
+else
+        curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L https://{{ NODEIP }}:9200/$1/_ilm/explain | jq .[]
+fi
