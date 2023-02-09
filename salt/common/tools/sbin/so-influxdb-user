@@ -36,10 +36,12 @@ log() {
 
 read_password() {
   # Read password for new user from stdin
+  set +e
   test -t 0
   if [[ $? == 0 ]]; then
     echo "Enter new password:"
   fi
+  set -e
   read -rs USER_PASS
 
   check_password_and_exit "$USER_PASS"
@@ -49,6 +51,7 @@ check_response() {
   response=$1
   if [[ "$response" =~ "\"code\":" ]]; then
     log "Failed. Check the response for more details.\n$response"
+    exit 1
   fi
 }
 
@@ -61,6 +64,7 @@ if [[ "$OP" == "add" ]]; then
   OP=password
 fi
 
+log "Looking up user ID"
 response=$(curl -sk https://localhost:8086/api/v2/users?limit=100 -H "Authorization: Token $TOKEN")
 check_response "$response"
 USER_ID=$(echo "$response" | jq -r ".users[] | select(.name == \"$USER_EMAIL\").id")
