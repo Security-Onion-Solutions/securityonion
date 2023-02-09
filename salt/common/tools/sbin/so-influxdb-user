@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+usage() {
+    echo "Usage: $0 <add|delete|enable|disable|password> <new-user-email>"
+    echo ""
+    echo "Supported Operations:"
+    echo "  add        Adds a new user"
+    echo "  delete     Removes an existing user"
+    echo "  enable     Enables a user"
+    echo "  disable    Disables a user"
+    echo "  password   Updates a user's password"
+    echo ""
+    echo "If required, the password will be read from STDIN."
+    exit 1
+}
+
+if [ $# -ne 2 ]; then
+  usage
+fi
+
+KIND=InfluxDB
+OP=$1
+USER_EMAIL=$2
+TOKEN=$(lookup_pillar_secret influx_token)
+
+log() {
+  echo -e "$@"
+}
+
+read_password() {
+  # Read password for new user from stdin
+  test -t 0
+  if [[ $? == 0 ]]; then
+    echo "Enter new password:"
+  fi
+  read -rs USER_PASS
+
+  check_password_and_exit "$USER_PASS"
+}
+
+check_response() {
+  response=$1
+  if [[ "$response" =~ "\"code\":" ]]; then
+    log "Failed. Check the response for more details.\n$response"
+  fi
+}
+
+set -eo pipefail
+
+if [[ "$OP" == "add" ]]; then
+  log "Creating new $KIND user"
+  response=$(curl -sk https://localhost:8086/api/v2/users -X POST -d "{\"name\":\"$USER_EMAIL\"}" -H "Authorization: Token $TOKEN")
+  check_response "$response"
+  OP=password
+fi
+
+response=$(curl -sk https://localhost:8086/api/v2/users?limit=100 -H "Authorization: Token $TOKEN")
+check_response "$response"
+USER_ID=$(echo "$response" | jq -r ".users[] | select(.name == \"$USER_EMAIL\").id")
+if [[ -z "$USER_ID" ]]; then
+  log "$KIND user not found"
+  exit 1
+fi
+
+if [[ "$OP" == "password" ]]; then
+  read_password
+  log "Updating $KIND user password"
+  response=$(curl -sk https://localhost:8086/api/v2/users/$USER_ID/password -X POST -d "{\"password\":\"$USER_PASS\"}" -H "Authorization: Token $TOKEN")
+  check_response "$response"
+fi
+
+if [[ "$OP" == "delete" ]]; then
+  log "Deleting $KIND user"
+  response=$(curl -sk https://localhost:8086/api/v2/users/$USER_ID -X DELETE -H "Authorization: Token $TOKEN")
+  check_response "$response"
+fi
+
+if [[ "$OP" == "enable" ]]; then
+  log "Enabling $KIND user"
+  response=$(curl -sk https://localhost:8086/api/v2/users/$USER_ID -X PATCH -d "{\"name\":\"$USER_EMAIL\",\"status\":\"active\"}" -H "Authorization: Token $TOKEN")
+  check_response "$response"
+fi
+
+if [[ "$OP" == "disable" ]]; then
+  log "Disabling $KIND user"
+  response=$(curl -sk https://localhost:8086/api/v2/users/$USER_ID -X PATCH -d "{\"name\":\"$USER_EMAIL\",\"status\":\"inactive\"}" -H "Authorization: Token $TOKEN")
+  check_response "$response"
+fi
