@@ -57,7 +57,7 @@ influxdb-templates:
 
 influxdb-setup:
   cmd.run:
-    - name: /usr/sbin/so-influxdb-setup
+    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
 
 so-influxdb:
   docker_container.running:

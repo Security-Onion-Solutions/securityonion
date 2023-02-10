@@ -12,7 +12,6 @@ usage() {
     echo ""
     echo "Supported Operations:"
     echo "  setup          Loads all templates and creates all required buckets"
-    echo "  templateapply  Applies a single template file, requires: <template-path>"
     echo "  userlist       Lists users"
     echo "  useradd        Adds a new user, requires: <email>"
     echo "  userdel        Removes an existing user, requires: <email>"
@@ -108,18 +107,17 @@ change_password() {
   check_response "$response"
 }
 
-apply_template() {
+apply_templates() {
   token=$1
   oid=$2
   stackid=$3
-  file=$4
-  content=$(cat $file)
-  body="{\"orgID\":\"$oid\",\"stackID\":\"$stackid\",\"template\":{\"contents\":$content}}"
+  template_objects_array=$4
+  body="{\"orgID\":\"$oid\",\"stackID\":\"$stackid\",\"templates\":$template_objects_array}"
   response=$(curl -sk https://localhost:8086/api/v2/templates/apply -X POST -d "$body" -H "Authorization: Token $token")
   check_response "$response"
 }
 
-create_bucket() {
+setup_bucket() {
   token=$1
   oid=$2
   name=$3
@@ -127,50 +125,58 @@ create_bucket() {
   shardduration=$5
 
   response=$(curl -sk "https://localhost:8086/api/v2/buckets?orgID=$oid&name=$name" -H "Authorization: Token $token")
-  check_response "$response"
   bucketid=$(echo "$response" | jq -r ".buckets[0].id")
-  if [[ -z "$stackid" || "$stackid" == null ]]; then
-    response=$(curl -sk https://localhost:8086/api/v2/buckets -X POST -d "{\"name\":\"$name\",\"orgID\":\"oid\"}" -H "Authorization: Token $token")
+  if [[ -z "$bucketid" || "$bucketid" == null ]]; then
+    response=$(curl -sk https://localhost:8086/api/v2/buckets -X POST -d "{\"name\":\"$name\",\"orgID\":\"$oid\"}" -H "Authorization: Token $token")
     check_response "$response"
     bucketid=$(echo "$response" | jq -r .id)
   fi
-  response=$(curl -sk "https://localhost:8086/api/v2/buckets/$bucketid" -d "{\"name\":\"$name\",\"retentionRules\":[{\"everySeconds\":$age,\"shardGroupDurationSeconds\":$shardduration,\"type\":\"expire\"}]}" -H "Authorization: Token $token")
+  response=$(curl -sk "https://localhost:8086/api/v2/buckets/$bucketid" -X PATCH -d "{\"name\":\"$name\",\"retentionRules\":[{\"everySeconds\":$age,\"shardGroupDurationSeconds\":$shardduration,\"type\":\"expire\"}]}" -H "Authorization: Token $token")
   check_response "$response"
 }
 
 case "$OP" in
 
-  templateload)
-    [ $# -ne 1 ] && usage
-    file=$1
-    log "Applying template file; file=$file"
-    token=$(lookup_pillar_secret influx_token)
-    oid=$(lookup_org_id "$token")
-    stackid=$(lookup_stack_id "$token" "$oid")
-    apply_template "$token" "$oid" "$stackid" "$file"
-    ;;
-
   setup)
     log "Ensuring organization is setup correctly"
-    token=$(lookup_pillar_secret influx_token)
-    oid=$(lookup_org_id "$token")
 
-    # Load templates
-    stackid=$(lookup_stack_id "$token" "$oid")
-    for file in /opt/so/conf/influxdb/templates/*; do
-      log "Ensuring template is loaded; template=$file"
-      apply_template "$token" "$oid" "$stackid" "$file"
-    done
+    # Load templates if at least one has been modified since the last setup
+    newest=$(ls -1t /opt/so/conf/influxdb/templates/ | head -1)
+    if [ /opt/so/conf/influxdb/templates/$newest -nt /opt/so/conf/influxdb/last_template_setup ]; then
+      log "Updating templates"
+      token=$(lookup_pillar_secret influx_token)
+      oid=$(lookup_org_id "$token")
+      stackid=$(lookup_stack_id "$token" "$oid")
+      for file in /opt/so/conf/influxdb/templates/*; do
+        if [[ "$templates_array" != "" ]]; then
+          templates_array="$templates_array,"
+        fi
+        template=$(cat "$file")
+        templates_array="$templates_array{\"contents\":$template}"
+      done
+      apply_templates "$token" "$oid" "$stackid" "[$templates_array]"
+      echo $(date) > /opt/so/conf/influxdb/last_template_setup
+    else
+      log "Templates have not been modified since last setup"
+    fi
 
-    # Setup buckets and retention periods
-    for rp in so_short_term so_long_term; do
-      bucket=telegraf/$rp
-      log "Ensuring bucket is created and configured; bucket=$bucket"
-      age=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.duration)
-      shard_duration=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.shard_duration)
-      create_bucket "$token" "$oid" "$bucket" "$age" "$shard_duration"
-    done
-    ;;    
+    # Setup buckets and retention periods if at least one has been modified since the last setup
+    if [ /opt/so/conf/influxdb/buckets.json -nt /opt/so/conf/influxdb/last_bucket_setup ]; then
+      log "Updating buckets and retention periods"
+      token=$(lookup_pillar_secret influx_token)
+      oid=$(lookup_org_id "$token")
+      for rp in so_short_term so_long_term; do
+        bucket=telegraf/$rp
+        log "Ensuring bucket is created and configured; bucket=$bucket"
+        age=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.duration)
+        shard_duration=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.shard_duration)
+        setup_bucket "$token" "$oid" "$bucket" "$age" "$shard_duration"
+      done
+      echo $(date) > /opt/so/conf/influxdb/last_bucket_setup
+    else
+      log "Buckets have not been modified since last setup"
+    fi
+    ;;
 
   userlist)
     log "Listing existing users"
