@@ -587,8 +587,7 @@ case "${operation}" in
     createUser "$email" "${role:-$DEFAULT_ROLE}" "${firstName}" "${lastName}" "${note}"
     syncAll
     echo "Successfully added new user to SOC"
-    check_container fleet && echo "$password" | so-fleet-user-add "$email"
-    echo "$password" | so-influxdb-user add "$email"
+    echo "$password" | so-influxdb-manage useradd "$email"
     ;;
 
   "list")
@@ -629,7 +628,7 @@ case "${operation}" in
     updateUserPassword "$email"
     syncAll
     echo "Successfully updated user password"
-    echo "$password" | so-influxdb-user password "$email"
+    echo "$password" | so-influxdb-manage userpass "$email"
     ;;
 
   "profile")
@@ -649,8 +648,7 @@ case "${operation}" in
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
-    echo "Fleet user will need to be recreated manually with so-fleet-user-add"
-    so-influxdb-user enable "$email"
+    so-influxdb-manage userenable "$email"
     ;;
 
   "disable")
@@ -661,8 +659,7 @@ case "${operation}" in
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
-    check_container fleet && so-fleet-user-delete "$email"   
-    so-influxdb-user disable "$email"
+    so-influxdb-manage userdisable "$email"
     ;;    
 
   "delete")
@@ -673,8 +670,7 @@ case "${operation}" in
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
-    check_container fleet && so-fleet-user-delete "$email"
-    so-influxdb-user delete "$email"
+    so-influxdb-manage userdel "$email"
     ;;
 
   "sync")

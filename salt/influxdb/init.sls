@@ -33,10 +33,31 @@ influxdbdir:
 influxdbconf:
   file.managed:
     - name: /opt/so/conf/influxdb/config.yaml
+    - source: salt://influxdb/config.yaml.jinja
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://influxdb/config.yaml.jinja
+
+influxdbbucketsconf:
+  file.managed:
+    - name: /opt/so/conf/influxdb/buckets.json
+    - source: salt://influxdb/buckets.json.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+
+influxdb-templates:
+  file.recurse:
+    - name: /opt/so/conf/influxdb/templates
+    - source: salt://influxdb/templates
+    - user: 939
+    - group: 939
+    - template: jinja
+    - clean: True
+
+influxdb-setup:
+  cmd.run:
+    - name: /usr/sbin/so-influxdb-setup
 
 so-influxdb:
   docker_container.running:
@@ -53,7 +74,6 @@ so-influxdb:
       - DOCKER_INFLUXDB_INIT_PASSWORD={{ PASSWORD }}
       - DOCKER_INFLUXDB_INIT_ORG=Security Onion
       - DOCKER_INFLUXDB_INIT_BUCKET=telegraf/so_short_term
-      - DOCKER_INFLUXDB_INIT_RETENTION=30d
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ TOKEN }}
     - binds:
       - /opt/so/log/influxdb/:/log:rw
