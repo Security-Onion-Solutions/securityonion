@@ -61,7 +61,6 @@ if [[ "$OP" == "add" ]]; then
   log "Creating new $KIND user"
   response=$(curl -sk https://localhost:8086/api/v2/users -X POST -d "{\"name\":\"$USER_EMAIL\"}" -H "Authorization: Token $TOKEN")
   check_response "$response"
-  OP=password
 fi
 
 log "Looking up user ID"
@@ -71,6 +70,22 @@ USER_ID=$(echo "$response" | jq -r ".users[] | select(.name == \"$USER_EMAIL\").
 if [[ -z "$USER_ID" ]]; then
   log "$KIND user not found"
   exit 1
+fi
+
+log "Looking up organization ID"
+response=$(curl -sk https://localhost:8086/api/v2/orgs?limit=100 -H "Authorization: Token $TOKEN")
+check_response "$response"
+ORG_ID=$(echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id")
+if [[ -z "$ORG_ID" ]]; then
+  log "$KIND organization not found"
+  exit 1
+fi
+
+if [[ "$OP" == "add" ]]; then
+  log "Adding new $KIND user to organization"
+  response=$(curl -sk https://localhost:8086/api/v2/orgs/$ORG_ID/members -X POST -d "{\"id\":\"$USER_ID\"}" -H "Authorization: Token $TOKEN")
+  check_response "$response"
+  OP=password
 fi
 
 if [[ "$OP" == "password" ]]; then
