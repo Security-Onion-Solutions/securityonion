@@ -6,68 +6,16 @@
 
 . /usr/sbin/so-common
 
+{% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
+{%- set ES_INDEX_SETTINGS = salt['pillar.get']('elasticsearch:index_settings', default=ESCONFIG.elasticsearch.index_settings, merge=True) %}
 {%- set NODEIP = salt['pillar.get']('host:mainip', '') %}
 
-# Set up ILM policies
+{%- for index, settings in ES_INDEX_SETTINGS.items() %}
+  {%- if settings.policy is defined %}
 echo
-echo "Setting up default Security Onion index lifecycle management policies..."
-
-# Elasticsearch logs
+echo "Setting up {{ index }}-logs policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
 echo
-echo "Setting up Elasticsearch ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/elasticsearch-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Import logs
-echo
-echo "Setting up Import ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-import-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Kibana logs
-echo
-echo "Setting up Kibana ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-kibana-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Kratos logs
-echo
-echo "Setting up Kratos ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-kratos-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Logstash logs
-echo
-echo "Setting up Logstash ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-logstash-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Redis logs
-echo
-echo "Setting up Redis ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-redis-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Strelka logs
-echo
-echo "Setting up Strelka ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-strelka-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Suricata logs
-echo
-echo "Setting up Suricata ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-suricata-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Syslog logs
-echo
-echo "Setting up Syslog ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-syslog-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
-echo
-
-# Zeek logs
-echo
-echo "Setting up Zeek ILM policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/so-zeek-logs" -H 'Content-Type: application/json' -d'{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": { "set_priority": { "priority": 100 }, "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" } } } } } }'
+  {%- endif %}
+{%- endfor %}
 echo
