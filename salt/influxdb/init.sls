@@ -60,6 +60,7 @@ influxdb_curl_config:
     - name: /opt/so/conf/influxdb/curl.config
     - source: salt://influxdb/curl.config.jinja
     - mode: 600
+    - template: jinja
     - show_changes: False
     - makedirs: True
 
