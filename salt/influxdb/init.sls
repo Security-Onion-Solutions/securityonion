@@ -55,6 +55,14 @@ influxdb-templates:
     - template: jinja
     - clean: True
 
+influxdb_curl_config:
+  file.managed:
+    - name: /opt/so/conf/influxdb/curl.config
+    - source: salt://influxdb/curl.config.jinja
+    - mode: 600
+    - show_changes: False
+    - makedirs: True
+
 influxdb-setup:
   cmd.run:
     - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log

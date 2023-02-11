@@ -44,10 +44,14 @@ check_response() {
   fi
 }
 
+request() {
+  curl -skK /opt/so/conf/influxdb/curl.config "https://localhost:8086/api/v2/$@"
+}
+
 lookup_user_id() {
-  token=$1
-  email=$2
-  response=$(curl -sk https://localhost:8086/api/v2/users?limit=100 -H "Authorization: Token $token")
+  email=$1
+
+  response=$(request users?limit=100)
   check_response "$response"
   uid=$(echo "$response" | jq -r ".users[] | select(.name == \"$email\").id")
   if [[ -z "$uid" ]]; then
@@ -58,8 +62,7 @@ lookup_user_id() {
 }
 
 lookup_org_id() {
-  token=$1
-  response=$(curl -sk https://localhost:8086/api/v2/orgs?limit=100 -H "Authorization: Token $token")
+  response=$(request orgs?limit=100)
   check_response "$response"
   oid=$(echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id")
   if [[ -z "$oid" ]]; then
@@ -70,13 +73,13 @@ lookup_org_id() {
 }
 
 lookup_stack_id() {
-  token=$1
-  oid=$2
-  response=$(curl -sk "https://localhost:8086/api/v2/stacks?orgID=$oid&name=Security+Onion" -H "Authorization: Token $token")
+  oid=$1
+
+  response=$(request "stacks?orgID=$oid&name=Security+Onion")
   check_response "$response"
   stackid=$(echo "$response" | jq -r ".stacks[0].id")
   if [[ -z "$stackid" || "$stackid" == null ]]; then
-    response=$(curl -sk https://localhost:8086/api/v2/stacks -X POST -d "{\"name\":\"Security Onion\",\"orgID\":\"$oid\"}" -H "Authorization: Token $token")
+    response=$(request stacks -X POST -d "{\"name\":\"Security Onion\",\"orgID\":\"$oid\"}")
     check_response "$response"
     stackid=$(echo "$response" | jq -r .id)
   fi
@@ -84,17 +87,17 @@ lookup_stack_id() {
 }
 
 add_user_to_org() {
-  token=$1
-  uid=$2
-  oid=$3
+  uid=$1
+  oid=$2
+
   log "Adding new user to organization"
-  response=$(curl -sk https://localhost:8086/api/v2/orgs/$oid/members -X POST -d "{\"id\":\"$uid\"}" -H "Authorization: Token $token")
+  response=$(request orgs/$oid/members -X POST -d "{\"id\":\"$uid\"}")
   check_response "$response"
 }
 
 change_password() {
-  token=$1
-  uid=$2
+  uid=$1
+
   set +e
   test -t 0
   if [[ $? == 0 ]]; then
@@ -103,35 +106,34 @@ change_password() {
   set -e
   read -rs pass
   check_password_and_exit "$pass"
-  response=$(curl -sk https://localhost:8086/api/v2/users/$uid/password -X POST -d "{\"password\":\"$pass\"}" -H "Authorization: Token $token")
+  response=$(request users/$uid/password -X POST -d "{\"password\":\"$pass\"}")
   check_response "$response"
 }
 
 apply_templates() {
-  token=$1
-  oid=$2
-  stackid=$3
-  template_objects_array=$4
+  oid=$1
+  stackid=$2
+  template_objects_array=$3
+
   body="{\"orgID\":\"$oid\",\"stackID\":\"$stackid\",\"templates\":$template_objects_array}"
-  response=$(curl -sk https://localhost:8086/api/v2/templates/apply -X POST -d "$body" -H "Authorization: Token $token")
+  response=$(request templates/apply -X POST -d "$body")
   check_response "$response"
 }
 
 setup_bucket() {
-  token=$1
-  oid=$2
-  name=$3
-  age=$4
-  shardduration=$5
+  oid=$1
+  name=$2
+  age=$3
+  shardduration=$4
 
-  response=$(curl -sk "https://localhost:8086/api/v2/buckets?orgID=$oid&name=$name" -H "Authorization: Token $token")
+  response=$(request "buckets?orgID=$oid&name=$name")
   bucketid=$(echo "$response" | jq -r ".buckets[0].id")
   if [[ -z "$bucketid" || "$bucketid" == null ]]; then
-    response=$(curl -sk https://localhost:8086/api/v2/buckets -X POST -d "{\"name\":\"$name\",\"orgID\":\"$oid\"}" -H "Authorization: Token $token")
+    response=$(request buckets -X POST -d "{\"name\":\"$name\",\"orgID\":\"$oid\"}")
     check_response "$response"
     bucketid=$(echo "$response" | jq -r .id)
   fi
-  response=$(curl -sk "https://localhost:8086/api/v2/buckets/$bucketid" -X PATCH -d "{\"name\":\"$name\",\"retentionRules\":[{\"everySeconds\":$age,\"shardGroupDurationSeconds\":$shardduration,\"type\":\"expire\"}]}" -H "Authorization: Token $token")
+  response=$(request buckets/$bucketid -X PATCH -d "{\"name\":\"$name\",\"retentionRules\":[{\"everySeconds\":$age,\"shardGroupDurationSeconds\":$shardduration,\"type\":\"expire\"}]}")
   check_response "$response"
 }
 
@@ -144,9 +146,8 @@ case "$OP" in
     newest=$(ls -1t /opt/so/conf/influxdb/templates/ | head -1)
     if [ /opt/so/conf/influxdb/templates/$newest -nt /opt/so/conf/influxdb/last_template_setup ]; then
       log "Updating templates"
-      token=$(lookup_pillar_secret influx_token)
-      oid=$(lookup_org_id "$token")
-      stackid=$(lookup_stack_id "$token" "$oid")
+      oid=$(lookup_org_id)
+      stackid=$(lookup_stack_id "$oid")
       for file in /opt/so/conf/influxdb/templates/*; do
         if [[ "$templates_array" != "" ]]; then
           templates_array="$templates_array,"
@@ -154,7 +155,7 @@ case "$OP" in
         template=$(cat "$file")
         templates_array="$templates_array{\"contents\":$template}"
       done
-      apply_templates "$token" "$oid" "$stackid" "[$templates_array]"
+      apply_templates "$oid" "$stackid" "[$templates_array]"
       echo $(date) > /opt/so/conf/influxdb/last_template_setup
     else
       log "Templates have not been modified since last setup"
@@ -163,14 +164,13 @@ case "$OP" in
     # Setup buckets and retention periods if at least one has been modified since the last setup
     if [ /opt/so/conf/influxdb/buckets.json -nt /opt/so/conf/influxdb/last_bucket_setup ]; then
       log "Updating buckets and retention periods"
-      token=$(lookup_pillar_secret influx_token)
-      oid=$(lookup_org_id "$token")
+      oid=$(lookup_org_id)
       for rp in so_short_term so_long_term; do
         bucket=telegraf/$rp
         log "Ensuring bucket is created and configured; bucket=$bucket"
         age=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.duration)
         shard_duration=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.shard_duration)
-        setup_bucket "$token" "$oid" "$bucket" "$age" "$shard_duration"
+        setup_bucket "$oid" "$bucket" "$age" "$shard_duration"
       done
       echo $(date) > /opt/so/conf/influxdb/last_bucket_setup
     else
@@ -180,8 +180,7 @@ case "$OP" in
 
   userlist)
     log "Listing existing users"
-    token=$(lookup_pillar_secret influx_token)
-    response=$(curl -sk https://localhost:8086/api/v2/users -H "Authorization: Token $token")
+    response=$(request users)
     check_response "$response"
     echo "$response" | jq -r '.users[] | "\(.id): \(.name) (\(.status))"'
     ;;
@@ -190,31 +189,28 @@ case "$OP" in
     [ $# -ne 1 ] && usage
     email=$1
     log "Adding new user; email=$email"
-    token=$(lookup_pillar_secret influx_token)
-    oid=$(lookup_org_id "$token")
-    response=$(curl -sk https://localhost:8086/api/v2/users -X POST -d "{\"name\":\"$email\"}" -H "Authorization: Token $token")
+    oid=$(lookup_org_id)
+    response=$(request users -X POST -d "{\"name\":\"$email\"}")
     check_response "$response"
     uid=$(echo "$response" | jq -r .id)
-    add_user_to_org "$token" "$uid" "$oid"
-    change_password "$token" "$uid"
+    add_user_to_org "$uid" "$oid"
+    change_password "$uid"
     ;;
 
   userpass)
     [ $# -ne 1 ] && usage
     email=$1
     log "Updating user password; email=$email"
-    token=$(lookup_pillar_secret influx_token)
-    uid=$(lookup_user_id "$token" "$email")
-    change_password "$token" "$uid"
+    uid=$(lookup_user_id "$email")
+    change_password "$uid"
     ;;
   
   userdel)
     [ $# -ne 1 ] && usage
     email=$1
     log "Deleting user; email=$email"
-    token=$(lookup_pillar_secret influx_token)
-    uid=$(lookup_user_id "$token" "$email")
-    response=$(curl -sk https://localhost:8086/api/v2/users/$uid -X DELETE -H "Authorization: Token $token")
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X DELETE)
     check_response "$response"
     ;;
 
@@ -222,9 +218,8 @@ case "$OP" in
     [ $# -ne 1 ] && usage
     email=$1
     log "Enabling user; email=$email"
-    token=$(lookup_pillar_secret influx_token)
-    uid=$(lookup_user_id "$token" "$email")
-    response=$(curl -sk https://localhost:8086/api/v2/users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"active\"}" -H "Authorization: Token $token")
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"active\"}")
     check_response "$response"
     ;;
 
@@ -232,9 +227,8 @@ case "$OP" in
     [ $# -ne 1 ] && usage
     email=$1
     log "Disabling user; email=$email"
-    token=$(lookup_pillar_secret influx_token)
-    uid=$(lookup_user_id "$token" "$email")
-    response=$(curl -sk https://localhost:8086/api/v2/users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"inactive\"}" -H "Authorization: Token $token")
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"inactive\"}")
     check_response "$response"
     ;;
 
