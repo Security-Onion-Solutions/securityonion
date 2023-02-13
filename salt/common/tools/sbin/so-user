@@ -588,6 +588,9 @@ case "${operation}" in
     syncAll
     echo "Successfully added new user to SOC"
     echo "$password" | so-influxdb-manage useradd "$email"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userpromote "$email"
+    fi
     ;;
 
   "list")
@@ -605,6 +608,9 @@ case "${operation}" in
     if addUserRole "$email" "$role"; then
       syncElastic
       echo "Successfully added role to user"
+      if [[ "$role" == "superuser" ]]; then
+        echo "$password" | so-influxdb-manage userpromote "$email"
+      fi
     fi
     ;;
 
@@ -618,6 +624,9 @@ case "${operation}" in
     deleteUserRole "$email" "$role"
     syncElastic
     echo "Successfully removed role from user"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userdemote "$email"
+    fi
     ;;
 
   "password")

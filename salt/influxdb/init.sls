@@ -71,10 +71,6 @@ influxdb_curl_config:
     - show_changes: False
     - makedirs: True
 
-influxdb-setup:
-  cmd.run:
-    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
-
 so-influxdb:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-influxdb:{{ GLOBALS.so_version }}
@@ -112,6 +108,14 @@ append_so-influxdb_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
+
+influxdb-setup:
+  cmd.run:
+    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
+    - require:
+      - file: influxdbbucketsconf
+      - file: influxdb_curl_conf
+      - docker_container: so-influxdb
 
 # Install cron job to determine size of influxdb for telegraf
 get_influxdb_size:
