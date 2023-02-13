@@ -114,7 +114,7 @@ influxdb-setup:
     - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
     - require:
       - file: influxdbbucketsconf
-      - file: influxdb_curl_conf
+      - file: influxdb_curl_config
       - docker_container: so-influxdb
 
 # Install cron job to determine size of influxdb for telegraf
