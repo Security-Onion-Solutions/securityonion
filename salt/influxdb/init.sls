@@ -2,6 +2,7 @@
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'influxdb/map.jinja' import INFLUXMERGED %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
 {% set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
@@ -37,6 +38,8 @@ influxdbconf:
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
 
 influxdbbucketsconf:
   file.managed:
@@ -45,6 +48,8 @@ influxdbbucketsconf:
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
 
 influxdb-templates:
   file.recurse:
@@ -54,6 +59,8 @@ influxdb-templates:
     - group: 939
     - template: jinja
     - clean: True
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
 
 influxdb_curl_config:
   file.managed:
