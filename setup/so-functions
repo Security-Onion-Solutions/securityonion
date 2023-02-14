@@ -1894,11 +1894,6 @@ remove_package() {
 securityonion_repo() {
 	# Remove all the current repos
 	if [[ $is_rocky ]]; then
-		if [[ $waitforstate ]]; then
-			# Build the repo locally so we can use it
-			echo "Syncing Repo"
-			repo_sync_local
-		fi
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
@@ -1922,10 +1917,16 @@ securityonion_repo() {
 		logCmd "dnf repolist all"
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
-		logCmd "dnf -v -y update rocky-release"
-		info "Backing up the .repo files that were added by the centos-release package."
-		logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
-		logCmd "dnf repolist all"
+		if [ -f "/etc/yum.repos.d/rocky.repo" ]; then
+			info "Backing up the .repo files that were added by the centos-release package."
+			logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
+			logCmd "dnf repolist all"
+		fi
+		if [[ $waitforstate ]]; then
+			# Build the repo locally so we can use it
+			echo "Syncing Repo"
+			repo_sync_local
+		fi
 	fi
 }
 
@@ -1936,21 +1937,16 @@ repo_sync_local() {
 	mkdir -p /nsm/repo
 	mkdir -p /root/reposync_cache
 	echo "[main]" > /root/repodownload.conf
+	echo "gpgcheck=1" >> /root/repodownload.conf
+	echo "installonly_limit=3" >> /root/repodownload.conf
+	echo "clean_requirements_on_remove=True" >> /root/repodownload.conf
+	echo "best=True" >> /root/repodownload.conf
+	echo "skip_if_unavailable=False" >> /root/repodownload.conf
 	echo "cachedir=/root/reposync_cache" >> /root/repodownload.conf 
 	echo "keepcache=0" >> /root/repodownload.conf 
-	echo "debuglevel=2" >> /root/repodownload.conf 
-	echo "logfile=/var/log/yum.log" >> /root/repodownload.conf 
-	echo "exactarch=1" >> /root/repodownload.conf 
-	echo "obsoletes=1" >> /root/repodownload.conf 
-	echo "gpgcheck=1" >> /root/repodownload.conf 
-	echo "plugins=1" >> /root/repodownload.conf 
-	echo "installonly_limit=2" >> /root/repodownload.conf 
-	echo "bugtracker_url=http://bugs.centos.org/set_project.php?project_id=23&ref=http://bugs.centos.org/bug_report_page.php?category=yum" >> /root/repodownload.conf 
-	echo "distroverpkg=centos-release" >> /root/repodownload.conf 
-	echo "clean_requirements_on_remove=1" >> /root/repodownload.conf 
 	echo "[securityonionsync]" >> /root/repodownload.conf
 	echo "name=Security Onion Repo repo" >> /root/repodownload.conf
-	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/c7so/" >> /root/repodownload.conf
+	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/2,4/" >> /root/repodownload.conf
 	echo "enabled=1" >> /root/repodownload.conf
 	echo "gpgcheck=1" >> /root/repodownload.conf
 	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
@@ -1963,7 +1959,7 @@ repo_sync_local() {
 	else
 		info "We have what we need to sync"
 	fi
-
+	dnf repolist
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
 	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
