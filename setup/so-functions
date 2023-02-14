@@ -886,19 +886,13 @@ detect_cloud() {
 detect_os() {
 	title "Detecting Base OS"
 	if [ -f /etc/redhat-release ]; then
-		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
-			OS=centos
-			OSVER=7
-			is_centos=true
-			pkgman="yum"
-		elif grep -q "Rocky Linux release 8" /etc/redhat-release; then
+		if grep -q "Rocky Linux release 9" /etc/redhat-release; then
 			OS=rocky
-			OSVER=8
+			OSVER=9
 			is_rocky=true
 			pkgman="dnf"
-			info "We currently do not support Rocky Linux $OSVER but we are working on it!"
 		else
-			info "We do not support the version of CentOS you are trying to use."
+			info "We do not support the operating system you are trying to use."
 			exit 1
 		fi
 
@@ -932,13 +926,10 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	if [ "$OS" == centos ]; then
+	if [ "$OS" == rocky ]; then
 		if [[ ! $is_iso ]]; then
-			if ! yum versionlock > /dev/null 2>&1; then
-				logCmd "yum -y install yum-plugin-versionlock"
-			fi
 			if ! command -v nmcli > /dev/null 2>&1; then
-				logCmd "yum -y install NetworkManager"
+				logCmd "dnf -y install NetworkManager"
 			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
@@ -1715,7 +1706,7 @@ proxy_validate() {
 }
 
 reserve_group_ids() {
-	# This is a hack to fix CentOS from taking group IDs that we need
+	# This is a hack to fix OS from taking group IDs that we need
 	logCmd "groupadd -g 928 kratos"
 	logCmd "groupadd -g 930 elasticsearch"
 	logCmd "groupadd -g 931 logstash"
@@ -1837,8 +1828,8 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_centos ]]; then
-		sed -i "/proxy=/d" /etc/yum.conf
+	if [[ $is_rocky ]]; then
+		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
 	fi
@@ -1881,9 +1872,9 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		if rpm -qa | grep -q "$package_name"; then
-			logCmd "yum remove -y $package_name"
+			logCmd "dnf remove -y $package_name"
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
@@ -1908,7 +1899,7 @@ securityonion_repo() {
 			echo "Syncing Repo"
 			repo_sync_local
 		fi
-		logCmd "yum -v clean all"
+		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 		logCmd "ls -la /etc/yum.repos.d/"
@@ -1928,13 +1919,13 @@ securityonion_repo() {
 		fi
 
 		# need to yum clean all before repo conf files are removed or clean,cleans nothing
-		logCmd "yum repolist all"
+		logCmd "dnf repolist all"
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
-		logCmd "yum -v -y update centos-release"
+		logCmd "dnf -v -y update rocky-release"
 		info "Backing up the .repo files that were added by the centos-release package."
-		logCmd "mv -bvf /etc/yum.repos.d/CentOS* /root/oldrepos/"
-		logCmd "yum repolist all"
+		logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
+		logCmd "dnf repolist all"
 	fi
 }
 
@@ -1968,14 +1959,14 @@ repo_sync_local() {
 	if [[ ! "$REPOSYNC" -gt 0 ]]; then
 		# Install reposync
 		info "Installing createrepo"
-		logCmd "yum -y install -c /root/repodownload.conf yum-utils createrepo"
+		logCmd "dnf -y install -c /root/repodownload.conf createrepo"
 	else
 		info "We have what we need to sync"
 	fi
 
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
-	logCmd "reposync --norepopath -n -g -l -d -m -c /root/repodownload.conf -r securityonionsync --download-metadata -p /nsm/repo/"
+	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
 	
 
 	# After the download is complete run createrepo
