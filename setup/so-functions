@@ -626,7 +626,7 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		logCmd "yum -y install chrony"
+		logCmd "dnf -y install chrony"
 	fi
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
@@ -2017,10 +2017,10 @@ saltify() {
 			# Install salt
 			if [[ $waitforstate ]]; then 
 				# Since this is a salt master so let's install it
-				logCmd "yum -y install salt-minion salt-master"
+				logCmd "dnf -y install salt-minion salt-master"
 			else
 				# We just need the minion
-				logCmd "yum -y install salt-minion"
+				logCmd "dnf -y install salt-minion"
 			fi
 		fi
 	fi
@@ -2358,10 +2358,9 @@ update_sudoers() {
 }
 
 update_packages() {
-	if [[ $is_centos ]]; then
-		logCmd "yum repolist"
-		logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
-		logCmd "yum -y install yum-utils"
+	if [[ $is_rocky ]]; then
+		logCmd "dnf repolist"
+		logCmd "dnf -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
