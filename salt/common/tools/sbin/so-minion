@@ -119,6 +119,17 @@ function add_elastic_to_minion() {
 		"  " >> $PILLARFILE
 }
 
+# Add IDH Services info to the minion file
+function add_idh_to_minion() {
+	printf '%s\n'\
+	"idh:"\
+	"  restrict_management_ip: $IDH_MGTRESTRICT"\
+	"  services:" >> "$PILLARFILE"
+	for service in ${IDH_SERVICES[@]}; do
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$PILLARFILE"
+	done
+}
+
 function add_logstash_to_minion() {
 	# Create the logstash advanced pillar
 	printf '%s\n'\
@@ -183,8 +194,8 @@ function createEVAL() {
 	add_sensor_to_minion
 }
 
-function createIDHNODE() {
-	echo "Nothing custom needed for IDH nodes"
+function createIDH() {
+	add_idh_to_minion
 }
 
 function createIMPORT() {

@@ -466,6 +466,58 @@ whiptail_gauge_post_setup() {
 	fi
 }
 
+ whiptail_idh_preferences() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_preferences=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nBy default, the IDH services selected in the previous screen will be bound to all interfaces and IP addresses on this system.\n\nIf you would like to prevent IDH services from being published on this system's management IP, you can select the option below." 20 75 5 \
+		"$MAINIP" "Disable IDH services on this management IP " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_idh_services() {
+
+	[ -n "$TESTING" ] && return
+
+	IDH_SERVICES=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one of the common options along with their default ports (TCP) or select the Custom option to build a customized set of services." 20 75 5 \
+		"Linux Webserver (NAS Skin)" "Apache (80), FTP (21), SSH (22)" ON \
+		"MySQL Server" "MySQL (3306), SSH (22)" OFF \
+		"MSSQL Server" "Microsoft SQL (1433), VNC (5900)" OFF \
+		"Custom" "Select a custom set of services" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+
+whiptail_idh_services_custom() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_services=$(whiptail --title "$whiptail_title" --checklist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one or more of the following services along with their default ports. Some services have additional configuration options, please consult the documentation for further information." 25 75 8 \
+		"FTP" "  TCP/21,   Additional Configuration Available   " OFF \
+		"Git" "  TCP/9418                                       " OFF \
+		"HTTP" "  TCP/80,   Additional Configuration Available   " OFF \
+		"HTTPPROXY" "  TCP/8080, Additional Configuration Available   " OFF \
+		"MSSQL" "  TCP/1433                                         " OFF \
+		"MySQL" "  TCP/3306, Additional Configuration Available   " OFF \
+		"NTP" "  UDP/123                                        " OFF \
+		"REDIS" "  TCP/6379                                       " OFF \
+		"SNMP" "  UDP/161                                        " OFF \
+		"SSH" "  TCP/22,   Additional Configuration Available   " OFF \
+		"TELNET" "  TCP/23,   Additional Configuration Available   " OFF \
+		"TFTP" "  UDP/69                                         " OFF \
+		"VNC" "  TCP/5900                                         " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_install_type() {
 
 	[ -n "$TESTING" ] && return
