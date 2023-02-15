@@ -53,8 +53,18 @@ es_sync_scripts:
     - source: salt://elasticsearch/tools/sbin
     - exclude_pat:
         - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+        - so-elasticsearch-ilm-policy-load 
     - defaults:
         GLOBALS: {{ GLOBALS }}
+
+so-elasticsearch-ilm-policy-load-script:
+  file.managed:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-ilm-policy-load
+    - user: 930
+    - group: 939
+    - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines-script:
   file.managed:
@@ -361,6 +371,16 @@ so-es-cluster-settings:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
+
+so-elasticsearch-ilm-policy-load:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+      - file: so-elasticsearch-ilm-policy-load-script
+    - onchanges:
+      - file: so-elasticsearch-ilm-policy-load-script
 
 so-elasticsearch-templates:
   cmd.run:
