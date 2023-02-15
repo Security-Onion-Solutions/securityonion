@@ -11,6 +11,8 @@ usage() {
     echo "Usage: $0 <operation> [args]"
     echo ""
     echo "Supported Operations:"
+    echo "  dashboardpath  Returns the URL path for a dashboard, requires: <name-of-dashboard>"
+    echo "  export         Exports all templates to stdout"
     echo "  setup          Loads all templates and creates all required buckets"
     echo "  userlist       Lists users"
     echo "  useradd        Adds a new user, requires: <email>"
@@ -258,6 +260,24 @@ case "$OP" in
     response=$(request orgs/$oid/owners/$uid -X DELETE)
     response=$(request orgs/$oid/members -X POST -d "{\"id\":\"$uid\"}")
     check_response "$response"
+    ;;
+
+  export)
+    log "Exporting all organization templates"
+    request templates/export -X POST -d "{\"orgIDs\":[{\"orgID\":\"$oid\"}]}" -H "Content-Type: application/json"
+    ;;
+
+  dashboardpath)
+    [ $# -ne 1 ] && usage
+    name=$1
+    response=$(request dashboards?limit=100&orgID=$oid)
+    check_response "$response"
+    dbid=$(echo "$response" | jq -r ".dashboards[] | select(.name == \"$name\").id")
+    if [[ -z "$dbid" ]]; then
+      log "Dashboard not found"
+      exit 1
+    fi
+    echo -n "/influxdb/orgs/$oid/dashboards/$dbid"
     ;;
 
   *)
