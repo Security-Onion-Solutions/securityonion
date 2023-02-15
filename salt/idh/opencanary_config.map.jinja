@@ -1,11 +1,29 @@
 {% set idh_services = salt['pillar.get']('idh:services', []) %}
 
-{% import_yaml "idh/defaults/defaults.yaml" as OPENCANARYCONFIG with context %}
+{% if idh_services | length > 0 %}
+
+{% set IDH_PORTGROUPS = {} %}
+
+{% import_yaml "idh/defaults/defaults.yaml" as IDHCONFIG with context %}
 {% for service in idh_services %}
       {% import_yaml "idh/defaults/" ~ service ~ ".defaults.yaml" as SERVICECONFIG with context %}
-      {% do salt['defaults.merge'](OPENCANARYCONFIG, SERVICECONFIG, in_place=True) %}
+      {% do salt['defaults.merge'](IDHCONFIG, SERVICECONFIG, in_place=True) %}
 {% endfor %}
 
-{% set OPENCANARYCONFIG = salt['pillar.get']('idh:opencanary:config', default=OPENCANARYCONFIG.idh.opencanary.config, merge=True) %}
-{% do OPENCANARYCONFIG.idh.opencanary.config.update({'device.node_id': grains.host}) %}
+{% set OPENCANARYCONFIG = salt['pillar.get']('idh:opencanary:config', default=IDHCONFIG.idh.opencanary.config, merge=True) %}
+{% set OPENSSH = salt['pillar.get']('idh:openssh', default=IDHCONFIG.idh.openssh, merge=True) %}
 
+{% for service in idh_services %}
+  {% if service in ["smnp","ntp", "tftp"] %}
+    {% set proto = 'udp' %}
+  {% else %}
+    {% set proto = 'tcp' %}
+  {% endif %}
+  {% do IDH_PORTGROUPS.update({'idh_' ~ service: {proto: [OPENCANARYCONFIG[service ~ '.port']]}}) %}
+{% endfor %}
+
+{% do IDH_PORTGROUPS.update({'openssh': {'tcp': [OPENSSH.config.port]}}) %}
+
+{% do OPENCANARYCONFIG.update({'device.node_id': grains.host}) %}
+
+{% endif %}
