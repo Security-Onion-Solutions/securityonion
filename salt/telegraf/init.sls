@@ -53,7 +53,7 @@ tgrafconf:
         TGMERGED: {{ TGMERGED }}
 
 # this file will be read by telegraf to send node details (management interface, monitor interface, etc)
-# into influx so that Grafana can build dashboards using queries
+# into influx
 node_config:
   file.managed:
     - name: /opt/so/conf/telegraf/node_config.json

@@ -1213,7 +1213,8 @@ generate_passwords(){
   PLAYBOOKDBPASS=$(get_random_value)
   PLAYBOOKADMINPASS=$(get_random_value)
   PLAYBOOKAUTOMATIONPASS=$(get_random_value)
-  GRAFANAPASS=$(get_random_value)
+  INFLUXPASS=$(get_random_value)
+  INFLUXTOKEN=$(head -c 64 /dev/urandom | base64 --wrap=0)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
   REDISPASS=$(get_random_value)
@@ -1365,10 +1366,8 @@ manager_pillar() {
 	touch $adv_manager_pillar_file
 	title "Create the manager pillar"
 	if [[ $is_import ]]; then
-		GRAFANA=0
 		PLAYBOOK=0
 	else
-		GRAFANA=1
 		PLAYBOOK=1
 	fi
 	printf '%s\n'\
@@ -1376,7 +1375,6 @@ manager_pillar() {
 		"  proxy: '$so_proxy'"\
 		"  no_proxy: '$no_proxy_string'"\
 		"  elastalert: 1"\
-		"  grafana: $GRAFANA"\
 		"  playbook: $PLAYBOOK"\
 		"" > "$manager_pillar_file"
 }
@@ -2056,7 +2054,8 @@ secrets_pillar(){
 		"  playbook_admin: $PLAYBOOKADMINPASS"\
 		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
 		"  playbook_automation_api_key: "\
-		"  grafana_admin: $GRAFANAPASS" > $local_salt_dir/pillar/secrets.sls
+		"  influx_pass: $INFLUXPASS"\
+		"  influx_token: $INFLUXTOKEN" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 

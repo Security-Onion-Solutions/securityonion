@@ -80,7 +80,6 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
     - kratos
     - firewall
@@ -128,7 +127,6 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
     - kratos
     - firewall
@@ -174,7 +172,6 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
     - kratos
     - firewall
@@ -245,7 +242,6 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
     - kratos
     - firewall

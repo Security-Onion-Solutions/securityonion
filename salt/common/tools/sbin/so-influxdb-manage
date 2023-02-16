@@ -1,0 +1,286 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+usage() {
+    echo "Usage: $0 <operation> [args]"
+    echo ""
+    echo "Supported Operations:"
+    echo "  dashboardpath  Returns the URL path for a dashboard, requires: <name-of-dashboard>"
+    echo "  export         Exports all templates to stdout"
+    echo "  setup          Loads all templates and creates all required buckets"
+    echo "  userlist       Lists users"
+    echo "  useradd        Adds a new user, requires: <email>"
+    echo "  userdel        Removes an existing user, requires: <email>"
+    echo "  userenable     Enables a user, requires: <email>"
+    echo "  userdisable    Disables a user, requires: <email>"
+    echo "  userpass       Updates a user's password, requires: <email>"
+    echo "  userpromote    Promotes a user to admin: <email>"
+    echo "  userdemote     Demotes a user from admin: <email>"
+    echo ""
+    echo "If required, the password will be read from STDIN."
+    exit 1
+}
+
+if [ $# -lt 1 ]; then
+  usage
+fi
+
+COMMAND=$(basename $0)
+OP=$1
+shift
+
+set -eo pipefail
+
+log() {
+  echo -e "$(date) | $COMMAND | $@" >&2
+}
+
+check_response() {
+  response=$1
+  if [[ "$response" =~ "\"code\":" ]]; then
+    log "Failed. Check the response for more details.\n$response"
+    exit 1
+  fi
+}
+
+request() {
+  curl -skK /opt/so/conf/influxdb/curl.config "https://localhost:8086/api/v2/$@"
+}
+
+lookup_user_id() {
+  email=$1
+
+  response=$(request users?limit=100)
+  check_response "$response"
+  uid=$(echo "$response" | jq -r ".users[] | select(.name == \"$email\").id")
+  if [[ -z "$uid" ]]; then
+    log "User not found"
+    exit 1
+  fi
+  echo "$uid"
+}
+
+lookup_stack_id() {
+  oid=$1
+
+  response=$(request "stacks?orgID=$oid&name=Security+Onion")
+  check_response "$response"
+  stackid=$(echo "$response" | jq -r ".stacks[0].id")
+  if [[ -z "$stackid" || "$stackid" == null ]]; then
+    response=$(request stacks -X POST -d "{\"name\":\"Security Onion\",\"orgID\":\"$oid\"}")
+    check_response "$response"
+    stackid=$(echo "$response" | jq -r .id)
+  fi
+  echo "$stackid"
+}
+
+change_password() {
+  uid=$1
+
+  set +e
+  test -t 0
+  if [[ $? == 0 ]]; then
+    echo "Enter new password:"
+  fi
+  set -e
+  read -rs pass
+  check_password_and_exit "$pass"
+  response=$(request users/$uid/password -X POST -d "{\"password\":\"$pass\"}")
+  check_response "$response"
+}
+
+apply_templates() {
+  oid=$1
+  stackid=$2
+  template_objects_array=$3
+
+  body="{\"orgID\":\"$oid\",\"stackID\":\"$stackid\",\"templates\":$template_objects_array}"
+  response=$(request templates/apply -X POST -d "$body")
+  check_response "$response"
+}
+
+setup_bucket() {
+  oid=$1
+  name=$2
+  age=$3
+  shardduration=$4
+
+  response=$(request "buckets?orgID=$oid&name=$name")
+  bucketid=$(echo "$response" | jq -r ".buckets[0].id")
+  if [[ -z "$bucketid" || "$bucketid" == null ]]; then
+    response=$(request buckets -X POST -d "{\"name\":\"$name\",\"orgID\":\"$oid\"}")
+    check_response "$response"
+    bucketid=$(echo "$response" | jq -r .id)
+  fi
+  response=$(request buckets/$bucketid -X PATCH -d "{\"name\":\"$name\",\"retentionRules\":[{\"everySeconds\":$age,\"shardGroupDurationSeconds\":$shardduration,\"type\":\"expire\"}]}")
+  check_response "$response"
+}
+
+lookup_org_id_with_wait() {
+  max_attempts=30
+  attempts=0
+  wait=10
+  while [[ $attempts -lt $max_attempts ]]; do
+    response=$(request orgs?org=Security+Onion)
+    check_response "$response"
+    oid=$(echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id")
+    if [[ -z $oid ]]; then
+      attempts=$((attempts+1))
+      log "Server does not appear to be running or fully initialized - will try again in $wait seconds ($attempts / $max_attempts)"
+      sleep $wait
+    else
+      echo "$oid"
+      return
+    fi
+  done
+  
+  log "Server has not started after $max_attempts attempts - aborting"
+  exit 1
+}
+
+oid=$(lookup_org_id_with_wait)
+
+case "$OP" in
+
+  setup)
+    log "Ensuring organization is setup correctly"
+
+    # Load templates if at least one has been modified since the last setup
+    newest=$(ls -1t /opt/so/conf/influxdb/templates/ | head -1)
+    if [ /opt/so/conf/influxdb/templates/$newest -nt /opt/so/conf/influxdb/last_template_setup ]; then
+      log "Updating templates"
+      stackid=$(lookup_stack_id "$oid")
+      for file in /opt/so/conf/influxdb/templates/*; do
+        if [[ "$templates_array" != "" ]]; then
+          templates_array="$templates_array,"
+        fi
+        template=$(cat "$file")
+        templates_array="$templates_array{\"contents\":$template}"
+      done
+      apply_templates "$oid" "$stackid" "[$templates_array]"
+      echo $(date) > /opt/so/conf/influxdb/last_template_setup
+    else
+      log "Templates have not been modified since last setup"
+    fi
+
+    # Setup buckets and retention periods if at least one has been modified since the last setup
+    if [ /opt/so/conf/influxdb/buckets.json -nt /opt/so/conf/influxdb/last_bucket_setup ]; then
+      log "Updating buckets and retention periods"
+      for rp in so_short_term so_long_term; do
+        bucket=telegraf/$rp
+        log "Ensuring bucket is created and configured; bucket=$bucket"
+        age=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.duration)
+        shard_duration=$(cat /opt/so/conf/influxdb/buckets.json | jq -r .$rp.shard_duration)
+        setup_bucket "$oid" "$bucket" "$age" "$shard_duration"
+      done
+      echo $(date) > /opt/so/conf/influxdb/last_bucket_setup
+    else
+      log "Buckets have not been modified since last setup"
+    fi
+    ;;
+
+  userlist)
+    log "Listing existing users"
+    response=$(request users)
+    check_response "$response"
+    echo "$response" | jq -r '.users[] | "\(.id): \(.name) (\(.status))"'
+    ;;
+
+  useradd)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Adding new user; email=$email"
+    response=$(request users -X POST -d "{\"name\":\"$email\"}")
+    check_response "$response"
+    uid=$(echo "$response" | jq -r .id)
+
+    log "Adding new user to organization"
+    response=$(request orgs/$oid/members -X POST -d "{\"id\":\"$uid\"}")
+    check_response "$response"
+
+    change_password "$uid"
+    ;;
+
+  userpass)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Updating user password; email=$email"
+    uid=$(lookup_user_id "$email")
+    change_password "$uid"
+    ;;
+  
+  userdel)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Deleting user; email=$email"
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X DELETE)
+    check_response "$response"
+    ;;
+
+  userenable)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Enabling user; email=$email"
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"active\"}")
+    check_response "$response"
+    ;;
+
+  userdisable)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Disabling user; email=$email"
+    uid=$(lookup_user_id "$email")
+    response=$(request users/$uid -X PATCH -d "{\"name\":\"$email\",\"status\":\"inactive\"}")
+    check_response "$response"
+    ;;
+
+  userpromote)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Promoting user to admin; email=$email"
+    uid=$(lookup_user_id "$email")
+    response=$(request orgs/$oid/members/$uid -X DELETE)
+    response=$(request orgs/$oid/owners -X POST -d "{\"id\":\"$uid\"}")
+    check_response "$response"
+    ;;
+
+  userdemote)
+    [ $# -ne 1 ] && usage
+    email=$1
+    log "Demoting user from admin; email=$email"
+    uid=$(lookup_user_id "$email")
+    response=$(request orgs/$oid/owners/$uid -X DELETE)
+    response=$(request orgs/$oid/members -X POST -d "{\"id\":\"$uid\"}")
+    check_response "$response"
+    ;;
+
+  export)
+    log "Exporting all organization templates"
+    request templates/export -X POST -d "{\"orgIDs\":[{\"orgID\":\"$oid\"}]}" -H "Content-Type: application/json"
+    ;;
+
+  dashboardpath)
+    [ $# -ne 1 ] && usage
+    name=$1
+    response=$(request dashboards?limit=100&orgID=$oid)
+    check_response "$response"
+    dbid=$(echo "$response" | jq -r ".dashboards[] | select(.name == \"$name\").id")
+    if [[ -z "$dbid" ]]; then
+      log "Dashboard not found"
+      exit 1
+    fi
+    echo -n "/influxdb/orgs/$oid/dashboards/$dbid"
+    ;;
+
+  *)
+    usage
+    ;;
+esac
