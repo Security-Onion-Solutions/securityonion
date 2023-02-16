@@ -617,7 +617,8 @@ configure_minion() {
 	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
 
 	{
-		systemctl restart salt-minion;
+		logCmd "systemctl enable salt-minion";
+		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
 }
 
@@ -817,10 +818,10 @@ copy_salt_master_config() {
 	title "Copy the Salt master config template to the proper directory"
 	if [ "$setup_type" = 'iso' ]; then
 		logCmd "cp /root/SecurityOnion/files/salt/master/master /etc/salt/master"
-		logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	else
 		logCmd "cp ../files/salt/master/master /etc/salt/master"
-		logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	fi
 	info "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 	logCmd "cp -Rv $temp_install_dir/pillar/ $local_salt_dir/"
@@ -830,6 +831,7 @@ copy_salt_master_config() {
 
 	# Restart the service so it picks up the changes
 	logCmd "systemctl daemon-reload"
+	logCmd "systemctl enable salt-master"
 	logCmd "systemctl restart salt-master"
 }
 
@@ -2008,16 +2010,17 @@ saltify() {
 
 	fi
 		
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
 		if [[ "$RUSALTY" -gt 0 ]]; then
 			# Salt is already installed.
 			info "salt is installed" 
 		else
-			# Install salt
+			# THIS IS A TEMP HACK
+			logCmd "dnf -y install securityonion-salt"
 			if [[ $waitforstate ]]; then 
 				# Since this is a salt master so let's install it
-				logCmd "dnf -y install salt-minion salt-master"
+				logCmd ""
 			else
 				# We just need the minion
 				logCmd "dnf -y install salt-minion"
