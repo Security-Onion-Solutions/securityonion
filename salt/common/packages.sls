@@ -47,16 +47,6 @@ commonpkgs:
       - lvm2
       - openssl
       - git
-rockypythonpacks:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
       - python3-docker
-    - pkg_verify:
-      - ignore_types:
-        - config
-        - doc
-      - verify_options:
-        - nodeps
-        - nofiledigest
+      - rsync
 {% endif %}
