@@ -11,16 +11,15 @@ Podman service:
     - source: salt://podman/podman.service
 #}
 
-Podman socket:
-{#
-  file.managed:
-    - name: /usr/lib/systemd/system/podman.socket
-    - source: salt://podman/podman.socket
-#}
+Podman_socket_service:
   service.running:
     - name: podman.socket
     - enable: true
 
+Podman_service:
+  service.running:
+    - name: podman.service
+    - enable: true
 
 Docker socket:
   file.symlink:
