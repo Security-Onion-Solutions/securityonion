@@ -29,7 +29,7 @@ base:
     - salt.minion-state-apply-test
     - salt.minion
 
-  'G@os:CentOS and G@saltversion:{{saltversion}}':
+  'G@os:Rocky and G@saltversion:{{saltversion}}':
     - match: compound
     - yum.packages
 
@@ -377,10 +377,10 @@ base:
     {%- endif %}
     - idh
 
-  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
     - workstation
 
-  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
     - workstation.remove_gui

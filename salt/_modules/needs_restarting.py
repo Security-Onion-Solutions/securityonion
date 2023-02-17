@@ -10,7 +10,7 @@ def check():
     if path.exists('/var/run/reboot-required'):
       retval = 'True'
 
-  elif os == 'CentOS':
+  elif os == 'Rocky':
     cmd = 'needs-restarting -r > /dev/null 2>&1'
     
     try:

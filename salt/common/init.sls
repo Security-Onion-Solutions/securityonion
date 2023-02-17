@@ -235,7 +235,7 @@ soversionfile:
 {% endif %}
 
 {% if GLOBALS.so_model %}
-  {% if GLOBALS.os == 'CentOS' %}     
+  {% if GLOBALS.os == 'Rocky' %}     
 # Install Raid tools
 raidpkgs:
   pkg.installed:
