@@ -52,7 +52,7 @@ rockypythonpacks:
     - skip_suggestions: True
     - pkgs:
       - python3-docker
-    -pkg_verify:
+    - pkg_verify:
       - ignore_types:
         - config
         - doc
