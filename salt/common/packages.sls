@@ -42,7 +42,7 @@ commonpkgs:
       - mariadb-devel
       - python3-dnf-plugin-versionlock
       - nmap-ncat
-      - createrepo
+      - yum-utils
       - python3-lxml
       - python3-packaging
       - device-mapper-persistent-data
