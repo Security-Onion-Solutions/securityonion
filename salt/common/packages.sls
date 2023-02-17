@@ -45,13 +45,10 @@ commonpkgs:
       - createrepo
       - python3-lxml
       - python3-packaging
-      - python3-watchdog
-      - yum-utils
       - device-mapper-persistent-data
       - lvm2
       - openssl
       - git
-      - vim-enhanced
       - python3-docker
 {% else %}
 commonpkgs:

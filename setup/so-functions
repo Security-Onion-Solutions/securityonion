@@ -1965,7 +1965,9 @@ repo_sync_local() {
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)/1' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
 	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
-	
+	# Run it again and make sure we got allt he things
+	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+
 
 	# After the download is complete run createrepo
 	create_repo
@@ -2018,6 +2020,7 @@ saltify() {
 		else
 			# THIS IS A TEMP HACK
 			logCmd "dnf -y install securityonion-salt"
+			logCmd "mkdir -p /etc/salt/minion.d"
 			if [[ $waitforstate ]]; then 
 				# Since this is a salt master so let's install it
 				logCmd ""
