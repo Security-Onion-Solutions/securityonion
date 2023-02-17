@@ -29,7 +29,7 @@ Docker socket:
 podman_docker_symlink:
   file.symlink:
     - name: /usr/bin/docker
-    - target: /usr/local/bin/podman
+    - target: /usr/bin/podman
 
 sos_docker_net:
   docker_network.present:
