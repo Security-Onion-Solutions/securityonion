@@ -8,7 +8,6 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', False) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
@@ -62,9 +61,6 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - schedule
     - docker_clean
 
@@ -101,9 +97,6 @@ base:
     {%- endif %}
     {%- if STRELKA %}
     - strelka
-    {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
     {%- endif %}
     - curator
     {%- if ELASTALERT %}
@@ -153,9 +146,6 @@ base:
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
     - schedule
     - soctopus
@@ -202,9 +192,6 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - curator
     {%- if ELASTALERT %}
     - elastalert
@@ -228,9 +215,6 @@ base:
     {%- endif %}
     {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
     {%- endif %}
     - schedule
     - docker_clean
@@ -270,9 +254,6 @@ base:
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
     - schedule
     - soctopus
@@ -296,9 +277,6 @@ base:
     - redis
     {%- endif %}
     - curator
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -306,9 +284,6 @@ base:
     - suricata
     {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
     {%- endif %}
     - schedule
     - docker_clean
@@ -336,9 +311,6 @@ base:
     {%- if KIBANA %}
     - kibana.so_savedobjects_defaults
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
     - suricata
     - zeek
@@ -358,9 +330,6 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - schedule
     - docker_clean
 
@@ -372,9 +341,6 @@ base:
     - firewall
     - schedule
     - docker_clean
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - idh
 
   'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
