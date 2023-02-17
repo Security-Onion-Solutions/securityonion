@@ -1026,8 +1026,6 @@ upgrade_salt() {
   else
     echo "Salt upgrade success."
     echo ""
-    echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
-    rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
   fi
 
 }
@@ -1138,9 +1136,7 @@ fix_wazuh() {
       # Update the repo files so it can actually upgrade
       upgrade_salt
     fi
-    rm -f /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdbmod.py.patched /opt/so/state/influxdb_retention_policy.py.patched
     systemctl_func "start" "salt-master"
-    salt-call state.apply salt.python3-influxdb -l info
     systemctl_func "start" "salt-minion"
     systemctl_func "start" "$cron_service_name"
 
@@ -1308,11 +1304,6 @@ main() {
     echo "Waiting on the Salt Master service to be ready."
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
-
-    echo ""
-    echo "Ensuring python modules for Salt are installed and patched."
-    salt-call state.apply salt.python3-influxdb -l info queue=True
-    echo ""
 
     # update the salt-minion configs here and start the minion
     # since highstate are disabled above, minion start should not trigger a highstate

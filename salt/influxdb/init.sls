@@ -14,7 +14,6 @@
 
 include:
   - salt.minion
-  - salt.python3-influxdb
   - ssl
   
 # Influx DB
@@ -111,7 +110,6 @@ telegraf_database:
     - influxdb_host: {{ GLOBALS.manager }}
     - require:
       - docker_container: so-influxdb
-      - sls: salt.python3-influxdb
       - http: wait_for_influxdb
 
 {% for rp in influxdb.retention_policies.keys() %}
@@ -131,7 +129,6 @@ telegraf_database:
       - docker_container: so-influxdb
       - influxdb_database: telegraf_database
       - file: influxdb_retention_policy.present_patch
-      - sls: salt.python3-influxdb
 {% endfor %}
 
 {% for dest_rp in influxdb.downsample.keys() %}
