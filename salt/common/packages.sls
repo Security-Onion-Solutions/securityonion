@@ -48,5 +48,6 @@ commonpkgs:
       - openssl
       - git
       - python3-docker
+      - python3-m2crypto
       - rsync
 {% endif %}
