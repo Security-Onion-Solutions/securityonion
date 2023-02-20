@@ -125,8 +125,9 @@ function add_idh_to_minion() {
 	"idh:"\
 	"  restrict_management_ip: $IDH_MGTRESTRICT"\
 	"  services:" >> "$PILLARFILE"
-	for service in ${IDH_SERVICES[@]}; do
-	  echo "    - $service" | tr '[:upper:]' '[:lower:]' >> "$PILLARFILE"
+	IFS=' ' read -ra IDH_SERVICES_ARRAY <<< "$IDH_SERVICES"
+	for service in ${IDH_SERVICES_ARRAY[@]}; do
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' | tr -d '"' >> "$PILLARFILE"
 	done
 }
 
