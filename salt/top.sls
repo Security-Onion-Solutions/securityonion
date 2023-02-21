@@ -21,6 +21,7 @@ base:
   '*':
     - cron.running
     - repo.client
+    - podman
     - ntp
 
   'not G@saltversion:{{saltversion}}':
