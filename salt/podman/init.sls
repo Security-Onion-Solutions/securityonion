@@ -4,12 +4,21 @@ Podman pkg:
   pkg.installed:
     - name: podman
 
+cnipkg:
+  pkg.installed:
+    - name: containernetworking-plugins
+
 {#
 Podman service:
   file.managed:
     - name: /usr/lib/systemd/system/podman.service
     - source: salt://podman/podman.service
 #}
+
+sobridgeconf:
+  file.managed:
+    - name: /etc/cni/net.d/sobridge.conflist
+    - source: salt://podman/files/sobridge.conflist
 
 Podman_socket_service:
   service.running:
@@ -31,6 +40,7 @@ podman_docker_symlink:
     - name: /usr/bin/docker
     - target: /usr/bin/podman
 
+{#
 sos_docker_net:
   docker_network.present:
     - name: sobridge
@@ -43,3 +53,4 @@ sos_docker_net:
         com.docker.network.bridge.enable_icc: 'true'
         com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
     - unless: 'docker network ls | grep sobridge'
+#}
