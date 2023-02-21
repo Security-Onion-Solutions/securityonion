@@ -50,4 +50,5 @@ commonpkgs:
       - python3-docker
       - python3-m2crypto
       - rsync
+      - python3-rich
 {% endif %}
