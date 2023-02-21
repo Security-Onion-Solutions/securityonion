@@ -339,6 +339,33 @@ collect_hostname_validate() {
 	done
 }
 
+collect_idh_preferences() {
+	IDH_MGTRESTRICT='False'
+	whiptail_idh_preferences
+
+	if [[ "$idh_preferences" != "" ]]; then IDH_MGTRESTRICT='True'; fi
+}
+
+collect_idh_services() {
+	whiptail_idh_services
+
+	case "$IDH_SERVICES" in
+		'Linux Webserver (NAS Skin)')
+			IDH_SERVICES='"HTTP","FTP","SSH"'
+		;;
+		'MySQL Server')
+			IDH_SERVICES='"MYSQL","SSH"'
+		;;
+		'MSSQL Server')
+			IDH_SERVICES='"MSSQL","VNC'
+		;;
+		'Custom')
+			whiptail_idh_services_custom
+			IDH_SERVICES=$(echo "$IDH_SERVICES" | tr '[:blank:]' ',' )
+		;;
+	esac
+}
+
 collect_int_ip_mask() {
 	whiptail_management_interface_ip_mask
 
@@ -1875,6 +1902,8 @@ drop_install_options() {
 	echo "LSHOSTNAME=$HOSTNAME" >> /opt/so/install.txt
 	echo "LSHEAP=$LS_HEAP_SIZE" >> /opt/so/install.txt
 	echo "CPUCORES=$num_cpu_cores" >> /opt/so/install.txt
+	echo "IDH_MGTRESTRICT=$IDH_MGTRESTRICT" >> /opt/so/install.txt
+	echo "IDH_SERVICES=$IDH_SERVICES" >> /opt/so/install.txt
 }
 
 remove_package() {
