@@ -28,6 +28,7 @@ nginxconf:
     - group: 939
     - template: jinja
     - source: salt://nginx/etc/nginx.conf
+    - show_changes: False
 
 nginxlogdir:
   file.directory:

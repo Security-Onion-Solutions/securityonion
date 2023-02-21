@@ -587,7 +587,10 @@ case "${operation}" in
     createUser "$email" "${role:-$DEFAULT_ROLE}" "${firstName}" "${lastName}" "${note}"
     syncAll
     echo "Successfully added new user to SOC"
-    check_container fleet && echo "$password" | so-fleet-user-add "$email"
+    echo "$password" | so-influxdb-manage useradd "$email"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userpromote "$email"
+    fi
     ;;
 
   "list")
@@ -605,6 +608,9 @@ case "${operation}" in
     if addUserRole "$email" "$role"; then
       syncElastic
       echo "Successfully added role to user"
+      if [[ "$role" == "superuser" ]]; then
+        echo "$password" | so-influxdb-manage userpromote "$email"
+      fi
     fi
     ;;
 
@@ -618,6 +624,9 @@ case "${operation}" in
     deleteUserRole "$email" "$role"
     syncElastic
     echo "Successfully removed role from user"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userdemote "$email"
+    fi
     ;;
 
   "password")
@@ -628,6 +637,7 @@ case "${operation}" in
     updateUserPassword "$email"
     syncAll
     echo "Successfully updated user password"
+    echo "$password" | so-influxdb-manage userpass "$email"
     ;;
 
   "profile")
@@ -647,7 +657,7 @@ case "${operation}" in
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
-    echo "Fleet user will need to be recreated manually with so-fleet-user-add"
+    so-influxdb-manage userenable "$email"
     ;;
 
   "disable")
@@ -658,7 +668,7 @@ case "${operation}" in
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
-    check_container fleet && so-fleet-user-delete "$email"   
+    so-influxdb-manage userdisable "$email"
     ;;    
 
   "delete")
@@ -669,7 +679,7 @@ case "${operation}" in
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
-    check_container fleet && so-fleet-user-delete "$email"
+    so-influxdb-manage userdel "$email"
     ;;
 
   "sync")

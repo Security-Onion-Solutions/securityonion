@@ -1,1 +1,0 @@
-For files that are referenced inside the Grafana config, place them in /opt/so/saltstack/local/salt/grafana/etc/files/. This would include keys used for smtp or a Grafana enterprise license file.
