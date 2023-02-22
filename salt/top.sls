@@ -293,9 +293,9 @@ base:
     - sensoroni
     - manager
     - nginx
-    - soc
-    - influxdb
     - telegraf
+    - influxdb
+    - soc
     - kratos
     - firewall
     - idstools

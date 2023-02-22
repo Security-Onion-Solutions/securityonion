@@ -36,7 +36,7 @@ elasticsearch:
             global: True
             helpLink: elasticsearch.html
   index_settings: 
-    so-aws: &indexSettings
+    so-elasticsearch: &indexSettings
       warm: 
         description: Age (in days) of this index before it will move to warm storage, if warm nodes are present. Once moved, events on this index can take longer to fetch.
         global: True
@@ -75,45 +75,51 @@ elasticsearch:
                   description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
                   global: True
                   helpLink: elasticsearch.html
-    so-azure: *indexSettings
-    so-barracuda: *indexSettings
-    so-beats: *indexSettings
-    so-bluecoat: *indexSettings
-    so-cef: *indexSettings
-    so-checkpoint: *indexSettings
-    so-cisco: *indexSettings
-    so-cyberark: *indexSettings
-    so-cylance: *indexSettings
-    so-elasticsearch: *indexSettings
+      policy:
+        phases:
+          hot:
+            min_age:
+              description: Minimum age
+              global: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index, used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  global: True
+                  helpLink: elasticsearch.html
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+          cold:
+            min_age:
+              description: Minimum age of index, determining when it should be sent to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              global: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  global: True
+                  helpLink: elasticsearch.html
+          delete:
+            min_age:
+              description: Minimum age of index, determining when it should be deleted.
+              global: True
+              helpLink: elastic
     so-endgame: *indexSettings
-    so-f5: *indexSettings
     so-firewall: *indexSettings
-    so-fortinet: *indexSettings
-    so-gcp: *indexSettings
-    so-google_workspace: *indexSettings
-    so-ids: *indexSettings
-    so-imperva: *indexSettings
     so-import: *indexSettings
-    so-infoblox: *indexSettings
-    so-juniper: *indexSettings
     so-kibana: *indexSettings
     so-logstash: *indexSettings
-    so-microsoft: *indexSettings
-    so-misp: *indexSettings
-    so-netflow: *indexSettings
-    so-netscout: *indexSettings
-    so-o365: *indexSettings
-    so-okta: *indexSettings
     so-osquery: *indexSettings
-    so-proofpoint: *indexSettings
-    so-radware: *indexSettings
     so-redis: *indexSettings
-    so-snort: *indexSettings
-    so-snyk: *indexSettings
-    so-sonicwall: *indexSettings
-    so-sophos: *indexSettings
     so-strelka: *indexSettings
     so-syslog: *indexSettings
-    so-tomcat: *indexSettings
     so-zeek: *indexSettings
-    so-zscaler: *indexSettings

@@ -2,15 +2,11 @@
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
-{% set GRAFANA = salt['pillar.get']('manager:grafana', '0') %}
+{% from 'influxdb/map.jinja' import INFLUXMERGED %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
-{% import_yaml 'influxdb/defaults.yaml' as default_settings %}
-{% set influxdb = salt['grains.filter_by'](default_settings, default='influxdb', merge=salt['pillar.get']('influxdb', {})) %}
-{% from 'salt/map.jinja' import PYTHON3INFLUX with context %}
-{% from 'salt/map.jinja' import  PYTHONINFLUXVERSION with context %}
-{% set PYTHONINFLUXVERSIONINSTALLED = salt['cmd.run']("python3 -c \"exec('try:import influxdb; print (influxdb.__version__)\\nexcept:print(\\'Module Not Found\\')')\"", python_shell=True) %}
+{% set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
+{% set TOKEN = salt['pillar.get']('secrets:influx_token') %}
 
 include:
   - salt.minion
@@ -19,7 +15,7 @@ include:
 # Influx DB
 influxconfdir:
   file.directory:
-    - name: /opt/so/conf/influxdb/etc
+    - name: /opt/so/conf/influxdb
     - makedirs: True
 
 influxlogdir:
@@ -37,11 +33,43 @@ influxdbdir:
 
 influxdbconf:
   file.managed:
-    - name: /opt/so/conf/influxdb/etc/influxdb.conf
+    - name: /opt/so/conf/influxdb/config.yaml
+    - source: salt://influxdb/config.yaml.jinja
     - user: 939
     - group: 939
     - template: jinja
-    - source: salt://influxdb/etc/influxdb.conf.jinja
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
+
+influxdbbucketsconf:
+  file.managed:
+    - name: /opt/so/conf/influxdb/buckets.json
+    - source: salt://influxdb/buckets.json.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
+
+influxdb-templates:
+  file.recurse:
+    - name: /opt/so/conf/influxdb/templates
+    - source: salt://influxdb/templates
+    - user: 939
+    - group: 939
+    - template: jinja
+    - clean: True
+    - defaults:
+        INFLUXMERGED: {{ INFLUXMERGED }}
+
+influxdb_curl_config:
+  file.managed:
+    - name: /opt/so/conf/influxdb/curl.config
+    - source: salt://influxdb/curl.config.jinja
+    - mode: 600
+    - template: jinja
+    - show_changes: False
+    - makedirs: True
 
 so-influxdb:
   docker_container.running:
@@ -51,13 +79,20 @@ so-influxdb:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-influxdb'].ip }}
     - environment:
+      - INFLUXD_CONFIG_PATH=/conf
       - INFLUXDB_HTTP_LOG_ENABLED=false
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=so
+      - DOCKER_INFLUXDB_INIT_PASSWORD={{ PASSWORD }}
+      - DOCKER_INFLUXDB_INIT_ORG=Security Onion
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf/so_short_term
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ TOKEN }}
     - binds:
       - /opt/so/log/influxdb/:/log:rw
-      - /opt/so/conf/influxdb/etc/influxdb.conf:/etc/influxdb/influxdb.conf:ro
-      - /nsm/influxdb:/var/lib/influxdb:rw
-      - /etc/pki/influxdb.crt:/etc/ssl/influxdb.crt:ro
-      - /etc/pki/influxdb.key:/etc/ssl/influxdb.key:ro
+      - /opt/so/conf/influxdb/config.yaml:/conf/config.yaml:ro
+      - /nsm/influxdb:/var/lib/influxdb2:rw
+      - /etc/pki/influxdb.crt:/conf/influxdb.crt:ro
+      - /etc/pki/influxdb.key:/conf/influxdb.key:ro
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-influxdb'].port_bindings %}
       - {{ BINDING }}
@@ -74,6 +109,14 @@ append_so-influxdb_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-influxdb
 
+influxdb-setup:
+  cmd.run:
+    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
+    - require:
+      - file: influxdbbucketsconf
+      - file: influxdb_curl_config
+      - docker_container: so-influxdb
+
 # Install cron job to determine size of influxdb for telegraf
 get_influxdb_size:
   cron.present:
@@ -85,71 +128,6 @@ get_influxdb_size:
     - month: '*'
     - dayweek: '*'
 
-# We have to make sure the influxdb module is the right version prior to state run since reload_modules is bugged
-{% if PYTHONINFLUXVERSIONINSTALLED == PYTHONINFLUXVERSION %}
-wait_for_influxdb:
-  http.query:
-    - name: 'https://{{GLOBALS.manager}}:8086/query?q=SHOW+DATABASES'
-    - ssl: True
-    - verify_ssl: False
-    - status: 200
-    - timeout: 10
-    - retry:
-        attempts: 20
-        interval: 5
-    - require:
-      - docker_container: so-influxdb
-
-telegraf_database:
-  influxdb_database.present:
-    - name: telegraf
-    - database: telegraf
-    - ssl: True
-    - verify_ssl: /etc/pki/ca.crt
-    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
-    - influxdb_host: {{ GLOBALS.manager }}
-    - require:
-      - docker_container: so-influxdb
-      - http: wait_for_influxdb
-
-{% for rp in influxdb.retention_policies.keys() %}
-{{rp}}_retention_policy:
-  influxdb_retention_policy.present:
-    - name: {{rp}}
-    - database: telegraf
-    - duration: {{influxdb.retention_policies[rp].duration}}
-    - shard_duration: {{influxdb.retention_policies[rp].shard_duration}}
-    - replication: 1
-    - default: {{influxdb.retention_policies[rp].get('default', 'False')}}
-    - ssl: True
-    - verify_ssl: /etc/pki/ca.crt
-    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
-    - influxdb_host: {{ GLOBALS.manager }}
-    - require:
-      - docker_container: so-influxdb
-      - influxdb_database: telegraf_database
-      - file: influxdb_retention_policy.present_patch
-{% endfor %}
-
-{% for dest_rp in influxdb.downsample.keys() %}
-  {% for measurement in influxdb.downsample[dest_rp].get('measurements', []) %}
-so_downsample_{{measurement}}_cq:
-  influxdb_continuous_query.present:
-    - name: so_downsample_{{measurement}}_cq
-    - database: telegraf
-    - query: SELECT mean(*) INTO "{{dest_rp}}"."{{measurement}}" FROM "{{measurement}}" GROUP BY time({{influxdb.downsample[dest_rp].resolution}}),*
-    - ssl: True
-    - verify_ssl: /etc/pki/ca.crt
-    - cert: ['/etc/pki/influxdb.crt', '/etc/pki/influxdb.key']
-    - influxdb_host: {{ GLOBALS.manager }}
-    - require:
-      - docker_container: so-influxdb
-      - influxdb_database: telegraf_database
-      - file: influxdb_continuous_query.present_patch
-  {% endfor %}
-{% endfor %}
-
-{% endif %}
 {% endif %}
 
 {% else %}
