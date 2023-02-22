@@ -91,7 +91,9 @@ COMMIT
 {%- endfor %}
 
 -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
 -A INPUT -m conntrack --ctstate INVALID -j DROP
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
 -A INPUT -p icmp -j ACCEPT
 -A INPUT -j LOGGING
 -A FORWARD -j DOCKER-USER
@@ -100,6 +102,11 @@ COMMIT
 -A FORWARD -o sobridge -j DOCKER
 -A FORWARD -i sobridge ! -o sobridge -j ACCEPT
 -A FORWARD -i sobridge -o sobridge -j ACCEPT
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+-A FORWARD -m conntrack --ctstate INVALID -j DROP
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+-A OUTPUT -o lo -j ACCEPT
 -A OUTPUT -p icmp -m icmp --icmp-type 14 -j DROP
 
 {%- for rule in D2 %}
