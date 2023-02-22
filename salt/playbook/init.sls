@@ -86,7 +86,7 @@ so-playbook:
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
     - environment:
-      - REDMINE_DB_MYSQL={{ GLOBALS.manager }}
+      - REDMINE_DB_MYSQL={{ GLOBALS.manager_ip }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
