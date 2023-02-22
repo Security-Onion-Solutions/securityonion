@@ -92,7 +92,7 @@ so-mysql:
       - {{ BINDING }}
       {% endfor %}
     - extra_hosts:
-      - {{ GLOBALS.manager }}:{{ GLOBALS.sobip }}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.so_docker_bip }}
     - environment:
       - MYSQL_ROOT_HOST={{ GLOBALS.manager_ip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
