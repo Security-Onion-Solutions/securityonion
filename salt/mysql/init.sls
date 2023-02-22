@@ -91,6 +91,8 @@ so-mysql:
       {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.sobip }}
     - environment:
       - MYSQL_ROOT_HOST={{ GLOBALS.manager_ip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
