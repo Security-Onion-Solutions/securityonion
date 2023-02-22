@@ -8,7 +8,6 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
@@ -188,7 +187,6 @@
           'pcap',
           'suricata',
           'healthcheck',
-          'filebeat',
           'schedule',
           'tcpreplay',
           'docker_clean'
@@ -203,10 +201,6 @@
       'so-workstation': [
           ],
   }, grain='role') %}
-
-  {% if FILEBEAT and grains.role in ['so-helixsensor', 'so-eval', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-import', 'so-receiver'] %}
-    {% do allowed_states.append('filebeat') %}
-  {% endif %}
 
   {% if (PLAYBOOK != 0) and grains.role in ['so-eval', 'so-manager', 'so-managersearch', 'so-standalone'] %}
     {% do allowed_states.append('mysql') %}
