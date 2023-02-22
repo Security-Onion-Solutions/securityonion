@@ -21,7 +21,7 @@ mysqlpkgs:
       - python3-mysqldb
         {% endif %}
       {% else %}
-      - MySQL-python
+      - python3-mysqlclient
       {% endif %}
 
 mysqletcdir:
