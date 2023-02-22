@@ -105,7 +105,7 @@ so-mysql:
       - file: mysqlcnf
       - file: mysqlpass
   cmd.run:
-    - name: until nc -z {{ GLOBALS.manager_ip }} 3306; do sleep 1; done
+    - name: until nc -z {{ GLOBALS.manager }} 3306; do sleep 1; done
     - timeout: 600
     - onchanges:
       - docker_container: so-mysql
