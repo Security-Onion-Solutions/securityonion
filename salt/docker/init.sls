@@ -26,12 +26,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.4.4-3.1.el7
-      - docker-ce: 3:20.10.5-3.el7
-      - docker-ce-cli: 1:20.10.5-3.el7
-      - docker-ce-rootless-extras: 20.10.5-3.el7
-    - hold: True
-    - update_holds: True
+      - containerd.io
+      - docker-ce
+      - docker-ce-cli
+      - docker-ce-rootless-extras
 {% endif %}
 
 #disable docker from managing iptables
