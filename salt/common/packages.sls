@@ -51,4 +51,5 @@ commonpkgs:
       - python3-m2crypto
       - rsync
       - python3-rich
+      - python3-watchdog
 {% endif %}
