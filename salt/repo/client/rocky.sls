@@ -52,7 +52,7 @@ so_repo:
   {% if GLOBALS.role in ['eval', 'standalone', 'import', 'manager', 'managersearch'] %}
     - baseurl: file:///nsm/repo/
   {% else %}
-      - baseurl: https://{{ GLOBALS.repo_host }}/repo
+    - baseurl: https://{{ GLOBALS.repo_host }}/repo
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
