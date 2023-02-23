@@ -94,7 +94,7 @@ so-mysql:
       - {{ BINDING }}
       {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ GLOBALS.manager }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
