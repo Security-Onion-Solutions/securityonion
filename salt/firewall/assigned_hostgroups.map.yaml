@@ -2,6 +2,7 @@
 {% import_yaml 'firewall/ports/ports.yaml' as portgroups %}
 {% set portgroups = portgroups.firewall.ports %}
 {% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', True)  %}
+{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
 
 role:
   eval:
@@ -573,7 +574,7 @@ role:
             portgroups:
             {% set idh_services = salt['pillar.get']('idh:services', []) %}
             {% for service in idh_services %}
-              - {{ portgroups['idh_'~service] }}
+              - {{ IDH_PORTGROUPS['idh_'~service] }}
             {% endfor %}
           dockernet:
             portgroups:
@@ -583,4 +584,7 @@ role:
               - {{ portgroups.all }}
           manager:
             portgroups:
-              - {{ portgroups.ssh }}
+              - {{ IDH_PORTGROUPS.openssh }}
+          standalone:
+            portgroups:
+              - {{ IDH_PORTGROUPS.openssh }}

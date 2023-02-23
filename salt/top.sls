@@ -368,9 +368,6 @@ base:
     - firewall
     - schedule
     - docker_clean
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - idh
 
   'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':

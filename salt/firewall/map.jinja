@@ -1,3 +1,4 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set role = grains.id.split('_') | last %}
 {% set translated_pillar_assigned_hostgroups = {} %}
 
@@ -9,8 +10,14 @@
 {% else %}
   {% set local_portgroups = {} %}
 {% endif %}
+
 {% set portgroups = salt['defaults.merge'](default_portgroups, local_portgroups, in_place=False) %}
 {% set defined_portgroups = portgroups %}
+
+{% if GLOBALS.role == 'so-idh' %}
+{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
+{% do salt['defaults.merge'](defined_portgroups, IDH_PORTGROUPS, in_place=True) %}
+{% endif %}
 
 {% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
 
