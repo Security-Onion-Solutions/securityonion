@@ -111,7 +111,6 @@ so-soc:
       - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
     - extra_hosts:
-      - {{GLOBALS.influxdb_host}}:{{pillar.node_data[GLOBALS.influxdb_host].ip}}
     {%- if salt['pillar.get']('nodestab', {}) %}
       {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
       - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
