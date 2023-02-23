@@ -87,12 +87,14 @@ so-mysql:
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.manager }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
@@ -105,7 +107,7 @@ so-mysql:
       - file: mysqlcnf
       - file: mysqlpass
   cmd.run:
-    - name: until nc -z {{ GLOBALS.so_docker_bip }} 3306; do sleep 1; done
+    - name: until nc -z {{ GLOBALS.manager }} 3306; do sleep 1; done
     - timeout: 600
     - onchanges:
       - docker_container: so-mysql
