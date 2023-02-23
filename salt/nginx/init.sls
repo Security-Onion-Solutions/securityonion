@@ -88,6 +88,8 @@ so-nginx:
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
