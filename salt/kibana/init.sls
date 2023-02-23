@@ -90,7 +90,7 @@ so-kibana:
       - ELASTICSEARCH_PORT=9200
       - MANAGER={{ GLOBALS.manager }}
     - extra_hosts:
-      - {{ GLOBALS.manager }}:{{ DOCKER.containers['so-elasticsearch'].ip }}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
