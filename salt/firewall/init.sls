@@ -1,6 +1,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+disable_firewalld:
+  service.dead:
+    - name: firewalld
+    - enable: False
+
 create_sysconfig_iptables:
   file.touch:
     - name: /etc/sysconfig/iptables
