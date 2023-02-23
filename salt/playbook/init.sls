@@ -19,7 +19,7 @@ create_playbookdbuser:
     - name: playbookdbuser
     - password: {{ PLAYBOOKPASS }}
     - host: "{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0"
-    - connection_host: {{ GLOBALS.manager_ip }}
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -28,7 +28,7 @@ query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
     - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0';"
-    - connection_host: {{ GLOBALS.manager_ip }}
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -36,8 +36,8 @@ query_playbookdbuser_grants:
 query_updatwebhooks:
   mysql_query.run:
     - database: playbook
-    - query:    "update webhooks set url = 'http://{{ GLOBALS.manager_ip }}:7000/playbook/webhook' where project_id = 1"
-    - connection_host: {{ GLOBALS.manager_ip }}
+    - query:    "update webhooks set url = 'http://{{ GLOBALS.manager_ip}}:7000/playbook/webhook' where project_id = 1"
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -49,10 +49,10 @@ query_updatepluginurls:
         update settings set value = 
         "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
         project: '1'
-        convert_url: http://{{ GLOBALS.manager_ip }}:7000/playbook/sigmac
-        create_url: http://{{ GLOBALS.manager_ip }}:7000/playbook/play"
+        convert_url: http://{{ GLOBALS.manager }}:7000/playbook/sigmac
+        create_url: http://{{ GLOBALS.manager }}:7000/playbook/play"
         where id  = 43
-    - connection_host: {{ GLOBALS.manager_ip }}
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -86,7 +86,7 @@ so-playbook:
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
     - environment:
-      - REDMINE_DB_MYSQL={{ GLOBALS.manager_ip }}
+      - REDMINE_DB_MYSQL={{ DOCKER.containers['so-mysql'].ip }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}

@@ -97,7 +97,7 @@ so-elastalert:
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
     - extra_hosts:
-      - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - require:
       - cmd: wait_for_elasticsearch
       - file: elastarules

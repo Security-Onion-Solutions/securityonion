@@ -3,6 +3,7 @@
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
 
 include:
   - manager.sync_es_users
@@ -110,13 +111,7 @@ so-soc:
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
-    - extra_hosts:
-      - {{GLOBALS.influxdb_host}}:{{pillar.node_data[GLOBALS.influxdb_host].ip}}
-    {%- if salt['pillar.get']('nodestab', {}) %}
-      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
-      {%- endfor %}
-    {%- endif %}
+    - extra_hosts: {{ DOCKER_EXTRA_HOSTS }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
       - {{ BINDING }}

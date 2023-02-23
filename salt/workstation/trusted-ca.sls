@@ -1,7 +1,7 @@
  {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'CentOS' %}
+{% if GLOBALS.os == 'Rocky' %}
 
   {% set global_ca_text = [] %}
   {% set global_ca_server = [] %}

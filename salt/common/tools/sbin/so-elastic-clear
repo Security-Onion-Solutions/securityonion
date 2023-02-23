@@ -54,16 +54,9 @@ if [ $SKIP -ne 1 ]; then
         if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
 fi
 
-# Check to see if Logstash/Filebeat are running
+# Check to see if Logstash are running
 LS_ENABLED=$(so-status | grep logstash)
-FB_ENABLED=$(so-status | grep filebeat)
 EA_ENABLED=$(so-status | grep elastalert)
-
-if [ ! -z "$FB_ENABLED" ]; then
-
-        /usr/sbin/so-filebeat-stop
-
-fi
 
 if [ ! -z "$LS_ENABLED" ]; then
 
@@ -86,13 +79,7 @@ do
     curl -K /opt/so/conf/elasticsearch/curl.config-XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
 done
 
-#Start Logstash/Filebeat
-if [ ! -z "$FB_ENABLED" ]; then
-
-        /usr/sbin/so-filebeat-start
-
-fi
-
+#Start Logstash
 if [ ! -z "$LS_ENABLED" ]; then
 
         /usr/sbin/so-logstash-start

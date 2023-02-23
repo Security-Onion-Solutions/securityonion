@@ -14,14 +14,14 @@ mysqlpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      {% if grains['os'] != 'CentOS' %}
+      {% if grains['os'] != 'Rocky' %}
         {% if grains['oscodename'] == 'bionic' %}
       - python3-mysqldb
         {% elif grains['oscodename'] == 'focal' %}
       - python3-mysqldb
         {% endif %}
       {% else %}
-      - MySQL-python
+      - python3-mysqlclient
       {% endif %}
 
 mysqletcdir:
@@ -92,7 +92,7 @@ so-mysql:
       - {{ BINDING }}
       {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ GLOBALS.manager_ip }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
@@ -105,7 +105,7 @@ so-mysql:
       - file: mysqlcnf
       - file: mysqlpass
   cmd.run:
-    - name: until nc -z {{ GLOBALS.manager_ip }} 3306; do sleep 1; done
+    - name: until nc -z {{ GLOBALS.so_docker_bip }} 3306; do sleep 1; done
     - timeout: 600
     - onchanges:
       - docker_container: so-mysql

@@ -10,7 +10,6 @@
 
 include:
   - salt
-  - salt.helper-packages
   - systemd.reload
   - repo.client
 
@@ -100,8 +99,3 @@ salt_minion_service:
       - file: salt_minion_service_unit_file
 {% endif %}
     - order: last
-
-
-patch_pkg:
-  pkg.installed:
-    - name: patch

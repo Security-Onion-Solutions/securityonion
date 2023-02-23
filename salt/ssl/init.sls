@@ -41,18 +41,12 @@ trusttheca:
     - name: /etc/ssl/certs/intca.crt
     - text:  {{ trusttheca_text }}
 
-{% if grains['os'] != 'CentOS' %}
 # Install packages needed for the sensor
 m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-    {% if grains['oscodename'] == 'bionic' %}
-      - python-m2crypto
-    {% elif grains['oscodename'] == 'focal' %}
       - python3-m2crypto
-    {% endif %}
-{% endif %}
 
 influxdb_key:
   x509.private_key_managed:

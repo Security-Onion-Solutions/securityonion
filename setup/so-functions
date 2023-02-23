@@ -644,7 +644,8 @@ configure_minion() {
 	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
 
 	{
-		systemctl restart salt-minion;
+		logCmd "systemctl enable salt-minion";
+		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
 }
 
@@ -653,7 +654,7 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		logCmd "yum -y install chrony"
+		logCmd "dnf -y install chrony"
 	fi
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
@@ -844,10 +845,10 @@ copy_salt_master_config() {
 	title "Copy the Salt master config template to the proper directory"
 	if [ "$setup_type" = 'iso' ]; then
 		logCmd "cp /root/SecurityOnion/files/salt/master/master /etc/salt/master"
-		logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	else
 		logCmd "cp ../files/salt/master/master /etc/salt/master"
-		logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	fi
 	info "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 	logCmd "cp -Rv $temp_install_dir/pillar/ $local_salt_dir/"
@@ -857,6 +858,7 @@ copy_salt_master_config() {
 
 	# Restart the service so it picks up the changes
 	logCmd "systemctl daemon-reload"
+	logCmd "systemctl enable salt-master"
 	logCmd "systemctl restart salt-master"
 }
 
@@ -902,6 +904,7 @@ create_manager_pillars() {
 
 create_repo() {
 	title "Create the repo directory"
+	logCmd "dnf -y install yum-utils createrepo"
 	logCmd "createrepo /nsm/repo"
 }
 
@@ -913,19 +916,13 @@ detect_cloud() {
 detect_os() {
 	title "Detecting Base OS"
 	if [ -f /etc/redhat-release ]; then
-		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
-			OS=centos
-			OSVER=7
-			is_centos=true
-			pkgman="yum"
-		elif grep -q "Rocky Linux release 8" /etc/redhat-release; then
+		if grep -q "Rocky Linux release 9" /etc/redhat-release; then
 			OS=rocky
-			OSVER=8
+			OSVER=9
 			is_rocky=true
 			pkgman="dnf"
-			info "We currently do not support Rocky Linux $OSVER but we are working on it!"
 		else
-			info "We do not support the version of CentOS you are trying to use."
+			info "We do not support the operating system you are trying to use."
 			exit 1
 		fi
 
@@ -959,13 +956,10 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	if [ "$OS" == centos ]; then
+	if [ "$OS" == rocky ]; then
 		if [[ ! $is_iso ]]; then
-			if ! yum versionlock > /dev/null 2>&1; then
-				logCmd "yum -y install yum-plugin-versionlock"
-			fi
 			if ! command -v nmcli > /dev/null 2>&1; then
-				logCmd "yum -y install NetworkManager"
+				logCmd "dnf -y install NetworkManager"
 			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
@@ -1550,7 +1544,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf filebeat logstash soc manager kratos idstools idh elastalert;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1740,7 +1734,7 @@ proxy_validate() {
 }
 
 reserve_group_ids() {
-	# This is a hack to fix CentOS from taking group IDs that we need
+	# This is a hack to fix OS from taking group IDs that we need
 	logCmd "groupadd -g 928 kratos"
 	logCmd "groupadd -g 930 elasticsearch"
 	logCmd "groupadd -g 931 logstash"
@@ -1827,10 +1821,6 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
-		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
-		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
-		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
-		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
 		# If the elastic license has been accepted restore the state file
 		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
@@ -1862,8 +1852,8 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_centos ]]; then
-		sed -i "/proxy=/d" /etc/yum.conf
+	if [[ $is_rocky ]]; then
+		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
 	fi
@@ -1908,9 +1898,9 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		if rpm -qa | grep -q "$package_name"; then
-			logCmd "yum remove -y $package_name"
+			logCmd "dnf remove -y $package_name"
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
@@ -1929,13 +1919,8 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_centos ]]; then
-		if [[ $waitforstate ]]; then
-			# Build the repo locally so we can use it
-			echo "Syncing Repo"
-			repo_sync_local
-		fi
-		logCmd "yum -v clean all"
+	if [[ $is_rocky ]]; then
+		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 		logCmd "ls -la /etc/yum.repos.d/"
@@ -1955,13 +1940,19 @@ securityonion_repo() {
 		fi
 
 		# need to yum clean all before repo conf files are removed or clean,cleans nothing
-		logCmd "yum repolist all"
+		logCmd "dnf repolist all"
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
-		logCmd "yum -v -y update centos-release"
-		info "Backing up the .repo files that were added by the centos-release package."
-		logCmd "mv -bvf /etc/yum.repos.d/CentOS* /root/oldrepos/"
-		logCmd "yum repolist all"
+		if [ -f "/etc/yum.repos.d/rocky.repo" ]; then
+			info "Backing up the .repo files that were added by the centos-release package."
+			logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
+			logCmd "dnf repolist all"
+		fi
+		if [[ $waitforstate ]]; then
+			# Build the repo locally so we can use it
+			echo "Syncing Repo"
+			repo_sync_local
+		fi
 	fi
 }
 
@@ -1972,36 +1963,26 @@ repo_sync_local() {
 	mkdir -p /nsm/repo
 	mkdir -p /root/reposync_cache
 	echo "[main]" > /root/repodownload.conf
+	echo "gpgcheck=1" >> /root/repodownload.conf
+	echo "installonly_limit=3" >> /root/repodownload.conf
+	echo "clean_requirements_on_remove=True" >> /root/repodownload.conf
+	echo "best=True" >> /root/repodownload.conf
+	echo "skip_if_unavailable=False" >> /root/repodownload.conf
 	echo "cachedir=/root/reposync_cache" >> /root/repodownload.conf 
 	echo "keepcache=0" >> /root/repodownload.conf 
-	echo "debuglevel=2" >> /root/repodownload.conf 
-	echo "logfile=/var/log/yum.log" >> /root/repodownload.conf 
-	echo "exactarch=1" >> /root/repodownload.conf 
-	echo "obsoletes=1" >> /root/repodownload.conf 
-	echo "gpgcheck=1" >> /root/repodownload.conf 
-	echo "plugins=1" >> /root/repodownload.conf 
-	echo "installonly_limit=2" >> /root/repodownload.conf 
-	echo "bugtracker_url=http://bugs.centos.org/set_project.php?project_id=23&ref=http://bugs.centos.org/bug_report_page.php?category=yum" >> /root/repodownload.conf 
-	echo "distroverpkg=centos-release" >> /root/repodownload.conf 
-	echo "clean_requirements_on_remove=1" >> /root/repodownload.conf 
 	echo "[securityonionsync]" >> /root/repodownload.conf
 	echo "name=Security Onion Repo repo" >> /root/repodownload.conf
-	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/c7so/" >> /root/repodownload.conf
+	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/2.4/" >> /root/repodownload.conf
 	echo "enabled=1" >> /root/repodownload.conf
 	echo "gpgcheck=1" >> /root/repodownload.conf
 	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
 
-	REPOSYNC=$(rpm -qa | grep createrepo | wc -l)
-	if [[ ! "$REPOSYNC" -gt 0 ]]; then
-		# Install reposync
-		info "Installing createrepo"
-		logCmd "yum -y install -c /root/repodownload.conf yum-utils createrepo"
-	else
-		info "We have what we need to sync"
-	fi
-
-	logCmd "reposync --norepopath -n -g -l -d -m -c /root/repodownload.conf -r securityonionsync --download-metadata -p /nsm/repo/"
-	
+	dnf repolist
+	# Make sure we can get to the sig repo
+    logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)/1' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
+	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+	# Run it again and make sure we got allt he things
+	logCmd "dnf reposync --norepopath -n -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
 
 	# After the download is complete run createrepo
 	create_repo
@@ -2046,20 +2027,16 @@ saltify() {
 
 	fi
 		
-	if [[ $is_centos ]]; then
-		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
-		if [[ "$RUSALTY" -gt 0 ]]; then
-			# Salt is already installed.
-			info "salt is installed" 
+	if [[ $is_rocky ]]; then
+		# THIS IS A TEMP HACK
+		logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		logCmd "mkdir -p /etc/salt/minion.d"
+		if [[ $waitforstate ]]; then 
+			# Since this is a salt master so let's install it
+			logCmd ""
 		else
-			# Install salt
-			if [[ $waitforstate ]]; then 
-				# Since this is a salt master so let's install it
-				logCmd "yum -y install salt-minion salt-master"
-			else
-				# We just need the minion
-				logCmd "yum -y install salt-minion"
-			fi
+			# We just need the minion
+			logCmd "dnf -y install salt-minion"
 		fi
 	fi
 
@@ -2187,7 +2164,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
@@ -2397,10 +2374,9 @@ update_sudoers() {
 }
 
 update_packages() {
-	if [[ $is_centos ]]; then
-		logCmd "yum repolist"
-		logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
-		logCmd "yum -y install yum-utils"
+	if [[ $is_rocky ]]; then
+		logCmd "dnf repolist"
+		logCmd "dnf -y update --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1

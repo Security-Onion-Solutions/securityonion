@@ -53,6 +53,8 @@ so-dockerregistry:
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
     - client_timeout: 180
+    - environment:
+      - HOME=/root
     - retry:
         attempts: 5
         interval: 30
