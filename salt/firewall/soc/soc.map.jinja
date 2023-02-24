@@ -1,2 +1,9 @@
 {% import_yaml 'firewall/soc/defaults_soc_firewall.yaml' as DEFAULT_SOC_FIREWALL %}
-{% set SOC_FIREWALL = salt['pillar.get']('firewall:custom_groups:groups', DEFAULT_SOC_FIREWALL.firewall.hostgroups, merge=True) %}
+{% set PILLAR_SOC_FIREWALL_GROUPS = salt['pillar.get']('firewall:custom_groups:groups', {}) %}
+{% set SOC_FIREWALL = DEFAULT_SOC_FIREWALL %}
+
+{% for group in PILLAR_SOC_FIREWALL_GROUPS %}
+{%   set description = 'List of IP addresses or CIDR blocks to allow for ' ~ group ~ ' hostgroup.' %}
+{%   set title = group[0]|upper ~ group[1:] %}
+{%   do SOC_FIREWALL.firewall.hostgroups.update({group:{'description': description, 'file': 'True', 'global': 'True', 'title': title, 'helpLink': 'firewall.html#host-groups'}}) %}
+{% endfor %}
