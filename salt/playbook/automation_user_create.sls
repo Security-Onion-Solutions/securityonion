@@ -7,7 +7,7 @@ include:
   
 wait_for_playbook:
   cmd.run:
-    - name: until nc -z {{ GLOBALS.manager }} 3200; do sleep 1; done
+    - name: until nc -z {{ GLOBALS.manager }} 3000; do sleep 1; done
     - timeout: 300
 
 create_user:

@@ -172,6 +172,7 @@ strelka_coordinator:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
+    - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-coordinator'].port_bindings %}
       - {{ BINDING }}
@@ -190,6 +191,7 @@ strelka_gatekeeper:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
+    - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
       - {{ BINDING }}
@@ -212,6 +214,7 @@ strelka_frontend:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-frontend'].ip }}
     - command: strelka-frontend
+    - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-frontend'].port_bindings %}
       - {{ BINDING }}
@@ -250,6 +253,7 @@ strelka_manager:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-manager'].ip }}
     - command: strelka-manager
+    - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
 
 append_so-strelka-manager_so-status.conf:
   file.append:
@@ -267,6 +271,7 @@ strelka_filestream:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-filestream'].ip }}
     - command: strelka-filestream
+    - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
 
 append_so-strelka-filestream_so-status.conf:
   file.append:

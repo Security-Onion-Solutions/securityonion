@@ -13,7 +13,7 @@ while [[ $try_count -le 6 ]]; do
 
         # Create user and retrieve api_key and user_id from response
         mapfile -t automation_res < <(
-            curl -s --location --request POST 'http://127.0.0.1:3200/playbook/users.json' --user "admin:{{ admin_pass }}" --header 'Content-Type: application/json' --data '{
+            curl -s --location --request POST 'http://127.0.0.1:3000/playbook/users.json' --user "admin:{{ admin_pass }}" --header 'Content-Type: application/json' --data '{
                 "user" : {
                     "login" : "automation",
                     "password": "{{ automation_pass }}",
@@ -28,7 +28,7 @@ while [[ $try_count -le 6 ]]; do
         automation_user_id=${automation_res[1]}
 
         # Add user_id from newly created user to Automation group
-        curl -s --location --request POST "http://127.0.0.1:3200/playbook/groups/${automation_group}/users.json" \
+        curl -s --location --request POST "http://127.0.0.1:3000/playbook/groups/${automation_group}/users.json" \
             --user "admin:{{ admin_pass }}" \
             --header 'Content-Type: application/json' \
             --data "{
