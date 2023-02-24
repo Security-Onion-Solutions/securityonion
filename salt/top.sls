@@ -77,6 +77,7 @@ base:
     - telegraf
     - influxdb
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
@@ -121,6 +122,7 @@ base:
     - telegraf
     - influxdb
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - manager
@@ -163,6 +165,7 @@ base:
     - telegraf
     - influxdb
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
@@ -227,6 +230,7 @@ base:
     - telegraf
     - influxdb
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - manager
@@ -296,6 +300,7 @@ base:
     - telegraf
     - influxdb
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
