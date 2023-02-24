@@ -1245,6 +1245,7 @@ generate_passwords(){
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
   REDISPASS=$(get_random_value)
+  SOCSRVKEY=$(get_random_value 64)
 }
 
 generate_interface_vars() {
@@ -1380,7 +1381,11 @@ idstools_pillar() {
 soc_pillar() {
 	title "Creating the SOC pillar"
 	touch $adv_soc_pillar_file
-	touch $soc_pillar_file
+	printf '%s\n'\
+		"soc:"\
+		"  server:"\
+		"    srvKey: '$SOCSRVKEY'"\
+		"" > "$soc_pillar_file"
 }
 
 telegraf_pillar() {
