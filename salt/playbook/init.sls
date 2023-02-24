@@ -85,8 +85,10 @@ so-playbook:
         - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - environment:
-      - REDMINE_DB_MYSQL={{ DOCKER.containers['so-mysql'].ip }}
+      - REDMINE_DB_MYSQL={{ GLOBALS.manager }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
