@@ -81,6 +81,7 @@ so-soctopus:
       {% endfor %}
     - extra_hosts:
       - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - require:
       - file: soctopusconf
       - file: navigatordefaultlayer
