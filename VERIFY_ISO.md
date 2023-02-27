@@ -1,18 +1,18 @@
-### 2.3.210-20230202 ISO image built on 2023/02/02
+### 2.3.220-20230224 ISO image built on 2023/02/24
 
 
 
 ### Download and Verify
 
-2.3.210-20230202 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.3.210-20230202.iso
+2.3.220-20230224 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.3.220-20230224.iso
 
-MD5: ED38C36DBE40509FC5E87D82B07141C0  
-SHA1: EDEBDBE75FF34DAD87E141CA8F8614295ED23FB5  
-SHA256: 30068D4B910E83B63287EAB98E49497A584BAE07854367716813E5D610D3E5E3 
+MD5: 74CDCE07BC5787567E07C1CAC64DC381  
+SHA1: 8DA0E8541C46CBDCFA0FB9B60F3C95D027D4BB37  
+SHA256: E5EDB011693AC33C40CAB483400F72FAF9615053867FD9C80DDD1AACAD9100B3 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.210-20230202.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.220-20230224.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/master/KEYS  
@@ -26,22 +26,22 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/ma
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.210-20230202.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/master/sigs/securityonion-2.3.220-20230224.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.3.210-20230202.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.3.220-20230224.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.3.210-20230202.iso.sig securityonion-2.3.210-20230202.iso
+gpg --verify securityonion-2.3.220-20230224.iso.sig securityonion-2.3.220-20230224.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Thu 02 Feb 2023 08:31:18 PM EST using RSA key ID FE507013
+gpg: Signature made Fri 24 Feb 2023 02:32:08 PM EST using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
