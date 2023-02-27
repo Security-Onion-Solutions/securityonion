@@ -5,6 +5,8 @@ disable_firewalld:
   service.dead:
     - name: firewalld
     - enable: False
+    - prereq:
+      - file: iptables_config
 
 create_sysconfig_iptables:
   file.touch:
@@ -21,6 +23,14 @@ iptables_config:
 iptables_restore:
   cmd.run:
     - name: iptables-restore < /etc/sysconfig/iptables
+
+enable_firewalld:
+  service.enabled:
+    - name: firewalld
+    - enable: True
+    - onfail:
+      - file: iptables_config
+      - cmd: iptables_restore
 
 {% else %}
 
