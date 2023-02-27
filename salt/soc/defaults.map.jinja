@@ -1,11 +1,13 @@
 {% import_yaml 'soc/defaults.yaml' as SOCDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKER -%}
-{%- set INFLUXDB_TOKEN = salt['pillar.get']('secrets:influx_token') %}
-{% if salt['docker.pid']('so-influxdb') > 0 %}
-{%- set METRICS_LINK = salt['cmd.run']('so-influxdb-manage dashboardpath "Security Onion Performance"') %}
-{% else %}
-{% set METRICS_LINK = '' %}
+{% set INFLUXDB_TOKEN = salt['pillar.get']('secrets:influx_token') %}
+{% if salt['docker.exists']('so-influxdb') %}
+{%   if salt['docker.pid']('so-influxdb') > 0 %}
+{%     set METRICS_LINK = salt['cmd.run']('so-influxdb-manage dashboardpath "Security Onion Performance"') %}
+{%   else %}
+{%     set METRICS_LINK = '' %}
+{%   endif %}
 {% endif %}
 
 
