@@ -25,7 +25,7 @@ iptables_restore:
     - name: iptables-restore < /etc/sysconfig/iptables
 
 enable_firewalld:
-  service.enabled:
+  service.running:
     - name: firewalld
     - enable: True
     - onfail:
