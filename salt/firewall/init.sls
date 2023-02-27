@@ -1,13 +1,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-disable_firewalld:
-  service.dead:
-    - name: firewalld
-    - enable: False
-    - prereq:
-      - file: iptables_config
-
 create_sysconfig_iptables:
   file.touch:
     - name: /etc/sysconfig/iptables
@@ -19,6 +12,13 @@ iptables_config:
     - name: /etc/sysconfig/iptables
     - source: salt://firewall/iptables.jinja
     - template: jinja
+
+disable_firewalld:
+  service.dead:
+    - name: firewalld
+    - enable: False
+    - require:
+      - file: iptables_config
 
 iptables_restore:
   cmd.run:
