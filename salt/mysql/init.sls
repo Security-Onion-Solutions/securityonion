@@ -106,20 +106,6 @@ so-mysql:
     - require:
       - file: mysqlcnf
       - file: mysqlpass
-  cmd.run:
-    - name: until nc -z {{ GLOBALS.manager }} 3306; do sleep 1; done
-    - timeout: 600
-    - onchanges:
-      - docker_container: so-mysql
-  module.run:
-    - onchanges:
-      - cmd: so-mysql
-
-append_so-mysql_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-mysql
-
 {% endif %}
 
 {% else %}

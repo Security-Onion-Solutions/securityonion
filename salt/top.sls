@@ -28,10 +28,6 @@ base:
     - salt.minion-state-apply-test
     - salt.minion
 
-  'G@os:Rocky and G@saltversion:{{saltversion}}':
-    - match: compound
-    - yum.packages
-
   '* and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion
