@@ -37,10 +37,10 @@ source ./so-variables
 
 # Parse command line arguments
 setup_type=$1
-automation=$2
+test_profile=$2
+
 WHATWOULDYOUSAYYAHDOHERE=setup
 
-# This is for automation 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -49,12 +49,8 @@ while [[ $# -gt 0 ]]; do
 			export TURBO="http://${arg#*=}";;
 		"--proxy="* ) 
 			export {http,https,ftp,rsync,all}_proxy="${arg#*=}";;
-		"--allow-role="* )
-			export ALLOW_ROLE="${arg#*=}";;
 		"--allow-cidr="* )
 			export ALLOW_CIDR="${arg#*=}";;
-		"--skip-reboot" )
-			export SKIP_REBOOT=1;;
 		* )
 			if [[ "$arg" == "--"* ]]; then
 				echo "Invalid option"
@@ -166,41 +162,47 @@ catch() {
 	exit 1
 }
 
-automated=no
-
 # Add the progress function for manager node type installs
 progress() {
 	local msg=${1:-'Please wait while installing...'}
 
-	if [ $automated == no ]; then
+	if [ -z "$TESTING" ]; then
 		whiptail --title "$whiptail_title" --gauge "$msg" 6 70 0 # append to text
 	else
 		cat >> $setup_log 2>&1
 	fi		
 }
 
-# If using automation let's do automation things.
-if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
-	info "Preselecting variable values based on automated setup: $automation"
-	source automation/$automation
-	automated=yes
+if [ -n "$test_profile" ]; then
+	install_type="$(echo $test_profile |awk -F- '{print $1}')"
+	info "Activating test profile: $test_profile"
 
-	attempt=1
-	attempts=60
-	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
-	while [ $? -ne 0 ]; do
-		logCmd "ip a" 
-		if [ $attempt -gt $attempts ]; then
-			error "Network unavailable - setup cannot continue" 
-			exit 1
-		fi
-		info "Waiting for network to come up (attempt $attempt of $attempts)"
-		attempt=$((attempt + 1))
-		info "Sleeping 10s to try again"
-		sleep 10;
-		logCmd "ip a | grep '$MNIC:' | grep 'state UP'" 
-	done
-	info "Network is up on $MNIC"
+	# The below settings are hardcoded purely for automated testing purposes.
+	TESTING=true
+	MSRV=manager
+	if [ "$test_profile" =~ *"-net" ]; then
+		address_type=DHCP
+		MSRVIP=10.66.166.72
+	elif [ "$test_profile" =~ *"-cloud" ]; then
+		MSRVIP=10.99.1.20
+	elif [ "$test_profile" =~ *"-iso" ]; then
+		MSRVIP=10.66.166.42
+	elif [ "$test_profile" =~ *"-airgap" ]; then
+		MSRVIP=10.66.166.52
+	fi
+	if [ -f "/root/public_ip" ]; then
+		REDIRECTHOST=$(cat /root/public_ip)
+		REDIRECTINFO=OTHER
+	else
+		REDIRECTINFO=IP
+	fi
+	ALLOW_CIDR=0.0.0.0/0
+	MNIC=eth0
+	BNICS=eth1
+	HOSTNAME=$install_type
+	WEBUSER=onionuser@somewhere.invalid
+	WEBPASSWD1=0n10nus3r
+	WEBPASSWD2=0n10nus3r
 fi
 
 # Make sure the setup type is suppoted.
@@ -227,7 +229,7 @@ dmesg -D
 
 # Kernel consoleblank is causing whiptail progress screen to appear to hang #1084
 # https://github.com/Security-Onion-Solutions/securityonion/issues/1084
-if [ "$automated" == no ]; then
+if [ -z "$TESTING" ]; then
 	TTY=$(tty)
 	info "Setup is running on TTY $TTY"
 	if echo $TTY | grep -q "/dev/tty"; then 
@@ -283,7 +285,7 @@ if ! [[ -f $install_opt_file ]]; then
 		compare_main_nic_ip
 
 	fi
-		if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
+	if [[ $setup_type == 'iso' ]] && [ -z "$TESTING" ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
 			collect_hostname
