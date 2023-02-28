@@ -175,20 +175,27 @@ progress() {
 
 if [ -n "$test_profile" ]; then
 	install_type="$(echo $test_profile |awk -F- '{print $1}')"
-	info "Activating test profile: $test_profile"
+	info "Activating test profile; profile=$test_profile; install_type=$install_type"
 
 	# The below settings are hardcoded purely for automated testing purposes.
 	TESTING=true
-	MSRV=manager
+	if [[ "$test_profile" =~ "-sensor-" || "$test_profile" =~ "-search-" ]]; then
+		HOSTNAME=$test_profile
+		MSRV=manager
+		if [[ "$test_profile" =~ "-net" ]]; then
+			MSRVIP=10.66.166.72
+		elif [[ "$test_profile" =~ "-cloud" ]]; then
+			MSRVIP=10.99.1.20
+		elif [[ "$test_profile" =~ "-iso" ]]; then
+			MSRVIP=10.66.166.42
+		elif [[ "$test_profile" =~ "-airgap" ]]; then
+			MSRVIP=10.66.166.52
+		fi
+	else
+		HOSTNAME=manager
+	fi
 	if [[ "$test_profile" =~ "-net" ]]; then
 		address_type=DHCP
-		MSRVIP=10.66.166.72
-	elif [[ "$test_profile" =~ "-cloud" ]]; then
-		MSRVIP=10.99.1.20
-	elif [[ "$test_profile" =~ "-iso" ]]; then
-		MSRVIP=10.66.166.42
-	elif [[ "$test_profile" =~ "-airgap" ]]; then
-		MSRVIP=10.66.166.52
 	fi
 	if [ -f "/root/public_ip" ]; then
 		REDIRECTHOST=$(cat /root/public_ip)
@@ -199,7 +206,6 @@ if [ -n "$test_profile" ]; then
 	ALLOW_CIDR=0.0.0.0/0
 	MNIC=eth0
 	BNICS=eth1
-	HOSTNAME=$install_type
 	WEBUSER=onionuser@somewhere.invalid
 	WEBPASSWD1=0n10nus3r
 	WEBPASSWD2=0n10nus3r
