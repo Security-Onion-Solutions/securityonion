@@ -175,34 +175,38 @@ progress() {
 
 if [ -n "$test_profile" ]; then
 	install_type="$(echo $test_profile |awk -F- '{print $1}')"
+	install_type=${install_type^^}
 	info "Activating test profile; profile=$test_profile; install_type=$install_type"
 
 	# The below settings are hardcoded purely for automated testing purposes.
 	TESTING=true
+	
 	if [[ "$test_profile" =~ "-sensor-" || "$test_profile" =~ "-search-" ]]; then
 		HOSTNAME=$test_profile
-		MSRV=manager
-		if [[ "$test_profile" =~ "-net" ]]; then
-			MSRVIP=10.66.166.72
-		elif [[ "$test_profile" =~ "-cloud" ]]; then
-			MSRVIP=10.99.1.20
-		elif [[ "$test_profile" =~ "-iso" ]]; then
-			MSRVIP=10.66.166.42
-		elif [[ "$test_profile" =~ "-airgap" ]]; then
-			MSRVIP=10.66.166.52
-		fi
 	else
 		HOSTNAME=manager
 	fi
+	
+	MSRV=manager
 	if [[ "$test_profile" =~ "-net" ]]; then
 		address_type=DHCP
+		MSRVIP=10.66.166.72
+	elif [[ "$test_profile" =~ "-cloud" ]]; then
+		MSRVIP=10.99.1.20
+	elif [[ "$test_profile" =~ "-iso" ]]; then
+		MSRVIP=10.66.166.42
+	elif [[ "$test_profile" =~ "-airgap" ]]; then
+		is_airgap=true
+		MSRVIP=10.66.166.52
 	fi
+
 	if [ -f "/root/public_ip" ]; then
 		REDIRECTHOST=$(cat /root/public_ip)
 		REDIRECTINFO=OTHER
 	else
 		REDIRECTINFO=IP
 	fi
+
 	ALLOW_CIDR=0.0.0.0/0
 	MNIC=eth0
 	BNICS=eth1
