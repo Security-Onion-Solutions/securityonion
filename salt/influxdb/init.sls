@@ -119,7 +119,7 @@ influxdb-setup:
 
 metrics_link_file:
   cmd.run:
-    - name: so-influxdb-manage dashboardpath "Security Onion Performance" &> /opt/so/saltstack/local/salt/influxdb/metrics_link.txt
+    - name: so-influxdb-manage dashboardpath "Security Onion Performance" > /opt/so/saltstack/local/salt/influxdb/metrics_link.txt
     - require:
       - docker_container: so-influxdb
 
