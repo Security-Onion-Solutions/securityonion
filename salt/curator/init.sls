@@ -139,6 +139,8 @@ so-curator:
       - file: actionconfs
       - file: curconf
       - file: curlogdir
+    - watch:
+      - file: curconf
   {% else %}
     - force: True
   {% endif %}
