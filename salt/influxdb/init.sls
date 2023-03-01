@@ -117,6 +117,12 @@ influxdb-setup:
       - file: influxdb_curl_config
       - docker_container: so-influxdb
 
+metrics_link_file:
+  cmd.run:
+    - name: so-influxdb-manage dashboardpath "Security Onion Performance" > /opt/so/saltstack/local/salt/influxdb/metrics_link.txt
+    - require:
+      - docker_container: so-influxdb
+
 # Install cron job to determine size of influxdb for telegraf
 get_influxdb_size:
   cron.present:

@@ -1,8 +1,8 @@
 {% import_yaml 'soc/defaults.yaml' as SOCDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKER -%}
-{%- set INFLUXDB_TOKEN = salt['pillar.get']('secrets:influx_token') %}
-{%- set METRICS_LINK = salt['cmd.run']('so-influxdb-manage dashboardpath "Security Onion Performance"') %}
+{% set INFLUXDB_TOKEN = salt['pillar.get']('secrets:influx_token') %}
+{% import_text 'influxdb/metrics_link.txt' as METRICS_LINK %}
 
 {% for module, application_url in GLOBALS.application_urls.items() %}
 {%   do SOCDEFAULTS.soc.server.modules[module].update({'hostUrl': application_url}) %}
@@ -20,7 +20,7 @@
 {% do SOCDEFAULTS.soc.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.influxdb_host ~ ':8086'}) %}
 {% do SOCDEFAULTS.soc.server.modules.influxdb.update({'token': INFLUXDB_TOKEN}) %}
 {% for tool in SOCDEFAULTS.soc.server.client.tools %}
-{%   if tool.name == "toolInfluxDb" %}
+{%   if tool.name == "toolInfluxDb" and METRICS_LINK | length > 0 %}
 {%     do tool.update({'link': METRICS_LINK}) %}
 {%   endif %}
 {% endfor %}
