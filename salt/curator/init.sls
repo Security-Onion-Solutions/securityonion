@@ -142,6 +142,8 @@ so-curator:
       - file: actionconfs
       - file: curconf
       - file: curlogdir
+    - watch:
+      - file: curconf
 
 so-curatorclusterclose:
   cron.present:
