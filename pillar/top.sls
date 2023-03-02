@@ -27,6 +27,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
 
   '*_manager':
     - logstash
