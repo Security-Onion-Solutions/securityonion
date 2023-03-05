@@ -1419,7 +1419,7 @@ soc:
             query: 'event.dataset:notice | groupby -sankey notice.note destination.ip | groupby notice.note | groupby notice.message | groupby notice.sub_message | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
           - name: Connections
             description: Network connection metadata
-            query: 'event.dataset:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui | groupby network.vlan.id'
+            query: 'event.dataset:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui'
           - name: DCE_RPC
             description: DCE_RPC (Distributed Computing Environment / Remote Procedure Calls) network metadata
             query: 'event.dataset:dce_rpc | groupby -sankey dce_rpc.endpoint dce_rpc.operation | groupby dce_rpc.endpoint | groupby dce_rpc.operation | groupby dce_rpc.named_pipe | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
@@ -1555,6 +1555,9 @@ soc:
           - name: Firewall
             description: Firewall logs
             query: 'event.dataset:firewall | groupby -sankey rule.action interface.name | groupby rule.action | groupby interface.name | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+          - name: VLAN
+            description: VLAN (Virtual Local Area Network) tagged logs
+            query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
       job:
       alerts:
         advanced: false
