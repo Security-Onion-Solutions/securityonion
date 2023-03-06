@@ -24,11 +24,13 @@ def showUsage(options, args):
   print('   -h                  - Prints this usage information')
   print('   -q                  - Suppress output; useful for automation of exit code value')
   print('   -j                  - Output in JSON format')
+  print('   -i                  - Consider the installation outcome regardless of whether the system appears healthy')
   print('')
   print('  Exit codes:')
   print('    0                  - Success, system appears to be running correctly')
   print('    1                  - Error, one or more subsystems are not running')
   print('    2                  - System is starting')
+  print('    3                  - System installation encountered errors')
   print('    99                 - Installation in progress')
   sys.exit(1)
 
@@ -36,6 +38,12 @@ def showUsage(options, args):
 def fail(msg):
   print(msg, file=sys.stderr)
   sys.exit(1)
+
+
+def check_installation_status(options, console):
+  if "-i" in options and os.path.isfile('/root/failure'):
+    return 3
+  return 0
 
 
 def check_system_status(options, console):
@@ -64,6 +72,8 @@ def output(options, console, code, data):
   elif "-q" not in options:
     if code == 2:
       console.print(" [bold yellow]:hourglass: [bold white]System appears to be starting. No highstate has completed since the system was restarted.")
+    if code == 3:
+      console.print(" [bold red]:exclamation: [bold white]Installation encountered errors.")
     elif code == 99:
       console.print(" [bold red]:exclamation: [bold white]Installation does not appear to be complete. A highstate has not fully completed.")
     else:
@@ -137,7 +147,9 @@ def check_container_status(options, console):
 
 def check_status(options, console):
   container_list = []
-  code = check_system_status(options, console)
+  code = check_installation_status(options, console)
+  if code == 0:
+    code = check_system_status(options, console)
   if code == 0:
     code, container_list = check_container_status(options, console)
   output(options, console, code, container_list)
@@ -150,9 +162,8 @@ def main():
   for option in args:
     if option.startswith("-"):
       options.append(option)
-      args.remove(option)
 
-  if len(args) != 0 or "-h" in options:
+  if "-h" in options or "--help" in options or "-?" in options:
     showUsage(options, None)
 
   if os.environ["USER"] != "root":

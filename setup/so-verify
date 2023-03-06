@@ -81,18 +81,27 @@ status_failed() {
 
 main() {
     exit_code=0
-    if log_has_errors; then 
-    	echo "WARNING: Errors detected during setup"
+    if [ -f /root/success ]; then
+        echo "Successfully completed setup a while ago"
+    elif [  -f /root/failure ]; then
+        echo "WARNING: Failed setup a while ago"
         exit_code=1
+    elif log_has_errors; then 
+        echo "WARNING: Errors detected during setup"
+        exit_code=1
+        touch /root/failure
     elif using_iso && cron_error_in_mail_spool; then
-    	echo "WARNING: Unexpected cron job output in mail spool"
+        echo "WARNING: Unexpected cron job output in mail spool"
         exit_code=1
+        touch /root/failure
     elif is_manager_node && status_failed; then
         echo "WARNING: Containers are not in a healthy state"
         exit_code=1
+        touch /root/failure
     else
-	    echo "Successfully completed setup!"
-	fi
+        echo "Successfully completed setup!"
+        touch /root/success
+    fi
 
     exit $exit_code
 }
