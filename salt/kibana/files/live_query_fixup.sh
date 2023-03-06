@@ -13,10 +13,10 @@ docker exec so-kibana grep -q "https://{{ GLOBALS.url_base }}" /usr/share/kibana
 if [ $? -eq 0 ]
 then
   #Do Nothing, pattern has been found
-  echo "Pattern found, exiting..."
+  echo "SO Hunt link found, exiting without changes..."
 else
-  echo "Pattern not found..."
-  docker exec so-kibana sed -i 's|href:h|href:"https://{{ GLOBALS.url_base }}/#/hunt?q=action_id%3A%20"+e+"%20%7C%20groupby%20action_id%20action_data.query%20%7C%20groupby%20host.hostname%20%22metadata.input.beats.host.ip%22"|g' /usr/share/kibana/x-pack/plugins/osquery/target/public/osquery.chunk.0.js
+  echo "SO Hunt link not found, adding link and restarting Kibana container..."
+  docker exec so-kibana sed -i 's|href:g|href:"https://{{ GLOBALS.url_base }}/#/hunt?q=action_id%3A%20"+e+"%20%7C%20groupby%20action_id%20action_data.query%20%7C%20groupby%20host.hostname%20%22metadata.input.beats.host.ip%22"|g' /usr/share/kibana/x-pack/plugins/osquery/target/public/osquery.chunk.0.js
   docker exec so-kibana sed -i 's|View in Discover|View in SO - Hunt|g' /usr/share/kibana/x-pack/plugins/osquery/target/public/osquery.chunk.0.js
   docker exec so-kibana rm /usr/share/kibana/x-pack/plugins/osquery/target/public/osquery.chunk.0.js.br
   docker exec so-kibana gzip -kf /usr/share/kibana/x-pack/plugins/osquery/target/public/osquery.chunk.0.js
