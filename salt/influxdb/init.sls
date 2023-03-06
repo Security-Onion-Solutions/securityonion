@@ -6,7 +6,7 @@
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-eval', 'so-import'] %}
 {% set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
-{% set TOKEN = salt['pillar.get']('secrets:influx_token') %}
+{% set TOKEN = salt['pillar.get']('influxdb:token') %}
 
 include:
   - salt.minion
