@@ -30,8 +30,8 @@ def showUsage(options, args):
   print('    0                  - Success, system appears to be running correctly')
   print('    1                  - Error, one or more subsystems are not running')
   print('    2                  - System is starting')
-  print('    3                  - System installation encountered errors')
   print('    99                 - Installation in progress')
+  print('    100                - System installation encountered errors')
   sys.exit(1)
 
 
@@ -42,7 +42,7 @@ def fail(msg):
 
 def check_installation_status(options, console):
   if "-i" in options and os.path.isfile('/root/failure'):
-    return 3
+    return 100
   return 0
 
 
@@ -72,10 +72,10 @@ def output(options, console, code, data):
   elif "-q" not in options:
     if code == 2:
       console.print(" [bold yellow]:hourglass: [bold white]System appears to be starting. No highstate has completed since the system was restarted.")
-    if code == 3:
-      console.print(" [bold red]:exclamation: [bold white]Installation encountered errors.")
     elif code == 99:
       console.print(" [bold red]:exclamation: [bold white]Installation does not appear to be complete. A highstate has not fully completed.")
+    elif code == 100:
+      console.print(" [bold red]:exclamation: [bold white]Installation encountered errors.")
     else:
       table = Table(title = "Security Onion Status", show_edge = False, safe_box = True, box = box.MINIMAL)
       table.add_column("Container", justify="right", style="white", no_wrap=True)
