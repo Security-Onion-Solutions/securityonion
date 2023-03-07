@@ -113,15 +113,6 @@ curclusterdelete:
     - mode: 755
     - template: jinja
 
-curclustercwarm: 
-  file.managed:
-    - name: /usr/sbin/so-curator-cluster-warm
-    - source: salt://curator/files/bin/so-curator-cluster-warm
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
 so-curator:
   docker_container.{{ CURATOROPTIONS.status }}:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-curator:{{ GLOBALS.so_version }}
