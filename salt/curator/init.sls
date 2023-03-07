@@ -182,16 +182,6 @@ so-curatorclusterdelete:
     - month: '*'
     - dayweek: '*'
 
-so-curatorclusterwarm:
-  cron.present:
-    - name: /usr/sbin/so-curator-cluster-warm > /opt/so/log/curator/cron-warm.log 2>&1
-    - user: root
-    - minute: '2'
-    - hour: '*/1'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
 {% else %}
 
 {{sls}}_state_not_allowed:
