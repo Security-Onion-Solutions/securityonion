@@ -149,6 +149,7 @@ base:
     - soctopus
     - playbook
     - elastic-fleet.install_agent_grid
+    - elastic-fleet
     - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
@@ -199,9 +200,9 @@ base:
     - schedule
     - soctopus
     - playbook
-    - docker_clean
-    - elastic-fleet
     - elastic-fleet.install_agent_grid
+    - elastic-fleet
+    - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -260,6 +261,7 @@ base:
     - soctopus
     - playbook
     - elastic-fleet.install_agent_grid
+    - elastic-fleet
     - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
@@ -319,9 +321,9 @@ base:
     - suricata
     - zeek
     - schedule
-    - docker_clean
     - elastic-fleet.install_agent_grid
     - elastic-fleet
+    - docker_clean
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
