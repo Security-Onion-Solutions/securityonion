@@ -145,6 +145,23 @@ so-curator:
     - watch:
       - file: curconf
 
+append_so-curator_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-curator
+    - unless: grep -q so-curator /opt/so/conf/so-status/so-status.conf
+  {% if not CURATOROPTIONS.start %}
+so-curator_so-status.disabled:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-curator$
+  {% else %}
+delete_so-curator_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-curator$
+  {% endif %}
+
 so-curatorclusterclose:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
