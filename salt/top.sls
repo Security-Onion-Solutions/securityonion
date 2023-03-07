@@ -106,7 +106,6 @@ base:
     - playbook
     - redis
     {%- endif %}
-    - elastic-fleet.install_agent_grid
     - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
@@ -148,7 +147,6 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet.install_agent_grid
     - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
@@ -201,7 +199,6 @@ base:
     - playbook
     - docker_clean
     - elastic-fleet
-    - elastic-fleet.install_agent_grid
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -259,7 +256,6 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet.install_agent_grid
     - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
@@ -320,7 +316,6 @@ base:
     - zeek
     - schedule
     - docker_clean
-    - elastic-fleet.install_agent_grid
     - elastic-fleet
 
   '*_receiver and G@saltversion:{{saltversion}}':
