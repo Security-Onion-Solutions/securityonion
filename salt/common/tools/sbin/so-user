@@ -496,19 +496,6 @@ EOF
   fi
 }
 
-function migrateLockedUsers() {
-  # This is a migration function to convert locked users from prior to 2.3.90
-  # to inactive users using the newer Kratos functionality. This should only
-  # find locked users once.
-  lockedEmails=$(curl -s ${kratosUrl}/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
-  if [[ -n "$lockedEmails" ]]; then
-    echo "Disabling locked users..."
-    for email in $lockedEmails; do
-      updateStatus "$email" locked
-    done
-  fi
-}
-
 function updateStatus() {
   email=$1
   status=$2
@@ -701,11 +688,6 @@ case "${operation}" in
   "valpass")
     updatePassword
     echo "Password is acceptable"
-    ;;
-
-  "migrate")
-    migrateLockedUsers
-    echo "User migration complete"
     ;;
 
   *)
