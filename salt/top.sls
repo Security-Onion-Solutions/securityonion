@@ -106,7 +106,6 @@ base:
     - playbook
     - redis
     {%- endif %}
-    - elastic-fleet.install_agent_grid
     - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
@@ -148,7 +147,6 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet.install_agent_grid
     - elastic-fleet
     - docker_clean
 
@@ -200,7 +198,6 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet.install_agent_grid
     - elastic-fleet
     - docker_clean
 
@@ -260,7 +257,6 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet.install_agent_grid
     - elastic-fleet
     - docker_clean
 
@@ -321,7 +317,6 @@ base:
     - suricata
     - zeek
     - schedule
-    - elastic-fleet.install_agent_grid
     - elastic-fleet
     - docker_clean
 
