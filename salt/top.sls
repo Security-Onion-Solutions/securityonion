@@ -147,6 +147,7 @@ base:
     - schedule
     - soctopus
     - playbook
+    - elastic-fleet
     - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
@@ -197,8 +198,8 @@ base:
     - schedule
     - soctopus
     - playbook
-    - docker_clean
     - elastic-fleet
+    - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -256,6 +257,7 @@ base:
     - schedule
     - soctopus
     - playbook
+    - elastic-fleet
     - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
@@ -315,8 +317,8 @@ base:
     - suricata
     - zeek
     - schedule
-    - docker_clean
     - elastic-fleet
+    - docker_clean
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
