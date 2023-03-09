@@ -79,6 +79,19 @@ status_failed() {
     return 1
 }
 
+create_temp_so_status_if_missing() {
+    if ! which so-status &> /dev/null; then
+        if [ -f /root/success ]; then
+            echo "echo 'Minion installation succeeded - so-status not yet available'" > /usr/sbin/so-status
+            echo "exit 0" >> /usr/sbin/so-status
+        else
+            echo "echo 'Installation failed - so-status not available'" > /usr/sbin/so-status
+            echo "exit 100" >> /usr/sbin/so-status
+        fi
+        chmod a+x /usr/sbin/so-status
+    fi
+}
+
 main() {
     exit_code=0
     if [ -f /root/success ]; then
@@ -103,6 +116,8 @@ main() {
         touch /root/success
     fi
 
+    create_temp_so_status_if_missing
+    
     exit $exit_code
 }
 
