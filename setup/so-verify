@@ -79,11 +79,17 @@ status_failed() {
     return 1
 }
 
-create_temp_so_status_if_missing() {
-    if ! which so-status &> /dev/null; then
+# Creates scripts that are going to be invoked by the automated test system. These scripts will 
+# overwritten by Salt, once the minion is accepted into the grid and the salt states run. 
+create_temp_scripts_if_missing() {
+    if [ ! -f /usr/sbin/so-status ]; then
         if [ -f /root/success ]; then
-            echo "echo 'Minion installation succeeded - so-status not yet available'" > /usr/sbin/so-status
+            echo "echo 'so-status not yet available'" > /usr/sbin/so-status
             echo "exit 0" >> /usr/sbin/so-status
+
+            # Pretend so-test succeeded in the interim period while waiting for this minion to be accepted. This avoids tests getting hung up.
+            echo "echo 'so-test not yet available'" > /usr/sbin/so-test
+            echo "exit 0" >> /usr/sbin/so-test
         else
             echo "echo 'Installation failed - so-status not available'" > /usr/sbin/so-status
             echo "exit 100" >> /usr/sbin/so-status
@@ -116,7 +122,7 @@ main() {
         touch /root/success
     fi
 
-    create_temp_so_status_if_missing
+    create_temp_scripts_if_missing
     
     exit $exit_code
 }
