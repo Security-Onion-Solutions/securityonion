@@ -1606,6 +1606,15 @@ networking_needful() {
 	fi
 	set_main_ip
 	compare_main_nic_ip
+
+	# Attempt to autodetect the manager IP, if an offset value exists 
+	if [[ -n "$MSRVIP_OFFSET" && -z "$MSRVIP" ]]; then
+		mips1=$(echo "$MNIC_IP" | awk -F. '{print $1}') 
+		mips2=$(echo "$MNIC_IP" | awk -F. '{print $2}') 
+		mips3=$(echo "$MNIC_IP" | awk -F. '{print $3}') 
+		mips4=$(echo "$MNIC_IP" | awk -F. '{print $4}') 
+		MSRVIP="$mips1.$mips2.$mips3.$((mips4+$MSRVIP_OFFSET))"
+	fi
 }
 
 network_setup() {
