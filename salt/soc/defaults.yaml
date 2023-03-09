@@ -7,19 +7,19 @@ soc:
       icon: fa-crosshairs
       target:
       links:
-        - '/#/hunt?q="{value|escape}" | groupby event.module event.dataset'
+        - '/#/hunt?q="{value|escape}" | groupby event.module* event.dataset'
     - name: actionCorrelate
       description: actionCorrelateHelp
       icon: fab fa-searchengin
       target: ''
       links:
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module event.dataset'
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module event.dataset'
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module event.dataset'
-        - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module event.dataset'
-        - '/#/hunt?q="{:log.id.fuid}" | groupby event.module event.dataset'
-        - '/#/hunt?q="{:log.id.uid}" | groupby event.module event.dataset'
-        - '/#/hunt?q="{:network.community_id}" | groupby event.module event.dataset'
+        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module* event.dataset'
+        - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+        - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+        - '/#/hunt?q="{:log.id.fuid}" | groupby event.module* event.dataset'
+        - '/#/hunt?q="{:log.id.uid}" | groupby event.module* event.dataset'
+        - '/#/hunt?q="{:network.community_id}" | groupby event.module* event.dataset'
     - name: actionPcap
       description: actionPcapHelp
       icon: fa-stream
@@ -560,13 +560,13 @@ soc:
       - destination.geo.country_iso_code
       - user.name
       - source.ip
-    ':sysmon:':
+    ':windows.sysmon_operational:':
       - soc_timestamp
-      - event.dataset
+      - event.action
       - process.executable
       - user.name
       - file.target
-      - dns.query.name
+      - dns.question.name
       - winlog.event_data.TargetObject
     '::network_connection':
       - soc_timestamp
@@ -1116,12 +1116,12 @@ soc:
             enabled: true
         queries:
           - name: Default Query
-            description: Show all events grouped by the origin host
+            description: Show all events grouped by the observer host
             query: '* | groupby observer.name'
             showSubtitle: true
           - name: Log Type
             description: Show all events grouped by module and dataset
-            query: '* | groupby event.module event.dataset'
+            query: '* | groupby event.module* event.dataset'
             showSubtitle: true
           - name: SOC Auth
             description: Users authenticated to SOC grouped by IP address and identity
@@ -1145,11 +1145,11 @@ soc:
             showSubtitle: true
           - name: Sysmon Events
             description: Show all Sysmon logs grouped by event type
-            query: 'event.module:sysmon | groupby event.dataset'
+            query: 'event.dataset: windows.sysmon_operational | groupby event.action'
             showSubtitle: true
           - name: Sysmon Usernames
             description: Show all Sysmon logs grouped by username
-            query: 'event.module:sysmon | groupby event.dataset, user.name.keyword'
+            query: 'event.dataset: windows.sysmon_operational | groupby event.action, user.name.keyword'
             showSubtitle: true
           - name: Strelka
             description: Show all Strelka logs grouped by file type
@@ -1380,7 +1380,7 @@ soc:
         queries:
           - name: Overview
             description: Overview of all events
-            query: '* | groupby -sankey event.dataset event.category* | groupby -pie event.category | groupby -bar event.module | groupby event.dataset | groupby event.module | groupby event.category | groupby observer.name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            query: '* | groupby -sankey event.dataset event.category* | groupby -pie event.category | groupby -bar event.module* | groupby event.dataset | groupby event.module* | groupby event.category | groupby observer.name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
           - name: SOC Auth
             description: SOC (Security Onion Console) authentication logs
             query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby -sankey http_request.headers.x-real-ip identity_id | groupby http_request.headers.x-real-ip | groupby identity_id | groupby http_request.headers.user-agent'
@@ -1389,28 +1389,31 @@ soc:
             query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
           - name: Alerts
             description: Overview of all alerts
-            query: 'event.dataset:alert | groupby event.module | groupby rule.name | groupby event.severity | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            query: 'event.dataset:alert | groupby event.module* | groupby rule.name | groupby event.severity | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
           - name: NIDS Alerts
             description: NIDS (Network Intrusion Detection System) alerts
             query: 'event.category:network AND event.dataset:alert | groupby rule.category | groupby -sankey source.ip destination.ip | groupby rule.name | groupby rule.uuid | groupby rule.gid | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
           - name: Sysmon Overview
             description: Overview of all Sysmon data types
-            query: 'event.module:sysmon | groupby -sankey event.dataset winlog.computer_name | groupby -sankey winlog.computer_name user.name | groupby winlog.computer_name | groupby event.dataset | groupby user.name | groupby dns.query.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby file.target | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Sysmon Registry
-            description: Registry changes captured by Sysmon
-            query: '(event.dataset:registry_create_delete OR event.dataset:registry_value_set OR event.dataset:registry_key_value_rename) | groupby -sankey event.dataset winlog.computer_name | groupby winlog.computer_name | groupby event.dataset | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.executable winlog.event_data.TargetObject'
-          - name: Sysmon DNS
-            description: DNS queries captured by Sysmon
-            query: 'event.dataset:dns_query | groupby -sankey winlog.computer_name dns.query.name | groupby winlog.computer_name | groupby process.executable | groupby dns.query.name | groupby dns.answers.name'
-          - name: Sysmon Process
-            description: Process activity captured by Sysmon
-            query: '(event.dataset:process_creation OR event.dataset:process_terminated OR event.dataset:process_access) | groupby -sankey winlog.computer_name user.name | groupby winlog.computer_name | groupby user.name | groupby event.dataset | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
-          - name: Sysmon File
-            description: File activity captured by Sysmon
-            query: 'event.module:sysmon AND event.dataset:file_* | groupby -sankey winlog.computer_name process.executable | groupby winlog.computer_name | groupby event.dataset | groupby file.target | groupby process.executable'
-          - name: Sysmon Network
-            description: Network activity captured by Sysmon
-            query: 'event.dataset:network_connection | groupby -sankey winlog.computer_name destination.ip destination.port | groupby winlog.computer_name | groupby user.name | groupby process.executable | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            query: 'event.dataset:windows.sysmon_operational | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby host.name | groupby event.category event.action  | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+          - name: Host Overview
+            description: Overview of all host data types
+            query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'
+          - name: Host Registry Changes
+            description: Windows Registry changes
+            query: 'event.category: registry | groupby -sankey event.action host.name | groupby event.dataset event.action | groupby host.name | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
+          - name: Host DNS & Process Mappings 
+            description: DNS queries mapped to originating processes
+            query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
+          - name: Host Process Activity
+            description: Process activity captured on an endpoint
+            query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
+          - name: Host File Activity
+            description: File activity captured on an endpoint
+            query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
+          - name: Host Network & Process Mappings
+            description: Network activity mapped to originating processes
+            query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.dataset* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
           - name: Strelka
             description: Strelka file analysis
             query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.name'
@@ -1614,7 +1617,7 @@ soc:
               - acknowledged
         queries:
           - name: 'Group By Name, Module'
-            query: '* | groupby rule.name event.module event.severity_label'
+            query: '* | groupby rule.name event.module* event.severity_label'
           - name: 'Group By Sensor, Source IP/Port, Destination IP/Port, Name'
             query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label'
           - name: 'Group By Source IP, Name'
