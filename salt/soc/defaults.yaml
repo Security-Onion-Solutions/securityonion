@@ -562,11 +562,11 @@ soc:
       - source.ip
     ':windows.sysmon_operational:':
       - soc_timestamp
-      - event.dataset
+      - event.action
       - process.executable
       - user.name
       - file.target
-      - dns.query.name
+      - dns.question.name
       - winlog.event_data.TargetObject
     '::network_connection':
       - soc_timestamp
@@ -1116,7 +1116,7 @@ soc:
             enabled: true
         queries:
           - name: Default Query
-            description: Show all events grouped by the origin host
+            description: Show all events grouped by the observer host
             query: '* | groupby observer.name'
             showSubtitle: true
           - name: Log Type
@@ -1396,21 +1396,24 @@ soc:
           - name: Sysmon Overview
             description: Overview of all Sysmon data types
             query: 'event.dataset:windows.sysmon_operational | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby host.name | groupby event.category event.action  | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+          - name: Host Overview
+            description: Overview of all host data types
+            query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'
           - name: Host Registry Changes
             description: Windows Registry changes
             query: 'event.category: registry | groupby -sankey event.action host.name | groupby event.dataset event.action | groupby host.name | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
           - name: Host DNS & Process Mappings 
             description: DNS queries mapped to originating processes
-            query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.provider event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
+            query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
           - name: Host Process Activity
             description: Process activity captured on an endpoint
             query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
           - name: Host File Activity
             description: File activity captured on an endpoint
-            query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.provider event.action event.type | groupby file.name | groupby process.executable'
+            query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
           - name: Host Network & Process Mappings
             description: Network activity mapped to originating processes
-            query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.provider* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.dataset* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
           - name: Strelka
             description: Strelka file analysis
             query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.name'
@@ -1432,11 +1435,9 @@ soc:
           - name: DPD
             description: DPD (Dynamic Protocol Detection) errors
             query: 'event.dataset:dpd | groupby error.reason | groupby network.protocol | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
- 
           - name: Files
             description: Files seen in network traffic
             query: 'event.dataset:file | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.bytes.total | groupby source.ip | groupby destination.ip | groupby destination_geo.organization_name'
- 
           - name: FTP
             description: FTP (File Transfer Protocol) network metadata
             query: 'event.dataset:ftp | groupby -sankey ftp.command destination.ip | groupby ftp.command | groupby ftp.argument | groupby ftp.user | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
