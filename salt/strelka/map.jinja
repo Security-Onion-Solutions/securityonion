@@ -1,0 +1,20 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% import_yaml 'strelka/defaults.yaml' as STRELKADEFAULTS %}
+{% set HOST = GLOBALS.hostname %}
+
+{% set backend_coordinator_port = STRELKADEFAULTS.strelka.config.backend.backend.coordinator.addr.split(':')[1] %}
+{% do STRELKADEFAULTS.strelka.config.backend.backend.coordinator.update({'addr': HOST ~ ':' ~ backend_coordinator_port}) %}
+
+{% set filestream_conn_port = STRELKADEFAULTS.strelka.config.filestream.conn.server.split(':')[1] %}
+{% do STRELKADEFAULTS.strelka.config.filestream.conn.update({'server': HOST ~ ':' ~ filestream_conn_port}) %}
+
+{% set frontend_coordinator_port = STRELKADEFAULTS.strelka.config.frontend.coordinator.addr.split(':')[1] %}
+{% do STRELKADEFAULTS.strelka.config.frontend.coordinator.update({'addr': HOST ~ ':' ~ frontend_coordinator_port}) %}
+
+{% set frontend_gatekeeper_port = STRELKADEFAULTS.strelka.config.frontend.gatekeeper.addr.split(':')[1] %}
+{% do STRELKADEFAULTS.strelka.config.frontend.gatekeeper.update({'addr': HOST ~ ':' ~ frontend_gatekeeper_port}) %}
+
+{% set manager_coordinator_port = STRELKADEFAULTS.strelka.config.manager.coordinator.addr.split(':')[1] %}
+{% do STRELKADEFAULTS.strelka.config.manager.coordinator.update({'addr': HOST ~ ':' ~ manager_coordinator_port}) %}
+
+{% set STRELKAMERGED = salt['pillar.get']('strelka', STRELKADEFAULTS.strelka, merge=True) %}
