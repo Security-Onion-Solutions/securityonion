@@ -10,6 +10,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - influxdb.token
     - node_data.ips
 
   '* and not *_eval and not *_import':
@@ -27,6 +28,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
 
   '*_manager':
     - logstash
