@@ -33,7 +33,7 @@ yara_update_script:
     - template: jinja
     - defaults:
         ISAIRGAP: {{ GLOBALS.airgap }}
-        EXCLUDEDRULES: {{ STRELKAMERGED.excluded_rules }}
+        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
 strelka_yara_update:
   cron.present:

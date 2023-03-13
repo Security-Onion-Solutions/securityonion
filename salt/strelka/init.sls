@@ -7,7 +7,6 @@
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
 
 {% from 'strelka/map.jinja' import STRELKAMERGED %}
 {% from 'strelka/filecheck/map.jinja' import FILECHECKDEFAULTS %}
@@ -35,6 +34,7 @@ backend_backend_config:
     - template: jinja
     - user: 939
     - group: 939
+    - makedirs: True
     - defaults:
         BACKENDCONFIG: {{ STRELKAMERGED.config.backend.backend }}
 
@@ -65,6 +65,7 @@ filestream_config:
     - template: jinja
     - user: 939
     - group: 939
+    - makedirs: True
     - defaults:
         FILESTREAMCONFIG: {{ STRELKAMERGED.config.filestream }}
 
@@ -75,6 +76,7 @@ frontend_config:
     - template: jinja
     - user: 939
     - group: 939
+    - makedirs: True
     - defaults:
         FRONTENDCONFIG: {{ STRELKAMERGED.config.frontend }}
 
@@ -85,10 +87,11 @@ manager_config:
     - template: jinja
     - user: 939
     - group: 939
+    - makedirs: True
     - defaults:
         MANAGERCONFIG: {{ STRELKAMERGED.config.manager }}
 
-{% if STRELKA_RULES == 1 %}
+{% if STRELKAMERGED.rules.enabled %}
 
 strelkarules:
   file.recurse:
@@ -101,9 +104,11 @@ strelkarules:
 {% if grains['role'] in GLOBALS.manager_roles %}
 strelkarepos:
   file.managed:
-    - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
-    - source: salt://strelka/rules/repos.txt.jinja
+    - name: /opt/so/conf/strelka/repos.txt
+    - source: salt://strelka/repos.txt.jinja
     - template: jinja
+    - defaults:
+        STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
 
 {% endif %}
 {% endif %}
