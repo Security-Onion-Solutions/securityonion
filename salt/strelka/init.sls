@@ -113,7 +113,7 @@ strelkarules:
 strelkarepos:
   file.managed:
     - name: /opt/so/conf/strelka/repos.txt
-    - source: salt://strelka/repos.txt.jinja
+    - source: salt://strelka/rules/repos.txt.jinja
     - template: jinja
     - defaults:
         STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
