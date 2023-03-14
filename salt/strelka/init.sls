@@ -58,6 +58,14 @@ backend_passwords:
     - defaults:
         PASSWORDS: {{ STRELKAMERGED.config.backend.passwords }}
 
+backend_taste:
+  file.managed:
+    - name: /opt/so/conf/strelka/backend/taste/taste.yara
+    - source: salt://strelka/files/backend/taste/taste.yara
+    - makedirs: True
+    - user: 939
+    - group: 939
+
 filestream_config:
   file.managed:
     - name: /opt/so/conf/strelka/filestream/filestream.yaml
