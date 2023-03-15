@@ -1,19 +1,559 @@
 strelka:
-  ignore:
-    - apt_flame2_orchestrator.yar
-    - apt_tetris.yar
-    - gen_susp_js_obfuscatorio.yar
-    - gen_webshells.yar
-    - generic_anomalies.yar
-    - general_cloaking.yar
-    - thor_inverse_matches.yar
-    - yara_mixed_ext_vars.yar
-    - apt_apt27_hyperbro.yar
-    - apt_turla_gazer.yar
-    - gen_google_anomaly.yar
-    - gen_icon_anomalies.yar
-    - gen_nvidia_leaked_cert.yar
-    - gen_sign_anomalies.yar
-    - gen_susp_xor.yar
-    - gen_webshells_ext_vars.yar
-    - configured_vulns_ext_vars.yar
+  config:
+    backend:
+      backend:
+        logging_cfg: '/etc/strelka/logging.yaml'
+        limits:
+          max_files: 0
+          time_to_live: 0
+          max_depth: 15
+          distribution: 600
+          scanner: 150
+        coordinator:
+          addr: 'HOST:6380'
+          db: 0
+        tasting:
+          mime_db: '/usr/lib/file/magic.mgc'
+          yara_rules: '/etc/strelka/taste/'
+        scanners:
+          'ScanBase64':
+            - positive:
+                filename: '^base64_'
+              priority: 5
+          'ScanBatch':
+            - positive:
+                flavors:
+                  - 'text/x-msdos-batch'
+                  - 'batch_file'
+              priority: 5
+          'ScanBzip2':
+            - positive:
+                flavors:
+                  - 'application/x-bzip2'
+                  - 'bzip2_file'
+              priority: 5
+          'ScanDocx':
+            - positive:
+                flavors:
+                  - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              priority: 5
+              options:
+                extract_text: False
+          'ScanElf':
+            - positive:
+                flavors:
+                  - 'application/x-object'
+                  - 'application/x-executable'
+                  - 'application/x-sharedlib'
+                  - 'application/x-coredump'
+                  - 'elf_file'
+              priority: 5
+          'ScanEmail':
+            - positive:
+                flavors:
+                  - 'application/vnd.ms-outlook'
+                  - 'message/rfc822'
+                  - 'email_file'
+              priority: 5
+          'ScanEntropy':
+            - positive:
+                flavors:
+                  - '*'
+              priority: 5
+          'ScanExiftool':
+            - positive:
+                flavors:
+                  - 'application/msword'
+                  - 'application/vnd.openxmlformats-officedocument'
+                  - 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                  - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                  - 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  - 'olecf_file'
+                  - 'ooxml_file'
+                  - 'audio/mpeg'
+                  - 'mp3_file'
+                  - 'mhtml_file'
+                  - 'application/pdf'
+                  - 'pdf_file'
+                  - 'text/rtf'
+                  - 'rtf_file'
+                  - 'wordml_file'
+                  - 'application/x-dosexec'
+                  - 'mz_file'
+                  - 'application/x-object'
+                  - 'application/x-executable'
+                  - 'application/x-sharedlib'
+                  - 'application/x-coredump'
+                  - 'elf_file'
+                  - 'lnk_file'
+                  - 'application/x-mach-binary'
+                  - 'macho_file'
+                  - 'image/gif'
+                  - 'gif_file'
+                  - 'image/jpeg'
+                  - 'jpeg_file'
+                  - 'image/png'
+                  - 'png_file'
+                  - 'image/tiff'
+                  - 'type_is_tiff'
+                  - 'image/x-ms-bmp'
+                  - 'bmp_file'
+                  - 'application/x-shockwave-flash'
+                  - 'fws_file'
+                  - 'psd_file'
+                  - 'video/mp4'
+                  - 'video/quicktime'
+                  - 'video/x-msvideo'
+                  - 'avi_file'
+                  - 'video/x-ms-wmv'
+                  - 'wmv_file'
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+          'ScanGif':
+            - positive:
+                flavors:
+                  - 'image/gif'
+                  - 'gif_file'
+              priority: 5
+          'ScanGzip':
+            - positive:
+                flavors:
+                  - 'application/gzip'
+                  - 'application/x-gzip'
+                  - 'gzip_file'
+              priority: 5
+          'ScanHash':
+            - positive:
+                flavors:
+                  - '*'
+              priority: 5
+          'ScanHeader':
+            - positive:
+                flavors:
+                  - '*'
+              priority: 5
+              options:
+                length: 50
+          'ScanHtml':
+            - positive:
+                flavors:
+                  - 'hta_file'
+                  - 'text/html'
+                  - 'html_file'
+              priority: 5
+              options:
+                parser: "html5lib"
+          'ScanIni':
+            - positive:
+                filename: '(\.([Cc][Ff][Gg]|[Ii][Nn][Ii])|PROJECT)$'
+                flavors:
+                  - 'ini_file'
+              priority: 5
+          'ScanJarManifest':
+            - positive:
+                flavors:
+                  - 'jar_manifest_file'
+              priority: 5
+          'ScanJavascript':
+            - negative:
+                flavors:
+                  - 'text/html'
+                  - 'html_file'
+              positive:
+                flavors:
+                  - 'javascript_file'
+                  - 'text/javascript'
+              priority: 5
+              options:
+                beautify: True
+          'ScanJpeg':
+            - positive:
+                flavors:
+                  - 'image/jpeg'
+                  - 'jpeg_file'
+              priority: 5
+          'ScanJson':
+            - positive:
+                flavors:
+                  - 'application/json'
+                  - 'json_file'
+              priority: 5
+          'ScanLibarchive':
+            - positive:
+                flavors:
+                  - 'application/vnd.ms-cab-compressed'
+                  - 'cab_file'
+                  - 'application/x-7z-compressed'
+                  - '_7zip_file'
+                  - 'application/x-cpio'
+                  - 'cpio_file'
+                  - 'application/x-xar'
+                  - 'xar_file'
+                  - 'arj_file'
+                  - 'iso_file'
+                  - 'application/x-debian-package'
+                  - 'debian_package_file'
+              priority: 5
+              options:
+                limit: 1000
+          'ScanLzma':
+            - positive:
+                flavors:
+                  - 'application/x-lzma'
+                  - 'lzma_file'
+                  - 'application/x-xz'
+                  - 'xz_file'
+              priority: 5
+          'ScanMacho':
+            - positive:
+                flavors:
+                  - 'application/x-mach-binary'
+                  - 'macho_file'
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+          'ScanOcr':
+            - positive:
+                flavors:
+                  - 'image/jpeg'
+                  - 'jpeg_file'
+                  - 'image/png'
+                  - 'png_file'
+                  - 'image/tiff'
+                  - 'type_is_tiff'
+                  - 'image/x-ms-bmp'
+                  - 'bmp_file'
+              priority: 5
+              options:
+                extract_text: False
+                tmp_directory: '/dev/shm/'
+          'ScanOle':
+            - positive:
+                flavors:
+                  - 'application/CDFV2'
+                  - 'application/msword'
+                  - 'olecf_file'
+              priority: 5
+          'ScanPdf':
+            - positive:
+                flavors:
+                  - 'application/pdf'
+                  - 'pdf_file'
+              priority: 5
+              options:
+                extract_text: False
+                limit: 2000
+          'ScanPe':
+            - positive:
+                flavors:
+                  - 'application/x-dosexec'
+                  - 'mz_file'
+              priority: 5
+          'ScanPgp':
+            - positive:
+                flavors:
+                  - 'application/pgp-keys'
+                  - 'pgp_file'
+              priority: 5
+          'ScanPhp':
+            - positive:
+                flavors:
+                  - 'text/x-php'
+                  - 'php_file'
+              priority: 5
+          'ScanPkcs7':
+            - positive:
+                flavors:
+                  - 'pkcs7_file'
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+          'ScanPlist':
+            - positive:
+                flavors:
+                  - 'bplist_file'
+                  - 'plist_file'
+              priority: 5
+              options:
+                keys:
+                  - 'KeepAlive'
+                  - 'Label'
+                  - 'NetworkState'
+                  - 'Program'
+                  - 'ProgramArguments'
+                  - 'RunAtLoad'
+                  - 'StartInterval'
+          'ScanRar':
+            - positive:
+                flavors:
+                  - 'application/x-rar'
+                  - 'rar_file'
+              priority: 5
+              options:
+                limit: 1000
+          'ScanRpm':
+            - positive:
+                flavors:
+                  - 'application/x-rpm'
+                  - 'rpm_file'
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+          'ScanRtf':
+            - positive:
+                flavors:
+                  - 'text/rtf'
+                  - 'rtf_file'
+              priority: 5
+              options:
+                limit: 1000
+          'ScanRuby':
+            - positive:
+                flavors:
+                  - 'text/x-ruby'
+              priority: 5
+          'ScanSwf':
+            - positive:
+                flavors:
+                  - 'application/x-shockwave-flash'
+                  - 'fws_file'
+                  - 'cws_file'
+                  - 'zws_file'
+              priority: 5
+          'ScanTar':
+            - positive:
+                flavors:
+                  - 'application/x-tar'
+                  - 'tar_file'
+              priority: 5
+              options:
+                limit: 1000
+          'ScanTnef':
+            - positive:
+                flavors:
+                  - 'application/vnd.ms-tnef'
+                  - 'tnef_file'
+              priority: 5
+          'ScanUpx':
+            - positive:
+                flavors:
+                  - 'upx_file'
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+          'ScanUrl':
+            - negative:
+                flavors:
+                  - 'javascript_file'
+              positive:
+                flavors:
+                  - 'text/plain'
+              priority: 5
+          'ScanVb':
+            - positive:
+                flavors:
+                  - 'vb_file'
+                  - 'vbscript'
+              priority: 5
+          'ScanVba':
+            - positive:
+                flavors:
+                  - 'mhtml_file'
+                  - 'application/msword'
+                  - 'olecf_file'
+                  - 'wordml_file'
+              priority: 5
+              options:
+                analyze_macros: True
+          'ScanX509':
+            - positive:
+                flavors:
+                  - 'x509_der_file'
+              priority: 5
+              options:
+                type: 'der'
+            - positive:
+                flavors:
+                  - 'x509_pem_file'
+              priority: 5
+              options:
+                type: 'pem'
+          'ScanXml':
+            - positive:
+                flavors:
+                  - 'application/xml'
+                  - 'text/xml'
+                  - 'xml_file'
+                  - 'mso_file'
+                  - 'soap_file'
+              priority: 5
+          'ScanYara':
+            - positive:
+                flavors:
+                  - '*'
+              priority: 5
+              options:
+                location: '/etc/yara/'
+          'ScanZip':
+            - positive:
+                flavors:
+                  - 'application/java-archive'
+                  - 'application/zip'
+                  - 'zip_file'
+                  - 'application/vnd.openxmlformats-officedocument'
+                  - 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                  - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                  - 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  - 'ooxml_file'
+              priority: 5
+              options:
+                limit: 1000
+                password_file: '/etc/strelka/passwords.dat'
+          'ScanZlib':
+            - positive:
+                flavors:
+                  - 'application/zlib'
+                  - 'zlib_file'
+              priority: 5
+      logging:
+        version: 1
+        formatters:
+          simple:
+            format: '%(asctime)s - [%(levelname)s] %(name)s [%(module)s.%(funcName)s]: %(message)s'
+            datefmt: '%Y-%m-%d %H:%M:%S'
+        handlers:
+          console:
+            class: logging.StreamHandler
+            formatter: simple
+            stream: ext://sys.stdout
+        root:
+          level: DEBUG
+          handlers: [console]
+        loggers:
+          OpenSSL:
+            propagate: 0
+          bs4:
+            propagate: 0
+          bz2:
+            propagate: 0
+          chardet:
+            propagate: 0
+          docx:
+            propagate: 0
+          elftools:
+            propagate: 0
+          email:
+            propagate: 0
+          entropy:
+            propagate: 0
+          esprima:
+            propagate: 0
+          gzip:
+            propagate: 0
+          hashlib:
+            propagate: 0
+          json:
+            propagate: 0
+          libarchive:
+            propagate: 0
+          lxml:
+            propagate: 0
+          lzma:
+            propagate: 0
+          macholibre:
+            propagate: 0
+          olefile:
+            propagate: 0
+          oletools:
+            propagate: 0
+          pdfminer:
+            propagate: 0
+          pefile:
+            propagate: 0
+          pgpdump:
+            propagate: 0
+          pygments:
+            propagate: 0
+          pylzma:
+            propagate: 0
+          rarfile:
+            propagate: 0
+          requests:
+            propagate: 0
+          rpmfile:
+            propagate: 0
+          ssdeep:
+            propagate: 0
+          tarfile:
+            propagate: 0
+          tnefparse:
+            propagate: 0
+          yara:
+            propagate: 0
+          zipfile:
+            propagate: 0
+          zlib:
+            propagate: 0
+      passwords:
+        - infected
+        - password
+    filestream:
+      conn:
+        server: 'HOST:57314'
+        cert: ''
+        timeout:
+          dial: 5s
+          file: 1m
+      throughput:
+        concurrency: 8
+        chunk: 32768
+        delay: 0s
+      files:
+        patterns:
+          - '/nsm/strelka/unprocessed/*'
+        delete: false
+        gatekeeper: true
+        processed: '/nsm/strelka/processed'
+      response:
+        report: 5s
+      delta: 5s
+      staging: '/nsm/strelka/staging'
+    frontend:
+      server: ":57314"
+      coordinator:
+        addr: 'HOST:6380'
+        db: 0
+      gatekeeper:
+        addr: 'HOST:6381'
+        db: 0
+        ttl: 1h
+      response:
+        log: "/var/log/strelka/strelka.log"
+    manager:
+        coordinator:
+          addr: 'HOST:6380'
+          db: 0
+
+  rules:
+    enabled: True
+    repos:
+      - https://github.com/Neo23x0/signature-base
+    excluded:
+      - apt_flame2_orchestrator.yar
+      - apt_tetris.yar
+      - gen_susp_js_obfuscatorio.yar
+      - gen_webshells.yar
+      - generic_anomalies.yar
+      - general_cloaking.yar
+      - thor_inverse_matches.yar
+      - yara_mixed_ext_vars.yar
+      - apt_apt27_hyperbro.yar
+      - apt_turla_gazer.yar
+      - gen_google_anomaly.yar
+      - gen_icon_anomalies.yar
+      - gen_nvidia_leaked_cert.yar
+      - gen_sign_anomalies.yar
+      - gen_susp_xor.yar
+      - gen_webshells_ext_vars.yar
+      - configured_vulns_ext_vars.yar

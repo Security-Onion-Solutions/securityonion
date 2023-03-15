@@ -5,6 +5,9 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'strelka/map.jinja' import STRELKAMERGED %}
+
 include:
   - salt.minion
   - kibana.secrets
@@ -19,6 +22,18 @@ socore_own_saltstack:
     - recurse:
       - user
       - group
+
+yara_update_script:
+  file.managed:
+    - name: /usr/sbin/so-yara-update
+    - source: salt://manager/files/so-yara-update.jinja
+    - user: root
+    - group: root
+    - mode: 755
+    - template: jinja
+    - defaults:
+        ISAIRGAP: {{ GLOBALS.airgap }}
+        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
 strelka_yara_update:
   cron.present:
