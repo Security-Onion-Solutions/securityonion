@@ -51,6 +51,8 @@ base:
     - adv_global
     - manager.soc_manager
     - manager.adv_manager
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
     - kratos.soc_kratos
@@ -90,6 +92,9 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - soc.soc_soc
     - kratos.soc_kratos
     - kratos.adv_kratos
@@ -120,6 +125,8 @@ base:
     - secrets
     - healthcheck.standalone
     - soc_global
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -129,6 +136,7 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
     - soc.soc_soc
     - backup.soc_backup
     - backup.adv_backup
@@ -195,6 +203,7 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
     - soc.soc_soc
     - soc_global
     - adv_global
