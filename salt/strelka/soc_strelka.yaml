@@ -3,574 +3,587 @@ strelka:
     backend:
       backend:
         logging_cfg:
-          description: Location in the container where the config file is located.
+          description: Path to the Python logging configuration.
           readonly: True
           global: False
           helpLink: strelka.html
           advanced: True
         limits:
           max_files:
-            description: Max Files.
+            description: Number of files the backend will process before shutting down.
             readonly: False
             global: False
             helpLink: strelka.html
           time_to_live: 
-            description: Location in the container where the config file is located.
+            description: Amount of time (in seconds) that the backend will run before shutting down (0 to disable).
             readonly: False
             global: False
             helpLink: strelka.html
           max_depth: 
-            description: Location in the container where the config file is located.
+            description: Maximum depth that extracted files will be processed by the backend.
             readonly: False
             global: False
             helpLink: strelka.html
           distribution: 
-            description: Location in the container where the config file is located.
+            description: Amount of time (in seconds) that a single file can be distributed to all scanners.
             readonly: False
             global: False
             helpLink: strelka.html
           scanner: 
-            description: Location in the container where the config file is located.
+            description: Amount of time (in seconds) that a scanner can spend scanning a file (can be overridden per scanner).
             readonly: False
             global: False
             helpLink: strelka.html
         coordinator:
           addr:
-            description: Location in the container where the config file is located.
+            description: Network address of the coordinator.
             readonly: False
             global: False
             helpLink: strelka.html
             advanced: True
-          db: 
-            description: Location in the container where the config file is located.
+          db:
+            description: Redis database of the coordinator.
             readonly: False
             global: False
             helpLink: strelka.html
             advanced: True
         tasting:
-          mime_db: '/usr/lib/file/magic.mgc'
-            description: Location in the container where the config file is located.
+          mime_db:
+            description: Location of the MIME database used to taste files.
             readonly: True
             global: False
             helpLink: strelka.html
             advanced: True
-          yara_rules: '/etc/strelka/taste/'
-            description: Location in the container where the config file is located.
+          yara_rules:
+            description: Location of the directory of YARA files that contains rules used to taste files.
             readonly: True
             global: False
             helpLink: strelka.html
             advanced: True
         scanners:
-          'ScanBase64':
-            - positive:
-                filename: '^base64_'
-                  description: Location in the container where the config file is located.
-                  readonly: False
-                  global: False
-                  helpLink: strelka.html
-                  advanced: True
-              priority: 
-                description: Location in the container where the config file is located.
-                readonly: False
-                global: False
-                helpLink: strelka.html
-
-          'ScanBatch':
-            - positive:
-                flavors:
-                  - 'text/x-msdos-batch'
-                  - 'batch_file'
-              priority: 5
-          'ScanBzip2':
-            - positive:
-                flavors:
-                  - 'application/x-bzip2'
-                  - 'bzip2_file'
-              priority: 5
-          'ScanDocx':
-            - positive:
-                flavors:
-                  - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-              priority: 5
-              options:
-                extract_text: False
-          'ScanElf':
-            - positive:
-                flavors:
-                  - 'application/x-object'
-                  - 'application/x-executable'
-                  - 'application/x-sharedlib'
-                  - 'application/x-coredump'
-                  - 'elf_file'
-              priority: 5
-          'ScanEmail':
-            - positive:
-                flavors:
-                  - 'application/vnd.ms-outlook'
-                  - 'message/rfc822'
-                  - 'email_file'
-              priority: 5
-          'ScanEntropy':
-            - positive:
-                flavors:
-                  - '*'
-              priority: 5
-          'ScanExiftool':
-            - positive:
-              flavors:
-                description: Location in the container where the config file is located.
-                readonly: False
-                global: False
-                helpLink: strelka.html
-                advacned: True
-              priority: 5
-              options:
-                tmp_directory: '/dev/shm/'
-          'ScanGif':
-            - positive:
-                flavors:
-                  - 'image/gif'
-                  - 'gif_file'
-              priority: 5
-          'ScanGzip':
-            - positive:
-                flavors:
-                  - 'application/gzip'
-                  - 'application/x-gzip'
-                  - 'gzip_file'
-              priority: 5
-          'ScanHash':
-            - positive:
-                flavors:
-                  - '*'
-              priority: 5
-          'ScanHeader':
-            - positive:
-                flavors:
-                  - '*'
-              priority: 5
-              options:
-                length: 50
-          'ScanHtml':
-            - positive:
-                flavors:
-                  - 'hta_file'
-                  - 'text/html'
-                  - 'html_file'
-              priority: 5
-              options:
-                parser: "html5lib"
-          'ScanIni':
-            - positive:
-                filename: '(\.([Cc][Ff][Gg]|[Ii][Nn][Ii])|PROJECT)$'
-                flavors:
-                  - 'ini_file'
-              priority: 5
-          'ScanJarManifest':
-            - positive:
-                flavors:
-                  - 'jar_manifest_file'
-              priority: 5
-          'ScanJavascript':
-            - negative:
-                flavors:
-                  - 'text/html'
-                  - 'html_file'
-              positive:
-                flavors:
-                  - 'javascript_file'
-                  - 'text/javascript'
-              priority: 5
-              options:
-                beautify: True
-          'ScanJpeg':
-            - positive:
-                flavors:
-                  - 'image/jpeg'
-                  - 'jpeg_file'
-              priority: 5
-          'ScanJson':
-            - positive:
-                flavors:
-                  - 'application/json'
-                  - 'json_file'
-              priority: 5
-          'ScanLibarchive':
-            - positive:
-                flavors:
-                  - 'application/vnd.ms-cab-compressed'
-                  - 'cab_file'
-                  - 'application/x-7z-compressed'
-                  - '_7zip_file'
-                  - 'application/x-cpio'
-                  - 'cpio_file'
-                  - 'application/x-xar'
-                  - 'xar_file'
-                  - 'arj_file'
-                  - 'iso_file'
-                  - 'application/x-debian-package'
-                  - 'debian_package_file'
-              priority: 5
-              options:
-                limit: 1000
-          'ScanLzma':
-            - positive:
-                flavors:
-                  - 'application/x-lzma'
-                  - 'lzma_file'
-                  - 'application/x-xz'
-                  - 'xz_file'
-              priority: 5
-          'ScanMacho':
-            - positive:
-                flavors:
-                  - 'application/x-mach-binary'
-                  - 'macho_file'
-              priority: 5
-              options:
-                tmp_directory: '/dev/shm/'
-          'ScanOcr':
-            - positive:
-                flavors:
-                  - 'image/jpeg'
-                  - 'jpeg_file'
-                  - 'image/png'
-                  - 'png_file'
-                  - 'image/tiff'
-                  - 'type_is_tiff'
-                  - 'image/x-ms-bmp'
-                  - 'bmp_file'
-              priority: 5
-              options:
-                extract_text: False
-                tmp_directory: '/dev/shm/'
-          'ScanOle':
-            - positive:
-                flavors:
-                  - 'application/CDFV2'
-                  - 'application/msword'
-                  - 'olecf_file'
-              priority: 5
-          'ScanPdf':
-            - positive:
-                flavors:
-                  - 'application/pdf'
-                  - 'pdf_file'
-              priority: 5
-              options:
-                extract_text: False
-                limit: 2000
-          'ScanPe':
-            - positive:
-                flavors:
-                  - 'application/x-dosexec'
-                  - 'mz_file'
-              priority: 5
-          'ScanPgp':
-            - positive:
-                flavors:
-                  - 'application/pgp-keys'
-                  - 'pgp_file'
-              priority: 5
-          'ScanPhp':
-            - positive:
-                flavors:
-                  - 'text/x-php'
-                  - 'php_file'
-              priority: 5
-          'ScanPkcs7':
-            - positive:
-                flavors:
-                  - 'pkcs7_file'
-              priority: 5
-              options:
-                tmp_directory: '/dev/shm/'
-          'ScanPlist':
-            - positive:
-                flavors:
-                  - 'bplist_file'
-                  - 'plist_file'
-              priority: 5
-              options:
-                keys:
-                  - 'KeepAlive'
-                  - 'Label'
-                  - 'NetworkState'
-                  - 'Program'
-                  - 'ProgramArguments'
-                  - 'RunAtLoad'
-                  - 'StartInterval'
-          'ScanRar':
-            - positive:
-                flavors:
-                  - 'application/x-rar'
-                  - 'rar_file'
-              priority: 5
-              options:
-                limit: 1000
-          'ScanRpm':
-            - positive:
-                flavors:
-                  - 'application/x-rpm'
-                  - 'rpm_file'
-              priority: 5
-              options:
-                tmp_directory: '/dev/shm/'
-          'ScanRtf':
-            - positive:
-                flavors:
-                  - 'text/rtf'
-                  - 'rtf_file'
-              priority: 5
-              options:
-                limit: 1000
-          'ScanRuby':
-            - positive:
-                flavors:
-                  - 'text/x-ruby'
-              priority: 5
-          'ScanSwf':
-            - positive:
-                flavors:
-                  - 'application/x-shockwave-flash'
-                  - 'fws_file'
-                  - 'cws_file'
-                  - 'zws_file'
-              priority: 5
-          'ScanTar':
-            - positive:
-                flavors:
-                  - 'application/x-tar'
-                  - 'tar_file'
-              priority: 5
-              options:
-                limit: 1000
-          'ScanTnef':
-            - positive:
-                flavors:
-                  - 'application/vnd.ms-tnef'
-                  - 'tnef_file'
-              priority: 5
-          'ScanUpx':
-            - positive:
-                flavors:
-                  - 'upx_file'
-              priority: 5
-              options:
-                tmp_directory: '/dev/shm/'
-          'ScanUrl':
-            - negative:
-                flavors:
-                  - 'javascript_file'
-              positive:
-                flavors:
-                  - 'text/plain'
-              priority: 5
-          'ScanVb':
-            - positive:
-                flavors:
-                  - 'vb_file'
-                  - 'vbscript'
-              priority: 5
-          'ScanVba':
-            - positive:
-                flavors:
-                  - 'mhtml_file'
-                  - 'application/msword'
-                  - 'olecf_file'
-                  - 'wordml_file'
-              priority: 5
-              options:
-                analyze_macros: True
-          'ScanX509':
-            - positive:
-                flavors:
-                  - 'x509_der_file'
-              priority: 5
-              options:
-                type: 'der'
-            - positive:
-                flavors:
-                  - 'x509_pem_file'
-              priority: 5
-              options:
-                type: 'pem'
-          'ScanXml':
-            - positive:
-                flavors:
-                  - 'application/xml'
-                  - 'text/xml'
-                  - 'xml_file'
-                  - 'mso_file'
-                  - 'soap_file'
-              priority: 5
-          'ScanYara':
-            - positive:
-                flavors:
-                  - '*'
-              priority: 5
-              options:
-                location: '/etc/yara/'
-          'ScanZip':
-            - positive:
-                flavors:
-                  - 'application/java-archive'
-                  - 'application/zip'
-                  - 'zip_file'
-                  - 'application/vnd.openxmlformats-officedocument'
-                  - 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-                  - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                  - 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                  - 'ooxml_file'
-              priority: 5
-              options:
-                limit: 1000
-                password_file: '/etc/strelka/passwords.dat'
-          'ScanZlib':
-            - positive:
-                flavors:
-                  - 'application/zlib'
-                  - 'zlib_file'
-              priority: 5
+          'ScanBase64': &scannerOptions
+            description: Configuration options for this scanner.
+            readonly: False
+            global: False
+            helpLink: strelka.html
+            advanced: True
+            type: json
+            multiline: True
+          'ScanBatch': *scannerOptions
+          'ScanBzip2': *scannerOptions
+          'ScanDocx': *scannerOptions
+          'ScanElf': *scannerOptions
+          'ScanEmail': *scannerOptions
+          'ScanEntropy': *scannerOptions
+          'ScanExiftool': *scannerOptions
+          'ScanGif': *scannerOptions
+          'ScanGzip': *scannerOptions
+          'ScanHash': *scannerOptions
+          'ScanHeader': *scannerOptions
+          'ScanHtml': *scannerOptions
+          'ScanIni': *scannerOptions
+          'ScanJarManifest': *scannerOptions
+          'ScanJavascript': *scannerOptions
+          'ScanJpeg': *scannerOptions
+          'ScanJson': *scannerOptions
+          'ScanLibarchive': *scannerOptions
+          'ScanLzma': *scannerOptions
+          'ScanMacho': *scannerOptions
+          'ScanOcr': *scannerOptions
+          'ScanOle': *scannerOptions
+          'ScanPdf': *scannerOptions
+          'ScanPe': *scannerOptions
+          'ScanPgp': *scannerOptions
+          'ScanPhp': *scannerOptions
+          'ScanPkcs7': *scannerOptions
+          'ScanPlist': *scannerOptions
+          'ScanRar': *scannerOptions
+          'ScanRpm': *scannerOptions
+          'ScanRtf': *scannerOptions
+          'ScanRuby': *scannerOptions
+          'ScanSwf': *scannerOptions
+          'ScanTar': *scannerOptions
+          'ScanTnef': *scannerOptions
+          'ScanUpx': *scannerOptions
+          'ScanUrl': *scannerOptions
+          'ScanVb': *scannerOptions
+          'ScanVba': *scannerOptions
+          'ScanX509': *scannerOptions
+          'ScanXml': *scannerOptions
+          'ScanYara': *scannerOptions
+          'ScanZip': *scannerOptions
+          'ScanZlib': *scannerOptions
       logging:
-        version: 1
+        version:
+          description: This is an advanced option for Strelka logging.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
         formatters:
           simple:
-            format: '%(asctime)s - [%(levelname)s] %(name)s [%(module)s.%(funcName)s]: %(message)s'
-            datefmt: '%Y-%m-%d %H:%M:%S'
+            format:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
+            datefmt:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
         handlers:
           console:
-            class: logging.StreamHandler
-            formatter: simple
-            stream: ext://sys.stdout
+            class:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
+            formatter:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
+            stream:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
         root:
-          level: DEBUG
-          handlers: [console]
+          level:
+            description: This is an advanced option for Strelka logging.
+            readonly: False
+            global: False
+            helpLink: strelka.html
+            advanced: True
+          handlers:
+            description: This is an advanced option for Strelka logging.
+            readonly: False
+            global: False
+            helpLink: strelka.html
+            advanced: True
         loggers:
           OpenSSL:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           bs4:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           bz2:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           chardet:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           docx:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           elftools:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           email:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           entropy:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           esprima:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           gzip:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           hashlib:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           json:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           libarchive:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           lxml:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           lzma:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           macholibre:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           olefile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           oletools:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           pdfminer:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           pefile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           pgpdump:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           pygments:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           pylzma:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           rarfile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           requests:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           rpmfile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           ssdeep:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           tarfile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           tnefparse:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           yara:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           zipfile:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
           zlib:
-            propagate: 0
+            propagate:
+              description: This is an advanced option for Strelka logging.
+              readonly: False
+              global: False
+              helpLink: strelka.html
+              advanced: True
       passwords:
-        - infected
-        - password
+        description: Passwords that will be stored in the password_file used in scanner options.
+        readonly: False
+        global: False
+        helpLink: strelka.html
+        multiline: True
     filestream:
       conn:
-        server: 'HOST:57314'
-        cert: ''
+        server: 
+          description: Network address of the frontend server.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        cert:
+          description: Local path to the frontend SSL server certificate.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
         timeout:
-          dial: 5s
-          file: 1m
+          dial:
+            description: Amount of time to wait for the client to dial the server.
+            readonly: False
+            global: False
+            helpLink: strelka.html
+            advanced: True
+          file:
+            description: Amount of time to wait for an individual file to complete a scan.
+            readonly: False
+            global: False
+            helpLink: strelka.html
+            advanced: True
       throughput:
-        concurrency: 8
-        chunk: 32768
-        delay: 0s
+        concurrency:
+          description: Number of concurrent requests to make.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        chunk:
+          description: Size of file chunks that will be sent to the frontend server.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        delay:
+          description: Artificial sleep between the submission of each chunk.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
       files:
         patterns:
-          - '/nsm/strelka/unprocessed/*'
-        delete: false
-        gatekeeper: true
-        processed: '/nsm/strelka/processed'
+          description: List of glob patterns that determine which files will be sent for scanning.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        delete:
+          description: Boolean that determines if files should be deleted after being sent for scanning.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        gatekeeper:
+          description: Boolean that determines if events should be pulled from the temporary event cache.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        processed:
+          description: Directory where files will be moved after being submitted for scanning.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
       response:
-        report: 5s
-      delta: 5s
-      staging: '/nsm/strelka/staging'
+        report:
+          description: Frequency at which the frontend reports the number of files processed.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+      delta:
+        description: Time value that determines how much time must pass since a file was last modified before it is sent for scanning.
+        readonly: False
+        global: False
+        helpLink: strelka.html
+        advanced: True
+      staging:
+        description: Directory where files are staged before being sent to the cluster.
+        readonly: False
+        global: False
+        helpLink: strelka.html
+        advanced: True
     frontend:
-      server: ":57314"
+      server:
+        description: Network address of the frontend server.
+        readonly: False
+        global: False
+        helpLink: strelka.html
+        advanced: True
       coordinator:
-        addr: 'HOST:6380'
-        db: 0
+        addr:
+          description: Network address of the coordinator.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        db:
+          description: Redis database of the coordinator.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
       gatekeeper:
-        addr: 'HOST:6381'
-        db: 0
-        ttl: 1h
+        addr:
+          description: Network address of the gatekeeper.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        db:
+          description: Redis database of the gatekeeper.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        ttl:
+          description: Time-to-live for events added to the gatekeeper.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
       response:
-        log: "/var/log/strelka/strelka.log"
+        log:
+          description: Location where worker scan results are logged to.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
     manager:
-        coordinator:
-          addr: 'HOST:6380'
-          db: 0
-
+      coordinator:
+        addr:
+          description: Network address of the coordinator.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
+        db:
+          description: Redis database of the coordinator.
+          readonly: False
+          global: False
+          helpLink: strelka.html
+          advanced: True
   rules:
-    enabled: True
+    enabled:
+      description: Boolean that determines if yara rules sync from the Salt manager to the backend nodes.
+      readonly: False
+      global: False
+      helpLink: strelka.html
+      advanced: False
     repos:
-      - https://github.com/Neo23x0/signature-base
+      description: List of repos for so-yara-update to use to download rules.
+      readonly: False
+      global: False
+      helpLink: strelka.html
+      advanced: False
     excluded:
-      - apt_flame2_orchestrator.yar
-      - apt_tetris.yar
-      - gen_susp_js_obfuscatorio.yar
-      - gen_webshells.yar
-      - generic_anomalies.yar
-      - general_cloaking.yar
-      - thor_inverse_matches.yar
-      - yara_mixed_ext_vars.yar
-      - apt_apt27_hyperbro.yar
-      - apt_turla_gazer.yar
-      - gen_google_anomaly.yar
-      - gen_icon_anomalies.yar
-      - gen_nvidia_leaked_cert.yar
-      - gen_sign_anomalies.yar
-      - gen_susp_xor.yar
-      - gen_webshells_ext_vars.yar
-      - configured_vulns_ext_vars.yar
+      description: List of rules to exclude so-yara-update from download and propagating to backend nodes.
+      readonly: False
+      global: False
+      helpLink: strelka.html
+      advanced: False
+  filecheck:
+    historypath:
+      description: The path for previously scanned files.
+      readonly: True
+      global: False
+      helpLink: strelka.html
+      advanced: True
+    strelkapath:
+      description: The path for unprocessed files.
+      readonly: True
+      global: False
+      helpLink: strelka.html
+      advanced: True
+    logfile:
+      description: The path for the filecheck log.
+      readonly: False
+      global: False
+      helpLink: strelka.html
+      advanced: True
 
