@@ -32,7 +32,7 @@ log_has_errors() {
     # Ignore Failed: 0 since that is the salt state output, and we detect state failures
     # via Result: False already.
 
-    grep -E "FAILED|Failed|failed|ERROR|Error|Result: False" "$setup_log" | \
+    grep -E "FAILED|Failed|failed|ERROR|Result: False" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
         grep -vE "Minion failed to authenticate with the master" | \
         grep -vE "Failed to connect to ::1" | \
@@ -79,21 +79,52 @@ status_failed() {
     return 1
 }
 
+# Creates scripts that are going to be invoked by the automated test system. These scripts will 
+# overwritten by Salt, once the minion is accepted into the grid and the salt states run. 
+create_temp_scripts_if_missing() {
+    if [ ! -f /usr/sbin/so-status ]; then
+        if [ -f /root/success ]; then
+            echo "echo 'so-status not yet available'" > /usr/sbin/so-status
+            echo "exit 0" >> /usr/sbin/so-status
+
+            # Pretend so-test succeeded in the interim period while waiting for this minion to be accepted. This avoids tests getting hung up.
+            echo "echo 'so-test not yet available'" > /usr/sbin/so-test
+            echo "exit 0" >> /usr/sbin/so-test
+            chmod a+x /usr/sbin/so-test
+        else
+            echo "echo 'Installation failed - so-status not available'" > /usr/sbin/so-status
+            echo "exit 100" >> /usr/sbin/so-status
+        fi
+        chmod a+x /usr/sbin/so-status
+    fi
+}
+
 main() {
     exit_code=0
-    if log_has_errors; then 
-    	echo "WARNING: Errors detected during setup"
+    if [ -f /root/success ]; then
+        echo "Successfully completed setup a while ago"
+    elif [  -f /root/failure ]; then
+        echo "WARNING: Failed setup a while ago"
         exit_code=1
+    elif log_has_errors; then 
+        echo "WARNING: Errors detected during setup"
+        exit_code=1
+        touch /root/failure
     elif using_iso && cron_error_in_mail_spool; then
-    	echo "WARNING: Unexpected cron job output in mail spool"
+        echo "WARNING: Unexpected cron job output in mail spool"
         exit_code=1
+        touch /root/failure
     elif is_manager_node && status_failed; then
         echo "WARNING: Containers are not in a healthy state"
         exit_code=1
+        touch /root/failure
     else
-	    echo "Successfully completed setup!"
-	fi
+        echo "Successfully completed setup!"
+        touch /root/success
+    fi
 
+    create_temp_scripts_if_missing
+    
     exit $exit_code
 }
 

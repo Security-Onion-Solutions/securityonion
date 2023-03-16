@@ -17,11 +17,11 @@ log() {
 }
 
 error() {
-	log "$1" "E"
+	log "$1" "ERROR"
 }
 
 info() {
-	log "$1" "I"
+	log "$1" "INFO"
 }
 
 title() {
@@ -68,9 +68,7 @@ add_web_user() {
 	wait_for_file /nsm/kratos/db/db.sqlite 30 5
 	{
 		info "Attempting to add administrator user for web interface...";
-		export SKIP_STATE_APPLY=true
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add --email "$WEBUSER" --role "superuser";
-		unset SKIP_STATE_APPLY
 		info "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
 }
@@ -322,7 +320,7 @@ collect_hostname() {
 }
 
 collect_hostname_validate() {
-	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+	if [[ -z "$TESTING" ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
 
 	whiptail_set_hostname "$HOSTNAME"
 
@@ -1600,6 +1598,15 @@ networking_needful() {
 	fi
 	set_main_ip
 	compare_main_nic_ip
+
+	# Attempt to autodetect the manager IP, if an offset value exists 
+	if [[ -n "$MSRVIP_OFFSET" && -z "$MSRVIP" ]]; then
+		mips1=$(echo "$MNIC_IP" | awk -F. '{print $1}') 
+		mips2=$(echo "$MNIC_IP" | awk -F. '{print $2}') 
+		mips3=$(echo "$MNIC_IP" | awk -F. '{print $3}') 
+		mips4=$(echo "$MNIC_IP" | awk -F. '{print $4}') 
+		MSRVIP="$mips1.$mips2.$mips3.$((mips4+$MSRVIP_OFFSET))"
+	fi
 }
 
 network_setup() {
@@ -1765,6 +1772,10 @@ reinstall_init() {
 	fi
 
 	local service_retry_count=20
+
+	# Disregard previous install outcomes
+	rm -f /root/failure
+	rm -f /root/success
 
 	{
 		# remove all of root's cronjobs
@@ -2269,19 +2280,19 @@ set_initial_firewall_policy() {
 	title "Setting Initial Firewall Policy"
 	if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
 
-		case "$install_type" in
-			'MANAGER')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=manager --ip=$MAINIP --apply=true
-				;;
-			'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
-				;;
-		esac
+	case "$install_type" in
+		'EVAL' | 'MANAGER' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
+			$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
+			;;
+	esac
 }
 
 set_initial_firewall_access() {
 	if [[ ! -z "$ALLOW_CIDR" ]]; then
 		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=analyst --ip=$ALLOW_CIDR --apply=true
+	fi
+	if [[ ! -z "$MINION_CIDR" ]]; then
+		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=sensors --ip=$MINION_CIDR --apply=true
 	fi
 }
 

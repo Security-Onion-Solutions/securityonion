@@ -23,6 +23,7 @@ if [[ $# -lt 1 ]]; then
   echo "   accept: Accepts a new key and adds the minion files"
   echo "   delete: Removes the key and deletes the minion files"
   echo "   reject: Rejects a key"
+  echo "     test: Ingest test data"
   echo ""
   exit 1
 fi
@@ -73,6 +74,22 @@ function getinstallinfo() {
 	# Pull from file
 	INSTALLVARS=$(sudo salt "$MINION_ID" cp.get_file_str /opt/so/install.txt --out=newline_values_only)
 	source <(echo $INSTALLVARS)
+}
+
+function testminion() {
+	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
+	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
+	so-test
+	result=$?
+
+	# If this so-minion script is not running on the given minion ID, run so-test remotely on the sensor as well
+	local_id=$(lookup_grain id)
+	if [[ ! "$local_id" =~ "${MINION_ID}_" ]]; then
+		salt "$MINION_ID" cmd.run 'so-test'
+		result=$?
+	fi
+
+	exit $result
 }
 
 function listminions() {
@@ -276,4 +293,8 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	add_sensoroni_to_minion
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
+fi
+
+if [[ "$OPERATION" = 'test' ]]; then
+	testminion
 fi
