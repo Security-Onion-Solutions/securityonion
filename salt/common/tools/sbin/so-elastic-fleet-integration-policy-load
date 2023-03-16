@@ -106,6 +106,6 @@ echo
 
 # IDH logs
 echo
-echo "Setting up IDh package policy..."
+echo "Setting up IDH package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"policy_id":"so-grid-nodes","package":{"name":"log","version":"1.1.1"},"id":"idh-logs","name":"idh-logs","namespace":"so","description":"IDH integration","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/nsm/idh/opencanary.log"],"data_stream.dataset":"idh","custom":"pipeline: common","processors": "\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- drop_fields:\n    when:\n      equals:\n        logtype: \"1001\"\n    fields: [\"src_host\", \"src_port\", \"dst_host\", \"dst_port\" ]\n    ignore_missing: true\n- rename:\n    fields:\n      - from: \"src_host\"\n        to: \"source.ip\"\n      - from: \"src_port\"\n        to: \"source.port\"\n      - from: \"dst_host\"\n        to: \"destination.host\"\n      - from: \"dst_port\"\n        to: \"destination.port\"\n    ignore_missing: true\n- convert:\n    fields:\n      - {from: \"logtype\", to: \"event.code\", type: \"string\"}\n    ignore_missing: true\n- drop_fields:\n    fields: '\''[\"prospector\", \"input\", \"offset\", \"beat\"]'\''\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: opencanary","tags":[]}}}}}}'
 echo
