@@ -16,13 +16,13 @@
   file.absent:
     - name: {{ REPOPATH }}{{ file }}
     - onchanges_in:
-      - cmd: cleanyum
+      - cmd: cleandnf
   {% endfor %}
 {% endif %}
 
-cleanyum:
+cleandnf:
   cmd.run:
-    - name: 'yum clean all'
+    - name: 'dnf clean all'
     - onchanges:
       - so_repo
       
