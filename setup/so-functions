@@ -1985,9 +1985,6 @@ repo_sync_local() {
 	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
 
 	logCmd "dnf repolist"
-	info "This is trying to work"
-	logCmd "dnf -c /root/repodownload.conf -y upgrade --allowerasing"  
-	info "There should be an update here"
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)/1' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
 	logCmd "dnf reposync --norepopath -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
@@ -2385,7 +2382,7 @@ update_sudoers() {
 update_packages() {
 	if [[ $is_rocky ]]; then
 		logCmd "dnf repolist"
-		logCmd "dnf -y update --exclude=salt*,wazuh*,docker*,containerd*"
+		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
