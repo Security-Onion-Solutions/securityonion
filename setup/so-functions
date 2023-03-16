@@ -139,11 +139,11 @@ check_admin_pass() {
 check_manager_connection() {
 	# See if you can curl the manager. If not you can either try again or continue
 	info "Checking manager connectivity"	
-	man_test_err=$(curl -k -L -sS https://$MSRVIP/repo --connect-timeout 5 2>&1)
+	man_test_err=$(curl -s $MSRVIP:4505 --connect-timeout 5 2>&1)
 	
 	local ret=$?
 
-	if [[ $ret != 0 ]]; then
+	if [[ $ret != 1 ]]; then
 		error "Could not reach $MSRV"
 		whiptail_manager_unreachable
 	fi
@@ -1984,8 +1984,9 @@ repo_sync_local() {
 	echo "gpgcheck=1" >> /root/repodownload.conf
 	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
 
-	dnf repolist
-	logCmd "dnf -c /root/repodownload.conf -y upgrade"  
+	logCmd "dnf repolist"
+	echo "This is trying to work"
+	logCmd "dnf -c /root/repodownload.conf -y upgrade --allowerasing"  
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)/1' https://sigs.securityonion.net/checkup --output /tmp/checkup" 
 	logCmd "dnf reposync --norepopath -g --delete -m -c /root/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
