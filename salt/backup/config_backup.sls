@@ -19,6 +19,7 @@ config_backup_script:
     - source: salt://backup/tools/sbin/so-config-backup.jinja
     - defaults:
         BACKUPLOCATIONS: {{ BACKUP_MERGED.locations }}
+        DESTINATION: {{ BACKUP_MERGED.destination }}
   
 # Add config backup
 so_config_backup:
