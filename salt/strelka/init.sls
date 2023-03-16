@@ -9,7 +9,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% from 'strelka/map.jinja' import STRELKAMERGED %}
-{% from 'strelka/filecheck/map.jinja' import filecheck_runas %}
 
 # Strelka config
 strelkaconfdir:
