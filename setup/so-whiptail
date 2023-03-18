@@ -1271,38 +1271,54 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ -n "$REDIRECTIT" && $is_manager = true ]]; then
+
+	if [[ $waitforstate ]]; then
+		# Manager-type Nodes - Install Summary
 		if [[ -n $ALLOW_CIDR ]]; then
 			local sentence_prefix="Access"
 		else
 			local sentence_prefix="Run so-allow to access"
 		fi
-		local accessMessage="\n${sentence_prefix} the web interface at: https://${REDIRECTIT}\n"
-	elif [[ $is_idh ]]; then
-		local accessMessage="\nSSH for this node has been moved to TCP/2222, accessible only from the Manager node.\n"
+	
+		read -r -d '' message <<- EOM
+			${install_type} setup is now complete!
+			
+			${sentence_prefix} the Security Onion Console web interface by navigating to:
+			https://${REDIRECTIT}
+
+			Login with the following username and the password:
+
+			SOC Username: ${WEBUSER}
+			SOC Password: Use the password that was entered during setup
+			
+			Press TAB and then the ENTER key to exit this screen.
+		EOM
+		whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
 	else
-		local accessMessage=""
+		if [[ $is_idh ]]; then
+			local accessMessage="\nSSH for this node has been moved to TCP/2222, accessible only from the Manager node.\n"
+		else
+			local accessMessage=""
+		fi
+		MINIONFINGERPRINT=$(salt-call --local key.finger --out=newline_values_only)
+		read -r -d '' message <<- EOM
+			${install_type} initialization is now complete!
+			
+			To finish configuration, open the Security Onion Console web interface
+			and navigate to Administration -> Grid Members.
+			
+			Then find this node in the Pending Members list, 
+			click the Review button, and then click the Accept button.
+			
+			Node Hostname: $HOSTNAME
+			Node Fingerprint:
+			$MINIONFINGERPRINT
+			$accessMessage
+			Press TAB and then the ENTER key to exit this screen.
+		EOM
+
+		whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
 	fi
-
-	MINIONFINGERPRINT=$(salt-call --local key.finger --out=newline_values_only)
-	read -r -d '' message <<- EOM
-		${install_type} initialization is now complete!
-		
-		To finish configuration, open the Security Onion Console web interface
-		and navigate to Administration -> Grid Members.
-		
-		Then find this node in the Pending Members list, 
-		click the Review button, and then click the Accept button.
-		
-		Node Hostname: $HOSTNAME
-		Node Fingerprint:
-		$MINIONFINGERPRINT
-
-		$accessMessage
-		Press TAB and then the ENTER key to exit this screen.
-	EOM
-
-	whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
 }
 
 whiptail_setup_failed() {
