@@ -9,7 +9,7 @@
 
 run_installer:
   cmd.script:
-    - name: salt://elastic-fleet/files/so_agent-installers/so-elastic-agent_linux
+    - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux
     - args: -token={{ GRIDNODETOKEN }}
 
 {% endif %}
