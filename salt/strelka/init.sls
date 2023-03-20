@@ -9,8 +9,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% from 'strelka/map.jinja' import STRELKAMERGED %}
-{% from 'strelka/filecheck/map.jinja' import FILECHECKDEFAULTS %}
-{% from 'strelka/filecheck/map.jinja' import filecheck_runas %}
+{% from 'strelka/map.jinja' import filecheck_runas %}
 
 # Strelka config
 strelkaconfdir:
@@ -99,7 +98,7 @@ manager_config:
     - defaults:
         MANAGERCONFIG: {{ STRELKAMERGED.config.manager }}
 
-{% if STRELKAMERGED.rules.enabled %}
+{%   if STRELKAMERGED.rules.enabled %}
 
 strelkarules:
   file.recurse:
@@ -109,7 +108,7 @@ strelkarules:
     - group: 939
     - clean: True
 
-{% if grains['role'] in GLOBALS.manager_roles %}
+{%     if grains['role'] in GLOBALS.manager_roles %}
 strelkarepos:
   file.managed:
     - name: /opt/so/conf/strelka/repos.txt
@@ -118,8 +117,8 @@ strelkarepos:
     - defaults:
         STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
 
-{% endif %}
-{% endif %}
+{%     endif %}
+{%   endif %}
 
 strelkadatadir:
    file.directory:
@@ -185,7 +184,7 @@ filecheck_conf:
     - source: salt://strelka/filecheck/filecheck.yaml.jinja
     - template: jinja
     - defaults:
-        FILECHECKCONFIG: {{ FILECHECKDEFAULTS }}
+        FILECHECKCONFIG: {{ STRELKAMERGED.filecheck }}
 
 filecheck_script:
   file.managed:

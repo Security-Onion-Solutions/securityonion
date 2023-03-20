@@ -24,11 +24,11 @@ mkdir -p /tmp/elastic-agent-workspace
 for OS in "${CONTAINERGOOS[@]}"
 do
     printf "\n\nGenerating $OS Installer..."
-    cp /opt/so/saltstack/default/salt/elastic-fleet/files/elastic-agent/so-elastic-agent-*-$OS-x86_64.tar.gz /tmp/elastic-agent-workspace/$OS.tar.gz
+    cp /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/so-elastic-agent-*-$OS-x86_64.tar.gz /tmp/elastic-agent-workspace/$OS.tar.gz
     docker run -e CGO_ENABLED=0 -e GOOS=$OS \
     --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
-    --mount type=bind,source=/opt/so/saltstack/local/salt/elastic-fleet/files/so_agent-installers/,target=/output/ \
+    --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
     {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
     printf "\n $OS Installer Generated..."
 done

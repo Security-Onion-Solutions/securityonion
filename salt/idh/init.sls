@@ -74,6 +74,8 @@ so-idh:
       - file: opencanary_config
     - require:
       - file: opencanary_config
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
 
 append_so-idh_so-status.conf:
   file.append:

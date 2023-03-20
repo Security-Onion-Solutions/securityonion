@@ -17,4 +17,14 @@
 {% set manager_coordinator_port = STRELKADEFAULTS.strelka.config.manager.coordinator.addr.split(':')[1] %}
 {% do STRELKADEFAULTS.strelka.config.manager.coordinator.update({'addr': HOST ~ ':' ~ manager_coordinator_port}) %}
 
+{% if GLOBALS.md_engine == "SURICATA" %}
+{%   set extract_path = '/nsm/suricata/extracted' %}
+{%   set filecheck_runas = 'suricata' %}
+{% else %}
+{%   set extract_path = '/nsm/zeek/extracted/complete' %}
+{%   set filecheck_runas = 'socore' %}
+{% endif %}
+
+{% do STRELKADEFAULTS.strelka.filecheck.update({'extract_path': extract_path}) %}
+
 {% set STRELKAMERGED = salt['pillar.get']('strelka', STRELKADEFAULTS.strelka, merge=True) %}
