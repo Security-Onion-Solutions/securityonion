@@ -9,11 +9,9 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "suricata/map.jinja" import SURICATAOPTIONS with context %}
 
-{% set interface = salt['pillar.get']('sensor:interface') %}
-{% set BPF_NIDS = salt['pillar.get']('bpf:suricata', None) %}
+{% from 'bpf/suricata.map.jinja' import SURICATABPF %}
 {% set BPF_STATUS = 0  %}
 
-{# import_yaml 'suricata/files/defaults2.yaml' as suricata #}
 {% from 'suricata/suricata_config.map.jinja' import suricata_defaults as suricata_config with context %}
 {% from "suricata/map.jinja" import START with context %}
 
@@ -109,8 +107,8 @@ surithresholding:
     - template: jinja
 
 # BPF compilation and configuration
-{% if BPF_NIDS %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', interface + ' ' + BPF_NIDS|join(" "),cwd='/root') %}
+{% if SURICATABPF %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_STATUS = 1  %}
    {% else  %}
@@ -128,7 +126,7 @@ suribpf:
     - user: 940
     - group: 940
    {% if BPF_STATUS %}
-    - contents_pillar: nids:bpf
+    - contents: {{ SURICATABPF }}
    {% else %}
     - contents:
       - ""
@@ -141,7 +139,7 @@ so-suricata:
     - start: {{ SURICATAOPTIONS.start }}
     - privileged: True
     - environment:
-      - INTERFACE={{ interface }}
+      - INTERFACE={{ GLOBALS.sensor.interface }}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
