@@ -58,6 +58,10 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+# Preserve old setup/error logs
+[ -f "$error_log" ] && mv "$error_log" "$error_log.$(date +%Y-%m-%dT%H:%M:%S)"
+[ -f "$setup_log" ] && mv "$setup_log" "$setup_log.$(date +%Y-%m-%dT%H:%M:%S)"
+
 # Let's see what OS we are dealing with here
 detect_os
 
@@ -134,9 +138,7 @@ title "Checking to see if install has run before"
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 	whiptail_reinstall
-	info "Old setup detected. Moving the last setup.log to setup.log.bak"
-	mv "$setup_log" "$setup_log.bak"
-	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
+	info "Old setup detected. Preparing for reinstallation."
 	reinstall_init
 	reset_proxy
 fi
@@ -267,7 +269,7 @@ if ! [[ -f $install_opt_file ]]; then
 	if (whiptail_you_sure); then
 		true
 	else
-		error "User cancelled setup."
+		info "User cancelled setup."
 		whiptail_cancel
 	fi
 	# If this is an analyst install lets streamline the process. 
