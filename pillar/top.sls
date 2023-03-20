@@ -19,6 +19,8 @@ base:
   '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
 
   '*_managersearch or *_heavynode':
     - match: compound
