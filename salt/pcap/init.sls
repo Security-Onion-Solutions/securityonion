@@ -9,8 +9,8 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "pcap/map.jinja" import STENOOPTIONS with context %}
 {% from "pcap/config.map.jinja" import PCAPMERGED with context %}
-{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set BPF_STENO = salt['pillar.get']('bpf:pcap', None) %}
+{% from 'bpf/pcap.map.jinja' import PCAPBPF %}
+
 {% set BPF_COMPILED = "" %}
 
 # PCAP Section
@@ -33,8 +33,8 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-{% if BPF_STENO %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" "),cwd='/root') %}
+{% if PCAPBPF %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + PCAPBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
    {% else  %}

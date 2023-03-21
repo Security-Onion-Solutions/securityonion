@@ -10,6 +10,8 @@
 {% from "zeek/config.map.jinja" import ZEEKOPTIONS with context %}
 {% from "zeek/config.map.jinja" import ZEEKMERGED with context %}
 
+{% from 'bpf/zeek.map.jinja' import ZEEKBPF %}
+
 {% set BPF_STATUS = 0  %}
 
 # Zeek Salt State
@@ -162,8 +164,8 @@ zeekpacketlosscron:
     - dayweek: '*'
 
 # BPF compilation and configuration
-{% if ZEEKMERGED.zeek.bpf %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKMERGED.zeek.bpf|join(" "),cwd='/root') %}
+{% if ZEEKBPF %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
@@ -181,7 +183,7 @@ zeekbpf:
     - user: 940
     - group: 940
 {% if BPF_STATUS %}
-    - contents: {{ ZEEKMERGED.bpf }}
+    - contents: {{ ZEEKBPF }}
 {% else %}
     - contents:
       - "ip or not ip"
