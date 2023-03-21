@@ -206,6 +206,12 @@ function add_sensor_to_minion() {
 	echo "    enabled: True" >> $PILLARFILE
 }
 
+function updateMine() {
+	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
+}
+function apply_ES_state() {
+	salt-call state.apply elasticsearch concurrent=True
+}
 function createEVAL() {
 	add_elastic_to_minion
 	add_logstash_to_minion
@@ -245,6 +251,8 @@ function createSENSOR() {
 function createSEARCHNODE() {
 	add_elastic_to_minion
 	add_logstash_to_minion
+	updateMine
+	apply_ES_state
 }
 
 function createSTANDALONE() {
