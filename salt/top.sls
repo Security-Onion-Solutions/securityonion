@@ -59,7 +59,7 @@ base:
     {%- endif %}
     - schedule
     - docker_clean
-    - elastic-fleet.install_agent_grid
+    - elasticfleet.install_agent_grid
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
@@ -147,7 +147,7 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet
+    - elasticfleet
     - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
@@ -198,7 +198,7 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet
+    - elasticfleet
     - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
@@ -215,7 +215,7 @@ base:
     - logstash
     {%- endif %}
     - schedule
-    - elastic-fleet.install_agent_grid
+    - elasticfleet.install_agent_grid
     - docker_clean
 
   '*_managersearch and G@saltversion:{{saltversion}}':
@@ -257,7 +257,7 @@ base:
     - schedule
     - soctopus
     - playbook
-    - elastic-fleet
+    - elasticfleet
     - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
@@ -286,7 +286,7 @@ base:
     - zeek
     {%- endif %}
     - schedule
-    - elastic-fleet.install_agent_grid
+    - elasticfleet.install_agent_grid
     - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':
@@ -317,7 +317,7 @@ base:
     - suricata
     - zeek
     - schedule
-    - elastic-fleet
+    - elasticfleet
     - docker_clean
 
   '*_receiver and G@saltversion:{{saltversion}}':
@@ -333,7 +333,7 @@ base:
     - redis
     {%- endif %}
     - schedule
-    - elastic-fleet.install_agent_grid
+    - elasticfleet.install_agent_grid
     - docker_clean
 
   '*_idh and G@saltversion:{{saltversion}}':
@@ -343,7 +343,7 @@ base:
     - telegraf
     - firewall
     - schedule
-    - elastic-fleet.install_agent_grid
+    - elasticfleet.install_agent_grid
     - docker_clean
     - idh
 
