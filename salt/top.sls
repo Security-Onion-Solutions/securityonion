@@ -22,6 +22,7 @@ base:
     - cron.running
     - repo.client
     - ntp
+    - schedule
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
@@ -57,7 +58,6 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    - schedule
     - docker_clean
     - elasticfleet.install_agent_grid
 
@@ -100,7 +100,6 @@ base:
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     {%- if PLAYBOOK != 0 %}
     - playbook
@@ -144,7 +143,6 @@ base:
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
     - elasticfleet
@@ -195,7 +193,6 @@ base:
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
     - elasticfleet
@@ -214,7 +211,6 @@ base:
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
-    - schedule
     - elasticfleet.install_agent_grid
     - docker_clean
 
@@ -254,7 +250,6 @@ base:
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
     - elasticfleet
@@ -285,7 +280,6 @@ base:
     {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
-    - schedule
     - elasticfleet.install_agent_grid
     - docker_clean
   
@@ -316,7 +310,6 @@ base:
     - utility
     - suricata
     - zeek
-    - schedule
     - elasticfleet
     - docker_clean
 
@@ -332,7 +325,6 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    - schedule
     - elasticfleet.install_agent_grid
     - docker_clean
 
@@ -342,7 +334,6 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    - schedule
     - elasticfleet.install_agent_grid
     - docker_clean
     - idh
