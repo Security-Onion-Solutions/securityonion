@@ -34,6 +34,14 @@ repo_dir:
       - user
       - group
 
+repo_sync_script:
+  file.managed:
+    - name: /usr/sbin/so-repo-sync
+    - source: salt://manager/files/so-repo-sync
+    - user: root
+    - group: root
+    - mode: 755
+
 reposync_cron:
   {% if MANAGERMERGED.reposync.enabled %}
   cron.present:
