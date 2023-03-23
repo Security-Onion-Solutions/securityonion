@@ -25,6 +25,15 @@ repo_log_dir:
       - user
       - group
 
+repo_conf_dir:
+  file.directory:
+    - name: /opt/so/conf/reposync
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+
 repo_dir:
   file.directory:
     - name: /nsm/repo
