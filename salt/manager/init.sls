@@ -34,6 +34,15 @@ repo_conf_dir:
       - user
       - group
 
+repo_cache_dir:
+  file.directory:
+    - name: /opt/so/reposync/cache
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+
 repo_dir:
   file.directory:
     - name: /nsm/repo
