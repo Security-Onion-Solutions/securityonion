@@ -7,7 +7,8 @@
 {% if sls in allowed_states %}
 {% import_yaml 'docker/defaults.yaml' as DOCKERDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', False) %}
+{% from 'idh/opencanary_config.map.jinja' import RESTRICTIDHSERVICES %}
+{% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
 
 include:
   - idh.openssh.config
@@ -15,10 +16,9 @@ include:
 
 # If True, block IDH Services from accepting connections on Managment IP
 {% if RESTRICTIDHSERVICES %}
-  {% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
-  {% set idh_services = salt['pillar.get']('idh:services', []) %}
+  {% from 'idh/opencanary_config.map.jinja' import IDH_SERVICES %}
 
-  {% for service in idh_services %}
+  {% for service in IDH_SERVICES %}
   {% if service in ["smnp","ntp", "tftp"] %}
     {% set proto = 'udp' %}
   {% else %}
@@ -52,7 +52,6 @@ configdir:
     - group: 939
     - makedirs: True
 
-{% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG with context %}
 opencanary_config:
   file.managed:
     - name: /opt/so/conf/idh/opencanary.conf

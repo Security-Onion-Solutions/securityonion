@@ -1,6 +1,6 @@
 {# this list of services is used to loop through and add fw rules if the service is enabled #}
 {# smb is not in this list since it does not need any ports open #}
-{% set idh_services = [
+{% set IDH_SERVICES = [
      'ftp',
      'git',
      'http',
@@ -20,24 +20,24 @@
 {% set IDH_PORTGROUPS = {} %}
 
 {% import_yaml "idh/defaults.yaml" as IDHCONFIG with context %}
-
+{% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', default=IDHCONFIG.idh.restrict_management_ip) %}
 {% set OPENCANARYCONFIG = salt['pillar.get']('idh:opencanary:config', default=IDHCONFIG.idh.opencanary.config, merge=True) %}
 {# update skinlist to skin.list to avoid issues with SOC UI config #}
-{% set HTTPSKINLIST = OPENCANARYCONFIG.pop('http.skinlist') %}
-{% set HTTPPROXYSKINLIST = OPENCANARYCONFIG.pop('httpproxy.skinlist') %}
-{% do OPENCANARYCONFIG.update({'http.skin.list': HTTPSKINLIST}) %}
-{% do OPENCANARYCONFIG.update({'httpproxy.skin.list': HTTPPROXYSKINLIST}) %}
+{% set HTTPSKINLIST = OPENCANARYCONFIG.pop('http_x_skinlist') %}
+{% set HTTPPROXYSKINLIST = OPENCANARYCONFIG.pop('httpproxy_x_skinlist') %}
+{% do OPENCANARYCONFIG.update({'http_x_skin_x_list': HTTPSKINLIST}) %}
+{% do OPENCANARYCONFIG.update({'httpproxy_x_skin_x_list': HTTPPROXYSKINLIST}) %}
 
 {% set OPENSSH = salt['pillar.get']('idh:openssh', default=IDHCONFIG.idh.openssh, merge=True) %}
 
-{% for service in idh_services %}
+{% for service in IDH_SERVICES %}
   {% if service in ["smnp","ntp", "tftp"] %}
     {% set proto = 'udp' %}
   {% else %}
     {% set proto = 'tcp' %}
   {% endif %}
-  {% if OPENCANARYCONFIG[service ~ '.enabled'] %}
-    {% do IDH_PORTGROUPS.update({'idh_' ~ service: {proto: [OPENCANARYCONFIG[service ~ '.port']]}}) %}
+  {% if OPENCANARYCONFIG[service ~ '_x_enabled'] %}
+    {% do IDH_PORTGROUPS.update({'idh_' ~ service: {proto: [OPENCANARYCONFIG[service ~ '_x_port']]}}) %}
   {% endif %}
 {% endfor %}
 
