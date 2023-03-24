@@ -1968,6 +1968,8 @@ repo_sync_local() {
 	info "Backing up old repos"
 	mkdir -p /nsm/repo
 	mkdir -p /opt/so/conf/reposync/cache
+	echo "https://repo.securityonion.net/file/so-repo/2.4/" > /opt/so/conf/reposync/mirror.txt
+	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/2.4/" >> /opt/so/conf/reposync/mirror.txt
 	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
 	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
@@ -1978,11 +1980,11 @@ repo_sync_local() {
 	echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
 	echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
 	echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
-	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/2.4/" >> /opt/so/conf/reposync/repodownload.conf
+	echo "#baseurl=https://repo.securityonion.net/file/so-repo/2.4/" >> /opt/so/conf/reposync/repodownload.conf
+	echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
 	echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
-	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /opt/so/conf/reposync/repodownload.conf
-
+	
 	logCmd "dnf repolist"
 	# Make sure we can get to the sig repo
     logCmd "curl --retry 5 --retry-delay 60 -A 'gridinstall/$SOVERSION/$OS/$(uname -r)/1' https://sigs.securityonion.net/checkup --output /tmp/install" 
