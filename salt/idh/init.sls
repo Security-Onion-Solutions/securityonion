@@ -24,14 +24,14 @@ include:
   {% else %}
     {% set proto = 'tcp' %}
   {% endif %}
-block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'.port'] }} :
+block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'_x_port'] }} :
   iptables.insert:
     - table: filter
     - chain: INPUT
     - jump: DROP
     - position: 1
     - proto:  {{ proto }}
-    - dport: {{ OPENCANARYCONFIG[service~'.port'] }}
+    - dport: {{ OPENCANARYCONFIG[service~'_x_port'] }}
     - destination: {{ GLOBALS.node_ip }}
   {% endfor %}
 {% endif %}
