@@ -1,8 +1,6 @@
 elasticsearch:
   config:
-    node:
-      attr:
-        box_type: hot
+    node: {}
     cluster:
       routing:
         allocation:
@@ -57,7 +55,75 @@ elasticsearch:
         elasticsearch:
           deprecation: ERROR
   index_settings:
-    so-logs-elastic_agent.apm_server:
+    so-logs:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-*-*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+              mapping:
+                total_fields:
+                  limit: 5001
+              sort:
+                field: "@timestamp"
+                order: desc
+          mappings:
+            _meta:
+              package:
+                name: elastic_agent
+              managed_by: security_onion
+              managed: true
+        composed_of:
+          - "so-data-streams-mappings"
+          - "so-logs-mappings"
+          - "so-logs-settings"
+        priority: 225
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          hot:
+            min_age: 0ms
+            actions:
+              set_priority:
+                priority: 100
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+          cold:
+            min_age: 30d
+            actions:
+              set_priority:
+                priority: 0
+          delete:
+            min_age: 365d
+            actions:
+              delete: {}
+        _meta:
+          package:
+            name: elastic_agent
+          managed_by: security_onion
+          managed: true  
+    logs-osquery-manager:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - ".logs-osquery*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        priority: 501
+        _meta:
+          package:
+            name: elastic_agent
+          managed_by: security_onion
+          managed: true
+    logs-elastic_agent.apm_server:
       index_sorting: False
       index_template:
         index_patterns:
@@ -79,8 +145,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.apm_server@package"
-          - "so-logs-elastic_agent.apm_server@custom"
+          - "logs-elastic_agent.apm_server@package"
+          - "logs-elastic_agent.apm_server@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -111,7 +177,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.auditbeat:
+    logs-elastic_agent.auditbeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -133,8 +199,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.auditbeat@package"
-          - "so-logs-elastic_agent.auditbeat@custom"
+          - "logs-elastic_agent.auditbeat@package"
+          - "logs-elastic_agent.auditbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -165,7 +231,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.cloudbeat:
+    logs-elastic_agent.cloudbeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -187,8 +253,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.cloudbeat@package"
-          - "so-logs-elastic_agent.cloudbeat@custom"
+          - "logs-elastic_agent.cloudbeat@package"
+          - "logs-elastic_agent.cloudbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -216,7 +282,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.endpoint_security:
+    logs-elastic_agent.endpoint_security:
       index_sorting: False
       index_template:
         index_patterns:
@@ -238,8 +304,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.endpoint_security@package"
-          - "so-logs-elastic_agent.endpoint_security@custom"
+          - "logs-elastic_agent.endpoint_security@package"
+          - "logs-elastic_agent.endpoint_security@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -270,7 +336,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.filebeat:
+    logs-elastic_agent.filebeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -292,11 +358,14 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.filebeat@package"
-          - "so-logs-elastic_agent.filebeat@custom"
+          - "logs-elastic_agent.filebeat@package"
+          - "logs-elastic_agent.filebeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
       policy:
         phases:
           hot:
@@ -321,7 +390,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.fleet_server:
+    logs-elastic_agent.fleet_server:
       index_sorting: False
       index_template:
         index_patterns:
@@ -343,8 +412,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.fleet_server@package"
-          - "so-logs-elastic_agent.fleet_server@custom"
+          - "logs-elastic_agent.fleet_server@package"
+          - "logs-elastic_agent.fleet_server@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -375,7 +444,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.heartbeat:
+    logs-elastic_agent.heartbeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -397,8 +466,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.heartbeat@package"
-          - "so-logs-elastic_agent.heartbeat@custom"
+          - "logs-elastic_agent.heartbeat@package"
+          - "logs-elastic_agent.heartbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -426,7 +495,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent:
+    logs-elastic_agent:
       index_sorting: False
       index_template:
         index_patterns:
@@ -448,8 +517,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent@package"
-          - "so-logs-elastic_agent@custom"
+          - "logs-elastic_agent@package"
+          - "logs-elastic_agent@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -480,7 +549,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.metricbeat:
+    logs-elastic_agent.metricbeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -502,8 +571,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.metricbeat@package"
-          - "so-logs-elastic_agent.metricbeat@custom"
+          - "logs-elastic_agent.metricbeat@package"
+          - "logs-elastic_agent.metricbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -534,7 +603,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.osquerybeat:
+    logs-elastic_agent.osquerybeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -556,8 +625,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.osquerybeat@package"
-          - "so-logs-elastic_agent.osquerybeat@custom"
+          - "logs-elastic_agent.osquerybeat@package"
+          - "logs-elastic_agent.osquerybeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
@@ -588,7 +657,7 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true
-    so-logs-elastic_agent.packetbeat:
+    logs-elastic_agent.packetbeat:
       index_sorting: False
       index_template:
         index_patterns:
@@ -610,8 +679,8 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
-          - "so-logs-elastic_agent.packetbeat@package"
-          - "so-logs-elastic_agent.packetbeat@custom"
+          - "logs-elastic_agent.packetbeat@package"
+          - "logs-elastic_agent.packetbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
         priority: 200
