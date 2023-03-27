@@ -157,6 +157,8 @@ base:
   '*_idh':
     - soc_global
     - adv_global
+    - idh.soc_idh
+    - idh.adv_idh
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
