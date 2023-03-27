@@ -52,4 +52,5 @@ commonpkgs:
       - rsync
       - python3-rich
       - python3-watchdog
+      - unzip
 {% endif %}
