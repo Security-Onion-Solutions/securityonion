@@ -5,6 +5,12 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from "curator/map.jinja" import CURATOROPTIONS %}
+{% from "curator/map.jinja" import CURATORMERGED %}
+{% set REMOVECURATORCRON = False %}
+
 # Curator
 # Create the group
 curatorgroup:
@@ -26,12 +32,7 @@ curlogdir:
     - name: /opt/so/log/curator
     - user: 934
     - group: 939
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-{% if GLOBALS.role in ['so-eval', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-manager']%}
-{% from 'docker/docker.map.jinja' import DOCKER %}
-{% from "curator/map.jinja" import CURATOROPTIONS %}
-{% from "curator/map.jinja" import CURATORMERGED %}
-{% set REMOVECURATORCRON = False %}
+
 curactiondir:
   file.directory:
     - name: /opt/so/conf/curator/action
@@ -49,7 +50,6 @@ actionconfs:
     - defaults:
         CURATORMERGED: {{ CURATORMERGED }}
         
-
 curconf:
   file.managed:
     - name: /opt/so/conf/curator/curator.yml
@@ -60,40 +60,6 @@ curconf:
     - template: jinja
     - show_changes: False
 
-curcloseddel:
-  file.managed:
-    - name: /usr/sbin/so-curator-closed-delete
-    - source: salt://curator/files/bin/so-curator-closed-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-
-curcloseddeldel:
-  file.managed:
-    - name: /usr/sbin/so-curator-closed-delete-delete
-    - source: salt://curator/files/bin/so-curator-closed-delete-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
-curclose:
-  file.managed:
-    - name: /usr/sbin/so-curator-close
-    - source: salt://curator/files/bin/so-curator-close
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
-curdel:
-  file.managed:
-    - name: /usr/sbin/so-curator-delete
-    - source: salt://curator/files/bin/so-curator-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-
 curclusterclose: 
   file.managed:
     - name: /usr/sbin/so-curator-cluster-close
@@ -103,10 +69,18 @@ curclusterclose:
     - mode: 755
     - template: jinja
 
-curclusterdelete: 
+curclusterdelete:
   file.managed:
-    - name: /usr/sbin/so-curator-cluster-delete
+    - name: /usr/sbin/so-curator-delete-delete
     - source: salt://curator/files/bin/so-curator-cluster-delete
+    - user: 934
+    - group: 939
+    - mode: 755
+
+curclusterdeletedelete:
+  file.managed:
+    - name: /usr/sbin/so-curator-cluster-delete-delete
+    - source: salt://curator/files/bin/so-curator-cluster-delete-delete
     - user: 934
     - group: 939
     - mode: 755
@@ -162,43 +136,16 @@ so-curatorclusterclose:
     - month: '*'
     - dayweek: '*'
 
-so-curatorclusterdelete:
+so-curatorclusterdeletecron:
   cron.present:
-    - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-delete.log 2>&1
-    - user: root
-    - minute: '2'
-    - hour: '*/1'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-{% else %}
-curnodedel:
-  file.managed:
-    - name: /usr/sbin/so-curator-node-delete
-    - source: salt://curator/files/bin/so-curator-node-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-
-curnodedeldel:
-  file.managed:
-    - name: /usr/sbin/so-curator-node-delete-delete
-    - source: salt://curator/files/bin/so-curator-node-delete-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
-so-curatornodedeletecron:
-  cron.present:
-    - name: /usr/sbin/so-curator-node-delete > /opt/so/log/curator/cron-node-delete.log 2>&1
+    - name: /usr/sbin/so-curator-cluster-delete-delete > /opt/so/log/curator/cron-cluster-delete.log 2>&1
     - user: root
     - minute: '*/5'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
-{% endif %}
+
 {% else %}
 
 {{sls}}_state_not_allowed:
