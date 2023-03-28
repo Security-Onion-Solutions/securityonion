@@ -105,6 +105,7 @@ base:
     - playbook
     - redis
     {%- endif %}
+    - elasticfleet
     - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
