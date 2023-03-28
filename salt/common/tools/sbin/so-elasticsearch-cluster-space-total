@@ -13,7 +13,7 @@ TOTAL_AVAILABLE_SPACE=0
 COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 240 ]]; do
-      so-elasticsearch-query / -k --output /dev/null --silent --head --fail
+      /usr/sbin/so-elasticsearch-query / -k --output /dev/null --silent --head --fail
         if [ $? -eq 0 ]; then
                 ELASTICSEARCH_CONNECTED="yes"
                 break
@@ -37,7 +37,7 @@ else
 fi
 
 # Iterate through the output of _cat/allocation for each node in the cluster to determine the total available space
-for i in $(so-elasticsearch-query _cat/allocation | awk '{print $5}'); do
+for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $5}'); do
   size=$(echo $i | grep -oE '[0-9]+')
   unit=$(echo $i | grep -oE '[A-Za-z]+')
   if [ $unit = "tb" ]; then
