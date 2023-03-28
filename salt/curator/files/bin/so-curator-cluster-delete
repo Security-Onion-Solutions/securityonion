@@ -4,7 +4,27 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-APP=delete
+
+#. /usr/sbin/so-elastic-common
+#. /etc/nsm/securityonion.conf
+
+# If logrotate script doesn't already exist, create it
+#FILE="/etc/logrotate.d/so-curator-cluster-delete"
+#if ! [ -f ${FILE} ]; then
+#        cat << EOF > ${FILE}
+#/var/log/nsm/so-curator-cluster-delete.log {
+#    daily
+#    rotate 7
+#    copytruncate
+#    compress
+#    missingok
+#    notifempty
+#}
+#EOF
+#fi
+
+# Avoid starting multiple instances
+APP=clusterdelete
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
 cat /dev/null >> $lf
@@ -13,18 +33,4 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-zeek-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-beats-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-firewall-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ids-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-import-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-kratos-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-osquery-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ossec-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-strelka-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-syslog-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/logs-import-so-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/logs-strelka-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/logs-suricata-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/logs-syslog-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/logs-zeek-delete.yml > /dev/null 2>&1;
+/usr/sbin/so-curator-cluster-delete-delete
