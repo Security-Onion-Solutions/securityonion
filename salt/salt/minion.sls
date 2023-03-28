@@ -1,3 +1,4 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
@@ -9,7 +10,6 @@
 
 include:
   - salt
-  - salt.helper-packages
   - systemd.reload
   - repo.client
 
@@ -32,21 +32,6 @@ install_salt_minion:
         exec 1>&- # close stdout
         exec 2>&- # close stderr
         nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
-
-  {# if we are the salt master #}
-  {% if grains.id.split('_')|first == grains.master %}
-remove_influxdb_continuous_query_state_file:
-  file.absent:
-    - name: /opt/so/state/influxdb_continuous_query.py.patched
-
-remove_influxdbmod_state_file:
-  file.absent:
-    - name: /opt/so/state/influxdbmod.py.patched
-
-remove_influxdb_retention_policy_state_file:
-  file.absent:
-    - name: /opt/so/state/influxdb_retention_policy.py.patched
-  {% endif %}
 
 {% endif %}
 
@@ -96,8 +81,10 @@ salt_minion_service_unit_file:
 mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
-    - source: salt://salt/etc/minion.d/mine_functions.conf
+    - source: salt://salt/etc/minion.d/mine_functions.conf.jinja
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
@@ -112,8 +99,3 @@ salt_minion_service:
       - file: salt_minion_service_unit_file
 {% endif %}
     - order: last
-
-
-patch_pkg:
-  pkg.installed:
-    - name: patch

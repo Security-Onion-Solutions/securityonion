@@ -1,23 +1,12 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - ssl
@@ -47,19 +36,23 @@ redislogdir:
 redisconf:
   file.managed:
     - name: /opt/so/conf/redis/etc/redis.conf
-    - source: salt://redis/etc/redis.conf
+    - source: salt://redis/etc/redis.conf.jinja
     - user: 939
     - group: 939
     - template: jinja
 
 so-redis:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - hostname: so-redis
     - user: socore
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
     - port_bindings:
-      - 0.0.0.0:6379:6379
-      - 0.0.0.0:9696:9696
+      {% for BINDING in DOCKER.containers['so-redis'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro

@@ -1,30 +1,18 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% from "zeek/map.jinja" import ZEEKOPTIONS with context %}
+{% from 'vars/globals.map.jinja' import GLOBALS with context %}
+{% from "zeek/config.map.jinja" import ZEEKOPTIONS with context %}
+{% from "zeek/config.map.jinja" import ZEEKMERGED with context %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set BPF_ZEEK = salt['pillar.get']('zeek:bpf', {}) %}
+{% from 'bpf/zeek.map.jinja' import ZEEKBPF %}
+
 {% set BPF_STATUS = 0  %}
-{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
-
-{% set ZEEK = salt['pillar.get']('zeek', {}) %}
 
 # Zeek Salt State
 
@@ -70,12 +58,15 @@ zeekextractdir:
     - name: /nsm/zeek/extracted
     - user: 937
     - group: 939
+    - mode: 770
     - makedirs: True
 
 zeekextractcompletedir:
   file.directory:
     - name: /nsm/zeek/extracted/complete
     - user: 937
+    - group: 939
+    - mode: 770
     - makedirs: True
 
 # Sync the policies
@@ -86,6 +77,8 @@ zeekpolicysync:
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        FILE_EXTRACTION: {{ ZEEKMERGED.zeek.file_extraction }}
 
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
@@ -116,16 +109,18 @@ zeekctlcfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKCTL: {{ ZEEK.zeekctl | tojson }}
+        ZEEKCTL: {{ ZEEKMERGED.zeek.config.zeekctl | tojson }}
 
 # Sync node.cfg
 nodecfg:
   file.managed:
     - name: /opt/so/conf/zeek/node.cfg
-    - source: salt://zeek/files/node.cfg
+    - source: salt://zeek/files/node.cfg.jinja
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        NODE: {{ ZEEKMERGED.zeek.config.node }}
 
 networkscfg:
   file.managed:
@@ -134,6 +129,8 @@ networkscfg:
     - user: 937
     - group: 939
     - template: jinja
+    - defaults:
+        NETWORKS: {{ ZEEKMERGED.zeek.config.networks }}
 
 #zeekcleanscript:
 #  file.managed:
@@ -167,8 +164,8 @@ zeekpacketlosscron:
     - dayweek: '*'
 
 # BPF compilation and configuration
-{% if BPF_ZEEK %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_ZEEK|join(" "),cwd='/root') %}
+{% if ZEEKBPF %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
@@ -186,7 +183,7 @@ zeekbpf:
     - user: 940
     - group: 940
 {% if BPF_STATUS %}
-    - contents_pillar: zeek:bpf
+    - contents: {{ ZEEKBPF }}
 {% else %}
     - contents:
       - "ip or not ip"
@@ -201,12 +198,12 @@ localzeek:
     - group: 939
     - template: jinja
     - defaults:
-        LOCAL: {{ ZEEK.local | tojson }}
+        LOCAL: {{ ZEEKMERGED.zeek.config.local | tojson }}
 
 so-zeek:
   docker_container.{{ ZEEKOPTIONS.status }}:
   {% if ZEEKOPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-zeek:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: {{ ZEEKOPTIONS.start }}
     - privileged: True
     - ulimits:

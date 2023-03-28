@@ -1,0 +1,19 @@
+{% from 'vars/sensor.map.jinja' import ROLE_GLOBALS %}
+{% import_yaml 'zeek/defaults.yaml' as zeek_defaults with context %}
+{% set zeek_pillar = salt['pillar.get']('zeek', []) %}
+{% set ZEEKMERGED = salt['defaults.merge'](zeek_defaults, zeek_pillar, in_place=False) %}
+{% do ZEEKMERGED.zeek.config.node.update({'interface': ROLE_GLOBALS.sensor.interface}) %}
+
+{% set ZEEKOPTIONS = {} %}
+{% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
+
+# don't start the docker container if it is an import node or disabled via pillar
+{% if grains.id.split('_')|last == 'import' or not ENABLED %}
+  {% do ZEEKOPTIONS.update({'start': False}) %}
+  {% do ZEEKOPTIONS.update({'pl_cron_state': 'absent'}) %}
+  {% do ZEEKOPTIONS.update({'status': 'absent'}) %}
+{% else %}
+  {% do ZEEKOPTIONS.update({'start': True}) %}
+  {% do ZEEKOPTIONS.update({'pl_cron_state': 'present'}) %}
+  {% do ZEEKOPTIONS.update({'status': 'running'}) %}
+{% endif %}

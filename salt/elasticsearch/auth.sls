@@ -11,8 +11,7 @@
   {% set so_logstash_user_pass = salt['pillar.get']('elasticsearch:auth:users:so_logstash_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
   {% set so_beats_user_pass = salt['pillar.get']('elasticsearch:auth:users:so_beats_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
   {% set so_monitor_user_pass = salt['pillar.get']('elasticsearch:auth:users:so_monitor_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
-  {% set auth_enabled = salt['pillar.get']('elasticsearch:auth:enabled', False) %}
-
+  
 elastic_auth_pillar:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/elasticsearch/auth.sls
@@ -21,7 +20,6 @@ elastic_auth_pillar:
     - contents: |
         elasticsearch:
           auth:
-            enabled: {{ auth_enabled }}
             users:
               so_elastic_user:
                 user: so_elastic

@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+TODAY=$(date '+%Y_%m_%d')
+BACKUPDIR={{ DESTINATION }}
+BACKUPFILE="$BACKUPDIR/so-config-backup-$TODAY.tar"
+MAXBACKUPS=7
+
+# Create backup dir if it does not exist
+mkdir -p /nsm/backup
+
+# If we haven't already written a backup file for today, let's do so
+if [ ! -f $BACKUPFILE ]; then
+
+  # Create empty backup file
+  tar -cf $BACKUPFILE -T /dev/null
+
+  # Loop through all paths defined in global.sls, and append them to backup file
+  {%- for LOCATION in BACKUPLOCATIONS %}
+  tar -rf $BACKUPFILE {{ LOCATION }}
+  {%- endfor %}
+
+fi
+
+# Find oldest backup files and remove them
+NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
+while [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; do
+  OLDESTBACKUP=$(find /nsm/backup/ -type f -name "so-config-backup*" -type f -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
+  rm -f $OLDESTBACKUP
+  NUMBACKUPS=$(find /nsm/backup/ -type f -name "so-config-backup*" | wc -l)
+done

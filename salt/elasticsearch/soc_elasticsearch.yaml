@@ -1,0 +1,133 @@
+elasticsearch:
+  esheap:
+    description: Specify the memory heap size in (m)egabytes for Elasticsearch.
+    helpLink: elasticsearch.html
+  retention: 
+    retention_pct:
+      decription: Total percentage of space used by Elasticsearch for multi node clusters
+      helpLink: elasticsearch.yaml
+      global: True
+  config:
+    cluster:
+      name: 
+        description: The name of the Security Onion Elasticsearch cluster, for identification purposes.
+        readonly: True
+        global: True
+        helpLink: elasticsearch.html
+      routing:
+        allocation:
+          disk:
+            threshold_enabled: 
+              description: Specifies whether the Elasticsearch node will monitor the available disk space for low disk space conditions and take action to protect the cluster.
+              helpLink: elasticsearch.html
+            watermark:
+              low: 
+                description: The lower percentage of used disk space representing a healthy node.
+                helpLink: elasticsearch.html
+              high: 
+                description: The higher percentage of used disk space representing an unhealthy node.
+                helpLink: elasticsearch.html
+              flood_stage: 
+                description: The max percentage of used disk space that will cause the node to take protective actions, such as blocking incoming events.
+                helpLink: elasticsearch.html
+
+    script:
+      max_compilations_rate: 
+        description: Max rate of script compilations permitted in the Elasticsearch cluster. Larger values will consume more resources.
+        global: True
+        helpLink: elasticsearch.html
+    indices:
+      query:
+        bool:
+          max_clause_count: 
+            description: Max number of boolean clauses per query.
+            global: True
+            helpLink: elasticsearch.html
+  index_settings: 
+    so-elasticsearch: &indexSettings
+      warm: 
+        description: Age (in days) of this index before it will move to warm storage, if warm nodes are present. Once moved, events on this index can take longer to fetch.
+        global: True
+        helpLink: elasticsearch.html
+      close: 
+        description: Age (in days) of this index before it will be closed. Once closed, events on this index cannot be retrieved without first re-opening the index.
+        global: True
+        helpLink: elasticsearch.html
+      delete: 
+        description: Age (in days) of this index before it will be deleted. Once deleted, events are permanently unrecoverable.
+        global: True
+        helpLink: elasticsearch.html
+      index_sorting: 
+        description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        global: True
+        helpLink: elasticsearch.html
+      index_template:
+        template:
+          settings:
+            index:
+              mapping:
+                total_fields:
+                  limit:
+                    description: Max number of fields that can exist on a single index. Larger values will consume more resources.
+                    global: True
+                    helpLink: elasticsearch.html
+              refresh_interval: 
+                  description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
+                  global: True
+                  helpLink: elasticsearch.html
+              number_of_shards: 
+                  description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                  global: True
+                  helpLink: elasticsearch.html
+              number_of_replicas: 
+                  description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                  global: True
+                  helpLink: elasticsearch.html
+      policy:
+        phases:
+          hot:
+            min_age:
+              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              global: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  global: True
+                  helpLink: elasticsearch.html
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+          cold:
+            min_age:
+              description: Minimum age of index.  This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              global: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  global: True
+                  helpLink: elasticsearch.html
+          delete:
+            min_age:
+              description: Minimum age of index. This determines when the index should be deleted.
+              global: True
+              helpLink: elastic
+    so-endgame: *indexSettings
+    so-firewall: *indexSettings
+    so-import: *indexSettings
+    so-kibana: *indexSettings
+    so-logstash: *indexSettings
+    so-osquery: *indexSettings
+    so-redis: *indexSettings
+    so-strelka: *indexSettings
+    so-syslog: *indexSettings
+    so-zeek: *indexSettings

@@ -1,318 +1,182 @@
-#!/bin/bash
-
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-display_help() {
-cat <<HELP_USAGE
-
-    $0  [-h] [-q|--quiet]
-
-   -h             Show this message.
-   -q|--quiet     Suppress the output and only return a
-	              single status code for overall status
-	0:Ok, 1:Error, 2:Starting/Pending, 99:Installing SO
-HELP_USAGE
-}
-
-# Constants
-QUIET=false
-EXITCODE=0
-SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
-# file populated by salt.lasthighstate state at end of successful highstate run
-LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
-LAST_SOSETUP_LOG=$([ -e "/root/sosetup.log" ] && date -r /root/sosetup.log +%s || echo 0)
-HIGHSTATE_RUNNING=$(salt-call --local saltutil.running --out=json | jq -r '.local[].fun' | grep -q 'state.highstate' && echo $?)
-ERROR_STRING="ERROR"
-SUCCESS_STRING="OK"
-PENDING_STRING="PENDING"
-MISSING_STRING='MISSING'
-DISABLED_STRING='DISABLED'
-WAIT_START_STRING='WAIT_START'
-STARTING_STRING='STARTING'
-CALLER=$(ps -o comm= $PPID)
-declare -a BAD_STATUSES=("removing" "paused" "exited" "dead")
-declare -a PENDING_STATUSES=("paused" "created" "restarting")
-declare -a GOOD_STATUSES=("running")
-declare -a DISABLED_CONTAINERS=()
-mapfile -t DISABLED_CONTAINERS < <(sort -u /opt/so/conf/so-status/so-status.conf | grep "^\s*#" | tr -d "#")
-
-
-declare -a temp_container_name_list=()
-declare -a temp_container_state_list=()
-
-declare -a container_name_list=()
-declare -a container_state_list=()
-
-declare -a expected_container_list=()
-
-# {% raw %}
-
-compare_lists() {
-    local found=0
-
-    create_expected_container_list
-
-    if [[ ${#expected_container_list[@]} = 0 ]]; then
-        container_name_list="${temp_container_name_list[*]}"
-        container_state_list="${temp_container_state_list[*]}"
-        return 1
-    fi
-
-    for intended_item in "${expected_container_list[@]}"; do
-        found=0
-        for i in "${!temp_container_name_list[@]}"; do
-            [[ ${temp_container_name_list[$i]} = "$intended_item" ]] \
-                && found=1 \
-                && container_name_list+=("${temp_container_name_list[$i]}") \
-                && container_state_list+=("${temp_container_state_list[$i]}") \
-                && break
-        done
-        if [[ $found = 0 ]]; then
-            container_name_list+=("$intended_item")
-            container_state_list+=("missing")
-        fi
-    done
-}
-
-# {% endraw %}
-
-create_expected_container_list() {
-
-    mapfile -t expected_container_list < <(sort -u /opt/so/conf/so-status/so-status.conf | tr -d "#")
-
-}
-
-# {% raw %}
-populate_container_lists() {
-    # TODO: check exit code directly, not with $?
-    systemctl is-active --quiet docker
-
-    if [[ $? = 0 ]]; then
-        # TODO: look into using docker templates instead of curl and jq
-        #  Ex docker ps --format "{{.Names}}\t{{.State}}"
-        # TODO: convert the output to an associtive array
-        mapfile -t docker_raw_list < <(curl -s --unix-socket /var/run/docker.sock http:/v1.40/containers/json?all=1 \
-            | jq -c '.[] | { Name: .Names[0], State: .State }' \
-            | tr -d '/{"}')
-    else
-        exit 1
-    fi
-
-    local container_name=""
-    local container_state=""
-
-    for line in "${docker_raw_list[@]}"; do
-        container_name="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\1/' )" # Get value in the first search group (container names)
-        container_state="$( echo $line | sed -e 's/Name:\(.*\),State:\(.*\)/\2/' )" # Get value in the second search group (container states)
-
-        temp_container_name_list+=( "${container_name}" )
-        temp_container_state_list+=( "${container_state}" )
-    done
-
-    compare_lists
-}
-
-parse_status() {
-    local service_name=${1}
-    local container_state=${2}
-
-    for state in "${GOOD_STATUSES[@]}"; do
-        [[ $container_state = "$state" ]] && [[ $QUIET = "false" ]] && printf $SUCCESS_STRING && return 0 || [[ $container_state = "$state" ]] && return 0
-    done
-
-    for state in "${BAD_STATUSES[@]}"; do
-        [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]] && [[ $QUIET = "false" ]] && printf $DISABLED_STRING && return 0 || [[ " ${DISABLED_CONTAINERS[@]} " =~ " ${service_name} " ]] && return 0
-    done
-
-    # if a highstate has finished running since the system has started
-    # then the containers should be running so let's check the status
-    if [ $LAST_HIGHSTATE_END -ge $SYSTEM_START_TIME ]; then
-
-        [[ $container_state = "missing" ]] && [[ $QUIET = "false" ]] && printf $MISSING_STRING && return 1 || [[ $container_state = "missing" ]] && [[ "$EXITCODE" -lt 2 ]] && EXITCODE=1  && return 1
-
-        for state in "${PENDING_STATUSES[@]}"; do
-            [[ $container_state = "$state" ]] && [[ $QUIET = "false" ]] && printf $PENDING_STRING && return 0
-        done
-
-        # This is technically not needed since the default is error state
-        for state in "${BAD_STATUSES[@]}"; do
-            [[ $container_state = "$state" ]] && [[ $QUIET = "false" ]] && printf $ERROR_STRING && return 1 || [[ $container_state = "$state" ]] && [[ "$EXITCODE" -lt 2 ]] && EXITCODE=1  && return 1
-        done
-
-        [[ $QUIET = "false" ]] && printf $ERROR_STRING && return 1 || [[ "$EXITCODE" -lt 2 ]] && EXITCODE=1 && return 1
-
-    # if a highstate has not run since system start time, but a highstate is currently running
-    # then show that the containers are STARTING
-    elif [[ "$HIGHSTATE_RUNNING" == 0 ]]; then
-        [[ $QUIET = "false" ]] && printf $STARTING_STRING && return 2 || EXITCODE=2 && return 2
-
-    # if a highstate has not finished running since system startup and isn't currently running
-    # then just show that the containers are WAIT_START; waiting to be started
-    else
-        [[ $QUIET = "false" ]] && printf $WAIT_START_STRING && return 2 || EXITCODE=2 && return 2
-
-    fi
-}
-
-
-print_line() {
-    local service_name="${1}"
-    local service_state="" ; service_state="$( parse_status "${1}" "${2}" )"
-    # XXX: What will we do if tput isn't avalable?
-    local line=""
-    local PADDING_CONSTANT=""
-    local columns=35 # value used if not printing to a tty
-
-    if (( __tty == 1 )); then
-        local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
-        local bold; bold="$(tput bold)"
-        local red; red="$(tput setaf 1)"
-        local green; green="$(tput setaf 2)"
-        local yellow; yellow="$(tput setaf 3)"
-        PADDING_CONSTANT=15 # whitespace + brackets + 1
-
-        columns=$(tput cols)
-    fi
-
-    # construct a line of '------' so that the names and states are all aligned
-    linewidth=$(( columns - PADDING_CONSTANT - ${#service_name} - ${#service_state} ))
-    for i in $(seq 0 "${linewidth}"); do
-      line="${line}-"
-    done
-
-    if [[ $service_state = "$ERROR_STRING" ]] \
-        || [[ $service_state = "$MISSING_STRING" ]]; then
-          state_color="${red:-}"
-          if [[ "$EXITCODE" -eq 0 ]]; then
-              EXITCODE=1
-          fi
-    elif [[ $service_state = "$SUCCESS_STRING" ]]; then
-        state_color="${green:-}"
-    elif [[ $service_state = "$PENDING_STRING" ]] \
-        || [[ $service_state = "$DISABLED_STRING" ]] \
-        || [[ $service_state = "$STARTING_STRING" ]] \
-        || [[ $service_state = "$WAIT_START_STRING" ]]; then
-            state_color="${yellow:-}"
-            EXITCODE=2
-    fi
-
-    service_state="${bold:-}${state_color:-}${service_state}${reset_attr:-}"
-    line="${bold:-}${state_color:-}${line:-}${reset_attr:-}"
-    printf "    %s %s [ %s ]    \n" "${service_name}" "${line:-}" "${service_state}"
-}
-
-main() {
-    is_tty
-    # if running from salt
-    if [ "$CALLER" == 'salt-call' ] ||  [ "$CALLER" == 'salt-minion' ]; then
-      printf "\n"
-      printf "Checking Docker status\n\n"
-
-      systemctl is-active --quiet docker
-      if [[ $? = 0 ]]; then
-          print_line "Docker" "running"
-      else
-          print_line "Docker" "exited"
-      fi
-
-      populate_container_lists
-
-      printf "\nChecking container statuses\n\n"
-
-      local num_containers=${#container_name_list[@]}
-
-      for i in $(seq 0 $(($num_containers - 1 ))); do
-          print_line ${container_name_list[$i]} ${container_state_list[$i]}
-      done
-
-      printf "\n"
-
-    # else if running from a terminal
-    else
-
-      if [ "$QUIET" = true ]; then
-          if [ $SYSTEM_START_TIME -lt $LAST_SOSETUP_LOG ]; then
-            exit 99
-          fi
-          print_or_parse="parse_status"
-      else
-          print_or_parse="print_line"
-
-          if (( __tty == 1 )) ; then
-          local bold; bold="$(tput bold)"
-          local focus_color; focus_color="$(tput setaf 4)"
-          local reset_attr; reset_attr="$(tput sgr0)" # reset all attributes
-          fi
-          printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking Docker status"
-      fi
-
-      systemctl is-active --quiet docker
-      if [[ $? = 0 ]]; then
-          ${print_or_parse} "Docker" "running"
-      else
-          ${print_or_parse} "Docker" "exited"
-      fi
-
-      populate_container_lists
-
-      if [ "$QUIET" = false ]; then
-          printf "\n${bold}${focus_color:-}%s${reset_attr:-}\n\n" "Checking container statuses"
-      fi
-
-      local num_containers=${#container_name_list[@]}
-
-      for i in $(seq 0 $(($num_containers - 1 ))); do
-          ${print_or_parse} ${container_name_list[$i]} ${container_state_list[$i]}
-      done
-
-      if [ "$QUIET" = false ]; then
-          printf "\n"
-      fi
-    fi
-}
-
-is_tty() {
-    __tty=0
-    [ -t 1 ] && __tty=1
-    # don't print colors if NO_COLOR is set to anything
-    [ "${#NO_COLOR}" -ne 0 ] && __tty=0
-}
-
-# {% endraw %}
-
-if ! [ "$(id -u)" = 0 ]; then
-   echo "${0}: This command must be run as root"
-   exit 1
-fi
-
-while getopts ':hq' OPTION; do
-  case "$OPTION" in
-    h)
-      display_help
-      exit 0
-      ;;
-    q) QUIET=true ;;
-    \?)
-      display_help
-      exit 1
-      ;;
-  esac
-done
-
-main
-
-exit $EXITCODE
+#!/usr/bin/env python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+import json
+import os
+from rich import box
+from rich.console import Console
+from rich.table import Table
+import subprocess
+import sys
+import time
+
+EXPECTED_CONTAINERS_FILE = "/opt/so/conf/so-status/so-status.conf"
+HIGHSTATE_COMPLETE_FILE = "/opt/so/log/salt/lasthighstate"
+UPTIME_FILE = "/proc/uptime"
+
+def showUsage(options, args):
+  print('Usage: {} [OPTIONS]'.format(sys.argv[0]))
+  print('  Options:')
+  print('   -h                  - Prints this usage information')
+  print('   -q                  - Suppress output; useful for automation of exit code value')
+  print('   -j                  - Output in JSON format')
+  print('   -i                  - Consider the installation outcome regardless of whether the system appears healthy')
+  print('')
+  print('  Exit codes:')
+  print('    0                  - Success, system appears to be running correctly')
+  print('    1                  - Error, one or more subsystems are not running')
+  print('    2                  - System is starting')
+  print('    99                 - Installation in progress')
+  print('    100                - System installation encountered errors')
+  sys.exit(1)
+
+
+def fail(msg):
+  print(msg, file=sys.stderr)
+  sys.exit(1)
+
+
+def check_installation_status(options, console):
+  if "-i" in options:
+    if os.path.isfile('/root/failure'):
+      return 100
+    if os.path.isfile('/root/success'):
+      return 0
+    return 99
+  return 0
+
+
+def check_system_status(options, console):
+  code = 0
+  highstate_end_time = 0
+  try:
+    highstate_end_time = os.path.getmtime(HIGHSTATE_COMPLETE_FILE)
+    uptime_file = open(UPTIME_FILE, "r")
+    uptime_contents = uptime_file.readline()
+    uptime = uptime_contents.split()
+    if len(uptime) != 2:
+      fail("Unable to determine system uptime")
+    system_start_time = time.time() - float(uptime[0])
+    if highstate_end_time < system_start_time:
+      code = 2
+  except OSError:
+    code = 99
+
+  return code
+
+
+def output(options, console, code, data):
+  if "-j" in options:
+    summary = { "status_code": code, "containers": data }
+    print(json.dumps(summary))
+  elif "-q" not in options:
+    if code == 2:
+      console.print(" [bold yellow]:hourglass: [bold white]System appears to be starting. No highstate has completed since the system was restarted.")
+    elif code == 99:
+      console.print(" [bold red]:exclamation: [bold white]Installation does not appear to be complete. A highstate has not fully completed.")
+    elif code == 100:
+      console.print(" [bold red]:exclamation: [bold white]Installation encountered errors.")
+    else:
+      table = Table(title = "Security Onion Status", show_edge = False, safe_box = True, box = box.MINIMAL)
+      table.add_column("Container", justify="right", style="white", no_wrap=True)
+      table.add_column("Status", justify="left", style="green", no_wrap=True)
+      table.add_column("Details", justify="right", style="cyan", no_wrap=True)
+      data.sort(key = lambda x: x['Name'])
+      for container in data:
+        color = "[green]"
+        if container['Status'] != "running":
+          color = "[bold red]"
+        table.add_row(container['Name'], color + container['Status'], container['Details'])
+      console.print()
+      console.print(table)
+      console.print()
+      if code == 0:
+        console.print(" [green]:heavy_check_mark: [bold white]This onion is ready to make your adversaries cry!")
+      elif code == 1:
+        console.print(" [bold red]:exclamation: [bold white]Check container logs and /opt/so/log for more details.")
+      console.print()
+
+def check_container_status(options, console):
+  code = 0
+  cli = "docker"
+  proc = subprocess.run([cli, 'ps', '--format', '{{json .}}'], stdout=subprocess.PIPE, encoding="utf-8")
+  if proc.returncode != 0:
+    fail("Container system error; unable to obtain container process statuses")
+
+  container_list = []
+  expected_file = open(EXPECTED_CONTAINERS_FILE, "r")
+  for container in expected_file:
+    if container.startswith('#'):
+      continue
+    container = container.strip()
+    exists = False
+    details = { "Name": container, "Status": "missing", "Details": ""}
+
+    try:
+      # Podman format
+      containers_data = json.loads(proc.stdout)
+      for item in containers_data:
+        if item['Names'][0] == container:
+          details['Status'] = item['State']
+          details['Details'] = item['Status']
+          container_list.append(details)
+          exists = True
+          if item['State'] != "running":
+            code = 1
+          break
+
+    except:
+      # Docker format
+      for line in proc.stdout.splitlines():
+        if len(line) > 2:
+          item = json.loads(line)
+          if item['Names'] == container:
+            details['Status'] = item['State']
+            details['Details'] = item['Status']
+            container_list.append(details)
+            exists = True
+            if item['State'] != "running":
+              code = 1
+            break
+
+    if not exists:
+      container_list.append(details)
+      code = 1
+  return code, container_list
+
+
+def check_status(options, console):
+  container_list = []
+  code = check_installation_status(options, console)
+  if code == 0:
+    code = check_system_status(options, console)
+  if code == 0:
+    code, container_list = check_container_status(options, console)
+  output(options, console, code, container_list)
+  return code
+
+
+def main():  
+  options = []
+  args = sys.argv[1:]
+  for option in args:
+    if option.startswith("-"):
+      options.append(option)
+
+  if "-h" in options or "--help" in options or "-?" in options:
+    showUsage(options, None)
+
+  if os.environ["USER"] != "root":
+    fail("This program must be run as root")
+  
+  console = Console()
+  sys.exit(check_status(options, console))
+
+
+if __name__ == "__main__":
+  main()
+

@@ -1,21 +1,11 @@
 #!/bin/bash
-#
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-APP=delete
+# Avoid starting multiple instances
+APP=clusterdelete
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
 cat /dev/null >> $lf
@@ -24,18 +14,4 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
-{% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
-
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-zeek-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-beats-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-firewall-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ids-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-import-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-kratos-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-osquery-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ossec-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-strelka-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-syslog-delete.yml > /dev/null 2>&1;
-{% for INDEX in MODULESMERGED.modules.keys() -%}
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-{{ INDEX }}-delete.yml > /dev/null 2>&1{% if not loop.last %};{% endif %}
-{% endfor -%}
+/usr/sbin/so-curator-cluster-delete-delete

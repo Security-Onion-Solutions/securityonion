@@ -1,0 +1,125 @@
+{% from 'docker/docker.map.jinja' import DOCKER -%}
+{% from 'firewall/containers.map.jinja' import NODE_CONTAINERS -%}
+{% from 'firewall/map.jinja' import hostgroups with context -%}
+{% from 'firewall/map.jinja' import assigned_hostgroups with context -%}
+{%- set PR = [] %}
+{%- set D1 = [] %}
+{%- set D2 = [] %}
+{%- for container in NODE_CONTAINERS %}
+{%-   set IP = DOCKER.containers[container].ip %}
+{%-   if DOCKER.containers[container].port_bindings is defined %}
+{%-     for binding in DOCKER.containers[container].port_bindings %}
+{#-       cant split int so we convert to string #}
+{%-       set binding = binding|string %}
+{#-          split the port binding by /. if proto not specified, default is tcp #}
+{%-         set binding_split = binding.split('/') %}
+{%-         if binding_split | length > 1 %}
+{%-           set proto = binding_split[1] %}
+{%-         else %}
+{%-           set proto = 'tcp' %}
+{%-         endif %}
+{%-         set bsa = binding_split[0].split(':') %}
+{%-         set bindip = '' %}
+{%-         set hostPort = '' %}
+{%-         set containerPort = '' %}
+{%-         if bsa | length == 3 %}
+{%-           set bindip = bsa[0] %}
+{%-           set hostPort = bsa[1] %}
+{%-           set containerPort = bsa[2] %}
+{%-         endif %}
+{%-         if bsa | length == 2 %}
+{%-           set hostPort = bsa[0] %}
+{%-           set containerPort = bsa[1] %}
+{%-         endif %}
+{%-         do PR.append("-A POSTROUTING -s " ~ DOCKER.containers[container].ip ~ "/32 -d " ~ DOCKER.containers[container].ip ~ "/32 -p " ~  proto ~ " -m " ~ proto  ~ " --dport " ~ containerPort ~ " -j MASQUERADE") %}
+{%-         if bindip | length and bindip != '0.0.0.0' %}
+{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-         else %}
+{%-           do D1.append("-A DOCKER ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-         endif %}
+{%-         do D2.append("-A DOCKER -d " ~ DOCKER.containers[container].ip ~ "/32 ! -i sobridge -o sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+:DOCKER - [0:0]
+-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+-A POSTROUTING -s {{DOCKER.sorange}} ! -o sobridge -j MASQUERADE
+{%- for rule in PR %}
+{{ rule }}
+{%- endfor %}
+-A DOCKER -i sobridge -j RETURN
+{%- for rule in D1 %}
+{{ rule }}
+{%- endfor %}
+
+COMMIT
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+:DOCKER - [0:0]
+:DOCKER-ISOLATION-STAGE-1 - [0:0]
+:DOCKER-ISOLATION-STAGE-2 - [0:0]
+:DOCKER-USER - [0:0]
+:LOGGING - [0:0]
+
+{%- set count = namespace(value=0) %}
+{%- for chain, hg in assigned_hostgroups.chain.items() %}
+  {%- for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
+    {%- for action in ['insert', 'delete' ] %}
+      {%- if hostgroups[hostgroup].ips[action] %}
+        {%- for ip in hostgroups[hostgroup].ips[action] %}
+          {%- for portgroup in portgroups.portgroups %}
+            {%- for proto, ports in portgroup.items() %}
+              {%- for port in ports %}
+                {%- set count.value = count.value + 1 %}
+-A {{chain}} -s {{ip}} -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
+              {%- endfor %}
+            {%- endfor %}
+          {%- endfor %}
+        {%- endfor %}
+      {%- endif %}
+    {%- endfor %}
+  {%- endfor %}
+{%- endfor %}
+
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate INVALID -j DROP
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -j LOGGING
+-A FORWARD -j DOCKER-USER
+-A FORWARD -j DOCKER-ISOLATION-STAGE-1
+-A FORWARD -o sobridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -o sobridge -j DOCKER
+-A FORWARD -i sobridge ! -o sobridge -j ACCEPT
+-A FORWARD -i sobridge -o sobridge -j ACCEPT
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+-A FORWARD -m conntrack --ctstate INVALID -j DROP
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -p icmp -m icmp --icmp-type 14 -j DROP
+
+{%- for rule in D2 %}
+{{ rule }}
+{%- endfor %}
+
+-A DOCKER-ISOLATION-STAGE-1 -i sobridge ! -o sobridge -j DOCKER-ISOLATION-STAGE-2
+-A DOCKER-ISOLATION-STAGE-1 -j RETURN
+-A DOCKER-ISOLATION-STAGE-2 -o sobridge -j DROP
+-A DOCKER-ISOLATION-STAGE-2 -j RETURN
+-A DOCKER-USER ! -i sobridge -o sobridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-USER ! -i sobridge -o sobridge -j LOGGING
+-A DOCKER-USER -j RETURN
+-A LOGGING -m limit --limit 2/min -j LOG --log-prefix "IPTables-dropped: "
+-A LOGGING -j DROP
+COMMIT

@@ -1,7 +1,5 @@
 {% set node_types = {} %}
 {% set manage_alived = salt.saltutil.runner('manage.alived', show_ip=True) %}
-{% set manager = grains.master %}
-{% set manager_type = manager.split('_')|last %}
 {% for minionid, ip in salt.saltutil.runner('mine.get', tgt='*', fun='network.ip_addrs', tgt_type='glob') | dictsort() %}
 {%   set hostname = minionid.split('_')[0] %}
 {%   set node_type = minionid.split('_')[1] %}
@@ -24,10 +22,10 @@
 
 node_data:
 {% for node_type, host_values in node_types.items() %}
-  {{node_type}}:
 {%   for hostname, details in host_values.items() %}
-    {{hostname}}:
-      ip: {{details.ip}}
-      alive: {{ details.alive }}
+  {{hostname}}:
+    ip: {{details.ip}}
+    alive: {{ details.alive }}
+    role: {{node_type}}
 {%   endfor %}
 {% endfor %}

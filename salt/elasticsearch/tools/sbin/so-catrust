@@ -1,22 +1,10 @@
 #!/bin/bash
 #
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{%- set VERSION = salt['pillar.get']('global:soversion', '') %}
-{%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{%- set MANAGER = salt['grains.get']('master') %}
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 . /usr/sbin/so-common
 
 # Exit on errors, since all lines must succeed
@@ -24,7 +12,7 @@ set -e
 
 # Check to see if we have extracted the ca cert.
 if [ ! -f /opt/so/saltstack/local/salt/common/cacerts ]; then
-    docker run -v /etc/pki/ca.crt:/etc/ssl/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }} -keystore /usr/share/elasticsearch/jdk/lib/security/cacerts -alias SOSCA -import -file /etc/ssl/ca.crt -storepass changeit -noprompt
+    docker run -v /etc/pki/ca.crt:/etc/ssl/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }} -keystore /usr/share/elasticsearch/jdk/lib/security/cacerts -alias SOSCA -import -file /etc/ssl/ca.crt -storepass changeit -noprompt
     docker cp so-elasticsearchca:/usr/share/elasticsearch/jdk/lib/security/cacerts /opt/so/saltstack/local/salt/common/cacerts
     docker cp so-elasticsearchca:/etc/ssl/certs/ca-certificates.crt /opt/so/saltstack/local/salt/common/tls-ca-bundle.pem
     docker rm so-elasticsearchca

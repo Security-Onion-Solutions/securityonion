@@ -1,4 +1,11 @@
-{% import_yaml 'elastalert/defaults.yaml' as elastalert_defaults with context %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% import_yaml 'elastalert/defaults.yaml' as ELASTALERT %}
 {% set elastalert_pillar = salt['pillar.get']('elastalert:config', {}) %}
 
-{% do salt['defaults.merge'](elastalert_defaults.elastalert.config, elastalert_pillar, in_place=True) %}
+
+{% do ELASTALERT.elastalert.config.update({'es_host': GLOBALS.manager}) %}
+{% do ELASTALERT.elastalert.config.update({'es_username': pillar.elasticsearch.auth.users.so_elastic_user.user}) %}
+{% do ELASTALERT.elastalert.config.update({'es_password': pillar.elasticsearch.auth.users.so_elastic_user.pass}) %}
+
+{% do salt['defaults.merge'](ELASTALERT.elastalert.config, elastalert_pillar, in_place=True) %}
+

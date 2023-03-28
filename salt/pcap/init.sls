@@ -1,27 +1,16 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "pcap/map.jinja" import STENOOPTIONS with context %}
+{% from "pcap/config.map.jinja" import PCAPMERGED with context %}
+{% from 'bpf/pcap.map.jinja' import PCAPBPF %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set INTERFACE = salt['pillar.get']('sensor:interface', 'bond0') %}
-{% set BPF_STENO = salt['pillar.get']('steno:bpf', None) %}
 {% set BPF_COMPILED = "" %}
 
 # PCAP Section
@@ -44,8 +33,8 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
-{% if BPF_STENO %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', INTERFACE + ' ' + BPF_STENO|join(" "),cwd='/root') %}
+{% if PCAPBPF %}
+   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + PCAPBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
    {% else  %}
@@ -61,12 +50,13 @@ bpfcompilationfailure:
 stenoconf:
   file.managed:
     - name: /opt/so/conf/steno/config
-    - source: salt://pcap/files/config
+    - source: salt://pcap/files/config.jinja
     - user: stenographer
     - group: stenographer
     - mode: 644
     - template: jinja
     - defaults:
+        PCAPMERGED: {{ PCAPMERGED }}
         BPF_COMPILED: "{{ BPF_COMPILED }}"
 
 stenoca:
@@ -113,7 +103,7 @@ stenolog:
 so-steno:
   docker_container.{{ STENOOPTIONS.status }}:
   {% if STENOOPTIONS.status == 'running' %}
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-steno:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-steno:{{ GLOBALS.so_version }}
     - start: {{ STENOOPTIONS.start }}
     - network_mode: host
     - privileged: True

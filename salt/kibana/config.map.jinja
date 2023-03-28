@@ -1,20 +1,17 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'kibana/defaults.yaml' as KIBANACONFIG with context %}
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
-{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
-  {% do KIBANACONFIG.kibana.config.elasticsearch.update({'username': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:user'), 'password': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:pass')}) %}
-{% else %}
-  {% do KIBANACONFIG.kibana.config.xpack.update({'security': {'authc': {'providers': {'anonymous': {'anonymous1': {'order': 0, 'credentials': 'elasticsearch_anonymous_user'}}}}}}) %}
-{% endif %}
+{% do KIBANACONFIG.kibana.config.server.update({'publicBaseUrl': 'https://' ~ GLOBALS.url_base ~ '/kibana'}) %}
+{% do KIBANACONFIG.kibana.config.elasticsearch.update({'hosts': ['https://' ~ GLOBALS.manager ~ ':9200']}) %}
+
+{% do KIBANACONFIG.kibana.config.elasticsearch.update({'username': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:user'), 'password': salt['pillar.get']('elasticsearch:auth:users:so_kibana_user:pass')}) %}
+
 
 {% if salt['pillar.get']('kibana:secrets') %}
   {% do KIBANACONFIG.kibana.config.xpack.update({'encryptedSavedObjects': {'encryptionKey': pillar['kibana']['secrets']['encryptedSavedObjects']['encryptionKey']}}) %}
   {% do KIBANACONFIG.kibana.config.xpack.security.update({'encryptionKey': pillar['kibana']['secrets']['security']['encryptionKey']}) %}
   {% do KIBANACONFIG.kibana.config.xpack.update({'reporting': {'encryptionKey': pillar['kibana']['secrets']['reporting']['encryptionKey']}}) %}
-{% endif %}
-
-{% if HIGHLANDER %}
-  {% do KIBANACONFIG.kibana.config.xpack.ml.update({'enabled': true}) %}
 {% endif %}
 
 {% set KIBANACONFIG = salt['pillar.get']('kibana:config', default=KIBANACONFIG.kibana.config, merge=True) %}

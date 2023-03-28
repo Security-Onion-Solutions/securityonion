@@ -1,21 +1,77 @@
-{% set measurements = salt['cmd.shell']('docker exec -t so-influxdb influx -format json -ssl -unsafeSsl -database telegraf -execute "show measurements" 2> /root/measurement_query.log | jq -r .results[0].series[0].values[]?[0] 2>> /root/measurement_query.log', shell='/bin/bash') %}
-
 influxdb:
-  retention_policies:
+  config:
+    assets-path: /ui
+    bolt-path: /var/lib/influxdb2/influxd.bolt
+    engine-path: /var/lib/influxdb2/engine
+    feature-flags: ""
+    flux-log-enabled: false
+    hardening-enabled: true
+    http-bind-address: :8086
+    http-idle-timeout: 0
+    http-read-header-timeout: 10s
+    http-read-timeout: 0
+    http-write-timeout: 0
+    influxql-max-select-buckets: 0
+    influxql-max-select-point: 0
+    influxql-max-select-series: 0
+    instance-id: ""
+    log-level: info
+    metrics-disabled: true
+    no-tasks: false
+    pprof-disabled: true
+    query-concurrency: 100
+    query-initial-memory-bytes: 1073741824
+    query-max-memory-bytes: 107374182400
+    query-memory-bytes: 1073741824
+    query-queue-size: 500
+    reporting-disabled: true
+    secret-store: bolt
+    session-length: 10080
+    session-renew-disabled: false
+    sqlite-path: /var/lib/influxdb2/influxd.sqlite
+    storage-cache-max-memory-size: 1073741824
+    storage-cache-snapshot-memory-size: 26214400
+    storage-cache-snapshot-write-cold-duration: 10m0s
+    storage-compact-full-write-cold-duration: 4h0m0s
+    storage-compact-throughput-burst: 50331648
+    storage-max-concurrent-compactions: 0
+    storage-max-index-log-file-size: 1048576
+    storage-no-validate-field-size: false
+    storage-retention-check-interval: 30m0s
+    storage-series-file-max-concurrent-snapshot-compactions: 0
+    storage-series-id-set-cache-size: 100
+    storage-shard-precreator-advance-period: 30m0s
+    storage-shard-precreator-check-interval: 10m0s
+    storage-tsm-use-madv-willneed: false
+    storage-validate-keys: false
+    storage-wal-fsync-delay: 0s
+    storage-wal-max-concurrent-writes: 0
+    storage-wal-max-write-delay: 10m
+    storage-write-timeout: 10s
+    store: disk
+    tls-cert: /conf/influxdb.crt
+    tls-key: /conf/influxdb.key
+    tls-min-version: 1.2
+    tls-strict-ciphers: true
+    tracing-type: ""
+    ui-disabled: false
+    vault-addr: ""
+    vault-cacert: ""
+    vault-capath: ""
+    vault-client-cert: ""
+    vault-client-key: ""
+    vault-client-timeout: 60s
+    vault-max-retries: 2
+    vault-skip-verify: false
+    vault-tls-server-name: ""
+    vault-token: ""
+  buckets:
     so_short_term:
-      default: True
-      duration: 30d
-      shard_duration: 1d
+      duration: 2592000
+      shard_duration: 86400
     so_long_term:
-      default: False
-      duration: 0d
-      shard_duration: 7d
+      duration: 0
+      shard_duration: 604800
   downsample:
     so_long_term:
       resolution: 5m
-{% if measurements|length > 0 %}
-      measurements:
-  {% for measurement in measurements.splitlines() %}
-        - {{ measurement }}
-  {% endfor %}
-{% endif %}

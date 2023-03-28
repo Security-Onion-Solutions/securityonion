@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+. /usr/sbin/so-common
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 --role=<ROLE> --ip=<IP ADDRESS>"
+  echo ""
+  echo " Example: so-firewall-minion --role=manager --ip=192.168.254.100"
+  echo ""
+  exit 1
+fi
+
+for i in "$@"; do
+	case $i in
+		-r=*|--role=*)
+			ROLE="${i#*=}"
+			shift 
+			;;
+		-i=*|--ip=*)
+			IP="${i#*=}"
+			shift 
+			;;
+		-*|--*)
+			echo "Unknown option $i"
+			exit 1
+			;;
+		*)
+		;;
+	esac
+done
+
+ROLE=${ROLE^^}
+
+if [ -z "$ROLE" ]; then
+    echo "Please specify a role with --role="
+    exit 1
+fi
+if [ -z "$IP" ]; then
+    echo "Please specify an IP address with --ip="
+    exit 1
+fi
+
+	case "$ROLE" in
+
+        'MANAGER')
+			so-firewall --role=manager --ip="$IP"
+			;;
+		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
+			so-firewall --role=manager --ip="$IP"
+			so-firewall --role=sensors --ip="$IP"
+			so-firewall --apply=true --role=searchnodes --ip="$IP"
+			;;
+		'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'IDH' | 'RECEIVER')
+			case "$ROLE" in
+				'SENSOR')
+					so-firewall --apply=true --role=sensors --ip="$IP"
+					;;
+				'SEARCHNODE')
+					so-firewall --apply=true --role=searchnodes --ip="$IP"
+					;;
+				'HEAVYNODE')
+					so-firewall --role=sensors --ip="$IP"
+					so-firewall --apply=true --role=heavynodes --ip="$IP"
+					;;
+				'IDH')
+				    so-firewall --apply=true --role=sensors --ip="$IP"
+					;;
+				'RECEIVER')
+					so-firewall --apply=true --role=receivers --ip="$IP"
+                    ;;
+           	esac
+			;;
+    esac

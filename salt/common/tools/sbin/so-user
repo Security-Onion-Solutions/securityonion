@@ -1,51 +1,133 @@
 #!/bin/bash
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 source $(dirname $0)/so-common
 
 DEFAULT_ROLE=analyst
 
-if [[ $# -lt 1 || $# -gt 3 ]]; then
-  echo "Usage: $0 <operation> [email] [role]"
-  echo ""
-  echo " where <operation> is one of the following:"
-  echo ""
-  echo "     list: Lists all user email addresses currently defined in the identity system"
-  echo "      add: Adds a new user to the identity system; requires 'email' parameter, while 'role' parameter is optional and defaults to $DEFAULT_ROLE"
-  echo "  addrole: Grants a role to an existing user; requires 'email' and 'role' parameters"
-  echo "  delrole: Removes a role from an existing user; requires 'email' and 'role' parameters"
-  echo "   update: Updates a user's password and disables MFA; requires 'email' parameter"
-  echo "   enable: Enables a user; requires 'email' parameter"
-  echo "  disable: Disables a user; requires 'email' parameter"
-  echo " validate: Validates that the given email address and password are acceptable; requires 'email' parameter"
-  echo " valemail: Validates that the given email address is acceptable; requires 'email' parameter"
-  echo "  valpass: Validates that a password is acceptable"
-  echo ""
-  echo " Note that the password can be piped into STDIN to avoid prompting for it"
+function usage() {
+  cat <<USAGE_EOF
+  Usage: $0 <operation> [supporting parameters]"
+  
+  where <operation> is one of the following:"
+  
+      list: Lists all user email addresses currently defined in the identity system"
+  
+       add: Adds a new user to the identity system"
+            Required parameters: "
+              --email <email>"
+            Optional parameters: "
+              --role <role>             (defaults to $DEFAULT_ROLE)"
+              --firstName <firstName>   (defaults to blank)"
+              --lastName <lastName>     (defaults to blank)"
+              --note <note>             (defaults to blank)"
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+   addrole: Grants a role to an existing user"
+            Required parameters: "
+              --email <email>"
+              --role <role>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+   delrole: Removes a role from an existing user"
+            Required parameters: "
+              --email <email>"
+              --role <role>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+  password: Updates a user's password and disables MFA"
+            Required parameters: "
+              --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+    profile: Updates a user's profile information"
+            Required parameters: "
+              --email <email>"
+            Optional parameters: "
+              --role <role>             (defaults to $DEFAULT_ROLE)"
+              --firstName <firstName>   (defaults to blank)"
+              --lastName <lastName>     (defaults to blank)"
+              --note <note>             (defaults to blank)"
+  
+    enable: Enables a user"
+            Required parameters: "
+              --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+   disable: Disables a user"
+            Required parameters: "
+              --email <email>"
+            Optional parameters: "
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+  
+  validate: Validates that the given email address and password are acceptable"
+            Required parameters: "
+              --email <email>"
+  
+  valemail: Validates that the given email address is acceptable; requires 'email' parameter"
+            Required parameters: "
+              --email <email>"
+  
+   valpass: Validates that a password is acceptable"
+  
+  Note that the password can be piped into STDIN to avoid prompting for it"
+USAGE_EOF
   exit 1
+}
+
+if [[ $# -lt 1 || $1 == --help || $1 == -h || $1 == -? || $1 == --h ]]; then
+  usage
 fi
 
 operation=$1
-email=$2
-role=$3
+shift
+
+while [[ $# -gt 0 ]]; do
+  param=$1
+  shift
+  case "$param" in
+    --email)
+      email=$1
+      shift
+      ;;
+    --role)
+      role=$1
+      shift
+      ;;
+    --firstName)
+      firstName=$1
+      shift
+      ;;
+    --lastName) 
+      lastName=$1
+      shift
+      ;;
+    --note) 
+      note=$1
+      shift
+      ;;
+    --skip-sync) 
+      SKIP_SYNC=1
+      ;;
+    *) 
+      echo "Encountered unexpected parameter: $param"
+      usage
+      ;;
+  esac
+done
 
 kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434/admin}
-databasePath=${KRATOS_DB_PATH:-/opt/so/conf/kratos/db/db.sqlite}
+databasePath=${KRATOS_DB_PATH:-/nsm/kratos/db/db.sqlite}
 databaseTimeout=${KRATOS_DB_TIMEOUT:-5000}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
 elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
@@ -148,7 +230,7 @@ function updatePassword() {
     # Generate password hash
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
-    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), updated_at=datetime('now') where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='password');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), created_at=datetime('now'), updated_at=datetime('now') where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='password');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     # Deactivate MFA
     echo "delete from identity_credential_identifiers where identity_credential_id=(select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
@@ -222,6 +304,8 @@ function syncElasticSystemRole() {
 }
 
 function syncElastic() {
+  [[ -n $SKIP_SYNC ]] && return
+
   echo "Syncing users and roles between SOC and Elastic..."
 
   usersTmpFile="${elasticUsersFile}.tmp"
@@ -286,9 +370,9 @@ function syncElastic() {
     mv "${rolesTmpFile}" "${elasticRolesFile}"
 
     if [[ -z "$SKIP_STATE_APPLY" ]]; then
-      echo "Elastic state will be re-applied to affected minions. This may take several minutes..."
+      echo "Elastic state will be re-applied to affected minions. This will run in the background and may take several minutes to complete."
       echo "Applying elastic state to elastic minions at $(date)" >> /opt/so/log/soc/sync.log 2>&1
-      salt -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-node or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
+      salt --async -C 'G@role:so-standalone or G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managersearch or G@role:so-searchnode or G@role:so-heavynode' state.apply elasticsearch queue=True >> /opt/so/log/soc/sync.log 2>&1
     fi
   else
     echo "Newly generated users/roles files are incomplete; aborting."
@@ -378,11 +462,19 @@ function adjustUserRole() {
 function createUser() {
   email=$1
   role=$2
+  firstName=$3
+  lastName=$4
+  note=$5
 
   now=$(date -u +%FT%TZ)
   addUserJson=$(cat <<EOF
 {
-  "traits": {"email":"${email}"},
+  "traits": {
+    "email": "${email}",
+    "firstName": "${firstName}",
+    "lastName": "${lastName}",
+    "note": "${note}"
+  },
   "schema_id": "default"
 }
 EOF
@@ -401,19 +493,6 @@ EOF
   else
     updatePassword "$identityId"
     addUserRole "$email" "$role"
-  fi
-}
-
-function migrateLockedUsers() {
-  # This is a migration function to convert locked users from prior to 2.3.90
-  # to inactive users using the newer Kratos functionality. This should only
-  # find locked users once.
-  lockedEmails=$(curl -s ${kratosUrl}/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
-  if [[ -n "$lockedEmails" ]]; then
-    echo "Disabling locked users..."
-    for email in $lockedEmails; do
-      updateStatus "$email" locked
-    done
   fi
 }
 
@@ -441,13 +520,32 @@ function updateStatus() {
   [[ $? != 0 ]] && fail "Unable to update user"
 }
 
-function updateUser() {
+function updateUserPassword() {
   email=$1
 
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
   updatePassword "$identityId"
+}
+
+function updateUserProfile() {
+  email=$1
+
+  identityId=$(findIdByEmail "$email")
+  [[ ${identityId} == "" ]] && fail "User not found"
+
+  response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
+  [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
+
+  schemaId=$(echo "$response" | jq -r .schema_id)
+  state=$(echo "$response" | jq -r .state)
+  
+  traitBlock="{\"email\":\"$email\",\"firstName\":\"$firstName\",\"lastName\":\"$lastName\",\"note\":\"$note\"}"
+
+  body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
+  response=$(curl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
+  [[ $? != 0 ]] && fail "Unable to update user"
 }
 
 function deleteUser() {
@@ -462,7 +560,7 @@ function deleteUser() {
   rolesTmpFile="${socRolesFile}.tmp"
   createFile "$rolesTmpFile" "$soUID" "$soGID"
   grep -v "$identityId" "$socRolesFile" > "$rolesTmpFile"
-  mv "$rolesTmpFile" "$socRolesFile"
+  cat "$rolesTmpFile" > "$socRolesFile"
 }
 
 case "${operation}" in
@@ -473,10 +571,13 @@ case "${operation}" in
     lock
     validateEmail "$email"
     updatePassword
-    createUser "$email" "${role:-$DEFAULT_ROLE}"
+    createUser "$email" "${role:-$DEFAULT_ROLE}" "${firstName}" "${lastName}" "${note}"
     syncAll
     echo "Successfully added new user to SOC"
-    check_container fleet && echo "$password" | so-fleet-user-add "$email"
+    echo "$password" | so-influxdb-manage useradd "$email"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userpromote "$email"
+    fi
     ;;
 
   "list")
@@ -494,6 +595,9 @@ case "${operation}" in
     if addUserRole "$email" "$role"; then
       syncElastic
       echo "Successfully added role to user"
+      if [[ "$role" == "superuser" ]]; then
+        echo "$password" | so-influxdb-manage userpromote "$email"
+      fi
     fi
     ;;
 
@@ -507,16 +611,29 @@ case "${operation}" in
     deleteUserRole "$email" "$role"
     syncElastic
     echo "Successfully removed role from user"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userdemote "$email"
+    fi
     ;;
 
-  "update")
+  "password")
     verifyEnvironment
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     lock
-    updateUser "$email"
+    updateUserPassword "$email"
     syncAll
-    echo "Successfully updated user"
+    echo "Successfully updated user password"
+    echo "$password" | so-influxdb-manage userpass "$email"
+    ;;
+
+  "profile")
+    verifyEnvironment
+    [[ "$email" == "" ]] && fail "Email address must be provided"
+
+    lock
+    updateUserProfile "$email"
+    echo "Successfully updated user profile"
     ;;
 
   "enable")
@@ -527,7 +644,7 @@ case "${operation}" in
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
-    echo "Fleet user will need to be recreated manually with so-fleet-user-add"
+    so-influxdb-manage userenable "$email"
     ;;
 
   "disable")
@@ -538,7 +655,7 @@ case "${operation}" in
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
-    check_container fleet && so-fleet-user-delete "$email"   
+    so-influxdb-manage userdisable "$email"
     ;;    
 
   "delete")
@@ -549,7 +666,7 @@ case "${operation}" in
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
-    check_container fleet && so-fleet-user-delete "$email"
+    so-influxdb-manage userdel "$email"
     ;;
 
   "sync")
@@ -573,13 +690,9 @@ case "${operation}" in
     echo "Password is acceptable"
     ;;
 
-  "migrate")
-    migrateLockedUsers
-    echo "User migration complete"
-    ;;
-
   *)
     fail "Unsupported operation: $operation"
+    usage
     ;;
 esac
 

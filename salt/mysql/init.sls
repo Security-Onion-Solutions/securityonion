@@ -1,34 +1,27 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) %}
-{%- set MANAGERIP = salt['pillar.get']('global:managerip', '') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MAINIP = salt['pillar.get']('elasticsearch:mainip') %}
-{% set FLEETARCH = salt['grains.get']('role') %}
-
-{% if FLEETARCH == "so-fleet" %}
-  {% set MAININT = salt['pillar.get']('host:mainint') %}
-  {% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
-{% else %}
-  {% set MAINIP = salt['pillar.get']('global:managerip') %}
-{% endif %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{%- set MYSQLPASS = salt['pillar.get']('secrets:mysql') %}
 
 # MySQL Setup
 mysqlpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      {% if grains['os'] != 'CentOS' %}
+      {% if grains['os'] != 'Rocky' %}
         {% if grains['oscodename'] == 'bionic' %}
       - python3-mysqldb
         {% elif grains['oscodename'] == 'focal' %}
       - python3-mysqldb
         {% endif %}
       {% else %}
-      - MySQL-python
+      - python3-mysqlclient
       {% endif %}
 
 mysqletcdir:
@@ -88,13 +81,20 @@ mysql_password_none:
 
 so-mysql:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-mysql:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-mysql:{{ GLOBALS.so_version }}
     - hostname: so-mysql
     - user: socore
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
-      - 0.0.0.0:3306:3306
+      {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ MAINIP }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
@@ -106,22 +106,6 @@ so-mysql:
     - require:
       - file: mysqlcnf
       - file: mysqlpass
-  cmd.run:
-    - name: until nc -z {{ MAINIP }} 3306; do sleep 1; done
-    - timeout: 600
-    - onchanges:
-      - docker_container: so-mysql
-  module.run:
-    - so.mysql_conn:
-      - retry: 300
-    - onchanges:
-      - cmd: so-mysql
-
-append_so-mysql_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-mysql
-
 {% endif %}
 
 {% else %}

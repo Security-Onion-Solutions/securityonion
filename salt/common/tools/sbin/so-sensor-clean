@@ -2,20 +2,11 @@
 
 # Delete Zeek Logs based on defined CRIT_DISK_USAGE value
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SENSOR_DIR='/nsm'
 CRIT_DISK_USAGE=90
@@ -80,23 +71,6 @@ clean() {
 			rm -f "$FILE"
 		done
 	fi
-
-	# Clean Wazuh archives
-	# Slightly different code since we have 2 files to remove (.json and .log)
-	WAZUH_ARCHIVE='/nsm/wazuh/logs/archives'
-	OLDEST_WAZUH=$(find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $1}' | head -n 1)
-	# Make sure we don't delete the current files
-	find $WAZUH_ARCHIVE -type f ! -name "archives.json" -printf "%T+\t%p\n" | sort -n | awk '{print $2}' | head -n 1 >/tmp/files$$
-	if [[ $(wc -l </tmp/files$$) -ge 1 ]]; then
-		echo "$(date) - Removing logs for $OLDEST_WAZUH" >>$LOG
-		while read -r line; do
-			echo "$(date) - Removing file: $line" >>$LOG
-			rm "$line"
-		done </tmp/files$$
-	else
-		echo "$(date) - No old files available to clean up in $WAZUH_ARCHIVE" >>$LOG
-	fi
-	rm /tmp/files$$
 
 	## Clean up extracted pcaps from Steno
 	PCAPS='/nsm/pcapout'

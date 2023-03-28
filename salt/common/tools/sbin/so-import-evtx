@@ -1,27 +1,17 @@
 #!/bin/bash
 #
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
 {%- set MANAGER = salt['grains.get']('master') %}
 {%- set VERSION = salt['pillar.get']('global:soversion') %}
 {%- set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{%- set MANAGERIP = salt['pillar.get']('global:managerip') -%}
+{%- set MANAGERIP = salt['pillar.get']('global:managerip') %}
 {%- set URLBASE = salt['pillar.get']('global:url_base') %}
-{% set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
-{% set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 INDEX_DATE=$(date +'%Y.%m.%d')
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
@@ -42,24 +32,13 @@ function evtx2es() {
   EVTX=$1
   HASH=$2
   
-  ES_PASS=$(lookup_pillar "auth:users:so_elastic_user:pass" "elasticsearch")
-  ES_USER=$(lookup_pillar "auth:users:so_elastic_user:user" "elasticsearch")
-
   docker run --rm \
-    -v "$EVTX:/tmp/$RUNID.evtx" \
-    --entrypoint evtx2es \
-    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} \
-    --host {{ MANAGERIP }} --scheme https \
-    --index so-beats-$INDEX_DATE --pipeline import.wel \
-    --login $ES_USER --pwd "$ES_PASS" \
-    "/tmp/$RUNID.evtx" >> $LOG_FILE 2>&1
-
-  docker run --rm \
-    -v "$EVTX:/tmp/import.evtx" \
+    -v "$EVTX:/tmp/data.evtx" \
+    -v "/nsm/import/$HASH/evtx/:/tmp/evtx/" \
     -v "/nsm/import/evtx-end_newest:/tmp/newest" \
     -v "/nsm/import/evtx-start_oldest:/tmp/oldest" \
-    --entrypoint '/evtx_calc_timestamps.sh' \
-    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }}
+    --entrypoint "/evtx_calc_timestamps.sh" \
+    {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} >> $LOG_FILE 2>&1
 }
 
 # if no parameters supplied, display usage
@@ -166,11 +145,11 @@ cat << EOF
 Import complete!
 
 You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ URLBASE }}/#/hunt?q=import.id:${RUNID}%20%7C%20groupby%20event.module%20event.dataset&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
+https://{{ URLBASE }}/#/dashboards?q=import.id:${RUNID}%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
 
 or you can manually set your Time Range to be (in UTC):
 From: $START_OLDEST_FORMATTED    To: $END_NEWEST
 
-Please note that it may take 30 seconds or more for events to appear in Hunt.
+Please note that it may take 30 seconds or more for events to appear in Security Onion Console.
 EOF
 fi

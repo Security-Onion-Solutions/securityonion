@@ -1,19 +1,10 @@
 #!/bin/bash
 
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . /usr/sbin/so-common
 
@@ -56,7 +47,7 @@ check_err() {
       ;;
       28)
         echo 'No space left on device'
-        echo 'Likely ran out of space on disk, please review hardware requirements for Security Onion: https://docs.securityonion.net/en/2.3/hardware.html'
+        echo "Likely ran out of space on disk, please review hardware requirements for Security Onion: $DOC_BASE_URL/hardware.html"
       ;;
       30)
         echo 'Read-only file system'
@@ -349,7 +340,7 @@ check_os_updates() {
 clean_dockers() {
   # Place Holder for cleaning up old docker images
   echo "Trying to clean up old dockers."
-  docker system prune -a -f
+  docker system prune -a -f --volumes
 
 }
 
@@ -366,8 +357,76 @@ clone_to_tmp() {
   git clone $SOUP_BRANCH https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
   if [ ! -f $UPDATE_DIR/VERSION ]; then
-    echo "Update was unable to pull from github. Please check your internet."
+    echo "Update was unable to pull from Github. Please check your Internet access."
     exit 0
+  fi
+}
+
+elastalert_indices_check() {
+
+  # Stop Elastalert to prevent Elastalert indices from being re-created
+  if grep -q "^so-elastalert$" /opt/so/conf/so-status/so-status.conf ; then
+    so-elastalert-stop || true
+  fi
+  
+  # Wait for ElasticSearch to initialize
+  echo -n "Waiting for ElasticSearch..."
+  COUNT=0
+  ELASTICSEARCH_CONNECTED="no"
+  while [[ "$COUNT" -le 240 ]]; do
+    so-elasticsearch-query / -k --output /dev/null
+      if [ $? -eq 0 ]; then
+        ELASTICSEARCH_CONNECTED="yes"
+        echo "connected!"
+          break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+  done
+  
+  # Unable to connect to Elasticsearch 
+  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+    echo
+    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    echo
+    exit 1
+  fi
+
+  # Check Elastalert indices
+  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
+  CHECK_COUNT=0
+  while [[ "$CHECK_COUNT" -le 2 ]]; do
+    # Delete Elastalert indices
+    for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do
+      so-elasticsearch-query $i -XDELETE;
+    done
+
+    # Check to ensure Elastalert indices are deleted
+    COUNT=0
+    ELASTALERT_INDICES_DELETED="no"
+    while [[ "$COUNT" -le 240 ]]; do
+      RESPONSE=$(so-elasticsearch-query elastalert*)
+      if [[ "$RESPONSE" == "{}" ]]; then
+        ELASTALERT_INDICES_DELETED="yes"
+        echo "Elastalert indices successfully deleted."
+        break
+      else
+        ((COUNT+=1))
+        sleep 1
+        echo -n "."
+      fi
+    done
+    ((CHECK_COUNT+=1))
+  done
+
+  # If we were unable to delete the Elastalert indices, exit the script
+  if [ "$ELASTALERT_INDICES_DELETED" == "no" ]; then
+    echo
+    echo -e "Unable to connect to delete Elastalert indices. Exiting."
+    echo
+    exit 1
   fi
 }
 
@@ -399,7 +458,7 @@ es_indices_check() {
   if [ -z "$UNSUPPORTED_INDICES" ]; then
     echo "No unsupported indices found."
   else
-    echo "The following indices were created with Elasticsearch 6, and are not supported when upgrading to Elasticsearch 8. These indices may need to be deleted, migrated, or re-indexed before proceeding with the upgrade. Please see https://docs.securityonion.net/en/2.3/soup.html#elastic-8 for more details."
+    echo "The following indices were created with Elasticsearch 6, and are not supported when upgrading to Elasticsearch 8. These indices may need to be deleted, migrated, or re-indexed before proceeding with the upgrade. Please see $DOC_BASE_URL/soup.html#elastic-8 for more details."
     echo
     echo "$UNSUPPORTED_INDICES"
     exit 1
@@ -825,40 +884,7 @@ up_to_2.3.130() {
 }
 
 up_to_2.3.140() {
-  ## Deleting Elastalert indices to prevent issues with upgrade to Elastic 8 ##
-  echo "Deleting Elastalert indices to prevent issues with upgrade to Elastic 8..."
-  # Wait for ElasticSearch to initialize
-  echo -n "Waiting for ElasticSearch..."
-  COUNT=0
-  ELASTICSEARCH_CONNECTED="no" 
-  while [[ "$COUNT" -le 240 ]]; do
-    so-elasticsearch-query / -k --output /dev/null
-      if [ $? -eq 0 ]; then
-        ELASTICSEARCH_CONNECTED="yes"
-        echo "connected!"
-          break
-      else
-        ((COUNT+=1))
-        sleep 1
-        echo -n "."
-      fi
-  done
-  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
-    echo
-    echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
-    echo
-    exit 1
-   fi
-   
-   # Delete Elastalert indices
-   for i in $(so-elasticsearch-query _cat/indices | grep elastalert | awk '{print $3}'); do so-elasticsearch-query $i -XDELETE; done
-   # Check to ensure Elastalert indices have been deleted
-   RESPONSE=$(so-elasticsearch-query elastalert*)
-   if [[ "$RESPONSE" == "{}" ]]; then
-     echo "Elastalert indices have been deleted."
-   else
-     fail "Something went wrong. Could not delete the Elastalert indices. Exiting."
-   fi
+   elastalert_indices_check
    ##
    INSTALLEDVERSION=2.3.140
 }
@@ -1000,8 +1026,6 @@ upgrade_salt() {
   else
     echo "Salt upgrade success."
     echo ""
-    echo "Removing /opt/so/state files for patched Salt InfluxDB module and state. This is due to Salt being upgraded and needing to patch the files again."
-    rm -vrf /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdb_retention_policy.py.patched /opt/so/state/influxdbmod.py.patched
   fi
 
 }
@@ -1060,14 +1084,14 @@ verify_latest_update_script() {
   if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
-    echo "You are not running the latest soup version. Updating soup and its components. Might take multiple runs to complete"
+    echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
     cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
     echo ""
-    echo "soup has been updated. Please run soup again."
+    echo "The soup script has been modified. Please run soup again to continue the upgrade."
     exit 0
   fi
 }
@@ -1112,9 +1136,7 @@ fix_wazuh() {
       # Update the repo files so it can actually upgrade
       upgrade_salt
     fi
-    rm -f /opt/so/state/influxdb_continuous_query.py.patched /opt/so/state/influxdbmod.py.patched /opt/so/state/influxdb_retention_policy.py.patched
     systemctl_func "start" "salt-master"
-    salt-call state.apply salt.python3-influxdb -l info
     systemctl_func "start" "salt-minion"
     systemctl_func "start" "$cron_service_name"
 
@@ -1178,6 +1200,7 @@ main() {
   verify_latest_update_script
   es_version_check
   es_indices_check
+  elastalert_indices_check
   echo ""
   set_palette
   check_elastic_license
@@ -1282,11 +1305,6 @@ main() {
     salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
     set -e
 
-    echo ""
-    echo "Ensuring python modules for Salt are installed and patched."
-    salt-call state.apply salt.python3-influxdb -l info queue=True
-    echo ""
-
     # update the salt-minion configs here and start the minion
     # since highstate are disabled above, minion start should not trigger a highstate
     echo ""
@@ -1384,7 +1402,7 @@ Each minion is on a random 15 minute check-in period and things like network ban
 
 If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Forward nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
-For more information, please see https://docs.securityonion.net/en/2.3/soup.html#distributed-deployments.
+For more information, please see $DOC_BASE_URL/soup.html#distributed-deployments.
 
 EOF
 
@@ -1398,7 +1416,7 @@ EOF
 
 A custom Elasticsearch configuration has been found at /opt/so/saltstack/local/elasticsearch/files/elasticsearch.yml. This file is no longer referenced in Security Onion versions >= 2.3.80.
 
-If you still need those customizations, you'll need to manually migrate them to the new Elasticsearch config as shown at https://docs.securityonion.net/en/2.3/elasticsearch.html.
+If you still need those customizations, you'll need to manually migrate them to the new Elasticsearch config as shown at $DOC_BASE_URL/elasticsearch.html.
 
 EOF
 
@@ -1445,7 +1463,7 @@ if [[ -z $UNATTENDED ]]; then
 SOUP - Security Onion UPdater
 
 Please review the following for more information about the update process and recent updates:
-https://docs.securityonion.net/soup
+$DOC_BASE_URL/soup.html
 https://blog.securityonion.net
 
 EOF

@@ -1,53 +1,27 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
 include:
   - ssl
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set NODEIP = salt['pillar.get']('elasticsearch:mainip', '') -%}
-{% set TRUECLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False) %}
-{% set MANAGERIP = salt['pillar.get']('global:managerip') %}
-
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone', 'so-import'] %}
-  {% set esclustername = salt['pillar.get']('manager:esclustername') %}
-  {% set esheap = salt['pillar.get']('manager:esheap') %}
-  {% set ismanager = True %}
-{% elif grains['role'] in ['so-node','so-heavynode'] %}
-  {% set esclustername = salt['pillar.get']('elasticsearch:esclustername') %}
-  {% set esheap = salt['pillar.get']('elasticsearch:esheap') %}
-  {% set ismanager = False %}
-{% elif grains['role'] == 'so-helix' %}
-  {% set ismanager = True %} {# Solely for the sake of running so-catrust #}
-{% endif %}
-
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 {% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
-{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 {% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
+{% from 'logstash/map.jinja' import LOGSTASH_NODES %}
 
 vm.max_map_count:
   sysctl.present:
     - value: 262144
 
-{% if ismanager %}
+{% if GLOBALS.is_manager %}
 # We have to add the Manager CA to the CA list
 cascriptsync:
   file.managed:
@@ -57,6 +31,8 @@ cascriptsync:
     - group: 939
     - mode: 750
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 # Run the CA magic
 cascriptfun:
@@ -75,12 +51,20 @@ es_sync_scripts:
     - file_mode: 755
     - template: jinja
     - source: salt://elasticsearch/tools/sbin
-    - defaults:
-        ELASTICCURL: 'curl'
-    - context:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
     - exclude_pat:
         - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+        - so-elasticsearch-ilm-policy-load 
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
+
+so-elasticsearch-ilm-policy-load-script:
+  file.managed:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-ilm-policy-load
+    - user: 930
+    - group: 939
+    - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines-script:
   file.managed:
@@ -89,9 +73,6 @@ so-elasticsearch-pipelines-script:
     - user: 930
     - group: 939
     - mode: 754
-    - template: jinja
-    - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
 
 # Move our new CA over so Elastic and Logstash can use SSL with the internal CA
 catrustdir:
@@ -115,7 +96,7 @@ capemz:
     - user: 939
     - group: 939
 
-{% if grains['role'] != 'so-helix' %}
+
 
 # Add ES Group
 elasticsearchgroup:
@@ -315,41 +296,34 @@ auth_users_roles_inode:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elasticsearch:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
-    - extra_hosts: 
-      {% if ismanager %}
-      - {{ grains.host }}:{{ NODEIP }}
-        {% if salt['pillar.get']('nodestab', {}) %}
-          {% for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
-          {% endfor %}
-        {% endif %}
-      {% else %}
-      - {{ grains.host }}:{{ NODEIP }}
-      - {{ MANAGER }}:{{ MANAGERIP }}
-      {% endif %}
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
+    - extra_hosts:  {{ LOGSTASH_NODES }}
     - environment:
-      {% if TRUECLUSTER is sameas false or (TRUECLUSTER is sameas true and not salt['pillar.get']('nodestab', {})) %}
+      {% if LOGSTASH_NODES | length == 1 %}
       - discovery.type=single-node
       {% endif %}
-      - ES_JAVA_OPTS=-Xms{{ esheap }} -Xmx{{ esheap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
+      - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
       ulimits:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
     - port_bindings:
-      - 0.0.0.0:9200:9200
-      - 0.0.0.0:9300:9300
+      {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/usr/share/elasticsearch/jdk/lib/security/cacerts:ro
-      {% if ismanager %}
+      {% if GLOBALS.is_manager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
@@ -357,10 +331,8 @@ so-elasticsearch:
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
-      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
-      {% endif %}
       {% if ESCONFIG.path.get('repo', False) %}
         {% for repo in ESCONFIG.path.repo %}
       - {{ repo }}:{{ repo }}:rw
@@ -378,20 +350,37 @@ so-elasticsearch:
       - x509: /etc/pki/elasticsearch.crt
       - x509: /etc/pki/elasticsearch.key
       - file: elasticp12perms
-      {% if ismanager %}
+      {% if GLOBALS.is_manager %}
       - x509: pki_public_ca_crt
       {% else %}
       - x509: trusttheca
       {% endif %}
-      {% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
-      {% endif %}
 
 append_so-elasticsearch_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
+
+so-es-cluster-settings:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-cluster-settings
+    - cwd: /opt/so
+    - template: jinja
+    - require:
+      - docker_container: so-elasticsearch
+      - file: es_sync_scripts
+
+so-elasticsearch-ilm-policy-load:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+      - file: so-elasticsearch-ilm-policy-load-script
+    - onchanges:
+      - file: so-elasticsearch-ilm-policy-load-script
 
 so-elasticsearch-templates:
   cmd.run:
@@ -404,7 +393,7 @@ so-elasticsearch-templates:
 
 so-elasticsearch-pipelines:
   cmd.run:
-    - name: /usr/sbin/so-elasticsearch-pipelines {{ grains.host }}
+    - name: /usr/sbin/so-elasticsearch-pipelines {{ GLOBALS.hostname }}
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-pipelines-script
@@ -417,8 +406,6 @@ so-elasticsearch-roles-load:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-
-{% endif %} {# if grains['role'] != 'so-helix' #}
 
 {% else %}
 

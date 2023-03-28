@@ -1,12 +1,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
-{% set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
-{% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - nginx
@@ -25,6 +20,8 @@ soctopus-sync:
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 soctopusconf:
   file.managed:
@@ -35,6 +32,8 @@ soctopusconf:
     - mode: 600
     - template: jinja
     - show_changes: False
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 soctopuslogdir:
   file.directory:
@@ -56,25 +55,33 @@ playbookrulessync:
     - user: 939
     - group: 939
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 so-soctopus:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soctopus:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soctopus:{{ GLOBALS.so_version }}
     - hostname: soctopus
     - name: so-soctopus
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-soctopus'].ip }}
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
-      - /opt/so/conf/navigator/layers/:/etc/playbook/:rw
+      - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
       - /opt/so/conf/soctopus/sigma-import/:/SOCtopus/sigma-import/:rw    
-      {% if ISAIRGAP is sameas true %}
+      {% if GLOBALS.airgap %}
       - /nsm/repo/rules/sigma:/soctopus/sigma
       {% endif %}
     - port_bindings:
-      - 0.0.0.0:7000:7000
+      {% for BINDING in DOCKER.containers['so-soctopus'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - extra_hosts:
-      - {{MANAGER_URL}}:{{MANAGER_IP}}
+      - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - require:
       - file: soctopusconf
       - file: navigatordefaultlayer

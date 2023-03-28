@@ -1,10 +1,11 @@
-   
+ {% from 'vars/globals.map.jinja' import GLOBALS %}
+
 {# we only want this state to run it is CentOS #}
-{% if grains.os == 'CentOS' %}
+{% if GLOBALS.os == 'Rocky' %}
 
   {% set global_ca_text = [] %}
   {% set global_ca_server = [] %}
-  {% set manager = salt['grains.get']('master') %}
+  {% set manager = GLOBALS.manager %}
   {% set x509dict = salt['mine.get'](manager | lower~'*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
       {% if host.split('_')|last in ['manager', 'managersearch', 'standalone', 'import', 'eval'] %}

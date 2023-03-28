@@ -1,9 +1,12 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 # Add Kratos Group
 kratosgroup:
@@ -20,9 +23,18 @@ kratos:
     
 kratosdir:
   file.directory:
-    - name: /opt/so/conf/kratos/db
+    - name: /nsm/kratos
     - user: 928
     - group: 928
+    - mode: 700
+    - makedirs: True
+
+kratosdbdir:
+  file.directory:
+    - name: /nsm/kratos/db
+    - user: 928
+    - group: 928
+    - mode: 700
     - makedirs: True
 
 kratoslogdir:
@@ -32,42 +44,49 @@ kratoslogdir:
     - group: 928
     - makedirs: True
 
-kratossync:
-  file.recurse:
-    - name: /opt/so/conf/kratos
-    - source: salt://kratos/files
+kratosschema:
+  file.managed:
+    - name: /opt/so/conf/kratos/schema.json
+    - source: salt://kratos/files/schema.json
     - user: 928
     - group: 928
-    - file_mode: 600
-    - template: jinja
+    - mode: 600
 
-kratos_schema:
-  file.exists:
-    - name: /opt/so/conf/kratos/schema.json
-  
-kratos_yaml:
-  file.exists:
+kratosconfig:
+  file.managed:
     - name: /opt/so/conf/kratos/kratos.yaml
+    - source: salt://kratos/files/kratos.yaml.jinja
+    - user: 928
+    - group: 928
+    - mode: 600
+    - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 so-kratos:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kratos:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kratos:{{ GLOBALS.so_version }}
     - hostname: kratos
     - name: so-kratos
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-kratos'].ip }}
     - binds:
       - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
       - /opt/so/log/kratos/:/kratos-log:rw
-      - /opt/so/conf/kratos/db:/kratos-data:rw
+      - /nsm/kratos/db:/kratos-data:rw
     - port_bindings:
-      - 0.0.0.0:4433:4433
-      - 0.0.0.0:4434:4434
+      {% for BINDING in DOCKER.containers['so-kratos'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - restart_policy: unless-stopped
     - watch:
-      - file: /opt/so/conf/kratos
+      - file: kratosschema
+      - file: kratosconfig
     - require:
-      - file: kratos_schema
-      - file: kratos_yaml
+      - file: kratosschema
+      - file: kratosconfig
       - file: kratoslogdir
       - file: kratosdir
 
@@ -78,7 +97,7 @@ append_so-kratos_so-status.conf:
 
 wait_for_kratos:
   http.wait_for_successful_query:
-    - name: 'http://{{ MANAGER }}:4434/'
+    - name: 'http://{{ GLOBALS.manager }}:4434/'
     - ssl: True
     - verify_ssl: False
     - status:

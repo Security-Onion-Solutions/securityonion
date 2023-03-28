@@ -1,38 +1,12 @@
-# Copyright 2014-2022 Security Onion Solutions, LLC
-
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% from 'elastalert/elastalert_config.map.jinja' import elastalert_defaults as elastalert_config with context %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{%- set MANAGER_URL = salt['pillar.get']('global:url_base', '') %}
-{%- set MANAGER_IP = salt['pillar.get']('global:managerip', '') %}
-
-{% if grains['role'] in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
-  {% set esalert = salt['pillar.get']('manager:elastalert', '1') %}
-  {% set esip = salt['pillar.get']('manager:mainip', '') %}
-  {% set esport = salt['pillar.get']('manager:es_port', '') %}
-{% elif grains['role'] == 'so-node' %}
-  {% set esalert = salt['pillar.get']('elasticsearch:elastalert', '0') %}
-{% endif %}
-
-# Elastalert
-{% if esalert == 1 %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'elastalert/elastalert_config.map.jinja' import ELASTALERT as elastalert_config with context %}
 
 # Create the group
 elastagroup:
@@ -109,10 +83,13 @@ wait_for_elasticsearch:
 
 so-elastalert:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-elastalert:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastalert:{{ GLOBALS.so_version }}
     - hostname: elastalert
     - name: so-elastalert
     - user: so-elastalert
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-elastalert'].ip }}
     - detach: True
     - binds:
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
@@ -120,7 +97,7 @@ so-elastalert:
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
     - extra_hosts:
-      - {{MANAGER_URL}}:{{MANAGER_IP}}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - require:
       - cmd: wait_for_elasticsearch
       - file: elastarules
@@ -137,8 +114,6 @@ append_so-elastalert_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elastalert
-
-{% endif %}
 
 {% else %}
 

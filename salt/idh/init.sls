@@ -1,53 +1,38 @@
-
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MAININT = salt['pillar.get']('host:mainint') %}
-{% set MAINIP = salt['grains.get']('ip_interfaces').get(MAININT)[0] %}
-{% set RESTRICTIDHSERVICES = salt['pillar.get']('idh:restrict_management_ip', False) %}
+{% import_yaml 'docker/defaults.yaml' as DOCKERDEFAULTS %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'idh/opencanary_config.map.jinja' import RESTRICTIDHSERVICES %}
+{% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
 
 include:
   - idh.openssh.config
   - firewall
 
-
 # If True, block IDH Services from accepting connections on Managment IP
 {% if RESTRICTIDHSERVICES %}
-  {% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG %}
-  {% set idh_services = salt['pillar.get']('idh:services', []) %}
+  {% from 'idh/opencanary_config.map.jinja' import IDH_SERVICES %}
 
-  {% for service in idh_services %}
+  {% for service in IDH_SERVICES %}
   {% if service in ["smnp","ntp", "tftp"] %}
     {% set proto = 'udp' %}
   {% else %}
     {% set proto = 'tcp' %}
   {% endif %}
-block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'.port'] }} :
+block_mgt_ip_idh_services_{{ proto }}_{{ OPENCANARYCONFIG[service~'_x_port'] }} :
   iptables.insert:
     - table: filter
     - chain: INPUT
     - jump: DROP
     - position: 1
     - proto:  {{ proto }}
-    - dport: {{ OPENCANARYCONFIG[service~'.port'] }}
-    - destination: {{ MAINIP }}
+    - dport: {{ OPENCANARYCONFIG[service~'_x_port'] }}
+    - destination: {{ GLOBALS.node_ip }}
   {% endfor %}
 {% endif %}
 
@@ -67,7 +52,6 @@ configdir:
     - group: 939
     - makedirs: True
 
-{% from 'idh/opencanary_config.map.jinja' import OPENCANARYCONFIG with context %}
 opencanary_config:
   file.managed:
     - name: /opt/so/conf/idh/opencanary.conf
@@ -78,7 +62,7 @@ opencanary_config:
 
 so-idh:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-idh:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-idh:{{ GLOBALS.so_version }}
     - name: so-idh
     - detach: True
     - network_mode: host

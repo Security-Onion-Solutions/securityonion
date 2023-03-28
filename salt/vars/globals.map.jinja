@@ -1,0 +1,65 @@
+{% import 'vars/init.map.jinja' as INIT %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+
+{% from 'vars/' ~ INIT.GRAINS.role.split('-')[1] ~ '.map.jinja' import ROLE_GLOBALS %} {# role is so-role so we have to split off the 'so' #}
+
+{%
+  set GLOBALS = {
+    'hostname': INIT.GRAINS.nodename,
+    'is_manager': false,
+    'manager': INIT.GRAINS.master,
+    'minion_id': INIT.GRAINS.id,
+    'main_interface': INIT.PILLAR.host.mainint,
+    'node_ip': INIT.GRAINS.ip_interfaces.get(INIT.PILLAR.host.mainint)[0],
+    'role': INIT.GRAINS.role,
+    'airgap': INIT.PILLAR.global.airgap,
+    'ids': INIT.PILLAR.global.ids,
+    'image_repo': INIT.PILLAR.global.imagerepo,
+    'repo_host': INIT.PILLAR.global.repo_host,
+    'registry_host': INIT.PILLAR.global.registry_host,
+    'influxdb_host': INIT.PILLAR.global.influxdb_host,
+    'manager_ip': INIT.PILLAR.global.managerip,
+    'md_engine': INIT.PILLAR.global.mdengine,
+    'pipeline': INIT.PILLAR.global.pipeline,
+    'so_version': INIT.PILLAR.global.soversion,
+    'so_docker_bip': DOCKER.sobip,
+    'so_docker_range': DOCKER.sorange,
+    'url_base': INIT.PILLAR.global.url_base,
+    'so_model': INIT.GRAINS.get('sosmodel',''),
+    'description': INIT.PILLAR.sensoroni.get('node_description',''),
+    'sensoroni_key': INIT.PILLAR.sensoroni.sensoronikey,
+    'os': INIT.GRAINS.os,
+    'application_urls': {},
+    'manager_roles': [
+      'so-eval',
+      'so-import',
+      'so-manager',
+      'so-managersearch',
+      'so-standalone'
+    ],
+    'sensor_roles': [
+      'so-eval',
+      'so-heavynode',
+      'so-sensor',
+      'so-standalone'
+
+    ]
+  }
+%}
+
+{%
+  do GLOBALS.update({
+    'application_urls': {
+      'kratos': 'http://' ~ GLOBALS.manager ~ ':4434/',
+      'elastic': 'https://' ~ GLOBALS.manager ~ ':9200/',
+      'influxdb': 'https://' ~ GLOBALS.manager ~ ':8086/'
+    }
+  })
+%}
+
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+{%   do GLOBALS.update({'is_manager': true}) %}
+{% endif %}
+
+
+{% do salt['defaults.merge'](GLOBALS, ROLE_GLOBALS, merge_lists=False, in_place=True) %}

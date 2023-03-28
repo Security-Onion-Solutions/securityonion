@@ -1,20 +1,34 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set role = grains.id.split('_') | last %}
 {% set translated_pillar_assigned_hostgroups = {} %}
 
-{% import_yaml 'firewall/portgroups.yaml' as default_portgroups %}
-{% set default_portgroups = default_portgroups.firewall.aliases.ports %}
-{% import_yaml 'firewall/portgroups.local.yaml' as local_portgroups %}
-{% if local_portgroups.firewall.aliases.ports %}
-  {% set local_portgroups = local_portgroups.firewall.aliases.ports %}
+{% import_yaml 'firewall/ports/ports.yaml' as default_portgroups %}
+{% set default_portgroups = default_portgroups.firewall.ports %}
+{% import_yaml 'firewall/ports/ports.local.yaml' as local_portgroups %}
+{% if local_portgroups.firewall.ports %}
+  {% set local_portgroups = local_portgroups.firewall.ports %}
 {% else %}
   {% set local_portgroups = {} %}
 {% endif %}
+
 {% set portgroups = salt['defaults.merge'](default_portgroups, local_portgroups, in_place=False) %}
 {% set defined_portgroups = portgroups %}
 
-{% import_yaml 'firewall/hostgroups.yaml' as default_hostgroups %}
-{% import_yaml 'firewall/hostgroups.local.yaml' as local_hostgroups %}
-{% set hostgroups = salt['defaults.merge'](default_hostgroups.firewall.hostgroups, local_hostgroups.firewall.hostgroups, in_place=False) %}
+{% if GLOBALS.role == 'so-idh' %}
+{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
+{% do salt['defaults.merge'](defined_portgroups, IDH_PORTGROUPS, in_place=True) %}
+{% endif %}
+
+{% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
+
+{% set hostgroup_list =  salt['cp.list_master'](prefix='firewall/hostgroups') %}
+
+{% for hg in hostgroup_list %}
+{%   import_text hg as hg_ips %}
+{%   do local_hostgroups.firewall.hostgroups.update({hg.split('/')[2]: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
+{% endfor %}
+
+{% set hostgroups = local_hostgroups.firewall.hostgroups %}
 
 {# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}
 {% if salt['pillar.get']('firewall:assigned_hostgroups:chain') %}

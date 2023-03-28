@@ -1,6 +1,10 @@
 #!/bin/bash
-{%- set MANAGER = salt['pillar.get']('global:url_base', '') %}
-{%- set ENDGAMEHOST = salt['pillar.get']('soc:endgamehost', 'ENDGAMEHOST') %}
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{%- set ENDGAMEHOST = salt['pillar.get']('global:endgamehost', 'ENDGAMEHOST') %}
 . /usr/sbin/so-common
 
 check_file() {
@@ -26,7 +30,7 @@ import() {
 
     # SOCtopus and Manager
     if grep -lq 'PLACEHOLDER' "$ndjson_file"; then
-      sed -i "s/PLACEHOLDER/{{ MANAGER }}/g" "$ndjson_file"
+      sed -i "s/PLACEHOLDER/{{ GLOBALS.url_base }}/g" "$ndjson_file"
     fi
 
     # Endgame
@@ -34,13 +38,13 @@ import() {
       sed -i "s/ENDGAMEHOST/{{ ENDGAMEHOST }}/g" "$ndjson_file"
     fi
 
-    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
     RETURN_CODE=$?
 
-    SESSIONCOOKIE=$({{ ELASTICCURL }} -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+    SESSIONCOOKIE=$(curl -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 
     # Load saved objects
-    RESPONSE=$({{ ELASTICCURL }} -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@"$ndjson_file")
+    RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@"$ndjson_file")
     echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
 
     if [[ "$RETURN_CODE" != "1" ]]; then
@@ -54,12 +58,12 @@ import() {
 update() {
   local BASENAME=$(basename $1 | cut -d'.' -f1)
   if [ ! -f "/opt/so/state/kibana_$BASENAME.txt" ]; then
-    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "{{ ELASTICCURL }}"
+    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
     RETURN_CODE=$?
 
     IFS=$'\r\n' GLOBIGNORE='*' command eval  'LINES=($(cat $1))'
     for i in "${LINES[@]}"; do
-      RESPONSE=$({{ ELASTICCURL }} -X PUT "localhost:5601/api/saved_objects/config/8.3.2" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i ")
+      RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -X PUT "localhost:5601/api/saved_objects/config/8.6.2" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i ")
       echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
     done
  

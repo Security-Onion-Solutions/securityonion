@@ -1,26 +1,24 @@
 #!/bin/bash
 #
-# Copyright 2014-2022 Security Onion Solutions, LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
 
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
+DOC_BASE_URL="https://docs.securityonion.net/en/2.4"
 
-# Check for prerequisites
-if [ "$(id -u)" -ne 0 ]; then
-	echo "This script must be run using sudo!"
-	exit 1
+if [ -z $NOROOT ]; then
+	# Check for prerequisites
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "This script must be run using sudo!"
+		exit 1
+	fi
+fi
+
+# Ensure /usr/sbin is in path
+if ! echo "$PATH" | grep -q "/usr/sbin"; then
+  export PATH="$PATH:/usr/sbin"
 fi
 
 # Define a banner to separate sections
@@ -162,15 +160,12 @@ elastic_license() {
 
 read -r -d '' message <<- EOM
 \n
-Starting in Elastic Stack version 7.11, the Elastic Stack binaries are only available under the Elastic License:
-https://securityonion.net/elastic-license
+Elastic Stack binaries and Security Onion components are only available under the Elastic License version 2 (ELv2):
+https://securityonion.net/license/
 
-Please review the Elastic License:
-https://www.elastic.co/licensing/elastic-license
+Do you agree to the terms of ELv2?
 
-Do you agree to the terms of the Elastic License?
-
-If so, type AGREE to accept the Elastic License and continue.  Otherwise, press Enter to exit this program without making any changes.
+If so, type AGREE to accept ELv2 and continue. Otherwise, press Enter to exit this program without making any changes.
 EOM
 
 	AGREED=$(whiptail --title "$whiptail_title" --inputbox \
@@ -199,14 +194,14 @@ get_random_value() {
 }
 
 gpg_rpm_import() {
-	if [[ "$OS" == "centos" ]]; then
+	if [[ "$OS" == "rocky" ]]; then
 	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
-	        local RPMKEYSLOC="../salt/repo/client/files/centos/keys"
+	        local RPMKEYSLOC="../salt/repo/client/files/rocky/keys"
 	    else
-	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/centos/keys"
+	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/rocky/keys"
 	    fi
 	
-	    RPMKEYS=('RPM-GPG-KEY-EPEL-7' 'GPG-KEY-WAZUH' 'docker.pub' 'SALTSTACK-GPG-KEY.pub' 'securityonion.pub')
+	    RPMKEYS=('RPM-GPG-KEY-EPEL-9' 'SALTSTACK-GPG-KEY2.pub' 'docker.pub' 'securityonion.pub')
 
 	    for RPMKEY in "${RPMKEYS[@]}"; do
     	        rpm --import $RPMKEYSLOC/$RPMKEY
@@ -237,31 +232,17 @@ init_monitor() {
 }
 
 is_manager_node() {
-	# Check to see if this is a manager node
-	role=$(lookup_role)
-	is_single_node_grid && return 0
-	[ $role == 'manager' ] && return 0
-	[ $role == 'managersearch' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "manager|eval|managersearch|standalone|import" &> /dev/null
 }
 
 is_sensor_node() {
 	# Check to see if this is a sensor (forward) node
-	role=$(lookup_role)
 	is_single_node_grid && return 0
-	[ $role == 'sensor' ] && return 0
-	[ $role == 'heavynode' ] && return 0
-	[ $role == 'helix' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "sensor|heavynode|helix" &> /dev/null
 }
 
 is_single_node_grid() {
-	role=$(lookup_role)
-	[ $role == 'eval' ] && return 0
-	[ $role == 'standalone' ] && return 0
-	[ $role == 'import' ] && return 0
-	return 1
+	grep "role: so-" /etc/salt/grains | grep -E "eval|standalone|import" &> /dev/null
 }
 
 lookup_bond_interfaces() {
@@ -392,17 +373,23 @@ run_check_net_err() {
 	fi
 }
 
+salt_minion_count() {
+	local MINIONDIR="/opt/so/saltstack/local/pillar/minions"
+	MINIONCOUNT=$(ls -la $MINIONDIR/*.sls | grep -v adv_ | wc -l)
+
+}
+
 set_cron_service_name() {
-  if [[ "$OS" == "centos" ]]; then
-    cron_service_name="crond"
-  else
-    cron_service_name="cron"
-  fi
+	if [[ "$OS" == "rocky" ]]; then
+		cron_service_name="crond"
+	else
+		cron_service_name="cron"
+	fi
 }
 
 set_os() {
 	if [ -f /etc/redhat-release ]; then
-		OS=centos
+		OS=rocky
 	else
 		OS=ubuntu
 	fi
@@ -516,6 +503,18 @@ valid_hostname() {
 	local hostname=$1
 
 	[[ $hostname =~ ^[a-zA-Z0-9\-]+$ ]] && [[ $hostname != 'localhost' ]] && return 0 || return 1
+}
+
+verify_ip4() {
+        local ip=$1
+        # Is this an IP or CIDR?
+        if grep -qP "^[^/]+/[^/]+$" <<< $ip; then
+                # Looks like a CIDR
+                valid_ip4_cidr_mask "$ip"
+        else
+                # We know this is not a CIDR - Is it an IP?
+                valid_ip4 "$ip"
+        fi
 }
 
 valid_ip4() {

@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+
+#so-elastic-agent-gen-installers $FleetHost $EnrollmentToken 
+
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+. /usr/sbin/so-common
+
+ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints")) | .api_key')
+
+FLEETHOST=$(lookup_pillar "server:url" "elasticfleet")
+
+#FLEETHOST=$1
+#ENROLLMENTOKEN=$2
+CONTAINERGOOS=( "linux" "darwin" "windows" )
+
+rm -rf /tmp/elastic-agent-workspace
+mkdir -p /tmp/elastic-agent-workspace
+
+for OS in "${CONTAINERGOOS[@]}"
+do
+    printf "\n\nGenerating $OS Installer..."
+    cp /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/so-elastic-agent-*-$OS-x86_64.tar.gz /tmp/elastic-agent-workspace/$OS.tar.gz
+    docker run -e CGO_ENABLED=0 -e GOOS=$OS \
+    --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
+    --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
+    --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
+    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
+    printf "\n $OS Installer Generated..."
+done

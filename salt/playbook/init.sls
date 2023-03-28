@@ -1,14 +1,14 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set MANAGERIP = salt['pillar.get']('manager:mainip', '') %}
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% set MAINIP = salt['grains.get']('ip_interfaces').get(salt['pillar.get']('sensor:mainint', salt['pillar.get']('manager:mainint', salt['pillar.get']('elasticsearch:mainint', salt['pillar.get']('host:mainint')))))[0] %}
-{%- set MYSQLPASS = salt['pillar.get']('secrets:mysql', None) -%}
-{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db', None) -%}
-{%- set DNET = salt['pillar.get']('global:dockernet', '172.17.0.0') %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{%- set MYSQLPASS = salt['pillar.get']('secrets:mysql') -%}
+{%- set PLAYBOOKPASS = salt['pillar.get']('secrets:playbook_db') -%}
 
 
 include:
@@ -18,8 +18,8 @@ create_playbookdbuser:
   mysql_user.present:
     - name: playbookdbuser
     - password: {{ PLAYBOOKPASS }}
-    - host: {{ DNET }}/255.255.255.0
-    - connection_host: {{ MAINIP }}
+    - host: "{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0"
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -27,8 +27,8 @@ create_playbookdbuser:
 query_playbookdbuser_grants:
   mysql_query.run:
     - database: playbook
-    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DNET }}/255.255.255.0';"
-    - connection_host: {{ MAINIP }}
+    - query:    "GRANT ALL ON playbook.* TO 'playbookdbuser'@'{{ DOCKER.sorange.split('/')[0] }}/255.255.255.0';"
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -36,8 +36,8 @@ query_playbookdbuser_grants:
 query_updatwebhooks:
   mysql_query.run:
     - database: playbook
-    - query:    "update webhooks set url = 'http://{{MANAGERIP}}:7000/playbook/webhook' where project_id = 1"
-    - connection_host: {{ MAINIP }}
+    - query:    "update webhooks set url = 'http://{{ GLOBALS.manager_ip}}:7000/playbook/webhook' where project_id = 1"
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -46,10 +46,10 @@ query_updatename:
   mysql_query.run:
     - database: playbook
     - query:    "update custom_fields set name = 'Custom Filter' where id = 21;"
-    - connection_host: {{ MAINIP }}
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
-    - connection_pass: {{ MYSQLPASS }}   
+    - connection_pass: {{ MYSQLPASS }} 
 
 query_updatepluginurls:
   mysql_query.run:
@@ -58,10 +58,10 @@ query_updatepluginurls:
         update settings set value = 
         "--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
         project: '1'
-        convert_url: http://{{MANAGERIP}}:7000/playbook/sigmac
-        create_url: http://{{MANAGERIP}}:7000/playbook/play"
+        convert_url: http://{{ GLOBALS.manager }}:7000/playbook/sigmac
+        create_url: http://{{ GLOBALS.manager }}:7000/playbook/play"
         where id  = 43
-    - connection_host: {{ MAINIP }}
+    - connection_host: {{ GLOBALS.manager }}
     - connection_port: 3306
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
@@ -86,18 +86,25 @@ playbook_password_none:
 
 so-playbook:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-playbook:{{ GLOBALS.so_version }}
     - hostname: playbook
     - name: so-playbook
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - environment:
-      - REDMINE_DB_MYSQL={{ MANAGERIP }}
+      - REDMINE_DB_MYSQL={{ GLOBALS.manager }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
     - port_bindings:
-      - 0.0.0.0:3200:3000
+      {% for BINDING in DOCKER.containers['so-playbook'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
 
 append_so-playbook_so-status.conf:
   file.append:

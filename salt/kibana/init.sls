@@ -1,14 +1,14 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
-{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
-
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'kibana/defaults.yaml' as default_settings %}
 {% set KIBANA_SETTINGS = salt['grains.filter_by'](default_settings, default='kibana', merge=salt['pillar.get']('kibana', {})) %}
-
 {% from 'kibana/config.map.jinja' import KIBANACONFIG with context %}
 
 # Add ES Group
@@ -74,25 +74,32 @@ kibanabin:
     - mode: 755
     - template: jinja
     - defaults:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
+        GLOBALS: {{ GLOBALS }}
 
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-kibana:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
     - hostname: kibana
     - user: kibana
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-kibana'].ip }}
     - environment:
-      - ELASTICSEARCH_HOST={{ MANAGER }}
+      - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200
-      - MANAGER={{ MANAGER }}
+      - MANAGER={{ GLOBALS.manager }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/customdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     - port_bindings:
-      - 0.0.0.0:5601:5601
+      {% for BINDING in DOCKER.containers['so-kibana'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: kibanaconfig
 
@@ -100,6 +107,12 @@ append_so-kibana_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kibana
+
+osquery_hunt_link:
+  cmd.script:
+    - source: salt://kibana/files/live_query_fixup.sh
+    - cwd: /root
+    - template: jinja
 
 {% else %}
 

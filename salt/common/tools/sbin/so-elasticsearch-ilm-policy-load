@@ -1,0 +1,21 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+{% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
+{%- set ES_INDEX_SETTINGS = salt['pillar.get']('elasticsearch:index_settings', default=ESCONFIG.elasticsearch.index_settings, merge=True) %}
+{%- set NODEIP = salt['pillar.get']('host:mainip', '') %}
+
+{%- for index, settings in ES_INDEX_SETTINGS.items() %}
+  {%- if settings.policy is defined %}
+echo
+echo "Setting up {{ index }}-logs policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://{{ NODEIP }}:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+echo
+  {%- endif %}
+{%- endfor %}
+echo

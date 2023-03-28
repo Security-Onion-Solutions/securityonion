@@ -1,9 +1,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set VERSION = salt['pillar.get']('global:soversion', 'HH1.2.2') %}
-{% set IMAGEREPO = salt['pillar.get']('global:imagerepo') %}
-{% set MANAGER = salt['grains.get']('master') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
 
 include:
   - manager.sync_es_users
@@ -29,19 +29,17 @@ soclogdir:
     - group: 939
     - makedirs: True
 
-socactions:
-  file.managed:
-    - name: /opt/so/conf/soc/menu.actions.json
-    - source: salt://soc/files/soc/menu.actions.json
+socsaltdir:
+  file.directory:
+    - name: /opt/so/conf/soc/salt
     - user: 939
     - group: 939
-    - mode: 600
-    - template: jinja
+    - makedirs: True
 
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
-    - source: salt://soc/files/soc/soc.json
+    - source: salt://soc/files/soc/soc.json.jinja
     - user: 939
     - group: 939
     - mode: 600
@@ -90,11 +88,18 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+salt-relay:
+  cron.present:
+  - name: 'ps -ef | grep salt-relay.sh | grep -v grep > /dev/null 2>&1 || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+
 so-soc:
   docker_container.running:
-    - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-soc:{{ VERSION }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - hostname: soc
     - name: so-soc
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
@@ -104,14 +109,13 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
-    {%- if salt['pillar.get']('nodestab', {}) %}
-    - extra_hosts:
-      {%- for SN, SNDATA in salt['pillar.get']('nodestab', {}).items() %}
-      - {{ SN.split('_')|first }}:{{ SNDATA.ip }}
-      {%- endfor %}
-      {%- endif %}
+      - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
+      - /opt/so/saltstack:/opt/so/saltstack:rw
+    - extra_hosts: {{ DOCKER_EXTRA_HOSTS }}
     - port_bindings:
-      - 0.0.0.0:9822:9822
+      {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - watch:
       - file: /opt/so/conf/soc/*
     - require:

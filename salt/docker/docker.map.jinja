@@ -1,0 +1,8 @@
+{% import_yaml 'docker/defaults.yaml' as DOCKERDEFAULTS %}
+{% set DOCKER = salt['pillar.get']('docker', DOCKERDEFAULTS.docker, merge=True) %}
+{% set RANGESPLIT = DOCKER.sorange.split('.') %}
+{% set FIRSTTHREE = RANGESPLIT[0] ~ '.' ~ RANGESPLIT[1] ~ '.' ~ RANGESPLIT[2] ~ '.' %}
+
+{% for container, vals in DOCKER.containers.items() %}
+{%   do DOCKER.containers[container].update({'ip': FIRSTTHREE ~ DOCKER.containers[container].final_octet}) %}
+{% endfor %}

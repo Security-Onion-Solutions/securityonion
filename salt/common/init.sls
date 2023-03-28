@@ -1,12 +1,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
-{% set role = grains.id.split('_') | last %}
-{% from 'elasticsearch/auth.map.jinja' import ELASTICAUTH with context %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - common.soup_scripts
-{% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  - common.packages
+{% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
@@ -14,11 +14,6 @@ include:
 rmvariablesfile:
   file.absent:
     - name: /tmp/variables.txt
-
-dockergroup:
-  group.present:
-    - name: docker
-    - gid: 920
 
 # Add socore Group
 socoregroup:
@@ -38,15 +33,15 @@ socore:
 soconfperms:
   file.directory:
     - name: /opt/so/conf
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 sostatusconf:
   file.directory:
     - name: /opt/so/conf/so-status
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 so-status.conf:
@@ -57,8 +52,8 @@ so-status.conf:
 sosaltstackperms:
   file.directory:
     - name: /opt/so/saltstack
-    - uid: 939
-    - gid: 939
+    - user: 939
+    - group: 939
     - dir_mode: 770
 
 so_log_perms:
@@ -88,92 +83,6 @@ vimconfig:
     - source: salt://common/files/vimrc
     - replace: False
 
-# Install common packages
-{% if grains['os'] != 'CentOS' %}     
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - apache2-utils
-      - wget
-      - ntpdate
-      - jq
-      - python3-docker
-      - curl
-      - ca-certificates
-      - software-properties-common
-      - apt-transport-https
-      - openssl
-      - netcat
-      - python3-mysqldb
-      - sqlite3
-      - libssl-dev
-      - python3-dateutil
-      - python3-m2crypto
-      - python3-mysqldb
-      - python3-packaging
-      - python3-lxml
-      - git
-      - vim
-
-heldpackages:
-  pkg.installed:
-    - pkgs:
-    {% if grains['oscodename'] == 'bionic' %}
-      - containerd.io: 1.4.4-1
-      - docker-ce: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-bionic
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-bionic
-    {% elif grains['oscodename'] == 'focal' %}
-      - containerd.io: 1.4.9-1
-      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
-    {% endif %}
-    - hold: True
-    - update_holds: True
-
-{% else %}
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - wget
-      - ntpdate
-      - bind-utils
-      - jq
-      - tcpdump
-      - httpd-tools
-      - net-tools
-      - curl
-      - sqlite
-      - mariadb-devel
-      - nmap-ncat
-      - python3
-      - python36-docker
-      - python36-dateutil
-      - python36-m2crypto
-      - python36-mysql
-      - python36-packaging
-      - python36-lxml
-      - yum-utils
-      - device-mapper-persistent-data
-      - lvm2
-      - openssl
-      - git
-      - vim-enhanced
-
-heldpackages:
-  pkg.installed:
-    - pkgs:
-      - containerd.io: 1.4.4-3.1.el7
-      - docker-ce: 3:20.10.5-3.el7
-      - docker-ce-cli: 1:20.10.5-3.el7
-      - docker-ce-rootless-extras: 20.10.5-3.el7
-    - hold: True
-    - update_holds: True
-{% endif %}
-
 # Always keep these packages up to date
 
 alwaysupdated:
@@ -188,7 +97,6 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
-{% if salt['pillar.get']('elasticsearch:auth:enabled', False) %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -196,11 +104,10 @@ elastic_curl_config:
     - mode: 600
     - show_changes: False
     - makedirs: True
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  {% if GLOBALS.role in GLOBALS.manager_roles %}
     - require:
       - file: elastic_curl_config_distributed
   {% endif %}
-{% endif %}
 
 # Sync some Utilities
 utilsyncscripts:
@@ -211,17 +118,20 @@ utilsyncscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://common/tools/sbin
-    - defaults:
-        ELASTICCURL: 'curl'
-    - context:
-        ELASTICCURL: {{ ELASTICAUTH.elasticcurl }}
     - exclude_pat:
         - so-common
         - so-firewall
         - so-image-common
         - soup
+        - so-status
 
-{% if role in ['eval', 'standalone', 'sensor', 'heavynode'] %}
+so-status_script:
+  file.managed:
+    - name: /usr/sbin/so-status
+    - source: salt://common/tools/sbin/so-status
+    - mode: 755
+
+{% if GLOBALS.role in GLOBALS.sensor_roles %}
 # Add sensor cleanup
 /usr/sbin/so-sensor-clean:
   cron.present:
@@ -289,10 +199,18 @@ sostatus_log:
   file.managed:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
-    
+
+common_pip_dependencies:
+  pip.installed:
+    - user: root
+    - pkgs: 
+      - rich
+    - target: /usr/lib64/python3.6/site-packages
+
 # Install sostatus check cron
-'/usr/sbin/so-status -q; echo $? > /opt/so/log/sostatus/status.log 2>&1':
+sostatus_check_cron:
   cron.present:
+    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
     - user: root
     - minute: '*/1'
     - hour: '*'
@@ -300,36 +218,13 @@ sostatus_log:
     - month: '*'
     - dayweek: '*'
 
-{% if role in ['eval', 'manager', 'managersearch', 'standalone'] %}
-# Install cron job to determine size of influxdb for telegraf
-'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1':
-  cron.present:
-    - user: root
-    - minute: '*/1'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-    
-# Lock permissions on the backup directory
-backupdir:
-  file.directory:
-    - name: /nsm/backup
-    - user: 0
-    - group: 0
-    - makedirs: True
-    - mode: 700
-  
-# Add config backup
-/usr/sbin/so-config-backup > /dev/null 2>&1:
-  cron.present:
-    - user: root
-    - minute: '1'
-    - hour: '0'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-{% else %}
+remove_post_setup_cron:
+  cron.absent:
+    - name: 'salt-call state.highstate'
+    - identifier: post_setup_cron
+
+{% if GLOBALS.role not in ['eval', 'manager', 'managersearch', 'standalone'] %}
+
 soversionfile:
   file.managed:
     - name: /etc/soversion
@@ -339,34 +234,8 @@ soversionfile:
     
 {% endif %}
 
-# Manager daemon.json
-docker_daemon:
-  file.managed:
-    - source: salt://common/files/daemon.json
-    - name: /etc/docker/daemon.json
-    - template: jinja 
-
-# Make sure Docker is always running
-docker:
-  service.running:
-    - enable: True
-    - watch:
-      - file: docker_daemon
-
-# Reserve OS ports for Docker proxy in case boot settings are not already applied/present
-# 55000 = Wazuh, 57314 = Strelka, 47760-47860 = Zeek
-dockerapplyports:
-    cmd.run:
-      - name: if [ ! -s /etc/sysctl.d/99-reserved-ports.conf ]; then sysctl -w net.ipv4.ip_local_reserved_ports="55000,57314,47760-47860"; fi
-
-# Reserve OS ports for Docker proxy
-dockerreserveports:
-  file.managed:
-    - source: salt://common/files/99-reserved-ports.conf
-    - name: /etc/sysctl.d/99-reserved-ports.conf
-
-{% if salt['grains.get']('sosmodel', '') %}
-  {% if grains['os'] == 'CentOS' %}     
+{% if GLOBALS.so_model %}
+  {% if GLOBALS.os == 'Rocky' %}     
 # Install Raid tools
 raidpkgs:
   pkg.installed:
@@ -377,8 +246,9 @@ raidpkgs:
   {% endif %}
 
 # Install raid check cron
-/usr/sbin/so-raid-status > /dev/null 2>&1:
+so_raid_status:
   cron.present:
+    - name: '/usr/sbin/so-raid-status > /dev/null 2>&1'
     - user: root
     - minute: '*/15'
     - hour: '*'

@@ -1,5 +1,28 @@
 suricata:
   config:
+    threading:
+        set-cpu-affinity: 'no'
+        detect-thread-ratio: 1.0
+        cpu-affinity:
+            - management-cpu-set:
+                cpu: []
+            - receive-cpu-set:
+                cpu: []
+            - worker-cpu-set:
+                cpu: []
+                mode: exclusive
+                threads: 1
+                prio:
+                    default: high
+    af-packet:
+        interface: bond0
+        cluster-id: 59
+        cluster-type: cluster_flow
+        defrag: true
+        use-mmap: true
+        threads: 1
+        tpacket-v3: true
+        ring-size: 5000
     vars:
       address-groups:
         HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
@@ -20,184 +43,111 @@ suricata:
       port-groups:
         HTTP_PORTS: "80"
         SHELLCODE_PORTS: "!80"
-        ORACLE_PORTS: 1521
-        SSH_PORTS: 22
-        DNP3_PORTS: 20000
-        MODBUS_PORTS: 502
+        ORACLE_PORTS: "1521"
+        SSH_PORTS: "22"
+        DNP3_PORTS: "20000"
+        MODBUS_PORTS: "502"
         FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
-        FTP_PORTS: 21
-        VXLAN_PORTS: 4789
-        TEREDO_PORTS: 3544
+        FTP_PORTS: "21"
+        VXLAN_PORTS: "4789"
+        TEREDO_PORTS: "3544"
     default-log-dir: /var/log/suricata/
     stats:
       enabled: "yes"
       interval: 30
-      #decoder-events: true
-      #decoder-events-prefix: "decoder.event"
-      #stream-events: false
     outputs:
-      - fast:
+      fast:
+        enabled: "no"
+        filename: fast.log
+        append: "yes"
+      eve-log:
+        enabled: "yes"
+        filetype: regular
+        filename: /nsm/eve-%Y-%m-%d-%H:%M.json
+        rotate-interval: hour
+        pcap-file: false
+        community-id: true
+        community-id-seed: 0
+        xff:
           enabled: "no"
-          filename: fast.log
-          append: "yes"
-      - eve-log:
-          enabled: "yes"
-          filetype: regular
-          filename: /nsm/eve-%Y-%m-%d-%H:%M.json
-          rotate-interval: hour
-          #prefix: "@cee: "
-          #identity: "suricata"
-          #facility: local5
-          #level: Info
-          #redis:
-          #  server: 127.0.0.1
-          #  port: 6379
-          #  async: true
-          #  mode: list
-          #  key: suricata
-          #  pipelining:
-          #    enabled: "yes"
-          #    batch-size: 10
-          #metadata: "no"
-          pcap-file: false
-          community-id: true
-          community-id-seed: 0
-          xff:
-            enabled: "no"
-            mode: extra-data
-            deployment: reverse
-            header: X-Forwarded-For
-          types:
-            - alert:
-                payload: "no"
-                payload-buffer-size: 4kb
-                payload-printable: "yes"
-                packet: "yes"
-                metadata: 
-                    app-layer: false
-                    flow: false
-                    rule:
-                      metadata: true
-                      raw: true
-                # http-body: "yes"
-                # http-body-printable: "yes"
-                tagged-packets: "no"
-      - unified2-alert:
+          mode: extra-data
+          deployment: reverse
+          header: X-Forwarded-For
+        types:
+          - alert:
+              payload: "no"
+              payload-buffer-size: 4kb
+              payload-printable: "yes"
+              packet: "yes"
+              metadata: 
+                app-layer: false
+                flow: false
+                rule:
+                  metadata: true
+                  raw: true
+              tagged-packets: "no"
+      unified2-alert:
+        enabled: "no"
+      http-log:
+        enabled: "no"
+        filename: http.log
+        append: "yes"
+      tls-log:
+        enabled: "no"
+        filename: tls.log
+        append: "yes"
+      tls-store:
+        enabled: "no"
+      pcap-log:
+        enabled: "no"
+      alert-debug:
+        enabled: "no"
+      alert-prelude:
+        enabled: "no"
+      stats:
+        enabled: "yes"
+        filename: stats.log
+        append: "yes"
+        totals: "yes"
+        threads: "no"
+        null-values: "yes"
+      syslog:
+        enabled: "no"
+        facility: local5
+      drop:
+        enabled: "no"
+      file-store:
+        version: 2
+        enabled: "no"
+        xff:
           enabled: "no"
-      - http-log:
-          enabled: "no"
-          filename: http.log
-          append: "yes"
-          #extended: "yes"
-          #custom: "yes"
-          #customformat: ""
-          #filetype: regular
-      - tls-log:
-          enabled: "no"
-          filename: tls.log
-          append: "yes"
-          #extended: "yes"
-          #custom: "yes"
-          #customformat: ""
-          #filetype: regular
-          #session-resumption: "no"
-      - tls-store:
-          enabled: "no"
-          #certs-log-dir: certs
-      - pcap-log:
-          enabled: "no"
-          filename: log.pcap
-          limit: 1000mb
-          max-files: 2000
-          compression: none
-          #lz4-checksum: "no"
-          #lz4-level: 0
-    
-          mode: normal
-          #dir: /nsm_data/
-          #ts-format: usec
-          use-stream-depth: "no"
-          honor-pass-rules: "no"
-      - alert-debug:
-          enabled: "no"
-          filename: alert-debug.log
-          append: "yes"
-          #filetype: regular
-      - alert-prelude:
-          enabled: "no"
-          profile: suricata
-          log-packet-content: "no"
-          log-packet-header: "yes"
-      - stats:
-          enabled: "yes"
-          filename: stats.log
-          append: "yes"
-          totals: "yes"
-          threads: "no"
-          null-values: "yes"
-      - syslog:
-          enabled: "no"
-          #identity: "suricata"
-          facility: local5
-          #level: Info
-      - drop:
-          enabled: "no"
-      - file-store:
-          version: 2
-          enabled: "no"
-          #dir: filestore
-          #write-fileinfo: "yes"
-          #force-filestore: "yes"
-          #stream-depth: 0
-          #max-open-files: 1000
-          #force-hash: [sha1, md5]
-          xff:
-            enabled: "no"
-            mode: extra-data
-            deployment: reverse
-            header: X-Forwarded-For
-      - tcp-data:
-          enabled: "no"
-          type: file
-          filename: tcp-data.log
-      - http-body-data:
+          mode: extra-data
+          deployment: reverse
+          header: X-Forwarded-For
+      tcp-data:
+        enabled: "no"
+        type: file
+        filename: tcp-data.log
+      http-body-data:
           enabled: "no"
           type: file
           filename: http-data.log
-      - lua:
-          enabled: "no"
-          #scripts-dir: /etc/suricata/lua-output/
-          scripts:
-          #   - script1.lua
+      lua:
+        enabled: "no"
+        scripts:
     logging:
       default-log-level: notice
-      #default-log-format: "[%i] %t - (%f:%l) <%d> (%n) -- "
       outputs:
       - console:
           enabled: "yes"
-          # type: json
       - file:
           enabled: "yes"
           level: info
           filename: suricata.log
-          # type: json
       - syslog:
           enabled: "no"
           facility: local5
           format: "[%i] <%d> -- "
-          # type: json
-    pcap:
-      - interface: eth0
-        #buffer-size: 16777216
-        #bpf-filter: "tcp and port 25"
-        #checksum-checks: auto
-        #threads: 16
-        #promisc: "no"
-        #snaplen: 1518
-      - interface: default
-        #checksum-checks: auto
-    pcap-file:
-      checksum-checks: auto
     app-layer:
       protocols:
         krb5:
@@ -210,13 +160,10 @@ suricata:
           enabled: "yes"
           detection-ports:
             dp: 443
-          #ja3-fingerprints: auto
-          #encryption-handling: default
         dcerpc:
           enabled: "yes"
         ftp:
           enabled: "yes"
-          # memcap: 64mb
         rdp:
           enabled: "yes"
         ssh:
@@ -241,16 +188,14 @@ suricata:
           enabled: "yes"
           detection-ports:
             dp: 139, 445
-          #stream-depth: 0
-    
         nfs:
           enabled: "yes"
         tftp:
           enabled: "yes"
         dns:
-          #global-memcap: 16mb
-          #state-memcap: 512kb
-          #request-flood: 500
+          global-memcap: 16mb
+          state-memcap: 512kb
+          request-flood: 500
           tcp:
             enabled: "yes"
             detection-ports:
@@ -261,14 +206,6 @@ suricata:
               dp: 53
         http:
           enabled: "yes"
-          # memcap:
-          # default-config:
-          #   personality:
-          #   request-body-limit:
-          #   response-body-limit:
-          # server-config:
-          #   address:
-          #   personalitiy:
           libhtp:
              default-config:
                personality: IDS
@@ -280,49 +217,25 @@ suricata:
                response-body-inspect-window: 16kb
                response-body-decompress-layer-limit: 2
                http-body-inline: auto
-               # compress-depth:
-               # decompress-depth:
                swf-decompression:
                  enabled: "yes"
                  type: both
                  compress-depth: 0
                  decompress-depth: 0
-               #randomize-inspection-sizes: "yes"
-               #randomize-inspection-range: 10
                double-decode-path: "no"
                double-decode-query: "no"
-               #lzma-enabled: "yes"
-               #lzma-memlimit: 1mb
-               #compression-bomb-limit: 1mb
              server-config:
-               #- apache:
-               #    address: [192.168.1.0/24, 127.0.0.0/8, "::1"]
-               #    personality: Apache_2
-               #    request-body-limit: 4096
-               #    response-body-limit: 4096
-               #    double-decode-path: "no"
-               #    double-decode-query: "no"
-               #- iis7:
-               #    address:
-               #      - 192.168.0.0/24
-               #      - 192.168.10.0/24
-               #    personality: IIS_7_0
-               #    request-body-limit: 4096
-               #    response-body-limit: 4096
-               #    double-decode-path: "no"
-               #    double-decode-query: "no"
         modbus:
-          #request-flood: 500
-          enabled: "no"
+          enabled: "yes"
           detection-ports:
             dp: 502
           stream-depth: 0
         dnp3:
-          enabled: "no"
+          enabled: "yes"
           detection-ports:
             dp: 20000
         enip:
-          enabled: "no"
+          enabled: "yes"
           detection-ports:
             dp: 44818
             sp: 44818
@@ -333,41 +246,27 @@ suricata:
         sip:
           enabled: "yes"
         rfb:
-          enabled: "yes"
+          enabled: 'yes'
           detection-ports:
             dp: 5900, 5901, 5902, 5903, 5904, 5905, 5906, 5907, 5908, 5909
         mqtt:
-          enabled: "no"
+          enabled: 'no'
         http2:
-          enabled: "no"
-        
+          enabled: 'no'
     asn1-max-frames: 256
     run-as:
       user: suricata
       group: suricata
-    #sensor-name: suricata
-    #pid-file: /var/run/suricata.pid
-    #daemon-directory: "/"
-    #umask: 022
     coredump:
       max-dump: unlimited
     host-mode: auto
     max-pending-packets: 5000
     runmode: workers
-    #autofp-scheduler: hash
-    default-packet-size: 1500
+    default-packet-size: 9014
     unix-command:
       enabled: auto
-      #filename: custom.socket
-    #magic-file: /usr/share/file/magic
-    #magic-file:
-    #geoip-database: /usr/local/share/GeoLite2/GeoLite2-Country.mmdb
     legacy:
       uricontent: enabled
-    #reputation-categories-file: /etc/suricata/iprep/categories.txt
-    #default-reputation-path: /etc/suricata/iprep
-    #reputation-files:
-    # - reputation.list
     engine-analysis:
       rules-fast-pattern: "yes"
       rules: "yes"
@@ -400,8 +299,6 @@ suricata:
       hash-size: 65536
       prealloc: 10000
       emergency-recovery: 30
-      #managers: 1
-      #recyclers: 1
     vlan:
       use-for-tracking: true
     flow-timeouts:
@@ -447,18 +344,10 @@ suricata:
         toserver-chunk-size: 2560
         toclient-chunk-size: 2560
         randomize-chunk-size: "yes"
-        #randomize-chunk-range: 10
-        #raw: "yes"
-        #segment-prealloc: 2048
-        #check-overlap-different-data: true
     host:
       hash-size: 4096
       prealloc: 1000
       memcap: 32mb
-    #ippair:
-    #  hash-size: 4096
-    #  prealloc: 1000
-    #  memcap: 32mb
     decoder:
       teredo:
         enabled: true
@@ -467,6 +356,7 @@ suricata:
         enabled: true
         ports: $VXLAN_PORTS
       erspan:
+        enabled: true
     detect:
       profile: medium
       custom-values:
@@ -474,34 +364,24 @@ suricata:
         toserver-groups: 25
       sgh-mpm-context: auto
       inspection-recursion-limit: 3000
-      #delayed-detect: "yes"
       prefilter:
         default: mpm
       grouping:
-        #tcp-whitelist: 53, 80, 139, 443, 445, 1433, 3306, 3389, 6666, 6667, 8080
-        #udp-whitelist: 53, 135, 5060
-    
       profiling:
-        #inspect-logging-threshold: 200
         grouping:
           dump-to-disk: false
           include-rules: false
           include-mpm-stats: false
     mpm-algo: auto
     spm-algo: auto
-    threading:
-      set-cpu-affinity: "yes"
-      detect-thread-ratio: 1.0
     luajit:
       states: 128
 
     profiling:
-      #sample-rate: 1000
       rules:
         enabled: "yes"
         filename: rule_perf.log
         append: "yes"
-        #sort: avgticks
         limit: 10
         json: "yes"
       keywords:
@@ -527,201 +407,14 @@ suricata:
       locks:
         enabled: "no"
         filename: lock_stats.log
-        append: "yes"
-    
+        append: "yes"    
       pcap-log:
         enabled: "no"
         filename: pcaplog_stats.log
         append: "yes"
-    nfq:
-    #  mode: accept
-    #  repeat-mark: 1
-    #  repeat-mask: 1
-    #  bypass-mark: 1
-    #  bypass-mask: 1
-    #  route-queue: 2
-    #  batchcount: 20
-    #  fail-open: "yes"
-    nflog:
-      - group: 2
-        buffer-size: 18432
-      - group: default
-        qthreshold: 1
-        qtimeout: 100
-        max-size: 20000
-    capture:
-      #checksum-validation: none
-    netmap:
-     - interface: eth2
-       #threads: auto
-       #copy-mode: tap
-       #copy-iface: eth3
-       # disable-promisc: "no"
-       #checksum-checks: auto
-       #bpf-filter: port 80 or udp
-     #- interface: eth3
-       #threads: auto
-       #copy-mode: tap
-       #copy-iface: eth2
-     - interface: default
-    pfring:
-      - interface: eth0
-        threads: auto
-        cluster-id: 99
-        cluster-type: cluster_flow
-        #bpf-filter: tcp
-        #bypass: "yes"
-        #checksum-checks: auto
-      #- interface: eth1
-      #  threads: 3
-      #  cluster-id: 93
-      #  cluster-type: cluster_flow
-      - interface: default
-        #threads: 2
-    ipfw:
-      # ipfw-reinjection-rule-number: 5500
-    napatech:
-        #hba: -1
-        #use-all-streams: "no"
-        streams: ["0-3"]
-        auto-config: "yes"
-        ports: [all]
-        hashmode: hash5tuplesorted
     default-rule-path: /etc/suricata/rules
     rule-files:
       - all.rules
     classification-file: /etc/suricata/classification.config
     reference-config-file: /etc/suricata/reference.config
     threshold-file: /etc/suricata/threshold.conf
-    #include: include1.yaml
-    #include: include2.yaml
-  classification:
-    attempted-admin:
-      description: Attempted Administrator Privilege Gain
-      priority: 1
-    attempted-dos:
-      description: Attempted Denial of Service
-      priority: 2
-    attempted-recon:
-      description: Attempted Information Leak
-      priority: 2
-    attempted-user:
-      description: Attempted User Privilege Gain
-      priority: 1
-    bad-unknown:
-      description: Potentially Bad Traffic
-      priority: 2
-    coin-mining:
-      description: Crypto Currency Mining Activity Detected
-      priority: 2
-    command-and-control:
-      description: Malware Command and Control Activity Detected
-      priority: 1
-    credential-theft:
-      description: Successful Credential Theft Detected
-      priority: 1
-    default-login-attempt:
-      description: Attempt to login by a default username and password
-      priority: 2
-    denial-of-service:
-      description: Detection of a Denial of Service Attack
-      priority: 2
-    domain-c2:
-      description: Domain Observed Used for C2 Detected
-      priority: 1
-    exploit-kit:
-      description: Exploit Kit Activity Detected
-      priority: 1
-    external-ip-check:
-      description: Device Retrieving External IP Address Detected
-      priority: 2
-    icmp-event:
-      description: Generic ICMP event
-      priority: 3
-    inappropriate-content:
-      description: Inappropriate Content was Detected
-      priority: 1
-    misc-activity:
-      description: Misc activity
-      priority: 3
-    misc-attack:
-      description: Misc Attack 
-      priority: 2
-    network-scan:
-      description: Detection of a Network Scan
-      priority: 3
-    non-standard-protocol:
-      description: Detection of a non-standard protocol or event
-      priority: 2
-    not-suspicious:
-      description: Not Suspicious Traffic
-      priority: 3
-    policy-violation:
-      description: Potential Corporate Privacy Violation
-      priority: 1
-    protocol-command-decode:
-      description: Generic Protocol Command Decode
-      priority: 3
-    pup-activity:
-      description: Possibly Unwanted Program Detected
-      priority: 2
-    rpc-portmap-decode:
-      description: Decode of an RPC Query
-      priority: 2
-    shellcode-detect:
-      description: Executable code was detected
-      priority: 1
-    social-engineering:
-      description: Possible Social Engineering Attempted
-      priority: 2
-    string-detect:
-      description: A suspicious string was detected
-      priority: 3
-    successful-admin:
-      description: Successful Administrator Privilege Gain
-      priority: 1
-    successful-dos:
-      description: Denial of Service
-      priority: 2
-    successful-recon-largescale:
-      description: Large Scale Information Leak
-      priority: 2
-    successful-recon-limited:
-      description: Information Leak
-      priority: 2
-    successful-user:
-      description: Successful User Privilege Gain
-      priority: 1
-    suspicious-filename-detect:
-      description: A suspicious filename was detected
-      priority: 2
-    suspicious-login:
-      description: An attempted login using a suspicious username was detected
-      priority: 2
-    system-call-detect:
-      description: A system call was detected
-      priority: 2
-    targeted-activity:
-      description: Targeted Malicious Activity was Detected
-      priority: 1
-    tcp-connection:
-      description: A TCP connection was detected
-      priority: 4
-    trojan-activity:
-      description: A Network Trojan was detected
-      priority: 1
-    unknown:
-      description: Unknown Traffic
-      priority: 3
-    unsuccessful-user:
-      description: Unsuccessful User Privilege Gain
-      priority: 1
-    unusual-client-port-connection:
-      description: A client was using an unusual port
-      priority: 2
-    web-application-activity:
-      description: access to a potentially vulnerable web application
-      priority: 2
-    web-application-attack:
-      description: Web Application Attack
-      priority: 1

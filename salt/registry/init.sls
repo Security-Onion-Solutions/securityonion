@@ -1,5 +1,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
   - ssl
@@ -37,9 +38,14 @@ so-dockerregistry:
   docker_container.running:
     - image: ghcr.io/security-onion-solutions/registry:latest
     - hostname: so-registry
+    - networks:
+      - sobridge:
+        - ipv4_address: {{ DOCKER.containers['so-dockerregistry'].ip }}
     - restart_policy: always
     - port_bindings:
-      - 0.0.0.0:5000:5000
+      {% for BINDING in DOCKER.containers['so-dockerregistry'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
       - /opt/so/conf/docker-registry:/var/lib/registry:rw
@@ -47,6 +53,8 @@ so-dockerregistry:
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
     - client_timeout: 180
+    - environment:
+      - HOME=/root
     - retry:
         attempts: 5
         interval: 30

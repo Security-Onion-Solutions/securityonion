@@ -4,7 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.x.x   | :white_check_mark: |
+| 2.4.x   | :white_check_mark: |
+| 2.3.x   | :white_check_mark: |
 | 16.04.x | :x:                |
 
 Security Onion 16.04 has reached End Of Life and is no longer supported.

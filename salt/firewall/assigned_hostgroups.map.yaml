@@ -1,52 +1,34 @@
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', 'False') %}
-{% import_yaml 'firewall/portgroups.yaml' as portgroups %}
-{% set portgroups = portgroups.firewall.aliases.ports %}
-{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', False)  %}
+{% import_yaml 'firewall/ports/ports.yaml' as portgroups %}
+{% set portgroups = portgroups.firewall.ports %}
+{% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', True)  %}
+{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
 
 role:
   eval:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          eval:
             portgroups:
-              - {{ portgroups.wazuh_agent }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.wazuh_authd }}
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.osquery_8080 }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.sensoroni }}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -60,24 +42,16 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
-          osquery_endpoint:
+          elastic_agent_endpoint:
             portgroups:
-              - {{ portgroups.fleet_api }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           strelka_frontend:
             portgroups:
               - {{ portgroups.strelka_frontend }}
           syslog:
             portgroups:
               - {{ portgroups.syslog }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent }}
-          wazuh_api:
-            portgroups:
-              - {{ portgroups.wazuh_api }}
-          wazuh_authd:
-            portgroups:
-              - {{ portgroups.wazuh_authd }}
           analyst:
             portgroups:
               - {{ portgroups.nginx }}
@@ -92,61 +66,56 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
   manager:
     chain:
       DOCKER-USER:
         hostgroups:
           manager:
             portgroups:
-              - {{ portgroups.wazuh_agent }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.wazuh_authd }}
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
               {% if ISAIRGAP is sameas true %}
               - {{ portgroups.agrules }}
               {% endif %}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.osquery_8080 }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.sensoroni }}
-              {% if ISAIRGAP is sameas true %}
-              - {{ portgroups.yum }}
-              {% endif %}
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
-          heavy_node:
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -162,21 +131,13 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           endgame:
             portgroups:
               - {{ portgroups.endgame }}
-          osquery_endpoint:
-            portgroups:
-              - {{ portgroups.fleet_api }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent  }}
-          wazuh_api:
-            portgroups:
-              - {{ portgroups.wazuh_api }}
-          wazuh_authd:
-            portgroups:
-              - {{ portgroups.wazuh_authd }}
           analyst:
             portgroups:
               - {{ portgroups.nginx }}
@@ -191,54 +152,60 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
+          sensors:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
             portgroups:
               - {{ portgroups.salt_manager }}
   managersearch:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          managersearch:
             portgroups:
-              - {{ portgroups.wazuh_agent }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.wazuh_authd }}
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
               - {{ portgroups.docker_registry }}
-              - {{ portgroups.osquery_8080 }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.sensoroni }}
-              - {{ portgroups.yum }}
-          sensor:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          heavynodes:
             portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -251,24 +218,16 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           endgame:
             portgroups:
               - {{ portgroups.endgame }}
-          osquery_endpoint:
-            portgroups:
-              - {{ portgroups.fleet_api }}
           syslog:
             portgroups:
               - {{ portgroups.syslog }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent }}
-          wazuh_api:
-            portgroups:
-              - {{ portgroups.wazuh_api }}
-          wazuh_authd:
-            portgroups:
-              - {{ portgroups.wazuh_authd }}
           analyst:
             portgroups:
               - {{ portgroups.nginx }}
@@ -283,53 +242,69 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
+          sensors:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
             portgroups:
               - {{ portgroups.salt_manager }}
   standalone:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          localhost:
             portgroups:
-              - {{ portgroups.wazuh_agent }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.wazuh_authd }}
+              - {{ portgroups.all }}
+          standalone:
+            portgroups:
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
               - {{ portgroups.kibana }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.influxdb }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.cortex }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.acng }}
               - {{ portgroups.docker_registry }}
-              - {{ portgroups.osquery_8080 }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.fleet_api }}
               - {{ portgroups.sensoroni }}
-              - {{ portgroups.yum }}              
-          sensor:
-            portgroups:
+              - {{ portgroups.yum }}
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
-            portgroups:
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
               - {{ portgroups.elasticsearch_node }}
-          heavy_node:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.endgame }}
+              - {{ portgroups.strelka_frontend }}
+          sensors:
             portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.beats_5044 }}
+              - {{ portgroups.beats_5644 }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
               - {{ portgroups.redis }}
-              - {{ portgroups.minio }}
+              - {{ portgroups.elasticsearch_rest }}
+              - {{ portgroups.elasticsearch_node }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.sensoroni }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -343,27 +318,19 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           endgame:
             portgroups:
               - {{ portgroups.endgame }}
-          osquery_endpoint:
-            portgroups:
-              - {{ portgroups.fleet_api }}
           strelka_frontend:
             portgroups:
               - {{ portgroups.strelka_frontend }}
           syslog:
             portgroups:
               - {{ portgroups.syslog }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent }}
-          wazuh_api:
-            portgroups:
-              - {{ portgroups.wazuh_api }}
-          wazuh_authd:
-            portgroups:
-              - {{ portgroups.wazuh_authd }}
           analyst:
             portgroups:
               - {{ portgroups.nginx }}
@@ -378,70 +345,16 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
+          standalone:
             portgroups:
               - {{ portgroups.salt_manager }}
-  helixsensor:
-    chain:
-      DOCKER-USER:
-        hostgroups:
-          manager:
+          sensors:
             portgroups:
-              - {{ portgroups.wazuh_agent }}
-              - {{ portgroups.playbook }}
-              - {{ portgroups.mysql }}
-              - {{ portgroups.kibana }}
-              - {{ portgroups.redis }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.fleet_api }}
-              - {{ portgroups.cortex }}
-              - {{ portgroups.elasticsearch_rest }}
-              - {{ portgroups.elasticsearch_node }}
-              - {{ portgroups.cortex_es_rest }}
-              - {{ portgroups.cortex_es_node }}
-          minion:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
             portgroups:
-              - {{ portgroups.acng }}
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.osquery_8080 }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.wazuh_api }}
-              - {{ portgroups.sensoroni }}
-          sensor:
-            portgroups:
-              - {{ portgroups.beats_5044 }}
-              - {{ portgroups.beats_5644 }}
-          search_node:
-            portgroups:
-              - {{ portgroups.redis }}
-              - {{ portgroups.elasticsearch_node }}
-          self:
-            portgroups:
-              - {{ portgroups.syslog}}
-          beats_endpoint:
-            portgroups:
-              - {{ portgroups.beats_5044 }}
-          osquery_endpoint:
-            portgroups:
-              - {{ portgroups.fleet_api }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent  }}
-          analyst:
-            portgroups:
-              - {{ portgroups.nginx }}
-      INPUT:
-        hostgroups:
-          anywhere:
-            portgroups:
-              - {{ portgroups.ssh }}
-          dockernet:
-            portgroups:
-              - {{ portgroups.all }}
-          localhost:
-            portgroups:
-              - {{ portgroups.all }}
-          minion:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
             portgroups:
               - {{ portgroups.salt_manager }}
   searchnode:
@@ -459,11 +372,9 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
-          {% if TRUE_CLUSTER %}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.elasticsearch_node }}
-          {% endif %}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -517,42 +428,11 @@ role:
           self:
             portgroups:
               - {{ portgroups.syslog}}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
           strelka_frontend:
             portgroups:
               - {{ portgroups.strelka_frontend }}
-      INPUT:
-        hostgroups:
-          anywhere:
-            portgroups:
-              - {{ portgroups.ssh }}
-          dockernet:
-            portgroups:
-              - {{ portgroups.all }}
-          localhost:
-            portgroups:
-              - {{ portgroups.all }}
-  fleet:
-    chain:
-      DOCKER-USER:
-        hostgroups:
-          self:
-            portgroups:
-              - {{ portgroups.redis }}
-              - {{ portgroups.mysql }}
-              - {{ portgroups.osquery_8080 }}
-          localhost:
-            portgroups:
-              - {{ portgroups.mysql }}
-              - {{ portgroups.osquery_8080 }}
-          analyst:
-            portgroups:
-              - {{ portgroups.fleet_webui }}
-          minion:
-            portgroups:
-              - {{ portgroups.fleet_api }}
-          osquery_endpoint:
-            portgroups:
-              - {{ portgroups.fleet_api}}
       INPUT:
         hostgroups:
           anywhere:
@@ -575,15 +455,12 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
-          minion:
-            portgroups:
-              - {{ portgroups.docker_registry }}
-              - {{ portgroups.sensoroni }}
-          sensor:
+              - {{ portgroups.elastic_agent_control }}
+          sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.elasticsearch_node }}
@@ -596,6 +473,10 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
+          elastic_agent_endpoint:
+            portgroups:
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           analyst:
             portgroups:
               - {{ portgroups.nginx }}
@@ -610,18 +491,14 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
-          minion:
-            portgroups:
-              - {{ portgroups.salt_manager }}
-
   receiver:
     chain:
       DOCKER-USER:
         hostgroups:
-          sensor:
+          sensors:
             portgroups:
               - {{ portgroups.beats_5644 }}
-          search_node:
+          searchnodes:
             portgroups:
               - {{ portgroups.redis }}
               - {{ portgroups.beats_5644 }}
@@ -642,15 +519,6 @@ role:
           endgame:
             portgroups:
               - {{ portgroups.endgame }}
-          wazuh_agent:
-            portgroups:
-              - {{ portgroups.wazuh_agent }}
-          wazuh_api:
-            portgroups:
-              - {{ portgroups.wazuh_api }}
-          wazuh_authd:
-            portgroups:
-              - {{ portgroups.wazuh_authd }}
       INPUT:
         hostgroups:
           anywhere:
@@ -668,9 +536,10 @@ role:
         hostgroups:
           anywhere:
             portgroups:
-            {% set idh_services = salt['pillar.get']('idh:services', []) %}
-            {% for service in idh_services %}
-              - {{ portgroups['idh_'~service] }}
+            {% for service in IDH_PORTGROUPS.keys() %}
+              {% if service != 'openssh' %}
+              - {{ IDH_PORTGROUPS[service] }}
+              {% endif %}
             {% endfor %}
           dockernet:
             portgroups:
@@ -680,4 +549,7 @@ role:
               - {{ portgroups.all }}
           manager:
             portgroups:
-              - {{ portgroups.ssh }}
+              - {{ IDH_PORTGROUPS.openssh }}
+          standalone:
+            portgroups:
+              - {{ IDH_PORTGROUPS.openssh }}
