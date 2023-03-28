@@ -138,7 +138,7 @@ so-curatorclusterclose:
 
 so-curatorclusterdeletecron:
   cron.present:
-    - name: /usr/sbin/so-curator-cluster-delete-delete > /opt/so/log/curator/cron-cluster-delete.log 2>&1
+    - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-cluster-delete.log 2>&1
     - user: root
     - minute: '*/5'
     - hour: '*'
