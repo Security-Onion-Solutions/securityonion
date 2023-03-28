@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+TOTAL_AVAILABLE_SPACE=0
+
+# Wait for ElasticSearch to initialize
+COUNT=0
+ELASTICSEARCH_CONNECTED="no"
+while [[ "$COUNT" -le 240 ]]; do
+      so-elasticsearch-query / -k --output /dev/null --silent --head --fail
+        if [ $? -eq 0 ]; then
+                ELASTICSEARCH_CONNECTED="yes"
+                break
+        else
+                ((COUNT+=1))
+                sleep 1
+        fi
+done
+if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+        echo
+        echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+        echo
+        exit 1
+fi
+
+# Set percentage of space to desired value, otherwise use a default value of 80 percent
+if [[ "$1" != "" ]]; then
+  PERCENTAGE=$1
+else
+  PERCENTAGE=80
+fi
+
+# Iterate through the output of _cat/allocation for each node in the cluster to determine the total available space
+for i in $(so-elasticsearch-query _cat/allocation | awk '{print $5}'); do
+  size=$(echo $i | grep -oE '[0-9]+')
+  unit=$(echo $i | grep -oE '[A-Za-z]+')
+  if [ $unit = "tb" ]; then
+    size=$(( size * 1024 ))
+  fi
+  TOTAL_AVAILABLE_SPACE=$(( TOTAL_AVAILABLE_SPACE + size ))
+done
+
+# Calculate the percentage of available space based on our previously defined value
+PERCENTAGE_AVAILABLE_SPACE=$(( TOTAL_AVAILABLE_SPACE*PERCENTAGE/100 ))
+echo "$PERCENTAGE_AVAILABLE_SPACE"

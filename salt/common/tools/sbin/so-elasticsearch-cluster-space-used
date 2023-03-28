@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+TOTAL_AVAILABLE_SPACE=0
+
+# Iterate through the output of _cat/allocation for each node in the cluster to determine the total available space
+for i in $(so-elasticsearch-query _cat/allocation | awk '{print $3}'); do
+  size=$(echo $i | grep -oE '[0-9].*' | awk '{print int($1+0.5)}')
+  unit=$(echo $i | grep -oE '[A-Za-z]+')
+  if [ $unit = "tb" ]; then
+    size=$(( size * 1024 ))
+  fi
+  TOTAL_AVAILABLE_SPACE=$(( TOTAL_AVAILABLE_SPACE + size ))
+done
+
+# Calculate the percentage of available space based on our previously defined value
+echo "$TOTAL_AVAILABLE_SPACE"
