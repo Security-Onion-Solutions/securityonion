@@ -44,7 +44,7 @@ for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | grep -v {{ GLOBALS
 {% else %}
 for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $5}'); do
 {% endif %}
-  size=$(echo $i | grep -oE '[0-9]+')
+  size=$(echo $i | grep -oE '[0-9].*' | awk '{print int($1+0.5)}')
   unit=$(echo $i | grep -oE '[A-Za-z]+')
   if [ $unit = "tb" ]; then
     size=$(( size * 1024 ))
