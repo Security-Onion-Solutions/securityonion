@@ -71,7 +71,7 @@ curclusterclose:
 
 curclusterdelete:
   file.managed:
-    - name: /usr/sbin/so-curator-delete-delete
+    - name: /usr/sbin/so-curator-delete
     - source: salt://curator/files/bin/so-curator-cluster-delete
     - user: 934
     - group: 939
