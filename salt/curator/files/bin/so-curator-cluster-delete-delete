@@ -5,8 +5,9 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{%- set ELASTICSEARCH_HOST = GLOBALS.node_ip -%}  
-{%- set LOG_SIZE_LIMIT = salt['pillar.get']('elasticsearch:retention:log_size_limit') -%}
+{% import_yaml 'elasticsearch/defaults.yaml' as ELASTICDEFAULTS %}
+{%- set ELASTICSEARCH_HOST = GLOBALS.node_ip -%}
+{%- set RETENTION = salt['pillar.get']('elasticsearch:retention', ELASTICDEFAULTS.elasticsearch.retention, merge=true) -%}
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
@@ -17,7 +18,7 @@ LOG="/opt/so/log/curator/so-curator-cluster-delete.log"
 
 overlimit() {
 
-        [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "{{LOG_SIZE_LIMIT}}" ]]
+        [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "/usr/sbin/so-elasticsearch-cluster-space-total{{ RETENTION.retention_pct}}" ]]
 }
 
 closedindices() {
