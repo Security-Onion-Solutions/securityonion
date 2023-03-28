@@ -27,18 +27,18 @@ curator:
     - createhome: False
 
 # Create the log directory
+curlogdir:
+  file.directory:
+    - name: /opt/so/log/curator
+    - user: 934
+    - group: 939
+
 curactiondir:
   file.directory:
     - name: /opt/so/conf/curator/action
     - user: 934
     - group: 939
     - makedirs: True
-
-curlogdir:
-  file.directory:
-    - name: /opt/so/log/curator
-    - user: 934
-    - group: 939
 
 actionconfs:
   file.recurse:
@@ -50,7 +50,6 @@ actionconfs:
     - defaults:
         CURATORMERGED: {{ CURATORMERGED }}
         
-
 curconf:
   file.managed:
     - name: /opt/so/conf/curator/curator.yml
@@ -61,40 +60,6 @@ curconf:
     - template: jinja
     - show_changes: False
 
-curcloseddel:
-  file.managed:
-    - name: /usr/sbin/so-curator-closed-delete
-    - source: salt://curator/files/bin/so-curator-closed-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-
-curcloseddeldel:
-  file.managed:
-    - name: /usr/sbin/so-curator-closed-delete-delete
-    - source: salt://curator/files/bin/so-curator-closed-delete-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
-curclose:
-  file.managed:
-    - name: /usr/sbin/so-curator-close
-    - source: salt://curator/files/bin/so-curator-close
-    - user: 934
-    - group: 939
-    - mode: 755
-    - template: jinja
-
-curdel:
-  file.managed:
-    - name: /usr/sbin/so-curator-delete
-    - source: salt://curator/files/bin/so-curator-delete
-    - user: 934
-    - group: 939
-    - mode: 755
-
 curclusterclose: 
   file.managed:
     - name: /usr/sbin/so-curator-cluster-close
@@ -104,10 +69,18 @@ curclusterclose:
     - mode: 755
     - template: jinja
 
-curclusterdelete: 
+curclusterdelete:
   file.managed:
     - name: /usr/sbin/so-curator-cluster-delete
     - source: salt://curator/files/bin/so-curator-cluster-delete
+    - user: 934
+    - group: 939
+    - mode: 755
+
+curclusterdeletedelete:
+  file.managed:
+    - name: /usr/sbin/so-curator-cluster-delete-delete
+    - source: salt://curator/files/bin/so-curator-cluster-delete-delete
     - user: 934
     - group: 939
     - mode: 755
@@ -163,12 +136,12 @@ so-curatorclusterclose:
     - month: '*'
     - dayweek: '*'
 
-so-curatorclusterdelete:
+so-curatorclusterdeletecron:
   cron.present:
-    - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-delete.log 2>&1
+    - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-cluster-delete.log 2>&1
     - user: root
-    - minute: '2'
-    - hour: '*/1'
+    - minute: '*/5'
+    - hour: '*'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'

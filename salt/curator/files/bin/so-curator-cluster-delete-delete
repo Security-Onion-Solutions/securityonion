@@ -1,0 +1,85 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% import_yaml 'elasticsearch/defaults.yaml' as ELASTICDEFAULTS %}
+{%- set ELASTICSEARCH_HOST = GLOBALS.node_ip -%}
+{%- set RETENTION = salt['pillar.get']('elasticsearch:retention', ELASTICDEFAULTS.elasticsearch.retention, merge=true) -%}
+
+LOG="/opt/so/log/curator/so-curator-cluster-delete.log"
+LOG_SIZE_LIMIT=$(/usr/sbin/so-elasticsearch-cluster-space-total {{ RETENTION.retention_pct}})
+
+overlimit() {
+         [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "${LOG_SIZE_LIMIT}" ]]
+}
+
+closedindices() {
+	# If we can't query Elasticsearch, then immediately return false.
+        /usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep close > /dev/null 2>&1
+        [ $? -eq 1 ] && return false 
+	# First, get the list of closed indices using _cat/indices?h=index,status | grep close | awk '{print $1}'.
+	# Next, filter out any so-case indices.
+	# Finally, use grep's -q option to return true if there are any remaining logstash-, so-, or .ds-logs- indices.
+        /usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep close | awk '{print $1}' | grep -v "so-case" | grep -q -E "(logstash-|so-|.ds-logs-)"
+}
+
+# Check for 2 conditions:
+# 1. Are Elasticsearch indices using more disk space than LOG_SIZE_LIMIT?
+# 2. Are there any closed indices that we can delete?
+# If both conditions are true, keep on looping until one of the conditions is false.
+
+while overlimit && closedindices; do
+        CLOSED_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep close | awk '{print $1}' | grep -v "so-case" | grep -E "(logstash-|so-|.ds-logs-)" | sort -t- -k3)
+        # We iterate through the closed indices
+	for CLOSED_INDEX in ${CLOSED_INDICES}; do
+	  # Now that we've sorted the indices from oldest to newest, we need to check each index to see if it is assigned as the current write index for a data stream
+          # To do so, we need to identify to which data stream this index is associated
+          # We extract the data stream name using the pattern below
+          DATASTREAM_PATTERN="logs-[a-zA-Z_.]+-[a-zA-Z_.]+"
+          DATASTREAM=$(echo "${CLOSED_INDEX}" | grep -oE "$DATASTREAM_PATTERN")
+	  # We look up the data stream, and determine the write index
+          CURRENT_WRITE_INDEX=$(/usr/sbin/so-elasticsearch-query _data_stream/$DATASTREAM | jq -r .data_streams[0].indices[-1].index_name)
+	  # We make sure we are not trying to delete a write index
+          if [ "${CLOSED_INDEX}" != "${CURRENT_WRITE_INDEX}" ]; then      
+            # This should not be a write index, so we should be allowed to delete it
+            /usr/sbin/so-elasticsearch-query ${CLOSED_INDEX} -XDELETE
+            # Finally, write a log entry that says we deleted it.
+            echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT} GB) - Index ${CLOSED_INDEX} deleted ..." >> ${LOG}
+          fi
+          if ! overlimit; then
+            exit
+          fi
+        done
+done
+
+while overlimit; do
+
+	# We need to determine the oldest open index.
+	# First, get the list of open indices using _cat/indices?h=index,status | grep open | awk '{print $1}'.
+        # Next, filter out any so-case indices and only select the remaining logstash-, so-, or .ds-logs- indices.
+        # Then, sort by date by telling sort to use hyphen as delimiter and sort on the third field.
+	OPEN_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep open | awk '{print $1}' | grep -v "so-case" | grep -E "(logstash-|so-|.ds-logs-)" | sort -t- -k3)
+	# We iterate through the open indices
+        for OPEN_INDEX in ${OPEN_INDICES}; do
+	  # Now that we've sorted the indices from oldest to newest, we need to check each index to see if it is assigned as the current write index for a data stream
+          # To do so, we need to identify to which data stream this index is associated
+          # We extract the data stream name using the pattern below
+          DATASTREAM_PATTERN="logs-[a-zA-Z_.]+-[a-zA-Z_.]+"
+          DATASTREAM=$(echo "${OPEN_INDEX}" | grep -oE "$DATASTREAM_PATTERN")
+	  # We look up the data stream, and determine the write index
+          CURRENT_WRITE_INDEX=$(/usr/sbin/so-elasticsearch-query _data_stream/$DATASTREAM | jq -r .data_streams[0].indices[-1].index_name)
+	  # We make sure we are not trying to delete a write index
+          if [ "${OPEN_INDEX}" != "${CURRENT_WRITE_INDEX}" ]; then      
+            # This should not be a write index, so we should be allowed to delete it
+            /usr/sbin/so-elasticsearch-query ${OPEN_INDEX} -XDELETE
+            # Finally, write a log entry that says we deleted it.
+            echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT} GB) - Index ${OPEN_INDEX} deleted ..." >> ${LOG}
+          fi
+          if ! overlimit; then
+            exit
+          fi
+        done
+done

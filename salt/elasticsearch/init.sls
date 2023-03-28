@@ -407,7 +407,6 @@ so-elasticsearch-roles-load:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
 
-
 {% else %}
 
 {{sls}}_state_not_allowed:
