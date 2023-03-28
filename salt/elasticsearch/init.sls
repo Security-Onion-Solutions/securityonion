@@ -372,6 +372,13 @@ so-es-cluster-settings:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
 
+so-es-cluster-space-configure:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-cluster-space-configure
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+
 so-elasticsearch-ilm-policy-load:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
@@ -406,7 +413,6 @@ so-elasticsearch-roles-load:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-
 
 {% else %}
 
