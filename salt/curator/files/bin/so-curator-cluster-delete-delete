@@ -15,10 +15,10 @@
 # Elastic License 2.0.
 
 LOG="/opt/so/log/curator/so-curator-cluster-delete.log"
+LOG_SIZE_LIMIT=$(/usr/sbin/so-elasticsearch-cluster-space-total {{ RETENTION.retention_pct}})
 
 overlimit() {
-
-        [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "/usr/sbin/so-elasticsearch-cluster-space-total{{ RETENTION.retention_pct}}" ]]
+        [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "${LOG_SIZE_LIMIT}" ]]
 }
 
 closedindices() {
@@ -41,7 +41,7 @@ closedindices() {
            # This should not be a write index, so we should be allowed to delete it
            /usr/sbin/so-elasticsearch-query ${CLOSED_INDEX} -XDELETE
           # Finally, write a log entry that says we deleted it.
-          echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT ({{LOG_SIZE_LIMIT}} GB) - Index ${CLOSED_INDEX} deleted ..." >> ${LOG}
+          echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT} GB) - Index ${CLOSED_INDEX} deleted ..." >> ${LOG}
           fi
           if ! overlimit; then
             exit
@@ -69,7 +69,7 @@ while overlimit; do
            # This should not be a write index, so we should be allowed to delete it
            /usr/sbin/so-elasticsearch-query ${OPEN_INDEX} -XDELETE
           # Finally, write a log entry that says we deleted it.
-          echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT ({{LOG_SIZE_LIMIT}} GB) - Index ${OPEN_INDEX} deleted ..." >> ${LOG}
+          echo "$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT} GB) - Index ${OPEN_INDEX} deleted ..." >> ${LOG}
           fi
           if ! overlimit; then
             exit
