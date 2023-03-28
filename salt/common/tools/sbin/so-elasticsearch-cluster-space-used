@@ -6,11 +6,16 @@
 # Elastic License 2.0.
 
 . /usr/sbin/so-common
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 TOTAL_AVAILABLE_SPACE=0
 
 # Iterate through the output of _cat/allocation for each node in the cluster to determine the total available space
+{% if GLOBALS.role == 'so-manager' %}
+for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | grep -v {{ GLOBALS.manager }} | awk '{print $3}'); do
+{% else %}
 for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $3}'); do
+{% endif %}
   size=$(echo $i | grep -oE '[0-9].*' | awk '{print int($1+0.5)}')
   unit=$(echo $i | grep -oE '[A-Za-z]+')
   if [ $unit = "tb" ]; then
