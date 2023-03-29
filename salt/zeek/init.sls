@@ -78,7 +78,7 @@ zeekpolicysync:
     - group: 939
     - template: jinja
     - defaults:
-        FILE_EXTRACTION: {{ ZEEKMERGED.zeek.file_extraction }}
+        FILE_EXTRACTION: {{ ZEEKMERGED.file_extraction }}
 
 # Ensure the zeek spool tree (and state.db) ownership is correct
 zeekspoolownership:
@@ -109,7 +109,7 @@ zeekctlcfg:
     - group: 939
     - template: jinja
     - defaults:
-        ZEEKCTL: {{ ZEEKMERGED.zeek.config.zeekctl | tojson }}
+        ZEEKCTL: {{ ZEEKMERGED.config.zeekctl | tojson }}
 
 # Sync node.cfg
 nodecfg:
@@ -120,7 +120,7 @@ nodecfg:
     - group: 939
     - template: jinja
     - defaults:
-        NODE: {{ ZEEKMERGED.zeek.config.node }}
+        NODE: {{ ZEEKMERGED.config.node }}
 
 networkscfg:
   file.managed:
@@ -130,7 +130,7 @@ networkscfg:
     - group: 939
     - template: jinja
     - defaults:
-        NETWORKS: {{ ZEEKMERGED.zeek.config.networks }}
+        NETWORKS: {{ ZEEKMERGED.config.networks }}
 
 #zeekcleanscript:
 #  file.managed:
@@ -198,7 +198,7 @@ localzeek:
     - group: 939
     - template: jinja
     - defaults:
-        LOCAL: {{ ZEEKMERGED.zeek.config.local | tojson }}
+        LOCAL: {{ ZEEKMERGED.config.local | tojson }}
 
 so-zeek:
   docker_container.{{ ZEEKOPTIONS.status }}:
