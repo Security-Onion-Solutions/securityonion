@@ -54,33 +54,37 @@ add_interface_bond0() {
 			ethtool -K "$BNIC" $i off &>/dev/null
 		fi
 	done
-	# Check if the bond slave connection has already been created
-	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
-	local found_int=$?
 
-	if [[ $found_int != 0 ]]; then
-		# Create the slave interface and assign it to the bond
-		nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
-			ethernet.mtu "$MTU" \
-			connection.autoconnect "yes"
-	else
-		local int_uuid
-		int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+        if ! [[ is_cloud ]]; then
+	  # Check if the bond slave connection has already been created
+	  nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+	  local found_int=$?
 
-		nmcli con mod "$int_uuid" \
-			ethernet.mtu "$MTU" \
-			connection.autoconnect "yes"
-	fi
+	  if [[ $found_int != 0 ]]; then
+		  # Create the slave interface and assign it to the bond
+		  nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
+			  ethernet.mtu "$MTU" \
+			  connection.autoconnect "yes"
+	  else
+		  local int_uuid
+		  int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+
+		  nmcli con mod "$int_uuid" \
+			  ethernet.mtu "$MTU" \
+			  connection.autoconnect "yes"
+	  fi
+        fi
 
 	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
-			
-	# Bring the slave interface up
-	if [[ $verbose == true ]]; then
-		nmcli con up "bond0-slave-$BNIC"
-	else
-		nmcli con up "bond0-slave-$BNIC" &>/dev/null
+
+        if ! [[ is_cloud ]]; then
+	  # Bring the slave interface up
+	  if [[ $verbose == true ]]; then
+		  nmcli con up "bond0-slave-$BNIC"
+	  else
+		  nmcli con up "bond0-slave-$BNIC" &>/dev/null
+	  fi
 	fi
-	 
 	if [ "$nic_error" != 0 ]; then
 		return "$nic_error"
 	fi
