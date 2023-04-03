@@ -41,18 +41,12 @@ trusttheca:
     - name: /etc/ssl/certs/intca.crt
     - text:  {{ trusttheca_text }}
 
-{% if grains['os'] != 'CentOS' %}
 # Install packages needed for the sensor
 m2cryptopkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-    {% if grains['oscodename'] == 'bionic' %}
-      - python-m2crypto
-    {% elif grains['oscodename'] == 'focal' %}
       - python3-m2crypto
-    {% endif %}
-{% endif %}
 
 influxdb_key:
   x509.private_key_managed:
@@ -216,19 +210,19 @@ chownilogstashelasticfleetp8:
 # Create Symlinks to the keys so I can distribute it to all the things
 elasticfleetdircerts:
   file.directory:
-    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs
     - makedirs: True
 
 efkeylink:
   file.symlink:
-    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs/elasticfleet.p8
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet.p8
     - target: /etc/pki/elasticfleet.p8
     - user: socore
     - group: socore
 
 efcrtlink:
   file.symlink:
-    - name: /opt/so/saltstack/local/salt/elastic-fleet/files/certs/elasticfleet.crt
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet.crt
     - target: /etc/pki/elasticfleet.crt
     - user: socore
     - group: socore

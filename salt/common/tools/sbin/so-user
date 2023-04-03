@@ -13,74 +13,74 @@ DEFAULT_ROLE=analyst
 
 function usage() {
   cat <<USAGE_EOF
-  Usage: $0 <operation> [supporting parameters]"
+  Usage: $0 <operation> [supporting parameters]
   
-  where <operation> is one of the following:"
+  where <operation> is one of the following:
   
-      list: Lists all user email addresses currently defined in the identity system"
+      list: Lists all user email addresses currently defined in the identity system
   
-       add: Adds a new user to the identity system"
-            Required parameters: "
-              --email <email>"
-            Optional parameters: "
-              --role <role>             (defaults to $DEFAULT_ROLE)"
-              --firstName <firstName>   (defaults to blank)"
-              --lastName <lastName>     (defaults to blank)"
-              --note <note>             (defaults to blank)"
+       add: Adds a new user to the identity system
+            Required parameters: 
+              --email <email>
+            Optional parameters: 
+              --role <role>             (defaults to $DEFAULT_ROLE)
+              --firstName <firstName>   (defaults to blank)
+              --lastName <lastName>     (defaults to blank)
+              --note <note>             (defaults to blank)
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-   addrole: Grants a role to an existing user"
-            Required parameters: "
-              --email <email>"
-              --role <role>"
-            Optional parameters: "
+   addrole: Grants a role to an existing user
+            Required parameters: 
+              --email <email>
+              --role <role>
+            Optional parameters: 
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-   delrole: Removes a role from an existing user"
-            Required parameters: "
-              --email <email>"
-              --role <role>"
-            Optional parameters: "
+   delrole: Removes a role from an existing user
+            Required parameters: 
+              --email <email>
+              --role <role>
+            Optional parameters: 
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-  password: Updates a user's password and disables MFA"
-            Required parameters: "
-              --email <email>"
-            Optional parameters: "
+  password: Updates a user's password and disables MFA
+            Required parameters: 
+              --email <email>
+            Optional parameters: 
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-    profile: Updates a user's profile information"
-            Required parameters: "
-              --email <email>"
-            Optional parameters: "
-              --role <role>             (defaults to $DEFAULT_ROLE)"
-              --firstName <firstName>   (defaults to blank)"
-              --lastName <lastName>     (defaults to blank)"
-              --note <note>             (defaults to blank)"
+   profile: Updates a user's profile information
+            Required parameters: 
+              --email <email>
+            Optional parameters: 
+              --role <role>             (defaults to $DEFAULT_ROLE)
+              --firstName <firstName>   (defaults to blank)
+              --lastName <lastName>     (defaults to blank)
+              --note <note>             (defaults to blank)
   
-    enable: Enables a user"
-            Required parameters: "
-              --email <email>"
-            Optional parameters: "
+    enable: Enables a user
+            Required parameters: 
+              --email <email>
+            Optional parameters: 
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-   disable: Disables a user"
-            Required parameters: "
-              --email <email>"
-            Optional parameters: "
+   disable: Disables a user
+            Required parameters: 
+              --email <email>
+            Optional parameters: 
               --skip-sync               (defers the Elastic sync until the next scheduled time)
   
-  validate: Validates that the given email address and password are acceptable"
-            Required parameters: "
-              --email <email>"
+  validate: Validates that the given email address and password are acceptable
+            Required parameters: 
+              --email <email>
   
-  valemail: Validates that the given email address is acceptable; requires 'email' parameter"
-            Required parameters: "
-              --email <email>"
+  valemail: Validates that the given email address is acceptable; requires 'email' parameter
+            Required parameters: 
+              --email <email>
   
-   valpass: Validates that a password is acceptable"
+   valpass: Validates that a password is acceptable
   
-  Note that the password can be piped into STDIN to avoid prompting for it"
+  Note that the password can be piped into STDIN to avoid prompting for it
 USAGE_EOF
   exit 1
 }
@@ -496,19 +496,6 @@ EOF
   fi
 }
 
-function migrateLockedUsers() {
-  # This is a migration function to convert locked users from prior to 2.3.90
-  # to inactive users using the newer Kratos functionality. This should only
-  # find locked users once.
-  lockedEmails=$(curl -s ${kratosUrl}/identities | jq -r '.[] | select(.traits.status == "locked") | .traits.email')
-  if [[ -n "$lockedEmails" ]]; then
-    echo "Disabling locked users..."
-    for email in $lockedEmails; do
-      updateStatus "$email" locked
-    done
-  fi
-}
-
 function updateStatus() {
   email=$1
   status=$2
@@ -587,7 +574,10 @@ case "${operation}" in
     createUser "$email" "${role:-$DEFAULT_ROLE}" "${firstName}" "${lastName}" "${note}"
     syncAll
     echo "Successfully added new user to SOC"
-    check_container fleet && echo "$password" | so-fleet-user-add "$email"
+    echo "$password" | so-influxdb-manage useradd "$email"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userpromote "$email"
+    fi
     ;;
 
   "list")
@@ -605,6 +595,9 @@ case "${operation}" in
     if addUserRole "$email" "$role"; then
       syncElastic
       echo "Successfully added role to user"
+      if [[ "$role" == "superuser" ]]; then
+        echo "$password" | so-influxdb-manage userpromote "$email"
+      fi
     fi
     ;;
 
@@ -618,6 +611,9 @@ case "${operation}" in
     deleteUserRole "$email" "$role"
     syncElastic
     echo "Successfully removed role from user"
+    if [[ "$role" == "superuser" ]]; then
+      echo "$password" | so-influxdb-manage userdemote "$email"
+    fi
     ;;
 
   "password")
@@ -628,6 +624,7 @@ case "${operation}" in
     updateUserPassword "$email"
     syncAll
     echo "Successfully updated user password"
+    echo "$password" | so-influxdb-manage userpass "$email"
     ;;
 
   "profile")
@@ -647,7 +644,7 @@ case "${operation}" in
     updateStatus "$email" 'active'
     syncAll
     echo "Successfully enabled user"
-    echo "Fleet user will need to be recreated manually with so-fleet-user-add"
+    so-influxdb-manage userenable "$email"
     ;;
 
   "disable")
@@ -658,7 +655,7 @@ case "${operation}" in
     updateStatus "$email" 'locked'
     syncAll
     echo "Successfully disabled user"
-    check_container fleet && so-fleet-user-delete "$email"   
+    so-influxdb-manage userdisable "$email"
     ;;    
 
   "delete")
@@ -669,7 +666,7 @@ case "${operation}" in
     deleteUser "$email"
     syncAll
     echo "Successfully deleted user"
-    check_container fleet && so-fleet-user-delete "$email"
+    so-influxdb-manage userdel "$email"
     ;;
 
   "sync")
@@ -691,11 +688,6 @@ case "${operation}" in
   "valpass")
     updatePassword
     echo "Password is acceptable"
-    ;;
-
-  "migrate")
-    migrateLockedUsers
-    echo "User migration complete"
     ;;
 
   *)

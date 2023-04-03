@@ -1,4 +1,5 @@
 {% import 'vars/init.map.jinja' as INIT %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
 
 {% from 'vars/' ~ INIT.GRAINS.role.split('-')[1] ~ '.map.jinja' import ROLE_GLOBALS %} {# role is so-role so we have to split off the 'so' #}
 
@@ -21,6 +22,8 @@
     'md_engine': INIT.PILLAR.global.mdengine,
     'pipeline': INIT.PILLAR.global.pipeline,
     'so_version': INIT.PILLAR.global.soversion,
+    'so_docker_bip': DOCKER.sobip,
+    'so_docker_range': DOCKER.sorange,
     'url_base': INIT.PILLAR.global.url_base,
     'so_model': INIT.GRAINS.get('sosmodel',''),
     'description': INIT.PILLAR.sensoroni.get('node_description',''),
@@ -47,9 +50,9 @@
 {%
   do GLOBALS.update({
     'application_urls': {
-      'kratos': 'http://' ~ GLOBALS.manager_ip ~ ':4434/',
-      'elastic': 'https://' ~ GLOBALS.manager_ip ~ ':9200/',
-      'influxdb': 'https://' ~ GLOBALS.manager_ip ~ ':8086/'
+      'kratos': 'http://' ~ GLOBALS.manager ~ ':4434/',
+      'elastic': 'https://' ~ GLOBALS.manager ~ ':9200/',
+      'influxdb': 'https://' ~ GLOBALS.manager ~ ':8086/'
     }
   })
 %}

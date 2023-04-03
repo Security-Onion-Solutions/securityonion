@@ -2,13 +2,14 @@
 {% import_yaml 'firewall/ports/ports.yaml' as portgroups %}
 {% set portgroups = portgroups.firewall.ports %}
 {% set TRUE_CLUSTER = salt['pillar.get']('elasticsearch:true_cluster', True)  %}
+{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
 
 role:
   eval:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          eval:
             portgroups:
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
@@ -113,6 +114,9 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
               {% if ISAIRGAP is sameas true %}
               - {{ portgroups.agrules }}
               {% endif %}
@@ -122,16 +126,31 @@ role:
               - {{ portgroups.beats_5644 }}
               - {{ portgroups.elastic_agent_control }}
               - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
           searchnodes:
             portgroups:
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           heavynodes:
             portgroups:
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
               - {{ portgroups.beats_5644 }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -168,11 +187,20 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
+          sensors:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
   managersearch:
     chain:
       DOCKER-USER:
         hostgroups:
-          manager:
+          managersearch:
             portgroups:
               - {{ portgroups.playbook }}
               - {{ portgroups.mysql }}
@@ -181,20 +209,38 @@ role:
               - {{ portgroups.influxdb }}
               - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           sensors:
             portgroups:
               - {{ portgroups.beats_5044 }}
               - {{ portgroups.beats_5644 }}
               - {{ portgroups.elastic_agent_control }}
               - {{ portgroups.elastic_agent_data }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
           searchnodes:
             portgroups:
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           heavynodes:
             portgroups:
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.yum }}
+              - {{ portgroups.docker_registry }}
+              - {{ portgroups.influxdb }}
+              - {{ portgroups.elastic_agent_control }}
+              - {{ portgroups.elastic_agent_data }}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -231,10 +277,22 @@ role:
           localhost:
             portgroups:
               - {{ portgroups.all }}
+          sensors:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          searchnodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
+          heavynodes:
+            portgroups:
+              - {{ portgroups.salt_manager }}
   standalone:
     chain:
       DOCKER-USER:
         hostgroups:
+          localhost:
+            portgroups:
+              - {{ portgroups.all }}
           standalone:
             portgroups:
               - {{ portgroups.playbook }}
@@ -278,6 +336,7 @@ role:
               - {{ portgroups.sensoroni }}
               - {{ portgroups.yum }}
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
           heavynodes:
             portgroups:
@@ -286,6 +345,7 @@ role:
               - {{ portgroups.sensoroni }}
               - {{ portgroups.yum }}
               - {{ portgroups.redis }}
+              - {{ portgroups.elasticsearch_rest }}
               - {{ portgroups.elasticsearch_node }}
           self:
             portgroups:
@@ -338,47 +398,6 @@ role:
           heavynodes:
             portgroups:
               - {{ portgroups.salt_manager }}
-  helixsensor:
-    chain:
-      DOCKER-USER:
-        hostgroups:
-          manager:
-            portgroups:
-              - {{ portgroups.playbook }}
-              - {{ portgroups.mysql }}
-              - {{ portgroups.kibana }}
-              - {{ portgroups.redis }}
-              - {{ portgroups.influxdb }}
-              - {{ portgroups.elasticsearch_rest }}
-              - {{ portgroups.elasticsearch_node }}
-          sensors:
-            portgroups:
-              - {{ portgroups.beats_5044 }}
-              - {{ portgroups.beats_5644 }}
-          searchnodes:
-            portgroups:
-              - {{ portgroups.redis }}
-              - {{ portgroups.elasticsearch_node }}
-          self:
-            portgroups:
-              - {{ portgroups.syslog}}
-          beats_endpoint:
-            portgroups:
-              - {{ portgroups.beats_5044 }}
-          analyst:
-            portgroups:
-              - {{ portgroups.nginx }}
-      INPUT:
-        hostgroups:
-          anywhere:
-            portgroups:
-              - {{ portgroups.ssh }}
-          dockernet:
-            portgroups:
-              - {{ portgroups.all }}
-          localhost:
-            portgroups:
-              - {{ portgroups.all }}
   searchnode:
     chain:
       DOCKER-USER:
@@ -394,11 +413,9 @@ role:
           elasticsearch_rest:
             portgroups:
               - {{ portgroups.elasticsearch_rest }}
-          {% if TRUE_CLUSTER %}
           searchnodes:
             portgroups:
               - {{ portgroups.elasticsearch_node }}
-          {% endif %}
           self:
             portgroups:
               - {{ portgroups.syslog}}
@@ -452,6 +469,8 @@ role:
           self:
             portgroups:
               - {{ portgroups.syslog}}
+              - {{ portgroups.elasticsearch_node }}
+              - {{ portgroups.elasticsearch_rest }}
           strelka_frontend:
             portgroups:
               - {{ portgroups.strelka_frontend }}
@@ -558,9 +577,10 @@ role:
         hostgroups:
           anywhere:
             portgroups:
-            {% set idh_services = salt['pillar.get']('idh:services', []) %}
-            {% for service in idh_services %}
-              - {{ portgroups['idh_'~service] }}
+            {% for service in IDH_PORTGROUPS.keys() %}
+              {% if service != 'openssh' %}
+              - {{ IDH_PORTGROUPS[service] }}
+              {% endif %}
             {% endfor %}
           dockernet:
             portgroups:
@@ -570,4 +590,7 @@ role:
               - {{ portgroups.all }}
           manager:
             portgroups:
-              - {{ portgroups.ssh }}
+              - {{ IDH_PORTGROUPS.openssh }}
+          standalone:
+            portgroups:
+              - {{ IDH_PORTGROUPS.openssh }}

@@ -83,12 +83,14 @@ so-kibana:
     - hostname: kibana
     - user: kibana
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-kibana'].ip }}
     - environment:
       - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200
       - MANAGER={{ GLOBALS.manager }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw

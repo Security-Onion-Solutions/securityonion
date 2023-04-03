@@ -7,16 +7,9 @@
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% set STRELKA_RULES = salt['pillar.get']('strelka:rules', '1') %}
-{% import_yaml 'strelka/defaults.yaml' as strelka_config with context %}
-{% set IGNORELIST = salt['pillar.get']('strelka:ignore', strelka_config.strelka.ignore, merge=True, merge_nested_lists=True) %}
-{% set ENGINE = salt['pillar.get']('global:mdengine', '') %}
 
-{% if ENGINE == "SURICATA" %}
-  {% set filecheck_runas = 'suricata' %}
-{% else %}
-  {% set filecheck_runas = 'socore' %}
-{% endif %}
+{% from 'strelka/map.jinja' import STRELKAMERGED %}
+{% from 'strelka/map.jinja' import filecheck_runas %}
 
 # Strelka config
 strelkaconfdir:
@@ -33,16 +26,79 @@ strelkarulesdir:
     - group: 939
     - makedirs: True
 
-# Sync dynamic config to conf dir
-strelkasync:
-  file.recurse:
-    - name: /opt/so/conf/strelka/
-    - source: salt://strelka/files
+backend_backend_config:
+  file.managed:
+    - name: /opt/so/conf/strelka/backend/backend.yaml
+    - source: salt://strelka/files/backend/backend.yaml.jinja
+    - template: jinja
     - user: 939
     - group: 939
-    - template: jinja
+    - makedirs: True
+    - defaults:
+        BACKENDCONFIG: {{ STRELKAMERGED.config.backend.backend }}
 
-{% if STRELKA_RULES == 1 %}
+backend_logging_config:
+  file.managed:
+    - name: /opt/so/conf/strelka/backend/logging.yaml
+    - source: salt://strelka/files/backend/logging.yaml.jinja
+    - template: jinja
+    - user: 939
+    - group: 939
+    - defaults:
+        LOGGINGCONFIG: {{ STRELKAMERGED.config.backend.logging }}
+
+backend_passwords:
+  file.managed:
+    - name: /opt/so/conf/strelka/backend/passwords.dat
+    - source: salt://strelka/files/backend/passwords.dat.jinja
+    - template: jinja
+    - user: 939
+    - group: 939
+    - defaults:
+        PASSWORDS: {{ STRELKAMERGED.config.backend.passwords }}
+
+backend_taste:
+  file.managed:
+    - name: /opt/so/conf/strelka/backend/taste/taste.yara
+    - source: salt://strelka/files/backend/taste/taste.yara
+    - makedirs: True
+    - user: 939
+    - group: 939
+
+filestream_config:
+  file.managed:
+    - name: /opt/so/conf/strelka/filestream/filestream.yaml
+    - source: salt://strelka/files/filestream/filestream.yaml.jinja
+    - template: jinja
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - defaults:
+        FILESTREAMCONFIG: {{ STRELKAMERGED.config.filestream }}
+
+frontend_config:
+  file.managed:
+    - name: /opt/so/conf/strelka/frontend/frontend.yaml
+    - source: salt://strelka/files/frontend/frontend.yaml.jinja
+    - template: jinja
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - defaults:
+        FRONTENDCONFIG: {{ STRELKAMERGED.config.frontend }}
+
+manager_config:
+  file.managed:
+    - name: /opt/so/conf/strelka/manager/manager.yaml
+    - source: salt://strelka/files/manager/manager.yaml.jinja
+    - template: jinja
+    - user: 939
+    - group: 939
+    - makedirs: True
+    - defaults:
+        MANAGERCONFIG: {{ STRELKAMERGED.config.manager }}
+
+{%   if STRELKAMERGED.rules.enabled %}
 
 strelkarules:
   file.recurse:
@@ -51,26 +107,18 @@ strelkarules:
     - user: 939
     - group: 939
     - clean: True
-    - exclude_pat:
-      {% for IGNOREDRULE in IGNORELIST %}
-      - {{ IGNOREDRULE }}
-      {% endfor %}
 
-      {% for IGNOREDRULE in IGNORELIST %}
-remove_rule_{{ IGNOREDRULE }}:
-  file.absent:
-    - name: /opt/so/conf/strelka/rules/signature-base/{{ IGNOREDRULE }}
-      {% endfor %}
-
-{% if grains['role'] in GLOBALS.manager_roles %}
+{%     if grains['role'] in GLOBALS.manager_roles %}
 strelkarepos:
   file.managed:
-    - name: /opt/so/saltstack/default/salt/strelka/rules/repos.txt
+    - name: /opt/so/conf/strelka/repos.txt
     - source: salt://strelka/rules/repos.txt.jinja
     - template: jinja
+    - defaults:
+        STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
 
-{% endif %}
-{% endif %}
+{%     endif %}
+{%   endif %}
 
 strelkadatadir:
    file.directory:
@@ -133,8 +181,10 @@ filecheck_history:
 filecheck_conf:
   file.managed:
     - name: /opt/so/conf/strelka/filecheck.yaml
-    - source: salt://strelka/filecheck/filecheck.yaml
+    - source: salt://strelka/filecheck/filecheck.yaml.jinja
     - template: jinja
+    - defaults:
+        FILECHECKCONFIG: {{ STRELKAMERGED.filecheck }}
 
 filecheck_script:
   file.managed:
@@ -169,9 +219,11 @@ strelka_coordinator:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-coordinator
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-coordinator'].ip }}
     - entrypoint: redis-server --save "" --appendonly no
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-coordinator'].port_bindings %}
       - {{ BINDING }}
@@ -187,9 +239,11 @@ strelka_gatekeeper:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - name: so-strelka-gatekeeper
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
       - {{ BINDING }}
@@ -209,9 +263,11 @@ strelka_frontend:
     - privileged: True
     - name: so-strelka-frontend
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-frontend'].ip }}
     - command: strelka-frontend
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-frontend'].port_bindings %}
       - {{ BINDING }}
@@ -230,9 +286,11 @@ strelka_backend:
       - /opt/so/conf/strelka/rules/:/etc/yara/:ro
     - name: so-strelka-backend
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-backend'].ip }}
     - command: strelka-backend
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
     - restart_policy: on-failure
 
 append_so-strelka-backend_so-status.conf:
@@ -247,9 +305,11 @@ strelka_manager:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
     - name: so-strelka-manager
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-manager'].ip }}
     - command: strelka-manager
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
 
 append_so-strelka-manager_so-status.conf:
   file.append:
@@ -264,9 +324,11 @@ strelka_filestream:
       - /nsm/strelka:/nsm/strelka
     - name: so-strelka-filestream
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-strelka-filestream'].ip }}
     - command: strelka-filestream
+    - extra_hosts:
+      - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
 
 append_so-strelka-filestream_so-status.conf:
   file.append:

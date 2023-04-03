@@ -10,6 +10,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - influxdb.token
     - node_data.ips
 
   '* and not *_eval and not *_import':
@@ -18,6 +19,8 @@ base:
   '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
     - zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
 
   '*_managersearch or *_heavynode':
     - match: compound
@@ -27,6 +30,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
 
   '*_manager':
     - logstash
@@ -48,6 +53,8 @@ base:
     - adv_global
     - manager.soc_manager
     - manager.adv_manager
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
     - kratos.soc_kratos
@@ -60,6 +67,8 @@ base:
     - elasticsearch.adv_elasticsearch
     - backup.soc_backup
     - backup.adv_backup
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -85,6 +94,9 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - soc.soc_soc
     - kratos.soc_kratos
     - kratos.adv_kratos
@@ -94,6 +106,8 @@ base:
     - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -113,6 +127,8 @@ base:
     - secrets
     - healthcheck.standalone
     - soc_global
+    - idstools.soc_idstools
+    - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -122,9 +138,12 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
     - soc.soc_soc
     - backup.soc_backup
     - backup.adv_backup
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -138,6 +157,8 @@ base:
   '*_idh':
     - soc_global
     - adv_global
+    - idh.soc_idh
+    - idh.adv_idh
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -147,6 +168,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -155,7 +178,6 @@ base:
     - adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
-    - data.nodestab
 
   '*_receiver':
     - logstash
@@ -185,6 +207,7 @@ base:
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - manager.soc_manager
+    - manager.adv_manager
     - soc.soc_soc
     - soc_global
     - adv_global
@@ -196,6 +219,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 

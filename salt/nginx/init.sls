@@ -28,6 +28,7 @@ nginxconf:
     - group: 939
     - template: jinja
     - source: salt://nginx/etc/nginx.conf
+    - show_changes: False
 
 nginxlogdir:
   file.directory:
@@ -85,14 +86,16 @@ so-nginx:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
     - hostname: so-nginx
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /opt/so/saltstack/local/salt/elastic-fleet/files/so_agent-installers/:/opt/socore/html/packages
+      - /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/:/opt/socore/html/packages
   {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro

@@ -47,7 +47,7 @@ so-redis:
     - hostname: so-redis
     - user: socore
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-redis'].port_bindings %}

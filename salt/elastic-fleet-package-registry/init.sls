@@ -29,7 +29,7 @@ so-elastic-fleet-package-registry:
     - detach: True
     - user: 948
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elastic-fleet-package-registry'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}

@@ -37,10 +37,10 @@ source ./so-variables
 
 # Parse command line arguments
 setup_type=$1
-automation=$2
+test_profile=$2
+
 WHATWOULDYOUSAYYAHDOHERE=setup
 
-# This is for automation 
 while [[ $# -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -49,18 +49,18 @@ while [[ $# -gt 0 ]]; do
 			export TURBO="http://${arg#*=}";;
 		"--proxy="* ) 
 			export {http,https,ftp,rsync,all}_proxy="${arg#*=}";;
-		"--allow-role="* )
-			export ALLOW_ROLE="${arg#*=}";;
 		"--allow-cidr="* )
 			export ALLOW_CIDR="${arg#*=}";;
-		"--skip-reboot" )
-			export SKIP_REBOOT=1;;
 		* )
 			if [[ "$arg" == "--"* ]]; then
 				echo "Invalid option"
 			fi
 	esac
 done
+
+# Preserve old setup/error logs
+[ -f "$error_log" ] && mv "$error_log" "$error_log.$(date +%Y-%m-%dT%H:%M:%S)"
+[ -f "$setup_log" ] && mv "$setup_log" "$setup_log.$(date +%Y-%m-%dT%H:%M:%S)"
 
 # Let's see what OS we are dealing with here
 detect_os
@@ -138,9 +138,7 @@ title "Checking to see if install has run before"
 if [[ -f /root/accept_changes ]]; then
 	is_reinstall=true
 	whiptail_reinstall
-	info "Old setup detected. Moving the last setup.log to setup.log.bak"
-	mv "$setup_log" "$setup_log.bak"
-	[ -f "$error_log" ] && mv "$error_log" "$error_log.bak"
+	info "Old setup detected. Preparing for reinstallation."
 	reinstall_init
 	reset_proxy
 fi
@@ -166,41 +164,65 @@ catch() {
 	exit 1
 }
 
-automated=no
-
 # Add the progress function for manager node type installs
 progress() {
 	local msg=${1:-'Please wait while installing...'}
 
-	if [ $automated == no ]; then
+	if [ -z "$TESTING" ]; then
 		whiptail --title "$whiptail_title" --gauge "$msg" 6 70 0 # append to text
 	else
 		cat >> $setup_log 2>&1
 	fi		
 }
 
-# If using automation let's do automation things.
-if [[ -f automation/$automation && $(basename $automation) == $automation ]]; then
-	info "Preselecting variable values based on automated setup: $automation"
-	source automation/$automation
-	automated=yes
+if [ -n "$test_profile" ]; then
+	install_type="$(echo $test_profile |awk -F- '{print $1}')"
+	if [[ "$install_type" == "distributed" ]]; then
+		install_type=MANAGER
+	else
+		install_type=${install_type^^}
+	fi
 
-	attempt=1
-	attempts=60
-	ip a | grep "$MNIC:" | grep "state UP" >> $setup_log 2>&1
-	while [ $? -ne 0 ]; do
-		logCmd "ip a" 
-		if [ $attempt -gt $attempts ]; then
-			error "Network unavailable - setup cannot continue" 
-			exit 1
-		fi
-		info "Waiting for network to come up (attempt $attempt of $attempts)"
-		attempt=$((attempt + 1))
-		info "Sleeping 10s to try again"
-		sleep 10;
-		logCmd "ip a | grep '$MNIC:' | grep 'state UP'" 
-	done
-	info "Network is up on $MNIC"
+	# The below settings are hardcoded purely for automated testing purposes.
+	TESTING=true
+	
+	if [[ "$test_profile" =~ "-sensor" ]]; then
+		install_type=SENSOR
+		HOSTNAME=sensor
+		MSRVIP_OFFSET=-2
+	elif [[ "$test_profile" =~ "-search" ]]; then
+		install_type=SEARCHNODE
+		HOSTNAME=search
+		MSRVIP_OFFSET=-1
+	else
+		HOSTNAME=manager
+	fi
+	
+	info "Activating test profile; profile=$test_profile; install_type=$install_type"
+
+	MINION_CIDR=10.0.0.0/8
+	MSRV=manager
+	if [[ "$test_profile" =~ "-net" ]]; then
+		address_type=DHCP
+	elif [[ "$test_profile" =~ "-cloud" ]]; then
+		MSRVIP=10.99.1.20
+	elif [[ "$test_profile" =~ "-airgap" ]]; then
+		is_airgap=true
+	fi
+
+	if [ -f "/root/public_ip" ]; then
+		REDIRECTHOST=$(cat /root/public_ip)
+		REDIRECTINFO=OTHER
+	else
+		REDIRECTINFO=IP
+	fi
+
+	ALLOW_CIDR=0.0.0.0/0
+	MNIC=$(ls -1 /sys/class/net | head -1)
+	BNICS=$(ls -1 /sys/class/net | head -2 | tail -1)
+	WEBUSER=onionuser@somewhere.invalid
+	WEBPASSWD1=0n10nus3r
+	WEBPASSWD2=0n10nus3r
 fi
 
 # Make sure the setup type is suppoted.
@@ -227,7 +249,7 @@ dmesg -D
 
 # Kernel consoleblank is causing whiptail progress screen to appear to hang #1084
 # https://github.com/Security-Onion-Solutions/securityonion/issues/1084
-if [ "$automated" == no ]; then
+if [ -z "$TESTING" ]; then
 	TTY=$(tty)
 	info "Setup is running on TTY $TTY"
 	if echo $TTY | grep -q "/dev/tty"; then 
@@ -247,7 +269,7 @@ if ! [[ -f $install_opt_file ]]; then
 	if (whiptail_you_sure); then
 		true
 	else
-		error "User cancelled setup."
+		info "User cancelled setup."
 		whiptail_cancel
 	fi
 	# If this is an analyst install lets streamline the process. 
@@ -283,7 +305,7 @@ if ! [[ -f $install_opt_file ]]; then
 		compare_main_nic_ip
 
 	fi
-		if [[ $setup_type == 'iso' ]] && [ "$automated" == no ]; then
+	if [[ $setup_type == 'iso' ]] && [ -z "$TESTING" ]; then
 		whiptail_first_menu_iso
 		if [[ $option == "CONFIGURENETWORK" ]]; then
 			collect_hostname
@@ -465,6 +487,8 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
+		#collect_idh_services (this may be added back sometime in the future)
+		collect_idh_preferences
 		set_minion_info
 		whiptail_end_settings
 
@@ -550,13 +574,11 @@ if ! [[ -f $install_opt_file ]]; then
 		export NODETYPE=$install_type
 		export MINION_ID=$MINION_ID
 		export ES_HEAP_SIZE=$ES_HEAP_SIZE
-		export IDHMGTRESTRICT=$IDHMGTRESTRICT
-		export idh_services=$idh_services
 		export MNIC=$MNIC
 		export NODE_DESCRIPTION=$NODE_DESCRIPTION
 		export MAINIP=$MAINIP
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
-		export INTERFACE="bond0"
+		export INTERFACE=$INTERFACE
 		export CORECOUNT=$lb_procs
 		export LSHOSTNAME=$HOSTNAME
 		export LSHEAP=$LS_HEAP_SIZE
@@ -589,7 +611,6 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.show_top"
 		logCmd "salt-key -ya $MINION_ID"
 
-		logCmd "salt-call state.apply salt.helper-packages"
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
 		logCmd "salt-call state.apply docker"
@@ -610,7 +631,8 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Seeding the docker registry"
 		docker_seed_registry
 		title "Applying the manager state"
-		logCmd "salt-call state.apply -l info manager" 
+		logCmd "salt-call state.apply -l info manager"
+		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
 		add_web_user
 		info "Restarting SOC to pick up initial user"
@@ -623,6 +645,8 @@ if ! [[ -f $install_opt_file ]]; then
 		fi
 		checkin_at_boot
 		set_initial_firewall_access
+		systemctl restart salt-master
+		systemctl restart salt-minion
 		verify_setup
 	else
 		touch /root/accept_changes
@@ -650,5 +674,5 @@ if ! [[ -f $install_opt_file ]]; then
 		verify_setup
 	fi
 
-	# Need to make sure the latest install is located on the web server of the manager to check the versions and donwload the code if required
+	# Need to make sure the latest install is located on the web server of the manager to check the versions and download the code if required
 fi

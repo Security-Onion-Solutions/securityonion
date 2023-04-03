@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
@@ -11,40 +11,51 @@
 {%- set RITAENABLED = salt['pillar.get']('rita:enabled', False) %}
 
 wait_for_web_response "http://localhost:5601/api/spaces/space/default" "default" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
-## This hackery will be removed if using Elastic Auth ##
 
 # Let's snag a cookie from Kibana
 SESSIONCOOKIE=$(curl -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 
 # Disable certain Features from showing up in the Kibana UI
 echo
-echo "Setting up default Security Onion package policies for Elastic Agent..."
+echo "Disable certain Features from showing up in the Kibana UI"
+so-kibana-space-defaults
+echo
 
-# Set up Suricata logs
+# Suricata logs
 echo
 echo "Setting up Suricata package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "suricata-logs", "name": "suricata-logs", "description": "Suricata integration", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/suricata/eve*.json" ], "data_stream.dataset": "suricata", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: suricata", "custom": "pipeline: suricata.common" }}}}}}'
 echo
 
-# Set up Zeek logs
+# Zeek logs
 echo
 echo "Setting up Zeek package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "zeek-logs", "description": "Zeek logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/zeek/logs/current/*.log"], "data_stream.dataset": "zeek", "tags": [], "processors": "- dissect:\n    tokenizer: \"/nsm/zeek/logs/current/%{pipeline}.log\"\n    field: \"log.file.path\"\n    trim_chars: \".log\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\");\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        pipeline: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"", "custom": "prospector.scanner.exclude_files: [\"(broker | capture_loss | loaded_scripts | packet_filter | stats | stderr | stdout).log$\"]\n" } } } } } }'
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "zeek-logs", "description": "Zeek logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/zeek/logs/current/*.log"], "data_stream.dataset": "zeek", "tags": [], "processors": "- dissect:\n    tokenizer: \"/nsm/zeek/logs/current/%{pipeline}.log\"\n    field: \"log.file.path\"\n    trim_chars: \".log\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\");\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        pipeline: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"", "custom": "exclude_files: [\"broker|capture_loss|ecat_arp_info|loaded_scripts|packet_filter|stats|stderr|stdout.log$\"]\n" } } } } } }'
 echo
 
-# Import - Suricata
+
+# Import - EVTX
 echo
-echo "Settings up Suricata import package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "import", "tags": [], "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
+echo "Setting up EVTX import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "package": { "name": "log", "version": "1.1.0" }, "name": "import-evtx-logs", "namespace": "so", "description": "Import Windows EVTX logs", "policy_id": "so-grid-nodes", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/import/*/evtx/data.json" ], "data_stream.dataset": "import", "custom": "pipeline: import.wel", "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/evtx/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n- add_fields:\n    target: event\n    fields:\n      module: windows_eventlog\n      imported: true", "tags": [] } } } } } }'
 echo
 
-# Set Import - Zeek logs
+# Import - Suricata logs
 echo
-echo "Setting up Zeek Import package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "import-zeek-logs", "description": "Zeek Import logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/zeek/logs/*.log"], "data_stream.dataset": "import", "tags": [], "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"import.file\").slice(0,-4);\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n      imported: true\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        pipeline: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"" } } } } } }'
+echo "Setting up Suricata import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "import-suricata-logs", "name": "import-suricata-logs", "description": "Import Suricata logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/suricata/eve*.json"], "data_stream.dataset": "import", "tags": [], "processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"", "custom": "pipeline: suricata.common" } } } } } }'
+echo
+
+# Import - Zeek logs
+echo
+echo "Setting up Zeek import package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "name": "import-zeek-logs", "description": "Zeek Import logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": ["/nsm/import/*/zeek/logs/*.log"], "data_stream.dataset": "import", "tags": [], "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"import.file\").slice(0,-4);\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n      imported: true\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        import.file: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"", "custom": "exclude_files: [\"broker|capture_loss|ecat_arp_info|loaded_scripts|packet_filter|stats|stderr|stdout.log$\"]\n" } } } } } }'
+echo
+
 # Strelka logs
-echo "Setting up Strelka package policy"
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "strelka-logs", "name": "strelka-logs", "description": "Strelka logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/strelka/log/strelka.log" ], "data_stream.dataset": "file", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: strelka", "custom": "pipeline: strelka.file" }}}}}}'
+echo
+echo "Setting up Strelka package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "strelka-logs", "name": "strelka-logs", "description": "Strelka logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/nsm/strelka/log/strelka.log" ], "data_stream.dataset": "strelka", "tags": [],"processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: strelka", "custom": "pipeline: strelka.file" }}}}}}'
 echo
 
 # Syslog TCP Port 514
@@ -62,7 +73,7 @@ echo
 # Kratos logs
 echo
 echo "Setting up Kratos package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "kratos-logs", "name": "kratos-logs", "description": "Kratos logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kratos/kratos.log" ], "data_stream.dataset": "kratos", "tags": [],"processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- rename:\n    fields:\n      - from: \"audience\"\n        to: \"event.dataset\"\n    ignore_missing: true\n- add_fields:\n    when:\n      not: \n        has_fields: ['event.dataset']\n    target: ''\n    fields:\n      event.dataset: access", "custom": "pipeline: kratos" }}}}}}'
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "log", "version": "1.1.0" }, "id": "kratos-logs", "name": "kratos-logs", "description": "Kratos logs", "namespace": "so", "inputs": { "logs-logfile": { "enabled": true, "streams": { "log.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kratos/kratos.log" ], "data_stream.dataset": "kratos", "tags": [],"custom":"pipeline: kratos","processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: kratos" }}}}}}'
 echo
 
 # RITA Logs
@@ -73,24 +84,54 @@ echo
 
 # Elasticsearch logs
 echo
-echo "Seting up Elasticsearch package policy..."
+echo "Setting up Elasticsearch package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "elasticsearch", "version": "1.0.0" }, "id": "elasticsearch-logs", "name": "elasticsearch-logs", "description": "Elasticsearch Logs", "namespace": "default", "inputs": { "elasticsearch-logfile": { "enabled": true, "streams": { "elasticsearch.audit": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_audit.json" ] } }, "elasticsearch.deprecation": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_deprecation.json" ] } }, "elasticsearch.gc": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/gc.log.[0-9]*", "/var/log/elasticsearch/gc.log" ] } }, "elasticsearch.server": { "enabled": true, "vars": { "paths": [ "/opt/so/log/elasticsearch/*.log" ] } }, "elasticsearch.slowlog": { "enabled": false, "vars": { "paths": [ "/var/log/elasticsearch/*_index_search_slowlog.json", "/var/log/elasticsearch/*_index_indexing_slowlog.json" ] } } } }, "elasticsearch-elasticsearch/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:9200" ], "scope": "node" }, "streams": { "elasticsearch.stack_monitoring.ccr": { "enabled": false }, "elasticsearch.stack_monitoring.cluster_stats": { "enabled": false }, "elasticsearch.stack_monitoring.enrich": { "enabled": false }, "elasticsearch.stack_monitoring.index": { "enabled": false }, "elasticsearch.stack_monitoring.index_recovery": { "enabled": false, "vars": { "active.only": true } }, "elasticsearch.stack_monitoring.index_summary": { "enabled": false }, "elasticsearch.stack_monitoring.ml_job": { "enabled": false }, "elasticsearch.stack_monitoring.node": { "enabled": false }, "elasticsearch.stack_monitoring.node_stats": { "enabled": false }, "elasticsearch.stack_monitoring.pending_tasks": { "enabled": false }, "elasticsearch.stack_monitoring.shard": { "enabled": false } } } } }'
 echo
 
 # Logstash logs
-echo
-echo "Setting up Logstash package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "logstash", "version": "2.0.0" }, "id": "logstash-logs", "name": "logstash-logs", "description": "Logstash logs", "namespace": "default", "inputs": { "logstash-logfile": { "enabled": true, "streams": { "logstash.log": { "enabled": true, "vars": { "paths": [ "/opt/so/logs/logstash/logstash.log" ] } }, "logstash.slowlog": { "enabled": false, "vars": { "paths": [ "/var/log/logstash/logstash-slowlog-plain*.log", "/var/log/logstash/logstash-slowlog-json*.log" ] } } } }, "logstash-logstash/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:9600" ], "period": "10s" }, "streams": { "logstash.stack_monitoring.node": { "enabled": false }, "logstash.stack_monitoring.node_stats": { "enabled": false } } } } }'
-echo
+#echo
+#echo "Setting up Logstash package policy..."
+#curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "logstash", "version": "2.0.0" }, "id": "logstash-logs", "name": "logstash-logs", "description": "Logstash logs", "namespace": "default", "inputs": { "logstash-logfile": { "enabled": true, "streams": { "logstash.log": { "enabled": true, "vars": { "paths": [ "/opt/so/logs/logstash/logstash.log" ] } }, "logstash.slowlog": { "enabled": false, "vars": { "paths": [ "/var/log/logstash/logstash-slowlog-plain*.log", "/var/log/logstash/logstash-slowlog-json*.log" ] } } } }, "logstash-logstash/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:9600" ], "period": "10s" }, "streams": { "logstash.stack_monitoring.node": { "enabled": false }, "logstash.stack_monitoring.node_stats": { "enabled": false } } } } }'
+#echo
 
 # Kibana logs
-echo
-echo "Setting up Kibana package policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "kibana", "version": "2.0.0" }, "id": "kibana-logs", "name": "kibana-logs", "description": "Kibana logs", "namespace": "default", "inputs": { "kibana-logfile": { "enabled": true, "streams": { "kibana.audit": { "enabled": false, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } }, "kibana.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } } } }, "kibana-kibana/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:5601" ] }, "streams": { "kibana.stack_monitoring.cluster_actions": { "enabled": false }, "kibana.stack_monitoring.cluster_rules": { "enabled": false }, "kibana.stack_monitoring.node_actions": { "enabled": false }, "kibana.stack_monitoring.node_rules": { "enabled": false }, "kibana.stack_monitoring.stats": { "enabled": false }, "kibana.stack_monitoring.status": { "enabled": false } } } } }'
-echo
+#echo
+#echo "Setting up Kibana package policy..."
+#curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "kibana", "version": "2.0.0" }, "id": "kibana-logs", "name": "kibana-logs", "description": "Kibana logs", "namespace": "default", "inputs": { "kibana-logfile": { "enabled": true, "streams": { "kibana.audit": { "enabled": false, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } }, "kibana.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/kibana/kibana.log" ] } } } }, "kibana-kibana/metrics": { "enabled": false, "vars": { "hosts": [ "http://localhost:5601" ] }, "streams": { "kibana.stack_monitoring.cluster_actions": { "enabled": false }, "kibana.stack_monitoring.cluster_rules": { "enabled": false }, "kibana.stack_monitoring.node_actions": { "enabled": false }, "kibana.stack_monitoring.node_rules": { "enabled": false }, "kibana.stack_monitoring.stats": { "enabled": false }, "kibana.stack_monitoring.status": { "enabled": false } } } } }'
+#echo
 
 # Redis logs
 echo
 echo "Setting up Redis package policy..."
 curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{ "policy_id": "so-grid-nodes", "package": { "name": "redis", "version": "1.4.0" }, "id": "redis-logs", "name": "redis-logs", "description": "Redis logs", "namespace": "default", "inputs": { "redis-logfile": { "enabled": true, "streams": { "redis.log": { "enabled": true, "vars": { "paths": [ "/opt/so/log/redis/redis.log" ], "tags": [ "redis-log" ], "preserve_original_event": false } } } }, "redis-redis": { "enabled": false, "streams": { "redis.slowlog": { "enabled": false, "vars": { "hosts": [ "127.0.0.1:6379" ], "password": "" } } } }, "redis-redis/metrics": { "enabled": false, "vars": { "hosts": [ "127.0.0.1:6379" ], "idle_timeout": "20s", "maxconn": 10, "network": "tcp", "password": "" }, "streams": { "redis.info": { "enabled": false, "vars": { "period": "10s" } }, "redis.key": { "enabled": false, "vars": { "key.patterns": "- limit: 20\n  pattern: '*'\n", "period": "10s" } }, "redis.keyspace": { "enabled": false, "vars": { "period": "10s" } } } } } }'
+echo
+
+# IDH logs
+echo
+echo "Setting up IDH package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"policy_id":"so-grid-nodes","package":{"name":"log","version":"1.1.1"},"id":"idh-logs","name":"idh-logs","namespace":"so","description":"IDH integration","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/nsm/idh/opencanary.log"],"data_stream.dataset":"idh","custom":"pipeline: common","processors": "\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- drop_fields:\n    when:\n      equals:\n        logtype: \"1001\"\n    fields: [\"src_host\", \"src_port\", \"dst_host\", \"dst_port\" ]\n    ignore_missing: true\n- rename:\n    fields:\n      - from: \"src_host\"\n        to: \"source.ip\"\n      - from: \"src_port\"\n        to: \"source.port\"\n      - from: \"dst_host\"\n        to: \"destination.host\"\n      - from: \"dst_port\"\n        to: \"destination.port\"\n    ignore_missing: true\n- convert:\n    fields:\n      - {from: \"logtype\", to: \"event.code\", type: \"string\"}\n    ignore_missing: true\n- drop_fields:\n    fields: '\''[\"prospector\", \"input\", \"offset\", \"beat\"]'\''\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: opencanary","tags":[]}}}}}}'
+echo
+
+# SOC - Server logs
+echo
+echo "Setting up SOC - Server Logs package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"package":{"name":"log","version":"1.1.2"},"name":"soc-server-logs","namespace":"so","description":"Security Onion Console Logs","policy_id":"so-grid-nodes","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/opt/so/log/soc/sensoroni-server.log"],"data_stream.dataset":"soc","custom":"pipeline: common","processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"soc\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: server\n- rename:\n    fields:\n      - from: \"soc.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"soc.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"soc.fields.method\"\n        to: \"http.request.method\"\n      - from: \"soc.fields.path\"\n        to: \"url.path\"\n      - from: \"soc.message\"\n        to: \"event.action\"\n      - from: \"soc.level\"\n        to: \"log.level\"\n    ignore_missing: true","tags":[]}}}}}}'
+echo
+
+# SOC - Sensoroni logs
+echo
+echo "Setting up SOC - Sensoroni Logs package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"package":{"name":"log","version":"1.1.2"},"name":"soc-sensoroni-logs","namespace":"so","description":"Security Onion - Sensoroni - Logs","policy_id":"so-grid-nodes","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/opt/so/log/sensoroni/sensoroni.log"],"data_stream.dataset":"soc","custom":"pipeline: common","processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"sensoroni\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: sensoroni\n- rename:\n    fields:\n      - from: \"sensoroni.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"sensoroni.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"sensoroni.fields.method\"\n        to: \"http.request.method\"\n      - from: \"sensoroni.fields.path\"\n        to: \"url.path\"\n      - from: \"sensoroni.message\"\n        to: \"event.action\"\n      - from: \"sensoroni.level\"\n        to: \"log.level\"\n    ignore_missing: true","tags":[]}}}}}}'
+echo
+
+# SOC - Elastic Auth Sync logs
+echo
+echo "Setting up SOC - Elastic Auth Sync Logs package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"package":{"name":"log","version":"1.1.2"},"name":"soc-auth-sync-logs","namespace":"so","description":"Security Onion - Elastic Auth Sync - Logs","policy_id":"so-grid-nodes","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/opt/so/log/soc/sync.log"],"data_stream.dataset":"soc","custom":"pipeline: common","processors": "- dissect:\n    tokenizer: \"%{event.action}\"\n    field: \"message\"\n    target_prefix: \"\"\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: auth_sync","tags":[]}}}}}}'
+echo
+
+# SOC - Salt Relay logs
+echo
+echo "Setting up SOC - Salt_Relay Logs package policy..."
+curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'{"package":{"name":"log","version":"1.1.2"},"name":"soc-salt-relay-logs","namespace":"so","description":"Security Onion - Salt Relay - Logs","policy_id":"so-grid-nodes","inputs":{"logs-logfile":{"enabled":true,"streams":{"log.log":{"enabled":true,"vars":{"paths":["/opt/so/log/soc/salt-relay.log"],"data_stream.dataset":"soc","custom":"pipeline: common","processors": "- dissect:\n    tokenizer: \"%{soc.ts} | %{event.action}\"\n    field: \"message\"\n    target_prefix: \"\"\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: salt_relay","tags":[]}}}}}}'
 echo

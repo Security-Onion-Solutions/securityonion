@@ -4,7 +4,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-APP=delete
+# Avoid starting multiple instances
+APP=clusterdelete
 lf=/tmp/$APP-pidLockFile
 # create empty lock file if none exists
 cat /dev/null >> $lf
@@ -13,18 +14,4 @@ read lastPID < $lf
 [ ! -z "$lastPID" -a -d /proc/$lastPID ] && exit
 echo $$ > $lf
 
-{% from 'filebeat/modules.map.jinja' import MODULESMERGED with context %}
-
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-zeek-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-beats-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-firewall-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ids-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-import-delete.yml > /dev/null 2>&1;
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-kratos-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-osquery-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-ossec-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-strelka-delete.yml > /dev/null 2>&1; 
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-syslog-delete.yml > /dev/null 2>&1;
-{% for INDEX in MODULESMERGED.modules.keys() -%}
-docker exec so-curator curator --config /etc/curator/config/curator.yml /etc/curator/action/so-{{ INDEX }}-delete.yml > /dev/null 2>&1{% if not loop.last %};{% endif %}
-{% endfor -%}
+/usr/sbin/so-curator-cluster-delete-delete

@@ -64,7 +64,7 @@ so-soctopus:
     - hostname: soctopus
     - name: so-soctopus
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-soctopus'].ip }}
     - binds:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
@@ -81,6 +81,7 @@ so-soctopus:
       {% endfor %}
     - extra_hosts:
       - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - require:
       - file: soctopusconf
       - file: navigatordefaultlayer

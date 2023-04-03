@@ -14,14 +14,14 @@ mysqlpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      {% if grains['os'] != 'CentOS' %}
+      {% if grains['os'] != 'Rocky' %}
         {% if grains['oscodename'] == 'bionic' %}
       - python3-mysqldb
         {% elif grains['oscodename'] == 'focal' %}
       - python3-mysqldb
         {% endif %}
       {% else %}
-      - MySQL-python
+      - python3-mysqlclient
       {% endif %}
 
 mysqletcdir:
@@ -85,14 +85,16 @@ so-mysql:
     - hostname: so-mysql
     - user: socore
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ GLOBALS.manager_ip }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
@@ -104,22 +106,6 @@ so-mysql:
     - require:
       - file: mysqlcnf
       - file: mysqlpass
-  cmd.run:
-    - name: until nc -z {{ GLOBALS.manager_ip }} 3306; do sleep 1; done
-    - timeout: 600
-    - onchanges:
-      - docker_container: so-mysql
-  module.run:
-    - so.mysql_conn:
-      - retry: 300
-    - onchanges:
-      - cmd: so-mysql
-
-append_so-mysql_so-status.conf:
-  file.append:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-mysql
-
 {% endif %}
 
 {% else %}

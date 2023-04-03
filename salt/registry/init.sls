@@ -39,7 +39,7 @@ so-dockerregistry:
     - image: ghcr.io/security-onion-solutions/registry:latest
     - hostname: so-registry
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-dockerregistry'].ip }}
     - restart_policy: always
     - port_bindings:
@@ -53,6 +53,8 @@ so-dockerregistry:
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
     - client_timeout: 180
+    - environment:
+      - HOME=/root
     - retry:
         attempts: 5
         interval: 30

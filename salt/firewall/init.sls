@@ -13,9 +13,24 @@ iptables_config:
     - source: salt://firewall/iptables.jinja
     - template: jinja
 
+disable_firewalld:
+  service.dead:
+    - name: firewalld
+    - enable: False
+    - require:
+      - file: iptables_config
+
 iptables_restore:
   cmd.run:
     - name: iptables-restore < /etc/sysconfig/iptables
+
+enable_firewalld:
+  service.running:
+    - name: firewalld
+    - enable: True
+    - onfail:
+      - file: iptables_config
+      - cmd: iptables_restore
 
 {% else %}
 

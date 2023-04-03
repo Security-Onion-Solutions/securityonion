@@ -15,7 +15,7 @@ include:
 {% set ROLES = salt['pillar.get']('elasticsearch:roles', {}) %}
 {% from 'elasticsearch/config.map.jinja' import ESCONFIG with context %}
 {% from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS without context %}
-{% from 'logstash/map.jinja' import REDIS_NODES with context %}
+{% from 'logstash/map.jinja' import LOGSTASH_NODES %}
 
 vm.max_map_count:
   sysctl.present:
@@ -53,8 +53,18 @@ es_sync_scripts:
     - source: salt://elasticsearch/tools/sbin
     - exclude_pat:
         - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+        - so-elasticsearch-ilm-policy-load 
     - defaults:
         GLOBALS: {{ GLOBALS }}
+
+so-elasticsearch-ilm-policy-load-script:
+  file.managed:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-ilm-policy-load
+    - user: 930
+    - group: 939
+    - mode: 754
+    - template: jinja
 
 so-elasticsearch-pipelines-script:
   file.managed:
@@ -291,11 +301,11 @@ so-elasticsearch:
     - name: so-elasticsearch
     - user: elasticsearch
     - networks:
-      - sosbridge:
+      - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
-    - extra_hosts:  {{ REDIS_NODES }} 
+    - extra_hosts:  {{ LOGSTASH_NODES }}
     - environment:
-      {% if REDIS_NODES | length == 1 %}
+      {% if LOGSTASH_NODES | length == 1 %}
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
@@ -362,6 +372,16 @@ so-es-cluster-settings:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
 
+so-elasticsearch-ilm-policy-load:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+      - file: so-elasticsearch-ilm-policy-load-script
+    - onchanges:
+      - file: so-elasticsearch-ilm-policy-load-script
+
 so-elasticsearch-templates:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-templates-load
@@ -386,7 +406,6 @@ so-elasticsearch-roles-load:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-
 
 {% else %}
 

@@ -23,6 +23,7 @@ if [[ $# -lt 1 ]]; then
   echo "   accept: Accepts a new key and adds the minion files"
   echo "   delete: Removes the key and deletes the minion files"
   echo "   reject: Rejects a key"
+  echo "     test: Perform minion test"
   echo ""
   exit 1
 fi
@@ -75,6 +76,22 @@ function getinstallinfo() {
 	source <(echo $INSTALLVARS)
 }
 
+function testminion() {
+	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
+	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
+	so-test
+	result=$?
+
+	# If this so-minion script is not running on the given minion ID, run so-test remotely on the sensor as well
+	local_id=$(lookup_grain id)
+	if [[ ! "$local_id" =~ "${MINION_ID}_" ]]; then
+		salt "$MINION_ID" cmd.run 'so-test'
+		result=$?
+	fi
+
+	exit $result
+}
+
 function listminions() {
 	salt-key list -F --out=json
 	exit $?
@@ -112,10 +129,6 @@ function add_elastic_to_minion() {
     printf '%s\n'\
 		"elasticsearch:"\
 		"  esheap: '$ES_HEAP_SIZE'"\
-		"  config:"\
-		"    node:"\
-		"      attr:"\
-		"        box_type: hot"\
 		"  " >> $PILLARFILE
 }
 
@@ -137,6 +150,18 @@ function add_fleet_to_minion() {
 		"  " >> $PILLARFILE
 }
 
+
+# Add IDH Services info to the minion file
+function add_idh_to_minion() {
+	printf '%s\n'\
+	"idh:"\
+	"  restrict_management_ip: $IDH_MGTRESTRICT"\
+	"  services:" >> "$PILLARFILE"
+	IFS=',' read -ra IDH_SERVICES_ARRAY <<< "$IDH_SERVICES"
+	for service in ${IDH_SERVICES_ARRAY[@]}; do
+	  echo "    - $service" | tr '[:upper:]' '[:lower:]' | tr -d '"' >> "$PILLARFILE"
+	done
+}
 
 function add_logstash_to_minion() {
 	# Create the logstash advanced pillar
@@ -196,6 +221,12 @@ function add_sensor_to_minion() {
 	echo "    enabled: True" >> $PILLARFILE
 }
 
+function updateMine() {
+	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
+}
+function apply_ES_state() {
+	salt-call state.apply elasticsearch concurrent=True
+}
 function createEVAL() {
 	add_elastic_to_minion
 	add_logstash_to_minion
@@ -207,8 +238,13 @@ function createFLEET() {
 	add_logstash_to_minion
 }
 
-function createIDHNODE() {
-	echo "Nothing custom needed for IDH nodes"
+function createFLEET() {
+	add_fleet_to_minion
+	add_logstash_to_minion
+}
+
+function createIDH() {
+	add_idh_to_minion
 }
 
 function createIMPORT() {
@@ -240,6 +276,8 @@ function createSENSOR() {
 function createSEARCHNODE() {
 	add_elastic_to_minion
 	add_logstash_to_minion
+	updateMine
+	apply_ES_state
 }
 
 function createSTANDALONE() {
@@ -288,4 +326,8 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	add_sensoroni_to_minion
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
+fi
+
+if [[ "$OPERATION" = 'test' ]]; then
+	testminion
 fi

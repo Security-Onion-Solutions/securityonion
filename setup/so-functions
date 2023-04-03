@@ -17,11 +17,11 @@ log() {
 }
 
 error() {
-	log "$1" "E"
+	log "$1" "ERROR"
 }
 
 info() {
-	log "$1" "I"
+	log "$1" "INFO"
 }
 
 title() {
@@ -68,9 +68,7 @@ add_web_user() {
 	wait_for_file /nsm/kratos/db/db.sqlite 30 5
 	{
 		info "Attempting to add administrator user for web interface...";
-		export SKIP_STATE_APPLY=true
 		echo "$WEBPASSWD1" | /usr/sbin/so-user add --email "$WEBUSER" --role "superuser";
-		unset SKIP_STATE_APPLY
 		info "Add user result: $?";
 	} >> "/root/so-user-add.log" 2>&1
 }
@@ -141,12 +139,12 @@ check_admin_pass() {
 check_manager_connection() {
 	# See if you can curl the manager. If not you can either try again or continue
 	info "Checking manager connectivity"	
-	man_test_err=$(curl -k -L -sS https://$MSRVIP/repo --connect-timeout 5 2>&1)
+	man_test_err=$(curl -s $MSRVIP:4505 --connect-timeout 5 2>&1)
 	
 	local ret=$?
 
-	if [[ $ret != 0 ]]; then
-		error "Could not reach $MSRV"
+	if [[ $ret != 1 ]]; then
+		info "Could not reach $MSRV"
 		whiptail_manager_unreachable
 	fi
 }
@@ -322,7 +320,7 @@ collect_hostname() {
 }
 
 collect_hostname_validate() {
-	if [[ $automated == no ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
+	if [[ -z "$TESTING" ]] && [[ "$HOSTNAME" == *'localhost'* ]]; then HOSTNAME=securityonion; fi
 
 	whiptail_set_hostname "$HOSTNAME"
 
@@ -337,6 +335,33 @@ collect_hostname_validate() {
 		whiptail_invalid_hostname
 		whiptail_set_hostname "$HOSTNAME"
 	done
+}
+
+collect_idh_preferences() {
+	IDH_MGTRESTRICT='False'
+	whiptail_idh_preferences
+
+	if [[ "$idh_preferences" != "" ]]; then IDH_MGTRESTRICT='True'; fi
+}
+
+collect_idh_services() {
+	whiptail_idh_services
+
+	case "$IDH_SERVICES" in
+		'Linux Webserver (NAS Skin)')
+			IDH_SERVICES='"HTTP","FTP","SSH"'
+		;;
+		'MySQL Server')
+			IDH_SERVICES='"MYSQL","SSH"'
+		;;
+		'MSSQL Server')
+			IDH_SERVICES='"MSSQL","VNC'
+		;;
+		'Custom')
+			whiptail_idh_services_custom
+			IDH_SERVICES=$(echo "$IDH_SERVICES" | tr '[:blank:]' ',' )
+		;;
+	esac
 }
 
 collect_int_ip_mask() {
@@ -617,7 +642,8 @@ configure_minion() {
 	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
 
 	{
-		systemctl restart salt-minion;
+		logCmd "systemctl enable salt-minion";
+		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
 }
 
@@ -626,7 +652,7 @@ configure_ntp() {
 
 	# Install chrony if it isn't already installed
 	if ! command -v chronyc &> /dev/null; then
-		logCmd "yum -y install chrony"
+		logCmd "dnf -y install chrony"
 	fi
 
 	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
@@ -776,9 +802,11 @@ compare_main_nic_ip() {
 configure_network_sensor() {
 	info "Setting up sensor interface"
 
-	if [[ $is_cloud ]]; then 
+	if [[ $is_cloud ]]; then
+                info "Configuring traditional interface settings, since this is a cloud installation..."
 		local nmcli_con_args=( "type" "ethernet" )
 	else 
+                info "Configuring bond interface settings, since this is a not a cloud installation..."
 		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
@@ -817,10 +845,10 @@ copy_salt_master_config() {
 	title "Copy the Salt master config template to the proper directory"
 	if [ "$setup_type" = 'iso' ]; then
 		logCmd "cp /root/SecurityOnion/files/salt/master/master /etc/salt/master"
-		logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	else
 		logCmd "cp ../files/salt/master/master /etc/salt/master"
-		logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
+		#logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	fi
 	info "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 	logCmd "cp -Rv $temp_install_dir/pillar/ $local_salt_dir/"
@@ -830,6 +858,7 @@ copy_salt_master_config() {
 
 	# Restart the service so it picks up the changes
 	logCmd "systemctl daemon-reload"
+	logCmd "systemctl enable salt-master"
 	logCmd "systemctl restart salt-master"
 }
 
@@ -870,35 +899,31 @@ create_manager_pillars() {
 	kratos_pillar
 	soc_pillar
 	idh_pillar
+	influxdb_pillar
 
 }
 
 create_repo() {
 	title "Create the repo directory"
+	logCmd "dnf -y install yum-utils createrepo"
 	logCmd "createrepo /nsm/repo"
 }
 
 detect_cloud() {
   info "Testing if setup is running on a cloud instance..."
-  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then export is_cloud="true"; fi
+  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then info "Detected a cloud installation..." && export is_cloud="true"; fi
 }
 
 detect_os() {
 	title "Detecting Base OS"
 	if [ -f /etc/redhat-release ]; then
-		if grep -q "CentOS Linux release 7" /etc/redhat-release; then
-			OS=centos
-			OSVER=7
-			is_centos=true
-			pkgman="yum"
-		elif grep -q "Rocky Linux release 8" /etc/redhat-release; then
+		if grep -q "Rocky Linux release 9" /etc/redhat-release; then
 			OS=rocky
-			OSVER=8
+			OSVER=9
 			is_rocky=true
 			pkgman="dnf"
-			info "We currently do not support Rocky Linux $OSVER but we are working on it!"
 		else
-			info "We do not support the version of CentOS you are trying to use."
+			info "We do not support the operating system you are trying to use."
 			exit 1
 		fi
 
@@ -932,13 +957,10 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	if [ "$OS" == centos ]; then
+	if [ "$OS" == rocky ]; then
 		if [[ ! $is_iso ]]; then
-			if ! yum versionlock > /dev/null 2>&1; then
-				logCmd "yum -y install yum-plugin-versionlock"
-			fi
 			if ! command -v nmcli > /dev/null 2>&1; then
-				logCmd "yum -y install NetworkManager"
+				logCmd "dnf -y install NetworkManager"
 			fi
 		fi
 		logCmd "systemctl enable NetworkManager"
@@ -1152,22 +1174,26 @@ filter_unused_nics() {
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
+	nic_list_management=()
 	for nic in "${filtered_nics[@]}"; do
 		local nic_mac=$(cat "/sys/class/net/${nic}/address" 2>/dev/null)
 		case $(cat "/sys/class/net/${nic}/carrier" 2>/dev/null) in
 			1)
 				nic_list+=("$nic" "$nic_mac  Link UP " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link UP " )
 				;;
 			0)
 				nic_list+=("$nic" "$nic_mac  Link DOWN " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link DOWN " )
 				;;
 			*)
 				nic_list+=("$nic" "$nic_mac  Link UNKNOWN " "OFF")
+				nic_list_management+=("$nic" "$nic_mac  Link UNKNOWN " )
 				;;
 		esac
 	done
 
-	export nic_list
+	export nic_list nic_list_management
 }
 
 # Generate Firewall Templates
@@ -1177,11 +1203,12 @@ firewall_generate_templates() {
 	local firewall_pillar_path=$local_salt_dir/salt/firewall
 	logCmd "mkdir -p $firewall_pillar_path"
    
-	logCmd "cp ../files/firewall/* /opt/so/saltstack/local/salt/firewall/"
+	logCmd "cp -r ../files/firewall/* /opt/so/saltstack/local/salt/firewall/"
 
-	for i in analyst beats_endpoint endgame sensor manager minion elastic_agent_endpoint search_node; do
-		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost "$i" 127.0.0.1
-	done
+    # i think this can be commented out for 2.4
+	#for i in analyst beats_endpoint endgame sensors manager managersearch elastic_agent_endpoint searchnodes; do
+	#	$default_salt_dir/salt/common/tools/sbin/so-firewall --role="$i" --ip=127.0.0.1
+	#done
 
 }
 
@@ -1208,10 +1235,12 @@ generate_passwords(){
   PLAYBOOKDBPASS=$(get_random_value)
   PLAYBOOKADMINPASS=$(get_random_value)
   PLAYBOOKAUTOMATIONPASS=$(get_random_value)
-  GRAFANAPASS=$(get_random_value)
+  INFLUXPASS=$(get_random_value)
+  INFLUXTOKEN=$(head -c 64 /dev/urandom | base64 --wrap=0)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
   REDISPASS=$(get_random_value)
+  SOCSRVKEY=$(get_random_value 64)
 }
 
 generate_interface_vars() {
@@ -1220,11 +1249,12 @@ generate_interface_vars() {
 	export MTU
 
 	# Set interface variable
-	if [[ $is_cloud ]]; then 
+	if [[ $is_cloud ]]; then
 		INTERFACE=${BNICS[0]}
 	else 
 		INTERFACE='bond0'
 	fi
+        info "Interface set to $INTERFACE"
 	export INTERFACE
 }
 
@@ -1284,18 +1314,6 @@ import_registry_docker() {
 
 idh_pillar() {
 	touch $adv_idh_pillar_file
-	title "Create the IDH Pillar"
-	printf '%s\n'\
-		"idh:"\
-		"  listen_on_mgnt_int: True"\
-		"  services:"\
-		"    - HTTP"\
-		"    - FTP"\
-		"    - MYSQL"\
-		"    - MSSQL"\
-		"    - VNC"\
-		"    - SSH" > "$idh_pillar_file"
-
 }
 
 logstash_pillar() {
@@ -1330,24 +1348,16 @@ ls_heapsize() {
 idstools_pillar() {
 	title "Ading IDSTOOLS pillar options"
 	touch $adv_idstools_pillar_file
-	printf '%s\n'\
-		"idstools:"\
-		"  config:"\
-		"    ruleset: '$RULESETUP'"\
-		"    oinkcode: '$OINKCODE'"\
-		"    urls: []"\
-		"  sids:"\
-		"    enabled: []"\
-		"    disabled: []"\
-		"    modify: []"\
-		"" > "$idstools_pillar_file"
-
 }
 
 soc_pillar() {
 	title "Creating the SOC pillar"
 	touch $adv_soc_pillar_file
-	touch $soc_pillar_file
+	printf '%s\n'\
+		"soc:"\
+		"  server:"\
+		"    srvKey: '$SOCSRVKEY'"\
+		"" > "$soc_pillar_file"
 }
 
 telegraf_pillar() {
@@ -1360,10 +1370,8 @@ manager_pillar() {
 	touch $adv_manager_pillar_file
 	title "Create the manager pillar"
 	if [[ $is_import ]]; then
-		GRAFANA=0
 		PLAYBOOK=0
 	else
-		GRAFANA=1
 		PLAYBOOK=1
 	fi
 	printf '%s\n'\
@@ -1371,7 +1379,6 @@ manager_pillar() {
 		"  proxy: '$so_proxy'"\
 		"  no_proxy: '$no_proxy_string'"\
 		"  elastalert: 1"\
-		"  grafana: $GRAFANA"\
 		"  playbook: $PLAYBOOK"\
 		"" > "$manager_pillar_file"
 }
@@ -1470,9 +1477,6 @@ create_strelka_pillar() {
 backup_pillar() {
 	title "Create the backup pillar file"
 	touch $adv_backup_pillar_file
-	printf '%s\n'\
-		"backup:"\
-		"  locations: []" > "$backup_pillar_file"
 }
 
 soctopus_pillar() {
@@ -1490,8 +1494,8 @@ docker_pillar() {
 	touch $adv_docker_pillar_file
 	printf '%s\n'\
 		"docker:"\
-		"  sosrange: '$DOCKERNET2/24'"\
-		"  sosbip: '$DOCKER2BIP'"\
+		"  sorange: '$DOCKERNET2/24'"\
+		"  sobip: '$DOCKER2BIP'"\
 		"  range: '$DOCKERNET/24'"\
 		"  bip: '$DOCKERBIP'" > $docker_pillar_file
 }
@@ -1509,6 +1513,9 @@ influxdb_pillar() {
 	title "Create the influxdb pillar file"
 	touch $adv_influxdb_pillar_file
 	touch $influxdb_pillar_file
+	printf '%s\n'\
+		"influxdb:"\
+		"  token: $INFLUXTOKEN" > $local_salt_dir/pillar/influxdb/token.sls
 }
 
 make_some_dirs() {
@@ -1520,7 +1527,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf filebeat logstash soc manager kratos idstools idh elastalert;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1579,6 +1586,15 @@ networking_needful() {
 	fi
 	set_main_ip
 	compare_main_nic_ip
+
+	# Attempt to autodetect the manager IP, if an offset value exists 
+	if [[ -n "$MSRVIP_OFFSET" && -z "$MSRVIP" ]]; then
+		mips1=$(echo "$MNIC_IP" | awk -F. '{print $1}') 
+		mips2=$(echo "$MNIC_IP" | awk -F. '{print $2}') 
+		mips3=$(echo "$MNIC_IP" | awk -F. '{print $3}') 
+		mips4=$(echo "$MNIC_IP" | awk -F. '{print $4}') 
+		MSRVIP="$mips1.$mips2.$mips3.$((mips4+$MSRVIP_OFFSET))"
+	fi
 }
 
 network_setup() {
@@ -1675,7 +1691,7 @@ process_installtype() {
 	elif [ "$install_type" = 'SEARCHNODE' ]; then
 		is_searchnode=true
 	elif [ "$install_type" = 'HEAVYNODE' ]; then
-		is_heavy=true
+		is_heavynode=true
 	elif [ "$install_type" = 'FLEET' ]; then
 		is_fleet=true
 	elif [ "$install_type" = 'IDH' ]; then
@@ -1710,7 +1726,7 @@ proxy_validate() {
 }
 
 reserve_group_ids() {
-	# This is a hack to fix CentOS from taking group IDs that we need
+	# This is a hack to fix OS from taking group IDs that we need
 	logCmd "groupadd -g 928 kratos"
 	logCmd "groupadd -g 930 elasticsearch"
 	logCmd "groupadd -g 931 logstash"
@@ -1744,6 +1760,10 @@ reinstall_init() {
 	fi
 
 	local service_retry_count=20
+
+	# Disregard previous install outcomes
+	rm -f /root/failure
+	rm -f /root/success
 
 	{
 		# remove all of root's cronjobs
@@ -1797,16 +1817,13 @@ reinstall_init() {
 
 		# Backup /opt/so since we'll be rebuilding this directory during setup
 		backup_dir /opt/so "$date_string"
-		# We need to restore these files during a reinstall so python3-influxdb state doesn't try to patch again
-		restore_file "/opt/so_old_$date_string/state/influxdb_continuous_query.py.patched" "/opt/so/state/"
-		restore_file "/opt/so_old_$date_string/state/influxdb_retention_policy.py.patched" "/opt/so/state/"
-		restore_file "/opt/so_old_$date_string/state/influxdbmod.py.patched" "/opt/so/state/"
 		# If the elastic license has been accepted restore the state file
 		restore_file "/opt/so_old_$date_string/state/yeselastic.txt" "/opt/so/state/"
 
 		# Backup (and erase) directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
 		backup_dir /nsm/kratos "$date_string"
+		backup_dir /nsm/influxdb "$date_string"
 
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
@@ -1832,8 +1849,8 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_centos ]]; then
-		sed -i "/proxy=/d" /etc/yum.conf
+	if [[ $is_rocky ]]; then
+		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
 	fi
@@ -1872,13 +1889,15 @@ drop_install_options() {
 	echo "LSHOSTNAME=$HOSTNAME" >> /opt/so/install.txt
 	echo "LSHEAP=$LS_HEAP_SIZE" >> /opt/so/install.txt
 	echo "CPUCORES=$num_cpu_cores" >> /opt/so/install.txt
+	echo "IDH_MGTRESTRICT=$IDH_MGTRESTRICT" >> /opt/so/install.txt
+	echo "IDH_SERVICES=$IDH_SERVICES" >> /opt/so/install.txt
 }
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		if rpm -qa | grep -q "$package_name"; then
-			logCmd "yum remove -y $package_name"
+			logCmd "dnf remove -y $package_name"
 		fi
 	else
 		if dpkg -l | grep -q "$package_name"; then
@@ -1897,13 +1916,8 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_centos ]]; then
-		if [[ $waitforstate ]]; then
-			# Build the repo locally so we can use it
-			echo "Syncing Repo"
-			repo_sync_local
-		fi
-		logCmd "yum -v clean all"
+	if [[ $is_rocky ]]; then
+		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 		logCmd "ls -la /etc/yum.repos.d/"
@@ -1923,13 +1937,19 @@ securityonion_repo() {
 		fi
 
 		# need to yum clean all before repo conf files are removed or clean,cleans nothing
-		logCmd "yum repolist all"
+		logCmd "dnf repolist all"
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
-		logCmd "yum -v -y update centos-release"
-		info "Backing up the .repo files that were added by the centos-release package."
-		logCmd "mv -bvf /etc/yum.repos.d/CentOS* /root/oldrepos/"
-		logCmd "yum repolist all"
+		if [ -f "/etc/yum.repos.d/rocky.repo" ]; then
+			info "Backing up the .repo files that were added by the centos-release package."
+			logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
+			logCmd "dnf repolist all"
+		fi
+		if [[ $waitforstate ]]; then
+			# Build the repo locally so we can use it
+			echo "Syncing Repo"
+			repo_sync_local
+		fi
 	fi
 }
 
@@ -1938,38 +1958,31 @@ repo_sync_local() {
 	# Check for reposync
 	info "Backing up old repos"
 	mkdir -p /nsm/repo
-	mkdir -p /root/reposync_cache
-	echo "[main]" > /root/repodownload.conf
-	echo "cachedir=/root/reposync_cache" >> /root/repodownload.conf 
-	echo "keepcache=0" >> /root/repodownload.conf 
-	echo "debuglevel=2" >> /root/repodownload.conf 
-	echo "logfile=/var/log/yum.log" >> /root/repodownload.conf 
-	echo "exactarch=1" >> /root/repodownload.conf 
-	echo "obsoletes=1" >> /root/repodownload.conf 
-	echo "gpgcheck=1" >> /root/repodownload.conf 
-	echo "plugins=1" >> /root/repodownload.conf 
-	echo "installonly_limit=2" >> /root/repodownload.conf 
-	echo "bugtracker_url=http://bugs.centos.org/set_project.php?project_id=23&ref=http://bugs.centos.org/bug_report_page.php?category=yum" >> /root/repodownload.conf 
-	echo "distroverpkg=centos-release" >> /root/repodownload.conf 
-	echo "clean_requirements_on_remove=1" >> /root/repodownload.conf 
-	echo "[securityonionsync]" >> /root/repodownload.conf
-	echo "name=Security Onion Repo repo" >> /root/repodownload.conf
-	echo "baseurl=https://repo.securityonion.net/file/securityonion-repo/c7so/" >> /root/repodownload.conf
-	echo "enabled=1" >> /root/repodownload.conf
-	echo "gpgcheck=1" >> /root/repodownload.conf
-	echo "gpgkey=https://repo.securityonion.net/file/securityonion-repo/keys/securityonion.pub" >> /root/repodownload.conf
-
-	REPOSYNC=$(rpm -qa | grep createrepo | wc -l)
-	if [[ ! "$REPOSYNC" -gt 0 ]]; then
-		# Install reposync
-		info "Installing createrepo"
-		logCmd "yum -y install -c /root/repodownload.conf yum-utils createrepo"
-	else
-		info "We have what we need to sync"
-	fi
-
-	logCmd "reposync --norepopath -n -g -l -d -m -c /root/repodownload.conf -r securityonionsync --download-metadata -p /nsm/repo/"
+	mkdir -p /opt/so/conf/reposync/cache
+	echo "https://repo.securityonion.net/file/so-repo/2.4/" > /opt/so/conf/reposync/mirror.txt
+	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/2.4/" >> /opt/so/conf/reposync/mirror.txt
+	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
+	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
+	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
+	echo "clean_requirements_on_remove=True" >> /opt/so/conf/reposync/repodownload.conf
+	echo "best=True" >> /opt/so/conf/reposync/repodownload.conf
+	echo "skip_if_unavailable=False" >> /opt/so/conf/reposync/repodownload.conf
+	echo "cachedir=/opt/so/conf/reposync/cache" >> /opt/so/conf/reposync/repodownload.conf
+	echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
+	echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
+	echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
+	echo "#baseurl=https://repo.securityonion.net/file/so-repo/2.4/" >> /opt/so/conf/reposync/repodownload.conf
+	echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
+	echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
+	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
 	
+	logCmd "dnf repolist"
+	# Make sure we can get to the sig repo
+	# TODO Add if for ISO install
+        curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
+	logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+	# Run it again and make sure we got allt he things
+	logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
 
 	# After the download is complete run createrepo
 	create_repo
@@ -2014,21 +2027,17 @@ saltify() {
 
 	fi
 		
-	if [[ $is_centos ]]; then
-		RUSALTY=$(rpm -qa | grep salt-minion | wc -l)
-		if [[ "$RUSALTY" -gt 0 ]]; then
-			# Salt is already installed.
-			info "salt is installed" 
-		else
-			# Install salt
-			if [[ $waitforstate ]]; then 
-				# Since this is a salt master so let's install it
-				logCmd "yum -y install salt-minion salt-master"
-			else
-				# We just need the minion
-				logCmd "yum -y install salt-minion"
-			fi
-		fi
+	if [[ $is_rocky ]]; then
+		# THIS IS A TEMP HACK
+		logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		logCmd "mkdir -p /etc/salt/minion.d"
+		#if [[ $waitforstate ]]; then 
+		#	# Since this is a salt master so let's install it
+		#	logCmd ""
+		#else
+		#	# We just need the minion
+		#	logCmd "dnf -y install salt-minion"
+		#fi
 	fi
 
 }
@@ -2051,7 +2060,7 @@ secrets_pillar(){
 		"  playbook_admin: $PLAYBOOKADMINPASS"\
 		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
 		"  playbook_automation_api_key: "\
-		"  grafana_admin: $GRAFANAPASS" > $local_salt_dir/pillar/secrets.sls
+		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 
@@ -2154,7 +2163,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
@@ -2262,19 +2271,20 @@ set_initial_firewall_policy() {
 	title "Setting Initial Firewall Policy"
 	if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
 
-		case "$install_type" in
-			'MANAGER')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=manager --ip=$MAINIP --apply=true
-				;;
-			'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-				$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
-				;;
-		esac
+	case "$install_type" in
+		'EVAL' | 'MANAGER' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
+			$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
+			;;
+	esac
 }
 
 set_initial_firewall_access() {
 	if [[ ! -z "$ALLOW_CIDR" ]]; then
 		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=analyst --ip=$ALLOW_CIDR --apply=true
+	fi
+	if [[ ! -z "$MINION_CIDR" ]]; then
+		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=sensors --ip=$MINION_CIDR --apply=false
+		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=searchnodes --ip=$MINION_CIDR --apply=true
 	fi
 }
 
@@ -2364,10 +2374,9 @@ update_sudoers() {
 }
 
 update_packages() {
-	if [[ $is_centos ]]; then
-		logCmd "yum repolist"
-		logCmd "yum -y update --exclude=salt*,wazuh*,docker*,containerd*"
-		logCmd "yum -y install yum-utils"
+	if [[ $is_rocky ]]; then
+		logCmd "dnf repolist"
+		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1

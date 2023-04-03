@@ -262,10 +262,10 @@ whiptail_dhcp_or_static() {
 
 	[ -n "$TESTING" ] && return
 
-	address_type=$(whiptail --title "$whiptail_title" --radiolist \
+	address_type=$(whiptail --title "$whiptail_title" --menu \
 	"Choose how to set up your management interface:" 20 78 4 \
-	"STATIC" "Set a static IPv4 address" ON  \
-	"DHCP" "Use DHCP to configure the Management Interface" OFF 3>&1 1>&2 2>&3 )
+	"STATIC" "Set a static IPv4 address" \
+	"DHCP" "Use DHCP to configure the Management Interface" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -466,18 +466,70 @@ whiptail_gauge_post_setup() {
 	fi
 }
 
+ whiptail_idh_preferences() {
+
+	[ -n "$TESTING" ] && return
+
+	idh_preferences=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nBy default, the IDH services selected in the previous screen will be bound to all interfaces and IP addresses on this system.\n\nIf you would like to prevent IDH services from being published on this system's management IP, you can select the option below." 20 75 5 \
+		"$MAINIP" "Disable IDH services on this management IP " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+whiptail_idh_services() {
+
+	[ -n "$TESTING" ] && return
+
+	IDH_SERVICES=$(whiptail --title "$whiptail_title" --radiolist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one of the common options along with their default ports (TCP) or select the Custom option to build a customized set of services." 20 75 5 \
+		"Linux Webserver (NAS Skin)" "Apache (80), FTP (21), SSH (22)" ON \
+		"MySQL Server" "MySQL (3306), SSH (22)" OFF \
+		"MSSQL Server" "Microsoft SQL (1433), VNC (5900)" OFF \
+		"Custom" "Select a custom set of services" OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
+
+whiptail_idh_services_custom() {
+
+	[ -n "$TESTING" ] && return
+
+	IDH_SERVICES=$(whiptail --title "$whiptail_title" --checklist \
+		"\nThe IDH node can mimic many different services.\n\nChoose one or more of the following services along with their default ports. Some services have additional configuration options, please consult the documentation for further information." 25 75 8 \
+		"FTP" "  TCP/21,   Additional Configuration Available   " OFF \
+		"Git" "  TCP/9418                                       " OFF \
+		"HTTP" "  TCP/80,   Additional Configuration Available   " OFF \
+		"HTTPPROXY" "  TCP/8080, Additional Configuration Available   " OFF \
+		"MSSQL" "  TCP/1433                                         " OFF \
+		"MySQL" "  TCP/3306, Additional Configuration Available   " OFF \
+		"NTP" "  UDP/123                                        " OFF \
+		"REDIS" "  TCP/6379                                       " OFF \
+		"SNMP" "  UDP/161                                        " OFF \
+		"SSH" "  TCP/22,   Additional Configuration Available   " OFF \
+		"TELNET" "  TCP/23,   Additional Configuration Available   " OFF \
+		"TFTP" "  UDP/69                                         " OFF \
+		"VNC" "  TCP/5900                                         " OFF 3>&1 1>&2 2>&3 )
+
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+}
+
 whiptail_install_type() {
 
 	[ -n "$TESTING" ] && return
 
 	# What kind of install are we doing?
-	install_type=$(whiptail --title "$whiptail_title" --radiolist \
+	install_type=$(whiptail --title "$whiptail_title" --menu \
 	"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
-		"IMPORT" "Import PCAP or log files " ON \
-		"EVAL" "Evaluation mode (not for production) " OFF \
-		"STANDALONE" "Standalone production install " OFF \
-		"DISTRIBUTED" "Distributed install submenu " OFF \
-		"OTHER" "Other install types" OFF \
+		"IMPORT" "Import PCAP or log files " \
+		"EVAL" "Evaluation mode (not for production) " \
+		"STANDALONE" "Standalone production install " \
+		"DISTRIBUTED" "Distributed install submenu " \
+		"OTHER" "Other install types" \
 		3>&1 1>&2 2>&3
 	)
 
@@ -503,8 +555,8 @@ whiptail_install_type_dist() {
 	[ -n "$TESTING" ] && return
 
 	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to \nan existing deployment?" 11 75 2 \
-		"Existing Deployment    " "Join to an existing Security Onion deployment " \
 		"New Deployment         " "Create a new Security Onion deployment" \
+		"Existing Deployment    " "Join to an existing Security Onion deployment " \
 		 3>&1 1>&2 2>&3
 	)
 	local exitstatus=$?
@@ -525,9 +577,9 @@ whiptail_install_type_dist_new() {
 	Note: MANAGER is the recommended option for most users. MANAGERSEARCH should only be used in very specific situations.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$mngr_msg" 15 75 2 \
-		"MANAGER" "New grid, requires separate search node(s) " ON \
-		"MANAGERSEARCH" "New grid, separate search node(s) are optional " OFF \
+	install_type=$(whiptail --title "$whiptail_title" --menu "$mngr_msg" 20 75 2 \
+		"MANAGER" "New grid, requires separate search node(s) " \
+		"MANAGERSEARCH" "New grid, separate search node(s) are optional " \
 		3>&1 1>&2 2>&3
 	)
 
@@ -545,18 +597,18 @@ whiptail_install_type_dist_existing() {
 	Note: Heavy nodes (HEAVYNODE) are NOT recommended for most users.
 	EOM
 	
-	install_type=$(whiptail --title "$whiptail_title" --radiolist "$node_msg" 19 58 6 \
-		"SENSOR" "Create a forward only sensor " ON \
-		"SEARCHNODE" "Add a search node with parsing " OFF \
-		"FLEET" "Dedicated Elastic Fleet Node " OFF \
-		"HEAVYNODE" "Sensor + Search Node " OFF \
-		"IDH" "Intrusion Detection Honeypot Node " OFF \
-		"RECEIVER" "Receiver Node " OFF \
+	install_type=$(whiptail --title "$whiptail_title" --menu "$node_msg" 19 75 6 \
+		"SENSOR" "Create a forward only sensor " \
+		"SEARCHNODE" "Add a search node with parsing " \
+		"FLEET" "Dedicated Elastic Fleet Node " \
+		"HEAVYNODE" "Sensor + Search Node " \
+		"IDH" "Intrusion Detection Honeypot Node " \
+		"RECEIVER" "Receiver Node " \
 		3>&1 1>&2 2>&3
-		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" OFF \ # TODO
-		# "WARMNODE" "Add Warm Node to existing Hot or Search node" OFF \ # TODO
-		# "WAZUH" "Stand Alone Wazuh Server" OFF \ # TODO
-		# "STRELKA" "Stand Alone Strelka Node" OFF \ # TODO
+		# "HOTNODE" "Add Hot Node (Uses Elastic Clustering)" \ # TODO
+		# "WARMNODE" "Add Warm Node to existing Hot or Search node" \ # TODO
+		# "WAZUH" "Stand Alone Wazuh Server" \ # TODO
+		# "STRELKA" "Stand Alone Strelka Node" \ # TODO
 	)
 	if [ "$install_type" = 'EVAL' ]; then
 		is_eval=true
@@ -597,10 +649,10 @@ whiptail_install_type_other() {
 
 	[ -n "$TESTING" ] && return
 
-	install_type=$(whiptail --title "$whiptail_title" --radiolist \
-		"Choose node type:" 9 65 2 \
-		"ANALYST" "Setup will run 'so-setup analyst' " ON \
-		"HELIXSENSOR" "Create a Helix sensor " OFF \
+	install_type=$(whiptail --title "$whiptail_title" --menu \
+		"Choose node type:" 10 65 2 \
+		"ANALYST" "Setup will run 'so-setup analyst' " \
+		"HELIXSENSOR" "Create a Helix sensor " \
 		3>&1 1>&2 2>&3
 		)
 	
@@ -788,13 +840,13 @@ whiptail_management_nic() {
 
 	filter_unused_nics
 
-	MNIC=$(whiptail --title "$whiptail_title" --radiolist "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the space bar to select." 22 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )	
+	MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 20 75 12 "${nic_list_management[@]}" 3>&1 1>&2 2>&3 )	
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$MNIC" ]
 	do
-		MNIC=$(whiptail --title "$whiptail_title" --radiolist "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the space bar to select." 22 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3 )	
+		MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 22 75 12 "${nic_list_management[@]}" 3>&1 1>&2 2>&3 )	
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
@@ -878,10 +930,10 @@ whiptail_manager_adv() {
 
 	[ -n "$TESTING" ] && return
 
-	MANAGERADV=$(whiptail --title "$whiptail_title" --radiolist \
+	MANAGERADV=$(whiptail --title "$whiptail_title" --menu \
 	"Choose which type of manager to install:" 20 75 4 \
-	"BASIC" "Install manager with recommended settings" ON  \
-	"ADVANCED" "Do additional configuration to the manager" OFF 3>&1 1>&2 2>&3 )
+	"BASIC" "Install manager with recommended settings" \
+	"ADVANCED" "Do additional configuration to the manager" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -922,9 +974,10 @@ whiptail_manager_unreachable() {
 	read -r -d '' msg <<- EOM
 	Setup is unable to access the manager at this time.
 
-	Run the following on the manger:
+	Run the following on the manager:
 	
-	so-firewall-minion --role=$install_type --ip=$MAINIP
+	sudo so-firewall-minion --role=$install_type --ip=$MAINIP
+	
 	Would you like to retry?
 	EOM
 	whiptail --title "$whiptail_title" --yesno "$msg" 20 75
@@ -1091,11 +1144,13 @@ whiptail_reinstall() {
 	read -r -d '' message <<- EOM
 	Setup has detected a previous install. Continuing the install will remove the previous install configuration.
 
+	Selecting continue is a destructive action.
+
 	Would you like to continue?
 	EOM
 
 	whiptail --title "$whiptail_title" \
-		--yesno "$message" 11 75 \
+		--yesno "$message" 13 75 \
 		--yes-button "Continue" --no-button "Exit" --defaultno
 
 	local exitstatus=$?
@@ -1121,10 +1176,10 @@ whiptail_sensor_config() {
 
 	[ -n "$TESTING" ] && return
 
-	NSMSETUP=$(whiptail --title "$whiptail_title" --radiolist \
+	NSMSETUP=$(whiptail --title "$whiptail_title" --menu \
 	"What type of configuration would you like to use?" 20 75 4 \
-	"BASIC" "Install NSM components with recommended settings" ON \
-	"ADVANCED" "Configure each component individually" OFF 3>&1 1>&2 2>&3 )
+	"BASIC" "Install NSM components with recommended settings" \
+	"ADVANCED" "Configure each component individually" 3>&1 1>&2 2>&3 )
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -1189,11 +1244,11 @@ whiptail_set_redirect() {
 	[ -n "$TESTING" ] && return
 
 	local options=()
-	options+=( "IP" "Use IP address to access the web interface" ON )
-	[[ $no_use_hostname != true ]] && options+=( "HOSTNAME" "Use hostname to access the web interface" OFF )
-	options+=("OTHER" "Use a different name like a FQDN or Load Balancer" OFF)
+	options+=( "IP" "Use IP address to access the web interface" )
+	[[ $no_use_hostname != true ]] && options+=( "HOSTNAME" "Use hostname to access the web interface" )
+	options+=("OTHER" "Use a different name like a FQDN or Load Balancer" )
 
-	REDIRECTINFO=$(whiptail --title "$whiptail_title" --radiolist \
+	REDIRECTINFO=$(whiptail --title "$whiptail_title" --menu \
 		"How would you like to access the web interface?\n\nWhatever you choose here will be the only way that you can access the web interface.\n\nIf you choose something other than IP address, then you'll need to ensure that you can resolve the name via DNS or hosts entry. If you are unsure, please select IP." 20 75 4 \
 		"${options[@]}" \
 		3>&1 1>&2 2>&3 
@@ -1216,27 +1271,54 @@ whiptail_setup_complete() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ -n "$REDIRECTIT" && $is_manager = true ]]; then
+
+	if [[ $waitforstate ]]; then
+		# Manager-type Nodes - Install Summary
 		if [[ -n $ALLOW_CIDR ]]; then
 			local sentence_prefix="Access"
 		else
 			local sentence_prefix="Run so-allow to access"
 		fi
-		local accessMessage="\n${sentence_prefix} the web interface at: https://${REDIRECTIT}\n"
-	elif [[ $is_idh ]]; then
-		local accessMessage="\nSSH for this node has been moved to TCP/2222, accessible only from the Manager node.\n"
+	
+		read -r -d '' message <<- EOM
+			${install_type} setup is now complete!
+			
+			${sentence_prefix} the Security Onion Console (SOC) web interface by navigating to:
+			https://${REDIRECTIT}
+
+			Then login with the following username and password.
+
+			SOC Username: ${WEBUSER}
+			SOC Password: Use the password that was entered during setup
+			
+			Press TAB and then the ENTER key to exit this screen.
+		EOM
+		whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
 	else
-		local accessMessage=""
+		if [[ $is_idh ]]; then
+			local accessMessage="\nSSH for this node has been moved to TCP/2222, accessible only from the Manager node.\n"
+		else
+			local accessMessage=""
+		fi
+		MINIONFINGERPRINT=$(salt-call --local key.finger --out=newline_values_only)
+		read -r -d '' message <<- EOM
+			${install_type} initialization is now complete!
+			
+			To finish configuration, open the Security Onion Console web interface
+			and navigate to Administration -> Grid Members.
+			
+			Then find this node in the Pending Members list, 
+			click the Review button, and then click the Accept button.
+			
+			Node Hostname: $HOSTNAME
+			Node Fingerprint:
+			$MINIONFINGERPRINT
+			$accessMessage
+			Press TAB and then the ENTER key to exit this screen.
+		EOM
+
+		whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
 	fi
-
-
-	read -r -d '' message <<- EOM
-		Finished ${install_type} installation.
-		$accessMessage
-		Press the Enter key to exit setup.
-	EOM
-
-	whiptail --title "$whiptail_title" --msgbox "$message" 12 75
 }
 
 whiptail_setup_failed() {

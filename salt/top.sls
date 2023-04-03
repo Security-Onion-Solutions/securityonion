@@ -8,7 +8,6 @@
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set FILEBEAT = salt['pillar.get']('filebeat:enabled', False) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
@@ -23,15 +22,12 @@ base:
     - cron.running
     - repo.client
     - ntp
+    - schedule
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test
     - salt.minion
-
-  'G@os:CentOS and G@saltversion:{{saltversion}}':
-    - match: compound
-    - yum.packages
 
   '* and G@saltversion:{{saltversion}}':
     - match: compound
@@ -62,11 +58,8 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
-    - schedule
     - docker_clean
+    - elasticfleet.install_agent_grid
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
@@ -80,8 +73,8 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
@@ -102,20 +95,17 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - curator
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     {%- if PLAYBOOK != 0 %}
     - playbook
     - redis
     {%- endif %}
+    - elasticfleet
     - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
@@ -128,8 +118,8 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - manager
@@ -153,13 +143,10 @@ base:
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
+    - elasticfleet
     - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
@@ -174,8 +161,8 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
@@ -202,19 +189,15 @@ base:
     {%- if STRELKA %}
     - strelka
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - curator
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
+    - elasticfleet
     - docker_clean
-    - elastic-fleet
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -229,10 +212,7 @@ base:
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
-    - schedule
+    - elasticfleet.install_agent_grid
     - docker_clean
 
   '*_managersearch and G@saltversion:{{saltversion}}':
@@ -245,8 +225,8 @@ base:
     - nginx
     - telegraf
     - influxdb
-    - grafana
     - soc
+    - firewall.soc
     - kratos
     - firewall
     - manager
@@ -270,13 +250,10 @@ base:
     {%- if ELASTALERT %}
     - elastalert
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
-    - schedule
     - soctopus
     - playbook
+    - elasticfleet
     - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
@@ -296,9 +273,6 @@ base:
     - redis
     {%- endif %}
     - curator
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -307,10 +281,7 @@ base:
     {%- if ZEEKVER != 'SURICATA' %}
     - zeek
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
-    - schedule
+    - elasticfleet.install_agent_grid
     - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':
@@ -322,9 +293,10 @@ base:
     - sensoroni
     - manager
     - nginx
-    - soc
-    - influxdb
     - telegraf
+    - influxdb
+    - soc
+    - firewall.soc
     - kratos
     - firewall
     - idstools
@@ -336,15 +308,11 @@ base:
     {%- if KIBANA %}
     - kibana.so_savedobjects_defaults
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - utility
     - suricata
     - zeek
-    - schedule
+    - elasticfleet
     - docker_clean
-    - elastic-fleet
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
@@ -358,10 +326,7 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
-    - schedule
+    - elasticfleet.install_agent_grid
     - docker_clean
 
   '*_idh and G@saltversion:{{saltversion}}':
@@ -370,11 +335,8 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    - schedule
+    - elasticfleet.install_agent_grid
     - docker_clean
-    {%- if FILEBEAT %}
-    - filebeat
-    {%- endif %}
     - idh
 
   '*_fleet and G@saltversion:{{saltversion}}':
@@ -388,10 +350,10 @@ base:
     - schedule
     - docker_clean
 
-  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
     - workstation
 
-  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:CentOS )':
+  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
     - workstation.remove_gui

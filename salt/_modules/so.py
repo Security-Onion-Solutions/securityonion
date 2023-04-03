@@ -5,6 +5,8 @@ import logging
 def status():
     return __salt__['cmd.run']('/usr/sbin/so-status')
 
+def version():
+    return __salt__['cp.get_file_str']('/etc/soversion')
 
 def mysql_conn(retry):
     log = logging.getLogger(__name__)
