@@ -52,11 +52,8 @@ so-elastic-fleet:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elastic-fleet'].ip }}
     - extra_hosts:
-    {% if GLOBALS.is_manager %}
         - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
-    {% else %}
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-    {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elastic-fleet'].port_bindings %}
       - {{ BINDING }}

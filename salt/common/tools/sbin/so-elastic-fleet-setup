@@ -24,7 +24,6 @@ mkdir -p /opt/so/conf/elastic-fleet/certs
 cp /etc/ssl/certs/intca.crt /opt/so/conf/elastic-fleet/certs
 cp /etc/pki/elasticfleet* /opt/so/conf/elastic-fleet/certs
 
-{% if grains.role in ['so-import', 'so-eval'] %}
 # Add SO-Manager Elasticsearch Ouput
 ESCACRT=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
 JSON_STRING=$( jq -n \
@@ -33,7 +32,7 @@ JSON_STRING=$( jq -n \
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 printf "\n\n"
 
-{% else %}
+{% if grains.role not in ['so-import', 'so-eval'] %}
 # Create Logstash Output payload
 LOGSTASHCRT=$(openssl x509 -in /opt/so/conf/elastic-fleet/certs/elasticfleet.crt)
 LOGSTASHKEY=$(openssl rsa -in  /opt/so/conf/elastic-fleet/certs/elasticfleet.key)
@@ -42,13 +41,13 @@ JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \
                   --arg LOGSTASHCA "$LOGSTASHCA" \
-                  '{"name":"so-manager_logstash","id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]}}'
+                  '{"name":"so-manager_logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]},"proxy_id":null}'
                   )
-{%- endif %}
 
 # Add SO-Manager Logstash Ouput
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 printf "\n\n"
+{%- endif %}
 
 # Add Elastic Fleet Integrations
 

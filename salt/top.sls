@@ -346,7 +346,7 @@ base:
     - telegraf
     - firewall
     - logstash
-    - elastic-fleet
+    - elasticfleet
     - schedule
     - docker_clean
 
