@@ -51,17 +51,13 @@ m2cryptopkgs:
 influxdb_key:
   x509.private_key_managed:
     - name: /etc/pki/influxdb.key
-    - CN: {{ GLOBALS.hostname }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/influxdb.key') -%}
     - prereq:
       - x509: /etc/pki/influxdb.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -101,17 +97,13 @@ influxkeyperms:
 redis_key:
   x509.private_key_managed:
     - name: /etc/pki/redis.key
-    - CN: {{ GLOBALS.hostname }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
     - prereq:
       - x509: /etc/pki/redis.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -150,17 +142,13 @@ rediskeyperms:
 etc_elasticfleet_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet.key
-    - CN: {{ COMMONNAME }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet.key') -%}
     - prereq:
       - x509: etc_elasticfleet_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -232,17 +220,13 @@ efcrtlink:
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
     - prereq:
       - x509: etc_filebeat_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -313,17 +297,13 @@ fbcrtlink:
 registry_key:
   x509.private_key_managed:
     - name: /etc/pki/registry.key
-    - CN: {{ GLOBALS.manager }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/registry.key') -%}
     - prereq:
       - x509: /etc/pki/registry.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -361,17 +341,13 @@ regkeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -418,17 +394,13 @@ elasticp12perms:
 managerssl_key:
   x509.private_key_managed:
     - name: /etc/pki/managerssl.key
-    - CN: {{ GLOBALS.manager }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
     - prereq:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -476,17 +448,13 @@ fbcertdir:
 conf_filebeat_key:
   x509.private_key_managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
       - x509: conf_filebeat_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -542,17 +510,13 @@ chownfilebeatp8:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ GLOBALS.manager }}
     - keysize: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
