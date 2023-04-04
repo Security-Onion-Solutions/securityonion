@@ -9,7 +9,7 @@
 # These values are generated during node install and stored in minion pillar
 {% set SERVICETOKEN = salt['pillar.get']('elasticfleet:server:es_token','') %}
 {% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
-{% set FLEETURL = salt['pillar.get']('elasticfleet:server:url') %}
+#{% set FLEETURL = salt['pillar.get']('elasticfleet:server:url') %}
 
 # Add EA Group
 elasticsagentgroup:
@@ -39,13 +39,29 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+# Pull down the Logstash Cert from the Manager
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet.crt
+    - mode: 640
+    - group: 939
+
 
   {% if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
     - name: so-elastic-fleet
-    - hostname: Fleet-{{ GLOBALS.hostname }}
+    - hostname: FleetServer-{{ GLOBALS.hostname }}
     - detach: True
     - user: 947
     - networks:
@@ -63,7 +79,7 @@ so-elastic-fleet:
       - /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
     - environment:
       - FLEET_SERVER_ENABLE=true
-      - FLEET_URL=https://{{ FLEETURL }}:8220
+      - FLEET_URL=https://{{ GLOBALS.node_ip }}:8220
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID={{ FLEETSERVERPOLICY }}
