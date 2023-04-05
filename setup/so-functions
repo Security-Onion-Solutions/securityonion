@@ -634,6 +634,8 @@ configure_minion() {
 	printf '%s\n'\
 		"use_superseded:"\
 		"  - module.run"\
+		"features:"\
+		"  x509_v2: true"\
 		"log_level: info"\
 		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
@@ -2029,8 +2031,11 @@ saltify() {
 		
 	if [[ $is_rocky ]]; then
 		# THIS IS A TEMP HACK
-		logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		#logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		logCmd "dnf -y install salt salt-master salt-minion"
 		logCmd "mkdir -p /etc/salt/minion.d"
+        logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
+        logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
 		#if [[ $waitforstate ]]; then 
 		#	# Since this is a salt master so let's install it
 		#	logCmd ""
