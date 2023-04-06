@@ -139,9 +139,6 @@ function add_fleet_to_minion() {
 	# TODO: Add error handling
     ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
 
-	# Create Logstash Certs
-
-
     # Write out settings to minion file
     printf '%s\n'\
 		"elasticfleet:"\
@@ -221,6 +218,28 @@ function add_sensor_to_minion() {
 	echo "    enabled: True" >> $PILLARFILE
 }
 
+function create_fleet_policy() {
+
+	MINIONID="sa-29-261-jb_standalone"
+	JSON_STRING=$( jq -n \
+					--arg NAME "FleetServer_$MINIONID" \
+					--arg DESC "Fleet Server - $MINIONID" \
+					'{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":true}'
+					)
+
+	# Create Fleet Sever Policy
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+	JSON_STRING_UPDATE=$( jq -n \
+					--arg NAME "FleetServer_$MINIONID" \
+					--arg DESC "Fleet Server - $MINIONID" \
+					'{"name":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"data_output_id":"so-manager_elasticsearch"}'
+					)
+
+	# Update Fleet Policy - ES Output
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_$MINIONID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
+}	
+
 function updateMine() {
 	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
 }
@@ -236,6 +255,7 @@ function createEVAL() {
 function createFLEET() {
 	add_fleet_to_minion
 	add_logstash_to_minion
+	create_fleet_policy
 }
 
 function createIDH() {
