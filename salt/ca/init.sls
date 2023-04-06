@@ -18,7 +18,7 @@ include:
 pki_private_key:
   x509.private_key_managed:
     - name: /etc/pki/ca.key
-    - bits: 4096
+    - keysize: 4096
     - passphrase:
     - cipher: aes_256_cbc
     - backup: True
@@ -39,7 +39,7 @@ pki_public_ca_crt:
     - keyUsage: "critical cRLSign, keyCertSign"
     - extendedkeyUsage: "serverAuth, clientAuth"
     - subjectKeyIdentifier: hash
-    - authorityKeyIdentifier: keyid,issuer:always
+    - authorityKeyIdentifier: keyid:always, issuer
     - days_valid: 3650
     - days_remaining: 0
     - backup: True

@@ -634,6 +634,8 @@ configure_minion() {
 	printf '%s\n'\
 		"use_superseded:"\
 		"  - module.run"\
+		"features:"\
+		"  x509_v2: true"\
 		"log_level: info"\
 		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
@@ -802,9 +804,11 @@ compare_main_nic_ip() {
 configure_network_sensor() {
 	info "Setting up sensor interface"
 
-	if [[ $is_cloud ]]; then 
+	if [[ $is_cloud ]]; then
+                info "Configuring traditional interface settings, since this is a cloud installation..."
 		local nmcli_con_args=( "type" "ethernet" )
 	else 
+                info "Configuring bond interface settings, since this is a not a cloud installation..."
 		local nmcli_con_args=( "type" "bond" "mode" "0" )
 	fi
 
@@ -909,7 +913,7 @@ create_repo() {
 
 detect_cloud() {
   info "Testing if setup is running on a cloud instance..."
-  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then export is_cloud="true"; fi
+  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || ( dmidecode -s bios-vendor | grep -q Google > /dev/null) || [ -f /var/log/waagent.log ]; then info "Detected a cloud installation..." && export is_cloud="true"; fi
 }
 
 detect_os() {
@@ -1247,11 +1251,12 @@ generate_interface_vars() {
 	export MTU
 
 	# Set interface variable
-	if [[ $is_cloud ]]; then 
+	if [[ $is_cloud ]]; then
 		INTERFACE=${BNICS[0]}
 	else 
 		INTERFACE='bond0'
 	fi
+        info "Interface set to $INTERFACE"
 	export INTERFACE
 }
 
@@ -2026,8 +2031,11 @@ saltify() {
 		
 	if [[ $is_rocky ]]; then
 		# THIS IS A TEMP HACK
-		logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		#logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
+		logCmd "dnf -y install salt salt-master salt-minion"
 		logCmd "mkdir -p /etc/salt/minion.d"
+        logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
+        logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
 		#if [[ $waitforstate ]]; then 
 		#	# Since this is a salt master so let's install it
 		#	logCmd ""
