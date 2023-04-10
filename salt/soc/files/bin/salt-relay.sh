@@ -6,7 +6,8 @@
 
 PIPE_OWNER=${PIPE_OWNER:-socore}
 PIPE_GROUP=${PIPE_GROUP:-socore}
-SOC_PIPE=${SOC_PIPE_REQUEST:-/opt/so/conf/soc/salt/pipe}
+SOC_PIPE=${SOC_PIPE:-/opt/so/conf/soc/salt/pipe}
+CMD_PREFIX=${CMD_PREFIX:-""}
 PATH=${PATH}:/usr/sbin
 
 function log() {
@@ -26,7 +27,7 @@ function make_pipe() {
 make_pipe "${SOC_PIPE}"
 
 function list_minions() {
-  response=$(so-minion -o=list)
+  response=$($CMD_PREFIX so-minion -o=list)
   exit_code=$?
   if [[ $exit_code -eq 0 ]]; then
     log "Successful command execution"
@@ -42,7 +43,7 @@ function manage_minion() {
   op=$(echo "$request" | jq -r .operation)
   id=$(echo "$request" | jq -r .id)
 
-  response=$(so-minion "-o=$op" "-m=$id")
+  response=$($CMD_PREFIX so-minion "-o=$op" "-m=$id")
   exit_code=$?
   if [[ exit_code -eq 0 ]]; then
     log "Successful command execution"
@@ -75,14 +76,14 @@ function manage_user() {
       add|enable|disable|delete)
         email=$(echo "$request" | jq -r .email)
         log "Performing user '$op' for user '$email'"
-        response=$(so-user "$op" --email "$email" --skip-sync)
+        response=$($CMD_PREFIX so-user "$op" --email "$email" --skip-sync)
         exit_code=$?
         ;;
       addrole|delrole)
         email=$(echo "$request" | jq -r .email)
         role=$(echo "$request" | jq -r .role)
         log "Performing '$op' for user '$email' with role '$role'"
-        response=$(so-user "$op" --email "$email" --role "$role" --skip-sync)
+        response=$($CMD_PREFIX so-user "$op" --email "$email" --role "$role" --skip-sync)
         exit_code=$?
         ;;
       password)
@@ -98,12 +99,12 @@ function manage_user() {
         lastName=$(echo "$request" | jq -r .lastName)
         note=$(echo "$request" | jq -r .note)
         log "Performing '$op' update for user '$email' with firstname '$firstName', lastname '$lastName', and note '$note'"
-        response=$(so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note")
+        response=$($CMD_PREFIX so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note")
         exit_code=$?
         ;;
       sync)
         log "Performing '$op'"
-        response=$(so-user "$op")
+        response=$($CMD_PREFIX so-user "$op")
         exit_code=$?
         ;;
       *)
@@ -142,17 +143,17 @@ function manage_salt() {
     state)
       log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$(salt --async "$minion" state.apply "$state" queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.apply "$state" queue=True)
       exit_code=$?
       ;;
     highstate)
       log "Performing '$op' on minion $minion"
-      response=$(salt --async "$minion" state.highstate queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.highstate queue=True)
       exit_code=$?
       ;;
     activejobs)
+      response=$($CMD_PREFIX salt-run jobs.active -out json -l quiet)
       log "Querying active salt jobs"
-      response=$(salt-run jobs.active -out json -l quiet)
       $(echo "$response" > "${SOC_PIPE}")
       return
       ;;
