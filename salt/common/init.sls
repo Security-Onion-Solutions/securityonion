@@ -200,13 +200,6 @@ sostatus_log:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
 
-common_pip_dependencies:
-  pip.installed:
-    - user: root
-    - pkgs: 
-      - rich
-    - target: /usr/lib64/python3.6/site-packages
-
 # Install sostatus check cron
 sostatus_check_cron:
   cron.present:

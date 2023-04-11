@@ -674,8 +674,13 @@ configure_ntp() {
 		'rtcsync' \
 		'logdir /var/log/chrony' >> $chrony_conf
 
-	systemctl enable chronyd
-	systemctl restart chronyd
+	if [ "$OS" == 'rocky' ]; then
+		systemctl enable chronyd
+		systemctl restart chronyd
+	elif [ "$OS" == 'ubuntu' ]; then
+		systemctl enable chrony
+		systemctl restart chrony
+	fi
 
 	# Tell the chrony daemon to sync time & update the system time
 	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
@@ -959,15 +964,17 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	if [ "$OS" == rocky ]; then
-		if [[ ! $is_iso ]]; then
-			if ! command -v nmcli > /dev/null 2>&1; then
-				logCmd "dnf -y install NetworkManager"
-			fi
-		fi
-		logCmd "systemctl enable NetworkManager"
-		logCmd "systemctl start NetworkManager"
-	elif [ "$OS" == ubuntu ]; then
+#	if [ "$OS" == rocky ]; then
+#		if [[ ! $is_iso ]]; then
+#			if ! command -v nmcli > /dev/null 2>&1; then
+#				logCmd "dnf -y install NetworkManager"
+#			fi
+#		fi
+#		logCmd "systemctl enable NetworkManager"
+#		logCmd "systemctl start NetworkManager"
+#	el
+	
+	if [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
