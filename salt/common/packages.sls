@@ -31,6 +31,7 @@ python3-pip:
 python-rich:
   pip.installed:
     - name: rich
+    - target: /usr/local/lib/python3.8/dist-packages/
     - require:
       - pkg: python3-pip
   

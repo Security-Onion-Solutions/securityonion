@@ -5,6 +5,10 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'ntp/config.map.jinja' import NTPCONFIG %}
 
+chrony_pkg:
+  pkg.installed:
+    - name: chrony
+
 chronyconf:
   file.managed:
     - name: /etc/chrony.conf
@@ -22,3 +26,5 @@ chrony:
     - enable: True
     - watch: 
       - file: chronyconf
+    - require:
+      - pkg: chrony_pkg
