@@ -21,16 +21,34 @@ Security Onion Elastic Clear
   -y         Skip interactive mode
 EOF
 }
-while getopts "h:y" OPTION
+while getopts "h:cdely" OPTION
 do
         case $OPTION in
                 h)
                         usage
                         exit 0
                         ;;
-                
-                y)
+                c)
+			DELETE_CASES_DATA=1
+			SKIP=1
+                        ;;
+                d)
+			DONT_STOP_SERVICES=1
                         SKIP=1
+			;;
+                e)
+			DELETE_ELASTALERT_DATA=1
+                        SKIP=1
+                        ;;
+		l)
+			DELETE_LOG_DATA=1
+			SKIP=1
+			;;
+                y)
+                        DELETE_CASES_DATA=1
+                        DELETE_ELASTALERT_DATA=1
+			DELETE_LOG_DATA=1
+			SKIP=1
                         ;;
                 *)
                         usage
@@ -54,41 +72,83 @@ if [ $SKIP -ne 1 ]; then
         if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
 fi
 
-# Check to see if Logstash are running
-LS_ENABLED=$(so-status | grep logstash)
-EA_ENABLED=$(so-status | grep elastalert)
 
-if [ ! -z "$LS_ENABLED" ]; then
+if [ -z "$DONT_STOP_SERVICES" ]; then
+	# Stop Elastic Agent
+	for i in $(pgrep elastic-agent | grep -v grep); do
+		kill -9 $i;
+	done 
 
-        /usr/sbin/so-logstash-stop
+	# Check to see if Elastic Fleet, Logstash, Elastalert are running
+	#EF_ENABLED=$(so-status | grep elastic-fleet)
+	LS_ENABLED=$(so-status | grep logstash)
+	EA_ENABLED=$(so-status | grep elastalert)
 
+	#if [ ! -z "$EF_ENABLED" ]; then
+        #	/usr/sbin/so-elastic-fleet-stop
+	#fi
+
+	if [ ! -z "$LS_ENABLED" ]; then
+        	/usr/sbin/so-logstash-stop
+	fi
+
+	if [ ! -z "$EA_ENABLED" ]; then
+        	/usr/sbin/so-elastalert-stop
+	fi
 fi
 
-if [ ! -z "$EA_ENABLED" ]; then
-
-        /usr/sbin/so-elastalert-stop
-
+if [ ! -z "$DELETE_CASES_DATA" ]; then
+        # Delete Cases data
+        echo "Deleting Cases data..."
+        INDXS=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index | grep "so-case")
+        for INDX in ${INDXS}
+        do
+                echo "Deleting $INDX"
+                /usr/sbin/so-elasticsearch-query ${INDX} -XDELETE > /dev/null 2>&1
+        done
 fi
 
-# Delete data
-echo "Deleting data..."
-
-INDXS=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -XGET -k -L https://{{ NODEIP }}:9200/_cat/indices?v | egrep 'logstash|elastalert|so-' | awk '{ print $3 }')
-for INDX in ${INDXS}
-do
-    curl -K /opt/so/conf/elasticsearch/curl.config-XDELETE -k -L https://"{{ NODEIP }}:9200/${INDX}" > /dev/null 2>&1
-done
-
-#Start Logstash
-if [ ! -z "$LS_ENABLED" ]; then
-
-        /usr/sbin/so-logstash-start
-
+# Delete Elastalert data
+if [ ! -z "$DELETE_ELASTALERT_DATA" ]; then
+        # Delete Elastalert data
+        echo "Deleting Elastalert data..."
+        INDXS=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index | grep "elastalert")
+        for INDX in ${INDXS}
+        do
+                echo "Deleting $INDX"
+                /usr/sbin/so-elasticsearch-query ${INDX} -XDELETE > /dev/null 2>&1
+        done
 fi
 
-if [ ! -z "$EA_ENABLED" ]; then
-
-        /usr/sbin/so-elastalert-start
-
+# Delete log data
+if [ ! -z "$DELETE_LOG_DATA" ]; then
+	echo "Deleting log data ..."
+	DATASTREAMS=$(/usr/sbin/so-elasticsearch-query _data_stream | jq -r '.[] |.[].name')
+	for DATASTREAM in ${DATASTREAMS}
+	do
+		# Delete the data stream
+        	echo "Deleting $DATASTREAM..."
+        	/usr/sbin/so-elasticsearch-query _data_stream/${DATASTREAM} -XDELETE > /dev/null 2>&1
+	done
 fi
 
+if [ -z "$DONT_STOP_SERVICES" ]; then
+	#Start Logstash
+	if [ ! -z "$LS_ENABLED" ]; then
+        	/usr/sbin/so-logstash-start
+
+	fi
+
+	#Start Elastic Fleet
+	#if [ ! -z "$EF_ENABLED" ]; then
+        # 	/usr/sbin/so-elastic-fleet-start
+	#fi
+
+	#Start Elastalert
+	if [ ! -z "$EA_ENABLED" ]; then
+        	/usr/sbin/so-elastalert-start
+	fi
+
+	# Start Elastic Agent
+	/usr/bin/elastic-agent restart
+fi
