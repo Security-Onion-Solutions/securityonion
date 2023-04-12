@@ -19,6 +19,7 @@ commonpkgs:
       - libssl-dev
       - python3-dateutil
       - python3-packaging
+      - python3-watchdog
       - python3-lxml
       - git
       - vim
@@ -59,6 +60,7 @@ commonpkgs:
       - python3-m2crypto
       - rsync
       - python3-rich
+      - python3-pyyaml
       - python3-watchdog
       - python3-packaging
       - unzip
