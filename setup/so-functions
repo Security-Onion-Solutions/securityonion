@@ -976,9 +976,11 @@ installer_prereq_packages() {
 	
 	if [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
+		info "Running apt-get update"
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
+			info "Installing network-manager"
 			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
 				systemctl enable NetworkManager
@@ -2393,7 +2395,9 @@ update_packages() {
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
 	else
-		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
+		info "Running apt-get update"
+		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
+		info "Running apt-get upgrade"
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
 	fi
 }
