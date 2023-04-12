@@ -8,7 +8,7 @@
 
 # These values are generated during node install and stored in minion pillar
 {% set SERVICETOKEN = salt['pillar.get']('elasticfleet:server:es_token','') %}
-{% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
+#{% set FLEETSERVERPOLICY = salt['pillar.get']('elasticfleet:server:server_policy','so-manager') %}
 #{% set FLEETURL = salt['pillar.get']('elasticfleet:server:url') %}
 
 # Add EA Group
