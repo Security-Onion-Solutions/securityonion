@@ -87,7 +87,7 @@ elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server -
 
 # Initial Endpoints 
 elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" | jq
-for INTEGRATION in /opt/so/saltstack/opt/so/saltstack/default/salt/elasticfleet/files/integrations/endpoints-initial/*.json
+for INTEGRATION in opt/so/saltstack/default/salt/elasticfleet/files/integrations/endpoints-initial/*.json
 do
   elastic_fleet_integration_create "@$INTEGRATION" | jq
 done
@@ -124,33 +124,3 @@ printf '%s\n'\
 
 # Call Elastic-Fleet Salt State
 salt-call state.apply elasticfleet queue=True
-
-
-
-
-
-
-### DEPRECATED
-
-# Temp
-# Configure certificates
-mkdir -p /opt/so/conf/elastic-fleet/certs
-cp /etc/ssl/certs/intca.crt /opt/so/conf/elastic-fleet/certs
-cp /etc/pki/elasticfleet* /opt/so/conf/elastic-fleet/certs
-
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/  https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-darwin-x86_64.tar.gz
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/ https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-linux-x86_64.tar.gz
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/ https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-windows-x86_64.tar.gz
-
-so-elastic-agent-gen-installers
-salt-call state.apply elasticfleet.install_agent_grid queue=True
-
-
-#Temp Fixup for Fleet Server Host Output
-JSON_STRING_UPDATE=$( jq -n \
-                --arg NAME "FleetServer_$MINIONID" \
-                --arg DESC "Fleet Server - $MINIONID" \
-                '{"name":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"data_output_id":"so-manager_elasticsearch"}'
-                )
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_$MINIONID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
-
