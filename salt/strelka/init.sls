@@ -205,11 +205,13 @@ filecheck_restart:
 filecheck_run:
   cron.present:
     - name: 'ps -ef | grep filecheck | grep -v grep > /dev/null 2>&1 || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
+    - identifier: filecheck_run
     - user: {{ filecheck_runas }}
 
 filcheck_history_clean:
   cron.present:
     - name: '/usr/bin/find /nsm/strelka/history/ -type f -mtime +2 -exec rm {} + > /dev/null 2>&1'
+    - identifier: filecheck_history_clean
     - minute: '33'
 # End Filecheck Section
 

@@ -79,8 +79,10 @@ surilogscript:
     - source: salt://suricata/cron/surilogcompress
     - mode: 755
 
-/usr/local/bin/surilogcompress:
+surilogcompress:
   cron.present:
+    - name: /usr/local/bin/surilogcompress
+    - identifier: surilogcompress
     - user: suricata
     - minute: '17'
     - hour: '*'
@@ -181,16 +183,6 @@ delete_so-suricata_so-status.disabled:
     - regex: ^so-suricata$
   {% endif %}
 
-surirotate:
-  cron.absent:
-    - name: /usr/local/bin/surirotate
-    - user: root
-    - minute: '11'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
 so-suricata-eve-clean:
   file.managed:
     - name: /usr/sbin/so-suricata-eve-clean
@@ -204,6 +196,7 @@ so-suricata-eve-clean:
 clean_suricata_eve_files:
   cron.present:
     - name: /usr/sbin/so-suricata-eve-clean > /dev/null 2>&1
+    - identifier: clean_suricata_eve_files
     - user: root
     - minute: '*/5'
     - hour: '*'

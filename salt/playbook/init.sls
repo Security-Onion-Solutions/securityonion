@@ -113,15 +113,17 @@ append_so-playbook_so-status.conf:
 
 {% endif %}
 
-so-playbooksynccron:
+so-playbook-sync_cron:
   cron.present:
     - name: /usr/sbin/so-playbook-sync > /opt/so/log/playbook/sync.log 2>&1
+    - identifier: so-playbook-sync_cron
     - user: root
     - minute: '*/5'
 
-so-playbookruleupdatecron:
+so-playbook-ruleupdate_cron:
   cron.present:
     - name: /usr/sbin/so-playbook-ruleupdate > /opt/so/log/playbook/update.log 2>&1
+    - identifier: so-playbook-ruleupdate_cron
     - user: root
     - minute: '1'
     - hour: '6'

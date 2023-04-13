@@ -126,9 +126,10 @@ delete_so-curator_so-status.disabled:
     - regex: ^so-curator$
   {% endif %}
 
-so-curatorclusterclose:
+so-curator-cluster-close:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
+    - identifier: so-curator-cluster-close
     - user: root
     - minute: '2'
     - hour: '*/1'
@@ -136,9 +137,10 @@ so-curatorclusterclose:
     - month: '*'
     - dayweek: '*'
 
-so-curatorclusterdeletecron:
+so-curator-cluster-delete:
   cron.present:
     - name: /usr/sbin/so-curator-cluster-delete > /opt/so/log/curator/cron-cluster-delete.log 2>&1
+    - identifier: so-curator-cluster-delete
     - user: root
     - minute: '*/5'
     - hour: '*'
