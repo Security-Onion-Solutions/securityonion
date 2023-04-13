@@ -127,6 +127,7 @@ metrics_link_file:
 get_influxdb_size:
   cron.present:
     - name: 'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1'
+    - identifier: get_influxdb_size
     - user: root
     - minute: '*/1'
     - hour: '*'

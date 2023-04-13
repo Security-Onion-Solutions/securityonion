@@ -51,7 +51,7 @@ repo_sync_script:
     - group: root
     - mode: 755
 
-reposync_cron:
+so-repo-sync:
   {% if MANAGERMERGED.reposync.enabled %}
   cron.present:
   {% else %}
@@ -59,6 +59,7 @@ reposync_cron:
   {% endif %}
     - user: socore
     - name: '/usr/sbin/so-repo-sync >> /opt/so/log/reposync/reposync.log 2>&1'
+    - identifier: so-repo-sync
     - hour: '{{ MANAGERMERGED.reposync.hour }}'
     - minute: '{{ MANAGERMERGED.reposync.minute }}'
 
@@ -83,10 +84,11 @@ yara_update_script:
         ISAIRGAP: {{ GLOBALS.airgap }}
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
-strelka_yara_update:
+strelka-yara-update:
   cron.present:
     - user: root
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
+    - identifier: strelka-yara-update
     - hour: '7'
     - minute: '1'
 
