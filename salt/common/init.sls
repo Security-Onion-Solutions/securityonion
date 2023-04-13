@@ -200,10 +200,11 @@ sostatus_log:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
 
-# Install sostatus check cron
+# Install sostatus check cron. This is used to populate Grid.
 sostatus_check_cron:
   cron.present:
-    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
+    - name: 'USER=root /usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
+    - identifier: sostatus_check_cron
     - user: root
     - minute: '*/1'
     - hour: '*'
