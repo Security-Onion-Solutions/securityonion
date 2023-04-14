@@ -234,7 +234,7 @@ soversionfile:
     
 {% endif %}
 
-{% if GLOBALS.so_model && GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
+{% if GLOBALS.so_model and GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
   {% if GLOBALS.os == 'Rocky' %}     
 # Install Raid tools
 raidpkgs:
