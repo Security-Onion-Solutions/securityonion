@@ -28,7 +28,7 @@ elastic_fleet_policy_create() {
 elastic_fleet_policy_update() {
 
     POLICYID=$1
-    JSONBLOB=$2
+    JSON_STRING_UPDATE=$2
 
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/$POLICYID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
 }
@@ -42,16 +42,12 @@ elastic_fleet_integration_create() {
 
 }
 
-mkdir -p /opt/so/conf/elastic-fleet/certs
-cp /etc/ssl/certs/intca.crt /opt/so/conf/elastic-fleet/certs
-cp /etc/pki/elasticfleet* /opt/so/conf/elastic-fleet/certs
-
 printf "\n### Create ES Token ###\n"
 ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
 
 ### Create Outputs & Fleet URLs ###
 printf "\nAdd Manager Elasticsearch Ouput...\n"
-ESCACRT=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
+ESCACRT=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
 JSON_STRING=$( jq -n \
                   --arg ESCACRT "$ESCACRT" \
                   '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
@@ -60,9 +56,9 @@ printf "\n\n"
 
 printf "\nCreate Logstash Output if node is not an Import or Eval install\n"
 {% if grains.role not in ['so-import', 'so-eval'] %}
-LOGSTASHCRT=$(openssl x509 -in /opt/so/conf/elastic-fleet/certs/elasticfleet.crt)
-LOGSTASHKEY=$(openssl rsa -in  /opt/so/conf/elastic-fleet/certs/elasticfleet.key)
-LOGSTASHCA=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
+LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
 JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \
@@ -83,11 +79,19 @@ printf "\n\n"
 
 # Manager Fleet Server Host
 elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" | jq
-#elastic_fleet_policy_update "FleetServer_{{ GLOBALS.hostname }}" "@FleeServerHost_Fixup"
+#elastic_fleet_policy_update "FleetServer_{{ GLOBALS.hostname }}" "@/opt/so/saltstack/default/salt/elasticfleet/files/FleeServerHost_Fixup.json"
+
+#Temp Fixup
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                '{"name": $NAME,"description": $NAME,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
+                )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
 
 # Initial Endpoints 
 elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" | jq
-for INTEGRATION in opt/so/saltstack/default/salt/elasticfleet/files/integrations/endpoints-initial/*.json
+for INTEGRATION in /opt/so/saltstack/default/salt/elasticfleet/files/integrations/endpoints-initial/*.json
 do
   elastic_fleet_integration_create "@$INTEGRATION" | jq
 done

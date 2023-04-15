@@ -147,6 +147,8 @@ rediskeyperms:
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+# Create cert for Elastic Fleet Host
+
 etc_elasticfleet_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet.key
@@ -199,26 +201,27 @@ efperms:
     - mode: 640
     - group: 939
 
-chownilogstashelasticfleetp8:
+chownelasticfleetcrt:
   file.managed:
     - replace: False
-    - name: /etc/pki/elasticfleet.p8
+    - name: /etc/pki/elasticfleet.crt
     - mode: 640
     - user: 947
     - group: 939
 
-# Create Symlinks to the keys so I can distribute it to all the things
+chownelasticfleetkey:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet.key
+    - mode: 640
+    - user: 947
+    - group: 939
+
+# Create Symlinks to the keys to distribute it to all the things
 elasticfleetdircerts:
   file.directory:
     - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs
     - makedirs: True
-
-efkeylink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet.p8
-    - target: /etc/pki/elasticfleet.p8
-    - user: socore
-    - group: socore
 
 efcrtlink:
   file.symlink:
@@ -226,6 +229,102 @@ efcrtlink:
     - target: /etc/pki/elasticfleet.crt
     - user: socore
     - group: socore
+
+
+{% if grains.role not in ['so-fleet'] %}
+# Create Cert for Elastic Fleet Logstash Input (Same cert used across all Fleet nodes)
+
+etc_elasticfleetlogstash_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet-logstash.key
+    - CN: {{ COMMONNAME }}
+    - bits: 4096
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
+    - prereq:
+      - x509: etc_elasticfleet_crt
+    {%- endif %}
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+
+# Request a cert and drop it where it needs to go to be distributed
+etc_elasticfleetlogstash_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet-logstash.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - public_key: /etc/pki/elasticfleet-logstash.key
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+{% if grains.role not in ['so-heavynode'] %}
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-logstash.key -topk8 -out /etc/pki/elasticfleet-logstash.p8 -nocrypt"
+    - onchanges:
+      - x509: etc_elasticfleet_key
+
+eflogstashperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.key
+    - mode: 640
+    - group: 939
+
+chownilogstashelasticfleetp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.p8
+    - mode: 640
+    - user: 947
+    - group: 939
+
+chownilogstashelasticfleetlogstashcrt:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.crt
+    - mode: 640
+    - user: 947
+    - group: 939
+
+chownilogstashelasticfleetlogstashkey:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.key
+    - mode: 640
+    - user: 947
+    - group: 939
+
+eflogstashkeylink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.p8
+    - target: /etc/pki/elasticfleet.p8
+    - user: socore
+    - group: socore
+
+eflogstashcrtlink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.crt
+    - target: /etc/pki/elasticfleet.crt
+    - user: socore
+    - group: socore
+
+{% endif %}
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
