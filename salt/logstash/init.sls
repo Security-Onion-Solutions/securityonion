@@ -164,9 +164,9 @@ so-logstash:
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
   {% endif %}
-  {% if GLOBALS.role in ['so-fleet'] %}
-      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:/usr/share/logstash/filebeat.crt:ro
-      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:/usr/share/logstash/filebeat.key:ro
+  {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-eval','so-fleet'] %}
+      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
+      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:/usr/share/logstash/elasticfleet-logstash.key:ro
   {% endif %}
   {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro

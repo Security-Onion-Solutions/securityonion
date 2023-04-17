@@ -325,6 +325,23 @@ eflogstashcrtlink:
     - group: socore
 
 {% endif %}
+
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.crt
+    - mode: 640
+    - user: 931
+    - group: 939
+
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
