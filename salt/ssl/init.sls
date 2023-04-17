@@ -330,6 +330,7 @@ eflogstashcrtlink:
   file.managed:
     - replace: True
     - source: salt://elasticfleet/files/certs/elasticfleet-logstash.p8
+    - makedirs: True
     - mode: 640
     - user: 931
     - group: 939
@@ -338,6 +339,7 @@ eflogstashcrtlink:
   file.managed:
     - replace: True
     - source: salt://elasticfleet/files/certs/elasticfleet-logstash.crt
+    - makedirs: True
     - mode: 640
     - user: 931
     - group: 939
