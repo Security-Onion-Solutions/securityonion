@@ -15,6 +15,7 @@ zeek:
     SpoolDir: /nsm/zeek/spool
     CfgDir: /opt/zeek/etc
     CompressLogs: 1
+    ZeekPort: 27760
   local:
     '@load':
       - misc/loaded-scripts
