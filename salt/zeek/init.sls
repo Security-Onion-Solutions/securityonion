@@ -208,6 +208,7 @@ so-zeek:
     - privileged: True
     - ulimits:
       - core=0
+      - nofile=1048576:1048576
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw
