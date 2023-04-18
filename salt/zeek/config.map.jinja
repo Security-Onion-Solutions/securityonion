@@ -1,8 +1,17 @@
 {% from 'vars/sensor.map.jinja' import ROLE_GLOBALS %}
 {% import_yaml 'zeek/defaults.yaml' as zeek_defaults with context %}
-{% set zeek_pillar = salt['pillar.get']('zeek', []) %}
-{% set ZEEKMERGED = salt['defaults.merge'](zeek_defaults, zeek_pillar, in_place=False) %}
-{% do ZEEKMERGED.zeek.config.node.update({'interface': ROLE_GLOBALS.sensor.interface}) %}
+{% set ZEEKMERGED = salt['pillar.get']('zeek', zeek_defaults.zeek, merge=True) %}
+{% do ZEEKMERGED.config.node.update({'interface': ROLE_GLOBALS.sensor.interface}) %}
+
+{% if ZEEKMERGED.config.local.load is defined %}
+  {% set LOCALLOAD = ZEEKMERGED.config.local.pop('load') %}
+  {% do ZEEKMERGED.config.local.update({'@load': LOCALLOAD}) %}
+{% endif %}
+
+{% if ZEEKMERGED.config.local['load-sigs'] is defined %}
+  {% set LOCALLOADSIGS = ZEEKMERGED.config.local.pop('load-sigs') %}
+  {% do ZEEKMERGED.config.local.update({'@load-sigs': LOCALLOADSIGS}) %}
+{% endif %}
 
 {% set ZEEKOPTIONS = {} %}
 {% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
