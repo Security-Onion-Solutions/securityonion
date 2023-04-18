@@ -674,8 +674,13 @@ configure_ntp() {
 		'rtcsync' \
 		'logdir /var/log/chrony' >> $chrony_conf
 
-	systemctl enable chronyd
-	systemctl restart chronyd
+	if [ "$OS" == 'rocky' ]; then
+		systemctl enable chronyd
+		systemctl restart chronyd
+	elif [ "$OS" == 'ubuntu' ]; then
+		systemctl enable chrony
+		systemctl restart chrony
+	fi
 
 	# Tell the chrony daemon to sync time & update the system time
 	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
@@ -770,11 +775,12 @@ check_requirements() {
 }
 
 check_sos_appliance() {
-	title "Is this is an SOS Appliance?"
 	if [ -f "/etc/SOSMODEL" ]; then
-	  local MODEL=$(cat /etc/SOSMODEL)
-	  info "Found SOS Model $MODEL"
-	  echo "sosmodel: $MODEL" >> /etc/salt/grains
+		local MODEL=$(cat /etc/SOSMODEL)
+		info "Found SOS Model $MODEL"
+		echo "sosmodel: $MODEL" >> /etc/salt/grains
+	else
+		info "Not an appliance"
 	fi
 }
 
@@ -959,19 +965,23 @@ installer_progress_loop() {
 }
 
 installer_prereq_packages() {
-	if [ "$OS" == rocky ]; then
-		if [[ ! $is_iso ]]; then
-			if ! command -v nmcli > /dev/null 2>&1; then
-				logCmd "dnf -y install NetworkManager"
-			fi
-		fi
-		logCmd "systemctl enable NetworkManager"
-		logCmd "systemctl start NetworkManager"
-	elif [ "$OS" == ubuntu ]; then
+#	if [ "$OS" == rocky ]; then
+#		if [[ ! $is_iso ]]; then
+#			if ! command -v nmcli > /dev/null 2>&1; then
+#				logCmd "dnf -y install NetworkManager"
+#			fi
+#		fi
+#		logCmd "systemctl enable NetworkManager"
+#		logCmd "systemctl start NetworkManager"
+#	el
+	
+	if [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
+		info "Running apt-get update"
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
+			info "Installing network-manager"
 			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
 			{
 				systemctl enable NetworkManager
@@ -2008,14 +2018,19 @@ saltify() {
 		)
 		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || exit 1
 
-		logCmd "mkdir -vp /opt/so/gpg"
-		logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
-		logCmd "wget -q --inet4-only -O /opt/so/gpg/docker.pub https://download.docker.com/linux/ubuntu/gpg"
-		logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
-		logCmd "apt-key add /opt/so/gpg/docker.pub"
+		logCmd "mkdir -vp /etc/apt/keyrings"
+		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
+		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
+
+		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/3006.0rc3/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/3006.0rc3/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
+		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
+
+		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
+		logCmd "apt-key add /etc/apt/keyrings/docker.pub"
 
 		# Add SO Saltstack Repo
-		echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
+		#echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
 
 		# Add Docker Repo
 		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
@@ -2023,27 +2038,25 @@ saltify() {
 		# Ain't nothing but a GPG 
 
 		retry 150 20 "apt-get update" "" "Err:" || exit 1
-		retry 150 20 "apt-get -y install salt-minion=3004.2+ds-1 salt-common=3004.2+ds-1" || exit 1
+		retry 150 20 "apt-get -y install salt-common salt-minion" || exit 1
 		retry 150 20 "apt-mark hold salt-minion salt-common" || exit 1
-		retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+		#retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
 
 	fi
 		
 	if [[ $is_rocky ]]; then
-		# THIS IS A TEMP HACK
-		#logCmd "dnf -y install securityonion-salt python3-audit python3-libsemanage python3-policycoreutils python3-setools python3-setuptools python3-chardet python3-idna python3-pysocks python3-requests python3-urllib3 python3-websocket-client python3-docker"
-		logCmd "dnf -y install salt salt-master salt-minion"
-		logCmd "mkdir -p /etc/salt/minion.d"
-        logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
-        logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
-		#if [[ $waitforstate ]]; then 
-		#	# Since this is a salt master so let's install it
-		#	logCmd ""
-		#else
-		#	# We just need the minion
-		#	logCmd "dnf -y install salt-minion"
-		#fi
+		if [[ $waitforstate ]]; then 
+			# install all for a manager
+			logCmd "dnf -y install salt salt-master salt-minion"
+		else
+			# We just need the minion
+			logCmd "dnf -y install salt salt-minion"
+		fi
 	fi
+
+	logCmd "mkdir -p /etc/salt/minion.d"
+    logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
+    logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
 
 }
 
@@ -2383,7 +2396,9 @@ update_packages() {
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
 	else
-		retry 150 10 "apt-get -y update" >> "$setup_log" 2>&1 || exit 1
+		info "Running apt-get update"
+		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
+		info "Running apt-get upgrade"
 		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
 	fi
 }

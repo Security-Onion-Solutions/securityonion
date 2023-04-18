@@ -25,6 +25,7 @@ config_backup_script:
 so_config_backup:
   cron.present:
     - name: /usr/sbin/so-config-backup > /dev/null 2>&1
+    - identifier: so_config_backup
     - user: root
     - minute: '1'
     - hour: '0'

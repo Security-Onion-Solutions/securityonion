@@ -133,8 +133,10 @@ so-status_script:
 
 {% if GLOBALS.role in GLOBALS.sensor_roles %}
 # Add sensor cleanup
-/usr/sbin/so-sensor-clean:
+so-sensor-clean:
   cron.present:
+    - name: /usr/sbin/so-sensor-clean
+    - identifier: so-sensor-clean
     - user: root
     - minute: '*'
     - hour: '*'
@@ -154,8 +156,10 @@ sensorrotateconf:
     - source: salt://common/files/sensor-rotate.conf
     - mode: 644
 
-/usr/local/bin/sensor-rotate:
+sensor-rotate:
   cron.present:
+    - name: /usr/local/bin/sensor-rotate
+    - identifier: sensor-rotate
     - user: root
     - minute: '1'
     - hour: '0'
@@ -178,8 +182,10 @@ commonlogrotateconf:
     - template: jinja
     - mode: 644
 
-/usr/local/bin/common-rotate:
+common-rotate:
   cron.present:
+    - name: /usr/local/bin/common-rotate
+    - identifier: common-rotate
     - user: root
     - minute: '1'
     - hour: '0'
@@ -200,17 +206,11 @@ sostatus_log:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
 
-common_pip_dependencies:
-  pip.installed:
-    - user: root
-    - pkgs: 
-      - rich
-    - target: /usr/lib64/python3.6/site-packages
-
-# Install sostatus check cron
-sostatus_check_cron:
+# Install sostatus check cron. This is used to populate Grid.
+so-status_check_cron:
   cron.present:
     - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
+    - identifier: so-status_check_cron
     - user: root
     - minute: '*/1'
     - hour: '*'
@@ -220,7 +220,7 @@ sostatus_check_cron:
 
 remove_post_setup_cron:
   cron.absent:
-    - name: 'salt-call state.highstate'
+    - name: 'PATH=$PATH:/usr/sbin salt-call state.highstate'
     - identifier: post_setup_cron
 
 {% if GLOBALS.role not in ['eval', 'manager', 'managersearch', 'standalone'] %}
@@ -234,7 +234,7 @@ soversionfile:
     
 {% endif %}
 
-{% if GLOBALS.so_model %}
+{% if GLOBALS.so_model and GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
   {% if GLOBALS.os == 'Rocky' %}     
 # Install Raid tools
 raidpkgs:
@@ -246,9 +246,10 @@ raidpkgs:
   {% endif %}
 
 # Install raid check cron
-so_raid_status:
+so-raid-status:
   cron.present:
     - name: '/usr/sbin/so-raid-status > /dev/null 2>&1'
+    - identifier: so-raid-status
     - user: root
     - minute: '*/15'
     - hour: '*'

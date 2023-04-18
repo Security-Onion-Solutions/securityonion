@@ -177,6 +177,7 @@ esyml:
         ESCONFIG: {{ ESCONFIG }}
     - template: jinja
 
+{% if GLOBALS.role != "so-searchnode" %}
 escomponenttemplates:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/templates/component
@@ -218,6 +219,7 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
     - onchanges_in:
       - cmd: so-elasticsearch-templates
 {% endfor %}
+{% endif %}
 {% endif %}
 
 esroles:
@@ -363,6 +365,8 @@ append_so-elasticsearch_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elasticsearch
 
+{% if GLOBALS.role != "so-searchnode" %}
+
 so-es-cluster-settings:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-cluster-settings
@@ -406,7 +410,7 @@ so-elasticsearch-roles-load:
     - require:
       - docker_container: so-elasticsearch
       - file: es_sync_scripts
-
+{% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
