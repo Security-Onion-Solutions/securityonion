@@ -108,12 +108,6 @@ append_so-kibana_so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-kibana
 
-osquery_hunt_link:
-  cmd.script:
-    - source: salt://kibana/files/live_query_fixup.sh
-    - cwd: /root
-    - template: jinja
-
 {% else %}
 
 {{sls}}_state_not_allowed:

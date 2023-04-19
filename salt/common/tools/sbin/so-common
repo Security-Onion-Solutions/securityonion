@@ -160,6 +160,39 @@ disable_fastestmirror() {
 	sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 }
 
+elastic_fleet_integration_create() {
+
+    JSON_STRING=$1
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+elastic_fleet_policy_create() {
+
+    NAME=$1
+    DESC=$2
+    FLEETSERVER=$3
+
+    JSON_STRING=$( jq -n \
+                    --arg NAME "$NAME" \
+                    --arg DESC "$DESC" \
+                    --arg FLEETSERVER "$FLEETSERVER" \
+                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":$FLEETSERVER}'
+                    )
+    # Create Fleet Policy
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" 
+
+}
+
+elastic_fleet_policy_update() {
+
+    POLICYID=$1
+    JSON_STRING=$2
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/$POLICYID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+
 elastic_license() {
 
 read -r -d '' message <<- EOM

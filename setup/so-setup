@@ -444,7 +444,19 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_sensor_nics
 		set_minion_info
 		whiptail_end_settings
-		
+
+	elif [[ $is_fleet ]]; then
+		check_requirements "fleet"
+		networking_needful
+		check_network_manager_conf
+		set_network_dev_status_list
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		detect_cloud
+		set_minion_info
+		whiptail_end_settings
+
 	elif [[ $is_searchnode ]]; then
 		#ubuntu_check
 		installer_prereq_packages
@@ -629,11 +641,13 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		title "Setting up Kibana Default Space"
+		logCmd "so-kibana-space-defaults"
 		add_web_user
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
-                logCmd "so-elastic-fleet-setup"
+        logCmd "so-elastic-fleet-setup"
 		if [[ ! $is_import ]]; then
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"
