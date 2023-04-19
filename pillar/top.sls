@@ -228,8 +228,8 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_fleet':
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - backup.soc_backup
     - backup.adv_backup
     - logstash
