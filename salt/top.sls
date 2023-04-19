@@ -347,6 +347,7 @@ base:
     - firewall
     - logstash
     - elasticfleet
+    - elasticfleet.install_agent_grid
     - schedule
     - docker_clean
 

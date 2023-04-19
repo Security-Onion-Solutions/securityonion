@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": "1.1.2"
+  },
+  "name": "soc-auth-sync-logs",
+  "namespace": "so",
+  "description": "Security Onion - Elastic Auth Sync - Logs",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/soc/sync.log"
+            ],
+            "data_stream.dataset": "soc",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"%{event.action}\"\n    field: \"message\"\n    target_prefix: \"\"\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: auth_sync",
+            "custom": "pipeline: common"
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,40 +8,6 @@
 
 . /usr/sbin/so-common
 
-elastic_fleet_policy_create() {
-
-    NAME=$1
-    DESC=$2
-    FLEETSERVER=$3
-
-    JSON_STRING=$( jq -n \
-                    --arg NAME "$NAME" \
-                    --arg DESC "$DESC" \
-                    --arg FLEETSERVER "$FLEETSERVER" \
-                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":$FLEETSERVER}'
-                    )
-    # Create Fleet Policy
-    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" 
-
-}
-
-elastic_fleet_policy_update() {
-
-    POLICYID=$1
-    JSON_STRING_UPDATE=$2
-
-    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/$POLICYID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
-}
-
-elastic_fleet_integration_create() {
-
-    JSONBLOB=$1
-
-    #curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSONBLOB"
-    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSONBLOB"
-
-}
-
 printf "\n### Create ES Token ###\n"
 ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
 
@@ -79,30 +45,22 @@ printf "\n\n"
 
 # Manager Fleet Server Host
 elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" | jq
-#elastic_fleet_policy_update "FleetServer_{{ GLOBALS.hostname }}" "@/opt/so/saltstack/default/salt/elasticfleet/files/FleeServerHost_Fixup.json"
 
-#Temp Fixup
+#Temp Fixup for ES Output bug
 JSON_STRING=$( jq -n \
                 --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
                 '{"name": $NAME,"description": $NAME,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
                 )
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 
+# Initial Endpoints Policy
+elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false"
 
-# Initial Endpoints 
-elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" | jq
-for INTEGRATION in /opt/so/saltstack/default/salt/elasticfleet/files/integrations/endpoints-initial/*.json
-do
-  elastic_fleet_integration_create "@$INTEGRATION" | jq
-done
-
-# Grid Nodes
+# Grid Nodes Policy
 elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false"
-for INTEGRATION in /opt/so/saltstack/default/salt/elasticfleet/files/integrations/grid-nodes/*.json
-do
-  elastic_fleet_integration_create "@$INTEGRATION" | jq
-done
 
+# Load Integrations for default policies
+so-elastic-fleet-integration-policy-load
 
 ### Finalization ###
 

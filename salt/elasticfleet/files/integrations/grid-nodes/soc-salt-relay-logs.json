@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": "1.1.2"
+  },
+  "name": "soc-salt-relay-logs",
+  "namespace": "so",
+  "description": "Security Onion - Salt Relay - Logs",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/soc/salt-relay.log"
+            ],
+            "data_stream.dataset": "soc",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"%{soc.ts} | %{event.action}\"\n    field: \"message\"\n    target_prefix: \"\"\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: salt_relay",
+            "custom": "pipeline: common"
+          }
+        }
+      }
+    }
+  }
+}
