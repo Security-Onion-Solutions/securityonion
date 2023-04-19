@@ -132,6 +132,22 @@ function add_elastic_to_minion() {
 		"  " >> $PILLARFILE
 }
 
+# Add Elastic Fleet Server settings to the minion file
+function add_fleet_to_minion() {
+
+    # Create ES Token for Fleet server (Curl to Kibana API)
+	# TODO: Add error handling
+    ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
+
+    # Write out settings to minion file
+    printf '%s\n'\
+		"elasticfleet:"\
+		"  server:"\
+		"    es_token: '$ESTOKEN'"\
+		"  " >> $PILLARFILE
+}
+
+
 # Add IDH Services info to the minion file
 function add_idh_to_minion() {
 	printf '%s\n'\
@@ -202,6 +218,43 @@ function add_sensor_to_minion() {
 	echo "    enabled: True" >> $PILLARFILE
 }
 
+function create_fleet_policy() {
+
+	JSON_STRING=$( jq -n \
+					--arg NAME "FleetServer_$LSHOSTNAME" \
+					--arg DESC "Fleet Server - $LSHOSTNAME" \
+					'{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":true}'
+					)
+
+	# Create Fleet Sever Policy
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+	JSON_STRING_UPDATE=$( jq -n \
+					--arg NAME "FleetServer_$LSHOSTNAME" \
+					--arg DESC "Fleet Server - $LSHOSTNAME" \
+					'{"name":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"data_output_id":"so-manager_elasticsearch"}'
+					)
+
+	# Update Fleet Policy - ES Output
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_$LSHOSTNAME" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
+}
+
+function update_fleet_host_urls() {
+	# Query for current Fleet Host URLs & append New Fleet Node Hostname & IP
+    JSON_STRING=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq --arg HOSTNAME "https://$LSHOSTNAME:8220" --arg IP "https://$MAINIP:8220" -r '.items[].host_urls += [ $HOSTNAME, $IP ] | {"name":"Default","host_urls": .items[].host_urls,"is_default":true,"proxy_id":null}')
+
+	# Update Fleet Host URLs
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/fleet_server_hosts/fleet-default-fleet-server-host" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+function update_logstash_outputs() {
+	# Query for current Logstash outputs & append New Fleet Node Hostname & IP
+    JSON_STRING=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_logstash' | jq --arg HOSTNAME "$LSHOSTNAME:5055" --arg IP "$MAINIP:5055" -r '.item.hosts += [ $HOSTNAME, $IP ] | {"name":"grid-logstash","type":"logstash","hosts": .item.hosts,"is_default":true,"is_default_monitoring":true,"config_yaml":""}')
+
+	# Update Logstash Outputs
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
 function updateMine() {
 	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
 }
@@ -212,6 +265,14 @@ function createEVAL() {
 	add_elastic_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
+}
+
+function createFLEET() {
+	add_fleet_to_minion
+	add_logstash_to_minion
+	create_fleet_policy
+	update_fleet_host_urls
+	update_logstash_outputs
 }
 
 function createIDH() {

@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": "1.1.1"
+  },
+  "name": "idh-logs",
+  "namespace": "so",
+  "description": "IDH integration",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/idh/opencanary.log"
+            ],
+            "data_stream.dataset": "idh",
+            "tags": [],
+            "processors": "\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- drop_fields:\n    when:\n      equals:\n        logtype: \"1001\"\n    fields: [\"src_host\", \"src_port\", \"dst_host\", \"dst_port\" ]\n    ignore_missing: true\n- rename:\n    fields:\n      - from: \"src_host\"\n        to: \"source.ip\"\n      - from: \"src_port\"\n        to: \"source.port\"\n      - from: \"dst_host\"\n        to: \"destination.host\"\n      - from: \"dst_port\"\n        to: \"destination.port\"\n    ignore_missing: true\n- convert:\n    fields:\n      - {from: \"logtype\", to: \"event.code\", type: \"string\"}\n    ignore_missing: true\n- drop_fields:\n    fields: '[\"prospector\", \"input\", \"offset\", \"beat\"]'\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: opencanary",
+            "custom": "pipeline: common"
+          }
+        }
+      }
+    }
+  }
+}

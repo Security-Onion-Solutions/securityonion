@@ -8,68 +8,63 @@
 
 . /usr/sbin/so-common
 
-
-# Create ES Token 
+printf "\n### Create ES Token ###\n"
 ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
-printf "ESTOKEN = $ESTOKEN \n"
 
-# Add SO-Manager Fleet URL
-## This array replaces whatever URLs are currently configured
-printf "\n"
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/settings" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  '{"fleet_server_hosts":["https://{{ GLOBALS.manager_ip }}:8220"]}'
-printf "\n\n"
-
-# Configure certificates
-mkdir -p /opt/so/conf/elastic-fleet/certs
-cp /etc/ssl/certs/intca.crt /opt/so/conf/elastic-fleet/certs
-cp /etc/pki/elasticfleet* /opt/so/conf/elastic-fleet/certs
-
-{% if grains.role in ['so-import', 'so-standalone', 'so-eval', 'so-manager', 'so-managersearch'] %}
-# Add SO-Manager Elasticsearch Ouput
-ESCACRT=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
+### Create Outputs & Fleet URLs ###
+printf "\nAdd Manager Elasticsearch Ouput...\n"
+ESCACRT=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
 JSON_STRING=$( jq -n \
                   --arg ESCACRT "$ESCACRT" \
-                  '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
+                  '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 printf "\n\n"
 
-{% else %}
-# Create Logstash Output payload
-LOGSTASHCRT=$(openssl x509 -in /opt/so/conf/elastic-fleet/certs/elasticfleet.crt)
-LOGSTASHKEY=$(openssl rsa -in  /opt/so/conf/elastic-fleet/certs/elasticfleet.key)
-LOGSTASHCA=$(openssl x509 -in  /opt/so/conf/elastic-fleet/certs/intca.crt)
+printf "\nCreate Logstash Output if node is not an Import or Eval install\n"
+{% if grains.role not in ['so-import', 'so-eval'] %}
+LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
 JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \
                   --arg LOGSTASHCA "$LOGSTASHCA" \
-                  '{"name":"so-manager_logstash","id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]}}'
+                  '{"name":"grid-logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055", "{{ GLOBALS.manager }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]},"proxy_id":null}'
                   )
-
-# Add SO-Manager Logstash Ouput
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 printf "\n\n"
 {%- endif %}
 
-# Add Elastic Fleet Integrations
+printf "\nAdd SO-Manager Fleet URL\n"
+## This array replaces whatever URLs are currently configured
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/settings" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  '{"fleet_server_hosts":["https://{{ GLOBALS.manager_ip }}:8220", "https://{{ GLOBALS.manager }}:8220"]}'
+printf "\n\n"
 
-# Add Elastic Fleet Server Agent Policy
-#curl -vv -K /opt/so/conf/elasticsearch/curl.config -L \
-#-X POST "localhost:5601/api/fleet/agent_policies" \
-#-H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
-#-d  '{"name":"SO-Manager","id":"so-manager","description":"SO Manager Fleet Server Policy","namespace":"default","monitoring_enabled":["logs"],"has_fleet_server":true}'
 
-# Add Agent Policy - SOS Grid Nodes
-#curl -vv -K /opt/so/conf/elasticsearch/curl.config -L \
-#-X POST "localhost:5601/api/fleet/agent_policies" \
-#-H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
-#-d  '{"name":"SO-Grid","id":"so-grid","description":"SO Grid Endpoint Policy","namespace":"default","monitoring_enabled":["logs"]}'
+### Create Policies & Associated Integration Configuration ###
 
-# Add Agent Policy - Default endpoints
-#curl -vv -K /opt/so/conf/elasticsearch/curl.config -L \
-#-X POST "localhost:5601/api/fleet/agent_policies" \
-#-H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
-#-d  '{"name":"Endpoints-Initalization","id":"endpoints","description":"Initial Endpoint Policy","namespace":"default","monitoring_enabled":["logs"]}'
+# Manager Fleet Server Host
+elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" | jq
 
+#Temp Fixup for ES Output bug
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                '{"name": $NAME,"description": $NAME,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
+                )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+# Initial Endpoints Policy
+elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false"
+
+# Grid Nodes Policy
+elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false"
+
+# Load Integrations for default policies
+so-elastic-fleet-integration-policy-load
+
+### Finalization ###
+
+# Query for Enrollment Tokens for default policies
 ENDPOINTSENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-default")) | .api_key')
 GRIDNODESENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes")) | .api_key')
 
@@ -81,7 +76,6 @@ printf '%s\n'\
     "    es_token: '$ESTOKEN'"\
     "    endpoints_enrollment: '$ENDPOINTSENROLLMENTOKEN'"\
     "    grid_enrollment: '$GRIDNODESENROLLMENTOKEN'"\
-    "    url: '{{ GLOBALS.manager_ip }}'"\
     "" >> "$pillar_file"
 
 #Store Grid Nodes Enrollment token in Global pillar
@@ -92,18 +86,3 @@ printf '%s\n'\
 
 # Call Elastic-Fleet Salt State
 salt-call state.apply elasticfleet queue=True
-
-# Load Elastic Fleet integrations
-/usr/sbin/so-elastic-fleet-integration-policy-load
-
-# Temp
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/  https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-darwin-x86_64.tar.gz
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/ https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-linux-x86_64.tar.gz
-wget --progress=bar:force:noscroll -P /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/ https://github.com/Security-Onion-Solutions/securityonion-docker-rpm/releases/download/so_elastic-agent-8.7.0/so-elastic-agent-8.7.0-windows-x86_64.tar.gz
-
-#git clone -b 2.4-so-elastic-agent https://github.com/Security-Onion-Solutions/securityonion-image.git
-#cd securityonion-image/so-elastic-agent-builder
-#docker build -t so-elastic-agent-builder .
-
-so-elastic-agent-gen-installers
-salt-call state.apply elasticfleet.install_agent_grid queue=True
