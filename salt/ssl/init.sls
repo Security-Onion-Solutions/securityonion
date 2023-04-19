@@ -225,17 +225,13 @@ efcrtlink:
 etc_elasticfleetlogstash_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet-logstash.key
-    - CN: {{ COMMONNAME }}
     - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
     - prereq:
       - x509: etc_elasticfleet_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
