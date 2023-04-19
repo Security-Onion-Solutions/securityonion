@@ -242,7 +242,7 @@ etc_elasticfleetlogstash_crt:
     - name: /etc/pki/elasticfleet-logstash.crt
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
-    - public_key: /etc/pki/elasticfleet-logstash.key
+    - private_key: /etc/pki/elasticfleet-logstash.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
