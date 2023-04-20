@@ -97,6 +97,8 @@ alwaysupdated:
 Etc/UTC:
   timezone.system
 
+# Sync curl configuration for Elasticsearch authentication
+{% if GLOBALS.role in ['so-eval', 'so-heavynode', 'so-import', 'so-manager', 'so-managersearch', 'so-searchnode', 'so-standalone'] %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -108,6 +110,7 @@ elastic_curl_config:
     - require:
       - file: elastic_curl_config_distributed
   {% endif %}
+{% endif %}
 
 # Sync some Utilities
 utilsyncscripts:
