@@ -10,4 +10,4 @@ To see all the latest features and fixes in this version of Security Onion, clic
 
 ## Customize This Space
 
-Make this area your own by customizing the content in the [Config](/#/config) interface.
+Make this area your own by customizing the content in the [Config](/#/config?s=soc.files.soc.motd__md) interface.
