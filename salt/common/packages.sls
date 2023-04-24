@@ -5,28 +5,37 @@ commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
-      - chrony
       - apache2-utils
       - wget
       - ntpdate
       - jq
-      - python3-docker
       - curl
       - ca-certificates
       - software-properties-common
       - apt-transport-https
       - openssl
       - netcat
-      - python3-mysqldb
       - sqlite3
       - libssl-dev
       - python3-dateutil
-      - python3-m2crypto
-      - python3-mysqldb
       - python3-packaging
+      - python3-watchdog
       - python3-lxml
       - git
       - vim
+
+# since Ubuntu requires and internet connection we can use pip to install modules
+python3-pip:
+  pkg.installed
+
+python-rich:
+  pip.installed:
+    - name: rich
+    - target: /usr/local/lib/python3.8/dist-packages/
+    - require:
+      - pkg: python3-pip
+  
+
 {% elif GLOBALS.os == 'Rocky' %}     
 commonpkgs:
   pkg.installed:
@@ -51,6 +60,8 @@ commonpkgs:
       - python3-m2crypto
       - rsync
       - python3-rich
+      - python3-pyyaml
       - python3-watchdog
+      - python3-packaging
       - unzip
 {% endif %}

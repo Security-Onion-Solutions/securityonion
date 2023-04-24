@@ -54,33 +54,37 @@ add_interface_bond0() {
 			ethtool -K "$BNIC" $i off &>/dev/null
 		fi
 	done
-	# Check if the bond slave connection has already been created
-	nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
-	local found_int=$?
 
-	if [[ $found_int != 0 ]]; then
-		# Create the slave interface and assign it to the bond
-		nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
-			ethernet.mtu "$MTU" \
-			connection.autoconnect "yes"
-	else
-		local int_uuid
-		int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+        if ! [[ $is_cloud ]]; then
+	  # Check if the bond slave connection has already been created
+	  nmcli -f name,uuid -p con | grep -q "bond0-slave-$BNIC"
+	  local found_int=$?
 
-		nmcli con mod "$int_uuid" \
-			ethernet.mtu "$MTU" \
-			connection.autoconnect "yes"
-	fi
+	  if [[ $found_int != 0 ]]; then
+		  # Create the slave interface and assign it to the bond
+		  nmcli con add type ethernet ifname "$BNIC" con-name "bond0-slave-$BNIC" master bond0 -- \
+			  ethernet.mtu "$MTU" \
+			  connection.autoconnect "yes"
+	  else
+		  local int_uuid
+		  int_uuid=$(nmcli -f name,uuid -p con | sed -n "s/bond0-slave-$BNIC //p" | tr -d ' ')
+
+		  nmcli con mod "$int_uuid" \
+			  ethernet.mtu "$MTU" \
+			  connection.autoconnect "yes"
+	  fi
+        fi
 
 	ip link set dev "$BNIC" arp off multicast off allmulticast off promisc on
-			
-	# Bring the slave interface up
-	if [[ $verbose == true ]]; then
-		nmcli con up "bond0-slave-$BNIC"
-	else
-		nmcli con up "bond0-slave-$BNIC" &>/dev/null
+
+        if ! [[ $is_cloud ]]; then
+	  # Bring the slave interface up
+	  if [[ $verbose == true ]]; then
+		  nmcli con up "bond0-slave-$BNIC"
+	  else
+		  nmcli con up "bond0-slave-$BNIC" &>/dev/null
+	  fi
 	fi
-	 
 	if [ "$nic_error" != 0 ]; then
 		return "$nic_error"
 	fi
@@ -156,6 +160,39 @@ disable_fastestmirror() {
 	sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 }
 
+elastic_fleet_integration_create() {
+
+    JSON_STRING=$1
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+elastic_fleet_policy_create() {
+
+    NAME=$1
+    DESC=$2
+    FLEETSERVER=$3
+
+    JSON_STRING=$( jq -n \
+                    --arg NAME "$NAME" \
+                    --arg DESC "$DESC" \
+                    --arg FLEETSERVER "$FLEETSERVER" \
+                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":$FLEETSERVER}'
+                    )
+    # Create Fleet Policy
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" 
+
+}
+
+elastic_fleet_policy_update() {
+
+    POLICYID=$1
+    JSON_STRING=$2
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/$POLICYID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+
 elastic_license() {
 
 read -r -d '' message <<- EOM
@@ -201,7 +238,7 @@ gpg_rpm_import() {
 	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/rocky/keys"
 	    fi
 	
-	    RPMKEYS=('RPM-GPG-KEY-EPEL-9' 'SALTSTACK-GPG-KEY2.pub' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
+	    RPMKEYS=('RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
 
 	    for RPMKEY in "${RPMKEYS[@]}"; do
     	        rpm --import $RPMKEYSLOC/$RPMKEY

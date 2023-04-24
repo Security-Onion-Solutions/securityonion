@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": "1.1.0"
+  },
+  "name": "import-evtx-logs",
+  "namespace": "so",
+  "description": "Import Windows EVTX logs",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/import/*/evtx/data.json"
+            ],
+            "data_stream.dataset": "import",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/evtx/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n- add_fields:\n    target: event\n    fields:\n      module: windows_eventlog\n      imported: true",
+            "custom": "pipeline: import.wel"
+          }
+        }
+      }
+    }
+  }
+}

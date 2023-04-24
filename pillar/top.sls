@@ -49,8 +49,8 @@ base:
     - kibana.secrets
     {% endif %}
     - secrets
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - manager.soc_manager
     - manager.adv_manager
     - idstools.soc_idstools
@@ -74,8 +74,8 @@ base:
 
   '*_sensor':
     - healthcheck.sensor
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -89,7 +89,8 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
-    - soc_global
+    - global.soc_global
+    - global.adv_global
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -126,7 +127,8 @@ base:
     {% endif %}
     - secrets
     - healthcheck.standalone
-    - soc_global
+    - global.soc_global
+    - global.adv_global
     - idstools.soc_idstools
     - idstools.adv_idstools
     - kratos.soc_kratos
@@ -149,14 +151,15 @@ base:
 
   '*_heavynode':
     - elasticsearch.auth
-    - soc_global
+    - global.soc_global
+    - global.adv_global
     - redis.soc_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_idh':
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - idh.soc_idh
     - idh.adv_idh
     - minions.{{ grains.id }}
@@ -174,8 +177,8 @@ base:
     - elasticsearch.auth
     {% endif %}
     - redis.soc_redis
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -189,8 +192,8 @@ base:
     {% endif %}
     - redis.soc_redis
     - redis.adv_redis
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -209,8 +212,8 @@ base:
     - manager.soc_manager
     - manager.adv_manager
     - soc.soc_soc
-    - soc_global
-    - adv_global
+    - global.soc_global
+    - global.adv_global
     - backup.soc_backup
     - backup.adv_backup
     - kratos.soc_kratos
@@ -221,6 +224,18 @@ base:
     - influxdb.adv_influxdb
     - firewall.soc_firewall
     - firewall.adv_firewall
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+
+  '*_fleet':
+    - global.soc_global
+    - global.adv_global
+    - backup.soc_backup
+    - backup.adv_backup
+    - logstash
+    - logstash.fleet
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 

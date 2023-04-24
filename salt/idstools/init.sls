@@ -20,9 +20,10 @@ idstoolslogdir:
     - group: 939
     - makedirs: True
 
-so-ruleupdatecron:
+so-rule-update:
   cron.present:
     - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1
+    - identifier: so-rule-update
     - user: root
     - minute: '1'
     - hour: '7'

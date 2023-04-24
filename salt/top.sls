@@ -339,6 +339,18 @@ base:
     - docker_clean
     - idh
 
+  '*_fleet and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    - logstash
+    - elasticfleet
+    - elasticfleet.install_agent_grid
+    - schedule
+    - docker_clean
+
   'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
     - workstation

@@ -1,0 +1,76 @@
+{
+  "package": {
+    "name": "redis",
+    "version": "1.4.0"
+  },
+  "name": "redis-logs",
+  "namespace": "default",
+  "description": "Redis logs",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "redis-logfile": {
+      "enabled": true,
+      "streams": {
+        "redis.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/redis/redis.log"
+            ],
+            "tags": [
+              "redis-log"
+            ],
+            "preserve_original_event": false
+          }
+        }
+      }
+    },
+    "redis-redis": {
+      "enabled": false,
+      "streams": {
+        "redis.slowlog": {
+          "enabled": false,
+          "vars": {
+            "hosts": [
+              "127.0.0.1:6379"
+            ],
+            "password": ""
+          }
+        }
+      }
+    },
+    "redis-redis/metrics": {
+      "enabled": false,
+      "vars": {
+        "hosts": [
+          "127.0.0.1:6379"
+        ],
+        "idle_timeout": "20s",
+        "maxconn": 10,
+        "network": "tcp",
+        "password": ""
+      },
+      "streams": {
+        "redis.info": {
+          "enabled": false,
+          "vars": {
+            "period": "10s"
+          }
+        },
+        "redis.key": {
+          "enabled": false,
+          "vars": {
+            "key.patterns": "- limit: 20\n  pattern: *\n",
+            "period": "10s"
+          }
+        },
+        "redis.keyspace": {
+          "enabled": false,
+          "vars": {
+            "period": "10s"
+          }
+        }
+      }
+    }
+  }
+}

@@ -51,17 +51,13 @@ m2cryptopkgs:
 influxdb_key:
   x509.private_key_managed:
     - name: /etc/pki/influxdb.key
-    - CN: {{ GLOBALS.hostname }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/influxdb.key') -%}
     - prereq:
       - x509: /etc/pki/influxdb.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -72,7 +68,7 @@ influxdb_crt:
     - name: /etc/pki/influxdb.crt
     - ca_server: {{ ca_server }}
     - signing_policy: influxdb
-    - public_key: /etc/pki/influxdb.key
+    - private_key: /etc/pki/influxdb.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }} 
     - days_remaining: 0
@@ -101,17 +97,13 @@ influxkeyperms:
 redis_key:
   x509.private_key_managed:
     - name: /etc/pki/redis.key
-    - CN: {{ GLOBALS.hostname }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/redis.key') -%}
     - prereq:
       - x509: /etc/pki/redis.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -122,7 +114,7 @@ redis_crt:
     - ca_server: {{ ca_server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - signing_policy: registry
-    - public_key: /etc/pki/redis.key
+    - private_key: /etc/pki/redis.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 0
     - days_valid: 820
@@ -146,21 +138,19 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+# Create cert for Elastic Fleet Host
+
 etc_elasticfleet_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet.key
-    - CN: {{ COMMONNAME }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet.key') -%}
     - prereq:
       - x509: etc_elasticfleet_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -171,7 +161,7 @@ etc_elasticfleet_crt:
     - name: /etc/pki/elasticfleet.crt
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
-    - public_key: /etc/pki/elasticfleet.key
+    - private_key: /etc/pki/elasticfleet.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -199,26 +189,27 @@ efperms:
     - mode: 640
     - group: 939
 
-chownilogstashelasticfleetp8:
+chownelasticfleetcrt:
   file.managed:
     - replace: False
-    - name: /etc/pki/elasticfleet.p8
+    - name: /etc/pki/elasticfleet.crt
     - mode: 640
     - user: 947
     - group: 939
 
-# Create Symlinks to the keys so I can distribute it to all the things
+chownelasticfleetkey:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet.key
+    - mode: 640
+    - user: 947
+    - group: 939
+
+# Create Symlinks to the keys to distribute it to all the things
 elasticfleetdircerts:
   file.directory:
     - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs
     - makedirs: True
-
-efkeylink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet.p8
-    - target: /etc/pki/elasticfleet.p8
-    - user: socore
-    - group: socore
 
 efcrtlink:
   file.symlink:
@@ -226,23 +217,130 @@ efcrtlink:
     - target: /etc/pki/elasticfleet.crt
     - user: socore
     - group: socore
+
+
+{% if grains.role not in ['so-fleet'] %}
+# Create Cert for Elastic Fleet Logstash Input (Same cert used across all Fleet nodes)
+
+etc_elasticfleetlogstash_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet-logstash.key
+    - bits: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
+    - prereq:
+      - x509: etc_elasticfleet_crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+# Request a cert and drop it where it needs to go to be distributed
+etc_elasticfleetlogstash_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet-logstash.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - private_key: /etc/pki/elasticfleet-logstash.key
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+{% if grains.role not in ['so-heavynode'] %}
+    - unless:
+      # https://github.com/saltstack/salt/issues/52167
+      # Will trigger 5 days (432000 sec) from cert expiration
+      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
+{% endif %}
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-logstash.key -topk8 -out /etc/pki/elasticfleet-logstash.p8 -nocrypt"
+    - onchanges:
+      - x509: etc_elasticfleet_key
+
+eflogstashperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.key
+    - mode: 640
+    - group: 939
+
+chownilogstashelasticfleetp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.p8
+    - mode: 640
+    - user: 947
+    - group: 939
+
+chownilogstashelasticfleetlogstashcrt:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.crt
+    - mode: 640
+    - user: 947
+    - group: 939
+
+chownilogstashelasticfleetlogstashkey:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-logstash.key
+    - mode: 640
+    - user: 947
+    - group: 939
+
+eflogstashkeylink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.p8
+    - target: /etc/pki/elasticfleet.p8
+    - user: socore
+    - group: socore
+
+eflogstashcrtlink:
+  file.symlink:
+    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.crt
+    - target: /etc/pki/elasticfleet.crt
+    - user: socore
+    - group: socore
+
+{% endif %}
+
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.p8
+    - makedirs: True
+    - mode: 640
+    - user: 931
+    - group: 939
+
+/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:
+  file.managed:
+    - replace: True
+    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.crt
+    - makedirs: True
+    - mode: 640
+    - user: 931
+    - group: 939
+
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/filebeat.key') -%}
     - prereq:
       - x509: etc_filebeat_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -253,7 +351,7 @@ etc_filebeat_crt:
     - name: /etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
-    - public_key: /etc/pki/filebeat.key
+    - private_key: /etc/pki/filebeat.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -313,17 +411,13 @@ fbcrtlink:
 registry_key:
   x509.private_key_managed:
     - name: /etc/pki/registry.key
-    - CN: {{ GLOBALS.manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/registry.key') -%}
     - prereq:
       - x509: /etc/pki/registry.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -335,7 +429,7 @@ registry_crt:
     - ca_server: {{ ca_server }}
     - subjectAltName: DNS:{{ GLOBALS.manager }}, IP:{{ GLOBALS.manager_ip }} 
     - signing_policy: registry
-    - public_key: /etc/pki/registry.key
+    - private_key: /etc/pki/registry.key
     - CN: {{ GLOBALS.manager }}
     - days_remaining: 0
     - days_valid: 820
@@ -361,17 +455,13 @@ regkeyperms:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ COMMONNAME }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -380,7 +470,7 @@ regkeyperms:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
-    - public_key: /etc/pki/elasticsearch.key
+    - private_key: /etc/pki/elasticsearch.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -418,17 +508,13 @@ elasticp12perms:
 managerssl_key:
   x509.private_key_managed:
     - name: /etc/pki/managerssl.key
-    - CN: {{ GLOBALS.manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
     - prereq:
       - x509: /etc/pki/managerssl.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -439,7 +525,7 @@ managerssl_crt:
     - name: /etc/pki/managerssl.crt
     - ca_server: {{ ca_server }}
     - signing_policy: managerssl
-    - public_key: /etc/pki/managerssl.key
+    - private_key: /etc/pki/managerssl.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -476,17 +562,13 @@ fbcertdir:
 conf_filebeat_key:
   x509.private_key_managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.key
-    - CN: {{ COMMONNAME }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/opt/so/conf/filebeat/etc/pki/filebeat.key') -%}
     - prereq:
       - x509: conf_filebeat_crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -497,7 +579,7 @@ conf_filebeat_crt:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - ca_server: {{ ca_server }}
     - signing_policy: filebeat
-    - public_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
+    - private_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -542,17 +624,13 @@ chownfilebeatp8:
 # Create a cert for elasticsearch
 /etc/pki/elasticsearch.key:
   x509.private_key_managed:
-    - CN: {{ GLOBALS.manager }}
-    - bits: 4096
-    - days_remaining: 0
-    - days_valid: 820
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticsearch.key') -%}
     - prereq:
       - x509: /etc/pki/elasticsearch.crt
     {%- endif %}
-    - timeout: 30
     - retry:
         attempts: 5
         interval: 30
@@ -561,7 +639,7 @@ chownfilebeatp8:
   x509.certificate_managed:
     - ca_server: {{ ca_server }}
     - signing_policy: registry
-    - public_key: /etc/pki/elasticsearch.key
+    - private_key: /etc/pki/elasticsearch.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0

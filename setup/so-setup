@@ -218,8 +218,9 @@ if [ -n "$test_profile" ]; then
 	fi
 
 	ALLOW_CIDR=0.0.0.0/0
-	MNIC=$(ls -1 /sys/class/net | head -1)
-	BNICS=$(ls -1 /sys/class/net | head -2 | tail -1)
+	nic_list=$(ls -1 /sys/class/net | grep -v docker | grep -v lo)
+	MNIC=$(echo "$nic_list" | head -1)
+	BNICS=$(echo "$nic_list" | head -2 | tail -1)
 	WEBUSER=onionuser@somewhere.invalid
 	WEBPASSWD1=0n10nus3r
 	WEBPASSWD2=0n10nus3r
@@ -337,7 +338,7 @@ if ! [[ -f $install_opt_file ]]; then
 	# If you are a manager ask ALL the manager things here. I know there is code re-use but this makes it easier to add new roles.
 	if [[ $is_eval ]]; then
 		waitforstate=true
-		ubuntu_check
+		#ubuntu_check
 		monints=true
 		check_elastic_license
 		check_requirements "manager"
@@ -361,7 +362,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 	elif [[ $is_standalone ]]; then
 		waitforstate=true
-		ubuntu_check
+		#ubuntu_check
 		monints=true
 		check_elastic_license
 		check_requirements "manager"
@@ -386,7 +387,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_manager ]]; then
 		check_elastic_license
 		waitforstate=true
-		ubuntu_check
+		#ubuntu_check
 		check_requirements "manager"
 		networking_needful
 		collect_net_method
@@ -408,7 +409,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_managersearch ]]; then
 		check_elastic_license
 		waitforstate=true
-		ubuntu_check
+		#ubuntu_check
 		check_requirements "manager"
 		networking_needful
 		collect_net_method
@@ -428,7 +429,8 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
-		ubuntu_check
+		#ubuntu_check
+		installer_prereq_packages
 		monints=true
 		check_requirements "sensor"
 		calculate_useable_cores
@@ -442,9 +444,22 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_sensor_nics
 		set_minion_info
 		whiptail_end_settings
-		
+
+	elif [[ $is_fleet ]]; then
+		check_requirements "fleet"
+		networking_needful
+		check_network_manager_conf
+		set_network_dev_status_list
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		detect_cloud
+		set_minion_info
+		whiptail_end_settings
+
 	elif [[ $is_searchnode ]]; then
-		ubuntu_check
+		#ubuntu_check
+		installer_prereq_packages
 		check_requirements "elasticsearch"
 		networking_needful
 		check_network_manager_conf
@@ -457,7 +472,8 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_heavynode ]]; then
-		ubuntu_check
+		#ubuntu_check
+		installer_prereq_packages
 		monints=true
 		check_requirements "heavynode"
 		calculate_useable_cores
@@ -469,7 +485,8 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_idh ]]; then
-		ubuntu_check
+		#ubuntu_check
+		installer_prereq_packages
 		check_requirements "idh"
 		networking_needful
 		collect_mngr_hostname
@@ -481,7 +498,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_import ]]; then
-		ubuntu_check
+		#ubuntu_check
 		waitforstate=true
 		monints=true
 		check_elastic_license
@@ -503,7 +520,8 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_receiver ]]; then
-		ubuntu_check
+		#ubuntu_check
+		installer_prereq_packages
 		check_requirements "receiver"
 		networking_needful
 		collect_mngr_hostname
@@ -566,7 +584,7 @@ if ! [[ -f $install_opt_file ]]; then
 		export NODE_DESCRIPTION=$NODE_DESCRIPTION
 		export MAINIP=$MAINIP
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
-		export INTERFACE="bond0"
+		export INTERFACE=$INTERFACE
 		export CORECOUNT=$lb_procs
 		export LSHOSTNAME=$HOSTNAME
 		export LSHEAP=$LS_HEAP_SIZE
@@ -594,6 +612,7 @@ if ! [[ -f $install_opt_file ]]; then
 		# Start the master service
 		copy_salt_master_config
 		configure_minion "$minion_type"
+		check_sos_appliance
 
 		logCmd "salt-key -yd $MINION_ID"
 		logCmd "salt-call state.show_top"
@@ -622,11 +641,13 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		title "Setting up Kibana Default Space"
+		logCmd "so-kibana-space-defaults"
 		add_web_user
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
-                logCmd "so-elastic-fleet-setup"
+        logCmd "so-elastic-fleet-setup"
 		if [[ ! $is_import ]]; then
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"
@@ -656,6 +677,7 @@ if ! [[ -f $install_opt_file ]]; then
 		update_packages
 		saltify
 		configure_minion "$minion_type"
+		check_sos_appliance
 		drop_install_options
 		checkin_at_boot
 		logCmd "salt-call state.apply setup.highstate_cron --local --file-root=../salt/"
