@@ -18,9 +18,12 @@ base:
 
   '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
     - match: compound
-    - zeek
+    - zeek.soc_zeek
+    - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
+    - suricata.soc_suricata
+    - suricata.adv_suricata
 
   '*_managersearch or *_heavynode':
     - match: compound
@@ -32,6 +35,8 @@ base:
     - elasticsearch.index_templates
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - curator.soc_curator
+    - curator.adv_curator
 
   '*_manager':
     - logstash
@@ -39,6 +44,8 @@ base:
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
+    - curator.soc_curator
+    - curator.adv_curator
 
   '*_manager or *_managersearch':
     - match: compound
@@ -57,6 +64,8 @@ base:
     - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
+    - kibana.soc_kibana
+    - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -65,6 +74,8 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
     - firewall.soc_firewall
@@ -94,6 +105,8 @@ base:
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - idstools.soc_idstools
@@ -139,6 +152,8 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - soc.soc_soc
@@ -209,6 +224,8 @@ base:
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - soc.soc_soc
