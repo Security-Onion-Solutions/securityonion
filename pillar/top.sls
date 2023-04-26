@@ -1,5 +1,7 @@
 base:
   '*':
+    - global.soc_global
+    - global.adv_global
     - docker.soc_docker
     - docker.adv_docker
     - influxdb.token
@@ -27,8 +29,6 @@ base:
     - kibana.secrets
     {% endif %}
     - secrets
-    - global.soc_global
-    - global.adv_global
     - manager.soc_manager
     - manager.adv_manager
     - idstools.soc_idstools
@@ -64,8 +64,6 @@ base:
 
   '*_sensor':
     - healthcheck.sensor
-    - global.soc_global
-    - global.adv_global
     - strelka.soc_strelka
     - strelka.adv_strelka
     - zeek.soc_zeek
@@ -89,8 +87,6 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
-    - global.soc_global
-    - global.adv_global
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -144,8 +140,6 @@ base:
     {% endif %}
     - secrets
     - healthcheck.standalone
-    - global.soc_global
-    - global.adv_global
     - idstools.soc_idstools
     - idstools.adv_idstools
     - kratos.soc_kratos
@@ -191,8 +185,6 @@ base:
     - elasticsearch.adv_elasticsearch
     - curator.soc_curator
     - curator.adv_curator
-    - global.soc_global
-    - global.adv_global
     - redis.soc_redis
     - redis.adv_redis
     - zeek.soc_zeek
@@ -209,8 +201,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_idh':
-    - global.soc_global
-    - global.adv_global
     - idh.soc_idh
     - idh.adv_idh
     - minions.{{ grains.id }}
@@ -224,8 +214,6 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
-    - global.soc_global
-    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -237,8 +225,6 @@ base:
     {% endif %}
     - redis.soc_redis
     - redis.adv_redis
-    - global.soc_global
-    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -264,8 +250,6 @@ base:
     - soctopus.adv_soctopus
     - curator.soc_curator
     - curator.adv_curator
-    - global.soc_global
-    - global.adv_global
     - backup.soc_backup
     - backup.adv_backup
     - kratos.soc_kratos
@@ -290,8 +274,6 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_fleet':
-    - global.soc_global
-    - global.adv_global
     - backup.soc_backup
     - backup.adv_backup
     - logstash.soc_logstash
