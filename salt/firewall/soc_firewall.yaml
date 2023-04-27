@@ -1,138 +1,176 @@
 firewall:
   hostgroups:
     analyst: &hostgroupsettings
-      description: List of IP or CIDR blocks to allow access to for this hostgroup.
+      description: List of IP or CIDR blocks to allow access to this hostgroup.
       helplink: firewall.html
       multiline: True
-      regex: ^([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?$
-      regexFailureMessage: You must enter a properly formatted IP address or CIDR.
-    anywhere: *hostgroupsettings
+      regex: ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?)?$
+      regexFailureMessage: You must enter a valid IP address or CIDR.
+    anywhere: &hostgroupsettingsadv
+      description: List of IP or CIDR blocks to allow access to this hostgroup.
+      helplink: firewall.html
+      multiline: True
+      advanced: True
+      regex: ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?)?$
+      regexFailureMessage: You must enter a valid IP address or CIDR.
     beats_endpoint: *hostgroupsettings
     beats_endpoint_ssl: *hostgroupsettings
-    dockernet: *hostgroupsettings
+    dockernet: *hostgroupsettingsadv
     elastic_agent_endpoint: *hostgroupsettings
-    elasticsearch_rest: *hostgroupsettings
-    endgame: *hostgroupsettings
+    elasticsearch_rest: *hostgroupsettingsadv
+    endgame: *hostgroupsettingsadv
     eval: *hostgroupsettings
     fleet: *hostgroupsettings
     heavynodes: *hostgroupsettings
     idh: *hostgroupsettings
-    localhost: *hostgroupsettings
+    localhost: *hostgroupsettingsadv
     manager: *hostgroupsettings
     receivers: *hostgroupsettings
     searchnodes: *hostgroupsettings
     securityonion_desktops: *hostgroupsettings
-    self: *hostgroupsettings
+    self: *hostgroupsettingsadv
     sensors: *hostgroupsettings
     standalone: *hostgroupsettings
     strelka_frontend: *hostgroupsettings
     syslog: *hostgroupsettings
+    customhostgroup1: &customhostgroupsettings
+      description: List of IP or CIDR blocks to allow to this hostgroup.
+      helpLink: firewall.html
+      advanced: True
+      regex: ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?)?$
+      regexFailureMessage: You must enter a valid IP address or CIDR.
+    customhostgroup2: *customhostgroupsettings
+    customhostgroup3: *customhostgroupsettings
+    customhostgroup4: *customhostgroupsettings
+    customhostgroup5: *customhostgroupsettings
+    customhostgroup6: *customhostgroupsettings
+    customhostgroup7: *customhostgroupsettings
+    customhostgroup8: *customhostgroupsettings
+    customhostgroup9: *customhostgroupsettings
+    customhostgroup10: *customhostgroupsettings
+
   portgroups:
     all:
-      tcp:
-      udp:
+      tcp: &tcpsettings
+        description: List of TCP ports for this port group.
+        helplink: firewall.html
+        advanced: True
+        multiline: True
+      udp: &udpsettings
+        description: List of UDP ports for this port group.
+        helplink: firewall.html
+        advanced: True
+        multiline: True
     agrules:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     beats_5044:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     beats_5644:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     beats_5066:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     beats_5056:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings 
     docker_registry:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     elasticsearch_node:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     elasticsearch_rest:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     elastic_agent_control:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     elastic_agent_data:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     endgame:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     influxdb:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     kibana:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     mysql:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     nginx:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     playbook:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     redis:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     salt_manager:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     sensoroni:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     ssh:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     strelka_frontend:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings 
     syslog:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
     yum:
-      tcp:
-      udp:
+      tcp: *tcpsettings
+      udp: *udpsettings
   role:
     eval:
       chain:
         DOCKER-USER:
           hostgroups:
             eval:
-              portgroups:
+              portgroups: &portgroupsdocker
+                description: Portgroups to add access to the docker containers for this role.
+                advanced: True
+                multiline: True
+                helpLink: firewall.html
             sensors:
-              portgroups:
+              portgroups: *portgroupsdocker
             searchnodes:
-              portgroups:
+              portgroups: *portgroupsdocker
             heavynodes:
-              portgroups:
+              portgroups: *portgroupsdocker
             self:
-              portgroups:
-            beats_endpoint:
-              portgroups:
+              portgroups: *portgroupsdocker
+            beats_endpoint: 
+              portgroups: *portgroupsdocker
             beats_endpoint_ssl:
-              portgroups:
+              portgroups: *portgroupsdocker
             elasticsearch_rest:
-              portgroups:
+              portgroups: *portgroupsdocker
             elastic_agent_endpoint:
-              portgroups:
+              portgroups: *portgroupsdocker
             strelka_frontend:
-              portgroups:
+              portgroups: *portgroupsdocker
             syslog:
-              portgroups:
+              portgroups: *portgroupsdocker
             analyst:
-              portgroups:
+              portgroups: *portgroupsdocker
         INPUT:
           hostgroups:
             anywhere:
-              portgroups:
+              portgroups: &portgroupshost
+                description: Portgroups to add access to the host.
+                advacned: True
+                multiline: True
+                helpLink
             dockernet:
               portgroups:
             localhost:
@@ -189,6 +227,10 @@ firewall:
               portgroups:
             analyst:
               portgroups:
+            custom1:
+              portgroups:
+            custom2:
+
         INPUT:
           hostgroups:
             anywhere:
