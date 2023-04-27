@@ -49,13 +49,12 @@ so-status.conf:
     - name: /opt/so/conf/so-status/so-status.conf
     - unless: ls /opt/so/conf/so-status/so-status.conf
 
-sosaltstackperms:
+socore_opso_perms:
   file.directory:
-    - name: /opt/so/saltstack
+    - name: /opt/so
     - user: 939
     - group: 939
-    - dir_mode: 770
-
+    
 so_log_perms:
   file.directory:
     - name: /opt/so/log
