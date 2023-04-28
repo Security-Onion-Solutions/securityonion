@@ -1,62 +1,10 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% set role = grains.id.split('_') | last %}
-{% set translated_pillar_assigned_hostgroups = {} %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% import_yaml 'firewall/defaults.yaml' as FIREWALL_DEFAULT %}
 
-{% import_yaml 'firewall/ports/ports.yaml' as default_portgroups %}
-{% set default_portgroups = default_portgroups.firewall.ports %}
-{% import_yaml 'firewall/ports/ports.local.yaml' as local_portgroups %}
-{% if local_portgroups.firewall.ports %}
-  {% set local_portgroups = local_portgroups.firewall.ports %}
-{% else %}
-  {% set local_portgroups = {} %}
-{% endif %}
+{# add our ip to self #}
+{% do FIREWALL_DEFAULT.firewall.hostgroups.self.append(GLOBALS.node_ip) %}
+{# add dockernet range  #}
+{% do FIREWALL_DEFAULT.firewall.hostgroups.dockernet.append(DOCKER.sorange) %}
 
-{% set portgroups = salt['defaults.merge'](default_portgroups, local_portgroups, in_place=False) %}
-{% set defined_portgroups = portgroups %}
-
-{% if GLOBALS.role == 'so-idh' %}
-{% from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
-{% do salt['defaults.merge'](defined_portgroups, IDH_PORTGROUPS, in_place=True) %}
-{% endif %}
-
-{% set local_hostgroups = {'firewall': {'hostgroups': {}}} %}
-
-{% set hostgroup_list =  salt['cp.list_master'](prefix='firewall/hostgroups') %}
-
-{% for hg in hostgroup_list %}
-{%   import_text hg as hg_ips %}
-{%   do local_hostgroups.firewall.hostgroups.update({hg.split('/')[2]: {'ips': {'insert': hg_ips.split(), 'delete': []}}}) %}
-{% endfor %}
-
-{% set hostgroups = local_hostgroups.firewall.hostgroups %}
-
-{# This block translate the portgroups defined in the pillar to what is defined my portgroups.yaml and portgroups.local.yaml #}
-{% if salt['pillar.get']('firewall:assigned_hostgroups:chain') %}
-  {% set translated_pillar_assigned_hostgroups = {'chain': {}} %}
-
-  {% for chain, hg in salt['pillar.get']('firewall:assigned_hostgroups:chain').items() %}
-    {% for pillar_hostgroup, pillar_portgroups in salt['pillar.get']('firewall:assigned_hostgroups:chain')[chain].hostgroups.items() %}
-      {% if translated_pillar_assigned_hostgroups.chain[chain] is defined %}
-        {% do translated_pillar_assigned_hostgroups.chain[chain].hostgroups.update({pillar_hostgroup: {"portgroups": []}}) %}
-      {% else %}
-        {% do translated_pillar_assigned_hostgroups.chain.update({chain: {"hostgroups": {pillar_hostgroup: {"portgroups": []}}}}) %}
-      {% endif %}
-      {% for pillar_portgroup in pillar_portgroups.portgroups %}
-        {% set pillar_portgroup = pillar_portgroup.split('.') | last %}
-        {% do translated_pillar_assigned_hostgroups.chain[chain].hostgroups[pillar_hostgroup].portgroups.append(defined_portgroups[pillar_portgroup]) %}
-      {% endfor %}
-    {% endfor %}
-  {% endfor %}
-{% endif %}
-
-{% import_yaml 'firewall/assigned_hostgroups.map.yaml' as default_assigned_hostgroups %}
-{% import_yaml 'firewall/assigned_hostgroups.local.map.yaml' as local_assigned_hostgroups %}
-{% if local_assigned_hostgroups.role.get(role, False) %}
-  {% set assigned_hostgroups = salt['defaults.merge'](local_assigned_hostgroups.role[role], default_assigned_hostgroups.role[role], merge_lists=False, in_place=False) %}
-{% else %}
-  {% set assigned_hostgroups = default_assigned_hostgroups.role[role] %}
-{% endif %}
-
-{% if translated_pillar_assigned_hostgroups %}
-  {% do salt['defaults.merge'](assigned_hostgroups, translated_pillar_assigned_hostgroups, merge_lists=True, in_place=True) %}
-{% endif %}
+{% set FIREWALL_MERGED = salt['pillar.get']('firewall', FIREWALL_DEFAULT.firewall, merge=True) %}
