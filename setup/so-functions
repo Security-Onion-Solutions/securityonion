@@ -2291,18 +2291,18 @@ set_initial_firewall_policy() {
 
 	case "$install_type" in
 		'EVAL' | 'MANAGER' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			$default_salt_dir/salt/common/tools/sbin/so-firewall --role=$install_type --ip=$MAINIP --apply=true
+			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost $minion_type $MAINIP --apply
 			;;
 	esac
 }
 
 set_initial_firewall_access() {
 	if [[ ! -z "$ALLOW_CIDR" ]]; then
-		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=analyst --ip=$ALLOW_CIDR --apply=true
+		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost analyst $ALLOW_CIDR --apply
 	fi
 	if [[ ! -z "$MINION_CIDR" ]]; then
-		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=sensors --ip=$MINION_CIDR --apply=false
-		$default_salt_dir/salt/common/tools/sbin/so-firewall --role=searchnodes --ip=$MINION_CIDR --apply=true
+		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensors $MINION_CIDR
+		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost searchnodes $MINION_CIDR --apply
 	fi
 }
 
