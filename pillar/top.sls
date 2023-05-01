@@ -4,6 +4,8 @@ base:
     - global.adv_global
     - docker.soc_docker
     - docker.adv_docker
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - influxdb.token
     - logrotate.soc_logrotate
     - logrotate.adv_logrotate
@@ -53,8 +55,6 @@ base:
     - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - curator.soc_curator
     - curator.adv_curator
     - soctopus.soc_soctopus
@@ -112,8 +112,6 @@ base:
     - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - zeek.soc_zeek
     - zeek.adv_zeek
     - bpf.soc_bpf
@@ -164,8 +162,6 @@ base:
     - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - zeek.soc_zeek
     - zeek.adv_zeek
     - bpf.soc_bpf
@@ -258,8 +254,6 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - zeek.soc_zeek
     - zeek.adv_zeek
     - bpf.soc_bpf
