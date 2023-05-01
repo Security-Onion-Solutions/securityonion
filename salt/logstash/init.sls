@@ -11,7 +11,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 # Logstash Section - Decide which pillar to use
-{% set lsheap = salt['pillar.get']('logstash_settings:lsheap') %}
+{% set lsheap = salt['pillar.get']('logstash:settings:lsheap') %}
 {% if GLOBALS.role in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
     {% set nodetype = GLOBALS.role  %}
 {% endif %}
