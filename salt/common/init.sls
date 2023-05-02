@@ -111,21 +111,23 @@ elastic_curl_config:
   {% endif %}
 {% endif %}
 
-# Sync some Utilities
-utilsyncscripts:
+
+common_sbin:
   file.recurse:
     - name: /usr/sbin
-    - user: root
-    - group: root
+    - source: salt://common/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+common_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://common/tools/sbin_jinja
+    - user: 939
+    - group: 939 
     - file_mode: 755
     - template: jinja
-    - source: salt://common/tools/sbin
-    - exclude_pat:
-        - so-common
-        - so-firewall
-        - so-image-common
-        - soup
-        - so-status
 
 so-status_script:
   file.managed:
