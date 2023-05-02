@@ -21,6 +21,27 @@ vm.max_map_count:
   sysctl.present:
     - value: 262144
 
+# Add ES Group
+elasticsearchgroup:
+  group.present:
+    - name: elasticsearch
+    - gid: 930
+
+esconfdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch
+    - user: 930
+    - group: 939
+    - makedirs: True
+
+# Add ES user
+elasticsearch:
+  user.present:
+    - uid: 930
+    - gid: 930
+    - home: /opt/so/conf/elasticsearch
+    - createhome: False
+
 {% if GLOBALS.is_manager %}
 # We have to add the Manager CA to the CA list
 cascriptsync:
@@ -42,20 +63,26 @@ cascriptfun:
         - file: cascriptsync
 {% endif %}
 
-# Sync some es scripts
-es_sync_scripts:
+elasticsearch_sbin:
   file.recurse:
     - name: /usr/sbin
-    - user: root
-    - group: root
+    - source: salt://elasticsearch/tools/sbin
+    - user: 930
+    - group: 939
+    - file_mode: 755
+    - exclude_pat:
+      - so-catrust
+      - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+      - so-elasticsearch-ilm-policy-load 
+
+elasticsearch_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://elasticsearch/tools/sbin_jinja
+    - user: 939
+    - group: 939 
     - file_mode: 755
     - template: jinja
-    - source: salt://elasticsearch/tools/sbin
-    - exclude_pat:
-        - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
-        - so-elasticsearch-ilm-policy-load 
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
 so-elasticsearch-ilm-policy-load-script:
   file.managed:
@@ -95,29 +122,6 @@ capemz:
     - source: salt://common/tls-ca-bundle.pem
     - user: 939
     - group: 939
-
-
-
-# Add ES Group
-elasticsearchgroup:
-  group.present:
-    - name: elasticsearch
-    - gid: 930
-
-# Add ES user
-elasticsearch:
-  user.present:
-    - uid: 930
-    - gid: 930
-    - home: /opt/so/conf/elasticsearch
-    - createhome: False
-
-esconfdir:
-  file.directory:
-    - name: /opt/so/conf/elasticsearch
-    - user: 930
-    - group: 939
-    - makedirs: True
 
 esingestdir:
   file.directory:
