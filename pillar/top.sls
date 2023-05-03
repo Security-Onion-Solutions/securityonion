@@ -6,6 +6,8 @@ base:
     - logrotate
     - docker.soc_docker
     - docker.adv_docker
+    - firewall.soc_firewall
+    - firewall.adv_firewall
     - sensoroni.soc_sensoroni
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
@@ -68,8 +70,6 @@ base:
     - elasticsearch.adv_elasticsearch
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -108,8 +108,6 @@ base:
     - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -145,8 +143,6 @@ base:
     - soc.soc_soc
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -223,8 +219,6 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
