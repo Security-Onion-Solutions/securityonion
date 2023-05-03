@@ -17,18 +17,39 @@ FLEETHOST="{{ GLOBALS.manager_ip }}"
 
 #FLEETHOST=$1
 #ENROLLMENTOKEN=$2
-CONTAINERGOOS=( "linux" "darwin" "windows" )
+TARGETOS=( "linux" "darwin" "windows" )
 
-#rm -rf /tmp/elastic-agent-workspace
-#mkdir -p /tmp/elastic-agent-workspace
+printf  "\n### Get rid of any previous runs\n"
+rm -rf /tmp/elastic-agent-workspace
+mkdir -p /tmp/elastic-agent-workspace
 
-for OS in "${CONTAINERGOOS[@]}"
+printf "\n### Extract outer tarball and then each individual tarball/zip\n"
+tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-{{ GLOBALS.so_version }}.tar.gz -C /tmp/elastic-agent-workspace/
+unzip /tmp/elastic-agent-workspace/elastic-agent-*.zip -d /tmp/elastic-agent-workspace/
+for archive in /tmp/elastic-agent-workspace/*.tar.gz
+do 
+  tar xf "$archive" -C /tmp/elastic-agent-workspace/
+done 
+
+printf "\n### Strip out unused components"
+find /tmp/elastic-agent-workspace/elastic-agent-*/data/elastic-agent-*/components -regex '.*fleet.*\|.*packet.*\|.*apm*.*\|.*audit.*\|.*heart.*\|.*cloud.*' -delete 
+
+printf "\n### Tar everything up again"
+for OS in "${TARGETOS[@]}"
+do 
+  rm -rf /tmp/elastic-agent-workspace/elastic-agent
+  mv /tmp/elastic-agent-workspace/elastic-agent-*-$OS-x86_64 /tmp/elastic-agent-workspace/elastic-agent
+  tar -czvf /tmp/elastic-agent-workspace/$OS.tar.gz  -C /tmp/elastic-agent-workspace elastic-agent
+done 
+
+printf "\n### Generate OS packages using the cleaned up tarballs"
+for OS in "${TARGETOS[@]}"
 do
-    printf "\n\nGenerating $OS Installer..."
-    #cp /opt/so/saltstack/default/salt/elasticfleet/files/elastic-agent/so-elastic-agent-*-$OS-x86_64.tar.gz /tmp/elastic-agent-workspace/$OS.tar.gz
+    printf "\n\n### Generating $OS Installer...\n"
     docker run -e CGO_ENABLED=0 -e GOOS=$OS \
     --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
+    --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
     {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
-    printf "\n $OS Installer Generated..."
+    printf "\n### $OS Installer Generated...\n"
 done
