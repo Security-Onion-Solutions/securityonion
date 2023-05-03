@@ -34,6 +34,23 @@ kibanaconfdir:
     - group: 939
     - makedirs: True
 
+kibana_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kibana/tools/sbin
+    - user: 932
+    - group: 939
+    - file_mode: 755
+
+curator_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kibana/tools/sbin_jinja
+    - user: 932
+    - group: 939 
+    - file_mode: 755
+    - template: jinja
+
 kibanaconfig:
   file.managed:
     - name: /opt/so/conf/kibana/etc/kibana.yml

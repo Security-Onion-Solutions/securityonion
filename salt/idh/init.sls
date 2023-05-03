@@ -60,6 +60,23 @@ opencanary_config:
     - defaults:
         OPENCANARYCONFIG: {{ OPENCANARYCONFIG }}
 
+idh_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://idh/tools/sbin
+    - user: 934
+    - group: 939
+    - file_mode: 755
+
+#idh_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://idh/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 so-idh:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-idh:{{ GLOBALS.so_version }}

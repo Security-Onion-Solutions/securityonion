@@ -43,6 +43,23 @@ lslibdir:
   file.absent:
     - name: /opt/so/conf/logstash/lib
 
+logstash_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://logstash/tools/sbin
+    - user: 931
+    - group: 939
+    - file_mode: 755
+
+#logstash_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://logstash/tools/sbin_jinja
+#    - user: 931
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 lsetcdir:
   file.directory:
     - name: /opt/so/conf/logstash/etc
