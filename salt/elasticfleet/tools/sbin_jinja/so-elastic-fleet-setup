@@ -62,6 +62,15 @@ elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false"
 # Load Integrations for default policies
 so-elastic-fleet-integration-policy-load
 
+# Set Elastic Agent Artifact Registry URL
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                --arg URL "http://{{ GLOBALS.url_base }}/artifacts/" \
+                '{"name":$NAME,"host":$URL,"is_default":true}'
+                )
+
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
 ### Finalization ###
 
 # Query for Enrollment Tokens for default policies

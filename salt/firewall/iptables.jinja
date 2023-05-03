@@ -1,7 +1,9 @@
-{% from 'docker/docker.map.jinja' import DOCKER -%}
-{% from 'firewall/containers.map.jinja' import NODE_CONTAINERS -%}
-{% from 'firewall/map.jinja' import hostgroups with context -%}
-{% from 'firewall/map.jinja' import assigned_hostgroups with context -%}
+{%- from 'vars/globals.map.jinja' import GLOBALS %}
+{%- from 'docker/docker.map.jinja' import DOCKER %}
+{%- from 'firewall/map.jinja' import FIREWALL_MERGED %}
+{%- set role = GLOBALS.role.split('-')[1] %}
+{%- from 'firewall/containers.map.jinja' import NODE_CONTAINERS %}
+
 {%- set PR = [] %}
 {%- set D1 = [] %}
 {%- set D2 = [] %}
@@ -70,24 +72,18 @@ COMMIT
 :DOCKER-USER - [0:0]
 :LOGGING - [0:0]
 
-{%- set count = namespace(value=0) %}
-{%- for chain, hg in assigned_hostgroups.chain.items() %}
-  {%- for hostgroup, portgroups in assigned_hostgroups.chain[chain].hostgroups.items() %}
-    {%- for action in ['insert', 'delete' ] %}
-      {%- if hostgroups[hostgroup].ips[action] %}
-        {%- for ip in hostgroups[hostgroup].ips[action] %}
-          {%- for portgroup in portgroups.portgroups %}
-            {%- for proto, ports in portgroup.items() %}
-              {%- for port in ports %}
-                {%- set count.value = count.value + 1 %}
--A {{chain}} -s {{ip}} -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
-              {%- endfor %}
-            {%- endfor %}
-          {%- endfor %}
-        {%- endfor %}
-      {%- endif %}
-    {%- endfor %}
-  {%- endfor %}
+{%- for chn, hostgroups in FIREWALL_MERGED.role[role].chain.items() %}
+{%-   for hostgroup, portgroups in hostgroups['hostgroups'].items() %}
+{%-     for ip in FIREWALL_MERGED.hostgroups[hostgroup] %}
+{%-       for groupname in portgroups['portgroups'] %}
+{%-         for proto, ports in FIREWALL_MERGED['portgroups'][groupname].items() %}
+{%-           for port in ports %}
+-A {{chn}} -s {{ip}} -p {{proto}} -m {{proto}} --dport {{port}} -j ACCEPT
+{%-           endfor %}
+{%-         endfor %}
+{%-       endfor %}
+{%-     endfor %}
+{%-   endfor %}
 {%- endfor %}
 
 -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT

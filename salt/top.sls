@@ -176,6 +176,7 @@ base:
     - redis
     {%- endif %}
     {%- if KIBANA %}
+    - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
     - pcap
