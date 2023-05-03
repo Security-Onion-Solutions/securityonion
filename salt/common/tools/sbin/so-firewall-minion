@@ -49,34 +49,34 @@ fi
 	case "$ROLE" in
 
         'MANAGER')
-			so-firewall --role=manager --ip="$IP"
+			so-firewall includehost manager "$IP"
 			;;
-		'EVAL' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			so-firewall --role=manager --ip="$IP"
-			so-firewall --role=sensors --ip="$IP"
-			so-firewall --apply=true --role=searchnodes --ip="$IP"
+		'MANAGERSEARCH')
+			so-firewall includehost manager "$IP"
+			so-firewall includehost searchnode "$IP" --apply
 			;;
-		'FLEET' | 'SENSOR' | 'SEARCHNODE' | 'HEAVYNODE' | 'IDH' | 'RECEIVER')
-			case "$ROLE" in
-				'FLEET')
-					so-firewall --apply=true --role=fleet --ip="$IP"
-					;;
-				'SENSOR')
-					so-firewall --apply=true --role=sensors --ip="$IP"
-					;;
-				'SEARCHNODE')
-					so-firewall --apply=true --role=searchnodes --ip="$IP"
-					;;
-				'HEAVYNODE')
-					so-firewall --role=sensors --ip="$IP"
-					so-firewall --apply=true --role=heavynodes --ip="$IP"
-					;;
-				'IDH')
-				    so-firewall --apply=true --role=sensors --ip="$IP"
-					;;
-				'RECEIVER')
-					so-firewall --apply=true --role=receivers --ip="$IP"
-                    ;;
-           	esac
+		'EVAL' | 'STANDALONE' | 'IMPORT')
+			so-firewall includehost manager "$IP"
+			so-firewall includehost sensor "$IP"
+			so-firewall includehost searchnode "$IP" --apply
+			;;
+		'FLEET')
+			so-firewall includehost fleet "$IP" --apply
+			;;
+		'SENSOR')
+			so-firewall includehost sensor "$IP" --apply
+			;;
+		'SEARCHNODE')
+			so-firewall includehost searchnode "$IP" --apply
+			;;
+		'HEAVYNODE')
+			so-firewall includehost sensor "$IP"
+			so-firewall includehost heavynode "$IP" --apply
+			;;
+		'IDH')
+		    so-firewall includehost sensor "$IP" --apply
+			;;
+		'RECEIVER')
+			so-firewall includehost receiver "$IP" --apply
 			;;
     esac
