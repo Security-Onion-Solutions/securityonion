@@ -31,6 +31,7 @@ elasticfleet_sbin:
     - source: salt://elasticfleet/tools/sbin
     - user: 947
     - group: 939
+    - file_mode: 755
 
 elasticfleet_sbin_jinja:
   file.recurse:
@@ -38,6 +39,7 @@ elasticfleet_sbin_jinja:
     - source: salt://elasticfleet/tools/sbin_jinja
     - user: 947
     - group: 939 
+    - file_mode: 755
     - template: jinja
 
 eaconfdir:
