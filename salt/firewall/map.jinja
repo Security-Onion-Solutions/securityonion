@@ -4,7 +4,18 @@
 
 {# add our ip to self #}
 {% do FIREWALL_DEFAULT.firewall.hostgroups.self.append(GLOBALS.node_ip) %}
-{# add dockernet range  #}
+{# add dockernet range #}
 {% do FIREWALL_DEFAULT.firewall.hostgroups.dockernet.append(DOCKER.sorange) %}
+
+{% if GLOBALS.role == 'so-idh' %}
+{%   from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}
+{%   do salt['defaults.merge'](FIREWALL_DEFAULT.firewall.portgroups, IDH_PORTGROUPS, in_place=True) %}
+{%   for pg in IDH_PORTGROUPS.keys() %}
+{#     idh service ports start with _idh. this prevents adding openssh to allow from anywhere #}
+{%     if pg.split('_')[0] == 'idh' %}
+{%       do FIREWALL_DEFAULT.firewall.role.idh.chain.INPUT.hostgroups.anywhere.portgroups.append(pg) %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
 
 {% set FIREWALL_MERGED = salt['pillar.get']('firewall', FIREWALL_DEFAULT.firewall, merge=True) %}
