@@ -96,6 +96,7 @@ so-nginx:
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
       - /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/:/opt/socore/html/packages
+      - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
   {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
