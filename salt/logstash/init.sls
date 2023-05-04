@@ -6,19 +6,19 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-{% from 'docker/docker.map.jinja' import DOCKER %}
-{% from 'logstash/map.jinja' import REDIS_NODES with context %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'logstash/map.jinja' import REDIS_NODES %}
+{% from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 
 # Logstash Section - Decide which pillar to use
-{% set lsheap = salt['pillar.get']('logstash:settings:lsheap') %}
+{% set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 {% if GLOBALS.role in ['so-eval','so-managersearch', 'so-manager', 'so-standalone'] %}
     {% set nodetype = GLOBALS.role  %}
 {% endif %}
 
-{% set PIPELINES = salt['pillar.get']('logstash:pipelines', {}) %}
-{% set DOCKER_OPTIONS = salt['pillar.get']('logstash:docker_options', {}) %}
-{% set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
+{% set ASSIGNED_PIPELINES = LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
+{% set DOCKER_OPTIONS = LOGSTASH_MERGED.docker_options %}
 
 include:
   - ssl
@@ -73,20 +73,22 @@ lspipelinedir:
     - user: 931
     - group: 939
 
-  {% for PL in PIPELINES %}
-    {% for CONFIGFILE in PIPELINES[PL].config %}
-ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
+{% for assigned_pipeline in ASSIGNED_PIPELINES %}
+    {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
+ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
     - source: salt://logstash/pipelines/config/{{CONFIGFILE}}
       {% if 'jinja' in CONFIGFILE.split('.')[-1] %}
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
+    - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{CONFIGFILE.split('/')[1] | replace(".jinja", "")}}
     - template: jinja
     - defaults:
         GLOBALS: {{ GLOBALS }}
         ES_USER: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') }}"
         ES_PASS: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') }}"
+        THREADS: {{ LOGSTASH_MERGED.config.pipeline_x_workers }}
+        BATCH: {{ LOGSTASH_MERGED.config.pipeline_x_batch_x_size }}
       {% else %}
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}/{{CONFIGFILE.split('/')[1]}}
+    - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{CONFIGFILE.split('/')[1]}}
       {% endif %}
     - user: 931
     - group: 939
@@ -95,28 +97,27 @@ ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
     - show_changes: False
     {% endfor %}
 
-ls_pipeline_{{PL}}:
+ls_pipeline_{{assigned_pipeline}}:
   file.directory:
-    - name: /opt/so/conf/logstash/pipelines/{{PL}}
+    - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}
     - user: 931
     - group: 939
     - require:
-    {% for CONFIGFILE in PIPELINES[PL].config %}
-      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+    {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
+      - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
     {% endfor %}
     - clean: True
+{% endfor %}
 
-  {% endfor %}
-
+# Copy down all the configs
 lspipelinesyml:
   file.managed:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
     - defaults:
-        pipelines: {{ PIPELINES }}
+        ASSIGNED_PIPELINES: {{ ASSIGNED_PIPELINES }}
 
-# Copy down all the configs
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/logstash/etc
@@ -126,6 +127,8 @@ lsetcsync:
     - template: jinja
     - clean: True
     - exclude_pat: pipelines*
+    - defaults:
+        LOGSTASH_MERGED: {{ LOGSTASH_MERGED }}
 
 # Create the import directory
 importdir:
@@ -202,10 +205,10 @@ so-logstash:
   {%- endif %}
     - watch:
       - file: lsetcsync
-  {% for PL in PIPELINES %}
-      - file: ls_pipeline_{{PL}}
-    {% for CONFIGFILE in PIPELINES[PL].config %}
-      - file: ls_pipeline_{{PL}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
+  {% for assigned_pipeline in LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
+      - file: ls_pipeline_{{assigned_pipeline}}
+    {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
+      - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
     {% endfor %}
   {% endfor %}
     - require:
