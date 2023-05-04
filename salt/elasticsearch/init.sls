@@ -47,7 +47,7 @@ elasticsearch:
 cascriptsync:
   file.managed:
     - name: /usr/sbin/so-catrust
-    - source: salt://elasticsearch/tools/sbin/so-catrust
+    - source: salt://elasticsearch/tools/sbin_jinja/so-catrust
     - user: 939
     - group: 939
     - mode: 750
@@ -83,7 +83,9 @@ elasticsearch_sbin_jinja:
     - file_mode: 755
     - template: jinja
     - exclude_pat:
-      - so-elasticsearch-ilm-policy-load
+      - so-elasticsearch-ilm-policy-load # exclude this because we need to watch it for changes, we sync it in another state
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 so-elasticsearch-ilm-policy-load-script:
   file.managed:
