@@ -68,6 +68,8 @@ ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") 
         GLOBALS: {{ GLOBALS }}
         ES_USER: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') }}"
         ES_PASS: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') }}"
+        THREADS: {{ LOGSTASH_MERGED.config.pipeline_x_workers }}
+        BATCH: {{ LOGSTASH_MERGED.config.pipeline_x_batch_x_size }}
       {% else %}
     - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{CONFIGFILE.split('/')[1]}}
       {% endif %}
@@ -88,19 +90,17 @@ ls_pipeline_{{assigned_pipeline}}:
       - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
     {% endfor %}
     - clean: True
-
-  {% endfor %}
 {% endfor %}
 
+# Copy down all the configs
 lspipelinesyml:
   file.managed:
     - name: /opt/so/conf/logstash/etc/pipelines.yml
     - source: salt://logstash/etc/pipelines.yml.jinja
     - template: jinja
     - defaults:
-        assigned_pipelines: {{ ASSIGNED_PIPELINES }}
+        ASSIGNED_PIPELINES: {{ ASSIGNED_PIPELINES }}
 
-# Copy down all the configs
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/logstash/etc
@@ -110,6 +110,8 @@ lsetcsync:
     - template: jinja
     - clean: True
     - exclude_pat: pipelines*
+    - defaults:
+        LOGSTASH_MERGED: {{ LOGSTASH_MERGED }}
 
 # Create the import directory
 importdir:
@@ -188,7 +190,7 @@ so-logstash:
       - file: lsetcsync
   {% for assigned_pipeline in LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
       - file: ls_pipeline_{{assigned_pipeline}}
-    {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[ap] %}
+    {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
       - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
     {% endfor %}
   {% endfor %}
