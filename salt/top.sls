@@ -84,6 +84,7 @@ base:
     - elasticsearch
     {%- endif %}
     {%- if KIBANA %}
+    - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
     - pcap
@@ -135,6 +136,7 @@ base:
     - redis
     {%- endif %}
     {%- if KIBANA %}
+    - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
     - curator
@@ -242,6 +244,7 @@ base:
     {%- endif %}
     - curator
     {%- if KIBANA %}
+    - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
     {%- if ELASTALERT %}
@@ -302,6 +305,7 @@ base:
     - elasticsearch
     {%- endif %}
     {%- if KIBANA %}
+    - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
     - utility
