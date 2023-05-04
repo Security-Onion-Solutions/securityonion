@@ -35,6 +35,7 @@ base:
     - manager.adv_manager
     - idstools.soc_idstools
     - idstools.adv_idstools
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - soc.soc_soc
@@ -124,9 +125,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_standalone':
-    - logstash
-    - logstash.manager
-    - logstash.search
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
@@ -175,6 +174,7 @@ base:
 
   '*_heavynode':
     - elasticsearch.auth
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
@@ -203,6 +203,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_searchnode':
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
@@ -214,6 +215,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_receiver':
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
@@ -270,6 +272,7 @@ base:
   '*_fleet':
     - backup.soc_backup
     - backup.adv_backup
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - minions.{{ grains.id }}
