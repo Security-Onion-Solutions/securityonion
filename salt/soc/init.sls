@@ -64,6 +64,23 @@ socbanner:
     - mode: 600
     - template: jinja
 
+soc_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://soc/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#soc_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://soc/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 soccustom:
   file.managed:
     - name: /opt/so/conf/soc/custom.js

@@ -33,6 +33,23 @@ stenoconfdir:
     - group: 939
     - makedirs: True
 
+pcap_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://pcap/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#pcap_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://pcap/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 {% if PCAPBPF %}
    {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + PCAPBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
