@@ -42,7 +42,7 @@ kibana_sbin:
     - group: 939
     - file_mode: 755
 
-curator_sbin_jinja:
+kibana_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kibana/tools/sbin_jinja
