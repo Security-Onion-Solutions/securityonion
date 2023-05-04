@@ -47,14 +47,14 @@ sensoroni_sbin:
     - group: 939
     - file_mode: 755
 
-sensoroni_sbin_jinja:
-  file.recurse:
-    - name: /usr/sbin
-    - source: salt://sensoroni/tools/sbin_jinja
-    - user: 939
-    - group: 939 
-    - file_mode: 755
-    - template: jinja
+#sensoroni_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://sensoroni/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
 
 so-sensoroni:
   docker_container.running:
