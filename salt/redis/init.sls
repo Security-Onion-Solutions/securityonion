@@ -54,7 +54,7 @@ redis_sbin_jinja:
     - name: /usr/sbin
     - source: salt://redis/tools/sbin_jinja
     - user: 939
-   - group: 939 
+    - group: 939 
     - file_mode: 755
     - template: jinja
 
