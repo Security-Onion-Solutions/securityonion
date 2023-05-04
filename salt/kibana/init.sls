@@ -50,6 +50,8 @@ kibana_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+    - defaults:
+      GLOBALS: {{ GLOBALS }}
 
 kibanaconfig:
   file.managed:
@@ -83,15 +85,6 @@ synckibanacustom:
     - source: salt://kibana/custom
     - user: 932
     - group: 939
-
-kibanabin:
-  file.managed:
-    - name: /usr/sbin/so-kibana-config-load
-    - source: salt://kibana/bin/so-kibana-config-load
-    - mode: 755
-    - template: jinja
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
 # Start the kibana docker
 so-kibana:
