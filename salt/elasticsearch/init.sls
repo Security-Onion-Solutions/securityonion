@@ -73,7 +73,6 @@ elasticsearch_sbin:
     - exclude_pat:
       - so-catrust
       - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
-      - so-elasticsearch-ilm-policy-load 
 
 elasticsearch_sbin_jinja:
   file.recurse:
@@ -83,11 +82,13 @@ elasticsearch_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+    - exclude_pat:
+      - so-elasticsearch-ilm-policy-load
 
 so-elasticsearch-ilm-policy-load-script:
   file.managed:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
-    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-ilm-policy-load
+    - source: salt://elasticsearch/tools/sbin_jinja/so-elasticsearch-ilm-policy-load
     - user: 930
     - group: 939
     - mode: 754
