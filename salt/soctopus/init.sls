@@ -58,6 +58,23 @@ playbookrulessync:
     - defaults:
         GLOBALS: {{ GLOBALS }}
 
+soctopus_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://soctopus/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#soctopus_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://soctopus/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 so-soctopus:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soctopus:{{ GLOBALS.so_version }}

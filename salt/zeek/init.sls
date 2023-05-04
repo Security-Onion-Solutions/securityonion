@@ -92,6 +92,23 @@ zeekstatedbownership:
     - replace: False
     - create: False
 
+zeek_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://zeek/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#zeek_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://zeek/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 # Sync Intel
 zeekintelloadsync:
   file.managed:

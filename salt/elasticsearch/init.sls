@@ -378,7 +378,7 @@ so-es-cluster-settings:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 
 so-elasticsearch-ilm-policy-load:
   cmd.run:
@@ -397,7 +397,7 @@ so-elasticsearch-templates:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 
 so-elasticsearch-pipelines:
   cmd.run:
@@ -413,7 +413,7 @@ so-elasticsearch-roles-load:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 {% endif %}
 {% else %}
 

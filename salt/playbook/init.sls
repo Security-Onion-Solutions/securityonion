@@ -66,6 +66,23 @@ query_updatepluginurls:
     - connection_user: root
     - connection_pass: {{ MYSQLPASS }}
 
+playbook_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://playbook/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#playbook_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://playbook/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 playbooklogdir:
   file.directory:
     - name: /opt/so/log/playbook
