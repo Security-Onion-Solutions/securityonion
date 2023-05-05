@@ -41,6 +41,23 @@ redisconf:
     - group: 939
     - template: jinja
 
+redis_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://redis/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+redis_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://redis/tools/sbin_jinja
+    - user: 939
+    - group: 939 
+    - file_mode: 755
+    - template: jinja
+
 so-redis:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}

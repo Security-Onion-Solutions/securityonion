@@ -43,13 +43,22 @@ repo_dir:
       - user
       - group
 
-repo_sync_script:
-  file.managed:
-    - name: /usr/sbin/so-repo-sync
-    - source: salt://manager/files/so-repo-sync
-    - user: root
-    - group: root
-    - mode: 755
+manager_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://manager/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#manager_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://manager/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
 
 so-repo-sync:
   {% if MANAGERMERGED.reposync.enabled %}

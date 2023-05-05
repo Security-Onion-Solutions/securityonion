@@ -31,6 +31,23 @@ influxdbdir:
     - name: /nsm/influxdb
     - makedirs: True
 
+influxdb_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://influxdb/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#influxdb_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://influxdb/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 influxdbconf:
   file.managed:
     - name: /opt/so/conf/influxdb/config.yaml
