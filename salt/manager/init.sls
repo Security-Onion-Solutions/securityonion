@@ -60,14 +60,6 @@ manager_sbin:
 #    - file_mode: 755
 #    - template: jinja
 
-repo_sync_script:
-  file.managed:
-    - name: /usr/sbin/so-repo-sync
-    - source: salt://manager/files/so-repo-sync
-    - user: root
-    - group: root
-    - mode: 755
-
 so-repo-sync:
   {% if MANAGERMERGED.reposync.enabled %}
   cron.present:
