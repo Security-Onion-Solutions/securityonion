@@ -1675,51 +1675,6 @@ parse_install_username() {
 	INSTALLUSERNAME=${SUDO_USER:-${USER}}
 }
 
-patch_pillar() {
-	title "Create the patch pillar file"
-	local pillar_file=$local_salt_dir/pillar/minions/$MINION_ID.sls
-
-
-	if [[ $MANAGERUPDATES == 1 ]]; then
-		local source="manager"
-	else
-		local source="direct"
-	fi
-
-	printf '%s\n'\
-		"patch:"\
-		"  os:"\
-		"    source: '$source'"\
-		"    schedule_name: '$PATCHSCHEDULENAME'"\
-		"    enabled: True"\
-		"    splay: 300"\
-		"" > "$pillar_file"
-
-}
-
-patch_schedule_os_new() {
-	title "Create the patch schedule"
-	local OSPATCHSCHEDULEDIR="$temp_install_dir/salt/patch/os/schedules"
-	local OSPATCHSCHEDULE="$OSPATCHSCHEDULEDIR/$PATCHSCHEDULENAME.yml"
-
-	logCmd "mkdir -p $OSPATCHSCHEDULEDIR"
-
-	printf '%s\n'\
-		"patch:"\
-		"  os:"\
-		"    schedule:"> "$OSPATCHSCHEDULE"
-	for psd in "${PATCHSCHEDULEDAYS[@]}";do
-		psd="${psd//\"/}"
-		echo "      - $psd:" >> "$OSPATCHSCHEDULE"
-		for psh in "${PATCHSCHEDULEHOURS[@]}"
-		do
-			psh="${psh//\"/}"
-			echo "        - '$psh'" >> "$OSPATCHSCHEDULE"
-		done
-	done
-
-}
-
 print_salt_state_apply() {
 	local state=$1
 
