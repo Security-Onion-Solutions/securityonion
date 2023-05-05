@@ -7,7 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from "pcap/config.map.jinja" import PCAPMERGED with context %}
+{% from "pcap/config.map.jinja" import PCAPMERGED %}
 {% from 'bpf/pcap.map.jinja' import PCAPBPF %}
 
 {% set BPF_COMPILED = "" %}
