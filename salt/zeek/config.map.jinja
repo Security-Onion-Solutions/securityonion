@@ -1,28 +1,14 @@
 {% from 'vars/sensor.map.jinja' import ROLE_GLOBALS %}
-{% import_yaml 'zeek/defaults.yaml' as zeek_defaults with context %}
-{% set ZEEKMERGED = salt['pillar.get']('zeek', zeek_defaults.zeek, merge=True) %}
+{% import_yaml 'zeek/defaults.yaml' as ZEEKDEFAULTS with context %}
+{% set ZEEKMERGED = salt['pillar.get']('zeek', ZEEKDEFAULTS.zeek, merge=True) %}
 {% do ZEEKMERGED.config.node.update({'interface': ROLE_GLOBALS.sensor.interface}) %}
 
+{# we have to add the @ sign for the config since we remove it from defaults for the UI #}
 {% if ZEEKMERGED.config.local.load is defined %}
   {% set LOCALLOAD = ZEEKMERGED.config.local.pop('load') %}
   {% do ZEEKMERGED.config.local.update({'@load': LOCALLOAD}) %}
 {% endif %}
-
 {% if ZEEKMERGED.config.local['load-sigs'] is defined %}
   {% set LOCALLOADSIGS = ZEEKMERGED.config.local.pop('load-sigs') %}
   {% do ZEEKMERGED.config.local.update({'@load-sigs': LOCALLOADSIGS}) %}
-{% endif %}
-
-{% set ZEEKOPTIONS = {} %}
-{% set ENABLED = salt['pillar.get']('zeek:enabled', True) %}
-
-# don't start the docker container if it is an import node or disabled via pillar
-{% if grains.id.split('_')|last == 'import' or not ENABLED %}
-  {% do ZEEKOPTIONS.update({'start': False}) %}
-  {% do ZEEKOPTIONS.update({'pl_cron_state': 'absent'}) %}
-  {% do ZEEKOPTIONS.update({'status': 'absent'}) %}
-{% else %}
-  {% do ZEEKOPTIONS.update({'start': True}) %}
-  {% do ZEEKOPTIONS.update({'pl_cron_state': 'present'}) %}
-  {% do ZEEKOPTIONS.update({'status': 'running'}) %}
 {% endif %}
