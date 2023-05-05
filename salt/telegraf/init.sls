@@ -39,6 +39,23 @@ tgrafsyncscripts:
     - exclude_pat: zeekcaptureloss.sh
 {% endif %}
 
+telegraf_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://telegraf/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#telegraf_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://telegraf/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 tgrafconf:
   file.managed:
     - name: /opt/so/conf/telegraf/etc/telegraf.conf

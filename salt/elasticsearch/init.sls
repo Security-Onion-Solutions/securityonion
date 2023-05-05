@@ -21,12 +21,33 @@ vm.max_map_count:
   sysctl.present:
     - value: 262144
 
+# Add ES Group
+elasticsearchgroup:
+  group.present:
+    - name: elasticsearch
+    - gid: 930
+
+esconfdir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch
+    - user: 930
+    - group: 939
+    - makedirs: True
+
+# Add ES user
+elasticsearch:
+  user.present:
+    - uid: 930
+    - gid: 930
+    - home: /opt/so/conf/elasticsearch
+    - createhome: False
+
 {% if GLOBALS.is_manager %}
 # We have to add the Manager CA to the CA list
 cascriptsync:
   file.managed:
     - name: /usr/sbin/so-catrust
-    - source: salt://elasticsearch/tools/sbin/so-catrust
+    - source: salt://elasticsearch/tools/sbin_jinja/so-catrust
     - user: 939
     - group: 939
     - mode: 750
@@ -42,25 +63,34 @@ cascriptfun:
         - file: cascriptsync
 {% endif %}
 
-# Sync some es scripts
-es_sync_scripts:
+elasticsearch_sbin:
   file.recurse:
     - name: /usr/sbin
-    - user: root
-    - group: root
+    - source: salt://elasticsearch/tools/sbin
+    - user: 930
+    - group: 939
+    - file_mode: 755
+    - exclude_pat:
+      - so-catrust
+      - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+
+elasticsearch_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://elasticsearch/tools/sbin_jinja
+    - user: 939
+    - group: 939 
     - file_mode: 755
     - template: jinja
-    - source: salt://elasticsearch/tools/sbin
     - exclude_pat:
-        - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
-        - so-elasticsearch-ilm-policy-load 
+      - so-elasticsearch-ilm-policy-load # exclude this because we need to watch it for changes, we sync it in another state
     - defaults:
         GLOBALS: {{ GLOBALS }}
 
 so-elasticsearch-ilm-policy-load-script:
   file.managed:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
-    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-ilm-policy-load
+    - source: salt://elasticsearch/tools/sbin_jinja/so-elasticsearch-ilm-policy-load
     - user: 930
     - group: 939
     - mode: 754
@@ -95,29 +125,6 @@ capemz:
     - source: salt://common/tls-ca-bundle.pem
     - user: 939
     - group: 939
-
-
-
-# Add ES Group
-elasticsearchgroup:
-  group.present:
-    - name: elasticsearch
-    - gid: 930
-
-# Add ES user
-elasticsearch:
-  user.present:
-    - uid: 930
-    - gid: 930
-    - home: /opt/so/conf/elasticsearch
-    - createhome: False
-
-esconfdir:
-  file.directory:
-    - name: /opt/so/conf/elasticsearch
-    - user: 930
-    - group: 939
-    - makedirs: True
 
 esingestdir:
   file.directory:
@@ -374,7 +381,7 @@ so-es-cluster-settings:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 
 so-elasticsearch-ilm-policy-load:
   cmd.run:
@@ -393,7 +400,7 @@ so-elasticsearch-templates:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 
 so-elasticsearch-pipelines:
   cmd.run:
@@ -409,7 +416,7 @@ so-elasticsearch-roles-load:
     - template: jinja
     - require:
       - docker_container: so-elasticsearch
-      - file: es_sync_scripts
+      - file: elasticsearch_sbin_jinja
 {% endif %}
 {% else %}
 

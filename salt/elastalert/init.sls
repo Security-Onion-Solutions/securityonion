@@ -29,6 +29,23 @@ elastalogdir:
     - group: 933
     - makedirs: True
 
+elastalert_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://elastalert/tools/sbin
+    - user: 933
+    - group: 939
+    - file_mode: 755
+
+#elastalert_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://elastalert/tools/sbin_jinja
+#    - user: 933
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 elastarules:
   file.directory:
     - name: /opt/so/rules/elastalert

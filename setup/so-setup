@@ -239,7 +239,8 @@ esac
 
 # Allow execution of SO tools during setup
 local_sbin="$(pwd)/../salt/common/tools/sbin"
-export PATH=$PATH:$local_sbin
+manager_sbin="$(pwd)/../salt/manager/tools/sbin"
+export PATH=$PATH:$local_sbin:$manager_sbin
 
 # Ubuntu whiptail pallete to make it look the same as CentOS and Rocky.
 set_palette >> $setup_log 2>&1
@@ -607,9 +608,6 @@ if ! [[ -f $install_opt_file ]]; then
 		securityonion_repo
 		# Update existing packages
 		update_packages
-		# Download Elastic Agent Artifacts
-		title "Downloading Elastic Agent Artifacts"
-		download_elastic_agent_artifacts
 		# Install salt
 		saltify
 		# Start the master service
@@ -626,6 +624,9 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply docker"
 		firewall_generate_templates
 		set_initial_firewall_policy
+		# Download Elastic Agent Artifacts
+		title "Downloading Elastic Agent Artifacts"
+		download_elastic_agent_artifacts
 
 		generate_ca
 		generate_ssl

@@ -908,6 +908,8 @@ create_manager_pillars() {
 	soc_pillar
 	idh_pillar
 	influxdb_pillar
+	logrotate_pillar
+	patch_pillar
 
 }
 
@@ -1238,11 +1240,6 @@ firewall_generate_templates() {
    
 	logCmd "cp -r ../files/firewall/* /opt/so/saltstack/local/salt/firewall/"
 
-    # i think this can be commented out for 2.4
-	#for i in analyst beats_endpoint endgame sensors manager managersearch elastic_agent_endpoint searchnodes; do
-	#	$default_salt_dir/salt/common/tools/sbin/so-firewall --role="$i" --ip=127.0.0.1
-	#done
-
 }
 
 generate_ca() {
@@ -1347,6 +1344,21 @@ import_registry_docker() {
 
 idh_pillar() {
 	touch $adv_idh_pillar_file
+}
+
+kibana_pillar() {
+	touch $adv_kibana_pillar_file
+	touch $kibana_pillar_file
+}
+
+logrotate_pillar() {
+	touch $adv_logrotate_pillar_file
+	touch $logrotate_pillar_file
+}
+
+patch_pillar() {
+	touch $adv_patch_pillar_file
+	touch $patch_pillar_file
 }
 
 logstash_pillar() {
@@ -1658,51 +1670,6 @@ parse_install_username() {
 	INSTALLUSERNAME=${SUDO_USER:-${USER}}
 }
 
-patch_pillar() {
-	title "Create the patch pillar file"
-	local pillar_file=$local_salt_dir/pillar/minions/$MINION_ID.sls
-
-
-	if [[ $MANAGERUPDATES == 1 ]]; then
-		local source="manager"
-	else
-		local source="direct"
-	fi
-
-	printf '%s\n'\
-		"patch:"\
-		"  os:"\
-		"    source: '$source'"\
-		"    schedule_name: '$PATCHSCHEDULENAME'"\
-		"    enabled: True"\
-		"    splay: 300"\
-		"" > "$pillar_file"
-
-}
-
-patch_schedule_os_new() {
-	title "Create the patch schedule"
-	local OSPATCHSCHEDULEDIR="$temp_install_dir/salt/patch/os/schedules"
-	local OSPATCHSCHEDULE="$OSPATCHSCHEDULEDIR/$PATCHSCHEDULENAME.yml"
-
-	logCmd "mkdir -p $OSPATCHSCHEDULEDIR"
-
-	printf '%s\n'\
-		"patch:"\
-		"  os:"\
-		"    schedule:"> "$OSPATCHSCHEDULE"
-	for psd in "${PATCHSCHEDULEDAYS[@]}";do
-		psd="${psd//\"/}"
-		echo "      - $psd:" >> "$OSPATCHSCHEDULE"
-		for psh in "${PATCHSCHEDULEHOURS[@]}"
-		do
-			psh="${psh//\"/}"
-			echo "        - '$psh'" >> "$OSPATCHSCHEDULE"
-		done
-	done
-
-}
-
 print_salt_state_apply() {
 	local state=$1
 
@@ -1992,8 +1959,8 @@ repo_sync_local() {
 	info "Backing up old repos"
 	mkdir -p /nsm/repo
 	mkdir -p /opt/so/conf/reposync/cache
-	echo "https://repo.securityonion.net/file/so-repo/2.4/" > /opt/so/conf/reposync/mirror.txt
-	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/2.4/" >> /opt/so/conf/reposync/mirror.txt
+	echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rocky/9" > /opt/so/conf/reposync/mirror.txt
+	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rocky/9" >> /opt/so/conf/reposync/mirror.txt
 	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
 	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
@@ -2013,8 +1980,6 @@ repo_sync_local() {
 	# Make sure we can get to the sig repo
 	# TODO Add if for ISO install
         curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
-	logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
-	# Run it again and make sure we got allt he things
 	logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
 
 	# After the download is complete run createrepo
@@ -2307,23 +2272,20 @@ set_hostname() {
 }
 
 set_initial_firewall_policy() {
-	title "Setting Initial Firewall Policy"
-	if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
-
 	case "$install_type" in
 		'EVAL' | 'MANAGER' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost $minion_type $MAINIP --apply
+			so-firewall includehost $minion_type $MAINIP --apply
 			;;
 	esac
 }
 
 set_initial_firewall_access() {
 	if [[ ! -z "$ALLOW_CIDR" ]]; then
-		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost analyst $ALLOW_CIDR --apply
+		so-firewall includehost analyst $ALLOW_CIDR --apply
 	fi
 	if [[ ! -z "$MINION_CIDR" ]]; then
-		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost sensors $MINION_CIDR
-		$default_salt_dir/salt/common/tools/sbin/so-firewall includehost searchnodes $MINION_CIDR --apply
+		so-firewall includehost sensors $MINION_CIDR
+		so-firewall includehost searchnodes $MINION_CIDR --apply
 	fi
 }
 
@@ -2396,19 +2358,6 @@ update_sudoers_for_testing() {
 	if [ -n "$TESTING" ]; then
 		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
 		sed -i "s/^$INSTALLUSERNAME   ALL=(ALL)       ALL/$INSTALLUSERNAME   ALL=(ALL) NOPASSWD: ALL/" /etc/sudoers
-	fi
-}
-
-update_sudoers() {
-
-	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
-		# Update Sudoers so that soremote can accept keys without a password
-		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/common/tools/sbin/so-firewall" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/data/addtotab.sh" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/manager/files/add_minion.sh" | tee -a /etc/sudoers
-	else
-		info "User soremote already granted sudo privileges"
 	fi
 }
 

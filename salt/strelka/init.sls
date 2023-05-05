@@ -57,6 +57,23 @@ backend_passwords:
     - defaults:
         PASSWORDS: {{ STRELKAMERGED.config.backend.passwords }}
 
+strelka_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://strelka/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#strelka_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://strelka/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 backend_taste:
   file.managed:
     - name: /opt/so/conf/strelka/backend/taste/taste.yara
