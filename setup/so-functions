@@ -1240,11 +1240,6 @@ firewall_generate_templates() {
    
 	logCmd "cp -r ../files/firewall/* /opt/so/saltstack/local/salt/firewall/"
 
-    # i think this can be commented out for 2.4
-	#for i in analyst beats_endpoint endgame sensors manager managersearch elastic_agent_endpoint searchnodes; do
-	#	$default_salt_dir/salt/common/tools/sbin/so-firewall --role="$i" --ip=127.0.0.1
-	#done
-
 }
 
 generate_ca() {
@@ -2277,12 +2272,9 @@ set_hostname() {
 }
 
 set_initial_firewall_policy() {
-	title "Setting Initial Firewall Policy"
-	if [ -f $default_salt_dir/salt/common/tools/sbin/so-firewall ]; then chmod +x $default_salt_dir/salt/common/tools/sbin/so-firewall; fi
-
 	case "$install_type" in
 		'EVAL' | 'MANAGER' | 'MANAGERSEARCH' | 'STANDALONE' | 'IMPORT')
-			$default_salt_dir/salt/common/tools/sbin/so-firewall includehost $minion_type $MAINIP --apply
+			so-firewall includehost $minion_type $MAINIP --apply
 			;;
 	esac
 }
@@ -2366,19 +2358,6 @@ update_sudoers_for_testing() {
 	if [ -n "$TESTING" ]; then
 		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
 		sed -i "s/^$INSTALLUSERNAME   ALL=(ALL)       ALL/$INSTALLUSERNAME   ALL=(ALL) NOPASSWD: ALL/" /etc/sudoers
-	fi
-}
-
-update_sudoers() {
-
-	if ! grep -qE '^soremote\ ALL=\(ALL\)\ NOPASSWD:(\/usr\/bin\/salt\-key|\/opt\/so\/saltstack)' /etc/sudoers; then
-		# Update Sudoers so that soremote can accept keys without a password
-		echo "soremote ALL=(ALL) NOPASSWD:/usr/bin/salt-key" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/common/tools/sbin/so-firewall" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/pillar/data/addtotab.sh" | tee -a /etc/sudoers
-		echo "soremote ALL=(ALL) NOPASSWD:$default_salt_dir/salt/manager/files/add_minion.sh" | tee -a /etc/sudoers
-	else
-		info "User soremote already granted sudo privileges"
 	fi
 }
 
