@@ -23,7 +23,6 @@ so-playbook-sync_cron:
     - identifier: so-playbook-sync_cron
     - user: root
 
-
 so-playbook-ruleupdate_cron:
   cron.absent:
     - identifier: so-playbook-ruleupdate_cron

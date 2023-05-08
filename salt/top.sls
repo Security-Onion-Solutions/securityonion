@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
@@ -95,8 +94,8 @@ base:
     {%- endif %}
     - utility
     - soctopus
-    {%- if PLAYBOOK != 0 %}
     - playbook
+    {%- if REDIS != 0 %}
     - redis
     {%- endif %}
     - elasticfleet

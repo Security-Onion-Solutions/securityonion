@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
@@ -215,7 +214,7 @@
           ],
   }, grain='role') %}
 
-  {% if (PLAYBOOK != 0) and grains.role in ['so-eval', 'so-manager', 'so-managersearch', 'so-standalone'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-managersearch', 'so-standalone'] %}
     {% do allowed_states.append('mysql') %}
   {% endif %}
 
@@ -248,11 +247,11 @@
     {% do allowed_states.append('elastalert') %}
   {% endif %}
 
-  {% if (PLAYBOOK !=0) and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
     {% do allowed_states.append('playbook') %}
   {% endif %}
 
-  {% if (PLAYBOOK !=0) and grains.role in ['so-eval'] %}
+  {% if (REDIS !=0) and grains.role in ['so-eval'] %}
     {% do allowed_states.append('redis') %}
   {% endif %}
 
