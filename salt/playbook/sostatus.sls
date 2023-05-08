@@ -10,6 +10,7 @@ append_so-playbook_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-playbook
+    - unless: grep -q so-playbook /opt/so/conf/so-status/so-status.conf
 
 {% else %}
 
