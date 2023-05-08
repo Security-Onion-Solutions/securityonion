@@ -3,12 +3,18 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'playbook/map.jinja' import PLAYBOOKMERGED %}
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls.split('.')[0] in allowed_states %}
 
-include:
-{% if PLAYBOOKMERGED.enabled %}
-  - playbook.enabled
+append_so-playbook_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-playbook
+
 {% else %}
-  - playbook.disabled
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
 {% endif %}
