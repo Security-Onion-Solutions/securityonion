@@ -2,6 +2,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'nginx/config.map.jinja' import NGMERGED %}
 
 include:
   - ssl
@@ -9,17 +10,10 @@ include:
 # Drop the correct nginx config based on role
 nginxconfdir:
   file.directory:
-    - name: /opt/so/conf/nginx/html
+    - name: /opt/so/conf/nginx
     - user: 939
     - group: 939
     - makedirs: True
-
-nginxhtml:
-  file.recurse:
-    - name: /opt/so/conf/nginx/html
-    - source: salt://nginx/html/
-    - user: 939
-    - group: 939
 
 nginxconf:
   file.managed:
