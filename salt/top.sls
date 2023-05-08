@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
@@ -89,9 +88,7 @@ base:
     - strelka
     {%- endif %}
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -133,9 +130,7 @@ base:
     - kibana.so_savedobjects_defaults
     {%- endif %}
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -181,9 +176,7 @@ base:
     - strelka
     {%- endif %}
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -238,9 +231,7 @@ base:
     - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
     {%- endif %}
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook

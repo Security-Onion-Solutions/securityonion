@@ -6,17 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-include:
-  - pcap.sostatus
-  
-so-steno:
-  docker_container.absent:
-    - force: True
-
-so-steno_so-status.disabled:
-  file.comment:
+append_so-elastalert_so-status.conf:
+  file.append:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-steno$
+    - text: so-elastalert
+    - unless: grep -q so-elastalert /opt/so/conf/so-status/so-status.conf
 
 {% else %}
 

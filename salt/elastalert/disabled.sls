@@ -7,16 +7,16 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 include:
-  - pcap.sostatus
+  - elastalert.sostatus
   
-so-steno:
+so-elastalert:
   docker_container.absent:
     - force: True
 
-so-steno_so-status.disabled:
+so-elastalert_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-steno$
+    - regex: ^so-elastalert$
 
 {% else %}
 

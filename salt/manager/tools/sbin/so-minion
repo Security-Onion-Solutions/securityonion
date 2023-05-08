@@ -227,6 +227,14 @@ function add_playbook_to_minion() {
 	"  " >> $PILLARFILE
 }
 
+# Add basic host info to the minion file
+function add_elastalert_to_minion() {
+    printf '%s\n'\
+    "elastalert:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
 function create_fleet_policy() {
 
 	JSON_STRING=$( jq -n \
@@ -274,6 +282,29 @@ function createEVAL() {
 	add_elastic_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
+	add_elastalert_to_minion
+}
+
+function createSTANDALONE() {
+	add_elastic_to_minion
+	add_logstash_to_minion
+	add_sensor_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
+}
+
+function createMANAGER() {
+	add_elastic_to_minion
+	add_logstash_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
+}
+
+function createMANAGERSEARCH() {
+	add_elastic_to_minion
+	add_logstash_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
 }
 
 function createFLEET() {
@@ -300,18 +331,6 @@ function createHEAVYNODE() {
 	add_sensor_to_minion
 }
 
-function createMANAGER() {
-	add_elastic_to_minion
-	add_logstash_to_minion
-	add_playbook_to_minion
-}
-
-function createMANAGERSEARCH() {
-	add_elastic_to_minion
-	add_logstash_to_minion
-	add_playbook_to_minion
-}
-
 function createSENSOR() {
 	add_sensor_to_minion
 }
@@ -323,12 +342,6 @@ function createSEARCHNODE() {
 	apply_ES_state
 }
 
-function createSTANDALONE() {
-	add_elastic_to_minion
-	add_logstash_to_minion
-	add_sensor_to_minion
-	add_playbook_to_minion
-}
 
 function testConnection() {
 	retry 15 3 "salt '$MINION_ID' test.ping" True
