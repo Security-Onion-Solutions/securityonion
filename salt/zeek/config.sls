@@ -8,9 +8,7 @@
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "zeek/config.map.jinja" import ZEEKMERGED %}
-
 {% from 'bpf/zeek.map.jinja' import ZEEKBPF %}
-
 {% set BPF_STATUS = 0  %}
 
 # Add Zeek group

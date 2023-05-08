@@ -3,8 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
 {% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
 {% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
 {% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
@@ -52,9 +50,7 @@ base:
     - pcap
     - suricata
     - healthcheck
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -89,9 +85,7 @@ base:
     {%- endif %}
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -183,9 +177,7 @@ base:
     {%- endif %}
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
     {%- if STRELKA %}
     - strelka
     {%- endif %}
@@ -278,9 +270,7 @@ base:
     {%- endif %}
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
   
