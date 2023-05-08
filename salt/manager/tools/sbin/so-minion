@@ -196,8 +196,8 @@ function add_sensoroni_to_minion() {
 
 	printf '%s\n'\
     "sensoroni:"\
-		"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
-        "  " >> $PILLARFILE
+	"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
+    "  " >> $PILLARFILE
 }	
 
 # Sensor settings for the minion pillar
@@ -206,15 +206,25 @@ function add_sensor_to_minion() {
 	echo "  interface: '$INTERFACE'" >> $PILLARFILE
 	echo "  mtu: 9000" >> $PILLARFILE
 	echo "zeek:" >> $PILLARFILE
-	echo "    config:" >> $PILLARFILE
-	echo "        node:" >> $PILLARFILE
-	echo "            lb_procs: '$CORECOUNT'" >> $PILLARFILE
+	echo "  enabled: True" >> $PILLARFILE
+	echo "  config:" >> $PILLARFILE
+	echo "    node:" >> $PILLARFILE
+	echo "      lb_procs: '$CORECOUNT'" >> $PILLARFILE
 	echo "suricata:" >> $PILLARFILE
-	echo "    config:" >> $PILLARFILE
-	echo "        af-packet:" >> $PILLARFILE
-	echo "            threads: '$CORECOUNT'" >> $PILLARFILE
-#	echo "pcap:" >> $PILLARFILE
-#	echo "    enabled: True" >> $PILLARFILE
+	echo "  config:" >> $PILLARFILE
+	echo "    af-packet:" >> $PILLARFILE
+	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
+	echo "pcap:" >> $PILLARFILE
+	echo "    enabled: True" >> $PILLARFILE
+	echo "  " >> $PILLARFILE
+}
+
+# Add basic host info to the minion file
+function add_playbook_to_minion() {
+    printf '%s\n'\
+    "playbook:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
 }
 
 function create_fleet_policy() {
@@ -293,11 +303,13 @@ function createHEAVYNODE() {
 function createMANAGER() {
 	add_elastic_to_minion
 	add_logstash_to_minion
+	add_playbook_to_minion
 }
 
 function createMANAGERSEARCH() {
 	add_elastic_to_minion
 	add_logstash_to_minion
+	add_playbook_to_minion
 }
 
 function createSENSOR() {
@@ -315,6 +327,7 @@ function createSTANDALONE() {
 	add_elastic_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
+	add_playbook_to_minion
 }
 
 function testConnection() {
