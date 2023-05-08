@@ -25,6 +25,23 @@ elastic-agent:
     - home: /opt/so/conf/elastic-fleet
     - createhome: False
 
+elasticfleet_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://elasticfleet/tools/sbin
+    - user: 947
+    - group: 939
+    - file_mode: 755
+
+elasticfleet_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://elasticfleet/tools/sbin_jinja
+    - user: 947
+    - group: 939 
+    - file_mode: 755
+    - template: jinja
+
 eaconfdir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet

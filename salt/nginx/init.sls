@@ -82,6 +82,23 @@ navigatorenterpriseattack:
     - makedirs: True
     - replace: False
 
+nginx_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://nginx/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#nginx_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://nginx/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}

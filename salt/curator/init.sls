@@ -60,30 +60,21 @@ curconf:
     - template: jinja
     - show_changes: False
 
-curclusterclose: 
-  file.managed:
-    - name: /usr/sbin/so-curator-cluster-close
-    - source: salt://curator/files/bin/so-curator-cluster-close
+curator_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://curator/tools/sbin
     - user: 934
     - group: 939
-    - mode: 755
-    - template: jinja
+    - file_mode: 755
 
-curclusterdelete:
-  file.managed:
-    - name: /usr/sbin/so-curator-cluster-delete
-    - source: salt://curator/files/bin/so-curator-cluster-delete
+curator_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://curator/tools/sbin_jinja
     - user: 934
-    - group: 939
-    - mode: 755
-
-curclusterdeletedelete:
-  file.managed:
-    - name: /usr/sbin/so-curator-cluster-delete-delete
-    - source: salt://curator/files/bin/so-curator-cluster-delete-delete
-    - user: 934
-    - group: 939
-    - mode: 755
+    - group: 939 
+    - file_mode: 755
     - template: jinja
 
 so-curator:

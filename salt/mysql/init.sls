@@ -69,6 +69,23 @@ mysqldatadir:
     - group: 939
     - makedirs: True
 
+mysql_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://mysql/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
+#mysql_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://mysql/tools/sbin_jinja
+#    - user: 939
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 {% if MYSQLPASS == None %}
 
 mysql_password_none:

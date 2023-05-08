@@ -34,6 +34,25 @@ kibanaconfdir:
     - group: 939
     - makedirs: True
 
+kibana_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kibana/tools/sbin
+    - user: 932
+    - group: 939
+    - file_mode: 755
+
+kibana_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kibana/tools/sbin_jinja
+    - user: 932
+    - group: 939 
+    - file_mode: 755
+    - template: jinja
+    - defaults:
+      GLOBALS: {{ GLOBALS }}
+
 kibanaconfig:
   file.managed:
     - name: /opt/so/conf/kibana/etc/kibana.yml
@@ -66,15 +85,6 @@ synckibanacustom:
     - source: salt://kibana/custom
     - user: 932
     - group: 939
-
-kibanabin:
-  file.managed:
-    - name: /usr/sbin/so-kibana-config-load
-    - source: salt://kibana/bin/so-kibana-config-load
-    - mode: 755
-    - template: jinja
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
 # Start the kibana docker
 so-kibana:

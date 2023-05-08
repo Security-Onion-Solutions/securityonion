@@ -20,6 +20,23 @@ idstoolslogdir:
     - group: 939
     - makedirs: True
 
+idstools_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://idstools/tools/sbin
+    - user: 934
+    - group: 939
+    - file_mode: 755
+
+#idstools_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://idstools/tools/sbin_jinja
+#    - user: 934
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
 so-rule-update:
   cron.present:
     - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1
