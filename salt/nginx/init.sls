@@ -2,6 +2,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'nginx/config.map.jinja' import NGMERGED %}
 
 include:
   - ssl
