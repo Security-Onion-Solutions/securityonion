@@ -25,5 +25,5 @@ so-kibana-config-load:
     - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/config_saved_objects.ndjson.template
     - cwd: /opt/so
     - require:
-      - sls: kibana
+      - sls: kibana.enabled
       - file: config_saved_objects
