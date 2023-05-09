@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
 {% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
@@ -74,9 +73,7 @@ base:
     - suricata.manager
     - healthcheck
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if KIBANA %}
     - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
@@ -116,9 +113,7 @@ base:
     - idstools
     - suricata.manager
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
@@ -156,9 +151,7 @@ base:
     - suricata.manager    
     - healthcheck
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %} 
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
@@ -190,9 +183,7 @@ base:
     - nginx
     - telegraf
     - firewall
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
@@ -217,9 +208,7 @@ base:
     - idstools
     - suricata.manager
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
@@ -245,9 +234,7 @@ base:
     - nginx
     - telegraf
     - firewall
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if LOGSTASH %}
     - logstash
     {%- endif %}
@@ -281,9 +268,7 @@ base:
     - idstools
     - suricata.manager
     - pcap
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
     {%- if KIBANA %}
     - elastic-fleet-package-registry
     - kibana.so_savedobjects_defaults
