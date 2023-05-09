@@ -27,7 +27,7 @@ so-kibana-dashboard-load:
     - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/saved_objects.ndjson.template
     - cwd: /opt/so
     - require:
-      - sls: kibana
+      - sls: kibana.enabled
       - file: dashboard_saved_objects_template
 {%- if HIGHLANDER %}
 dashboard_saved_objects_template_hl:
@@ -50,6 +50,6 @@ so-kibana-dashboard-load_hl:
     - name: /usr/sbin/so-kibana-config-load -i /opt/so/conf/kibana/hl.ndjson.template
     - cwd: /opt/so
     - require:
-      - sls: kibana
+      - sls: kibana.enabled
       - file: dashboard_saved_objects_template_hl
 {%- endif %}
