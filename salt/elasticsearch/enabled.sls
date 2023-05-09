@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
+{%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
 
