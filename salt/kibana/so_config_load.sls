@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 include:
-  - kibana
+  - kibana.enabled
 
 config_saved_objects:
   file.managed:

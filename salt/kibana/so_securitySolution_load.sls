@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 include:
-  - kibana
+  - kibana.enabled
 
 securitySolution_saved_objects:
   file.managed:

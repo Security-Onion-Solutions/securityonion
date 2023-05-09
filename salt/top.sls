@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
 {% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
@@ -74,10 +73,8 @@ base:
     - healthcheck
     - mysql
     - elasticsearch
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - pcap
     - suricata
     - zeek
@@ -120,10 +117,8 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - curator
     - elastalert
     - utility
@@ -158,10 +153,8 @@ base:
     {%- if REDIS %}
     - redis
     {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - pcap
     - suricata
     - zeek
@@ -216,10 +209,8 @@ base:
     - redis
     {%- endif %}
     - curator
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - elastalert
     - utility
     - soctopus
@@ -269,10 +260,8 @@ base:
     - suricata.manager
     - pcap
     - elasticsearch
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - utility
     - suricata
     - zeek

@@ -5,7 +5,7 @@
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 include:
-  - kibana
+  - kibana.enabled
 
 dashboard_saved_objects_template:
   file.managed:

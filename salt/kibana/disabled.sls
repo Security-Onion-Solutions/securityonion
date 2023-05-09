@@ -6,11 +6,17 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-append_so-steno_so-status.conf:
-  file.append:
+include:
+  - kibana.sostatus
+
+so-kibana:
+  docker_container.absent:
+    - force: True
+
+so-kibana_so-status.disabled:
+  file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-steno
-    - unless: grep -q so-steno /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-kibana$
 
 {% else %}
 
