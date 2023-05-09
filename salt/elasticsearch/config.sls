@@ -107,20 +107,6 @@ catrustdir:
     - group: 939
     - makedirs: True
 
-cacertz:
-  file.managed:
-    - name: /opt/so/conf/ca/cacerts
-    - source: salt://common/cacerts
-    - user: 939
-    - group: 939
-
-capemz:
-  file.managed:
-    - name: /opt/so/conf/ca/tls-ca-bundle.pem
-    - source: salt://common/tls-ca-bundle.pem
-    - user: 939
-    - group: 939
-
 esingestdir:
   file.directory:
     - name: /opt/so/conf/elasticsearch/ingest

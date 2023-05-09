@@ -58,6 +58,22 @@ cakeyperms:
     - mode: 640
     - group: 939
 
+{%   if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+cacertz:
+  file.managed:
+    - name: /opt/so/conf/ca/cacerts
+    - source: salt://common/cacerts
+    - user: 939
+    - group: 939
+
+capemz:
+  file.managed:
+    - name: /opt/so/conf/ca/tls-ca-bundle.pem
+    - source: salt://common/tls-ca-bundle.pem
+    - user: 939
+    - group: 939
+{%   endif %}
+
 {% else %}
 
 {{sls}}_state_not_allowed:
