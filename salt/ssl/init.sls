@@ -35,6 +35,22 @@ include:
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
+{% if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
+cacertz:
+  file.managed:
+    - name: /opt/so/conf/ca/cacerts
+    - source: salt://common/cacerts
+    - user: 939
+    - group: 939
+
+capemz:
+  file.managed:
+    - name: /opt/so/conf/ca/tls-ca-bundle.pem
+    - source: salt://common/tls-ca-bundle.pem
+    - user: 939
+    - group: 939
+{% endif %}
+
 # Trust the CA
 trusttheca:
   x509.pem_managed:
