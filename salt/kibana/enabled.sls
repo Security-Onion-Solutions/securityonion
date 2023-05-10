@@ -39,6 +39,11 @@ so-kibana:
     - watch:
       - file: kibanaconfig
 
+delete_so-kibana_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-kibana$
+
 {% else %}
 
 {{sls}}_state_not_allowed:
