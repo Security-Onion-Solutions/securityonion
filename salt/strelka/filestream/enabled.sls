@@ -5,6 +5,8 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
+{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - strelka.filestream.config
