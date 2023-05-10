@@ -46,6 +46,11 @@ so-playbook:
       - {{ BINDING }}
       {% endfor %}
 
+delete_so-playbook_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-playbook$
+
 so-playbook-sync_cron:
   cron.present:
     - name: /usr/sbin/so-playbook-sync > /opt/so/log/playbook/sync.log 2>&1
