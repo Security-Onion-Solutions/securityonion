@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
@@ -85,9 +84,7 @@ base:
     - utility
     - soctopus
     - playbook
-    {%- if REDIS != 0 %}
     - redis
-    {%- endif %}
     - elasticfleet
     - docker_clean
 
@@ -111,9 +108,7 @@ base:
     - mysql
     - elasticsearch
     - logstash
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - elastic-fleet-package-registry
     - kibana
     - curator
@@ -145,9 +140,7 @@ base:
     - mysql
     - elasticsearch
     - logstash
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - elastic-fleet-package-registry
     - kibana
     - pcap
@@ -196,9 +189,7 @@ base:
     - mysql
     - elasticsearch
     - logstash
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - curator
     - elastic-fleet-package-registry
     - kibana
@@ -218,9 +209,7 @@ base:
     - firewall
     - elasticsearch
     - logstash
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - curator
     {%- if STRELKA %}
     - strelka
@@ -264,9 +253,7 @@ base:
     - telegraf
     - firewall
     - logstash
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
 
