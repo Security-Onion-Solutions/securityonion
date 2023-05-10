@@ -90,6 +90,7 @@ strelkarepos:
     - template: jinja
     - defaults:
         STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
+    - makedirs: True
 {%   endif %}
 
 yara_update_script:
