@@ -1918,6 +1918,7 @@ securityonion_repo() {
 	# Remove all the current repos
 	if [[ $is_rocky ]]; then
 		logCmd "dnf -v clean all"
+		logCmd "dnf -y erase rocky-repos"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 		logCmd "ls -la /etc/yum.repos.d/"
@@ -1946,9 +1947,11 @@ securityonion_repo() {
 			logCmd "dnf repolist all"
 		fi
 		if [[ $waitforstate ]]; then
+			if [[ ! is_airgap ]]; then
 			# Build the repo locally so we can use it
 			echo "Syncing Repo"
 			repo_sync_local
+			fi
 		fi
 	fi
 }
