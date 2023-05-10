@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
 {% set REDIS = salt['pillar.get']('redis:enabled', True) %}
 {% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
@@ -111,9 +110,7 @@ base:
     - suricata.manager
     - mysql
     - elasticsearch
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if REDIS %}
     - redis
     {%- endif %}
@@ -147,9 +144,7 @@ base:
     - healthcheck
     - mysql
     - elasticsearch
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if REDIS %}
     - redis
     {%- endif %}
@@ -177,9 +172,7 @@ base:
     - telegraf
     - firewall
     - elasticsearch
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
 
@@ -202,9 +195,7 @@ base:
     - suricata.manager
     - mysql
     - elasticsearch
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if REDIS %}
     - redis
     {%- endif %}
@@ -226,9 +217,7 @@ base:
     - telegraf
     - firewall
     - elasticsearch
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if REDIS %}
     - redis
     {%- endif %}
@@ -274,9 +263,7 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     {%- if REDIS %}
     - redis
     {%- endif %}
