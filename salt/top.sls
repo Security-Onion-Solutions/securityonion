@@ -3,7 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
@@ -45,9 +44,7 @@ base:
     - suricata
     - healthcheck
     - zeek
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - docker_clean
     - elasticfleet.install_agent_grid
 
@@ -76,9 +73,7 @@ base:
     - pcap
     - suricata
     - zeek
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - curator
     - elastalert
     - utility
@@ -146,9 +141,7 @@ base:
     - pcap
     - suricata
     - zeek
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - curator
     - elastalert
     - utility
@@ -211,9 +204,7 @@ base:
     - logstash
     - redis
     - curator
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - pcap
     - suricata
     - zeek
