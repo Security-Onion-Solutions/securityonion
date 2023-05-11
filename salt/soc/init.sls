@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'soc/config.map.jinja' import SOCMERGED %}
+{% from 'soc/merged.map.jinja' import SOCMERGED %}
 
 include:
 {% if SOCMERGED.enabled %}
