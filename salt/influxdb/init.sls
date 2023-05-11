@@ -3,10 +3,10 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'influxdb/map.jinja' import INFLUXDBMERGED %}
+{% from 'influxdb/map.jinja' import INFLUXMERGED %}
 
 include:
-{% if INFLUXDBMERGED.enabled %}
+{% if INFLUXMERGED.enabled %}
   - influxdb.enabled
 {% else %}
   - influxdb.disabled
