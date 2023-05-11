@@ -7,20 +7,20 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 include:
-  - zeek.sostatus
+  - influxdb.sostatus
   
-so-zeek:
+so-influxdb:
   docker_container.absent:
     - force: True
 
-so-zeek_so-status.disabled:
+so-influxdb_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-zeek$
+    - regex: ^so-influxdb$
 
-zeekpacketlosscron:
+get_influxdb_size:
   cron.absent:
-    - identifier: zeekpacketlosscron
+    - identifier: get_influxdb_size
     - user: root
 
 {% else %}

@@ -6,22 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-include:
-  - zeek.sostatus
-  
-so-zeek:
-  docker_container.absent:
-    - force: True
-
-so-zeek_so-status.disabled:
-  file.comment:
+append_so-influxdb_so-status.conf:
+  file.append:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-zeek$
-
-zeekpacketlosscron:
-  cron.absent:
-    - identifier: zeekpacketlosscron
-    - user: root
+    - text: so-influxdb
+    - unless: grep -q so-influxdb /opt/so/conf/so-status/so-status.conf
 
 {% else %}
 
