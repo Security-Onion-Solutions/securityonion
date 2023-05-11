@@ -1,3 +1,8 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'soc/defaults.map.jinja' import SOCDEFAULTS with context %}
 {% from 'logstash/map.jinja' import LOGSTASH_NODES %}
@@ -6,14 +11,14 @@
 
 {% set SOCMERGED = salt['pillar.get']('soc', SOCDEFAULTS, merge=true) %}
 
-{# if SOCMERGED.server.modules.cases == httpcase details come from the soc pillar #}
-{% if SOCMERGED.server.modules.cases != 'soc' %}
-{%   do SOCMERGED.server.modules.elastic.update({'casesEnabled': false}) %}
-{%   do SOCMERGED.server.client.update({'casesEnabled': false}) %}
-{%   do SOCMERGED.server.client.hunt.update({'escalateRelatedEventsEnabled': false}) %}
-{%   do SOCMERGED.server.client.alerts.update({'escalateRelatedEventsEnabled': false}) %}
-{%   if SOCMERGED.server.modules.cases == 'elasticcases' %}
-{%     do SOCMERGED.server.modules.update({
+{# if SOCMERGED.config.server.modules.cases == httpcase details come from the soc pillar #}
+{% if SOCMERGED.config.server.modules.cases != 'soc' %}
+{%   do SOCMERGED.config.server.modules.elastic.update({'casesEnabled': false}) %}
+{%   do SOCMERGED.config.server.client.update({'casesEnabled': false}) %}
+{%   do SOCMERGED.config.server.client.hunt.update({'escalateRelatedEventsEnabled': false}) %}
+{%   do SOCMERGED.config.server.client.alerts.update({'escalateRelatedEventsEnabled': false}) %}
+{%   if SOCMERGED.config.server.modules.cases == 'elasticcases' %}
+{%     do SOCMERGED.config.server.modules.update({
          'elasticcases': {
            'hostUrl': 'https://' ~ GLOBALS.manager_ip ~ ':5601',
            'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user,
@@ -23,13 +28,13 @@
 {%   endif %}
 {% endif %}
 {# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
-{% do SOCMERGED.server.modules.pop('cases') %}
+{% do SOCMERGED.config.server.modules.pop('cases') %}
 
 {% if pillar.manager.playbook == 0 %}
-{%   do SOCMERGED.server.client.inactiveTools.append('toolPlaybook') %}
+{%   do SOCMERGED.config.server.client.inactiveTools.append('toolPlaybook') %}
 {% endif %}
 
-{% set standard_actions = SOCMERGED.pop('actions') %}
+{% set standard_actions = SOCMERGED.config.pop('actions') %}
 {% if pillar.global.endgamehost is defined %}
 {%   set endgame_dict = {
        "name": "Endgame",
@@ -42,12 +47,12 @@
 {%   do standard_actions.append(endgame_dict) %}
 {% endif %}
 
-{%   do SOCMERGED.server.client.hunt.update({'actions': standard_actions}) %}
-{%   do SOCMERGED.server.client.dashboards.update({'actions': standard_actions}) %}
-{%   do SOCMERGED.server.client.update({'job': {'actions': standard_actions}}) %}
-{%   do SOCMERGED.server.client.alerts.update({'actions': standard_actions}) %}
-{%   do SOCMERGED.server.client.cases.update({'actions': standard_actions}) %}
+{%   do SOCMERGED.config.server.client.hunt.update({'actions': standard_actions}) %}
+{%   do SOCMERGED.config.server.client.dashboards.update({'actions': standard_actions}) %}
+{%   do SOCMERGED.config.server.client.update({'job': {'actions': standard_actions}}) %}
+{%   do SOCMERGED.config.server.client.alerts.update({'actions': standard_actions}) %}
+{%   do SOCMERGED.config.server.client.cases.update({'actions': standard_actions}) %}
 
-{% set standard_eventFields = SOCMERGED.pop('eventFields') %}
-{%   do SOCMERGED.server.client.hunt.update({'eventFields': standard_eventFields}) %}
-{%   do SOCMERGED.server.client.dashboards.update({'eventFields': standard_eventFields}) %}
+{% set standard_eventFields = SOCMERGED.config.pop('eventFields') %}
+{%   do SOCMERGED.config.server.client.hunt.update({'eventFields': standard_eventFields}) %}
+{%   do SOCMERGED.config.server.client.dashboards.update({'eventFields': standard_eventFields}) %}
