@@ -4,7 +4,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-  - nginx
+  - nginx.config
 
 soctopusdir:
   file.directory:
