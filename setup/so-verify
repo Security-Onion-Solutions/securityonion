@@ -31,6 +31,8 @@ log_has_errors() {
 
     # Ignore Failed: 0 since that is the salt state output, and we detect state failures
     # via Result: False already.
+    
+    # Ignore "/tmp/__salt.tmp." and "retcode: 126" as they seem to be related to a transient issue with the elastic agent for linux
 
     grep -E "FAILED|Failed|failed|ERROR|Result: False" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
@@ -44,6 +46,8 @@ log_has_errors() {
         grep -vE "Exception in callback None" | \
         grep -vE "deprecation: ERROR" | \
         grep -vE "code: 100" | \
+        grep -vE "/tmp/__salt.tmp." | \
+        grep -vE "retcode: 126" | \
         grep -vE "Running scope as unit" &> "$error_log"
     
     if [[ $? -eq 0 ]]; then
