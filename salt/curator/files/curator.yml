@@ -4,9 +4,9 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% if grains['role'] in ['so-searchnode', 'so-heavynode'] %}
+{% if GLOBALS.role in ['so-searchnode', 'so-heavynode'] %}
   {%- set elasticsearch = GLOBALS.node_ip -%}
-{% elif grains['role'] in ['so-eval', 'so-managersearch', 'so-standalone', 'so-manager'] %}
+{% elif GLOBALS.role in ['so-eval', 'so-managersearch', 'so-standalone', 'so-manager'] %}
   {%- set elasticsearch = GLOBALS.manager_ip -%}
 {%- endif %}
 {%-   set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
@@ -30,10 +30,8 @@ elasticsearch:
       id:
       api_key:
     master_only: False
-{%- if salt['pillar.get']('elasticsearch:auth:enabled') is sameas true %}
     username: "{{ ES_USER }}"
     password: "{{ ES_PASS }}"
-{%- endif %}
 
 logging:
   loglevel: INFO
