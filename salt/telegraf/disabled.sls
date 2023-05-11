@@ -7,7 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 include:
-  -telegraf.sostatus
+  - telegraf.sostatus
   
 so-telegraf:
   docker_container.absent:
