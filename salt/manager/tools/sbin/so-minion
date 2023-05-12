@@ -182,7 +182,9 @@ function add_analyst_to_minion() {
 		"  gui:"\
 		"    enabled: true"\
 		"sensoroni:"\
-		"  node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
+		"  enabled: True"\
+		"  config:"\		
+		"    node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
 }
 
 # Add basic host info to the minion file
@@ -195,12 +197,25 @@ function add_host_to_minion() {
 
 # Add sensoroni specific information - Can we pull node_adrees from the host pillar?
 function add_sensoroni_to_minion() {
-
 	printf '%s\n'\
     "sensoroni:"\
-	"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
+	"  enabled: True"\
+	"  config:"\
+	"    node_description: '${NODE_DESCRIPTION//\'/''}'"\
     "  " >> $PILLARFILE
-}	
+}
+
+# Add sensoroni specific information - Can we pull node_adrees from the host pillar?
+function add_sensoroni_with_analyze_to_minion() {
+	printf '%s\n'\
+    "sensoroni:"\
+	"  enabled: True"\
+	"  config:"\
+    "    analyze:"\
+    "      enabled: True"\
+	"    node_description: '${NODE_DESCRIPTION//\'/''}'"\
+    "  " >> $PILLARFILE
+}
 
 # Sensor settings for the minion pillar
 function add_sensor_to_minion() {
@@ -506,7 +521,12 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	fi
 	create_minion_files
 	add_host_to_minion
-	add_sensoroni_to_minion
+	managers=("EVAL" "STANDALONE" "IMPORT" "MANAGER" "MANAGERSEARCH")
+	if echo "${managers[@]}" | grep -qw "$NODETYPE"; then
+		add_sensoroni_with_analyze_to_minion
+	else
+		add_sensoroni_to_minion
+	fi
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
 fi

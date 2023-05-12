@@ -3,11 +3,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'sensoroni/map.jinja' import SENSORONIMERGED %}
-
-include:
-{% if SENSORONIMERGED.enabled %}
-  - sensoroni.enabled
-{% else %}
-  - sensoroni.disabled
-{% endif %}
+append_so-zeek_so-status.conf:
+  file.append:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - text: so-sensoroni
+    - unless: grep -q so-sensoroni /opt/so/conf/so-status/so-status.conf

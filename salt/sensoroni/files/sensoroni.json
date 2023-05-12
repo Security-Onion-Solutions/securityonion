@@ -1,43 +1,29 @@
-{%- from 'vars/globals.map.jinja' import GLOBALS -%}
-{%- set ANALYZE_TIMEOUT_MS = salt['pillar.get']('sensoroni:analyze_timeout_ms', 900000) %}
-{%- set ANALYZE_PARALLEL_LIMIT = salt['pillar.get']('sensoroni:analyze_parallel_limit', 5) %}
-{%- set CHECKININTERVALMS = salt['pillar.get']('sensoroni:node_checkin_interval_ms', 10000) %}
-{%- set ROLE = grains.id.split('_') | last %}
-{%- if ROLE in ['eval', 'standalone', 'sensor', 'heavynode'] %}
-{%-   set STENODEFAULT = True %}
-{%- else %}
-{%-   set STENODEFAULT = False %}
-{%- endif %}
-{%- set STENOENABLED = salt['pillar.get']('steno:enabled', STENODEFAULT) %}
-{%- if ROLE in ['eval', 'standalone', 'import', 'manager', 'managersearch'] %}
-{%-   set ANALYZEDEFAULT = True %}
-{%- else %}
-{%-   set ANALYZEDEFAULT = False %}
-{%- endif %}
-{%- set ANALYZEENABLED = salt['pillar.get']('sensoroni:analyze_enabled', ANALYZEDEFAULT) %}
+{%- from 'vars/globals.map.jinja' import GLOBALS %}
+{%- from 'sensoroni/map.jinja' import SENSORONIMERGED %}
+{%- from 'pcap/config.map.jinja' import PCAPMERGED %}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
   "agent": {
     "nodeId": "{{ GLOBALS.hostname | lower }}",
     "role": "{{ GLOBALS.role }}",
-    "description": {{ GLOBALS.description | tojson }},
+    "description": {{ SENSORONIMERGED.config.node_description | tojson }},
     "address": "{{ GLOBALS.node_ip }}",
     "model": "{{ GLOBALS.so_model }}",
-    "pollIntervalMs": {{ CHECKININTERVALMS if CHECKININTERVALMS else 10000 }},
+    "pollIntervalMs": {{ SENSORONIMERGED.config.node_checkin_interval_ms }},
     "serverUrl": "https://{{ GLOBALS.url_base }}/sensoroniagents",
     "verifyCert": false,
     "modules": {
-{%- if ANALYZEENABLED %} 
+{%- if SENSORONIMERGED.config.analyze.enabled %} 
       "analyze": {
-        "timeoutMs": {{ ANALYZE_TIMEOUT_MS }},
-        "parallelLimit": {{ ANALYZE_PARALLEL_LIMIT }}
+        "timeoutMs": {{ SENSORONIMERGED.config.analyze_timeout_ms }},
+        "parallelLimit": {{ SENSORONIMERGED.config.analyze_parallel_limit }}
       },
 {%- endif %}
       "importer": {},
       "statickeyauth": {
         "apiKey": "{{ GLOBALS.sensoroni_key }}"
-{%- if STENOENABLED %} 
+{%- if PCAPMERGED.enabled %} 
       },     
       "stenoquery": {
         "executablePath": "/opt/sensoroni/scripts/stenoquery.sh",
