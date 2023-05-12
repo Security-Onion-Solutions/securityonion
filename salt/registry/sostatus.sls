@@ -6,11 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-append_so-registry_so-status.conf:
+append_so-dockerregistry_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
-    - text: so-registry
-    - unless: grep -q so-registry /opt/so/conf/so-status/so-status.conf
+    - text: so-dockerregistry
+    - unless: grep -q so-dockerregistry /opt/so/conf/so-status/so-status.conf
 
 {% else %}
 

@@ -41,10 +41,10 @@ so-dockerregistry:
       - x509: registry_crt
       - x509: registry_key
 
-delete_so-registry_so-status.disabled:
+delete_so-dockerregistry_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-registry$
+    - regex: ^so-dockerregistry$
 
 {% else %}
 

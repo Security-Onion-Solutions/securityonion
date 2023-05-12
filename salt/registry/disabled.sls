@@ -13,10 +13,10 @@ so-registry:
   docker_container.absent:
     - force: True
 
-so-registry_so-status.disabled:
+so-dockerregistry_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-registry$
+    - regex: ^so-dockerregistry$
 
 {% else %}
 
