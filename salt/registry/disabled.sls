@@ -9,7 +9,7 @@
 include:
   - registry.sostatus
   
-so-registry:
+so-dockerregistry:
   docker_container.absent:
     - force: True
 
