@@ -10,7 +10,7 @@ so-sensoroni:
   docker_container.absent:
     - force: True
 
-so-zeek_so-status.disabled:
+so-sensoroni_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-sensoroni$

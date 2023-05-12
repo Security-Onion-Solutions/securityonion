@@ -26,7 +26,7 @@ so-sensoroni:
     - require:
       - file: sensoroniagentconf
 
-delete_so-zeek_so-status.disabled:
+delete_so-sensoroni_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-sensoroni$
