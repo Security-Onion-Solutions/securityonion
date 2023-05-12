@@ -4,20 +4,17 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
 
-#so-elastic-agent-gen-installers $FleetHost $EnrollmentToken 
+#so-elastic-agent-gen-installers $FleetHostURLs $EnrollmentToken 
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 . /usr/sbin/so-common
 
 ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints")) | .api_key')
+FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq -r  '.items[].host_urls[]' | paste -sd ',')
+OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
 
-#FLEETHOST=$(lookup_pillar "server:url" "elasticfleet")
-FLEETHOST="{{ GLOBALS.manager_ip }}"
-
-#FLEETHOST=$1
-#ENROLLMENTOKEN=$2
-TARGETOS=( "linux" "darwin" "windows" )
+if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then printf "\nFleet Host URL or Enrollment Token empty - exiting..." && exit; fi
 
 printf  "\n### Get rid of any previous runs\n"
 rm -rf /tmp/elastic-agent-workspace
@@ -25,31 +22,36 @@ mkdir -p /tmp/elastic-agent-workspace
 
 printf "\n### Extract outer tarball and then each individual tarball/zip\n"
 tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-{{ GLOBALS.so_version }}.tar.gz -C /tmp/elastic-agent-workspace/
-unzip /tmp/elastic-agent-workspace/elastic-agent-*.zip -d /tmp/elastic-agent-workspace/
+unzip -q /tmp/elastic-agent-workspace/elastic-agent-*.zip -d /tmp/elastic-agent-workspace/
 for archive in /tmp/elastic-agent-workspace/*.tar.gz
-do 
+do
+  printf "\nExtracting $archive..."
   tar xf "$archive" -C /tmp/elastic-agent-workspace/
 done 
 
-printf "\n### Strip out unused components"
+printf "\n\n### Strip out unused components"
 find /tmp/elastic-agent-workspace/elastic-agent-*/data/elastic-agent-*/components -regex '.*fleet.*\|.*packet.*\|.*apm*.*\|.*audit.*\|.*heart.*\|.*cloud.*' -delete 
 
-printf "\n### Tar everything up again"
-for OS in "${TARGETOS[@]}"
+printf "\n\n### Tar everything up again"
+for OS in "${OSARCH[@]}"
 do 
+  printf "\nCreating tarball for $OS..."
   rm -rf /tmp/elastic-agent-workspace/elastic-agent
-  mv /tmp/elastic-agent-workspace/elastic-agent-*-$OS-x86_64 /tmp/elastic-agent-workspace/elastic-agent
-  tar -czvf /tmp/elastic-agent-workspace/$OS.tar.gz  -C /tmp/elastic-agent-workspace elastic-agent
+  mv /tmp/elastic-agent-workspace/elastic-agent-*-$OS /tmp/elastic-agent-workspace/elastic-agent
+  tar -czf /tmp/elastic-agent-workspace/$OS.tar.gz  -C /tmp/elastic-agent-workspace elastic-agent
 done 
 
+GOTARGETOS=( "linux" "windows" "darwin" "darwin/arm64" )
+GOARCH="amd64"
 printf "\n### Generate OS packages using the cleaned up tarballs"
-for OS in "${TARGETOS[@]}"
+for GOOS in "${GOTARGETOS[@]}"
 do
-    printf "\n\n### Generating $OS Installer...\n"
-    docker run -e CGO_ENABLED=0 -e GOOS=$OS \
+    if [[ $GOOS == 'darwin/arm64' ]]; then GOOS="darwin" && GOARCH="arm64"; fi
+    printf "\n\n### Generating $GOOS/$GOARCH Installer...\n"
+    docker run -e CGO_ENABLED=0 -e GOOS=$GOOS -e GOARCH=$GOARCH \
     --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
-    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
-    printf "\n### $OS Installer Generated...\n"
+    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}
+    printf "\n### $GOOS/$GOARCH Installer Generated...\n"
 done
