@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'kratos/config.map.jinja' import KRATOSMERGED %}
+{% from 'kratos/map.jinja' import KRATOSMERGED %}
 
 include:
 {% if KRATOSMERGED.enabled %}
