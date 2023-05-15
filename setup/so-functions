@@ -910,7 +910,7 @@ create_manager_pillars() {
 	influxdb_pillar
 	logrotate_pillar
 	patch_pillar
-
+	nginx_pillar
 }
 
 create_repo() {
@@ -1393,6 +1393,19 @@ ls_heapsize() {
 idstools_pillar() {
 	title "Ading IDSTOOLS pillar options"
 	touch $adv_idstools_pillar_file
+}
+
+nginx_pillar() {
+	title "Creating the NGINX pillar"
+	[[ -z "$TESTING" ]] && return
+
+	# When testing, set the login rate limiting to high values to avoid failing automated logins
+	printf '%s\n'\
+		"nginx:"\
+		"  config:"\
+		"    throttle_login_burst: 9999"\
+		"    throttle_login_rate: 9999"\
+		"" > "$nginx_pillar_file"
 }
 
 soc_pillar() {
