@@ -1,3 +1,12 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls.split('.')[0] in allowed_states %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
+
 # Move our new CA over so Elastic and Logstash can use SSL with the internal CA
 catrustdir:
   file.directory:
@@ -16,7 +25,7 @@ cascriptsync:
         GLOBALS: {{ GLOBALS }}
 {%   endif %}
 
-{% if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
+{%   if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
 cacertz:
   file.managed:
     - name: /opt/so/conf/ca/cacerts
@@ -30,4 +39,12 @@ capemz:
     - source: salt://elasticsearch/tls-ca-bundle.pem
     - user: 939
     - group: 939
+{%   endif %}
+
+{% else %}
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
 {% endif %}
