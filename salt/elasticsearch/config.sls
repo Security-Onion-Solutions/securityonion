@@ -37,26 +37,7 @@ elasticsearch:
     - home: /opt/so/conf/elasticsearch
     - createhome: False
 
-{%   if GLOBALS.is_manager %}
-# We have to add the Manager CA to the CA list
-cascriptsync:
-  file.managed:
-    - name: /usr/sbin/so-catrust
-    - source: salt://elasticsearch/tools/sbin_jinja/so-catrust
-    - user: 939
-    - group: 939
-    - mode: 750
-    - template: jinja
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
-# Run the CA magic
-cascriptfun:
-  cmd.run:
-    - name: /usr/sbin/so-catrust
-    - require:
-        - file: cascriptsync
-{%   endif %}
 
 elasticsearch_sbin:
   file.recurse:
