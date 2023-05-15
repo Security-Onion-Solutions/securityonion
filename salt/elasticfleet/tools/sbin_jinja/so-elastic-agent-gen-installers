@@ -19,37 +19,40 @@ FLEETHOST="{{ GLOBALS.manager_ip }}"
 #ENROLLMENTOKEN=$2
 TARGETOS=( "linux" "darwin" "windows" )
 
-printf  "\n### Get rid of any previous runs\n"
-rm -rf /tmp/elastic-agent-workspace
-mkdir -p /tmp/elastic-agent-workspace
+printf  "\n### Creating a temp directory at /nsm/elastic-agent-workspace\n"
+rm -rf /nsm/elastic-agent-workspace
+mkdir -p /nsm/elastic-agent-workspace
 
-printf "\n### Extract outer tarball and then each individual tarball/zip\n"
-tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-{{ GLOBALS.so_version }}.tar.gz -C /tmp/elastic-agent-workspace/
-unzip /tmp/elastic-agent-workspace/elastic-agent-*.zip -d /tmp/elastic-agent-workspace/
-for archive in /tmp/elastic-agent-workspace/*.tar.gz
+printf "\n### Extracting outer tarball and then each individual tarball/zip\n"
+tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-{{ GLOBALS.so_version }}.tar.gz -C /nsm/elastic-agent-workspace/
+unzip /nsm/elastic-agent-workspace/elastic-agent-*.zip -d /nsm/elastic-agent-workspace/
+for archive in /nsm/elastic-agent-workspace/*.tar.gz
 do 
-  tar xf "$archive" -C /tmp/elastic-agent-workspace/
+  tar xf "$archive" -C /nsm/elastic-agent-workspace/
 done 
 
-printf "\n### Strip out unused components"
-find /tmp/elastic-agent-workspace/elastic-agent-*/data/elastic-agent-*/components -regex '.*fleet.*\|.*packet.*\|.*apm*.*\|.*audit.*\|.*heart.*\|.*cloud.*' -delete 
+printf "\n### Stripping out unused components"
+find /nsm/elastic-agent-workspace/elastic-agent-*/data/elastic-agent-*/components -regex '.*fleet.*\|.*packet.*\|.*apm*.*\|.*audit.*\|.*heart.*\|.*cloud.*' -delete 
 
-printf "\n### Tar everything up again"
+printf "\n### Tarring everything up again"
 for OS in "${TARGETOS[@]}"
 do 
-  rm -rf /tmp/elastic-agent-workspace/elastic-agent
-  mv /tmp/elastic-agent-workspace/elastic-agent-*-$OS-x86_64 /tmp/elastic-agent-workspace/elastic-agent
-  tar -czvf /tmp/elastic-agent-workspace/$OS.tar.gz  -C /tmp/elastic-agent-workspace elastic-agent
+  rm -rf /nsm/elastic-agent-workspace/elastic-agent
+  mv /nsm/elastic-agent-workspace/elastic-agent-*-$OS-x86_64 /nsm/elastic-agent-workspace/elastic-agent
+  tar -czvf /nsm/elastic-agent-workspace/$OS.tar.gz  -C /nsm/elastic-agent-workspace elastic-agent
 done 
 
-printf "\n### Generate OS packages using the cleaned up tarballs"
+printf "\n### Generating OS packages using the cleaned up tarballs"
 for OS in "${TARGETOS[@]}"
 do
     printf "\n\n### Generating $OS Installer...\n"
     docker run -e CGO_ENABLED=0 -e GOOS=$OS \
     --mount type=bind,source=/etc/ssl/certs/,target=/workspace/files/cert/ \
-    --mount type=bind,source=/tmp/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
+    --mount type=bind,source=/nsm/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
     {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHost=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_$OS
     printf "\n### $OS Installer Generated...\n"
 done
+
+printf "\n### Cleaning up temp files in /nsm/elastic-agent-workspace"
+rm -rf /nsm/elastic-agent-workspace

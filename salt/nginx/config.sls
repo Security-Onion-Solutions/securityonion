@@ -12,17 +12,10 @@ include:
 # Drop the correct nginx config based on role
 nginxconfdir:
   file.directory:
-    - name: /opt/so/conf/nginx/html
+    - name: /opt/so/conf/nginx
     - user: 939
     - group: 939
     - makedirs: True
-
-nginxhtml:
-  file.recurse:
-    - name: /opt/so/conf/nginx/html
-    - source: salt://nginx/html/
-    - user: 939
-    - group: 939
 
 nginxconf:
   file.managed:
