@@ -10,11 +10,15 @@
 
 . /usr/sbin/so-common
 
-ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints")) | .api_key')
-FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq -r  '.items[].host_urls[]' | paste -sd ',')
-OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
-
+for i in {1..30}
+do
+   ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints")) | .api_key')
+   FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq -r  '.items[].host_urls[]' | paste -sd ',')
+if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]]; then break; else sleep 10; fi
+done
 if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then printf "\nFleet Host URL or Enrollment Token empty - exiting..." && exit; fi
+
+OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
 
 printf  "\n### Creating a temp directory at /nsm/elastic-agent-workspace\n"
 rm -rf /nsm/elastic-agent-workspace
@@ -33,7 +37,6 @@ printf "\n### Stripping out unused components"
 find /nsm/elastic-agent-workspace/elastic-agent-*/data/elastic-agent-*/components -regex '.*fleet.*\|.*packet.*\|.*apm*.*\|.*audit.*\|.*heart.*\|.*cloud.*' -delete 
 
 printf "\n### Tarring everything up again"
-
 for OS in "${OSARCH[@]}"
 do 
   printf "\nCreating tarball for $OS..."
@@ -45,7 +48,6 @@ done
 GOTARGETOS=( "linux" "windows" "darwin" "darwin/arm64" )
 GOARCH="amd64"
 printf "\n### Generating OS packages using the cleaned up tarballs"for GOOS in "${GOTARGETOS[@]}"
-
 do
     if [[ $GOOS == 'darwin/arm64' ]]; then GOOS="darwin" && GOARCH="arm64"; fi
     printf "\n\n### Generating $GOOS/$GOARCH Installer...\n"
