@@ -904,7 +904,7 @@ create_manager_pillars() {
 	influxdb_pillar
 	logrotate_pillar
 	patch_pillar
-
+	nginx_pillar
 }
 
 create_repo() {
@@ -967,7 +967,7 @@ download_elastic_agent_artifacts() {
 	else
 		logCmd "mkdir -p /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
 		logCmd "curl --retry 5 --retry-delay 60 https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.tar.gz --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz"
-		logCmd "tar -xf /nsm/elastic-fleet/artifacts/beats/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
+		logCmd "tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
 	fi
 }
 
@@ -1387,6 +1387,19 @@ ls_heapsize() {
 idstools_pillar() {
 	title "Ading IDSTOOLS pillar options"
 	touch $adv_idstools_pillar_file
+}
+
+nginx_pillar() {
+	title "Creating the NGINX pillar"
+	[[ -z "$TESTING" ]] && return
+
+	# When testing, set the login rate limiting to high values to avoid failing automated logins
+	printf '%s\n'\
+		"nginx:"\
+		"  config:"\
+		"    throttle_login_burst: 9999"\
+		"    throttle_login_rate: 9999"\
+		"" > "$nginx_pillar_file"
 }
 
 soc_pillar() {
