@@ -61,7 +61,7 @@ add_mngr_ip_to_hosts() {
 
 add_socore_user_manager() {
 	info "Adding socore user"
-	logCmd "so_add_user 'socore' '939' '939' '/opt/so'" 
+	logCmd "so_add_user socore 939 939 /opt/so" 
 }
 
 add_web_user() {
@@ -967,15 +967,15 @@ detect_os() {
 }
 
 download_elastic_agent_artifacts() {
-   #TODO - ISO
 
-   logCmd "mkdir -p /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
-
-   logCmd "curl --retry 5 --retry-delay 60 https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.tar.gz --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz"
-
-   logCmd "tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
-
-	}
+	if [[ $is_iso ]]; then
+		logCmd "tar -xf /nsm/elastic-fleet/artifacts/beats/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
+	else
+		logCmd "mkdir -p /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
+		logCmd "curl --retry 5 --retry-delay 60 https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.tar.gz --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz"
+		logCmd "tar -xf /nsm/elastic-fleet/artifacts/beats/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
+	fi
+}
 
 installer_progress_loop() {
 	local i=0
@@ -1946,9 +1946,11 @@ securityonion_repo() {
 			logCmd "dnf repolist all"
 		fi
 		if [[ $waitforstate ]]; then
-			# Build the repo locally so we can use it
-			echo "Syncing Repo"
-			repo_sync_local
+			if [[ ! $is_airgap ]]; then
+				# Build the repo locally so we can use it
+				echo "Syncing Repo"
+				repo_sync_local
+			fi
 		fi
 	fi
 }
@@ -2194,12 +2196,12 @@ setup_salt_master_dirs() {
 		logCmd "rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/pillar/* $default_salt_dir/pillar/"
 		logCmd "rsync -avh --exclude 'TRANS.TBL' /home/$INSTALLUSERNAME/SecurityOnion/salt/* $default_salt_dir/salt/"
 		logCmd "mkdir -p $local_salt_dir/salt/zeek/policy/intel"
-		logCmd "cp -Rv /home/$INSTALLUSERNAME/SecurityOnion/files/intel.dat $local_salt_dir/salt/zeek/policy/intel/"
+		logCmd "touch $local_salt_dir/salt/zeek/policy/intel/intel.dat"
 	else
 		logCmd "cp -Rv ../pillar/* $default_salt_dir/pillar/"
 		logCmd "cp -Rv ../salt/* $default_salt_dir/salt/"
 		logCmd "mkdir -p $local_salt_dir/salt/zeek/policy/intel"
-		logCmd "cp -Rv files/intel.dat $local_salt_dir/salt/zeek/policy/intel/"
+		logCmd "touch $local_salt_dir/salt/zeek/policy/intel/intel.dat"
 	fi
 
 	info "Chown the salt dirs on the manager for socore"
@@ -2329,8 +2331,8 @@ so_add_user() {
 	if [ "$5" ]; then local pass=$5; fi
 
 	info "Add $username user"
-	logCmd "groupadd --gid '$gid' '$username'"
-	logCmd "useradd -m --uid '$uid' --gid '$gid' --home-dir '$home_dir' '$username'"
+	logCmd "groupadd --gid $gid $username"
+	logCmd "useradd -m --uid $uid --gid $gid --home-dir $home_dir $username"
 
 	# If a password has been passed in, set the password
 	if [ "$pass" ]; then
