@@ -101,6 +101,8 @@ base:
     - soc.adv_soc
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
     - curator.soc_curator
@@ -155,6 +157,8 @@ base:
     - soc.adv_soc
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
     - curator.soc_curator
@@ -248,6 +252,8 @@ base:
     - soc.adv_soc
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
     - curator.soc_curator
     - curator.adv_curator
     - backup.soc_backup
