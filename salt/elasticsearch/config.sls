@@ -8,6 +8,7 @@
 
 include:
   - ssl
+  - elasticsearch.ca
 
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
@@ -37,8 +38,6 @@ elasticsearch:
     - home: /opt/so/conf/elasticsearch
     - createhome: False
 
-
-
 elasticsearch_sbin:
   file.recurse:
     - name: /usr/sbin
@@ -47,7 +46,6 @@ elasticsearch_sbin:
     - group: 939
     - file_mode: 755
     - exclude_pat:
-      - so-catrust
       - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
 
 elasticsearch_sbin_jinja:
@@ -79,14 +77,6 @@ so-elasticsearch-pipelines-script:
     - user: 930
     - group: 939
     - mode: 754
-
-# Move our new CA over so Elastic and Logstash can use SSL with the internal CA
-catrustdir:
-  file.directory:
-    - name: /opt/so/conf/ca
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 esingestdir:
   file.directory:

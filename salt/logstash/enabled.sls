@@ -12,6 +12,7 @@
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
+  - elasticsearch.ca
   - logstash.config
   - logstash.sostatus
 

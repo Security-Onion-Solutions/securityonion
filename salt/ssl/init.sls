@@ -35,42 +35,7 @@ include:
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
-{%   if GLOBALS.is_manager %}
-# We have to add the Manager CA to the CA list
-cascriptsync:
-  file.managed:
-    - name: /usr/sbin/so-catrust
-    - source: salt://ssl/tools/sbin_jinja/so-catrust
-    - user: 939
-    - group: 939
-    - mode: 750
-    - template: jinja
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
-# Run the CA magic
-cascriptfun:
-  cmd.run:
-    - name: /usr/sbin/so-catrust
-    - require:
-        - file: cascriptsync
-{%   endif %}
-
-{% if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
-cacertz:
-  file.managed:
-    - name: /opt/so/conf/ca/cacerts
-    - source: salt://ssl/cacerts
-    - user: 939
-    - group: 939
-
-capemz:
-  file.managed:
-    - name: /opt/so/conf/ca/tls-ca-bundle.pem
-    - source: salt://ssl/tls-ca-bundle.pem
-    - user: 939
-    - group: 939
-{% endif %}
 
 # Trust the CA
 trusttheca:

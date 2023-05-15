@@ -11,14 +11,14 @@
 set -e
 
 # Check to see if we have extracted the ca cert.
-if [ ! -f /opt/so/saltstack/local/salt/ssl/cacerts ]; then
+if [ ! -f /opt/so/saltstack/local/salt/elasticsearch/cacerts ]; then
     docker run -v /etc/pki/ca.crt:/etc/ssl/ca.crt --name so-elasticsearchca --user root --entrypoint jdk/bin/keytool {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }} -keystore /usr/share/elasticsearch/jdk/lib/security/cacerts -alias SOSCA -import -file /etc/ssl/ca.crt -storepass changeit -noprompt
-    docker cp so-elasticsearchca:/usr/share/elasticsearch/jdk/lib/security/cacerts /opt/so/saltstack/local/salt/ssl/cacerts
-    docker cp so-elasticsearchca:/etc/ssl/certs/ca-certificates.crt /opt/so/saltstack/local/salt/ssl/tls-ca-bundle.pem
+    docker cp so-elasticsearchca:/usr/share/elasticsearch/jdk/lib/security/cacerts /opt/so/saltstack/local/salt/elasticsearch/cacerts
+    docker cp so-elasticsearchca:/etc/ssl/certs/ca-certificates.crt /opt/so/saltstack/local/salt/elasticsearch/tls-ca-bundle.pem
     docker rm so-elasticsearchca
-    echo "" >> /opt/so/saltstack/local/salt/ssl/tls-ca-bundle.pem
-    echo "sosca" >> /opt/so/saltstack/local/salt/ssl/tls-ca-bundle.pem
-    cat /etc/pki/ca.crt >> /opt/so/saltstack/local/salt/ssl/tls-ca-bundle.pem
+    echo "" >> /opt/so/saltstack/local/salt/elasticsearch/tls-ca-bundle.pem
+    echo "sosca" >> /opt/so/saltstack/local/salt/elasticsearch/tls-ca-bundle.pem
+    cat /etc/pki/ca.crt >> /opt/so/saltstack/local/salt/elasticsearch/tls-ca-bundle.pem
 else
     exit 0
 fi
