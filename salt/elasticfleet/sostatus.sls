@@ -10,7 +10,7 @@ append_so-elastic-fleet_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-elastic-fleet
-    - unless: grep -q so-elastic-fleet /opt/so/conf/so-status/so-status.conf
+    - unless: grep -q ^so-elastic-fleet$ /opt/so/conf/so-status/so-status.conf
 
 {% else %}
 
