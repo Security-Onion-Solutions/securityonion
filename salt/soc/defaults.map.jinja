@@ -1,3 +1,8 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% import_yaml 'soc/defaults.yaml' as SOCDEFAULTS %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKER -%}
@@ -5,28 +10,28 @@
 {% import_text 'influxdb/metrics_link.txt' as METRICS_LINK %}
 
 {% for module, application_url in GLOBALS.application_urls.items() %}
-{%   do SOCDEFAULTS.soc.server.modules[module].update({'hostUrl': application_url}) %}
+{%   do SOCDEFAULTS.soc.config.server.modules[module].update({'hostUrl': application_url}) %}
 {% endfor %}
 
 {# add nodes from the logstash:nodes pillar to soc.server.modules.elastic.remoteHostUrls #}
 {% for node_type, minions in salt['pillar.get']('logstash:nodes', {}).items() %}
 {%   for m in minions.keys() %}
-{%     do SOCDEFAULTS.soc.server.modules.elastic.remoteHostUrls.append(m) %}
+{%     do SOCDEFAULTS.soc.config.server.modules.elastic.remoteHostUrls.append(m) %}
 {%   endfor %}
 {% endfor %}
 
-{% do SOCDEFAULTS.soc.server.modules.elastic.update({'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user, 'password': GLOBALS.elasticsearch.auth.users.so_elastic_user.pass}) %}
+{% do SOCDEFAULTS.soc.config.server.modules.elastic.update({'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user, 'password': GLOBALS.elasticsearch.auth.users.so_elastic_user.pass}) %}
 
-{% do SOCDEFAULTS.soc.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.influxdb_host ~ ':8086'}) %}
-{% do SOCDEFAULTS.soc.server.modules.influxdb.update({'token': INFLUXDB_TOKEN}) %}
-{% for tool in SOCDEFAULTS.soc.server.client.tools %}
+{% do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.influxdb_host ~ ':8086'}) %}
+{% do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'token': INFLUXDB_TOKEN}) %}
+{% for tool in SOCDEFAULTS.soc.config.server.client.tools %}
 {%   if tool.name == "toolInfluxDb" and METRICS_LINK | length > 0 %}
 {%     do tool.update({'link': METRICS_LINK}) %}
 {%   endif %}
 {% endfor %}
 
-{% do SOCDEFAULTS.soc.server.modules.statickeyauth.update({'anonymousCidr': DOCKER.sorange, 'apiKey': pillar.sensoroni.sensoronikey}) %}
+{% do SOCDEFAULTS.soc.config.server.modules.statickeyauth.update({'anonymousCidr': DOCKER.sorange, 'apiKey': pillar.sensoroni.config.sensoronikey}) %}
 
-{% do SOCDEFAULTS.soc.server.client.case.update({'analyzerNodeId': GLOBALS.hostname}) %}
+{% do SOCDEFAULTS.soc.config.server.client.case.update({'analyzerNodeId': GLOBALS.hostname}) %}
 
 {% set SOCDEFAULTS = SOCDEFAULTS.soc %}

@@ -3,16 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
-{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
-{% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
-{% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
-{% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
-{% set CURATOR = salt['pillar.get']('curator:enabled', True) %}
-{% set REDIS = salt['pillar.get']('redis:enabled', True) %}
-{% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
@@ -217,27 +207,27 @@
           ],
   }, grain='role') %}
 
-  {% if (PLAYBOOK != 0) and grains.role in ['so-eval', 'so-manager', 'so-managersearch', 'so-standalone'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-managersearch', 'so-standalone'] %}
     {% do allowed_states.append('mysql') %}
   {% endif %}
 
-  {%- if ZEEKVER != 'SURICATA' and grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
+  {%- if grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
     {% do allowed_states.append('zeek') %}
   {%- endif %}
 
-  {% if STRELKA and grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
+  {% if grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
     {% do allowed_states.append('strelka') %}
   {% endif %}
 
-  {% if ELASTICSEARCH and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-import'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-import'] %}
     {% do allowed_states.append('elasticsearch') %}
   {% endif %}
 
-  {% if ELASTICSEARCH and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
     {% do allowed_states.append('elasticsearch.auth') %}
   {% endif %}
 
-  {% if KIBANA and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
     {% do allowed_states.append('kibana') %}
     {% do allowed_states.append('kibana.secrets') %}
   {% endif %}
@@ -246,23 +236,19 @@
     {% do allowed_states.append('curator') %}
   {% endif %}
 
-  {% if ELASTALERT and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
     {% do allowed_states.append('elastalert') %}
   {% endif %}
 
-  {% if (PLAYBOOK !=0) and grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
+  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
     {% do allowed_states.append('playbook') %}
   {% endif %}
 
-  {% if (PLAYBOOK !=0) and grains.role in ['so-eval'] %}
-    {% do allowed_states.append('redis') %}
-  {% endif %}
-
-  {% if LOGSTASH and grains.role in ['so-helixsensor', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-receiver'] %}
+  {% if grains.role in ['so-helixsensor', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-receiver'] %}
     {% do allowed_states.append('logstash') %}
   {% endif %}
 
-  {% if REDIS and grains.role in ['so-manager', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-receiver'] %}
+  {% if grains.role in ['so-manager', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-receiver', 'so-eval'] %}
     {% do allowed_states.append('redis') %}
   {% endif %}
   

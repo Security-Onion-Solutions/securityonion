@@ -3,15 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-{% set ZEEKVER = salt['pillar.get']('global:mdengine', '') %}
-{% set PLAYBOOK = salt['pillar.get']('manager:playbook', '0') %}
-{% set ELASTALERT = salt['pillar.get']('elastalert:enabled', True) %}
-{% set ELASTICSEARCH = salt['pillar.get']('elasticsearch:enabled', True) %}
-{% set KIBANA = salt['pillar.get']('kibana:enabled', True) %}
-{% set LOGSTASH = salt['pillar.get']('logstash:enabled', True) %}
-{% set REDIS = salt['pillar.get']('redis:enabled', True) %}
-{% set STRELKA = salt['pillar.get']('strelka:enabled', '0') %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
@@ -52,12 +43,8 @@ base:
     - pcap
     - suricata
     - healthcheck
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - docker_clean
     - elasticfleet.install_agent_grid
 
@@ -80,31 +67,19 @@ base:
     - suricata.manager
     - healthcheck
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
-    {%- if PLAYBOOK != 0 %}
     - playbook
     - redis
-    {%- endif %}
     - elasticfleet
     - docker_clean
 
@@ -126,23 +101,13 @@ base:
     - idstools
     - suricata.manager
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if REDIS %}
     - redis
-    {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -168,31 +133,17 @@ base:
     - suricata.manager    
     - healthcheck
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %} 
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if REDIS %}
     - redis
-    {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - curator
-    {%- if ELASTALERT %}
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -206,12 +157,8 @@ base:
     - nginx
     - telegraf
     - firewall
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
 
@@ -233,23 +180,13 @@ base:
     - idstools
     - suricata.manager
     - mysql
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - curator
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
-    {%- if ELASTALERT %}
+    - kibana
     - elastalert
-    {%- endif %}
     - utility
     - soctopus
     - playbook
@@ -263,24 +200,14 @@ base:
     - nginx
     - telegraf
     - firewall
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - curator
-    {%- if STRELKA %}
     - strelka
-    {%- endif %}
     - pcap
     - suricata
-    {%- if ZEEKVER != 'SURICATA' %}
     - zeek
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
   
@@ -301,13 +228,9 @@ base:
     - idstools
     - suricata.manager
     - pcap
-    {%- if ELASTICSEARCH %}
     - elasticsearch
-    {%- endif %}
-    {%- if KIBANA %}
     - elastic-fleet-package-registry
-    - kibana.so_savedobjects_defaults
-    {%- endif %}
+    - kibana
     - utility
     - suricata
     - zeek
@@ -320,12 +243,8 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    {%- if LOGSTASH %}
     - logstash
-    {%- endif %}
-    {%- if REDIS %}
     - redis
-    {%- endif %}
     - elasticfleet.install_agent_grid
     - docker_clean
 

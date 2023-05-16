@@ -125,9 +125,10 @@ function create_minion_files() {
 }
 
 # Add Elastic settings to the minion file
-function add_elastic_to_minion() {
+function add_elasticsearch_to_minion() {
     printf '%s\n'\
 		"elasticsearch:"\
+		"  enabled: True"\
 		"  esheap: '$ES_HEAP_SIZE'"\
 		"  " >> $PILLARFILE
 }
@@ -142,16 +143,18 @@ function add_fleet_to_minion() {
     # Write out settings to minion file
     printf '%s\n'\
 		"elasticfleet:"\
-		"  server:"\
-		"    es_token: '$ESTOKEN'"\
+		"  enabled: True"\
+		"  config:"\
+		"    server:"\
+		"      es_token: '$ESTOKEN'"\
 		"  " >> $PILLARFILE
 }
-
 
 # Add IDH Services info to the minion file
 function add_idh_to_minion() {
 	printf '%s\n'\
 	"idh:"\
+	"  enabled: True"\
 	"  restrict_management_ip: $IDH_MGTRESTRICT"\
 	"  services:" >> "$PILLARFILE"
 	IFS=',' read -ra IDH_SERVICES_ARRAY <<< "$IDH_SERVICES"
@@ -164,6 +167,7 @@ function add_logstash_to_minion() {
 	# Create the logstash advanced pillar
 	printf '%s\n'\
 		"logstash:"\
+		"  enabled: True"\
 		"  config:"\
 		"    pipeline_x_workers: $CPUCORES"\
 		"  settings:"\
@@ -180,7 +184,9 @@ function add_analyst_to_minion() {
 		"  gui:"\
 		"    enabled: true"\
 		"sensoroni:"\
-		"  node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
+		"  enabled: True"\
+		"  config:"\		
+		"    node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
 }
 
 # Add basic host info to the minion file
@@ -193,12 +199,25 @@ function add_host_to_minion() {
 
 # Add sensoroni specific information - Can we pull node_adrees from the host pillar?
 function add_sensoroni_to_minion() {
-
 	printf '%s\n'\
     "sensoroni:"\
-		"  node_description: '${NODE_DESCRIPTION//\'/''}'"\
-        "  " >> $PILLARFILE
-}	
+	"  enabled: True"\
+	"  config:"\
+	"    node_description: '${NODE_DESCRIPTION//\'/''}'"\
+    "  " >> $PILLARFILE
+}
+
+# Add sensoroni specific information - Can we pull node_adrees from the host pillar?
+function add_sensoroni_with_analyze_to_minion() {
+	printf '%s\n'\
+    "sensoroni:"\
+	"  enabled: True"\
+	"  config:"\
+    "    analyze:"\
+    "      enabled: True"\
+	"    node_description: '${NODE_DESCRIPTION//\'/''}'"\
+    "  " >> $PILLARFILE
+}
 
 # Sensor settings for the minion pillar
 function add_sensor_to_minion() {
@@ -206,15 +225,140 @@ function add_sensor_to_minion() {
 	echo "  interface: '$INTERFACE'" >> $PILLARFILE
 	echo "  mtu: 9000" >> $PILLARFILE
 	echo "zeek:" >> $PILLARFILE
-	echo "    config:" >> $PILLARFILE
-	echo "        node:" >> $PILLARFILE
-	echo "            lb_procs: '$CORECOUNT'" >> $PILLARFILE
+	echo "  enabled: True" >> $PILLARFILE
+	echo "  config:" >> $PILLARFILE
+	echo "    node:" >> $PILLARFILE
+	echo "      lb_procs: '$CORECOUNT'" >> $PILLARFILE
 	echo "suricata:" >> $PILLARFILE
-	echo "    config:" >> $PILLARFILE
-	echo "        af-packet:" >> $PILLARFILE
-	echo "            threads: '$CORECOUNT'" >> $PILLARFILE
+	echo "  config:" >> $PILLARFILE
+	echo "    af-packet:" >> $PILLARFILE
+	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
 	echo "pcap:" >> $PILLARFILE
-	echo "    enabled: True" >> $PILLARFILE
+	echo "  enabled: True" >> $PILLARFILE
+	echo "  " >> $PILLARFILE
+}
+
+function add_playbook_to_minion() {
+    printf '%s\n'\
+    "playbook:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_elastalert_to_minion() {
+    printf '%s\n'\
+    "elastalert:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_kibana_to_minion() {
+    printf '%s\n'\
+    "kibana:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_redis_to_minion() {
+    printf '%s\n'\
+    "redis:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_strelka_strelka_to_minion() {
+    printf '%s\n'\
+    "strelka:"\
+	"  backend:"\
+    "    enabled: True"\
+	"  filestream:"\
+    "    enabled: True"\
+	"  frontend:"\
+    "    enabled: True"\
+	"  manager:"\
+    "    enabled: True"\
+	"  coordinator:"\
+    "    enabled: True"\
+	"  gatekeeper:"\
+    "    enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_curator_to_minion() {
+    printf '%s\n'\
+    "curator:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_telegraf_to_minion() {
+    printf '%s\n'\
+    "telegraf:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_influxdb_to_minion() {
+    printf '%s\n'\
+    "influxdb:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_nginx_to_minion() {
+    printf '%s\n'\
+    "nginx:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_soctopus_to_minion() {
+    printf '%s\n'\
+    "soctopus:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_soc_to_minion() {
+    printf '%s\n'\
+    "soc:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_registry_to_minion() {
+    printf '%s\n'\
+    "registry:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_mysql_to_minion() {
+    printf '%s\n'\
+    "mysql:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_kratos_to_minion() {
+    printf '%s\n'\
+    "kratos:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_idstools_to_minion() {
+    printf '%s\n'\
+    "idstools:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
+}
+
+function add_elastic_fleet_package_registry_to_minion() {
+    printf '%s\n'\
+    "elastic_fleet_package_registry:"\
+    "  enabled: True"\
+	"  " >> $PILLARFILE
 }
 
 function create_fleet_policy() {
@@ -261,9 +405,98 @@ function apply_ES_state() {
 	salt-call state.apply elasticsearch concurrent=True
 }
 function createEVAL() {
-	add_elastic_to_minion
+	add_elasticsearch_to_minion
+	add_sensor_to_minion
+	add_strelka_strelka_to_minion
+	add_elastalert_to_minion
+	add_kibana_to_minion
+	add_curator_to_minion
+	add_telegraf_to_minion
+	add_influxdb_to_minion
+	add_nginx_to_minion
+	add_soctopus_to_minion
+	add_soc_to_minion
+	add_registry_to_minion
+	add_mysql_to_minion
+	add_kratos_to_minion
+	add_idstools_to_minion
+	add_elastic_fleet_package_registry_to_minion
+}
+
+function createSTANDALONE() {
+	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
+	add_strelka_strelka_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
+	add_kibana_to_minion
+	add_redis_to_minion
+	add_curator_to_minion
+	add_telegraf_to_minion
+	add_influxdb_to_minion
+	add_nginx_to_minion
+	add_soctopus_to_minion
+	add_soc_to_minion
+	add_registry_to_minion
+	add_mysql_to_minion
+	add_kratos_to_minion
+	add_idstools_to_minion
+	add_elastic_fleet_package_registry_to_minion
+}
+
+function createMANAGER() {
+	add_elasticsearch_to_minion
+	add_logstash_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
+	add_kibana_to_minion
+	add_redis_to_minion
+	add_curator_to_minion
+	add_telegraf_to_minion
+	add_influxdb_to_minion
+	add_nginx_to_minion
+	add_soctopus_to_minion
+	add_soc_to_minion
+	add_registry_to_minion
+	add_mysql_to_minion
+	add_kratos_to_minion
+	add_idstools_to_minion
+	add_elastic_fleet_package_registry_to_minion
+}
+
+function createMANAGERSEARCH() {
+	add_elasticsearch_to_minion
+	add_logstash_to_minion
+	add_playbook_to_minion
+	add_elastalert_to_minion
+	add_kibana_to_minion
+	add_redis_to_minion
+	add_curator_to_minion
+	add_telegraf_to_minion
+	add_influxdb_to_minion
+	add_nginx_to_minion
+	add_soctopus_to_minion
+	add_soc_to_minion
+	add_registry_to_minion
+	add_mysql_to_minion
+	add_kratos_to_minion
+	add_idstools_to_minion
+	add_elastic_fleet_package_registry_to_minion
+}
+
+function createIMPORT() {
+	add_elasticsearch_to_minion
+	add_sensor_to_minion
+	add_kibana_to_minion
+	add_telegraf_to_minion
+	add_influxdb_to_minion
+	add_nginx_to_minion
+	add_soc_to_minion
+	add_registry_to_minion
+	add_kratos_to_minion
+	add_idstools_to_minion
+	add_elastic_fleet_package_registry_to_minion
 }
 
 function createFLEET() {
@@ -272,50 +505,45 @@ function createFLEET() {
 	create_fleet_policy
 	update_fleet_host_urls
 	update_logstash_outputs
+	add_telegraf_to_minion
+	add_nginx_to_minion
 }
 
 function createIDH() {
 	add_idh_to_minion
-}
-
-function createIMPORT() {
-	add_elastic_to_minion
-	add_logstash_to_minion
-	add_sensor_to_minion
+	add_telegraf_to_minion
 }
 
 function createHEAVYNODE() {
-	add_elastic_to_minion
+	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
-}
-
-function createMANAGER() {
-	add_elastic_to_minion
-	add_logstash_to_minion
-}
-
-function createMANAGERSEARCH() {
-	add_elastic_to_minion
-	add_logstash_to_minion
+	add_strelka_strelka_to_minion
+	add_redis_to_minion
+	add_curator_to_minion
+	add_telegraf_to_minion
 }
 
 function createSENSOR() {
 	add_sensor_to_minion
+	add_strelka_strelka_to_minion
+	add_telegraf_to_minion
 }
 
 function createSEARCHNODE() {
-	add_elastic_to_minion
+	add_elasticsearch_to_minion
 	add_logstash_to_minion
+	add_telegraf_to_minion
 	updateMine
 	apply_ES_state
 }
 
-function createSTANDALONE() {
-	add_elastic_to_minion
+function createRECEIVER() {
 	add_logstash_to_minion
-	add_sensor_to_minion
+	add_redis_to_minion
+	add_telegraf_to_minion
 }
+
 
 function testConnection() {
 	retry 15 3 "salt '$MINION_ID' test.ping" True
@@ -354,7 +582,12 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	fi
 	create_minion_files
 	add_host_to_minion
-	add_sensoroni_to_minion
+	managers=("EVAL" "STANDALONE" "IMPORT" "MANAGER" "MANAGERSEARCH")
+	if echo "${managers[@]}" | grep -qw "$NODETYPE"; then
+		add_sensoroni_with_analyze_to_minion
+	else
+		add_sensoroni_to_minion
+	fi
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
 fi

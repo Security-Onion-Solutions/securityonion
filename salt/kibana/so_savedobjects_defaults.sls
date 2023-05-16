@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 include:
-  - kibana
+  - kibana.enabled
   - kibana.so_config_load
   - kibana.so_securitySolution_load
   - kibana.so_dashboard_load

@@ -892,7 +892,6 @@ create_manager_pillars() {
 	manager_pillar
 	create_global
 	create_sensoroni_pillar
-	#create_strelka_pillar
 	backup_pillar
 	soctopus_pillar
 	docker_pillar
@@ -905,6 +904,7 @@ create_manager_pillars() {
 	logrotate_pillar
 	patch_pillar
 	nginx_pillar
+	kibana_pillar
 }
 
 create_repo() {
@@ -1341,8 +1341,9 @@ idh_pillar() {
 }
 
 kibana_pillar() {
-	touch $adv_kibana_pillar_file
-	touch $kibana_pillar_file
+	logCmd "mkdir -p $local_salt_dir/pillar/kibana"
+	logCmd "touch $adv_kibana_pillar_file"
+	logCmd "touch $kibana_pillar_file"
 }
 
 logrotate_pillar() {
@@ -1407,8 +1408,9 @@ soc_pillar() {
 	touch $adv_soc_pillar_file
 	printf '%s\n'\
 		"soc:"\
-		"  server:"\
-		"    srvKey: '$SOCSRVKEY'"\
+		"  config:"\
+		"    server:"\
+		"      srvKey: '$SOCSRVKEY'"\
 		"" > "$soc_pillar_file"
 }
 
@@ -1502,9 +1504,10 @@ create_sensoroni_pillar() {
 	
 	printf '%s\n'\
 		"sensoroni:"\
-		"  node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
-		"  sensoronikey: '$SENSORONIKEY'"\
-		"  soc_host: '$REDIRECTIT'" > $sensoroni_pillar_file
+		"  config:"\
+		"    node_checkin_interval_ms: $NODE_CHECKIN_INTERVAL_MS"\
+		"    sensoronikey: '$SENSORONIKEY'"\
+		"    soc_host: '$REDIRECTIT'" > $sensoroni_pillar_file
 
 }
 

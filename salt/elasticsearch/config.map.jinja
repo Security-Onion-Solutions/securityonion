@@ -1,44 +1,43 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% import_yaml 'elasticsearch/defaults.yaml' as ESCONFIG with context %}
+{% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS with context %}
 {% from 'logstash/map.jinja' import LOGSTASH_NODES with context %}
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
 {% if grains.id.split('_') | last in ['manager','managersearch','standalone'] %}
     {% if LOGSTASH_NODES | length > 1 %}
-      {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': []}}) %}
+      {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': []}}) %}
       {% for NODE in LOGSTASH_NODES %}
-        {% do ESCONFIG.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
+        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
       {% endfor %}
       {% if grains.id.split('_') | last == 'manager' %}
-        {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['master','data','remote_cluster_client']}) %}
+        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master','data','remote_cluster_client']}) %}
       {% else %}
-        {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['master', 'data_hot', 'remote_cluster_client']}) %}
+        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data_hot', 'remote_cluster_client']}) %}
       {% endif %}
     {% endif %}
 {% elif grains.id.split('_') | last == 'searchnode' %}
-  {% do ESCONFIG.elasticsearch.config.node.update({'roles': ['data_hot', 'ingest']}) %}
+  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['data_hot', 'ingest']}) %}
   {% if HIGHLANDER %}
-        {% do ESCONFIG.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
+        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
   {% endif %}
-  {% do ESCONFIG.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
+  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
 {% endif %}
 {% if HIGHLANDER %}
-      {% do ESCONFIG.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
+      {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
 {% endif %}
 
-{% do ESCONFIG.elasticsearch.config.node.update({'name': GLOBALS.hostname}) %}
-{% do ESCONFIG.elasticsearch.config.cluster.update({'name': GLOBALS.hostname}) %}
-{% do ESCONFIG.elasticsearch.config.transport.update({'publish_host': GLOBALS.hostname}) %}
+{% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'name': GLOBALS.hostname}) %}
+{% do ELASTICSEARCHDEFAULTS.elasticsearch.config.cluster.update({'name': GLOBALS.hostname}) %}
+{% do ELASTICSEARCHDEFAULTS.elasticsearch.config.transport.update({'publish_host': GLOBALS.hostname}) %}
 
-{# merge with the elasticsearch pillar #}
-{% set ESCONFIG = salt['pillar.get']('elasticsearch:config', default=ESCONFIG.elasticsearch.config, merge=True) %}
+{% set ELASTICSEARCHMERGED = salt['pillar.get']('elasticsearch', default=ELASTICSEARCHDEFAULTS.elasticsearch, merge=True) %}
 
 {% if salt['pillar.get']('elasticsearch:config:path:repo', False) %}
   {% for repo in pillar.elasticsearch.config.path.repo %}
     {# remove elasticsearch.config.path.repo value if the directory doesn't exist on the node #}
     {% if not salt['file.directory_exists'](repo) %}
-      {% do ESCONFIG.path.repo.remove(repo) %}
+      {% do ELASTICSEARCHMERGED.config.path.repo.remove(repo) %}
     {% endif %}
   {% endfor %}
 {% endif %}

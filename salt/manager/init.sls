@@ -5,10 +5,11 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'strelka/map.jinja' import STRELKAMERGED %}
-{% import_yaml 'manager/defaults.yaml' as MANAGERDEFAULTS %}
-{% set MANAGERMERGED = salt['pillar.get']('manager', MANAGERDEFAULTS.manager, merge=true) %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'strelka/map.jinja' import STRELKAMERGED %}
+{%   import_yaml 'manager/defaults.yaml' as MANAGERDEFAULTS %}
+{%   set MANAGERMERGED = salt['pillar.get']('manager', MANAGERDEFAULTS.manager, merge=true) %}
+{%   from 'strelka/map.jinja' import STRELKAMERGED %}
 
 include:
   - salt.minion
@@ -80,6 +81,17 @@ socore_own_saltstack:
     - recurse:
       - user
       - group
+
+{%   if STRELKAMERGED.rules.enabled %}
+strelkarepos:
+  file.managed:
+    - name: /opt/so/conf/strelka/repos.txt
+    - source: salt://strelka/rules/repos.txt.jinja
+    - template: jinja
+    - defaults:
+        STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
+    - makedirs: True
+{%   endif %}
 
 yara_update_script:
   file.managed:
