@@ -202,12 +202,13 @@ if [ -n "$test_profile" ]; then
 
 	MINION_CIDR=10.0.0.0/8
 	MSRV=manager
-	if [[ "$test_profile" =~ "-net" ]]; then
+	if [[ "$test_profile" =~ "-net" ]] || [[ "$test_profile" =~ "-iso" ]]; then
 		address_type=DHCP
 	elif [[ "$test_profile" =~ "-cloud" ]]; then
 		MSRVIP=10.99.1.20
 	elif [[ "$test_profile" =~ "-airgap" ]]; then
 		is_airgap=true
+		address_type=DHCP
 	fi
 
 	if [ -f "/root/public_ip" ]; then
@@ -224,6 +225,8 @@ if [ -n "$test_profile" ]; then
 	WEBUSER=onionuser@somewhere.invalid
 	WEBPASSWD1=0n10nus3r
 	WEBPASSWD2=0n10nus3r
+
+	update_sudoers_for_testing
 fi
 
 # Make sure the setup type is suppoted.
