@@ -17,10 +17,11 @@ catrustdir:
 
 {%   if GLOBALS.is_manager %}
 # We have to add the Manager CA to the CA list
-cascriptsync:
+catrustscript:
   cmd.script:
     - source: salt://elasticsearch/tools/sbin_jinja/so-catrust
     - template: jinja
+    - cwd: /opt/so
     - defaults:
         GLOBALS: {{ GLOBALS }}
 {%   endif %}
