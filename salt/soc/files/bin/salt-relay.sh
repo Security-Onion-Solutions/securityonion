@@ -70,7 +70,7 @@ function manage_user() {
         lastName=$(echo "$request" | jq -r .lastName)
         note=$(echo "$request" | jq -r .note)
         log "Performing user '$op' for user '$email' with firstname '$firstName', lastname '$lastName', note '$note' and role '$role'"
-        response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
+        response=$(echo "$password" | $CMD_PREFIX so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
         exit_code=$?
         ;;
       add|enable|disable|delete)
