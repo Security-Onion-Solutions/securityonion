@@ -172,12 +172,14 @@ elastic_fleet_policy_create() {
     NAME=$1
     DESC=$2
     FLEETSERVER=$3
+	TIMEOUT=$4
 
     JSON_STRING=$( jq -n \
                     --arg NAME "$NAME" \
                     --arg DESC "$DESC" \
+                    --arg TIMEOUT $TIMEOUT \
                     --arg FLEETSERVER "$FLEETSERVER" \
-                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":$FLEETSERVER}'
+                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":$TIMEOUT,"has_fleet_server":$FLEETSERVER}'
                     )
     # Create Fleet Policy
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" 
