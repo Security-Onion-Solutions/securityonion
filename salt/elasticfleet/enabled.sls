@@ -58,7 +58,7 @@ so-elastic-fleet:
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
 {%   endif %}
 

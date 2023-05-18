@@ -54,7 +54,7 @@ so-playbook:
       {% if DOCKER.containers['so-playbook'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-playbook'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-playbook'].port_bindings %}

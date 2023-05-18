@@ -47,7 +47,7 @@ so-dockerregistry:
       {% if DOCKER.containers['so-dockerregistry'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-dockerregistry'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - retry:
         attempts: 5

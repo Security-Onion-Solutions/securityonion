@@ -33,7 +33,7 @@ so-influxdb:
       {% if DOCKER.containers['so-influxdb'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-influxdb'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - binds:
       - /opt/so/log/influxdb/:/log:rw

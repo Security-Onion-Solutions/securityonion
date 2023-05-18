@@ -28,7 +28,7 @@ so-kibana:
       {% if DOCKER.containers['so-kibana'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-kibana'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}

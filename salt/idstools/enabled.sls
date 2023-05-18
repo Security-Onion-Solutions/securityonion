@@ -29,13 +29,13 @@ so-idstools:
       {% if DOCKER.containers['so-elastalert'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     {% elif DOCKER.containers['so-idstools'].extra_env %}
     - environment:
       {% for XTRAENV in DOCKER.containers['so-idstools'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro

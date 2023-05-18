@@ -47,7 +47,7 @@ so-elastalert:
     - environment:
         {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - require:
       - cmd: wait_for_elasticsearch

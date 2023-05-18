@@ -44,7 +44,7 @@ so-kratos:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - restart_policy: unless-stopped
     - watch:

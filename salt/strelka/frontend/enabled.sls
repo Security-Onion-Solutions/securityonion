@@ -44,7 +44,7 @@ strelka_frontend:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-frontend'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
 
 delete_so-strelka-frontend_so-status.disabled:

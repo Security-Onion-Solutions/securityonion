@@ -39,9 +39,9 @@ strelka_filestream:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-filestream'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
-    
+
 delete_so-strelka-filestream_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

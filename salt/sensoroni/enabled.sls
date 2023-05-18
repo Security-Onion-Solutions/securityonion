@@ -36,7 +36,7 @@ so-sensoroni:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-sensoroni'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json

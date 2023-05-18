@@ -43,7 +43,7 @@ so-elasticsearch:
       {% if DOCKER.containers['so-elasticsearch'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elasticsearch'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}

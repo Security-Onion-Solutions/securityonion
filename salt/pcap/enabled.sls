@@ -39,7 +39,7 @@ so-steno:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-steno'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - watch:
       - file: stenoconf

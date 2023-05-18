@@ -41,7 +41,7 @@ strelka_gatekeeper:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}   
 
 delete_so-strelka-gatekeeper_so-status.disabled:

@@ -50,7 +50,7 @@ so-redis:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-redis'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:

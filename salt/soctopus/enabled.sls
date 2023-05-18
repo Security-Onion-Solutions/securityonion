@@ -50,7 +50,7 @@ so-soctopus:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-soctopus'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - require:
       - file: soctopusconf

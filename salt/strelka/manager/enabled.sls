@@ -38,7 +38,7 @@ strelka_manager:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-manager'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
 
 delete_so-strelka-manager_so-status.disabled:

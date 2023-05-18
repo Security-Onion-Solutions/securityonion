@@ -51,7 +51,7 @@ so-soc:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-soc'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - watch:
       - file: /opt/so/conf/soc/*

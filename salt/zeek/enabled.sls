@@ -48,7 +48,7 @@ so-zeek:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-zeek'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - watch:
       - file: /opt/so/conf/zeek/local.zeek

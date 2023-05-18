@@ -25,7 +25,7 @@ so-telegraf:
       {% if DOCKER.containers['so-telegraf'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-telegraf'].extra_env %}
       - {{ XTRAENV }}
-        {% enfor %}
+        {% endfor %}
       {% endif %}
     - network_mode: host
     - init: True

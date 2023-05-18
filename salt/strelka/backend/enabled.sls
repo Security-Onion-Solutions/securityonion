@@ -39,7 +39,7 @@ strelka_backend:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-backend'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - restart_policy: on-failure
 

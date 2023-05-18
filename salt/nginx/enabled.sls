@@ -52,7 +52,7 @@ so-nginx:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-nginx'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:

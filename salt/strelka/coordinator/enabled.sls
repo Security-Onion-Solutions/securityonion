@@ -35,7 +35,7 @@ strelka_coordinator:
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-coordinator'].extra_env %}
       - {{ XTRAENV }}
-      {% enfor %}
+      {% endfor %}
     {% endif %}
   {% if DOCKER.containers['so-strelka-coordinator'].custom_bind_mounts %}
     - binds:
