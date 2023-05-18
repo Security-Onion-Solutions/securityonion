@@ -44,8 +44,8 @@ so-dockerregistry:
     - client_timeout: 180
     - environment:
       - HOME=/root
-      {% if DOCKER.containers['so-kratos'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      {% if DOCKER.containers['so-dockerregistry'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-dockerregistry'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
       {% endif %}

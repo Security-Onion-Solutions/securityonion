@@ -31,9 +31,9 @@ so-idstools:
       - {{ XTRAENV }}
         {% enfor %}
       {% endif %}
-    {% elif DOCKER.containers['so-elastalert'].extra_env %}
+    {% elif DOCKER.containers['so-idstools'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      {% for XTRAENV in DOCKER.containers['so-idstools'].extra_env %}
       - {{ XTRAENV }}
       {% enfor %}
     {% endif %}

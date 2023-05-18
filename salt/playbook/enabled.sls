@@ -42,7 +42,7 @@ so-playbook:
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
       {% if DOCKER.containers['so-playbook'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-kratos'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-playbook'].extra_hosts %}
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
@@ -51,8 +51,8 @@ so-playbook:
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
-      {% if DOCKER.containers['so-kratos'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      {% if DOCKER.containers['so-playbook'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-playbook'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
       {% endif %}

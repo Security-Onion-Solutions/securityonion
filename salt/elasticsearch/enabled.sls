@@ -40,8 +40,8 @@ so-elasticsearch:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
-      {% if DOCKER.containers['so-elastalert'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      {% if DOCKER.containers['so-elasticsearch'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-elasticsearch'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
       {% endif %}
