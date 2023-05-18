@@ -20,6 +20,23 @@ so-idh:
     - binds:
       - /nsm/idh:/var/tmp:rw
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
+      {% if DOCKER.containers['so-idh'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-idh'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-idh'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-idh'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-idh'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-idh'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% enfif %}
     - watch:
       - file: opencanary_config
     - require:

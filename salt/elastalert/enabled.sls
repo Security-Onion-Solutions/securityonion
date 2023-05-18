@@ -31,8 +31,24 @@ so-elastalert:
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
+      {% if DOCKER.containers['so-elastalert'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-elastalert'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+      {% if DOCKER.containers['so-elastalert'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-elastalert'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+      {% if DOCKER.containers['so-elastalert'].extra_env %}
+    - environment:
+        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% enfif %}
     - require:
       - cmd: wait_for_elasticsearch
       - file: elastarules

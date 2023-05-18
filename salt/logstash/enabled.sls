@@ -26,8 +26,18 @@ so-logstash:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
     - extra_hosts: {{ REDIS_NODES }}
+    {% if DOCKER.containers['so-logstash'].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
+    {% if DOCKER.containers['so-logstash'].extra_env %}
+      {% for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
       - {{ BINDING }}
@@ -64,6 +74,11 @@ so-logstash:
       - /nsm/suricata:/suricata:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
+      {% endif %}
+      {% if DOCKER.containers['so-logstash'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-logstash'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
       {% endif %}
     - watch:
       - file: lsetcsync

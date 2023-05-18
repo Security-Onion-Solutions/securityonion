@@ -30,16 +30,32 @@ so-influxdb:
       - DOCKER_INFLUXDB_INIT_ORG=Security Onion
       - DOCKER_INFLUXDB_INIT_BUCKET=telegraf/so_short_term
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ TOKEN }}
+      {% if DOCKER.containers['so-influxdb'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-influxdb'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% endif %}
     - binds:
       - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/config.yaml:/conf/config.yaml:ro
       - /nsm/influxdb:/var/lib/influxdb2:rw
       - /etc/pki/influxdb.crt:/conf/influxdb.crt:ro
       - /etc/pki/influxdb.key:/conf/influxdb.key:ro
+      {% if DOCKER.containers['so-influxdb'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-influxdb'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-influxdb'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
+    {% if DOCKER.containers['so-influxdb'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-influxdb'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: influxdbconf
     - require:

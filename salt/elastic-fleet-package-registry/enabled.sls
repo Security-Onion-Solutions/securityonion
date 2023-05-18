@@ -24,11 +24,27 @@ so-elastic-fleet-package-registry:
         - ipv4_address: {{ DOCKER.containers['so-elastic-fleet-package-registry'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+        {% if DOCKER.containers['so-elastic-fleet-package-registry'].extra_hosts %}
+          {% for XTRAHOST in DOCKER.containers['so-elastic-fleet-package-registry'].extra_hosts %}
+        - {{ XTRAHOST }}
+          {% endfor %}
+        {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elastic-fleet-package-registry'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-
+    {% if DOCKER.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
+    - binds:
+        {% for BIND in DOCKER.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-elastic-fleet-package-registry'].extra_env %}
+    - environment:
+        {% for XTRAENV in DOCKER.containers['so-elastic-fleet-package-registry'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% enfif %}
 delete_so-elastic-fleet-package-registry_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

@@ -28,6 +28,23 @@ so-curator:
       - /opt/so/conf/curator/curator.yml:/etc/curator/config/curator.yml:ro
       - /opt/so/conf/curator/action/:/etc/curator/action:ro
       - /opt/so/log/curator:/var/log/curator:rw
+      {% if DOCKER.containers['so-curator'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-curator'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+      {% if DOCKER.containers['so-curator'].extra_hosts %}
+    - extra_hosts:
+        {% for XTRAHOST in DOCKER.containers['so-curator'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+      {% if DOCKER.containers['so-curator'].extra_env %}
+    - environment:
+        {% for XTRAENV in DOCKER.containers['so-curator'].extra_env %}
+      - {{ XTRAENV }}
+        {% endfor %}
+      {% endif %}
     - require:
       - file: actionconfs
       - file: curconf

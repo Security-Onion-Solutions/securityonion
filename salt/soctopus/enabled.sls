@@ -29,6 +29,11 @@ so-soctopus:
       {% if GLOBALS.airgap %}
       - /nsm/repo/rules/sigma:/soctopus/sigma
       {% endif %}
+      {% if DOCKER.containers['so-soctopus'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-soctopus'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}     
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-soctopus'].port_bindings %}
       - {{ BINDING }}
@@ -36,6 +41,17 @@ so-soctopus:
     - extra_hosts:
       - {{GLOBALS.url_base}}:{{GLOBALS.manager_ip}}
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+      {% if DOCKER.containers['so-soctopus'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-soctopus'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-soctopus'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-soctopus'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
     - require:
       - file: soctopusconf
       - file: navigatordefaultlayer

@@ -35,6 +35,23 @@ so-redis:
       {% else %}
       - /etc/ssl/certs/intca.crt:/certs/ca.crt:ro
       {% endif %}
+      {% if DOCKER.containers['so-redis'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-redis'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-redis'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-redis'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-redis'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-redis'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
       - file: /opt/so/conf/redis/etc

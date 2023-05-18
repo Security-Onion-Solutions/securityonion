@@ -24,6 +24,23 @@ so-steno:
       - /nsm/pcapindex:/nsm/pcapindex:rw
       - /nsm/pcaptmp:/tmp:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
+    {% if DOCKER.containers['so-steno'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-steno'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-steno'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-steno'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-steno'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-steno'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
     - watch:
       - file: stenoconf
     - require:

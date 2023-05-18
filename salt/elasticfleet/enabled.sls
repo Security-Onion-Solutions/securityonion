@@ -28,6 +28,11 @@ so-elastic-fleet:
     - extra_hosts:
         - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+        {% if DOCKER.containers['so-elastic-fleet'].extra_hosts %}
+          {% for XTRAHOST in DOCKER.containers['so-elastic-fleet'].extra_hosts %}
+        - {{ XTRAHOST }}
+          {% endfor %}
+        {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elastic-fleet'].port_bindings %}
       - {{ BINDING }}
@@ -35,6 +40,11 @@ so-elastic-fleet:
     - binds:
       - /etc/pki:/etc/pki:ro
       #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
+     {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}      
     - environment:
       - FLEET_SERVER_ENABLE=true
       - FLEET_URL=https://{{ GLOBALS.node_ip }}:8220
@@ -45,6 +55,11 @@ so-elastic-fleet:
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% enfif %}
 {%   endif %}
 
 delete_so-elastic-fleet_so-status.disabled:

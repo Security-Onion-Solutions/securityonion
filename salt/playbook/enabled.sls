@@ -34,13 +34,28 @@ so-playbook:
         - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
+      {% if DOCKER.containers['so-playbook'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-playbook'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+      {% if DOCKER.containers['so-playbook'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-kratos'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
     - environment:
       - REDMINE_DB_MYSQL={{ GLOBALS.manager }}
       - REDMINE_DB_DATABASE=playbook
       - REDMINE_DB_USERNAME=playbookdbuser
       - REDMINE_DB_PASSWORD={{ PLAYBOOKPASS }}
+      {% if DOCKER.containers['so-kratos'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-playbook'].port_bindings %}
       - {{ BINDING }}

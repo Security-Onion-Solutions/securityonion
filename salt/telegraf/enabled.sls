@@ -22,6 +22,11 @@ so-telegraf:
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
       - GODEBUG=x509ignoreCN=0
+      {% if DOCKER.containers['so-telegraf'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-telegraf'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% endif %}
     - network_mode: host
     - init: True
     - binds:
@@ -47,6 +52,17 @@ so-telegraf:
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro
+      {% if DOCKER.containers['so-telegraf'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-telegraf'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-telegraf'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-telegraf'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: tgrafconf
       - file: tgrafsyncscripts

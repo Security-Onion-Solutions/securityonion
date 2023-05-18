@@ -30,9 +30,25 @@ so-dockerregistry:
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
+      {% if DOCKER.containers['so-dockerregistry'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-dockerregistry'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-dockerregistry'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-dockerregistry'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - client_timeout: 180
     - environment:
       - HOME=/root
+      {% if DOCKER.containers['so-kratos'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% endif %}
     - retry:
         attempts: 5
         interval: 30

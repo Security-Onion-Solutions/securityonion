@@ -26,6 +26,11 @@ so-elasticsearch:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
     - extra_hosts:  {{ LOGSTASH_NODES }}
+    {% if DOCKER.containers['so-elasticsearch'].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers['so-elasticsearch'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - environment:
       {% if LOGSTASH_NODES | length == 1 %}
       - discovery.type=single-node
@@ -35,6 +40,11 @@ so-elasticsearch:
       - memlock=-1:-1
       - nofile=65536:65536
       - nproc=4096
+      {% if DOCKER.containers['so-elastalert'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      - {{ XTRAENV }}
+        {% enfor %}
+      {% enfif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
       - {{ BINDING }}
@@ -58,6 +68,11 @@ so-elasticsearch:
       {% if ELASTICSEARCHMERGED.config.path.get('repo', False) %}
         {% for repo in ELASTICSEARCHMERGED.config.path.repo %}
       - {{ repo }}:{{ repo }}:rw
+        {% endfor %}
+      {% endif %}
+      {% if DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
+      - {{ BIND }}
         {% endfor %}
       {% endif %}
     - watch:
