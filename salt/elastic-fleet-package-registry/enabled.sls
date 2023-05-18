@@ -44,7 +44,7 @@ so-elastic-fleet-package-registry:
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet-package-registry'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
-      {% enfif %}
+      {% endif %}
 delete_so-elastic-fleet-package-registry_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

@@ -36,7 +36,7 @@ so-idh:
       {% for XTRAENV in DOCKER.containers['so-idh'].extra_env %}
       - {{ XTRAENV }}
       {% enfor %}
-    {% enfif %}
+    {% endif %}
     - watch:
       - file: opencanary_config
     - require:

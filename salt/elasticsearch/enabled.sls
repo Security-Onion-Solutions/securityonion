@@ -44,7 +44,7 @@ so-elasticsearch:
         {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
-      {% enfif %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
       - {{ BINDING }}

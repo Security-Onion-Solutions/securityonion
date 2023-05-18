@@ -59,7 +59,7 @@ so-elastic-fleet:
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
         {% enfor %}
-      {% enfif %}
+      {% endif %}
 {%   endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
