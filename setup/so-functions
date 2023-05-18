@@ -49,8 +49,7 @@ add_admin_user() {
 }
 
 add_mngr_ip_to_hosts() {
-        info "Adding $MSRV to /etc/hosts with IP: $MSRVIP"
-        whiptail_manager_ip $MSRVIP
+		info "Adding $MSRV to /etc/hosts with IP: $MSRVIP"
         echo "$MSRVIP   $MSRV" >> /etc/hosts
 }
 
@@ -400,6 +399,11 @@ collect_mngr_hostname() {
 		done
 	else
 		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
+		whiptail_manager_ip "$MSRVIP"
+		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+			whiptail_invalid_input
+			whiptail_manager_ip "$MSRVIP"
+		done
 	fi
 }
 
