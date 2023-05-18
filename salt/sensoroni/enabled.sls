@@ -4,6 +4,8 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+
 
 include:
   - sensoroni.config
