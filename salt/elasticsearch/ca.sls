@@ -17,15 +17,15 @@ catrustdir:
 
 {%   if GLOBALS.is_manager %}
 # We have to add the Manager CA to the CA list
-cascriptsync:
+catrustscript:
   cmd.script:
     - source: salt://elasticsearch/tools/sbin_jinja/so-catrust
     - template: jinja
+    - cwd: /opt/so
     - defaults:
         GLOBALS: {{ GLOBALS }}
 {%   endif %}
 
-{%   if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
 cacertz:
   file.managed:
     - name: /opt/so/conf/ca/cacerts
@@ -39,7 +39,6 @@ capemz:
     - source: salt://elasticsearch/tls-ca-bundle.pem
     - user: 939
     - group: 939
-{%   endif %}
 
 {% else %}
 

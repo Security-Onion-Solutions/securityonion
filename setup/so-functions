@@ -399,6 +399,11 @@ collect_mngr_hostname() {
 		done
 	else
 		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
+		whiptail_manager_ip "$MSRVIP"
+		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+			whiptail_invalid_input
+			whiptail_manager_ip "$MSRVIP"
+		done
 	fi
 }
 
@@ -2000,6 +2005,7 @@ repo_sync_local() {
 }
 
 saltify() {
+	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	if [[ $is_ubuntu ]]; then
 
 		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
@@ -2020,8 +2026,8 @@ saltify() {
 		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/3006.0rc3/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/3006.0rc3/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
+		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
 		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
 
 		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
@@ -2036,7 +2042,7 @@ saltify() {
 		# Ain't nothing but a GPG 
 
 		retry 150 20 "apt-get update" "" "Err:" || exit 1
-		retry 150 20 "apt-get -y install salt-common salt-minion" || exit 1
+		retry 150 20 "apt-get -y install salt-common-$SALTVERSION salt-minion-$SALTVERSION" || exit 1
 		retry 150 20 "apt-mark hold salt-minion salt-common" || exit 1
 		#retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
 
@@ -2045,10 +2051,10 @@ saltify() {
 	if [[ $is_rocky ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
-			logCmd "dnf -y install salt salt-master salt-minion"
+			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
 		else
 			# We just need the minion
-			logCmd "dnf -y install salt salt-minion"
+			logCmd "dnf -y install salt-$SALTVERSION salt-minion-$SALTVERSION"
 		fi
 	fi
 

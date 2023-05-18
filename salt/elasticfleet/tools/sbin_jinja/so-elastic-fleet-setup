@@ -44,7 +44,7 @@ printf "\n\n"
 ### Create Policies & Associated Integration Configuration ###
 
 # Manager Fleet Server Host
-elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" | jq
+elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" "120"
 
 #Temp Fixup for ES Output bug
 JSON_STRING=$( jq -n \
@@ -54,10 +54,10 @@ JSON_STRING=$( jq -n \
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 
 # Initial Endpoints Policy
-elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false"
+elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"
 
 # Grid Nodes Policy
-elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false"
+elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false" "1209600"
 
 # Load Integrations for default policies
 so-elastic-fleet-integration-policy-load
