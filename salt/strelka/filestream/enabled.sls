@@ -18,6 +18,11 @@ strelka_filestream:
     - binds:
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
+      {% if DOCKER.containers['so-strelka-filestream'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-strelka-filestream'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - name: so-strelka-filestream
     - networks:
       - sobridge:
@@ -25,7 +30,18 @@ strelka_filestream:
     - command: strelka-filestream
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-
+      {% if DOCKER.containers['so-strelka-filestream'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-filestream'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-strelka-filestream'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-filestream'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
+    
 delete_so-strelka-filestream_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

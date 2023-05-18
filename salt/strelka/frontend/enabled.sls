@@ -18,6 +18,11 @@ strelka_frontend:
     - binds:
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /nsm/strelka/log/:/var/log/strelka/:rw
+      {% if DOCKER.containers['so-strelka-frontend'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-strelka-frontend'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - privileged: True
     - name: so-strelka-frontend
     - networks:
@@ -26,10 +31,21 @@ strelka_frontend:
     - command: strelka-frontend
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+      {% if DOCKER.containers['so-strelka-frontend'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-frontend'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-frontend'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
+    {% if DOCKER.containers['so-strelka-frontend'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-frontend'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
 
 delete_so-strelka-frontend_so-status.disabled:
   file.uncomment:

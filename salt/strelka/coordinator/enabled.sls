@@ -22,11 +22,27 @@ strelka_coordinator:
     - entrypoint: redis-server --save "" --appendonly no
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+      {% if DOCKER.containers['so-strelka-coordinator'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-coordinator'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-coordinator'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-
+  {% if DOCKER.containers['so-strelka-coordinator'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-coordinator'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
+  {% if DOCKER.containers['so-strelka-coordinator'].custom_bind_mounts %}
+    - binds:
+        {% for BIND in DOCKER.containers['so-strelka-coordinator'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+  {% endif %}
 delete_so-strelka-coordinator_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

@@ -18,6 +18,11 @@ strelka_backend:
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/:/etc/yara/:ro
+      {% if DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - name: so-strelka-backend
     - networks:
       - sobridge:
@@ -25,6 +30,17 @@ strelka_backend:
     - command: strelka-backend
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+      {% if DOCKER.containers['so-strelka-backend'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-backend'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-strelka-backend'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-backend'].extra_env %}
+      - {{ XTRAENV }}
+      {% enfor %}
+    {% endif %}
     - restart_policy: on-failure
 
 delete_so-strelka-backend_so-status.disabled:
