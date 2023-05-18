@@ -26,7 +26,6 @@ catrustscript:
         GLOBALS: {{ GLOBALS }}
 {%   endif %}
 
-{%   if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-searchnode'] %}
 cacertz:
   file.managed:
     - name: /opt/so/conf/ca/cacerts
@@ -40,7 +39,6 @@ capemz:
     - source: salt://elasticsearch/tls-ca-bundle.pem
     - user: 939
     - group: 939
-{%   endif %}
 
 {% else %}
 
