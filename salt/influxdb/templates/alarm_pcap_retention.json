@@ -5,7 +5,7 @@
     "name": "alarm-pcap-retention"
   },
   "spec": {
-    "description": "Percent used space on the root partition of at least one node has exceeded the alarm threshold.",
+    "description": "Triggers when the PCAP retention (in days), falls below the defined threshold. To tune this alert, modify the value for the appropriate alert level.",
     "every": "1m0s",
     "name": "Low PCAP Retention",
     "query": "from(bucket: \"telegraf/so_short_term\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pcapage\")\n  |> filter(fn: (r) => r[\"_field\"] == \"seconds\")\n  |> map(fn: (r) => ({ r with _value: r._value / (24.0 * 3600.0)}))  |\u003e map(fn: (r) =\u003e ({r with _value: int(v: r._value)}))\n  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
