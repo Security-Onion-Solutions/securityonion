@@ -1,11 +1,61 @@
-{% set SURICATAOPTIONS = {} %}
-{% set ENABLED = salt['pillar.get']('suricata:enabled', 'True') %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{% import_yaml 'suricata/defaults.yaml' as SURICATADEFAULTS %}
+{% set SURICATAMERGED = salt['pillar.get']('suricata', SURICATADEFAULTS.suricata, merge=True) %}
+{% import_yaml 'suricata/suricata_mdengine.yaml' as suricata_mdengine %}
 
-# don't start the docker container if it is an import node or disabled via pillar
-{% if grains.id.split('_')|last == 'import' or ENABLED is sameas false %}
-  {% do SURICATAOPTIONS.update({'start': False}) %}
-  {% do SURICATAOPTIONS.update({'status': 'absent'}) %}
-{% else %}
-  {% do SURICATAOPTIONS.update({'start': True}) %}
-  {% do SURICATAOPTIONS.update({'status': 'running'}) %}
+{% set default_evelog_index = [] %}
+{% set default_filestore_index = [] %}
+{% set surimeta_evelog_index = [] %}
+{% set surimeta_filestore_index = [] %}
+
+{# suricata.config.af-packet has to be rewritten here since we cant display '- interface' in the ui #}
+{# we are limited to only one iterface #}
+{% load_yaml as afpacket %}
+- interface: {{ SURICATAMERGED.config['af-packet'].interface }}
+  cluster-id: {{ SURICATAMERGED.config['af-packet']['cluster-id'] }}
+  cluster-type: {{ SURICATAMERGED.config['af-packet']['cluster-type'] }}
+  defrag: {{ SURICATAMERGED.config['af-packet'].defrag }}
+  use-mmap: {{ SURICATAMERGED.config['af-packet']['use-mmap'] }}
+  threads: {{ SURICATAMERGED.config['af-packet'].threads }}
+  tpacket-v3: {{ SURICATAMERGED.config['af-packet']['tpacket-v3'] }}
+  ring-size: {{ SURICATAMERGED.config['af-packet']['ring-size'] }}
+{% endload %}
+{% do SURICATAMERGED.config.pop('af-packet') %}
+{% do SURICATAMERGED.config.update({'af-packet': afpacket}) %}
+
+{% load_yaml as outputs %}
+{% for le, ld in SURICATAMERGED.config.outputs.items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.pop('outputs') %}
+{% do SURICATAMERGED.config.update({'outputs': outputs}) %}
+
+{# Find the index of eve-log so it can be updated later #}
+{% for li in SURICATAMERGED.config.outputs %}
+  {% if 'eve-log' in li.keys() %}
+    {% do default_evelog_index.append(loop.index0) %}
+  {% endif %}
+  {% if 'file-store' in li.keys() %}
+    {% do default_filestore_index.append(loop.index0) %}
+  {% endif %}
+{% endfor %}
+{% set default_evelog_index = default_evelog_index[0]  %}
+{% set default_filestore_index = default_filestore_index[0]  %}
+
+{# Find the index of eve-log so it can be grabbed later #}
+{% for li in suricata_mdengine.suricata.config.outputs %}
+  {% if 'eve-log' in li.keys() %}
+    {% do surimeta_evelog_index.append(loop.index0) %}
+  {% endif %}
+  {% if 'file-store' in li.keys() %}
+    {% do surimeta_filestore_index.append(loop.index0) %}
+  {% endif %}
+{% endfor %}
+{% set surimeta_evelog_index = surimeta_evelog_index[0] %}
+{% set surimeta_filestore_index = surimeta_filestore_index[0] %}
+
+{% if GLOBALS.md_engine == 'SURICATA' %}
+  {% do SURICATAMERGED.config.outputs[default_evelog_index]['eve-log'].types.extend(suricata_mdengine.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
+  {% do SURICATAMERGED.config.outputs[default_filestore_index]['file-store'].update({'enabled':suricata_mdengine.suricata.config.outputs[surimeta_filestore_index]['file-store']['enabled']}) %}
 {% endif %}
