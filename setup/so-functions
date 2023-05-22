@@ -1123,17 +1123,17 @@ create_repo() {
 }
 
 detect_cloud() {
-  echo "Testing if setup is running on a cloud instance..." | tee -a "$setup_log"
-  if ( curl --fail -s -m 5 http://169.254.169.254/latest/meta-data/instance-id > /dev/null ) || \
-     ( curl --fail -s -m 5 -H "X-aws-ec2-metadata-token: $(curl -s -X PUT -m 5 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 30')" http://169.254.169.254/latest/meta-data/instance-id > /dev/null) || \
-     (dmidecode -s bios-vendor | grep -q Google > /dev/null) || \
-     [ -f /var/log/waagent.log ]; then 
+	echo "Testing if setup is running on a cloud instance..." | tee -a "$setup_log"
+	if dmidecode -s bios-version | grep -q amazon || \
+		dmidecode -s bios-vendor | grep -q Amazon || \
+		dmidecode -s bios-vendor | grep -q Google || \
+		[ -f /var/log/waagent.log ]; then 
 
-    echo "Detected a cloud installation." | tee -a "$setup_log"
-    export is_cloud="true"
-  else
-    echo "This does not appear to be a cloud installation." | tee -a "$setup_log"
-  fi
+		echo "Detected a cloud installation." | tee -a "$setup_log"
+		export is_cloud="true"
+	else
+		echo "This does not appear to be a cloud installation." | tee -a "$setup_log"
+	fi
 }
 
 detect_os() {
