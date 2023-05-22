@@ -143,12 +143,12 @@ function manage_salt() {
     state)
       log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$($CMD_PREFIX salt --async "$minion" state.apply "$state" queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.apply "$state" queue=2)
       exit_code=$?
       ;;
     highstate)
       log "Performing '$op' on minion $minion"
-      response=$($CMD_PREFIX salt --async "$minion" state.highstate queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.highstate queue=2)
       exit_code=$?
       ;;
     activejobs)
