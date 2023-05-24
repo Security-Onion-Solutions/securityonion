@@ -24,14 +24,14 @@ idstools_sbin:
     - group: 939
     - file_mode: 755
 
-#idstools_sbin_jinja:
-#  file.recurse:
-#    - name: /usr/sbin
-#    - source: salt://idstools/tools/sbin_jinja
-#    - user: 934
-#    - group: 939 
-#    - file_mode: 755
-#    - template: jinja
+idstools_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://idstools/tools/sbin_jinja
+    - user: 934
+    - group: 939 
+    - file_mode: 755
+    - template: jinja
 
 {% else %}
 
