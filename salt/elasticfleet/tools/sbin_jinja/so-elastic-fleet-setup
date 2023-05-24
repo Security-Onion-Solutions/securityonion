@@ -38,13 +38,13 @@ printf "\n\n"
 # Add Manager IP & URL Base to Fleet Host URLs
 printf "\nAdd SO-Manager Fleet URL\n"
 if [ "{{ GLOBALS.manager_ip }}" = "{{ GLOBALS.url_base }}" ]; then
-    JSON_STRING=$( jq -n '{"fleet_server_hosts":["https://{{ GLOBALS.url_base }}:8220"]}')
+    JSON_STRING=$( jq -n '{"id":"grid-default","name":"grid-default","is_default":true,"host_urls":["https://{{ GLOBALS.url_base }}:8220"]}')
 else
-    JSON_STRING=$( jq -n '{"fleet_server_hosts":["https://{{ GLOBALS.url_base }}:8220", "https://{{ GLOBALS.manager_ip }}:8220"]}')
+    JSON_STRING=$( jq -n '{"id":"grid-default","name":"grid-default","is_default":true,"host_urls":["https://{{ GLOBALS.url_base }}:8220", "https://{{ GLOBALS.manager_ip }}:8220"]}')
 fi
 
 ## This array replaces whatever URLs are currently configured
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/settings" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  "$JSON_STRING"
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/fleet_server_hosts" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  "$JSON_STRING"
 printf "\n\n"
 
 

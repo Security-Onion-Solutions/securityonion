@@ -15,7 +15,7 @@
 for i in {1..30}
 do
    ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
-   FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq -r  '.items[].host_urls[]' | paste -sd ',')
+   FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' | jq -r  '.item.host_urls[]' | paste -sd ',')
 if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]]; then break; else sleep 10; fi
 done
 if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then printf "\nFleet Host URL or Enrollment Token empty - exiting..." && exit; fi
