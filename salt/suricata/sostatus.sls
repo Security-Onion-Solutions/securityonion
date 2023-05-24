@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-append_so-kibana_so-status.conf:
+append_so-suricata_so-status.conf:
   file.append:
     - name: /opt/so/conf/so-status/so-status.conf
     - text: so-suricata
