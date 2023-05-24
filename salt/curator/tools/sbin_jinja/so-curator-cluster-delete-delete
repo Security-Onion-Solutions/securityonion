@@ -11,14 +11,24 @@
 
 LOG="/opt/so/log/curator/so-curator-cluster-delete.log"
 LOG_SIZE_LIMIT=$(/usr/sbin/so-elasticsearch-cluster-space-total {{ RETENTION.retention_pct}})
+TODAY=$(date +'%Y.%m.%d)
+
+eligible_indices() {
+    [[ $(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'open$' | awk '{print $1}' | grep -vE "playbook|so-case|$TODAY" | grep -E "(logstash-|so-|.ds-logs-)" | wc -l) -ge 1 ]]
+}
 
 overlimit() {
          [[ $(/usr/sbin/so-elasticsearch-cluster-space-used) -gt "${LOG_SIZE_LIMIT}" ]]
 }
 
-# Check to see if Elasticsearch indices using more disk space than LOG_SIZE_LIMIT
+###########################
+# Check for 2 conditions: #
+###########################
+# 1. Check if Elasticsearch indices are using more disk space than LOG_SIZE_LIMIT
+# 2. Check if Elasticsearch indices are eligible for deletion -- they cannot be Playbook, SOC, today's, or other important indices
 # Closed indices will be deleted first. If we are able to bring disk space under LOG_SIZE_LIMIT, we will break out of the loop.
-while overlimit; do
+
+while overlimit && eligible_indices; do
   # If we can't query Elasticsearch, then immediately return false.
   /usr/sbin/so-elasticsearch-query _cat/indices?h=index,status > /dev/null 2>&1
   [ $? -eq 1 ] && echo "$(date) - Could not query Elasticsearch." >> ${LOG} && exit
