@@ -42,6 +42,7 @@ so-nginx:
       - /opt/so/conf/navigator/enterprise-attack.json:/opt/socore/html/navigator/assets/enterprise-attack.json:ro
       - /opt/so/conf/navigator/pre-attack.json:/opt/socore/html/navigator/assets/pre-attack.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
+      - /nsm/rules:/nsm/rules:ro
       {% endif %}
       {% if DOCKER.containers['so-nginx'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-nginx'].custom_bind_mounts %}
