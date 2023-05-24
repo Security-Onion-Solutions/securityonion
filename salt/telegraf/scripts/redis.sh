@@ -11,8 +11,9 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     UNPARSED=$(redis-cli llen logstash:unparsed | awk '{print $1}')
     PARSED=$(redis-cli llen logstash:parsed | awk '{print $1}')
-
-    echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED"
+    MEM_USED=$(redis-cli info memory | grep used_memory_peak_perc | cut -d ":" -f2 | sed "s/%//")
+    
+    echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED,mem_used=$MEM_USED"
 
 fi
 

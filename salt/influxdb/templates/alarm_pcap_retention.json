@@ -1,0 +1,27 @@
+[{
+  "apiVersion": "influxdata.com/v2alpha1",
+  "kind": "CheckThreshold",
+  "metadata": {
+    "name": "alarm-pcap-retention"
+  },
+  "spec": {
+    "description": "Triggers when the PCAP retention (in days), falls below the defined threshold. To tune this alert, modify the value for the appropriate alert level.",
+    "every": "1m0s",
+    "name": "Low PCAP Retention",
+    "query": "from(bucket: \"telegraf/so_short_term\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pcapage\")\n  |> filter(fn: (r) => r[\"_field\"] == \"seconds\")\n  |> map(fn: (r) => ({ r with _value: r._value / (24.0 * 3600.0)}))  |\u003e map(fn: (r) =\u003e ({r with _value: int(v: r._value)}))\n  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+    "status": "active",
+    "statusMessageTemplate": "PCAP retention on node ${r.host} has reached the ${r._level} threshold. Node ${r.host} currently has approximately ${r.seconds} days of PCAP data.",
+    "thresholds": [
+      {
+        "level": "CRIT",
+        "type": "lesser",
+        "value": 1
+      },
+      {
+        "level": "WARN",
+        "type": "lesser",
+        "value": 3
+      }
+    ]
+  }
+}]
