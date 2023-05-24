@@ -1,0 +1,27 @@
+[{ 
+    "apiVersion": "influxdata.com/v2alpha1",
+    "kind": "CheckThreshold",
+    "metadata": {
+        "name": "suricata-packet-loss"
+    },
+    "spec": {
+        "description": "Triggers when the average percent of packet loss is above the defined threshold. To tune this alert, modify the value for the appropriate alert level.",
+        "every": "1m",
+        "name": "Suricata Packet Loss",
+        "query": "from(bucket: \"telegraf/so_short_term\")\n  |\u003e range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |\u003e filter(fn: (r) =\u003e r[\"_measurement\"] == \"suridrop\")\n  |\u003e filter(fn: (r) =\u003e r[\"_field\"] == \"drop\")\n  |\u003e map(fn: (r) =\u003e ({r with \"_value\": r._value * 100.0}))\n  |\u003e map(fn: (r) =\u003e ({ r with _value: int(v: r._value) }))\n  |\u003e aggregateWindow(every: 1m, fn: mean, createEmpty: false)\n  |\u003e yield(name: \"mean\")",
+        "status": "active",
+        "statusMessageTemplate": "Suricata packet loss on node ${r.host} has reached the ${ r._level } threshold. The current packet loss is ${ r.drop }%.",
+        "thresholds": [
+            {
+                "level": "CRIT",
+                "type": "greater",
+                "value": 5
+            },
+            {
+                "level": "WARN",
+                "type": "greater",
+                "value": 3
+            }
+        ]
+    }
+}]
