@@ -13,7 +13,7 @@ so-suricata:
   docker_container.absent:
     - force: True
 
-so-kibana_so-status.disabled:
+so-suricata_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-suricata$
