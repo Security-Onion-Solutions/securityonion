@@ -36,7 +36,7 @@ so-suricata:
       - file: surithresholding
       - file: suribpf
 
-delete_so-kibana_so-status.disabled:
+delete_so-suricata_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-suricata$
