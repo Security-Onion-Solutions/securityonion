@@ -46,8 +46,9 @@ so-idstools:
       - {{ BIND }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-idstools'].extra_hosts %}
     - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+    {% if DOCKER.containers['so-idstools'].extra_hosts %}
       {% for XTRAHOST in DOCKER.containers['so-idstools'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
