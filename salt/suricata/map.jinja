@@ -1,4 +1,4 @@
-{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'suricata/defaults.yaml' as SURICATADEFAULTS %}
 {% set SURICATAMERGED = salt['pillar.get']('suricata', SURICATADEFAULTS.suricata, merge=True) %}
 {% import_yaml 'suricata/suricata_mdengine.yaml' as suricata_mdengine %}
@@ -23,6 +23,28 @@
 {% do SURICATAMERGED.config.pop('af-packet') %}
 {% do SURICATAMERGED.config.update({'af-packet': afpacket}) %}
 
+{# eve-log.types is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
+{% load_yaml as evelogtypes %}
+{% for le, ld in SURICATAMERGED.config.outputs['eve-log'].types.items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.outputs['eve-log'].pop('types') %}
+{% do SURICATAMERGED.config.outputs['eve-log'].update({'types': evelogtypes}) %}
+
+{# threading.cpu-affinity is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
+{% load_yaml as cpuaffinity %}
+{% for le, ld in SURICATAMERGED.config.threading['cpu-affinity'].items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.threading.pop('cpu-affinity') %}
+{% do SURICATAMERGED.config.threading.update({'cpu-affinity': cpuaffinity}) %}
+
+{# outputs is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
 {% load_yaml as outputs %}
 {% for le, ld in SURICATAMERGED.config.outputs.items() %}
   - {{ le }}: {{ ld }}
@@ -59,3 +81,23 @@
   {% do SURICATAMERGED.config.outputs[default_evelog_index]['eve-log'].types.extend(suricata_mdengine.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
   {% do SURICATAMERGED.config.outputs[default_filestore_index]['file-store'].update({'enabled':suricata_mdengine.suricata.config.outputs[surimeta_filestore_index]['file-store']['enabled']}) %}
 {% endif %}
+
+{# change address-groups vars from list to comma seperated string #}
+{% for k, v in SURICATAMERGED.config.vars['address-groups'].items() %}
+{#   if address-group value is a list #}
+{%   if v is iterable and (v is not string and v is not mapping and v | length > 1) %}
+{%     do SURICATAMERGED.config.vars['address-groups'].update({k: '[' ~ v | join(',') ~ ']'}) %}
+{%   else %}
+{%     do SURICATAMERGED.config.vars['address-groups'].update({k: v[0]}) %}
+{%   endif %}
+{% endfor %}
+
+{# change port-groups vars from list to comma seperated string #}
+{% for k, v in SURICATAMERGED.config.vars['port-groups'].items() %}
+{#   if address-group value is a list #}
+{%   if v is iterable and (v is not string and v is not mapping and v | length > 1) %}
+{%     do SURICATAMERGED.config.vars['port-groups'].update({k: '[' ~ v | join(',') ~ ']'}) %}
+{%   else %}
+{%     do SURICATAMERGED.config.vars['port-groups'].update({k: v[0]}) %}
+{%   endif %}
+{% endfor %}
