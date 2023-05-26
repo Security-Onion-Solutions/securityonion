@@ -1,6 +1,6 @@
-## Security Onion 2.4 Beta 2
+## Security Onion 2.4 Beta 3
 
-Security Onion 2.4 Beta 2 is here!
+Security Onion 2.4 Beta 3 is here!
 
 ## Screenshots
 

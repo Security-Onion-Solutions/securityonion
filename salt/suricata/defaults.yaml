@@ -2,56 +2,83 @@ suricata:
   enabled: False
   config:
     threading:
-        set-cpu-affinity: 'no'
-        detect-thread-ratio: 1.0
-        cpu-affinity:
-            - management-cpu-set:
-                cpu: []
-            - receive-cpu-set:
-                cpu: []
-            - worker-cpu-set:
-                cpu: []
-                mode: exclusive
-                threads: 1
-                prio:
-                    default: high
+      set-cpu-affinity: "no"
+      cpu-affinity:
+        management-cpu-set:
+          cpu:
+            - 1
+        worker-cpu-set:
+          cpu:
+            - 2-3
+          mode: exclusive
+          prio:
+            default: high
     af-packet:
-        interface: bond0
-        cluster-id: 59
-        cluster-type: cluster_flow
-        defrag: true
-        use-mmap: true
-        threads: 1
-        tpacket-v3: true
-        ring-size: 5000
+      interface: bond0
+      cluster-id: 59
+      cluster-type: cluster_flow
+      defrag: "yes"
+      use-mmap: "yes"
+      threads: 1
+      tpacket-v3: "yes"
+      ring-size: 5000
     vars:
       address-groups:
-        HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
-        EXTERNAL_NET: "any"
-        HTTP_SERVERS: "$HOME_NET"
-        SMTP_SERVERS: "$HOME_NET"
-        SQL_SERVERS: "$HOME_NET"
-        DNS_SERVERS: "$HOME_NET"
-        TELNET_SERVERS: "$HOME_NET"
-        AIM_SERVERS: "$EXTERNAL_NET"
-        DC_SERVERS: "$HOME_NET"
-        DNP3_SERVER: "$HOME_NET"
-        DNP3_CLIENT: "$HOME_NET"
-        MODBUS_CLIENT: "$HOME_NET"
-        MODBUS_SERVER: "$HOME_NET"
-        ENIP_CLIENT: "$HOME_NET"
-        ENIP_SERVER: "$HOME_NET"  
+        HOME_NET:
+          - 192.168.0.0/16
+          - 10.0.0.0/8
+          - 172.16.0.0/12
+        EXTERNAL_NET:
+          - any
+        HTTP_SERVERS:
+          - $HOME_NET
+        SMTP_SERVERS:
+          - $HOME_NET
+        SQL_SERVERS:
+          - $HOME_NET
+        DNS_SERVERS:
+          - $HOME_NET
+        TELNET_SERVERS:
+          - $HOME_NET
+        AIM_SERVERS:
+          - $EXTERNAL_NET
+        DC_SERVERS:
+          - $HOME_NET
+        DNP3_SERVER:
+          - $HOME_NET
+        DNP3_CLIENT:
+          - $HOME_NET
+        MODBUS_CLIENT:
+          - $HOME_NET
+        MODBUS_SERVER:
+          - $HOME_NET
+        ENIP_CLIENT:
+          - $HOME_NET
+        ENIP_SERVER:
+          - $HOME_NET
       port-groups:
-        HTTP_PORTS: "80"
-        SHELLCODE_PORTS: "!80"
-        ORACLE_PORTS: "1521"
-        SSH_PORTS: "22"
-        DNP3_PORTS: "20000"
-        MODBUS_PORTS: "502"
-        FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
-        FTP_PORTS: "21"
-        VXLAN_PORTS: "4789"
-        TEREDO_PORTS: "3544"
+        HTTP_PORTS:
+          - 80
+        SHELLCODE_PORTS:
+          - "!80"
+        ORACLE_PORTS:
+          - 1521
+        SSH_PORTS:
+          - 22
+        DNP3_PORTS:
+          - 20000
+        MODBUS_PORTS:
+          - 502
+        FILE_DATA_PORTS:
+          - $HTTP_PORTS
+          - 110
+          - 143
+        FTP_PORTS:
+          - 21
+        VXLAN_PORTS:
+          - 4789
+        TEREDO_PORTS:
+          - 3544
     default-log-dir: /var/log/suricata/
     stats:
       enabled: "yes"
@@ -69,24 +96,24 @@ suricata:
         pcap-file: false
         community-id: true
         community-id-seed: 0
-        xff:
-          enabled: "no"
-          mode: extra-data
-          deployment: reverse
-          header: X-Forwarded-For
         types:
-          - alert:
-              payload: "no"
-              payload-buffer-size: 4kb
-              payload-printable: "yes"
-              packet: "yes"
-              metadata: 
-                app-layer: false
-                flow: false
-                rule:
-                  metadata: true
-                  raw: true
-              tagged-packets: "no"
+          alert:
+            payload: "no"
+            payload-buffer-size: 4kb
+            payload-printable: "yes"
+            packet: "yes"
+            metadata:
+              app-layer: false
+              flow: false
+              rule:
+                metadata: true
+                raw: true
+            tagged-packets: "no"
+            xff:
+              enabled: "no"
+              mode: extra-data
+              deployment: reverse
+              header: X-Forwarded-For
       unified2-alert:
         enabled: "no"
       http-log:

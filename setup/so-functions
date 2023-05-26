@@ -28,6 +28,12 @@ title() {
 	echo -e "\n-----------------------------\n $1\n-----------------------------\n" >> "$setup_log" 2>&1
 }
 
+fail_setup() {
+	error "Setup encounted an unrecoverable failure, exiting"
+	touch /root/failure
+	exit 1
+}
+
 logCmd() {
 	cmd=$1
 	info "Executing command: $cmd"
@@ -796,7 +802,7 @@ compare_main_nic_ip() {
 			EOM
 
 		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 11 75
-		  kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+		  kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup
 	  fi
 	else
 		# Setup uses MAINIP, but since we ignore the equality condition when using a VPN 
@@ -921,9 +927,10 @@ create_repo() {
 
 detect_cloud() {
 	info "Testing if setup is running on a cloud instance..."
-	if dmidecode -s bios-version | grep -q amazon || \
-		dmidecode -s bios-vendor | grep -q Amazon || \
-		dmidecode -s bios-vendor | grep -q Google || \
+	if [ -f /etc/SOCLOUD ] || \
+	    dmidecode -s bios-version 2>&1 | grep -q amazon || \
+		dmidecode -s bios-vendor 2>&1 | grep -q Amazon || \
+		dmidecode -s bios-vendor 2>&1 | grep -q Google || \
 		[ -f /var/log/waagent.log ]; then
 
 		info "Detected a cloud installation..."
@@ -943,7 +950,7 @@ detect_os() {
 			pkgman="dnf"
 		else
 			info "We do not support the operating system you are trying to use."
-			exit 1
+			fail_setup
 		fi
 
 	elif [ -f /etc/os-release ]; then
@@ -953,12 +960,12 @@ detect_os() {
 			is_ubuntu=true
 		else
 			info "We do not support your current version of Ubuntu."
-			exit 1
+			fail_setup
 		fi
 
 	else
 		info "We were unable to determine if you are using a supported OS."
-		exit 1
+		fail_setup
 	fi
 
 	info "Found OS: $OS $OSVER"
@@ -971,8 +978,20 @@ download_elastic_agent_artifacts() {
 		logCmd "tar -xf /nsm/elastic-fleet/artifacts/beats/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
 	else
 		logCmd "mkdir -p /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
-		logCmd "curl --retry 5 --retry-delay 60 https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.tar.gz --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz"
-		logCmd "tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
+		logCmd "curl --retry 5 --retry-delay 60 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.tar.gz --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz"
+		logCmd "curl --retry 5 --retry-delay 60 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$SOVERSION.md5 --output /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.md5"
+				
+		SOURCEHASH=$(md5sum /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz | awk '{ print $1 }')
+		HASH=$(cat /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.md5)
+
+		if [[ "$HASH" == "$SOURCEHASH" ]]; then
+		  info "Elastic Agent source hash is good."
+		else
+		  info "Unable to download the Elastic Agent source files."
+		  fail_setup
+		fi
+
+		  logCmd "tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$SOVERSION.tar.gz -C /nsm/elastic-fleet/artifacts/beats/elastic-agent/"
 	fi
 }
 
@@ -1000,18 +1019,18 @@ installer_prereq_packages() {
 	if [ "$OS" == ubuntu ]; then
 		# Print message to stdout so the user knows setup is doing something
 		info "Running apt-get update"
-		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			info "Installing network-manager"
-			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || exit 1
+			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || fail_setup
 			{
 				systemctl enable NetworkManager
 				systemctl start NetworkManager
 			} >> "$setup_log" 2<&1
 		fi
 		if ! command -v curl > /dev/null 2>&1; then
-			retry 150 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || exit 1
+			retry 150 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || fail_setup
 		fi
 	fi
 }
@@ -1728,7 +1747,7 @@ proxy_validate() {
 		error "Received error: $proxy_test_err"
 		if [[ -n $TESTING ]]; then
 			error "Exiting setup"
-			kill -SIGINT "$(ps --pid $$ -oppid=)"; exit 1
+			kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup
 		fi
 	fi
 	return $ret
@@ -1799,7 +1818,7 @@ reinstall_init() {
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
-					exit 1
+					fail_setup
 				fi
 				
 				sleep 5
@@ -2002,7 +2021,7 @@ saltify() {
 	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	if [[ $is_ubuntu ]]; then
 
-		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || exit 1
+		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
 		update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 
 		local pkg_arr=(
 			'apache2-utils'
@@ -2014,7 +2033,7 @@ saltify() {
 			'netcat'
 			'jq'
 		)
-		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || exit 1
+		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || fail_setup
 
 		logCmd "mkdir -vp /etc/apt/keyrings"
 		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
@@ -2035,9 +2054,9 @@ saltify() {
 		
 		# Ain't nothing but a GPG 
 
-		retry 150 20 "apt-get update" "" "Err:" || exit 1
-		retry 150 20 "apt-get -y install salt-common-$SALTVERSION salt-minion-$SALTVERSION" || exit 1
-		retry 150 20 "apt-mark hold salt-minion salt-common" || exit 1
+		retry 150 20 "apt-get update" "" "Err:" || fail_setup
+		retry 150 20 "apt-get -y install salt-common-$SALTVERSION salt-minion-$SALTVERSION" || fail_setup
+		retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
 		#retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
 
 	fi
@@ -2104,7 +2123,7 @@ set_main_ip() {
 			info "MAINIP=$MAINIP"
 			info "MNIC_IP=$MNIC_IP"
 			whiptail_error_message "The management IP could not be determined. Please check the log at /root/sosetup.log and verify the network configuration. Select OK to exit."
-			exit 1
+			fail_setup
 		fi
 		sleep 1
 	done
@@ -2296,8 +2315,8 @@ set_initial_firewall_access() {
 		so-firewall includehost analyst $ALLOW_CIDR --apply
 	fi
 	if [[ ! -z "$MINION_CIDR" ]]; then
-		so-firewall includehost sensors $MINION_CIDR
-		so-firewall includehost searchnodes $MINION_CIDR --apply
+		so-firewall includehost sensor $MINION_CIDR
+		so-firewall includehost searchnode $MINION_CIDR --apply
 	fi
 }
 
@@ -2354,13 +2373,13 @@ ubuntu_check() {
 	if [[ $OS == "ubuntu" ]]; then
 		if [[ $waitforstate ]]; then
 			whiptail_ubuntu_notsupported
-			exit 1
+			fail_setup
 		else
 		    if [[ $UBUNTUINSTALL == "needtoupgrade" ]]; then
 				whiptail_ubuntu_warning
 			else
 				whiptail_ubuntu_notsupported
-				exit 1
+				fail_setup
 			fi
 		fi
 	fi
@@ -2379,9 +2398,9 @@ update_packages() {
 		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
 	else
 		info "Running apt-get update"
-		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
 		info "Running apt-get upgrade"
-		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || exit 1
+		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || fail_setup
 	fi
 }
 
@@ -2427,7 +2446,7 @@ wait_for_file() {
 }
 
 wait_for_salt_minion() {
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || exit 1
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
 }
 
 verify_setup() {

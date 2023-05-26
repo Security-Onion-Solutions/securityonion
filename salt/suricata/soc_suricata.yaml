@@ -12,10 +12,54 @@ suricata:
       title: SIDS
       helpLink: suricata.html
   config:
+    af-packet:
+      interface:
+        description: The network interface that Suricata will monitor.
+        helpLink: suricata.html
+      cluster-id:
+        advanced: True
+      cluster-type:
+        advanced: True
+        regex: ^(cluster_flow|cluster_qm)$
+      defrag:
+        advanced: True
+        regex: ^(yes|no)$
+      use-mmap:
+        advanced: True
+        readonly: True
+      threads:
+        description: The amount of worker threads.
+        helpLink: suricata.html
+        forcedType: int
+      tpacket-v3:
+        advanced: True
+        readonly: True
+      ring-size:
+        description: Buffer size for packets per thread.
+        forcedType: int
+        helpLink: suricata.html
+    threading:
+      set-cpu-affinity:
+        description: Bind(yes) or unbind(no) management and worker threads to a core or range of cores.
+        regex: ^(yes|no)$
+        helpLink: suricata.html
+      cpu-affinity:
+        management-cpu-set:
+          cpu:
+            description: Bind management threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to 'yes' for this to be used.
+            forcedType: "[]string"
+            helpLink: suricata.html
+        worker-cpu-set:
+          cpu:
+            description: Bind worker threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to 'yes' for this to be used.
+            forcedType: "[]string"
+            helpLink: suricata.html
     vars:
       address-groups:
         HOME_NET:
           description: List of hosts or networks.
+          regex: ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?)?$
+          regexFailureMessage: You must enter a valid IP address or CIDR.
           helpLink: suricata.html
         EXTERNAL_NET: 
           description: List of hosts or networks.
@@ -92,19 +136,21 @@ suricata:
           helpLink: suricata.html
     outputs:
       eve-log:
-        xff:
-          enabled:
-            description: Enable X-Forward-For support. 
-            helpLink: suricata.html
-          mode: 
-            description: Operation mode. This should always be extra-data if you use PCAP.
-            helpLink: suricata.html
-          deployment: 
-            description: forward would use the first IP address and reverse would use the last.
-            helpLink: suricata.html
-          header: 
-            description: Header name where the actual IP address will be reported.
-            helpLink: suricata.html
+        types:
+          alert:
+            xff:
+              enabled:
+                description: Enable X-Forward-For support.
+                helpLink: suricata.html
+              mode:
+                description: Operation mode. This should always be extra-data if you use PCAP.
+                helpLink: suricata.html
+              deployment:
+                description: forward would use the first IP address and reverse would use the last.
+                helpLink: suricata.html
+              header:
+                description: Header name where the actual IP address will be reported.
+                helpLink: suricata.html
     asn1-max-frames:
       description: Maximum nuber of asn1 frames to decode.
       helpLink: suricata.html

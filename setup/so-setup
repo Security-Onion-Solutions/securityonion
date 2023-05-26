@@ -10,13 +10,13 @@
 uid="$(id -u)"
 if [ "$uid" -ne 0 ]; then
 	echo "This script must be run using sudo!"
-	exit 1
+	fail_setup
 fi
 
 # Save the original argument array since we modify it
 original_args=("$@")
 
-cd "$(dirname "$0")" || exit 255
+cd "$(dirname "$0")" || fail_setup
 
 echo "Getting started..."
 
@@ -82,7 +82,7 @@ if [[ "$setup_type" == 'iso' ]]; then
 		is_iso=true
 	else
 		echo "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
-		exit 1
+		fail_setup
 	fi
 fi
 
@@ -161,7 +161,7 @@ catch() {
 	info "Fatal error occurred at $1 in so-setup, failing setup."
 	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
-	exit 1
+	fail_setup
 }
 
 # Add the progress function for manager node type installs
@@ -236,7 +236,7 @@ case "$setup_type" in
 		;;
 	*)
 		error "Invalid install type, must be 'iso', 'network' or 'analyst'."
-		exit 1
+		fail_setup
 		;;
 esac
 
