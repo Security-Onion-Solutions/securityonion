@@ -26,10 +26,33 @@ so-idstools:
       - http_proxy={{ proxy }}
       - https_proxy={{ proxy }}
       - no_proxy={{ salt['pillar.get']('manager:no_proxy') }}
+      {% if DOCKER.containers['so-elastalert'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      - {{ XTRAENV }}
+        {% endfor %}
+      {% endif %}
+    {% elif DOCKER.containers['so-idstools'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-idstools'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
     {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
       - /opt/so/rules/nids:/opt/so/rules/nids:rw
+      - /nsm/rules/:/nsm/rules/:rw
+    {% if DOCKER.containers['so-idstools'].custom_bind_mounts %}
+      {% for BIND in DOCKER.containers['so-idstools'].custom_bind_mounts %}
+      - {{ BIND }}
+      {% endfor %}
+    {% endif %}
+    - extra_hosts:
+      - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+    {% if DOCKER.containers['so-idstools'].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers['so-idstools'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: idstoolsetcsync
 

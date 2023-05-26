@@ -22,10 +22,27 @@ strelka_gatekeeper:
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+      {% if DOCKER.containers['so-strelka-gatekeeper'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-gatekeeper'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
+    {% if DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+    - binds:
+      {% for BIND in DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+      - {{ BIND }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}   
 
 delete_so-strelka-gatekeeper_so-status.disabled:
   file.uncomment:

@@ -17,6 +17,11 @@ strelka_manager:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
+      {% if DOCKER.containers['so-strelka-manager'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-strelka-manager'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - name: so-strelka-manager
     - networks:
       - sobridge:
@@ -24,6 +29,17 @@ strelka_manager:
     - command: strelka-manager
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
+      {% if DOCKER.containers['so-strelka-manager'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-strelka-manager'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
+   {% if DOCKER.containers['so-strelka-manager'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-strelka-manager'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
 
 delete_so-strelka-manager_so-status.disabled:
   file.uncomment:

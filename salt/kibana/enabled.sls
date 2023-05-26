@@ -25,13 +25,28 @@ so-kibana:
       - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200
       - MANAGER={{ GLOBALS.manager }}
+      {% if DOCKER.containers['so-kibana'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-kibana'].extra_env %}
+      - {{ XTRAENV }}
+        {% endfor %}
+      {% endif %}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+    {% if DOCKER.containers['so-kibana'].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers['so-kibana'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/customdashboards:/usr/share/kibana/custdashboards:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      {% if DOCKER.containers['so-kibana'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-kibana'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-kibana'].port_bindings %}
       - {{ BINDING }}

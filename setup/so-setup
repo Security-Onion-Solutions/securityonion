@@ -644,6 +644,13 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		if [[ ! $is_airgap ]]; then
+			title "Downloading IDS Rules"
+			logCmd "so-rule-update"
+			title "Downloading YARA rules"
+			logCmd "runuser -l socore 'so-yara-update'"
+			title "Restarting Strelka to use new rules"
+		fi
 		title "Setting up Kibana Default Space"
 		logCmd "so-kibana-space-defaults"
 		add_web_user
