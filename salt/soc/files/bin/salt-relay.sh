@@ -17,7 +17,7 @@ function log() {
 function make_pipe() {
   path=$1
 
-  log "Creating pipe: $path"  
+  log "Creating pipe: $path"
   rm -f "${path}"
   mkfifo "${path}"
   chmod 0660 "${path}"
@@ -172,6 +172,74 @@ function manage_salt() {
   fi
 }
 
+function send_file() {
+  request=$1
+  from=$(echo "$request" | jq -r .from)
+  to=$(echo "$request" | jq -r .to)
+  node=$(echo "$request" | jq -r .node)
+  [ $(echo "$request" | jq -r .cleanup) != "true" ] ; cleanup=$?
+
+  log "From: $from"
+  log "To: $to"
+  log "Node: $node"
+  log "Cleanup: $cleanup"
+
+  response=$($CMD_PREFIX salt-cp -C "$node" "$from" "$to")
+  exit_code=$?
+
+  log Response:$'\n'"$response"
+  log "Exit Code: $exit_code"
+
+  if [[ exit_code -eq 0 ]]; then
+    if [[ $cleanup -eq 1 ]]; then
+      log "Cleaning up file $from"
+      rm -f "$from"
+    fi
+    $(echo "true" > "${SOC_PIPE}")
+  else
+    $(echo "false" > "${SOC_PIPE}")
+  fi
+}
+
+function import_file() {
+  request=$1
+  node=$(echo "$request" | jq -r .node)
+  file=$(echo "$request" | jq -r .file)
+  importer=$(echo "$request" | jq -r .importer)
+
+  log "Node: $node"
+  log "File: $file"
+  log "Importer: $importer"
+
+  case $importer in
+    pcap)
+      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file'")
+      exit_code=$?
+      ;;
+    evtx)
+      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file'")
+      exit_code=$?
+      ;;
+    *)
+      response="Unsupported importer: $importer"
+      exit_code=1
+      ;;
+  esac
+
+  rm "$file"
+
+  log Response:$'\n'"$response"
+  log "Exit Code: $exit_code"
+
+  if [[ exit_code -eq 0 ]]; then
+    log "true"
+    $(echo "true" > "${SOC_PIPE}")
+  else
+    log "false"
+    $(echo "false" > "${SOC_PIPE}")
+  fi
+}
+
 while true; do
   log "Listening for request"
   request=$(cat ${SOC_PIPE})
@@ -190,6 +258,12 @@ while true; do
         ;;
       manage-salt)
         manage_salt "${request}"
+        ;;
+      send-file)
+        send_file "${request}"
+        ;;
+      import-file)
+        import_file "${request}"
         ;;
       *)
         log "Unsupported command: $command"
