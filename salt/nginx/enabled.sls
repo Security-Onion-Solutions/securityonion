@@ -12,6 +12,15 @@ include:
   - nginx.config
   - nginx.sostatus
 
+make-rule-dir-nginx:
+  file.directory:
+    - name: /nsm/rules
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+
 so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
