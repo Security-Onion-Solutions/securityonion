@@ -385,10 +385,10 @@ function create_fleet_policy() {
 
 function update_fleet_host_urls() {
 	# Query for current Fleet Host URLs & append New Fleet Node Hostname & IP
-    JSON_STRING=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts' | jq --arg HOSTNAME "https://$LSHOSTNAME:8220" --arg IP "https://$MAINIP:8220" -r '.items[].host_urls += [ $HOSTNAME, $IP ] | {"name":"Default","host_urls": .items[].host_urls,"is_default":true,"proxy_id":null}')
+    JSON_STRING=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' | jq --arg HOSTNAME "https://$LSHOSTNAME:8220" --arg IP "https://$MAINIP:8220" '.item.host_urls += [ $HOSTNAME, $IP ]  | {"name":"grid-default","is_default":true,"host_urls": .item.host_urls}')
 
 	# Update Fleet Host URLs
-	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/fleet_server_hosts/fleet-default-fleet-server-host" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/fleet_server_hosts/grid-default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
 function update_logstash_outputs() {
