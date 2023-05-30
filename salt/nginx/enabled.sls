@@ -12,6 +12,15 @@ include:
   - nginx.config
   - nginx.sostatus
 
+make-rule-dir-nginx:
+  file.directory:
+    - name: /nsm/rules
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+
 so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
@@ -21,6 +30,11 @@ so-nginx:
         - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+    {% if DOCKER.containers['so-nginx'].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers['so-nginx'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
@@ -37,7 +51,19 @@ so-nginx:
       - /opt/so/conf/navigator/enterprise-attack.json:/opt/socore/html/navigator/assets/enterprise-attack.json:ro
       - /opt/so/conf/navigator/pre-attack.json:/opt/socore/html/navigator/assets/pre-attack.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
+      - /nsm/rules:/nsm/rules:ro
       {% endif %}
+      {% if DOCKER.containers['so-nginx'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-nginx'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-nginx'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-nginx'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-nginx'].port_bindings %}

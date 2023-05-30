@@ -33,6 +33,11 @@ so-mysql:
         - ipv4_address: {{ DOCKER.containers['so-mysql'].ip }}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
+      {% if DOCKER.containers['so-mysql'].extra_hosts %}
+        {% for XTRAHOST in DOCKER.containers['so-mysql'].extra_hosts %}
+      - {{ XTRAHOST }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-mysql'].port_bindings %}
       - {{ BINDING }}
@@ -40,11 +45,21 @@ so-mysql:
     - environment:
       - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
+      {% if DOCKER.containers['so-mysql'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-mysql'].extra_env %}
+        - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/mysql/etc/my.cnf:/etc/my.cnf:ro
       - /opt/so/conf/mysql/etc/mypass:/etc/mypass
       - /nsm/mysql:/var/lib/mysql:rw
       - /opt/so/log/mysql:/var/log/mysql:rw
+      {% if DOCKER.containers['so-mysql'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-mysql'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - watch:
       - /opt/so/conf/mysql/etc
     - require:

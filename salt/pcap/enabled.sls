@@ -5,7 +5,9 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{% from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'docker/docker.map.jinja' import DOCKER %}
+
 
 include:
   - pcap.config
@@ -24,6 +26,23 @@ so-steno:
       - /nsm/pcapindex:/nsm/pcapindex:rw
       - /nsm/pcaptmp:/tmp:rw
       - /opt/so/log/stenographer:/var/log/stenographer:rw
+    {% if DOCKER.containers['so-steno'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-steno'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-steno'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-steno'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-steno'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-steno'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: stenoconf
     - require:

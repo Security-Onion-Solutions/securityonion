@@ -25,10 +25,27 @@ so-kratos:
       - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /nsm/kratos/db:/kratos-data:rw
+      {% if DOCKER.containers['so-kratos'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-kratos'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-kratos'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
+    {% if DOCKER.containers['so-kratos'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-kratos'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-kratos'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - restart_policy: unless-stopped
     - watch:
       - file: kratosschema

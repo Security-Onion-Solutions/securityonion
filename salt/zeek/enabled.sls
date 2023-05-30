@@ -6,6 +6,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'docker/docker.map.jinja' import DOCKER %}
+
 
 include:
   - zeek.config
@@ -31,8 +33,25 @@ so-zeek:
       - /opt/so/conf/zeek/policy/custom:/opt/zeek/share/zeek/policy/custom:ro
       - /opt/so/conf/zeek/policy/cve-2020-0601:/opt/zeek/share/zeek/policy/cve-2020-0601:ro
       - /opt/so/conf/zeek/policy/intel:/opt/zeek/share/zeek/policy/intel:rw
-      - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro 
+      - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro
+      {% if DOCKER.containers['so-zeek'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-zeek'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %} 
     - network_mode: host
+    {% if DOCKER.containers['so-zeek'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-zeek'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-zeek'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-zeek'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg

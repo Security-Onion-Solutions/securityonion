@@ -6,6 +6,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'docker/docker.map.jinja' import DOCKER %}
+
 
 include:
   - suricata.config
@@ -17,6 +19,11 @@ so-suricata:
     - privileged: True
     - environment:
       - INTERFACE={{ GLOBALS.sensor.interface }}
+      {% if DOCKER.containers['so-suricata'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-suricata'].extra_env %}
+      - {{ XTRAENV }}
+        {% endfor %}
+      {% endif %}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
@@ -25,7 +32,18 @@ so-suricata:
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
+      {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - network_mode: host
+    {% if DOCKER.containers['so-suricata'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-suricata'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: suriconfig
       - file: surithresholding

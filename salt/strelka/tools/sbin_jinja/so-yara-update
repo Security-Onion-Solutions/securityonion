@@ -1,0 +1,21 @@
+#!/bin/bash
+NOROOT=1
+. /usr/sbin/so-common
+
+{%- set proxy = salt['pillar.get']('manager:proxy') %}
+
+# Download the rules from the internet
+{%- if proxy %}
+export http_proxy={{ proxy }} 
+export https_proxy={{ proxy }} 
+export no_proxy= salt['pillar.get']('manager:no_proxy') 
+{%- endif %}
+
+mkdir -p /tmp/yara
+cd /tmp/yara
+git clone https://github.com/Security-Onion-Solutions/securityonion-yara.git
+mkdir -p /nsm/rules/yara
+rsync -shav --progress /tmp/yara/securityonion-yara/yara /nsm/rules/
+cd /tmp
+rm -rf /tmp/yara
+

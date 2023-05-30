@@ -4,6 +4,8 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'docker/docker.map.jinja' import DOCKER %}
+
 
 include:
   - sensoroni.config
@@ -21,6 +23,23 @@ so-sensoroni:
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/sensoroni/analyzers:/opt/sensoroni/analyzers:rw
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
+      {% if DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
+    {% if DOCKER.containers['so-sensoroni'].extra_hosts %}
+    - extra_hosts:
+      {% for XTRAHOST in DOCKER.containers['so-sensoroni'].extra_hosts %}
+      - {{ XTRAHOST }}
+      {% endfor %}
+    {% endif %}
+    {% if DOCKER.containers['so-sensoroni'].extra_env %}
+    - environment:
+      {% for XTRAENV in DOCKER.containers['so-sensoroni'].extra_env %}
+      - {{ XTRAENV }}
+      {% endfor %}
+    {% endif %}
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
     - require:
