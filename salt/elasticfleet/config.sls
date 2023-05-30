@@ -72,6 +72,7 @@ eaintegration:
     - source: salt://elasticfleet/files/integrations
     - user: 947
     - group: 939
+
 ea-integrations-load:
   file.absent:
     - name: /opt/so/state/eaintegrations.txt
