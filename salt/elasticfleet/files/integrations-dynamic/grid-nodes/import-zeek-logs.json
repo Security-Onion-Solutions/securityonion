@@ -1,0 +1,32 @@
+{% set EXCLUDED_LOGS = salt['pillar.get']('zeek:logging:excluded', {}) %}
+{%- raw -%}
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "import-zeek-logs",
+  "namespace": "so",
+  "description": "Zeek Import logs",
+  "policy_id": "so-grid-nodes",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/import/*/zeek/logs/*.log"
+            ],
+            "data_stream.dataset": "import",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"import.file\").slice(0,-4);\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n      imported: true\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        import.file: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"",
+            "custom": "exclude_files: [\"{%- endraw -%}{{ EXCLUDED_LOGS | join('|') }}{%- raw -%}$\"]\n"
+          }
+        }
+      }
+    }
+  }
+}
+{%- endraw -%}
