@@ -1,3 +1,5 @@
+{% from 'zeek/config.map.jinja' import ZEEKMERGED %}
+{%- raw -%}
 {
   "package": {
     "name": "log",
@@ -20,10 +22,11 @@
             "data_stream.dataset": "import",
             "tags": [],
             "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"import.file\").slice(0,-4);\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n      imported: true\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        import.file: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"",
-            "custom": "exclude_files: [\"broker|capture_loss|ecat_arp_info|loaded_scripts|packet_filter|stats|stderr|stdout.log$\"]\n"
+            "custom": "exclude_files: [\"{%- endraw -%}{{ ZEEKMERGED.logging.excluded | join('|') }}{%- raw -%}.log$\"]\n"
           }
         }
       }
     }
   }
 }
+{%- endraw -%}

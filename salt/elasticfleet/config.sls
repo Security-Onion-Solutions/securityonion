@@ -51,6 +51,35 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+eaintegrationsdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - user: 947
+    - group: 939
+    - makedirs: True
+
+eadynamicintegration:
+  file.recurse:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - source: salt://elasticfleet/files/integrations-dynamic
+    - user: 947
+    - group: 939
+    - template: jinja
+
+eaintegration:
+  file.recurse:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - source: salt://elasticfleet/files/integrations
+    - user: 947
+    - group: 939
+
+ea-integrations-load:
+  file.absent:
+    - name: /opt/so/state/eaintegrations.txt
+    - onchanges:
+      - file: eaintegration
+      - file: eadynamicintegration
+
 {% else %}
 
 {{sls}}_state_not_allowed:

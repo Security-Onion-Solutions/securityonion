@@ -62,6 +62,10 @@ so-elastic-fleet:
       {% endif %}
 {%   endif %}
 
+so-elastic-fleet-integrations:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-integration-policy-load
+
 delete_so-elastic-fleet_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
