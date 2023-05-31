@@ -4,6 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls.split('.')[0] in allowed_states %}
 
 # Add EA Group
@@ -51,6 +52,7 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+{%   if GLOBALS.role != "so-fleet" %}
 eaintegrationsdir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/integrations
@@ -79,7 +81,7 @@ ea-integrations-load:
     - onchanges:
       - file: eaintegration
       - file: eadynamicintegration
-
+{% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
