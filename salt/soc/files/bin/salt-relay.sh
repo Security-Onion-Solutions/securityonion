@@ -232,8 +232,8 @@ function import_file() {
   log "Exit Code: $exit_code"
 
   if [[ exit_code -eq 0 ]]; then
-    log "true"
-    $(echo "true" > "${SOC_PIPE}")
+    url=$(echo "$response" | sed ':a;N;$!ba;s/\n//g' | grep -E -o "https://\S*&z=UTC")
+    $(echo "$url" > "${SOC_PIPE}")
   else
     log "false"
     $(echo "false" > "${SOC_PIPE}")
