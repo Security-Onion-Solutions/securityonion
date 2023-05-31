@@ -52,6 +52,8 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.adv_elasticfleet
+    - elasticfleet.soc_elasticfleet
     - elastalert.soc_elastalert
     - elastalert.adv_elastalert
     - backup.soc_backup
@@ -75,6 +77,8 @@ base:
     - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
+    - elasticfleet.adv_elasticfleet
+    - elasticfleet.soc_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -91,6 +95,8 @@ base:
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - elastalert.soc_elastalert
     - elastalert.adv_elastalert
     - manager.soc_manager
@@ -149,6 +155,8 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - elastalert.soc_elastalert
     - elastalert.adv_elastalert
     - manager.soc_manager
@@ -183,6 +191,8 @@ base:
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - curator.soc_curator
     - curator.adv_curator
     - redis.soc_redis
@@ -215,6 +225,8 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}
@@ -227,6 +239,8 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}
@@ -244,6 +258,8 @@ base:
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - elastalert.soc_elastalert
     - elastalert.adv_elastalert
     - manager.soc_manager
@@ -283,6 +299,8 @@ base:
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
