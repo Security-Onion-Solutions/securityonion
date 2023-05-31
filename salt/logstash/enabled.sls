@@ -12,7 +12,9 @@
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
+{%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch.ca
+{%   endif %}
   - logstash.config
   - logstash.sostatus
 
