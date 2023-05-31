@@ -77,8 +77,6 @@ base:
     - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
-    - elasticfleet.soc_elasticfleet
-    - elasticfleet.adv_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -191,8 +189,6 @@ base:
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
-    - elasticfleet.soc_elasticfleet
-    - elasticfleet.adv_elasticfleet
     - curator.soc_curator
     - curator.adv_curator
     - redis.soc_redis
@@ -225,8 +221,6 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
-    - elasticfleet.soc_elasticfleet
-    - elasticfleet.adv_elasticfleet
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}
@@ -239,8 +233,6 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
-    - elasticfleet.soc_elasticfleet
-    - elasticfleet.adv_elasticfleet
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}
