@@ -1,0 +1,49 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-elastic-fleet-common
+
+RETURN_CODE=0
+
+if [ ! -f /opt/so/state/eaintegrations.txt ]; then
+  # Initial Endpoints
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json
+  do
+    printf "\n\nInitial Endpoints Policy - Loading $INTEGRATION\n"
+    elastic_fleet_integration_check "endpoints-initial" "$INTEGRATION"
+    if [ -n "$INTEGRATION_ID" ]; then
+      if [ "$NAME" != "elastic-defend-endpoints" ]; then
+        printf "\n\nIntegration $NAME exists - Updating integration\n"
+        elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
+      fi
+    else
+      printf "\n\nIntegration does not exist - Creating integration\n"
+      elastic_fleet_integration_create "@$INTEGRATION"
+    fi
+  done
+
+  # Grid Nodes
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes/*.json
+  do
+    printf "\n\nGrid Nodes Policy - Loading $INTEGRATION\n"
+    elastic_fleet_integration_check "so-grid-nodes" "$INTEGRATION"
+    if [ -n "$INTEGRATION_ID" ]; then
+      printf "\n\nIntegration $NAME exists - Updating integration\n"
+      elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
+    else
+      printf "\n\nIntegration does not exist - Creating integration\n"
+      if [ "$NAME" != "elasticsearch-logs" ]; then
+        elastic_fleet_integration_create "@$INTEGRATION"
+      fi
+    fi
+  done
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/eaintegrations.txt
+  fi
+else
+  exit $RETURN_CODE
+fi
+

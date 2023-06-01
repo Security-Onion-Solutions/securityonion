@@ -1,9 +1,8 @@
-{% set THRESHOLDING  = salt['pillar.get']('thresholding', {}) -%}
-
+{% import_yaml 'suricata/thresholding/sids.yaml' as THRESHOLDING %}
 {% if THRESHOLDING -%}
   
-  {% for EACH_SID in THRESHOLDING.sids -%}
-    {% for ACTIONS_LIST in THRESHOLDING.sids[EACH_SID] -%}
+  {% for EACH_SID in THRESHOLDING -%}
+    {% for ACTIONS_LIST in THRESHOLDING[EACH_SID] -%}
       {% for EACH_ACTION in ACTIONS_LIST -%}
         
         {%- if EACH_ACTION == 'threshold' %}
@@ -31,6 +30,6 @@
   {%- endfor %}
 
 {%- else %}
-##### The thresholding pillar has not been defined
+##### Navigate to suricata > thresholding > SIDS in SOC to define thresholding
 
 {%- endif %}

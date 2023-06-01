@@ -1,44 +1,26 @@
 base:
   '*':
-    - patch.needs_restarting
-    - ntp.soc_ntp
-    - ntp.adv_ntp
-    - logrotate
+    - global.soc_global
+    - global.adv_global
     - docker.soc_docker
     - docker.adv_docker
+    - firewall.soc_firewall
+    - firewall.adv_firewall
+    - influxdb.token
+    - logrotate.soc_logrotate
+    - logrotate.adv_logrotate
+    - nginx.soc_nginx
+    - nginx.adv_nginx
+    - node_data.ips
+    - ntp.soc_ntp
+    - ntp.adv_ntp
+    - patch.needs_restarting
+    - patch.soc_patch
+    - patch.adv_patch
     - sensoroni.soc_sensoroni
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
-    - influxdb.token
-    - node_data.ips
-
-  '* and not *_eval and not *_import':
-    - logstash.nodes
-
-  '*_eval or *_heavynode or *_sensor or *_standalone or *_import':
-    - match: compound
-    - zeek
-    - bpf.soc_bpf
-    - bpf.adv_bpf
-
-  '*_managersearch or *_heavynode':
-    - match: compound
-    - logstash
-    - logstash.manager
-    - logstash.search
-    - logstash.soc_logstash
-    - logstash.adv_logstash
-    - elasticsearch.index_templates
-    - elasticsearch.soc_elasticsearch
-    - elasticsearch.adv_elasticsearch
-
-  '*_manager':
-    - logstash
-    - logstash.manager
-    - logstash.soc_logstash
-    - logstash.adv_logstash
-    - elasticsearch.index_templates
 
   '*_manager or *_managersearch':
     - match: compound
@@ -49,14 +31,19 @@ base:
     - kibana.secrets
     {% endif %}
     - secrets
-    - global.soc_global
-    - global.adv_global
     - manager.soc_manager
     - manager.adv_manager
     - idstools.soc_idstools
     - idstools.adv_idstools
+    - logstash.nodes
+    - logstash.soc_logstash
+    - logstash.adv_logstash
     - soc.soc_soc
     - soc.adv_soc
+    - soctopus.soc_soctopus
+    - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -65,17 +52,31 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
+    - curator.soc_curator
+    - curator.adv_curator
+    - soctopus.soc_soctopus
+    - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_sensor':
     - healthcheck.sensor
-    - global.soc_global
-    - global.adv_global
+    - strelka.soc_strelka
+    - strelka.adv_strelka
+    - zeek.soc_zeek
+    - zeek.adv_zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
+    - pcap.soc_pcap
+    - pcap.adv_pcap
+    - suricata.soc_suricata
+    - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -89,16 +90,27 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
-    - global.soc_global
-    - global.adv_global
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - idstools.soc_idstools
     - idstools.adv_idstools
     - soc.soc_soc
+    - soc.adv_soc
+    - soctopus.soc_soctopus
+    - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
+    - strelka.soc_strelka
+    - strelka.adv_strelka
+    - curator.soc_curator
+    - curator.adv_curator
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -107,15 +119,19 @@ base:
     - influxdb.adv_influxdb
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
+    - zeek.soc_zeek
+    - zeek.adv_zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
+    - pcap.soc_pcap
+    - pcap.adv_pcap
+    - suricata.soc_suricata
+    - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_standalone':
-    - logstash
-    - logstash.manager
-    - logstash.search
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     - elasticsearch.index_templates
@@ -127,8 +143,6 @@ base:
     {% endif %}
     - secrets
     - healthcheck.standalone
-    - global.soc_global
-    - global.adv_global
     - idstools.soc_idstools
     - idstools.adv_idstools
     - kratos.soc_kratos
@@ -139,52 +153,81 @@ base:
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - soc.soc_soc
+    - soc.adv_soc
+    - soctopus.soc_soctopus
+    - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
+    - strelka.soc_strelka
+    - strelka.adv_strelka
+    - curator.soc_curator
+    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
-    - firewall.soc_firewall
-    - firewall.adv_firewall
+    - zeek.soc_zeek
+    - zeek.adv_zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
+    - pcap.soc_pcap
+    - pcap.adv_pcap
+    - suricata.soc_suricata
+    - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_heavynode':
     - elasticsearch.auth
-    - global.soc_global
-    - global.adv_global
+    - logstash.nodes
+    - logstash.soc_logstash
+    - logstash.adv_logstash
+    - elasticsearch.soc_elasticsearch
+    - elasticsearch.adv_elasticsearch
+    - curator.soc_curator
+    - curator.adv_curator
     - redis.soc_redis
+    - redis.adv_redis
+    - zeek.soc_zeek
+    - zeek.adv_zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
+    - pcap.soc_pcap
+    - pcap.adv_pcap
+    - suricata.soc_suricata
+    - suricata.adv_suricata
+    - strelka.soc_strelka
+    - strelka.adv_strelka
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_idh':
-    - global.soc_global
-    - global.adv_global
     - idh.soc_idh
     - idh.adv_idh
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_searchnode':
-    - logstash
-    - logstash.search
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
-    - elasticsearch.index_templates
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
     - redis.soc_redis
-    - global.soc_global
-    - global.adv_global
+    - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_receiver':
-    - logstash
-    - logstash.receiver
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
@@ -192,8 +235,6 @@ base:
     {% endif %}
     - redis.soc_redis
     - redis.adv_redis
-    - global.soc_global
-    - global.adv_global
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
@@ -209,11 +250,20 @@ base:
     - kratos.soc_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
+    - elastalert.soc_elastalert
+    - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
     - soc.soc_soc
-    - global.soc_global
-    - global.adv_global
+    - soc.adv_soc
+    - soctopus.soc_soctopus
+    - soctopus.adv_soctopus
+    - kibana.soc_kibana
+    - kibana.adv_kibana
+    - curator.soc_curator
+    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
     - kratos.soc_kratos
@@ -222,23 +272,30 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
-    - firewall.soc_firewall
-    - firewall.adv_firewall
+    - zeek.soc_zeek
+    - zeek.adv_zeek
+    - bpf.soc_bpf
+    - bpf.adv_bpf
+    - pcap.soc_pcap
+    - pcap.adv_pcap
+    - suricata.soc_suricata
+    - suricata.adv_suricata
+    - strelka.soc_strelka
+    - strelka.adv_strelka
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
   '*_fleet':
-    - global.soc_global
-    - global.adv_global
     - backup.soc_backup
     - backup.adv_backup
-    - logstash
-    - logstash.fleet
+    - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
-  '*_workstation':
+  '*_desktop':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}

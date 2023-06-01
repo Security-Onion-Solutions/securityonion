@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+DEFAULT_SALT_DIR=/opt/so/saltstack/default
+
+if [ -z $NOROOT ]; then
+        # Check for prerequisites
+        if [ "$(id -u)" -ne 0 ]; then
+                echo "This script must be run using sudo!"
+                exit 1
+        fi
+fi
+
+# Ensure /usr/sbin is in path
+if ! echo "$PATH" | grep -q "/usr/sbin"; then
+  export PATH="$PATH:/usr/sbin"
+fi
+
+# Define a banner to separate sections
+banner="========================================================================="
+
+elastic_fleet_integration_check() {
+
+    AGENT_POLICY=$1
+
+    JSON_STRING=$2
+
+    NAME=$(jq -r .name $JSON_STRING)
+
+    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$AGENT_POLICY" | jq -r '.item.package_policies[] | select(.name=="'"$NAME"'") | .id')
+
+}
+
+elastic_fleet_integration_create() {
+
+    JSON_STRING=$1
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+elastic_fleet_integration_update() {
+
+    UPDATE_ID=$1
+
+    JSON_STRING=$2
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+elastic_fleet_policy_create() {
+
+    NAME=$1
+    DESC=$2
+    FLEETSERVER=$3
+        TIMEOUT=$4
+
+    JSON_STRING=$( jq -n \
+                    --arg NAME "$NAME" \
+                    --arg DESC "$DESC" \
+                    --arg TIMEOUT $TIMEOUT \
+                    --arg FLEETSERVER "$FLEETSERVER" \
+                    '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":$TIMEOUT,"has_fleet_server":$FLEETSERVER}'
+                    )
+    # Create Fleet Policy
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+}
+
+elastic_fleet_policy_update() {
+
+    POLICYID=$1
+    JSON_STRING=$2
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/$POLICYID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}

@@ -70,7 +70,7 @@ function manage_user() {
         lastName=$(echo "$request" | jq -r .lastName)
         note=$(echo "$request" | jq -r .note)
         log "Performing user '$op' for user '$email' with firstname '$firstName', lastname '$lastName', note '$note' and role '$role'"
-        response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
+        response=$(echo "$password" | $CMD_PREFIX so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
         exit_code=$?
         ;;
       add|enable|disable|delete)
@@ -143,12 +143,12 @@ function manage_salt() {
     state)
       log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$($CMD_PREFIX salt --async "$minion" state.apply "$state" queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.apply "$state" queue=2)
       exit_code=$?
       ;;
     highstate)
       log "Performing '$op' on minion $minion"
-      response=$($CMD_PREFIX salt --async "$minion" state.highstate queue=True)
+      response=$($CMD_PREFIX salt --async "$minion" state.highstate queue=2)
       exit_code=$?
       ;;
     activejobs)

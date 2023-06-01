@@ -1,11 +1,91 @@
-{% set SURICATAOPTIONS = {} %}
-{% set ENABLED = salt['pillar.get']('suricata:enabled', 'True') %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% import_yaml 'suricata/defaults.yaml' as SURICATADEFAULTS %}
+{% set SURICATAMERGED = salt['pillar.get']('suricata', SURICATADEFAULTS.suricata, merge=True) %}
+{% import_yaml 'suricata/suricata_mdengine.yaml' as suricata_mdengine %}
 
-# don't start the docker container if it is an import node or disabled via pillar
-{% if grains.id.split('_')|last == 'import' or ENABLED is sameas false %}
-  {% do SURICATAOPTIONS.update({'start': False}) %}
-  {% do SURICATAOPTIONS.update({'status': 'absent'}) %}
-{% else %}
-  {% do SURICATAOPTIONS.update({'start': True}) %}
-  {% do SURICATAOPTIONS.update({'status': 'running'}) %}
+{% set default_evelog_index = [] %}
+{% set default_filestore_index = [] %}
+{% set surimeta_evelog_index = [] %}
+{% set surimeta_filestore_index = [] %}
+
+{# suricata.config.af-packet has to be rewritten here since we cant display '- interface' in the ui #}
+{# we are limited to only one iterface #}
+{% load_yaml as afpacket %}
+- interface: {{ SURICATAMERGED.config['af-packet'].interface }}
+  cluster-id: {{ SURICATAMERGED.config['af-packet']['cluster-id'] }}
+  cluster-type: {{ SURICATAMERGED.config['af-packet']['cluster-type'] }}
+  defrag: {{ SURICATAMERGED.config['af-packet'].defrag }}
+  use-mmap: {{ SURICATAMERGED.config['af-packet']['use-mmap'] }}
+  threads: {{ SURICATAMERGED.config['af-packet'].threads }}
+  tpacket-v3: {{ SURICATAMERGED.config['af-packet']['tpacket-v3'] }}
+  ring-size: {{ SURICATAMERGED.config['af-packet']['ring-size'] }}
+{% endload %}
+{% do SURICATAMERGED.config.pop('af-packet') %}
+{% do SURICATAMERGED.config.update({'af-packet': afpacket}) %}
+
+{# eve-log.types is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
+{% load_yaml as evelogtypes %}
+{% for le, ld in SURICATAMERGED.config.outputs['eve-log'].types.items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.outputs['eve-log'].pop('types') %}
+{% do SURICATAMERGED.config.outputs['eve-log'].update({'types': evelogtypes}) %}
+
+{# threading.cpu-affinity is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
+{% load_yaml as cpuaffinity %}
+{% for le, ld in SURICATAMERGED.config.threading['cpu-affinity'].items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.threading.pop('cpu-affinity') %}
+{% do SURICATAMERGED.config.threading.update({'cpu-affinity': cpuaffinity}) %}
+
+{# Find the index of eve-log and file-store in suricata_mdengine.suricata.config.outputs #}
+{# update outputs eve-log.types and filestore with config for Suricata metadata engine #}
+{% if GLOBALS.md_engine == 'SURICATA' %}
+{%   for li in suricata_mdengine.suricata.config.outputs %}
+{%     if 'eve-log' in li.keys() %}
+{%       do surimeta_evelog_index.append(loop.index0) %}
+{%     endif %}
+{%     if 'file-store' in li.keys() %}
+{%       do surimeta_filestore_index.append(loop.index0) %}
+{%     endif %}
+{%   endfor %}
+{%   set surimeta_evelog_index = surimeta_evelog_index[0] %}
+{%   set surimeta_filestore_index = surimeta_filestore_index[0] %}
+{%   do SURICATAMERGED.config.outputs['eve-log'].types.extend(suricata_mdengine.suricata.config.outputs[surimeta_evelog_index]['eve-log'].types) %}
+{%   do SURICATAMERGED.config.outputs['file-store'].update({'enabled':suricata_mdengine.suricata.config.outputs[surimeta_filestore_index]['file-store']['enabled']}) %}
 {% endif %}
+
+{# outputs is a list but we convert to dict in defaults to work with ui #}
+{# below they are converted back to lists #}
+{% load_yaml as outputs %}
+{% for le, ld in SURICATAMERGED.config.outputs.items() %}
+  - {{ le }}: {{ ld }}
+{% endfor %}
+{% endload %}
+{% do SURICATAMERGED.config.pop('outputs') %}
+{% do SURICATAMERGED.config.update({'outputs': outputs}) %}
+
+{# change address-groups vars from list to comma seperated string #}
+{% for k, v in SURICATAMERGED.config.vars['address-groups'].items() %}
+{#   if address-group value is a list #}
+{%   if v is iterable and (v is not string and v is not mapping and v | length > 1) %}
+{%     do SURICATAMERGED.config.vars['address-groups'].update({k: '[' ~ v | join(',') ~ ']'}) %}
+{%   else %}
+{%     do SURICATAMERGED.config.vars['address-groups'].update({k: v[0]}) %}
+{%   endif %}
+{% endfor %}
+
+{# change port-groups vars from list to comma seperated string #}
+{% for k, v in SURICATAMERGED.config.vars['port-groups'].items() %}
+{#   if address-group value is a list #}
+{%   if v is iterable and (v is not string and v is not mapping and v | length > 1) %}
+{%     do SURICATAMERGED.config.vars['port-groups'].update({k: '[' ~ v | join(',') ~ ']'}) %}
+{%   else %}
+{%     do SURICATAMERGED.config.vars['port-groups'].update({k: v[0]}) %}
+{%   endif %}
+{% endfor %}

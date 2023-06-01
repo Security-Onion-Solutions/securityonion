@@ -1,0 +1,109 @@
+
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+. /usr/sbin/so-elastic-fleet-common
+
+printf "\n### Create ES Token ###\n"
+ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
+
+### Create Outputs & Fleet URLs ###
+printf "\nAdd Manager Elasticsearch Output...\n"
+ESCACRT=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+JSON_STRING=$( jq -n \
+                  --arg ESCACRT "$ESCACRT" \
+                  '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+printf "\n\n"
+
+printf "\nCreate Logstash Output if node is not an Import or Eval install\n"
+{% if grains.role not in ['so-import', 'so-eval'] %}
+LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+JSON_STRING=$( jq -n \
+                  --arg LOGSTASHCRT "$LOGSTASHCRT" \
+                  --arg LOGSTASHKEY "$LOGSTASHKEY" \
+                  --arg LOGSTASHCA "$LOGSTASHCA" \
+                  '{"name":"grid-logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055", "{{ GLOBALS.manager }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]},"proxy_id":null}'
+                  )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+printf "\n\n"
+{%- endif %}
+
+# Add Manager IP & URL Base to Fleet Host URLs
+printf "\nAdd SO-Manager Fleet URL\n"
+if [ "{{ GLOBALS.manager_ip }}" = "{{ GLOBALS.url_base }}" ]; then
+    JSON_STRING=$( jq -n '{"id":"grid-default","name":"grid-default","is_default":true,"host_urls":["https://{{ GLOBALS.url_base }}:8220"]}')
+else
+    JSON_STRING=$( jq -n '{"id":"grid-default","name":"grid-default","is_default":true,"host_urls":["https://{{ GLOBALS.url_base }}:8220", "https://{{ GLOBALS.manager_ip }}:8220"]}')
+fi
+
+## This array replaces whatever URLs are currently configured
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/fleet_server_hosts" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  "$JSON_STRING"
+printf "\n\n"
+
+### Create Policies & Associated Integration Configuration ###
+
+# Manager Fleet Server Host
+elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" "120"
+
+#Temp Fixup for ES Output bug
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                '{"name": $NAME,"description": $NAME,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
+                )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+# Initial Endpoints Policy
+elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"
+
+# Grid Nodes Policy
+elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false" "1209600"
+
+# Load Integrations for default policies
+so-elastic-fleet-integration-policy-load
+
+# Set Elastic Agent Artifact Registry URL
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                --arg URL "http://{{ GLOBALS.url_base }}:8443/artifacts/" \
+                '{"name":$NAME,"host":$URL,"is_default":true}'
+                )
+
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+### Finalization ###
+
+# Query for Enrollment Tokens for default policies
+ENDPOINTSENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
+GRIDNODESENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes")) | .api_key')
+
+# Store needed data in minion pillar
+pillar_file=/opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
+printf '%s\n'\
+    "elasticfleet:"\
+    "  enabled: True"\
+    "  config:"\
+    "    server:"\
+    "      es_token: '$ESTOKEN'"\
+    "      endpoints_enrollment: '$ENDPOINTSENROLLMENTOKEN'"\
+    "      grid_enrollment: '$GRIDNODESENROLLMENTOKEN'"\
+    "" >> "$pillar_file"
+
+#Store Grid Nodes Enrollment token in Global pillar
+global_pillar_file=/opt/so/saltstack/local/pillar/global/soc_global.sls
+printf '%s\n'\
+    "  fleet_grid_enrollment_token: '$GRIDNODESENROLLMENTOKEN'"\
+    "" >> "$global_pillar_file"
+
+# Call Elastic-Fleet Salt State
+salt-call state.apply elasticfleet queue=True
+
+# Generate installers & install Elastic Agent on the node
+so-elastic-agent-gen-installers
+salt-call state.apply elasticfleet.install_agent_grid queue=True

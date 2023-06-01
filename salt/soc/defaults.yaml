@@ -1,1746 +1,1748 @@
 soc:
-  logFilename: /opt/sensoroni/logs/sensoroni-server.log
-  logLevel: info
-  actions:
-    - name: actionHunt
-      description: actionHuntHelp
-      icon: fa-crosshairs
-      target:
-      links:
-        - '/#/hunt?q="{value|escape}" | groupby event.module* event.dataset'
-    - name: actionCorrelate
-      description: actionCorrelateHelp
-      icon: fab fa-searchengin
-      target: ''
-      links:
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module* event.dataset'
-        - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-        - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-        - '/#/hunt?q="{:log.id.fuid}" | groupby event.module* event.dataset'
-        - '/#/hunt?q="{:log.id.uid}" | groupby event.module* event.dataset'
-        - '/#/hunt?q="{:network.community_id}" | groupby event.module* event.dataset'
-    - name: actionPcap
-      description: actionPcapHelp
-      icon: fa-stream
-      target: ''
-      links:
-        - '/joblookup?esid={:soc_id}&time={:@timestamp}'
-        - '/joblookup?ncid={:network.community_id}&time={:@timestamp}'
-      categories:
-        - hunt
-        - alerts
-        - dashboards
-    - name: actionCyberChef
-      description: actionCyberChefHelp
-      icon: fas fa-bread-slice
-      target: _blank
-      links:
-        - '/cyberchef/#input={value|base64}'
-    - name: actionGoogle
-      description: actionGoogleHelp
-      icon: fab fa-google
-      target: _blank
-      links:
-        - 'https://www.google.com/search?q={value}'
-    - name: actionVirusTotal
-      description: actionVirusTotalHelp
-      icon: fa-external-link-alt
-      target: _blank
-      links:
-        - 'https://www.virustotal.com/gui/search/{value}'
-  eventFields:
-    default:
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - log.id.uid
-      - network.community_id
-      - event.dataset
-    ':kratos:audit':
-      - soc_timestamp
-      - http_request.headers.x-real-ip
-      - identity_id
-      - http_request.headers.user-agent
-    '::conn':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - network.transport
-      - network.protocol
-      - log.id.uid
-      - network.community_id
-    '::dce_rpc':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - dce_rpc.endpoint
-      - dce_rpc.named_pipe
-      - dce_rpc.operation
-      - log.id.uid
-    '::dhcp':
-      - soc_timestamp
-      - client.address
-      - server.address
-      - host.domain
-      - host.hostname
-      - dhcp.message_types
-      - log.id.uid
-    '::dnp3':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - dnp3.fc_reply
-      - log.id.uid
-    '::dnp3_control':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - dnp3.function_code
-      - dnp3.block_type
-      - log.id.uid
-    '::dnp3_objects':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - dnp3.function_code
-      - dnp3.object_type
-      - log.id.uid
-    '::dns':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - network.transport
-      - dns.query.name
-      - dns.query.type_name
-      - dns.response.code_name
-      - log.id.uid
-      - network.community_id
-    '::dpd':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - network.protocol
-      - observer.analyser
-      - error.reason
-      - log.id.uid
-    '::file':
-      - soc_timestamp
-      - source.ip
-      - destination.ip
-      - file.name
-      - file.mime_type
-      - file.source
-      - file.bytes.total
-      - log.id.fuid
-      - log.id.uid
-    '::ftp':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - ftp.user
-      - ftp.command
-      - ftp.argument
-      - ftp.reply_code
-      - file.size
-      - log.id.uid
-    '::http':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - http.method
-      - http.virtual_host
-      - http.status_code
-      - http.status_message
-      - http.request.body.length
-      - http.response.body.length
-      - log.id.uid
-      - network.community_id
-    '::intel':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - intel.indicator
-      - intel.indicator_type
-      - intel.seen_where
-      - log.id.uid
-    '::irc':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - irc.username
-      - irc.nickname
-      - irc.command.type
-      - irc.command.value
-      - irc.command.info
-      - log.id.uid
-    '::kerberos':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - kerberos.client
-      - kerberos.service
-      - kerberos.request_type
-      - log.id.uid
-    '::modbus':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - modbus.function
-      - log.id.uid
-    '::mysql':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - mysql.command
-      - mysql.argument
-      - mysql.success
-      - mysql.response
-      - log.id.uid
-    '::notice':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - notice.note
-      - notice.message
-      - log.id.fuid
-      - log.id.uid
-      - network.community_id
-    '::ntlm':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - ntlm.name
-      - ntlm.success
-      - ntlm.server.dns.name
-      - ntlm.server.nb.name
-      - ntlm.server.tree.name
-      - log.id.uid
-    '::pe':
-      - soc_timestamp
-      - file.is_64bit
-      - file.is_exe
-      - file.machine
-      - file.os
-      - file.subsystem
-      - log.id.fuid
-    '::radius':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - log.id.uid
-      - username
-      - radius.framed_address
-      - radius.reply_message
-      - radius.result
-    '::rdp':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - rdp.client_build
-      - client_name
-      - rdp.cookie
-      - rdp.encryption_level
-      - rdp.encryption_method
-      - rdp.keyboard_layout
-      - rdp.result
-      - rdp.security_protocol
-      - log.id.uid
-    '::rfb':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - rfb.authentication.method
-      - rfb.authentication.success
-      - rfb.share_flag
-      - rfb.desktop.name
-      - log.id.uid
-    '::signatures':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - note
-      - signature_id
-      - event_message
-      - sub_message
-      - signature_count
-      - host.count
-      - log.id.uid
-    '::sip':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - sip.method
-      - sip.uri
-      - sip.request.from
-      - sip.request.to
-      - sip.response.from
-      - sip.response.to
-      - sip.call_id
-      - sip.subject
-      - sip.user_agent
-      - sip.status_code
-      - log.id.uid
-    '::smb_files':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - log.id.fuid
-      - file.action
-      - file.path
-      - file.name
-      - file.size
-      - file.prev_name
-      - log.id.uid
-    '::smb_mapping':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - smb.path
-      - smb.service
-      - smb.share_type
-      - log.id.uid
-    '::smtp':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - smtp.from
-      - smtp.recipient_to
-      - smtp.subject
-      - smtp.useragent
-      - log.id.uid
-      - network.community_id
-    '::snmp':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - snmp.community
-      - snmp.version
-      - log.id.uid
-    '::socks':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - socks.name
-      - socks.request.host
-      - socks.request.port
-      - socks.status
-      - log.id.uid
-    '::software':
-      - soc_timestamp
-      - source.ip
-      - software.name
-      - software.type
-    '::ssh':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - ssh.version
-      - ssh.hassh_version
-      - ssh.direction
-      - ssh.client
-      - ssh.server
-      - log.id.uid
-    '::ssl':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - ssl.server_name
-      - ssl.certificate.subject
-      - ssl.validation_status
-      - ssl.version
-      - log.id.uid
-    ':zeek:syslog':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - syslog.facility
-      - network.protocol
-      - syslog.severity
-      - log.id.uid
-    '::tunnels':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - tunnel_type
-      - action
-      - log.id.uid
-    '::weird':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - weird.name
-      - log.id.uid
-    '::x509':
-      - soc_timestamp
-      - x509.certificate.subject
-      - x509.certificate.key.type
-      - x509.certificate.key.length
-      - x509.certificate.issuer
-      - log.id.fuid
-    '::firewall':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - network.transport
-      - network.direction
-      - interface.name
-      - rule.action
-      - rule.reason
-      - network.community_id
-    ':osquery:':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - source.hostname
-      - event.dataset
-      - process.executable
-      - user.name
-    ':ossec:':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - rule.name
-      - rule.level
-      - rule.category
-      - process.name
-      - user.name
-      - user.escalated
-      - location
-    ':strelka:file':
-      - soc_timestamp
-      - file.name
-      - file.size
-      - hash.md5
-      - file.source
-      - file.mime_type
-      - log.id.fuid
-    ':suricata:':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - rule.name
-      - rule.category
-      - event.severity_label
-      - log.id.uid
-      - network.community_id
-    ':windows_eventlog:':
-      - soc_timestamp
-      - user.name
-    ':elasticsearch:':
-      - soc_timestamp
-      - agent.name
-      - message
-      - log.level
-      - metadata.version
-      - metadata.pipeline
-      - event.dataset
-    ':kibana:':
-      - soc_timestamp
-      - host.name
-      - message
-      - kibana.log.meta.req.headers.x-real-ip
-      - event.dataset
-    '::rootcheck':
-      - soc_timestamp
-      - host.name
-      - metadata.ip_address
-      - log.full
-      - event.dataset
-      - event.module
-    '::ossec':
-      - soc_timestamp
-      - host.name
-      - metadata.ip_address
-      - log.full
-      - event.dataset
-      - event.module
-    '::syscollector':
-      - soc_timestamp
-      - host.name
-      - metadata.ip_address
-      - wazuh.data.type
-      - log.full
-      - event.dataset
-      - event.module
-    ':syslog:syslog':
-      - soc_timestamp
-      - host.name
-      - metadata.ip_address
-      - real_message
-      - syslog.priority
-      - syslog.application
-    ':aws:':
-      - soc_timestamp
-      - aws.cloudtrail.event_category
-      - aws.cloudtrail.event_type
-      - event.provider
-      - event.action
-      - event.outcome
-      - cloud.region
-      - user.name
-      - source.ip
-      - source.geo.region_iso_code
-    ':squid:':
-      - soc_timestamp
-      - url.original
-      - destination.ip
-      - destination.geo.country_iso_code
-      - user.name
-      - source.ip
-    ':windows.sysmon_operational:':
-      - soc_timestamp
-      - event.action
-      - process.executable
-      - user.name
-      - file.target
-      - dns.question.name
-      - winlog.event_data.TargetObject
-    '::network_connection':
-      - soc_timestamp
-      - source.ip
-      - source.port
-      - destination.ip
-      - destination.port
-      - source.hostname
-      - event.dataset
-      - process.executable
-      - user.name
-    '::process_terminated': 
-      - soc_timestamp
-      - process.executable
-      - process.pid
-      - winlog.computer_name
-    '::file_create': 
-      - soc_timestamp
-      - file.target
-      - process.executable
-      - process.pid
-      - winlog.computer_name
-    '::registry_value_set': 
-      - soc_timestamp
-      - winlog.event_data.TargetObject
-      - process.executable
-      - process.pid
-      - winlog.computer_name
-    '::process_creation':
-      - soc_timestamp
-      - process.command_line
-      - process.pid
-      - process.parent.executable
-      - process.working_directory
-    '::registry_create_delete':
-      - soc_timestamp
-      - winlog.event_data.TargetObject
-      - process.executable
-      - process.pid
-      - winlog.computer_name
-    '::dns_query':
-      - soc_timestamp
-      - dns.query.name
-      - dns.answers.name
-      - process.executable
-      - winlog.computer_name
-    '::file_create_stream_hash':
-      - soc_timestamp
-      - file.target
-      - hash.md5
-      - hash.sha256
-      - process.executable
-      - process.pid
-      - winlog.computer_name
-    '::bacnet':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  bacnet.bclv.function
-      -  bacnet.result.code
-      -  log.id.uid
-    '::bacnet_discovery':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  bacnet.vendor
-      -  bacnet.pdu.service
-      -  log.id.uid
-    '::bacnet_property':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  bacnet.property
-      -  bacnet.pdu.service
-      -  log.id.uid
-    '::bsap_ip_header':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  bsap.message.type
-      -  bsap.number.messages
-      -  log.id.uid
-    '::bsap_ip_rdb':
-      -  soc_timestamp
-      -  bsap.application.function
-      -  bsap.application.sub.function
-      -  bsap.vector.variables
-      -  log.id.uid
-    '::bsap_serial_header':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  bsap.source.function
-      -  bsap.destination.function
-      -  bsap.message.type
-      -  log.id.uid
-    '::bsap_serial_rdb':
-      -  soc_timestamp
-      -  bsap.rdb.function
-      -  bsap.vector.variables
-      -  log.id.uid
-    '::cip':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  cip.service
-      -  cip.status_code
-      -  log.id.uid
-      -  event.dataset
-    '::cip_identity':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  cip.device.type.name
-      -  cip.vendor.name
-      -  log.id.uid
-    '::cip_io':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  cip.connection.id
-      -  cip.io.data
-      -  log.id.uid
-    '::cotp':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  cotp.pdu.name
-      -  log.id.uid
-    '::ecat_arp_info':
-      -  soc_timestamp
-      -  source.ip
-      -  destination.ip
-      -  source.mac
-      -  destination.mac
-      -  ecat.arp.type
-    '::ecat_aoe_info':
-      -  soc_timestamp
-      -  source.mac
-      -  source.port
-      -  destination.mac
-      -  destination.port
-      -  ecat.command
-    '::ecat_coe_info':
-      -  soc_timestamp
-      -  ecat.message.number
-      -  ecat.message.type
-      -  ecat.request.response.type
-      -  ecat.index
-      -  ecat.sub.index
-    '::ecat_dev_info':
-      -  soc_timestamp
-      -  ecat.device.type
-      -  ecat.features
-      -  ecat.ram.size
-      -  ecat.revision
-      -  ecat.slave.address
-    '::ecat_log_address':
-      -  soc_timestamp
-      -  source.mac
-      -  destination.mac
-      -  ecat.command
-    '::ecat_registers':
-      -  soc_timestamp
-      -  source.mac
-      -  destination.mac
-      -  ecat.command
-      -  ecat.register.type
-    '::enip':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  enip.command
-      -  enip.status_code
-      -  log.id.uid
-      -  event.dataset
-    '::modbus_detailed':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  modbus.function
-      -  log.id.uid
-    '::opcua_binary':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.identifier_string
-      -  opcua.message_type
-      -  log.id.uid
-    '::opcua_binary_activate_session':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.link_id
-      -  opcua.identifier_string
-      -  opcua.user_name
-      -  log.id.uid
-    '::opcua_binary_activate_session_diagnostic_info':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.activate_session_diag_info_link_id
-      -  opcua.diag_info_link_id
-      -  log.id.uid
-    '::opcua_binary_activate_session_locale_id':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.local_id
-      -  opcua.locale_link_id
-      -  log.id.uid
-    '::opcua_binary_browse':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.link_id
-      -  opcua.service_type
-      -  log.id.uid
-    '::opcua_binary_browse_description':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  log.id.uid
-    '::opcua_binary_browse_response_references':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.node_class
-      -  opcua.display_name_text
-      -  log.id.uid
-    '::opcua_binary_browse_result':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.response_link_id
-      -  log.id.uid
-    '::opcua_binary_create_session':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.link_id
-      -  log.id.uid
-    '::opcua_binary_create_session_endpoints':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.endpoint_link_id
-      -  opcua.endpoint_url
-      -  log.id.uid
-    '::opcua_binary_create_session_user_token':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.user_token_link_id
-      -  log.id.uid
-    '::opcua_binary_create_subscription':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.link_id
-      -  log.id.uid
-    '::opcua_binary_get_endpoints':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.endpoint_url
-      -  opcua.link_id
-      -  log.id.uid
-    '::opcua_binary_get_endpoints_description':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.endpoint_description_link_id
-      -  opcua.endpoint_uri
-      -  log.id.uid
-    '::opcua_binary_get_endpoints_user_token':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.user_token_link_id
-      -  opcua.user_token_type
-      -  log.id.uid
-    '::opcua_binary_read':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.link_id
-      -  opcua.read_results_link_id
-      -  log.id.uid
-    '::opcua_binary_status_code_detail':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  opcua.info_type_string
-      -  opcua.source_string
-      -  log.id.uid
-    '::profinet':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  profinet.index
-      -  profinet.operation_type
-      -  log.id.uid
-    '::profinet_dce_rpc':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  profinet.operation
-      -  log.id.uid
-    '::s7comm':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  s7.ros.control.name
-      -  s7.function.name
-      -  log.id.uid
-    '::s7comm_plus':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  s7.opcode.name
-      -  s7.version
-      -  log.id.uid
-    '::s7comm_read_szl':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  s7.szl_id_name
-      -  s7.return_code_name
-      -  log.id.uid
-    '::s7comm_upload_download':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  s7.ros.control.name
-      -  s7.function_code
-      -  log.id.uid
-    '::tds':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  tds.command
-      -  log.id.uid
-      -  event.dataset
-    '::tds_rpc':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  tds.procedure_name
-      -  log.id.uid
-      -  event.dataset
-    '::tds_sql_batch':
-      -  soc_timestamp
-      -  source.ip
-      -  source.port
-      -  destination.ip
-      -  destination.port
-      -  tds.header_type
-      -  log.id.uid
-      -  event.dataset    
-  server:
-    bindAddress: 0.0.0.0:9822
-    baseUrl: /
-    maxPacketCount: 5000
-    htmlDir: html
-    airgapEnabled: false
-    modules:
-      cases: soc
-      filedatastore:
-        jobDir: jobs
-      kratos:
-        hostUrl:
-      elastic:
-        hostUrl:
-        remoteHostUrls: []
-        username:
-        password:
-        index: '*:so-*,*:endgame-*,*:logs-*'
-        cacheMs: 300000
-        verifyCert: false
+  enabled: False
+  config:
+    logFilename: /opt/sensoroni/logs/sensoroni-server.log
+    logLevel: info
+    actions:
+      - name: actionHunt
+        description: actionHuntHelp
+        icon: fa-crosshairs
+        target:
+        links:
+          - '/#/hunt?q="{value|escape}" | groupby event.module* event.dataset'
+      - name: actionCorrelate
+        description: actionCorrelateHelp
+        icon: fab fa-searchengin
+        target: ''
+        links:
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module* event.dataset'
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+          - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
+          - '/#/hunt?q="{:log.id.fuid}" | groupby event.module* event.dataset'
+          - '/#/hunt?q="{:log.id.uid}" | groupby event.module* event.dataset'
+          - '/#/hunt?q="{:network.community_id}" | groupby event.module* event.dataset'
+      - name: actionPcap
+        description: actionPcapHelp
+        icon: fa-stream
+        target: ''
+        links:
+          - '/joblookup?esid={:soc_id}&time={:@timestamp}'
+          - '/joblookup?ncid={:network.community_id}&time={:@timestamp}'
+        categories:
+          - hunt
+          - alerts
+          - dashboards
+      - name: actionCyberChef
+        description: actionCyberChefHelp
+        icon: fas fa-bread-slice
+        target: _blank
+        links:
+          - '/cyberchef/#input={value|base64}'
+      - name: actionGoogle
+        description: actionGoogleHelp
+        icon: fab fa-google
+        target: _blank
+        links:
+          - 'https://www.google.com/search?q={value}'
+      - name: actionVirusTotal
+        description: actionVirusTotalHelp
+        icon: fa-external-link-alt
+        target: _blank
+        links:
+          - 'https://www.virustotal.com/gui/search/{value}'
+    eventFields:
+      default:
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - log.id.uid
+        - network.community_id
+        - event.dataset
+      ':kratos:audit':
+        - soc_timestamp
+        - http_request.headers.x-real-ip
+        - identity_id
+        - http_request.headers.user-agent
+      '::conn':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.transport
+        - network.protocol
+        - log.id.uid
+        - network.community_id
+      '::dce_rpc':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - dce_rpc.endpoint
+        - dce_rpc.named_pipe
+        - dce_rpc.operation
+        - log.id.uid
+      '::dhcp':
+        - soc_timestamp
+        - client.address
+        - server.address
+        - host.domain
+        - host.hostname
+        - dhcp.message_types
+        - log.id.uid
+      '::dnp3':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - dnp3.fc_reply
+        - log.id.uid
+      '::dnp3_control':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - dnp3.function_code
+        - dnp3.block_type
+        - log.id.uid
+      '::dnp3_objects':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - dnp3.function_code
+        - dnp3.object_type
+        - log.id.uid
+      '::dns':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.transport
+        - dns.query.name
+        - dns.query.type_name
+        - dns.response.code_name
+        - log.id.uid
+        - network.community_id
+      '::dpd':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.protocol
+        - observer.analyser
+        - error.reason
+        - log.id.uid
+      '::file':
+        - soc_timestamp
+        - source.ip
+        - destination.ip
+        - file.name
+        - file.mime_type
+        - file.source
+        - file.bytes.total
+        - log.id.fuid
+        - log.id.uid
+      '::ftp':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ftp.user
+        - ftp.command
+        - ftp.argument
+        - ftp.reply_code
+        - file.size
+        - log.id.uid
+      '::http':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - http.method
+        - http.virtual_host
+        - http.status_code
+        - http.status_message
+        - http.request.body.length
+        - http.response.body.length
+        - log.id.uid
+        - network.community_id
+      '::intel':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - intel.indicator
+        - intel.indicator_type
+        - intel.seen_where
+        - log.id.uid
+      '::irc':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - irc.username
+        - irc.nickname
+        - irc.command.type
+        - irc.command.value
+        - irc.command.info
+        - log.id.uid
+      '::kerberos':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - kerberos.client
+        - kerberos.service
+        - kerberos.request_type
+        - log.id.uid
+      '::modbus':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - modbus.function
+        - log.id.uid
+      '::mysql':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - mysql.command
+        - mysql.argument
+        - mysql.success
+        - mysql.response
+        - log.id.uid
+      '::notice':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - notice.note
+        - notice.message
+        - log.id.fuid
+        - log.id.uid
+        - network.community_id
+      '::ntlm':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ntlm.name
+        - ntlm.success
+        - ntlm.server.dns.name
+        - ntlm.server.nb.name
+        - ntlm.server.tree.name
+        - log.id.uid
+      '::pe':
+        - soc_timestamp
+        - file.is_64bit
+        - file.is_exe
+        - file.machine
+        - file.os
+        - file.subsystem
+        - log.id.fuid
+      '::radius':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - log.id.uid
+        - username
+        - radius.framed_address
+        - radius.reply_message
+        - radius.result
+      '::rdp':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - rdp.client_build
+        - client_name
+        - rdp.cookie
+        - rdp.encryption_level
+        - rdp.encryption_method
+        - rdp.keyboard_layout
+        - rdp.result
+        - rdp.security_protocol
+        - log.id.uid
+      '::rfb':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - rfb.authentication.method
+        - rfb.authentication.success
+        - rfb.share_flag
+        - rfb.desktop.name
+        - log.id.uid
+      '::signatures':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - note
+        - signature_id
+        - event_message
+        - sub_message
+        - signature_count
+        - host.count
+        - log.id.uid
+      '::sip':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - sip.method
+        - sip.uri
+        - sip.request.from
+        - sip.request.to
+        - sip.response.from
+        - sip.response.to
+        - sip.call_id
+        - sip.subject
+        - sip.user_agent
+        - sip.status_code
+        - log.id.uid
+      '::smb_files':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - log.id.fuid
+        - file.action
+        - file.path
+        - file.name
+        - file.size
+        - file.prev_name
+        - log.id.uid
+      '::smb_mapping':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - smb.path
+        - smb.service
+        - smb.share_type
+        - log.id.uid
+      '::smtp':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - smtp.from
+        - smtp.recipient_to
+        - smtp.subject
+        - smtp.useragent
+        - log.id.uid
+        - network.community_id
+      '::snmp':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - snmp.community
+        - snmp.version
+        - log.id.uid
+      '::socks':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - socks.name
+        - socks.request.host
+        - socks.request.port
+        - socks.status
+        - log.id.uid
+      '::software':
+        - soc_timestamp
+        - source.ip
+        - software.name
+        - software.type
+      '::ssh':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ssh.version
+        - ssh.hassh_version
+        - ssh.direction
+        - ssh.client
+        - ssh.server
+        - log.id.uid
+      '::ssl':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ssl.server_name
+        - ssl.certificate.subject
+        - ssl.validation_status
+        - ssl.version
+        - log.id.uid
+      ':zeek:syslog':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - syslog.facility
+        - network.protocol
+        - syslog.severity
+        - log.id.uid
+      '::tunnels':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - tunnel_type
+        - action
+        - log.id.uid
+      '::weird':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - weird.name
+        - log.id.uid
+      '::x509':
+        - soc_timestamp
+        - x509.certificate.subject
+        - x509.certificate.key.type
+        - x509.certificate.key.length
+        - x509.certificate.issuer
+        - log.id.fuid
+      '::firewall':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.transport
+        - network.direction
+        - interface.name
+        - rule.action
+        - rule.reason
+        - network.community_id
+      ':osquery:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - source.hostname
+        - event.dataset
+        - process.executable
+        - user.name
+      ':ossec:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - rule.name
+        - rule.level
+        - rule.category
+        - process.name
+        - user.name
+        - user.escalated
+        - location
+      ':strelka:file':
+        - soc_timestamp
+        - file.name
+        - file.size
+        - hash.md5
+        - file.source
+        - file.mime_type
+        - log.id.fuid
+      ':suricata:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - rule.name
+        - rule.category
+        - event.severity_label
+        - log.id.uid
+        - network.community_id
+      ':windows_eventlog:':
+        - soc_timestamp
+        - user.name
+      ':elasticsearch:':
+        - soc_timestamp
+        - agent.name
+        - message
+        - log.level
+        - metadata.version
+        - metadata.pipeline
+        - event.dataset
+      ':kibana:':
+        - soc_timestamp
+        - host.name
+        - message
+        - kibana.log.meta.req.headers.x-real-ip
+        - event.dataset
+      '::rootcheck':
+        - soc_timestamp
+        - host.name
+        - metadata.ip_address
+        - log.full
+        - event.dataset
+        - event.module
+      '::ossec':
+        - soc_timestamp
+        - host.name
+        - metadata.ip_address
+        - log.full
+        - event.dataset
+        - event.module
+      '::syscollector':
+        - soc_timestamp
+        - host.name
+        - metadata.ip_address
+        - wazuh.data.type
+        - log.full
+        - event.dataset
+        - event.module
+      ':syslog:syslog':
+        - soc_timestamp
+        - host.name
+        - metadata.ip_address
+        - real_message
+        - syslog.priority
+        - syslog.application
+      ':aws:':
+        - soc_timestamp
+        - aws.cloudtrail.event_category
+        - aws.cloudtrail.event_type
+        - event.provider
+        - event.action
+        - event.outcome
+        - cloud.region
+        - user.name
+        - source.ip
+        - source.geo.region_iso_code
+      ':squid:':
+        - soc_timestamp
+        - url.original
+        - destination.ip
+        - destination.geo.country_iso_code
+        - user.name
+        - source.ip
+      ':windows.sysmon_operational:':
+        - soc_timestamp
+        - event.action
+        - process.executable
+        - user.name
+        - file.target
+        - dns.question.name
+        - winlog.event_data.TargetObject
+      '::network_connection':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - source.hostname
+        - event.dataset
+        - process.executable
+        - user.name
+      '::process_terminated': 
+        - soc_timestamp
+        - process.executable
+        - process.pid
+        - winlog.computer_name
+      '::file_create': 
+        - soc_timestamp
+        - file.target
+        - process.executable
+        - process.pid
+        - winlog.computer_name
+      '::registry_value_set': 
+        - soc_timestamp
+        - winlog.event_data.TargetObject
+        - process.executable
+        - process.pid
+        - winlog.computer_name
+      '::process_creation':
+        - soc_timestamp
+        - process.command_line
+        - process.pid
+        - process.parent.executable
+        - process.working_directory
+      '::registry_create_delete':
+        - soc_timestamp
+        - winlog.event_data.TargetObject
+        - process.executable
+        - process.pid
+        - winlog.computer_name
+      '::dns_query':
+        - soc_timestamp
+        - dns.query.name
+        - dns.answers.name
+        - process.executable
+        - winlog.computer_name
+      '::file_create_stream_hash':
+        - soc_timestamp
+        - file.target
+        - hash.md5
+        - hash.sha256
+        - process.executable
+        - process.pid
+        - winlog.computer_name
+      '::bacnet':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  bacnet.bclv.function
+        -  bacnet.result.code
+        -  log.id.uid
+      '::bacnet_discovery':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  bacnet.vendor
+        -  bacnet.pdu.service
+        -  log.id.uid
+      '::bacnet_property':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  bacnet.property
+        -  bacnet.pdu.service
+        -  log.id.uid
+      '::bsap_ip_header':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  bsap.message.type
+        -  bsap.number.messages
+        -  log.id.uid
+      '::bsap_ip_rdb':
+        -  soc_timestamp
+        -  bsap.application.function
+        -  bsap.application.sub.function
+        -  bsap.vector.variables
+        -  log.id.uid
+      '::bsap_serial_header':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  bsap.source.function
+        -  bsap.destination.function
+        -  bsap.message.type
+        -  log.id.uid
+      '::bsap_serial_rdb':
+        -  soc_timestamp
+        -  bsap.rdb.function
+        -  bsap.vector.variables
+        -  log.id.uid
+      '::cip':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  cip.service
+        -  cip.status_code
+        -  log.id.uid
+        -  event.dataset
+      '::cip_identity':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  cip.device.type.name
+        -  cip.vendor.name
+        -  log.id.uid
+      '::cip_io':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  cip.connection.id
+        -  cip.io.data
+        -  log.id.uid
+      '::cotp':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  cotp.pdu.name
+        -  log.id.uid
+      '::ecat_arp_info':
+        -  soc_timestamp
+        -  source.ip
+        -  destination.ip
+        -  source.mac
+        -  destination.mac
+        -  ecat.arp.type
+      '::ecat_aoe_info':
+        -  soc_timestamp
+        -  source.mac
+        -  source.port
+        -  destination.mac
+        -  destination.port
+        -  ecat.command
+      '::ecat_coe_info':
+        -  soc_timestamp
+        -  ecat.message.number
+        -  ecat.message.type
+        -  ecat.request.response.type
+        -  ecat.index
+        -  ecat.sub.index
+      '::ecat_dev_info':
+        -  soc_timestamp
+        -  ecat.device.type
+        -  ecat.features
+        -  ecat.ram.size
+        -  ecat.revision
+        -  ecat.slave.address
+      '::ecat_log_address':
+        -  soc_timestamp
+        -  source.mac
+        -  destination.mac
+        -  ecat.command
+      '::ecat_registers':
+        -  soc_timestamp
+        -  source.mac
+        -  destination.mac
+        -  ecat.command
+        -  ecat.register.type
+      '::enip':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  enip.command
+        -  enip.status_code
+        -  log.id.uid
+        -  event.dataset
+      '::modbus_detailed':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  modbus.function
+        -  log.id.uid
+      '::opcua_binary':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.identifier_string
+        -  opcua.message_type
+        -  log.id.uid
+      '::opcua_binary_activate_session':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.link_id
+        -  opcua.identifier_string
+        -  opcua.user_name
+        -  log.id.uid
+      '::opcua_binary_activate_session_diagnostic_info':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.activate_session_diag_info_link_id
+        -  opcua.diag_info_link_id
+        -  log.id.uid
+      '::opcua_binary_activate_session_locale_id':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.local_id
+        -  opcua.locale_link_id
+        -  log.id.uid
+      '::opcua_binary_browse':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.link_id
+        -  opcua.service_type
+        -  log.id.uid
+      '::opcua_binary_browse_description':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  log.id.uid
+      '::opcua_binary_browse_response_references':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.node_class
+        -  opcua.display_name_text
+        -  log.id.uid
+      '::opcua_binary_browse_result':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.response_link_id
+        -  log.id.uid
+      '::opcua_binary_create_session':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.link_id
+        -  log.id.uid
+      '::opcua_binary_create_session_endpoints':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.endpoint_link_id
+        -  opcua.endpoint_url
+        -  log.id.uid
+      '::opcua_binary_create_session_user_token':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.user_token_link_id
+        -  log.id.uid
+      '::opcua_binary_create_subscription':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.link_id
+        -  log.id.uid
+      '::opcua_binary_get_endpoints':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.endpoint_url
+        -  opcua.link_id
+        -  log.id.uid
+      '::opcua_binary_get_endpoints_description':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.endpoint_description_link_id
+        -  opcua.endpoint_uri
+        -  log.id.uid
+      '::opcua_binary_get_endpoints_user_token':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.user_token_link_id
+        -  opcua.user_token_type
+        -  log.id.uid
+      '::opcua_binary_read':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.link_id
+        -  opcua.read_results_link_id
+        -  log.id.uid
+      '::opcua_binary_status_code_detail':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  opcua.info_type_string
+        -  opcua.source_string
+        -  log.id.uid
+      '::profinet':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  profinet.index
+        -  profinet.operation_type
+        -  log.id.uid
+      '::profinet_dce_rpc':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  profinet.operation
+        -  log.id.uid
+      '::s7comm':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  s7.ros.control.name
+        -  s7.function.name
+        -  log.id.uid
+      '::s7comm_plus':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  s7.opcode.name
+        -  s7.version
+        -  log.id.uid
+      '::s7comm_read_szl':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  s7.szl_id_name
+        -  s7.return_code_name
+        -  log.id.uid
+      '::s7comm_upload_download':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  s7.ros.control.name
+        -  s7.function_code
+        -  log.id.uid
+      '::tds':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  tds.command
+        -  log.id.uid
+        -  event.dataset
+      '::tds_rpc':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  tds.procedure_name
+        -  log.id.uid
+        -  event.dataset
+      '::tds_sql_batch':
+        -  soc_timestamp
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  tds.header_type
+        -  log.id.uid
+        -  event.dataset    
+    server:
+      bindAddress: 0.0.0.0:9822
+      baseUrl: /
+      maxPacketCount: 5000
+      htmlDir: html
+      airgapEnabled: false
+      modules:
+        cases: soc
+        filedatastore:
+          jobDir: jobs
+        kratos:
+          hostUrl:
+        elastic:
+          hostUrl:
+          remoteHostUrls: []
+          username:
+          password:
+          index: '*:so-*,*:endgame-*,*:logs-*'
+          cacheMs: 300000
+          verifyCert: false
+          casesEnabled: true
+          extractCommonObservables:
+            - source.ip
+            - destination.ip
+          timeoutMs: 300000
+          timeShiftMs: 120000
+          defaultDurationMs: 1800000
+          esSearchOffsetMs: 1800000
+          maxLogLength: 1024
+          asyncThreshold: 10
+        influxdb:
+          hostUrl:
+          token: 
+          org: Security Onion
+          bucket: telegraf/so_short_term
+          verifyCert: false
+        salt:
+          saltPipe: /opt/sensoroni/salt/pipe
+        sostatus:
+          refreshIntervalMs: 30000
+          offlineThresholdMs: 900000
+        statickeyauth:
+          anonymousCidr:
+          apiKey:
+        staticrbac:
+          roleFiles:
+            - rbac/permissions
+            - rbac/roles
+            - rbac/custom_roles
+          userFiles:
+            - rbac/users_roles
+      client:
+        docsUrl: /docs/
+        cheatsheetUrl: /docs/cheatsheet.pdf
+        releaseNotesUrl: /docs/release-notes.html
+        apiTimeoutMs: 300000
+        webSocketTimeoutMs: 15000
+        tipTimeoutMs: 6000
+        cacheExpirationMs: 300000
         casesEnabled: true
-        extractCommonObservables:
-          - source.ip
-          - destination.ip
-        timeoutMs: 300000
-        timeShiftMs: 120000
-        defaultDurationMs: 1800000
-        esSearchOffsetMs: 1800000
-        maxLogLength: 1024
-        asyncThreshold: 10
-      influxdb:
-        hostUrl:
-        token: 
-        org: Security Onion
-        bucket: telegraf/so_short_term
-        verifyCert: false
-      salt:
-        saltPipe: /opt/sensoroni/salt/pipe
-      sostatus:
-        refreshIntervalMs: 30000
-        offlineThresholdMs: 900000
-      statickeyauth:
-        anonymousCidr:
-        apiKey:
-      staticrbac:
-        roleFiles:
-          - rbac/permissions
-          - rbac/roles
-          - rbac/custom_roles
-        userFiles:
-          - rbac/users_roles
-    client:
-      docsUrl: /docs/
-      cheatsheetUrl: /docs/cheatsheet.pdf
-      releaseNotesUrl: /docs/release-notes.html
-      apiTimeoutMs: 300000
-      webSocketTimeoutMs: 15000
-      tipTimeoutMs: 6000
-      cacheExpirationMs: 300000
-      casesEnabled: true
-      inactiveTools: ['toolUnused']
-      tools:
-        - name: toolKibana
-          description: toolKibanaHelp
-          icon: fa-external-link-alt
-          target: so-kibana
-          link: /kibana/
-        - name: toolElasticFleet
-          description: toolElasticFleet
-          icon: fa-external-link-alt
-          target: so-elastic-fleet
-          link: /kibana/app/fleet/agents
-        - name: toolOsqueryManager
-          description: toolOsqueryManager
-          icon: fa-external-link-alt
-          target: so-osquery-manager
-          link: /kibana/app/osquery/live_queries
-        - name: toolInfluxDb
-          description: toolInfluxDbHelp
-          icon: fa-external-link-alt
-          target: so-influxdb
-          link: /influxdb
-        - name: toolCyberchef
-          description: toolCyberchefHelp
-          icon: fa-external-link-alt
-          target: so-cyberchef
-          link: /cyberchef/
-        - name: toolPlaybook
-          description: toolPlaybookHelp
-          icon: fa-external-link-alt
-          target: so-playbook
-          link: /playbook/projects/detection-playbooks/issues/
-        - name: toolNavigator
-          description: toolNavigatorHelp
-          icon: fa-external-link-alt
-          target: so-navigator
-          link: /navigator/
-      hunt:
-        advanced: true
-        aggregationActionsEnabled: true
-        groupItemsPerPage: 10
-        groupFetchLimit: 10
-        eventItemsPerPage: 10
-        eventFetchLimit: 100
-        relativeTimeValue: 24
-        relativeTimeUnit: 30
-        mostRecentlyUsedLimit: 5
-        ackEnabled: false
-        escalateEnabled: true
-        escalateRelatedEventsEnabled: true
-        queryBaseFilter: ''
-        queryToggleFilters:
-          - name: caseExcludeToggle
-            filter: 'NOT _index:"*:so-case*"'
-            enabled: true
-        queries:
-          - name: Default Query
-            description: Show all events grouped by the observer host
-            query: '* | groupby observer.name'
-            showSubtitle: true
-          - name: Log Type
-            description: Show all events grouped by module and dataset
-            query: '* | groupby event.module* event.dataset'
-            showSubtitle: true
-          - name: SOC - Auth
-            description: Users authenticated to SOC grouped by IP address and identity
-            query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby http_request.headers.x-real-ip identity_id'
-            showSubtitle: true
-          - name: SOC - App
-            description: Logs generated by the Security Onion Console (SOC) server and modules
-            query: 'event.module: "soc" | groupby event.module* event.dataset* log.level* | groupby agent.name | groupby event.action* | groupby "http.request.method" | groupby "url.path"'
-            showSubtitle: true
-          - name: Elastalerts
-            description: ''
-            query: '_type:elastalert | groupby rule.name'
-            showSubtitle: true
-          - name: Alerts
-            description: Show all alerts grouped by alert source
-            query: 'event.dataset: alert | groupby event.module'
-            showSubtitle: true
-          - name: NIDS Alerts
-            description: Show all NIDS alerts grouped by alert
-            query: 'event.category: network AND event.dataset: alert | groupby rule.category rule.gid rule.uuid rule.name'
-            showSubtitle: true
-          - name: Osquery - Live Query
-            description: Show all Osquery Live Query results
-            query: 'event.dataset: osquery_manager.result | groupby action_data.id action_data.query | groupby host.hostname'
-            showSubtitle: true
-          - name: Sysmon Events
-            description: Show all Sysmon logs grouped by event type
-            query: 'event.dataset: windows.sysmon_operational | groupby event.action'
-            showSubtitle: true
-          - name: Sysmon Usernames
-            description: Show all Sysmon logs grouped by username
-            query: 'event.dataset: windows.sysmon_operational | groupby event.action, user.name.keyword'
-            showSubtitle: true
-          - name: Strelka
-            description: Show all Strelka logs grouped by file type
-            query: 'event.module:strelka | groupby file.mime_type'
-            showSubtitle: true
-          - name: Zeek Notice
-            description: Show notices from Zeek
-            query: 'event.dataset:notice | groupby notice.note notice.message'
-            showSubtitle: true
-          - name: Connections
-            description: Connections grouped by IP and Port
-            query: 'event.dataset:conn | groupby source.ip destination.ip network.protocol destination.port'
-            showSubtitle: true
-          - name: Connections
-            description: Connections grouped by Service
-            query: 'event.dataset:conn | groupby network.protocol destination.port'
-            showSubtitle: true
-          - name: Connections
-            description: Connections grouped by destination country
-            query: 'event.dataset:conn | groupby destination.geo.country_name'
-            showSubtitle: true
-          - name: Connections
-            description: Connections grouped by source country
-            query: 'event.dataset:conn | groupby source.geo.country_name'
-            showSubtitle: true
-          - name: DCE_RPC
-            description: DCE_RPC grouped by operation
-            query: 'event.dataset:dce_rpc | groupby dce_rpc.operation'
-            showSubtitle: true
-          - name: DHCP
-            description: DHCP leases
-            query: 'event.dataset:dhcp | groupby host.hostname client.address'
-            showSubtitle: true
-          - name: DHCP
-            description: DHCP grouped by message type
-            query: 'event.dataset:dhcp | groupby dhcp.message_types'
-            showSubtitle: true
-          - name: DNP3
-            description: DNP3 grouped by reply
-            query: 'event.dataset:dnp3 | groupby dnp3.fc_reply'
-            showSubtitle: true
-          - name: DNS
-            description: DNS queries grouped by port
-            query: 'event.dataset:dns | groupby dns.query.name destination.port'
-            showSubtitle: true
-          - name: DNS
-            description: DNS queries grouped by type
-            query: 'event.dataset:dns | groupby dns.query.type_name destination.port'
-            showSubtitle: true
-          - name: DNS
-            description: DNS queries grouped by response code
-            query: 'event.dataset:dns | groupby dns.response.code_name destination.port'
-            showSubtitle: true
-          - name: DNS
-            description: DNS highest registered domain
-            query: 'event.dataset:dns | groupby dns.highest_registered_domain.keyword destination.port'
-            showSubtitle: true
-          - name: DNS
-            description: DNS grouped by parent domain
-            query: 'event.dataset:dns | groupby dns.parent_domain.keyword destination.port'
-            showSubtitle: true
-          - name: DPD
-            description: Dynamic Protocol Detection errors
-            query: 'event.dataset:dpd | groupby error.reason'
-            showSubtitle: true
-          - name: Files
-            description: Files grouped by mimetype
-            query: 'event.dataset:file | groupby file.mime_type source.ip'
-            showSubtitle: true
-          - name: Files
-            description: Files grouped by source
-            query: 'event.dataset:file | groupby file.source source.ip'
-            showSubtitle: true
-          - name: FTP
-            description: FTP grouped by command and argument
-            query: 'event.dataset:ftp | groupby ftp.command ftp.argument'
-            showSubtitle: true
-          - name: FTP
-            description: FTP grouped by username and argument
-            query: 'event.dataset:ftp | groupby ftp.user ftp.argument'
-            showSubtitle: true
-          - name: HTTP
-            description: HTTP grouped by destination port
-            query: 'event.dataset:http | groupby destination.port'
-            showSubtitle: true
-          - name: HTTP
-            description: HTTP grouped by status code and message
-            query: 'event.dataset:http | groupby http.status_code http.status_message'
-            showSubtitle: true
-          - name: HTTP
-            description: HTTP grouped by method and user agent
-            query: 'event.dataset:http | groupby http.method http.useragent'
-            showSubtitle: true
-          - name: HTTP
-            description: HTTP grouped by virtual host
-            query: 'event.dataset:http | groupby http.virtual_host'
-            showSubtitle: true
-          - name: HTTP
-            description: HTTP with exe downloads
-            query: 'event.dataset:http AND (file.resp_mime_types:dosexec OR file.resp_mime_types:executable) | groupby http.virtual_host'
-            showSubtitle: true
-          - name: Intel
-            description: Intel framework hits grouped by indicator
-            query: 'event.dataset:intel | groupby intel.indicator.keyword'
-            showSubtitle: true
-          - name: IRC
-            description: IRC grouped by command
-            query: 'event.dataset:irc | groupby irc.command.type'
-            showSubtitle: true
-          - name: KERBEROS
-            description: KERBEROS grouped by service
-            query: 'event.dataset:kerberos | groupby kerberos.service'
-            showSubtitle: true
-          - name: MODBUS
-            description: MODBUS grouped by function
-            query: 'event.dataset:modbus | groupby modbus.function'
-            showSubtitle: true
-          - name: MYSQL
-            description: MYSQL grouped by command
-            query: 'event.dataset:mysql | groupby mysql.command'
-            showSubtitle: true
-          - name: NOTICE
-            description: Zeek notice logs grouped by note and message
-            query: 'event.dataset:notice | groupby notice.note notice.message'
-            showSubtitle: true
-          - name: NTLM
-            description: NTLM grouped by computer name
-            query: 'event.dataset:ntlm | groupby ntlm.server.dns.name'
-            showSubtitle: true
-          - name: PE
-            description: PE files list
-            query: 'event.dataset:pe | groupby file.machine file.os file.subsystem'
-            showSubtitle: true
-          - name: RADIUS
-            description: RADIUS grouped by username
-            query: 'event.dataset:radius | groupby user.name.keyword'
-            showSubtitle: true
-          - name: RDP
-            description: RDP grouped by client name
-            query: 'event.dataset:rdp | groupby client.name'
-            showSubtitle: true
-          - name: RFB
-            description: RFB grouped by desktop name
-            query: 'event.dataset:rfb | groupby rfb.desktop.name.keyword'
-            showSubtitle: true
-          - name: Signatures
-            description: Zeek signatures grouped by signature id
-            query: 'event.dataset:signatures | groupby signature_id'
-            showSubtitle: true
-          - name: SIP
-            description: SIP grouped by user agent
-            query: 'event.dataset:sip | groupby client.user_agent'
-            showSubtitle: true
-          - name: SMB_Files
-            description: SMB files grouped by action
-            query: 'event.dataset:smb_files | groupby file.action'
-            showSubtitle: true
-          - name: SMB_Mapping
-            description: SMB mapping grouped by path
-            query: 'event.dataset:smb_mapping | groupby smb.path'
-            showSubtitle: true
-          - name: SMTP
-            description: SMTP grouped by subject
-            query: 'event.dataset:smtp | groupby smtp.subject'
-            showSubtitle: true
-          - name: SNMP
-            description: SNMP grouped by version and string
-            query: 'event.dataset:snmp | groupby snmp.community snmp.version'
-            showSubtitle: true
-          - name: Software
-            description: List of software seen on the network
-            query: 'event.dataset:software | groupby software.type software.name'
-            showSubtitle: true
-          - name: SSH
-            description: SSH grouped by version and client
-            query: 'event.dataset:ssh | groupby ssh.version ssh.client'
-            showSubtitle: true
-          - name: SSL
-            description: SSL grouped by version and server name
-            query: 'event.dataset:ssl | groupby ssl.version ssl.server_name'
-            showSubtitle: true
-          - name: SYSLOG
-            description: 'SYSLOG grouped by severity and facility '
-            query: 'event.dataset:syslog | groupby syslog.severity_label syslog.facility_label'
-            showSubtitle: true
-          - name: Tunnel
-            description: Tunnels grouped by type and action
-            query: 'event.dataset:tunnel | groupby tunnel.type event.action'
-            showSubtitle: true
-          - name: Weird
-            description: Zeek weird log grouped by name
-            query: 'event.dataset:weird | groupby weird.name'
-            showSubtitle: true
-          - name: x509
-            description: x.509 grouped by key length and name
-            query: 'event.dataset:x509 | groupby x509.certificate.key.length x509.san_dns'
-            showSubtitle: true
-          - name: x509
-            description: x.509 grouped by name and issuer
-            query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.issuer'
-            showSubtitle: true
-          - name: x509
-            description: x.509 grouped by name and subject
-            query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.subject'
-            showSubtitle: true
-          - name: Firewall
-            description: Firewall events grouped by action
-            query: 'event.dataset:firewall | groupby rule.action'
-            showSubtitle: true
-      dashboards:
-        advanced: true
-        groupItemsPerPage: 10
-        groupFetchLimit: 10
-        eventItemsPerPage: 10
-        eventFetchLimit: 100
-        relativeTimeValue: 24
-        relativeTimeUnit: 30
-        mostRecentlyUsedLimit: 0
-        ackEnabled: false
-        escalateEnabled: true
-        escalateRelatedEventsEnabled: true
-        aggregationActionsEnabled: false
-        queryBaseFilter: ''
-        queryToggleFilters:
-          - name: caseExcludeToggle
-            filter: 'NOT _index:"*:so-case*"'
-            enabled: true
-        queries:
-          - name: Overview
-            description: Overview of all events
-            query: '* | groupby -sankey event.dataset event.category* | groupby -pie event.category | groupby -bar event.module* | groupby event.dataset | groupby event.module* | groupby event.category | groupby observer.name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: SOC Auth
-            description: SOC (Security Onion Console) authentication logs
-            query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby -sankey http_request.headers.x-real-ip identity_id | groupby http_request.headers.x-real-ip | groupby identity_id | groupby http_request.headers.user-agent'
-          - name: Elastalerts
-            description: Elastalert logs
-            query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
-          - name: Alerts
-            description: Overview of all alerts
-            query: 'event.dataset:alert | groupby event.module* | groupby rule.name | groupby event.severity | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: NIDS Alerts
-            description: NIDS (Network Intrusion Detection System) alerts
-            query: 'event.category:network AND event.dataset:alert | groupby rule.category | groupby -sankey source.ip destination.ip | groupby rule.name | groupby rule.uuid | groupby rule.gid | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Sysmon Overview
-            description: Overview of all Sysmon data types
-            query: 'event.dataset:windows.sysmon_operational | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby host.name | groupby event.category event.action  | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Host Overview
-            description: Overview of all host data types
-            query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'
-          - name: Host Registry Changes
-            description: Windows Registry changes
-            query: 'event.category: registry | groupby -sankey event.action host.name | groupby event.dataset event.action | groupby host.name | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
-          - name: Host DNS & Process Mappings 
-            description: DNS queries mapped to originating processes
-            query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
-          - name: Host Process Activity
-            description: Process activity captured on an endpoint
-            query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
-          - name: Host File Activity
-            description: File activity captured on an endpoint
-            query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
-          - name: Host Network & Process Mappings
-            description: Network activity mapped to originating processes
-            query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.dataset* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Strelka
-            description: Strelka file analysis
-            query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.name'
-          - name: Zeek Notice
-            description: Zeek notice logs
-            query: 'event.dataset:notice | groupby -sankey notice.note destination.ip | groupby notice.note | groupby notice.message | groupby notice.sub_message | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Connections
-            description: Network connection metadata
-            query: 'event.dataset:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui'
-          - name: DCE_RPC
-            description: DCE_RPC (Distributed Computing Environment / Remote Procedure Calls) network metadata
-            query: 'event.dataset:dce_rpc | groupby -sankey dce_rpc.endpoint dce_rpc.operation | groupby dce_rpc.endpoint | groupby dce_rpc.operation | groupby dce_rpc.named_pipe | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: DHCP
-            description: DHCP (Dynamic Host Configuration Protocol) leases
-            query: 'event.dataset:dhcp | groupby host.hostname | groupby dhcp.message_types | groupby -sankey client.address server.address | groupby client.address | groupby server.address | groupby host.domain'
-          - name: DNS
-            description: DNS (Domain Name System) queries
-            query: 'event.dataset:dns | groupby dns.query.name | groupby dns.highest_registered_domain | groupby dns.parent_domain | groupby -sankey source.ip destination.ip | groupby dns.answers.name | groupby dns.query.type_name | groupby dns.response.code_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: DPD
-            description: DPD (Dynamic Protocol Detection) errors
-            query: 'event.dataset:dpd | groupby error.reason | groupby network.protocol | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Files
-            description: Files seen in network traffic
-            query: 'event.dataset:file | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.bytes.total | groupby source.ip | groupby destination.ip | groupby destination_geo.organization_name'
-          - name: FTP
-            description: FTP (File Transfer Protocol) network metadata
-            query: 'event.dataset:ftp | groupby -sankey ftp.command destination.ip | groupby ftp.command | groupby ftp.argument | groupby ftp.user | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: HTTP
-            description: HTTP (Hyper Text Transport Protocol) network metadata
-            query: 'event.dataset:http | groupby http.method | groupby -sankey http.method http.virtual_host | groupby http.virtual_host | groupby http.uri | groupby http.useragent | groupby http.status_code | groupby http.status_message | groupby file.resp_mime_types | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Intel
-            description: Zeek Intel framework hits
-            query: 'event.dataset:intel | groupby intel.indicator | groupby -sankey source.ip intel.indicator | groupby intel.indicator_type | groupby intel.seen_where | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: IRC
-            description: IRC (Internet Relay Chat) network metadata
-            query: 'event.dataset:irc | groupby irc.command.type | groupby -sankey irc.command.type irc.username | groupby irc.username | groupby irc.nickname | groupby irc.command.value | groupby irc.command.info | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Kerberos
-            description: Kerberos network metadata
-            query: 'event.dataset:kerberos | groupby kerberos.service | groupby -sankey kerberos.service destination.ip | groupby kerberos.client | groupby kerberos.request_type | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: MySQL
-            description: MySQL network metadata
-            query: 'event.dataset:mysql | groupby mysql.command | groupby -sankey mysql.command destination.ip | groupby mysql.argument | groupby mysql.success | groupby mysql.response | groupby mysql.rows | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: NTLM
-            description: NTLM (New Technology LAN Manager) network metadata
-            query: 'event.dataset:ntlm | groupby ntlm.server.dns.name | groupby ntlm.server.nb.name | groupby -sankey source.ip destination.ip | groupby ntlm.server.tree.name | groupby ntlm.success | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: PE
-            description: PE (Portable Executable) files transferred via network traffic
-            query: 'event.dataset:pe | groupby file.machine | groupby -sankey file.machine file.os | groupby file.os | groupby file.subsystem | groupby file.section_names | groupby file.is_exe | groupby file.is_64bit'
-          - name: RADIUS
-            description: RADIUS (Remote Authentication Dial-In User Service) network metadata
-            query: 'event.dataset:radius | groupby -sankey user.name.keyword destination.ip | groupby user.name.keyword | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: RDP
-            description: RDP (Remote Desktop Protocol) network metadata
-            query: 'event.dataset:rdp | groupby client.name | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: RFB
-            description: RFB (Remote Frame Buffer) network metadata
-            query: 'event.dataset:rfb | groupby rfb.desktop.name.keyword | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: Signatures
-            description: Zeek signatures
-            query: 'event.dataset:signatures | groupby signature_id'
-          - name: SIP
-            description: SIP (Session Initiation Protocol) network metadata
-            query: 'event.dataset:sip | groupby client.user_agent | groupby sip.method | groupby sip.uri | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: SMB_Files
-            description: Files transferred via SMB (Server Message Block)
-            query: 'event.dataset:smb_files | groupby file.action | groupby file.path | groupby file.name | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: SMB_Mapping
-            description: SMB (Server Message Block) mapping network metadata
-            query: 'event.dataset:smb_mapping | groupby smb.share_type | groupby smb.path | groupby smb.service | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: SMTP
-            description: SMTP (Simple Mail Transfer Protocol) network metadata
-            query: 'event.dataset:smtp | groupby smtp.from | groupby smtp.recipient_to | groupby -sankey source.ip destination.ip | groupby smtp.subject | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: SNMP
-            description: SNMP (Simple Network Management Protocol) network metadat
-            query: 'event.dataset:snmp | groupby snmp.community | groupby snmp.version | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Software
-            description: Software seen by Zeek via network traffic
-            query: 'event.dataset:software | groupby -sankey software.type source.ip | groupby software.type | groupby software.name | groupby source.ip'
-          - name: SSH
-            description: SSH (Secure Shell) connections seen by Zeek
-            query: 'event.dataset:ssh | groupby ssh.client | groupby ssh.server | groupby -sankey source.ip destination.ip | groupby ssh.direction | groupby ssh.version | groupby ssh.hassh_version | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: SSL
-            description: SSL/TLS network metadata
-            query: 'event.dataset:ssl | groupby ssl.version | groupby ssl.validation_status | groupby -sankey source.ip ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby ssl.certificate.issuer | groupby ssl.certificate.subject'
-          - name: STUN
-            description: STUN (Session Traversal Utilities for NAT) network metadata
-            query: 'event.dataset:stun* | groupby -sankey source.ip destination.ip | groupby destination.geo.country_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby event.dataset'
-          - name: Syslog
-            description: Syslog logs
-            query: 'event.dataset:syslog | groupby syslog.severity_label | groupby syslog.facility_label | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby network.protocol'
-          - name: TDS
-            description: TDS (Tabular Data Stream) network metadata
-            query: 'event.dataset:tds* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby tds.command | groupby tds.header_type | groupby tds.procedure_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby tds.query'
-          - name: Tunnel
-            description: Tunnels seen by Zeek
-            query: 'event.dataset:tunnel | groupby -sankey source.ip destination.ip | groupby tunnel.type | groupby event.action | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name'
-          - name: Weird
-            description: Weird network traffic seen by Zeek
-            query: 'event.dataset:weird | groupby -sankey weird.name destination.ip | groupby weird.name | groupby weird.additional_info | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-          - name: WireGuard
-            description: WireGuard VPN network metadata
-            query: 'event.dataset:wireguard | groupby -sankey source.ip destination.ip | groupby destination.geo.country_name | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: x509
-            description: x.509 certificates seen by Zeek
-            query: 'event.dataset:x509 | groupby -sankey x509.certificate.key.length x509.san_dns | groupby x509.certificate.key.length | groupby x509.san_dns | groupby x509.certificate.key.type | groupby x509.certificate.subject | groupby x509.certificate.issuer'
-          - name: ICS Overview
-            description: Overview of ICS (Industrial Control Systems) network metadata
-            query: 'tags:ics | groupby event.dataset | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby source.mac | groupby destination.mac'
-          - name: ICS BACnet
-            description: BACnet (Building Automation and Control Networks) network metadata
-            query: 'event.dataset:bacnet* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS BSAP
-            description: BSAP (Bristol Standard Asynchronous Protocol) network metadata
-            query: 'event.dataset:bsap* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS CIP
-            description: CIP (Common Industrial Protocol) network metadata
-            query: 'event.dataset:cip* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS COTP
-            description: COTP (Connection Oriented Transport Protocol) network metadata
-            query: 'event.dataset:cotp* | groupby -sankey source.ip destination.ip | groupby cotp.pdu.name | groupby cotp.pdu.code | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS DNP3
-            description: DNP3 (Distributed Network Protocol) network metadata
-            query: 'event.dataset:dnp3* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby dnp3.function_code | groupby dnp3.object_type | groupby dnp3.fc_request | groupby dnp3.fc_reply | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS ECAT
-            description: ECAT (Ethernet for Control Automation Technology) network metadata
-            query: 'event.dataset:ecat* | groupby -sankey event.dataset source.mac destination.mac | groupby event.dataset | groupby source.mac | groupby destination.mac | groupby ecat.command | groupby ecat.register.type'
-          - name: ICS ENIP
-            description: ENIP (Ethernet Industrial Protocol) network metadata
-            query: 'event.dataset:enip* | groupby -sankey source.ip destination.ip | groupby enip.command | groupby enip.status_code | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS Modbus
-            description: Modbus network metadata
-            query: 'event.dataset:modbus* | groupby -sankey event.dataset modbus.function | groupby event.dataset | groupby modbus.function | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS OPC UA
-            description: OPC UA (Unified Architecture) network metadata
-            query: 'event.dataset:opcua* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS Profinet
-            description: Profinet (Process Field Network) network metadata
-            query: 'event.dataset:profinet* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: ICS S7
-            description: S7 (Siemens) network metadata
-            query: 'event.dataset:s7* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: Firewall
-            description: Firewall logs
-            query: 'event.dataset:firewall | groupby -sankey rule.action interface.name | groupby rule.action | groupby interface.name | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
-          - name: VLAN
-            description: VLAN (Virtual Local Area Network) tagged logs
-            query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
-          - name: GeoIP - Destination Countries
-            description: GeoIP tagged logs visualized by destination countries
-            query: '* AND _exists_:destination.geo.country_name | groupby destination.geo.country_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby event.dataset | groupby event.module'
-          - name: GeoIP - Destination Organizations
-            description: GeoIP tagged logs visualized by destination organizations
-            query: '* AND _exists_:destination_geo.organization_name | groupby destination_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby event.dataset | groupby event.module'
-          - name: GeoIP - Source Countries
-            description: GeoIP tagged logs visualized by source countries
-            query: '* AND _exists_:source.geo.country_name | groupby source.geo.country_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source_geo.organization_name | groupby event.dataset | groupby event.module'
-          - name: GeoIP - Source Organizations
-            description: GeoIP tagged logs visualized by source organizations
-            query: '* AND _exists_:source_geo.organization_name | groupby source_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source.geo.country_name | groupby event.dataset | groupby event.module'
-      job:
-      alerts:
-        advanced: false
-        groupItemsPerPage: 50
-        groupFetchLimit: 500
-        eventItemsPerPage: 50
-        eventFetchLimit: 500
-        relativeTimeValue: 24
-        relativeTimeUnit: 30
-        mostRecentlyUsedLimit: 5
-        ackEnabled: true
-        escalateEnabled: true
-        escalateRelatedEventsEnabled: true
-        aggregationActionsEnabled: true
-        eventFields:
-          default:
-            - soc_timestamp
-            - rule.name
-            - event.severity_label
-            - source.ip
-            - source.port
-            - destination.ip
-            - destination.port
-            - rule.gid
-            - rule.uuid
-            - rule.category
-            - rule.rev
-          ':ossec:':
-            - soc_timestamp
-            - rule.name
-            - event.severity_label
-            - source.ip
-            - source.port
-            - destination.ip
-            - destination.port
-            - rule.level
-            - rule.category
-            - process.name
-            - user.name
-            - user.escalated
-            - location
-            - process.name
-        queryBaseFilter: event.dataset:alert
-        queryToggleFilters:
-          - name: acknowledged
-            filter: event.acknowledged:true
-            enabled: false
-            exclusive: true
-          - name: escalated
-            filter: event.escalated:true
-            enabled: false
-            exclusive: true
-            enablesToggles:
-              - acknowledged
-        queries:
-          - name: 'Group By Name, Module'
-            query: '* | groupby rule.name event.module* event.severity_label'
-          - name: 'Group By Sensor, Source IP/Port, Destination IP/Port, Name'
-            query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label'
-          - name: 'Group By Source IP, Name'
-            query: '* | groupby source.ip rule.name event.severity_label'
-          - name: 'Group By Source Port, Name'
-            query: '* | groupby source.port rule.name event.severity_label'
-          - name: 'Group By Destination IP, Name'
-            query: '* | groupby destination.ip rule.name event.severity_label'
-          - name: 'Group By Destination Port, Name'
-            query: '* | groupby destination.port rule.name event.severity_label'
-          - name: Ungroup
-            query: '*'
-      cases:
-        advanced: false
-        aggregationActionsEnabled: false
-        groupItemsPerPage: 50
-        groupFetchLimit: 100
-        eventItemsPerPage: 50
-        eventFetchLimit: 500
-        relativeTimeValue: 12
-        relativeTimeUnit: 60
-        mostRecentlyUsedLimit: 5
-        ackEnabled: false
-        escalateEnabled: false
-        escalateRelatedEventsEnabled: false
-        viewEnabled: true
-        createLink: /case/create
-        eventFields:
-          default:
-            - soc_timestamp
-            - so_case.title
-            - so_case.status
-            - so_case.severity
-            - so_case.assigneeId
-            - so_case.createTime
-        queryBaseFilter: '_index:"*:so-case" AND so_kind:case'
-        queryToggleFilters: []
-        queries:
-          - name: Open Cases
-            query: 'NOT so_case.status:closed AND NOT so_case.category:template'
-          - name: Closed Cases
-            query: 'so_case.status:closed AND NOT so_case.category:template'
-          - name: My Open Cases
-            query: 'NOT so_case.status:closed AND NOT so_case.category:template AND so_case.assigneeId:{myId}'
-          - name: My Closed Cases
-            query: 'so_case.status:closed AND NOT so_case.category:template AND so_case.assigneeId:{myId}'
-          - name: Templates
-            query: 'so_case.category:template'
-      case:
-        analyzerNodeId: 
-        mostRecentlyUsedLimit: 5
-        renderAbbreviatedCount: 30
-        presets:
-          artifactType:
-            labels:
-                - autonomous-system
-                - domain
-                - file
-                - filename
-                - fqdn
-                - hash
-                - ip
-                - mail
-                - mail_subject
-                - other
-                - regexp
-                - registry
-                - uri_path
-                - url
-                - user-agent
-            customEnabled: true
-          category:
-            labels:
-                - general
-                - template
-            customEnabled: true
-          pap:
-            labels:
-                - white
-                - green
-                - amber
-                - red
-            customEnabled: false
-          severity:
-            labels:
-                - low
-                - medium
-                - high
-                - critical
-            customEnabled: false
-          status:
-            labels:
-                - new
-                - in progress
-                - closed
-            customEnabled: false
-          tags:
-            labels:
-                - false-positive
-                - confirmed
-                - pending
-            customEnabled: true
-          tlp:
-            labels:
-                - clear
-                - green
-                - amber
-                - amber+strict
-                - red
-            customEnabled: false
+        inactiveTools: ['toolUnused']
+        tools:
+          - name: toolKibana
+            description: toolKibanaHelp
+            icon: fa-external-link-alt
+            target: so-kibana
+            link: /kibana/
+          - name: toolElasticFleet
+            description: toolElasticFleet
+            icon: fa-external-link-alt
+            target: so-elastic-fleet
+            link: /kibana/app/fleet/agents
+          - name: toolOsqueryManager
+            description: toolOsqueryManager
+            icon: fa-external-link-alt
+            target: so-osquery-manager
+            link: /kibana/app/osquery/live_queries
+          - name: toolInfluxDb
+            description: toolInfluxDbHelp
+            icon: fa-external-link-alt
+            target: so-influxdb
+            link: /influxdb
+          - name: toolCyberchef
+            description: toolCyberchefHelp
+            icon: fa-external-link-alt
+            target: so-cyberchef
+            link: /cyberchef/
+          - name: toolPlaybook
+            description: toolPlaybookHelp
+            icon: fa-external-link-alt
+            target: so-playbook
+            link: /playbook/projects/detection-playbooks/issues/
+          - name: toolNavigator
+            description: toolNavigatorHelp
+            icon: fa-external-link-alt
+            target: so-navigator
+            link: /navigator/
+        hunt:
+          advanced: true
+          aggregationActionsEnabled: true
+          groupItemsPerPage: 10
+          groupFetchLimit: 10
+          eventItemsPerPage: 10
+          eventFetchLimit: 100
+          relativeTimeValue: 24
+          relativeTimeUnit: 30
+          mostRecentlyUsedLimit: 5
+          ackEnabled: false
+          escalateEnabled: true
+          escalateRelatedEventsEnabled: true
+          queryBaseFilter: ''
+          queryToggleFilters:
+            - name: caseExcludeToggle
+              filter: 'NOT _index:"*:so-case*"'
+              enabled: true
+          queries:
+            - name: Default Query
+              description: Show all events grouped by the observer host
+              query: '* | groupby observer.name'
+              showSubtitle: true
+            - name: Log Type
+              description: Show all events grouped by module and dataset
+              query: '* | groupby event.module* event.dataset'
+              showSubtitle: true
+            - name: SOC - Auth
+              description: Users authenticated to SOC grouped by IP address and identity
+              query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby http_request.headers.x-real-ip identity_id'
+              showSubtitle: true
+            - name: SOC - App
+              description: Logs generated by the Security Onion Console (SOC) server and modules
+              query: 'event.module: "soc" | groupby event.module* event.dataset* log.level* | groupby agent.name | groupby event.action* | groupby "http.request.method" | groupby "url.path"'
+              showSubtitle: true
+            - name: Elastalerts
+              description: ''
+              query: '_type:elastalert | groupby rule.name'
+              showSubtitle: true
+            - name: Alerts
+              description: Show all alerts grouped by alert source
+              query: 'event.dataset: alert | groupby event.module'
+              showSubtitle: true
+            - name: NIDS Alerts
+              description: Show all NIDS alerts grouped by alert
+              query: 'event.category: network AND event.dataset: alert | groupby rule.category rule.gid rule.uuid rule.name'
+              showSubtitle: true
+            - name: Osquery - Live Query
+              description: Show all Osquery Live Query results
+              query: 'event.dataset: osquery_manager.result | groupby action_data.id action_data.query | groupby host.hostname'
+              showSubtitle: true
+            - name: Sysmon Events
+              description: Show all Sysmon logs grouped by event type
+              query: 'event.dataset: windows.sysmon_operational | groupby event.action'
+              showSubtitle: true
+            - name: Sysmon Usernames
+              description: Show all Sysmon logs grouped by username
+              query: 'event.dataset: windows.sysmon_operational | groupby event.action, user.name.keyword'
+              showSubtitle: true
+            - name: Strelka
+              description: Show all Strelka logs grouped by file type
+              query: 'event.module:strelka | groupby file.mime_type'
+              showSubtitle: true
+            - name: Zeek Notice
+              description: Show notices from Zeek
+              query: 'event.dataset:notice | groupby notice.note notice.message'
+              showSubtitle: true
+            - name: Connections
+              description: Connections grouped by IP and Port
+              query: 'event.dataset:conn | groupby source.ip destination.ip network.protocol destination.port'
+              showSubtitle: true
+            - name: Connections
+              description: Connections grouped by Service
+              query: 'event.dataset:conn | groupby network.protocol destination.port'
+              showSubtitle: true
+            - name: Connections
+              description: Connections grouped by destination country
+              query: 'event.dataset:conn | groupby destination.geo.country_name'
+              showSubtitle: true
+            - name: Connections
+              description: Connections grouped by source country
+              query: 'event.dataset:conn | groupby source.geo.country_name'
+              showSubtitle: true
+            - name: DCE_RPC
+              description: DCE_RPC grouped by operation
+              query: 'event.dataset:dce_rpc | groupby dce_rpc.operation'
+              showSubtitle: true
+            - name: DHCP
+              description: DHCP leases
+              query: 'event.dataset:dhcp | groupby host.hostname client.address'
+              showSubtitle: true
+            - name: DHCP
+              description: DHCP grouped by message type
+              query: 'event.dataset:dhcp | groupby dhcp.message_types'
+              showSubtitle: true
+            - name: DNP3
+              description: DNP3 grouped by reply
+              query: 'event.dataset:dnp3 | groupby dnp3.fc_reply'
+              showSubtitle: true
+            - name: DNS
+              description: DNS queries grouped by port
+              query: 'event.dataset:dns | groupby dns.query.name destination.port'
+              showSubtitle: true
+            - name: DNS
+              description: DNS queries grouped by type
+              query: 'event.dataset:dns | groupby dns.query.type_name destination.port'
+              showSubtitle: true
+            - name: DNS
+              description: DNS queries grouped by response code
+              query: 'event.dataset:dns | groupby dns.response.code_name destination.port'
+              showSubtitle: true
+            - name: DNS
+              description: DNS highest registered domain
+              query: 'event.dataset:dns | groupby dns.highest_registered_domain.keyword destination.port'
+              showSubtitle: true
+            - name: DNS
+              description: DNS grouped by parent domain
+              query: 'event.dataset:dns | groupby dns.parent_domain.keyword destination.port'
+              showSubtitle: true
+            - name: DPD
+              description: Dynamic Protocol Detection errors
+              query: 'event.dataset:dpd | groupby error.reason'
+              showSubtitle: true
+            - name: Files
+              description: Files grouped by mimetype
+              query: 'event.dataset:file | groupby file.mime_type source.ip'
+              showSubtitle: true
+            - name: Files
+              description: Files grouped by source
+              query: 'event.dataset:file | groupby file.source source.ip'
+              showSubtitle: true
+            - name: FTP
+              description: FTP grouped by command and argument
+              query: 'event.dataset:ftp | groupby ftp.command ftp.argument'
+              showSubtitle: true
+            - name: FTP
+              description: FTP grouped by username and argument
+              query: 'event.dataset:ftp | groupby ftp.user ftp.argument'
+              showSubtitle: true
+            - name: HTTP
+              description: HTTP grouped by destination port
+              query: 'event.dataset:http | groupby destination.port'
+              showSubtitle: true
+            - name: HTTP
+              description: HTTP grouped by status code and message
+              query: 'event.dataset:http | groupby http.status_code http.status_message'
+              showSubtitle: true
+            - name: HTTP
+              description: HTTP grouped by method and user agent
+              query: 'event.dataset:http | groupby http.method http.useragent'
+              showSubtitle: true
+            - name: HTTP
+              description: HTTP grouped by virtual host
+              query: 'event.dataset:http | groupby http.virtual_host'
+              showSubtitle: true
+            - name: HTTP
+              description: HTTP with exe downloads
+              query: 'event.dataset:http AND (file.resp_mime_types:dosexec OR file.resp_mime_types:executable) | groupby http.virtual_host'
+              showSubtitle: true
+            - name: Intel
+              description: Intel framework hits grouped by indicator
+              query: 'event.dataset:intel | groupby intel.indicator.keyword'
+              showSubtitle: true
+            - name: IRC
+              description: IRC grouped by command
+              query: 'event.dataset:irc | groupby irc.command.type'
+              showSubtitle: true
+            - name: KERBEROS
+              description: KERBEROS grouped by service
+              query: 'event.dataset:kerberos | groupby kerberos.service'
+              showSubtitle: true
+            - name: MODBUS
+              description: MODBUS grouped by function
+              query: 'event.dataset:modbus | groupby modbus.function'
+              showSubtitle: true
+            - name: MYSQL
+              description: MYSQL grouped by command
+              query: 'event.dataset:mysql | groupby mysql.command'
+              showSubtitle: true
+            - name: NOTICE
+              description: Zeek notice logs grouped by note and message
+              query: 'event.dataset:notice | groupby notice.note notice.message'
+              showSubtitle: true
+            - name: NTLM
+              description: NTLM grouped by computer name
+              query: 'event.dataset:ntlm | groupby ntlm.server.dns.name'
+              showSubtitle: true
+            - name: PE
+              description: PE files list
+              query: 'event.dataset:pe | groupby file.machine file.os file.subsystem'
+              showSubtitle: true
+            - name: RADIUS
+              description: RADIUS grouped by username
+              query: 'event.dataset:radius | groupby user.name.keyword'
+              showSubtitle: true
+            - name: RDP
+              description: RDP grouped by client name
+              query: 'event.dataset:rdp | groupby client.name'
+              showSubtitle: true
+            - name: RFB
+              description: RFB grouped by desktop name
+              query: 'event.dataset:rfb | groupby rfb.desktop.name.keyword'
+              showSubtitle: true
+            - name: Signatures
+              description: Zeek signatures grouped by signature id
+              query: 'event.dataset:signatures | groupby signature_id'
+              showSubtitle: true
+            - name: SIP
+              description: SIP grouped by user agent
+              query: 'event.dataset:sip | groupby client.user_agent'
+              showSubtitle: true
+            - name: SMB_Files
+              description: SMB files grouped by action
+              query: 'event.dataset:smb_files | groupby file.action'
+              showSubtitle: true
+            - name: SMB_Mapping
+              description: SMB mapping grouped by path
+              query: 'event.dataset:smb_mapping | groupby smb.path'
+              showSubtitle: true
+            - name: SMTP
+              description: SMTP grouped by subject
+              query: 'event.dataset:smtp | groupby smtp.subject'
+              showSubtitle: true
+            - name: SNMP
+              description: SNMP grouped by version and string
+              query: 'event.dataset:snmp | groupby snmp.community snmp.version'
+              showSubtitle: true
+            - name: Software
+              description: List of software seen on the network
+              query: 'event.dataset:software | groupby software.type software.name'
+              showSubtitle: true
+            - name: SSH
+              description: SSH grouped by version and client
+              query: 'event.dataset:ssh | groupby ssh.version ssh.client'
+              showSubtitle: true
+            - name: SSL
+              description: SSL grouped by version and server name
+              query: 'event.dataset:ssl | groupby ssl.version ssl.server_name'
+              showSubtitle: true
+            - name: SYSLOG
+              description: 'SYSLOG grouped by severity and facility '
+              query: 'event.dataset:syslog | groupby syslog.severity_label syslog.facility_label'
+              showSubtitle: true
+            - name: Tunnel
+              description: Tunnels grouped by type and action
+              query: 'event.dataset:tunnel | groupby tunnel.type event.action'
+              showSubtitle: true
+            - name: Weird
+              description: Zeek weird log grouped by name
+              query: 'event.dataset:weird | groupby weird.name'
+              showSubtitle: true
+            - name: x509
+              description: x.509 grouped by key length and name
+              query: 'event.dataset:x509 | groupby x509.certificate.key.length x509.san_dns'
+              showSubtitle: true
+            - name: x509
+              description: x.509 grouped by name and issuer
+              query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.issuer'
+              showSubtitle: true
+            - name: x509
+              description: x.509 grouped by name and subject
+              query: 'event.dataset:x509 | groupby x509.san_dns x509.certificate.subject'
+              showSubtitle: true
+            - name: Firewall
+              description: Firewall events grouped by action
+              query: 'event.dataset:firewall | groupby rule.action'
+              showSubtitle: true
+        dashboards:
+          advanced: true
+          groupItemsPerPage: 10
+          groupFetchLimit: 10
+          eventItemsPerPage: 10
+          eventFetchLimit: 100
+          relativeTimeValue: 24
+          relativeTimeUnit: 30
+          mostRecentlyUsedLimit: 0
+          ackEnabled: false
+          escalateEnabled: true
+          escalateRelatedEventsEnabled: true
+          aggregationActionsEnabled: false
+          queryBaseFilter: ''
+          queryToggleFilters:
+            - name: caseExcludeToggle
+              filter: 'NOT _index:"*:so-case*"'
+              enabled: true
+          queries:
+            - name: Overview
+              description: Overview of all events
+              query: '* | groupby -sankey event.dataset event.category* | groupby -pie event.category | groupby -bar event.module* | groupby event.dataset | groupby event.module* | groupby event.category | groupby observer.name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: SOC Auth
+              description: SOC (Security Onion Console) authentication logs
+              query: 'event.module:kratos AND event.dataset:audit AND msg:authenticated | groupby -sankey http_request.headers.x-real-ip identity_id | groupby http_request.headers.x-real-ip | groupby identity_id | groupby http_request.headers.user-agent'
+            - name: Elastalerts
+              description: Elastalert logs
+              query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
+            - name: Alerts
+              description: Overview of all alerts
+              query: 'event.dataset:alert | groupby event.module* | groupby rule.name | groupby event.severity | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: NIDS Alerts
+              description: NIDS (Network Intrusion Detection System) alerts
+              query: 'event.category:network AND event.dataset:alert | groupby rule.category | groupby -sankey source.ip destination.ip | groupby rule.name | groupby rule.uuid | groupby rule.gid | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Sysmon Overview
+              description: Overview of all Sysmon data types
+              query: 'event.dataset:windows.sysmon_operational | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby host.name | groupby event.category event.action  | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Host Overview
+              description: Overview of all host data types
+              query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'
+            - name: Host Registry Changes
+              description: Windows Registry changes
+              query: 'event.category: registry | groupby -sankey event.action host.name | groupby event.dataset event.action | groupby host.name | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
+            - name: Host DNS & Process Mappings 
+              description: DNS queries mapped to originating processes
+              query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
+            - name: Host Process Activity
+              description: Process activity captured on an endpoint
+              query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
+            - name: Host File Activity
+              description: File activity captured on an endpoint
+              query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
+            - name: Host Network & Process Mappings
+              description: Network activity mapped to originating processes
+              query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.dataset* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Strelka
+              description: Strelka file analysis
+              query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.name'
+            - name: Zeek Notice
+              description: Zeek notice logs
+              query: 'event.dataset:notice | groupby -sankey notice.note destination.ip | groupby notice.note | groupby notice.message | groupby notice.sub_message | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Connections
+              description: Network connection metadata
+              query: 'event.dataset:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui'
+            - name: DCE_RPC
+              description: DCE_RPC (Distributed Computing Environment / Remote Procedure Calls) network metadata
+              query: 'event.dataset:dce_rpc | groupby -sankey dce_rpc.endpoint dce_rpc.operation | groupby dce_rpc.endpoint | groupby dce_rpc.operation | groupby dce_rpc.named_pipe | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: DHCP
+              description: DHCP (Dynamic Host Configuration Protocol) leases
+              query: 'event.dataset:dhcp | groupby host.hostname | groupby dhcp.message_types | groupby -sankey client.address server.address | groupby client.address | groupby server.address | groupby host.domain'
+            - name: DNS
+              description: DNS (Domain Name System) queries
+              query: 'event.dataset:dns | groupby dns.query.name | groupby dns.highest_registered_domain | groupby dns.parent_domain | groupby -sankey source.ip destination.ip | groupby dns.answers.name | groupby dns.query.type_name | groupby dns.response.code_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: DPD
+              description: DPD (Dynamic Protocol Detection) errors
+              query: 'event.dataset:dpd | groupby error.reason | groupby network.protocol | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Files
+              description: Files seen in network traffic
+              query: 'event.dataset:file | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.bytes.total | groupby source.ip | groupby destination.ip | groupby destination_geo.organization_name'
+            - name: FTP
+              description: FTP (File Transfer Protocol) network metadata
+              query: 'event.dataset:ftp | groupby -sankey ftp.command destination.ip | groupby ftp.command | groupby ftp.argument | groupby ftp.user | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: HTTP
+              description: HTTP (Hyper Text Transport Protocol) network metadata
+              query: 'event.dataset:http | groupby http.method | groupby -sankey http.method http.virtual_host | groupby http.virtual_host | groupby http.uri | groupby http.useragent | groupby http.status_code | groupby http.status_message | groupby file.resp_mime_types | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Intel
+              description: Zeek Intel framework hits
+              query: 'event.dataset:intel | groupby intel.indicator | groupby -sankey source.ip intel.indicator | groupby intel.indicator_type | groupby intel.seen_where | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: IRC
+              description: IRC (Internet Relay Chat) network metadata
+              query: 'event.dataset:irc | groupby irc.command.type | groupby -sankey irc.command.type irc.username | groupby irc.username | groupby irc.nickname | groupby irc.command.value | groupby irc.command.info | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Kerberos
+              description: Kerberos network metadata
+              query: 'event.dataset:kerberos | groupby kerberos.service | groupby -sankey kerberos.service destination.ip | groupby kerberos.client | groupby kerberos.request_type | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: MySQL
+              description: MySQL network metadata
+              query: 'event.dataset:mysql | groupby mysql.command | groupby -sankey mysql.command destination.ip | groupby mysql.argument | groupby mysql.success | groupby mysql.response | groupby mysql.rows | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: NTLM
+              description: NTLM (New Technology LAN Manager) network metadata
+              query: 'event.dataset:ntlm | groupby ntlm.server.dns.name | groupby ntlm.server.nb.name | groupby -sankey source.ip destination.ip | groupby ntlm.server.tree.name | groupby ntlm.success | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: PE
+              description: PE (Portable Executable) files transferred via network traffic
+              query: 'event.dataset:pe | groupby file.machine | groupby -sankey file.machine file.os | groupby file.os | groupby file.subsystem | groupby file.section_names | groupby file.is_exe | groupby file.is_64bit'
+            - name: RADIUS
+              description: RADIUS (Remote Authentication Dial-In User Service) network metadata
+              query: 'event.dataset:radius | groupby -sankey user.name.keyword destination.ip | groupby user.name.keyword | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: RDP
+              description: RDP (Remote Desktop Protocol) network metadata
+              query: 'event.dataset:rdp | groupby client.name | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: RFB
+              description: RFB (Remote Frame Buffer) network metadata
+              query: 'event.dataset:rfb | groupby rfb.desktop.name.keyword | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: Signatures
+              description: Zeek signatures
+              query: 'event.dataset:signatures | groupby signature_id'
+            - name: SIP
+              description: SIP (Session Initiation Protocol) network metadata
+              query: 'event.dataset:sip | groupby client.user_agent | groupby sip.method | groupby sip.uri | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: SMB_Files
+              description: Files transferred via SMB (Server Message Block)
+              query: 'event.dataset:smb_files | groupby file.action | groupby file.path | groupby file.name | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: SMB_Mapping
+              description: SMB (Server Message Block) mapping network metadata
+              query: 'event.dataset:smb_mapping | groupby smb.share_type | groupby smb.path | groupby smb.service | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: SMTP
+              description: SMTP (Simple Mail Transfer Protocol) network metadata
+              query: 'event.dataset:smtp | groupby smtp.from | groupby smtp.recipient_to | groupby -sankey source.ip destination.ip | groupby smtp.subject | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: SNMP
+              description: SNMP (Simple Network Management Protocol) network metadat
+              query: 'event.dataset:snmp | groupby snmp.community | groupby snmp.version | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Software
+              description: Software seen by Zeek via network traffic
+              query: 'event.dataset:software | groupby -sankey software.type source.ip | groupby software.type | groupby software.name | groupby source.ip'
+            - name: SSH
+              description: SSH (Secure Shell) connections seen by Zeek
+              query: 'event.dataset:ssh | groupby ssh.client | groupby ssh.server | groupby -sankey source.ip destination.ip | groupby ssh.direction | groupby ssh.version | groupby ssh.hassh_version | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: SSL
+              description: SSL/TLS network metadata
+              query: 'event.dataset:ssl | groupby ssl.version | groupby ssl.validation_status | groupby -sankey source.ip ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby ssl.certificate.issuer | groupby ssl.certificate.subject'
+            - name: STUN
+              description: STUN (Session Traversal Utilities for NAT) network metadata
+              query: 'event.dataset:stun* | groupby -sankey source.ip destination.ip | groupby destination.geo.country_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby event.dataset'
+            - name: Syslog
+              description: Syslog logs
+              query: 'event.dataset:syslog | groupby syslog.severity_label | groupby syslog.facility_label | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby network.protocol'
+            - name: TDS
+              description: TDS (Tabular Data Stream) network metadata
+              query: 'event.dataset:tds* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby tds.command | groupby tds.header_type | groupby tds.procedure_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby tds.query'
+            - name: Tunnel
+              description: Tunnels seen by Zeek
+              query: 'event.dataset:tunnel | groupby -sankey source.ip destination.ip | groupby tunnel.type | groupby event.action | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name'
+            - name: Weird
+              description: Weird network traffic seen by Zeek
+              query: 'event.dataset:weird | groupby -sankey weird.name destination.ip | groupby weird.name | groupby weird.additional_info | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: WireGuard
+              description: WireGuard VPN network metadata
+              query: 'event.dataset:wireguard | groupby -sankey source.ip destination.ip | groupby destination.geo.country_name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: x509
+              description: x.509 certificates seen by Zeek
+              query: 'event.dataset:x509 | groupby -sankey x509.certificate.key.length x509.san_dns | groupby x509.certificate.key.length | groupby x509.san_dns | groupby x509.certificate.key.type | groupby x509.certificate.subject | groupby x509.certificate.issuer'
+            - name: ICS Overview
+              description: Overview of ICS (Industrial Control Systems) network metadata
+              query: 'tags:ics | groupby event.dataset | groupby -sankey source.ip destination.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby source.mac | groupby destination.mac'
+            - name: ICS BACnet
+              description: BACnet (Building Automation and Control Networks) network metadata
+              query: 'event.dataset:bacnet* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS BSAP
+              description: BSAP (Bristol Standard Asynchronous Protocol) network metadata
+              query: 'event.dataset:bsap* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS CIP
+              description: CIP (Common Industrial Protocol) network metadata
+              query: 'event.dataset:cip* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS COTP
+              description: COTP (Connection Oriented Transport Protocol) network metadata
+              query: 'event.dataset:cotp* | groupby -sankey source.ip destination.ip | groupby cotp.pdu.name | groupby cotp.pdu.code | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS DNP3
+              description: DNP3 (Distributed Network Protocol) network metadata
+              query: 'event.dataset:dnp3* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby dnp3.function_code | groupby dnp3.object_type | groupby dnp3.fc_request | groupby dnp3.fc_reply | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS ECAT
+              description: ECAT (Ethernet for Control Automation Technology) network metadata
+              query: 'event.dataset:ecat* | groupby -sankey event.dataset source.mac destination.mac | groupby event.dataset | groupby source.mac | groupby destination.mac | groupby ecat.command | groupby ecat.register.type'
+            - name: ICS ENIP
+              description: ENIP (Ethernet Industrial Protocol) network metadata
+              query: 'event.dataset:enip* | groupby -sankey source.ip destination.ip | groupby enip.command | groupby enip.status_code | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS Modbus
+              description: Modbus network metadata
+              query: 'event.dataset:modbus* | groupby -sankey event.dataset modbus.function | groupby event.dataset | groupby modbus.function | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS OPC UA
+              description: OPC UA (Unified Architecture) network metadata
+              query: 'event.dataset:opcua* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS Profinet
+              description: Profinet (Process Field Network) network metadata
+              query: 'event.dataset:profinet* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: ICS S7
+              description: S7 (Siemens) network metadata
+              query: 'event.dataset:s7* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Firewall
+              description: Firewall logs
+              query: 'event.dataset:firewall | groupby -sankey rule.action interface.name | groupby rule.action | groupby interface.name | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: VLAN
+              description: VLAN (Virtual Local Area Network) tagged logs
+              query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
+            - name: GeoIP - Destination Countries
+              description: GeoIP tagged logs visualized by destination countries
+              query: '* AND _exists_:destination.geo.country_name | groupby destination.geo.country_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby event.dataset | groupby event.module'
+            - name: GeoIP - Destination Organizations
+              description: GeoIP tagged logs visualized by destination organizations
+              query: '* AND _exists_:destination_geo.organization_name | groupby destination_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby event.dataset | groupby event.module'
+            - name: GeoIP - Source Countries
+              description: GeoIP tagged logs visualized by source countries
+              query: '* AND _exists_:source.geo.country_name | groupby source.geo.country_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source_geo.organization_name | groupby event.dataset | groupby event.module'
+            - name: GeoIP - Source Organizations
+              description: GeoIP tagged logs visualized by source organizations
+              query: '* AND _exists_:source_geo.organization_name | groupby source_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source.geo.country_name | groupby event.dataset | groupby event.module'
+        job:
+        alerts:
+          advanced: false
+          groupItemsPerPage: 50
+          groupFetchLimit: 500
+          eventItemsPerPage: 50
+          eventFetchLimit: 500
+          relativeTimeValue: 24
+          relativeTimeUnit: 30
+          mostRecentlyUsedLimit: 5
+          ackEnabled: true
+          escalateEnabled: true
+          escalateRelatedEventsEnabled: true
+          aggregationActionsEnabled: true
+          eventFields:
+            default:
+              - soc_timestamp
+              - rule.name
+              - event.severity_label
+              - source.ip
+              - source.port
+              - destination.ip
+              - destination.port
+              - rule.gid
+              - rule.uuid
+              - rule.category
+              - rule.rev
+            ':ossec:':
+              - soc_timestamp
+              - rule.name
+              - event.severity_label
+              - source.ip
+              - source.port
+              - destination.ip
+              - destination.port
+              - rule.level
+              - rule.category
+              - process.name
+              - user.name
+              - user.escalated
+              - location
+              - process.name
+          queryBaseFilter: event.dataset:alert
+          queryToggleFilters:
+            - name: acknowledged
+              filter: event.acknowledged:true
+              enabled: false
+              exclusive: true
+            - name: escalated
+              filter: event.escalated:true
+              enabled: false
+              exclusive: true
+              enablesToggles:
+                - acknowledged
+          queries:
+            - name: 'Group By Name, Module'
+              query: '* | groupby rule.name event.module* event.severity_label'
+            - name: 'Group By Sensor, Source IP/Port, Destination IP/Port, Name'
+              query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label'
+            - name: 'Group By Source IP, Name'
+              query: '* | groupby source.ip rule.name event.severity_label'
+            - name: 'Group By Source Port, Name'
+              query: '* | groupby source.port rule.name event.severity_label'
+            - name: 'Group By Destination IP, Name'
+              query: '* | groupby destination.ip rule.name event.severity_label'
+            - name: 'Group By Destination Port, Name'
+              query: '* | groupby destination.port rule.name event.severity_label'
+            - name: Ungroup
+              query: '*'
+        cases:
+          advanced: false
+          aggregationActionsEnabled: false
+          groupItemsPerPage: 50
+          groupFetchLimit: 100
+          eventItemsPerPage: 50
+          eventFetchLimit: 500
+          relativeTimeValue: 12
+          relativeTimeUnit: 60
+          mostRecentlyUsedLimit: 5
+          ackEnabled: false
+          escalateEnabled: false
+          escalateRelatedEventsEnabled: false
+          viewEnabled: true
+          createLink: /case/create
+          eventFields:
+            default:
+              - soc_timestamp
+              - so_case.title
+              - so_case.status
+              - so_case.severity
+              - so_case.assigneeId
+              - so_case.createTime
+          queryBaseFilter: '_index:"*:so-case" AND so_kind:case'
+          queryToggleFilters: []
+          queries:
+            - name: Open Cases
+              query: 'NOT so_case.status:closed AND NOT so_case.category:template'
+            - name: Closed Cases
+              query: 'so_case.status:closed AND NOT so_case.category:template'
+            - name: My Open Cases
+              query: 'NOT so_case.status:closed AND NOT so_case.category:template AND so_case.assigneeId:{myId}'
+            - name: My Closed Cases
+              query: 'so_case.status:closed AND NOT so_case.category:template AND so_case.assigneeId:{myId}'
+            - name: Templates
+              query: 'so_case.category:template'
+        case:
+          analyzerNodeId: 
+          mostRecentlyUsedLimit: 5
+          renderAbbreviatedCount: 30
+          presets:
+            artifactType:
+              labels:
+                  - autonomous-system
+                  - domain
+                  - file
+                  - filename
+                  - fqdn
+                  - hash
+                  - ip
+                  - mail
+                  - mail_subject
+                  - other
+                  - regexp
+                  - registry
+                  - uri_path
+                  - url
+                  - user-agent
+              customEnabled: true
+            category:
+              labels:
+                  - general
+                  - template
+              customEnabled: true
+            pap:
+              labels:
+                  - white
+                  - green
+                  - amber
+                  - red
+              customEnabled: false
+            severity:
+              labels:
+                  - low
+                  - medium
+                  - high
+                  - critical
+              customEnabled: false
+            status:
+              labels:
+                  - new
+                  - in progress
+                  - closed
+              customEnabled: false
+            tags:
+              labels:
+                  - false-positive
+                  - confirmed
+                  - pending
+              customEnabled: true
+            tlp:
+              labels:
+                  - clear
+                  - green
+                  - amber
+                  - amber+strict
+                  - red
+              customEnabled: false

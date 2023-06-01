@@ -1,0 +1,111 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{%- set ENDGAMEHOST = salt['pillar.get']('global:endgamehost', 'ENDGAMEHOST') %}
+. /usr/sbin/so-common
+
+check_file() {
+local file=$1
+if [ ! -f "$file" ]; then
+  echo "File $file does not exist."
+  exit 1
+fi
+
+}
+
+RETURN_CODE=0
+
+import() {
+  local BASENAME=$(basename $1 | cut -d'.' -f1)
+  if [ ! -f "/opt/so/state/kibana_$BASENAME.txt" ]; then
+    local file=$1
+    ndjson_file=$(echo $file | sed -e "s/\.template$//")
+    # Copy template file
+    if [ "$file" != "$ndjson_file" ]; then
+      cp "$file" "$ndjson_file"
+    fi
+
+    # SOCtopus and Manager
+    if grep -lq 'PLACEHOLDER' "$ndjson_file"; then
+      sed -i "s/PLACEHOLDER/{{ GLOBALS.url_base }}/g" "$ndjson_file"
+    fi
+
+    # Endgame
+    if grep -lq 'ENDGAMEHOST' "$ndjson_file"; then
+      sed -i "s/ENDGAMEHOST/{{ ENDGAMEHOST }}/g" "$ndjson_file"
+    fi
+
+    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+    RETURN_CODE=$?
+
+    SESSIONCOOKIE=$(curl -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
+    # Load saved objects
+    RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST "localhost:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form file=@"$ndjson_file")
+    echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
+
+    if [[ "$RETURN_CODE" != "1" ]]; then
+      touch /opt/so/state/kibana_$BASENAME.txt
+    fi
+  else
+    exit $RETURN_CODE
+  fi
+}
+
+update() {
+  local BASENAME=$(basename $1 | cut -d'.' -f1)
+  if [ ! -f "/opt/so/state/kibana_$BASENAME.txt" ]; then
+    wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+    RETURN_CODE=$?
+
+    IFS=$'\r\n' GLOBIGNORE='*' command eval  'LINES=($(cat $1))'
+    for i in "${LINES[@]}"; do
+      RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -X PUT "localhost:5601/api/saved_objects/config/8.7.1" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d " $i ")
+      echo $RESPONSE; if [[ "$RESPONSE" != *"\"success\":true"* ]] && [[ "$RESPONSE" != *"updated_at"* ]] ; then RETURN_CODE=1;fi
+    done
+ 
+    if [[ "$RETURN_CODE" != "1" ]]; then
+      touch /opt/so/state/kibana_$BASENAME.txt
+    fi
+  else
+    exit $RETURN_CODE
+  fi
+}
+
+usage()
+{
+cat <<EOF
+  Security Onion Kibana Config Loader
+    Options:
+    -h                   This message
+    -i <filename>        Import saved objects
+    -u <filename>        Update saved objects
+EOF
+}
+
+while getopts "h:i:u:" OPTION
+do
+  case $OPTION in
+    h)
+      usage
+      exit 0
+      ;;
+    i)
+      FILE=${OPTARG}
+      check_file $FILE
+      import $FILE
+      ;;
+    u)
+      FILE=${OPTARG}
+      check_file $FILE
+      update $FILE
+      ;;
+    *)
+      usage
+      exit 0
+      ;;
+  esac
+done

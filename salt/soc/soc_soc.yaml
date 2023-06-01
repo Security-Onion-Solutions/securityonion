@@ -1,13 +1,7 @@
 soc:
-  licenseKey:
-    title: License Key
-    description: Optional Security Onion license key to unlock enterprise features.
-    global: True
-  logLevel:
-    title: Log Level
-    description: The SOC log level, useful for enabling debug logging for advanced troubleshooting. Allowed values are debug, info, warn, error. The SOC log is available at /opt/so/log/soc/sensoroni-server.log.
-    global: True
-    regex: ^(info|debug|warn|error)$
+  enabled:
+    description: You can enable or disable SOC.
+    advanced: True
   files:
     soc:
       banner__md:
@@ -38,187 +32,197 @@ soc:
         global: True
         advanced: True
         helpLink: soc-customization.html
-  actions:
-    description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The action must be defined in JSON object format, and contain a "name" key and "links" key. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
-    global: True
-  eventFields:
-    default:
-      description: The list of fields to show as columns in the Hunt/Dashboards event table, when no other specific mapping applies. Mappings are defined by the format ":event.module:event.dataset".
+  config:
+    licenseKey:
+      title: License Key
+      description: Optional Security Onion license key to unlock enterprise features.
       global: True
-      advanced: True
-  server:
-    srvKey:
-      description: Unique key for protecting the integrity of user submitted data via the web browser.
+    logLevel:
+      title: Log Level
+      description: The SOC log level, useful for enabling debug logging for advanced troubleshooting. Allowed values are debug, info, warn, error. The SOC log is available at /opt/so/log/soc/sensoroni-server.log.
       global: True
-      sensitive: True
-      advanced: True
-    maxPacketCount:
-      description: Maximum number of packets to show in the PCAP viewer. Larger values can cause more resource utilization on both the SOC server and the browser.
+      regex: ^(info|debug|warn|error)$
+    actions:
+      description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The action must be defined in JSON object format, and contain a "name" key and "links" key. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
       global: True
-      advanced: True
-    modules:
-      elastic:
-        index:
-          description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
+    eventFields:
+      default:
+        description: The list of fields to show as columns in the Hunt/Dashboards event table, when no other specific mapping applies. Mappings are defined by the format ":event.module:event.dataset".
+        global: True
+        advanced: True
+    server:
+      srvKey:
+        description: Unique key for protecting the integrity of user submitted data via the web browser.
+        global: True
+        sensitive: True
+        advanced: True
+      maxPacketCount:
+        description: Maximum number of packets to show in the PCAP viewer. Larger values can cause more resource utilization on both the SOC server and the browser.
+        global: True
+        advanced: True
+      modules:
+        elastic:
+          index:
+            description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
+            global: True
+            advanced: True
+          cacheMs:
+            description: Duration (in milliseconds) to cache the Elasticsearch index field data to minimize repeated requests for this typically static information.
+            global: True
+            advanced: True
+          timeoutMs:
+            description: Duration (in milliseconds) to wait for a response from the Elasticsearch host before giving up and showing an error on the SOC UI.
+            global: True
+            advanced: True
+          casesEnabled:
+            description: Set to true if the SOC case management module, natively integrated with Elasticsearch, should be enabled.
+            global: True
+            advanced: True
+          extractCommonObservables:
+            description: List of indexed fields to automatically extract into a case observable, when attaching related events to a case.
+            global: True
+          timeShiftMs:
+            description: Duration (in milliseconds) to further expand the PCAP time range when querying PCAP data related to an event. This duration is added to the normal duration value (see defaultDurationMs).
+            global: True
+            advanced: True
+          defaultDurationMs:
+            description: Duration (in milliseconds) to add before and after the event's timestamp, when querying PCAP data related to the event. If the PCAP-related event record itself has an event.duration value, it will be used instead of this default.
+            global: True
+            advanced: True
+          esSearchOffsetMs:
+            description: Duration (in milliseconds) to add before and after the selected event's timestamp, when looking up PCAP-related events in order to pivot to PCAP.
+            global: True
+            advanced: True
+          maxLogLength:
+            description: The maximum length of an Elasticsearch related log line that is output to the Sensoroni log file. This prevents massive Elasticsearch responses from being dumped into the text log file on disk.
+            global: True
+            advanced: True
+          asyncThreshold:
+            description: Maximum number of events that can be acknowledged synchronously. When acknowledging large numbers of events, where the count exceeds this value, the acknowledge update will be performed in the background, as it can take several minutes to complete.
+            global: True
+            advanced: True
+        sostatus:
+          refreshIntervalMs:
+            description: Duration (in milliseconds) between refreshes of the grid status. Shortening this duration may not have expected results, as the backend systems feeding this sostatus data will continue their updates as scheduled.
+            global: True
+            advanced: True
+          offlineThresholdMs:
+            description: Duration (in milliseconds) that must elapse after a grid node fails to check-in before the node will be marked offline (fault).
+            global: True
+            advanced: True
+      client:
+        apiTimeoutMs:
+          description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
           global: True
           advanced: True
-        cacheMs:
-          description: Duration (in milliseconds) to cache the Elasticsearch index field data to minimize repeated requests for this typically static information.
+        webSocketTimeoutMs:
+          description: Duration (in milliseconds) to wait for a response from the SOC server websocket before giving up and reconnecting.
           global: True
           advanced: True
-        timeoutMs:
-          description: Duration (in milliseconds) to wait for a response from the Elasticsearch host before giving up and showing an error on the SOC UI.
+        tipTimeoutMs:
+          description: Duration (in milliseconds) to show the popup tips, which typically indicate a successful operation.
+          global: True
+        cacheExpirationMs:
+          description: Duration (in milliseconds) of cached data within the browser, including users and settings.
           global: True
           advanced: True
         casesEnabled:
-          description: Set to true if the SOC case management module, natively integrated with Elasticsearch, should be enabled.
+          description: Set to true to enable case management in SOC.
+          global: True
+        inactiveTools:
+          description: List of external tools to remove from the SOC UI.
+          global: True
+        tools:
+          description: List of available external tools visible in the SOC UI. Each tool is defined in JSON object notation, and must include the "name" key and "link" key, where the link is the tool's URL.
           global: True
           advanced: True
-        extractCommonObservables:
-          description: List of indexed fields to automatically extract into a case observable, when attaching related events to a case.
-          global: True
-        timeShiftMs:
-          description: Duration (in milliseconds) to further expand the PCAP time range when querying PCAP data related to an event. This duration is added to the normal duration value (see defaultDurationMs).
-          global: True
-          advanced: True
-        defaultDurationMs:
-          description: Duration (in milliseconds) to add before and after the event's timestamp, when querying PCAP data related to the event. If the PCAP-related event record itself has an event.duration value, it will be used instead of this default.
-          global: True
-          advanced: True
-        esSearchOffsetMs:
-          description: Duration (in milliseconds) to add before and after the selected event's timestamp, when looking up PCAP-related events in order to pivot to PCAP.
-          global: True
-          advanced: True
-        maxLogLength:
-          description: The maximum length of an Elasticsearch related log line that is output to the Sensoroni log file. This prevents massive Elasticsearch responses from being dumped into the text log file on disk.
-          global: True
-          advanced: True
-        asyncThreshold:
-          description: Maximum number of events that can be acknowledged synchronously. When acknowledging large numbers of events, where the count exceeds this value, the acknowledge update will be performed in the background, as it can take several minutes to complete.
-          global: True
-          advanced: True
-      sostatus:
-        refreshIntervalMs:
-          description: Duration (in milliseconds) between refreshes of the grid status. Shortening this duration may not have expected results, as the backend systems feeding this sostatus data will continue their updates as scheduled.
-          global: True
-          advanced: True
-        offlineThresholdMs:
-          description: Duration (in milliseconds) that must elapse after a grid node fails to check-in before the node will be marked offline (fault).
-          global: True
-          advanced: True
-    client:
-      apiTimeoutMs:
-        description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
-        global: True
-        advanced: True
-      webSocketTimeoutMs:
-        description: Duration (in milliseconds) to wait for a response from the SOC server websocket before giving up and reconnecting.
-        global: True
-        advanced: True
-      tipTimeoutMs:
-        description: Duration (in milliseconds) to show the popup tips, which typically indicate a successful operation.
-        global: True
-      cacheExpirationMs:
-        description: Duration (in milliseconds) of cached data within the browser, including users and settings.
-        global: True
-        advanced: True
-      casesEnabled:
-        description: Set to true to enable case management in SOC.
-        global: True
-      inactiveTools:
-        description: List of external tools to remove from the SOC UI.
-        global: True
-      tools:
-        description: List of available external tools visible in the SOC UI. Each tool is defined in JSON object notation, and must include the "name" key and "link" key, where the link is the tool's URL.
-        global: True
-        advanced: True
-      hunt: &appSettings
-        groupItemsPerPage:
-          description: Default number of aggregations to show per page. Larger values consume more vertical area in the SOC UI.
-          global: True
-        groupFetchLimit:
-          description: Default maximum number of aggregations to retrieve per search. Larger values consume more bandwidth and server resources.
-          global: True
-        eventItemsPerPage:
-          description: Default number of items to show per page. Larger values consume more vertical area in the SOC UI.
-          global: True
-        eventFetchLimit:
-          description: Default maximum number of items to retrieve per search. Larger values consume more bandwidth and server resources.
-          global: True
-        relativeTimeValue:
-          description: The duration of time to look backwards when searching for items. Used in combination with the relativeTimeUnit setting.
-          global: True
-        relativeTimeUnit:
-          description: The unit of time for the relativeTimeValue setting. Possible values are 10 (seconds), 20 (minutes), 30 (hours), 40 (days), 50 (weeks), and 60 (months).
-          global: True
-        mostRecentlyUsedLimit:
-          description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
-          global: True
-        queries:
-          description: List of default queries to show in the query list. Each query is represented in JSON object notation, and must include the "name" key and "query" key.
-          global: True
-      alerts: *appSettings
-      cases: *appSettings
-      dashboards: *appSettings
-      case:
-        analyzerNodeId:
-          description: The node ID on which analyzers will be executed.
-          global: True
-          advanced: True
-        mostRecentlyUsedLimit:
-          description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
-          global: True
-        renderAbbreviatedCount:
-          description: When the number of case related items exceeds this number, the middle section of the results will be hidden from view, avoiding unnecessary scrolling.
-          global: True
-          advanced: True
-        presets:
-          artifactType:
-            labels:
-              description: List of available artifact types. Some of these default types have special characteristics and related functionality, built into SOC.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own artifact types directly in the SOC UI.
-              global: True
-          category:
-            labels:
-              description: List of available case categories.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own categories directly in the SOC UI.
-              global: True
-          pap:
-            labels:
-              description: List of available PAP (Permissible Actions Protocol) values.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own PAP values directly in the SOC UI.
-              global: True
-          severity:
-            labels:
-              description: List of available case severities.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own severities directly in the SOC UI.
-              global: True
-          status:
-            labels:
-              description: List of available case statuses. Some statuses have specifial characteristics and related functionality built into SOC.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own case statuses directly in the SOC UI.
-              global: True
-          tags:
-            labels:
-              description: List of available tags.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own tags directly in the SOC UI.
-              global: True
-          tlp:
-            labels:
-              description: List of available TLP (Traffic Light Protocol) values.
-              global: True
-            customEnabled:
-              description: Set to true to allow users add their own TLP values directly in the SOC UI.
-              global: True
+        hunt: &appSettings
+          groupItemsPerPage:
+            description: Default number of aggregations to show per page. Larger values consume more vertical area in the SOC UI.
+            global: True
+          groupFetchLimit:
+            description: Default maximum number of aggregations to retrieve per search. Larger values consume more bandwidth and server resources.
+            global: True
+          eventItemsPerPage:
+            description: Default number of items to show per page. Larger values consume more vertical area in the SOC UI.
+            global: True
+          eventFetchLimit:
+            description: Default maximum number of items to retrieve per search. Larger values consume more bandwidth and server resources.
+            global: True
+          relativeTimeValue:
+            description: The duration of time to look backwards when searching for items. Used in combination with the relativeTimeUnit setting.
+            global: True
+          relativeTimeUnit:
+            description: The unit of time for the relativeTimeValue setting. Possible values are 10 (seconds), 20 (minutes), 30 (hours), 40 (days), 50 (weeks), and 60 (months).
+            global: True
+          mostRecentlyUsedLimit:
+            description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
+            global: True
+          queries:
+            description: List of default queries to show in the query list. Each query is represented in JSON object notation, and must include the "name" key and "query" key.
+            global: True
+        alerts: *appSettings
+        cases: *appSettings
+        dashboards: *appSettings
+        case:
+          analyzerNodeId:
+            description: The node ID on which analyzers will be executed.
+            global: True
+            advanced: True
+          mostRecentlyUsedLimit:
+            description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
+            global: True
+          renderAbbreviatedCount:
+            description: When the number of case related items exceeds this number, the middle section of the results will be hidden from view, avoiding unnecessary scrolling.
+            global: True
+            advanced: True
+          presets:
+            artifactType:
+              labels:
+                description: List of available artifact types. Some of these default types have special characteristics and related functionality, built into SOC.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own artifact types directly in the SOC UI.
+                global: True
+            category:
+              labels:
+                description: List of available case categories.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own categories directly in the SOC UI.
+                global: True
+            pap:
+              labels:
+                description: List of available PAP (Permissible Actions Protocol) values.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own PAP values directly in the SOC UI.
+                global: True
+            severity:
+              labels:
+                description: List of available case severities.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own severities directly in the SOC UI.
+                global: True
+            status:
+              labels:
+                description: List of available case statuses. Some statuses have specifial characteristics and related functionality built into SOC.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own case statuses directly in the SOC UI.
+                global: True
+            tags:
+              labels:
+                description: List of available tags.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own tags directly in the SOC UI.
+                global: True
+            tlp:
+              labels:
+                description: List of available TLP (Traffic Light Protocol) values.
+                global: True
+              customEnabled:
+                description: Set to true to allow users add their own TLP values directly in the SOC UI.
+                global: True

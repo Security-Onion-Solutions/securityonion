@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 include:
-  - kibana
+  - kibana.enabled
 
 securitySolution_saved_objects:
   file.managed:
@@ -25,5 +25,5 @@ so-kibana-securitySolution_saved_objects-load:
     - name: /usr/sbin/so-kibana-config-load -u /opt/so/conf/kibana/securitySolution_saved_objects.ndjson.template
     - cwd: /opt/so
     - require:
-      - sls: kibana
+      - sls: kibana.enabled
       - file: securitySolution_saved_objects

@@ -10,13 +10,13 @@
 uid="$(id -u)"
 if [ "$uid" -ne 0 ]; then
 	echo "This script must be run using sudo!"
-	exit 1
+	fail_setup
 fi
 
 # Save the original argument array since we modify it
 original_args=("$@")
 
-cd "$(dirname "$0")" || exit 255
+cd "$(dirname "$0")" || fail_setup
 
 echo "Getting started..."
 
@@ -82,7 +82,7 @@ if [[ "$setup_type" == 'iso' ]]; then
 		is_iso=true
 	else
 		echo "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
-		exit 1
+		fail_setup
 	fi
 fi
 
@@ -161,7 +161,7 @@ catch() {
 	info "Fatal error occurred at $1 in so-setup, failing setup."
 	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
-	exit 1
+	fail_setup
 }
 
 # Add the progress function for manager node type installs
@@ -202,12 +202,13 @@ if [ -n "$test_profile" ]; then
 
 	MINION_CIDR=10.0.0.0/8
 	MSRV=manager
-	if [[ "$test_profile" =~ "-net" ]]; then
+	if [[ "$test_profile" =~ "-net" ]] || [[ "$test_profile" =~ "-iso" ]]; then
 		address_type=DHCP
 	elif [[ "$test_profile" =~ "-cloud" ]]; then
 		MSRVIP=10.99.1.20
 	elif [[ "$test_profile" =~ "-airgap" ]]; then
 		is_airgap=true
+		address_type=DHCP
 	fi
 
 	if [ -f "/root/public_ip" ]; then
@@ -224,6 +225,8 @@ if [ -n "$test_profile" ]; then
 	WEBUSER=onionuser@somewhere.invalid
 	WEBPASSWD1=0n10nus3r
 	WEBPASSWD2=0n10nus3r
+
+	update_sudoers_for_testing
 fi
 
 # Make sure the setup type is suppoted.
@@ -233,13 +236,14 @@ case "$setup_type" in
 		;;
 	*)
 		error "Invalid install type, must be 'iso', 'network' or 'analyst'."
-		exit 1
+		fail_setup
 		;;
 esac
 
 # Allow execution of SO tools during setup
 local_sbin="$(pwd)/../salt/common/tools/sbin"
-export PATH=$PATH:$local_sbin
+manager_sbin="$(pwd)/../salt/manager/tools/sbin"
+export PATH=$PATH:$local_sbin:$manager_sbin
 
 # Ubuntu whiptail pallete to make it look the same as CentOS and Rocky.
 set_palette >> $setup_log 2>&1
@@ -334,45 +338,54 @@ process_installtype
 
 # If this is not an automated install prompt
 if ! [[ -f $install_opt_file ]]; then
-
-	# If you are a manager ask ALL the manager things here. I know there is code re-use but this makes it easier to add new roles.
+	# If you are a manager ask ALL the manager things here. I know there is code re-use but this makes it easier to add new roles
 	if [[ $is_eval ]]; then
+		info "Setting up as node type eval"
+		# waitforstate means we will run the full salt state at the end. This is for only nodes running the salt-master service
 		waitforstate=true
-		#ubuntu_check
+		# Does this role have monitoring interfaces?
 		monints=true
+		# Prompt the user to accept the elastic license
 		check_elastic_license
+		# If it is an install from ISO is this airgap?
+		[[ $is_iso ]] && whiptail_airgap
+		# Make sure minimum requirements are met
 		check_requirements "manager"
+		# Do networking things
 		networking_needful
-		collect_net_method
+		# Do we need a proxy?
+		[[ ! $is_airgap ]] && collect_net_method
+		# Do we need to change the dockernet subnet?
 		collect_dockernet
-		if [[ $is_iso ]]; then
-			whiptail_airgap
-		fi
-		detect_cloud
+		# Are we in the clouds?
+		[[ ! $is_airgap ]] && detect_cloud
+		# Sets some minion info
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
 		check_network_manager_conf
 		set_network_dev_status_list
+		# What NIC for watching network traffic?
 		whiptail_sensor_nics
+		# How many cores do we have?
 		calculate_useable_cores
+		# What is the web user?
 		collect_webuser_inputs
+		# How are we accessing the UI?
 		get_redirect
+		# Does the user want to allow access to the UI?
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_standalone ]]; then
 		waitforstate=true
-		#ubuntu_check
 		monints=true
 		check_elastic_license
+		[[ $is_iso ]] && whiptail_airgap
 		check_requirements "manager"
 		networking_needful
-		collect_net_method
+		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
-		if [[ $is_iso ]]; then
-			whiptail_airgap
-		fi
-		detect_cloud
+		[[ ! $is_airgap ]] && detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -385,17 +398,16 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_manager ]]; then
+		info "Setting up as node type manager"
 		check_elastic_license
 		waitforstate=true
 		#ubuntu_check
+		[[ $is_iso ]] && whiptail_airgap
 		check_requirements "manager"
 		networking_needful
-		collect_net_method
+		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
-		if [[ $is_iso ]]; then
-			whiptail_airgap
-		fi
-		detect_cloud
+		[[ ! $is_airgap ]] && detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -407,17 +419,15 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_managersearch ]]; then
+		info "Setting up as node type managersearch"
 		check_elastic_license
 		waitforstate=true
-		#ubuntu_check
+		[[ $is_iso ]] && whiptail_airgap
 		check_requirements "manager"
 		networking_needful
-		collect_net_method
+		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
-		if [[ $is_iso ]]; then
-			whiptail_airgap
-		fi
-		detect_cloud
+		[[ ! $is_airgap ]] && detect_cloud
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -429,7 +439,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_so_allow
 		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
-		#ubuntu_check
+		info "Setting up as node type sensor"
 		installer_prereq_packages
 		monints=true
 		check_requirements "sensor"
@@ -446,6 +456,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_fleet ]]; then
+		info "Setting up as node type fleet"
 		check_requirements "fleet"
 		networking_needful
 		check_network_manager_conf
@@ -458,7 +469,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_searchnode ]]; then
-		#ubuntu_check
+		info "Setting up as node type searchnode"
 		installer_prereq_packages
 		check_requirements "elasticsearch"
 		networking_needful
@@ -472,7 +483,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_heavynode ]]; then
-		#ubuntu_check
+		info "Setting up as node type heavynode"
 		installer_prereq_packages
 		monints=true
 		check_requirements "heavynode"
@@ -485,29 +496,27 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_idh ]]; then
-		#ubuntu_check
+		info "Setting up as node type idh"
 		installer_prereq_packages
 		check_requirements "idh"
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
-		#collect_idh_services (this may be added back sometime in the future)
 		collect_idh_preferences
 		set_minion_info
 		whiptail_end_settings
 
 	elif [[ $is_import ]]; then
-		#ubuntu_check
+		info "Setting up as node type import"
 		waitforstate=true
-		monints=true
+		[[ $is_iso ]] && whiptail_airgap
 		check_elastic_license
 		check_requirements "import"
 		networking_needful
-		if [[ $is_iso ]]; then
-			whiptail_airgap
-		fi
-		detect_cloud
+		[[ ! $is_airgap ]] && detect_cloud
+		collect_dockernet
+		[[ ! $is_airgap ]] && collect_net_method
 		set_minion_info
 		set_default_log_size >> $setup_log 2>&1
 		info "Verifying all network devices are managed by Network Manager that should be"
@@ -520,7 +529,7 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 
 	elif [[ $is_receiver ]]; then
-		#ubuntu_check
+		info "Setting up as node type receiver"
 		installer_prereq_packages
 		check_requirements "receiver"
 		networking_needful
@@ -541,9 +550,9 @@ if ! [[ -f $install_opt_file ]]; then
 			set_proxy
 		fi
 		set_redirect
-		# Generate Interface Vars
-		generate_interface_vars
 		if [[ $monints ]]; then
+			# Generate Interface Vars
+			generate_interface_vars
 			configure_network_sensor
 		fi
 		info "Reserving ports"
@@ -615,7 +624,9 @@ if ! [[ -f $install_opt_file ]]; then
 		check_sos_appliance
 
 		logCmd "salt-key -yd $MINION_ID"
+		sleep 2 # Debug RSA Key format errors
 		logCmd "salt-call state.show_top"
+		sleep 2 # Debug RSA Key format errors
 		logCmd "salt-key -ya $MINION_ID"
 
 		logCmd "salt-call state.apply common.packages"
@@ -623,6 +634,9 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply docker"
 		firewall_generate_templates
 		set_initial_firewall_policy
+		# Download Elastic Agent Artifacts
+		title "Downloading Elastic Agent Artifacts"
+		download_elastic_agent_artifacts
 
 		generate_ca
 		generate_ssl
@@ -641,12 +655,23 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		if [[ ! $is_airgap ]]; then
+			title "Downloading IDS Rules"
+			logCmd "so-rule-update"
+			title "Restarting Suricata to pick up the new rules"
+			logCmd "so-suricata-restart"
+			title "Downloading YARA rules"
+			logCmd "runuser -l socore 'so-yara-update'"
+			title "Restarting Strelka to use new rules"
+			logCmd "so-strelka-restart"
+		fi
 		title "Setting up Kibana Default Space"
 		logCmd "so-kibana-space-defaults"
 		add_web_user
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
+		logCmd "salt-call state.apply elasticfleet.config"
         logCmd "so-elastic-fleet-setup"
 		if [[ ! $is_import ]]; then
 			title "Setting up Playbook"

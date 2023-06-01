@@ -1,11 +1,12 @@
 {
+  "policy_id": "endpoints-initial",
   "package": {
     "name": "windows",
-    "version": "1.19.1"
+    "version": ""
   },
   "name": "windows-endpoints",
+  "description": "",
   "namespace": "default",
-  "policy_id": "endpoints-initial",
   "inputs": {
     "windows-winlog": {
       "enabled": true,
@@ -13,47 +14,54 @@
         "windows.forwarded": {
           "enabled": true,
           "vars": {
-            "preserve_original_event": false,
-            "ignore_older": "72h",
-            "language": 0,
             "tags": [
               "forwarded"
-            ]
+            ],
+            "preserve_original_event": false
           }
         },
         "windows.powershell": {
           "enabled": true,
           "vars": {
-            "preserve_original_event": false,
-            "event_id": "400, 403, 600, 800",
-            "ignore_older": "72h",
-            "language": 0,
-            "tags": []
+            "tags": [],
+            "preserve_original_event": false
           }
         },
         "windows.powershell_operational": {
           "enabled": true,
           "vars": {
-            "preserve_original_event": false,
-            "event_id": "4103, 4104, 4105, 4106",
-            "ignore_older": "72h",
-            "language": 0,
-            "tags": []
+            "tags": [],
+            "preserve_original_event": false
           }
         },
         "windows.sysmon_operational": {
           "enabled": true,
           "vars": {
-            "preserve_original_event": false,
-            "ignore_older": "72h",
-            "language": 0,
-            "tags": []
+            "tags": [],
+            "preserve_original_event": false
           }
         }
       }
     },
     "windows-windows/metrics": {
-      "enabled": false
+      "enabled": false,
+      "streams": {
+        "windows.perfmon": {
+          "enabled": false,
+          "vars": {
+            "perfmon.group_measurements_by_instance": false,
+            "perfmon.ignore_non_existent_counters": false,
+            "perfmon.queries": "- object: 'Process'\n  instance: [\"*\"]\n  counters:\n   - name: '% Processor Time'\n     field: cpu_perc\n     format: \"float\"\n   - name: \"Working Set\"\n",
+            "period": "10s"
+          }
+        },
+        "windows.service": {
+          "enabled": false,
+          "vars": {
+            "period": "60s"
+          }
+        }
+      }
     }
   }
 }
