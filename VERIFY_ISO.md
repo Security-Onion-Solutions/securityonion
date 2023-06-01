@@ -7,9 +7,9 @@
 2.4.2-20230531 ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-2.4.2-20230531.iso
 
-MD5: 3BA7D8EF63C6AB7F429363A1A4163BD7  
-SHA1: FEA75AA5B0D30B6F8DB1A005F2E9F9EC88D5031A  
-SHA256: 5614AA6A6087EBEEA9376D42BEFF61BABE98BEECD74C69213645C6640B5841EB 
+MD5: EB861EFB7F7DA6FB418075B4C452E4EB  
+SHA1: 479A72DBB0633CB23608122F7200A24E2C3C3128  
+SHA256: B69C1AE4C576BBBC37F4B87C2A8379903421E65B2C4F24C90FABB0EAD6F0471B 
 
 Signature for ISO image:  
 https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.2-20230531.iso.sig
@@ -41,7 +41,7 @@ gpg --verify securityonion-2.4.2-20230531.iso.sig securityonion-2.4.2-20230531.i
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Wed 31 May 2023 02:17:07 PM EDT using RSA key ID FE507013
+gpg: Signature made Wed 31 May 2023 05:01:41 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
