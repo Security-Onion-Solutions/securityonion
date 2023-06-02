@@ -184,8 +184,16 @@ function send_file() {
   log "Node: $node"
   log "Cleanup: $cleanup"
 
-  response=$($CMD_PREFIX salt-cp -C "$node" "$from" "$to")
+  log "encrypting..."
+  gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from"
+
+  fromgpg="$from.gpg"
+
+  log "sending..."
+  response=$($CMD_PREFIX salt-cp -C "$node" "$fromgpg" "$to")
   exit_code=$?
+
+  rm -f "$fromgpg"
 
   log Response:$'\n'"$response"
   log "Exit Code: $exit_code"
@@ -211,6 +219,12 @@ function import_file() {
   log "File: $file"
   log "Importer: $importer"
 
+  filegpg="$file.gpg"
+
+  log "decrypting..."
+  gpg --passphrase "infected" --batch --decrypt "$filegpg" > "$file"
+
+  log "importing..."
   case $importer in
     pcap)
       response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file'")
@@ -226,7 +240,7 @@ function import_file() {
       ;;
   esac
 
-  rm "$file"
+  rm "$file" "$filegpg"
 
   log Response:$'\n'"$response"
   log "Exit Code: $exit_code"
