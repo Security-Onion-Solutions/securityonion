@@ -15,10 +15,49 @@
 
 function usage {
   cat << EOF
-Usage: $0 <pcap-file-1> [pcap-file-2] [pcap-file-N]
+Usage: $0 [options] <pcap-file-1> [pcap-file-2] [pcap-file-N]
 
 Imports one or more PCAP files onto a sensor node. The PCAP traffic will be analyzed and made available for review in the Security Onion toolset.
+
+Options:
+  --json      Outputs summary in JSON format. Implies --quiet.
+  --quiet     Silences progress information to stdout.
 EOF
+}
+
+quiet=0
+json=0
+INPUT_FILES=
+while [[ $# -gt 0 ]]; do
+  param=$1
+  shift
+  case "$param" in
+    --json)
+      json=1
+      quiet=1
+      ;;
+    --quiet)
+      quiet=1
+      ;;
+    -*) 
+      echo "Encountered unexpected parameter: $param"
+      usage
+      exit 1
+      ;;
+    *) 
+      if [[ "$INPUT_FILES" != "" ]]; then
+        INPUT_FILES="$INPUT_FILES $param"
+      else
+        INPUT_FILES="$param"
+      fi
+      ;;
+  esac
+done
+
+function status {
+  msg=$1
+  [[ $quiet -eq 1 ]] && return
+  echo "$msg"
 }
 
 function pcapinfo() {
@@ -84,7 +123,7 @@ function zeek() {
 }
 
 # if no parameters supplied, display usage
-if [ $# -eq 0 ]; then
+if [ "$INPUT_FILES" == "" ]; then
   usage
   exit 1
 fi
@@ -96,31 +135,30 @@ if [ ! -d /opt/so/conf/suricata ]; then
 fi
 
 # verify that all parameters are files
-for i in "$@"; do
+for i in $INPUT_FILES; do
   if ! [ -f "$i" ]; then
-    usage
     echo "\"$i\" is not a valid file!"
     exit 2
   fi
 done
 
-# track if we have any valid or invalid pcaps
-INVALID_PCAPS="no"
-VALID_PCAPS="no"
-
 # track oldest start and newest end so that we can generate the Kibana search hyperlink at the end
 START_OLDEST="2050-12-31"
 END_NEWEST="1971-01-01"
 
+INVALID_PCAPS_COUNT=0
+VALID_PCAPS_COUNT=0
+SKIPPED_PCAPS_COUNT=0
+
 # paths must be quoted in case they include spaces
-for PCAP in "$@"; do
+for PCAP in $INPUT_FILES; do
   PCAP=$(/usr/bin/realpath "$PCAP")
-  echo "Processing Import: ${PCAP}"
-  echo "- verifying file"
+  status "Processing Import: ${PCAP}"
+  status "- verifying file"
   if ! pcapinfo "${PCAP}" > /dev/null 2>&1; then
     # try to fix pcap and then process the fixed pcap directly
     PCAP_FIXED=`mktemp /tmp/so-import-pcap-XXXXXXXXXX.pcap`
-    echo "- attempting to recover corrupted PCAP file"
+    status "- attempting to recover corrupted PCAP file"
     pcapfix "${PCAP}" "${PCAP_FIXED}"
     # Make fixed file world readable since the Suricata docker container will runas a non-root user
     chmod a+r "${PCAP_FIXED}"
@@ -131,33 +169,44 @@ for PCAP in "$@"; do
   # generate a unique hash to assist with dedupe checks
   HASH=$(md5sum "${PCAP}" | awk '{ print $1 }')
   HASH_DIR=/nsm/import/${HASH}
-  echo "- assigning unique identifier to import: $HASH"
+  status "- assigning unique identifier to import: $HASH"
 
-  if [ -d $HASH_DIR ]; then
-    echo "- this PCAP has already been imported; skipping"
-    INVALID_PCAPS="yes"
-  elif pcapinfo "${PCAP}" |egrep -q "Last packet time:    1970-01-01|Last packet time:    n/a"; then
-    echo "- this PCAP file is invalid; skipping"
-    INVALID_PCAPS="yes"
+  pcap_data=$(pcapinfo "${PCAP}")
+  if ! echo "$pcap_data" | grep -q "First packet time:" || echo "$pcap_data" |egrep -q "Last packet time:    1970-01-01|Last packet time:    n/a"; then
+    status "- this PCAP file is invalid; skipping"
+    INVALID_PCAPS_COUNT=$((INVALID_PCAPS_COUNT + 1))
   else
-    VALID_PCAPS="yes"
+    if [ -d $HASH_DIR ]; then
+      status "- this PCAP has already been imported; skipping"
+      SKIPPED_PCAPS_COUNT=$((SKIPPED_PCAPS_COUNT + 1))
+    else
+      VALID_PCAPS_COUNT=$((VALID_PCAPS_COUNT + 1))
 
-    PCAP_DIR=$HASH_DIR/pcap
-    mkdir -p $PCAP_DIR
+      PCAP_DIR=$HASH_DIR/pcap
+      mkdir -p $PCAP_DIR
 
-    # generate IDS alerts and write them to standard pipeline
-    echo "- analyzing traffic with Suricata"
-    suricata "${PCAP}" $HASH
-    {% if salt['pillar.get']('global:mdengine') == 'ZEEK' %}
-    # generate Zeek logs and write them to a unique subdirectory in /nsm/import/zeek/
-    # since each run writes to a unique subdirectory, there is no need for a lock file
-    echo "- analyzing traffic with Zeek"
-    zeek "${PCAP}" $HASH
-    {% endif %}
+      # generate IDS alerts and write them to standard pipeline
+      status "- analyzing traffic with Suricata"
+      suricata "${PCAP}" $HASH
+      {% if salt['pillar.get']('global:mdengine') == 'ZEEK' %}
+      # generate Zeek logs and write them to a unique subdirectory in /nsm/import/zeek/
+      # since each run writes to a unique subdirectory, there is no need for a lock file
+      status "- analyzing traffic with Zeek"
+      zeek "${PCAP}" $HASH
+      {% endif %}
+      status "- saving PCAP data spanning dates $START through $END"
+    fi
+
+    if [[ "$HASH_FILTERS" == "" ]]; then
+      HASH_FILTERS="import.id:${HASH}"
+      HASHES="${HASH}"
+    else
+      HASH_FILTERS="$HASH_FILTERS%20OR%20import.id:${HASH}"
+      HASHES="${HASHES} ${HASH}"
+    fi
 
     START=$(pcapinfo "${PCAP}" -a |grep "First packet time:" | awk '{print $4}')
     END=$(pcapinfo "${PCAP}" -e |grep "Last packet time:" | awk '{print $4}')
-    echo "- saving PCAP data spanning dates $START through $END"
 
     # compare $START to $START_OLDEST
     START_COMPARE=$(date -d $START +%s)
@@ -179,37 +228,62 @@ for PCAP in "$@"; do
 
   fi # end of valid pcap
 
-  echo
+  status
 
 done # end of for-loop processing pcap files
 
 # remove temp files
-echo "Cleaning up:"
 for TEMP_PCAP in ${TEMP_PCAPS[@]}; do
-  echo "- removing temporary pcap $TEMP_PCAP"
+  status "- removing temporary pcap $TEMP_PCAP"
   rm -f $TEMP_PCAP
 done
 
 # output final messages
-if [ "$INVALID_PCAPS" = "yes" ]; then
-  echo
-  echo "Please note!  One or more pcaps was invalid!  You can scroll up to see which ones were invalid."
+if [[ $INVALID_PCAPS_COUNT -gt 0 ]]; then
+  status
+  status "WARNING: One or more pcaps was invalid. Scroll up to see which ones were invalid."
 fi
 
 START_OLDEST_SLASH=$(echo $START_OLDEST | sed -e 's/-/%2F/g')
 END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
+if [[ $VALID_PCAPS_COUNT -gt 0 ]] || [[ $SKIPPED_PCAPS_COUNT -gt 0 ]]; then
+  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
 
-if [ "$VALID_PCAPS" = "yes" ]; then
-cat << EOF
-
-Import complete!
-
-You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ URLBASE }}/#/dashboards?q=import.id:${HASH}%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
-
-or you can manually set your Time Range to be (in UTC):
-From: $START_OLDEST    To: $END_NEWEST
-
-Please note that it may take 30 seconds or more for events to appear in Security Onion Console.
-EOF
+  status "Import complete!"
+  status
+  status "Use the following hyperlink to view the imported data. Triple-click to quickly highlight the entire hyperlink and then copy it into a browser:"
+  status "$URL"
+  status
+  status "or, manually set the Time Range to be (in UTC):"
+  status "From: $START_OLDEST    To: $END_NEWEST"
+  status
+  status "Note: It can take 30 seconds or more for events to appear in Security Onion Console."
+  RESULT=0
+else
+  START_OLDEST=
+  END_NEWEST=
+  URL=
+  RESULT=1
 fi
+
+if [[ $json -eq 1 ]]; then
+  jq -n \
+    --arg success_count "$VALID_PCAPS_COUNT" \
+    --arg fail_count "$INVALID_PCAPS_COUNT" \
+    --arg skipped_count "$SKIPPED_PCAPS_COUNT" \
+    --arg begin_date "$START_OLDEST" \
+    --arg end_date "$END_NEWEST" \
+    --arg url "$URL" \
+    --arg hashes "$HASHES" \
+    '''{
+      success_count: $success_count,
+      fail_count: $fail_count,
+      skipped_count: $skipped_count,
+      begin_date: $begin_date,
+      end_date: $end_date,
+      url: $url,
+      hash: ($hashes / " ")
+    }'''
+fi
+
+exit $RESULT
