@@ -31,7 +31,7 @@ class PlaybookESAlerter(Alerter):
                 creds = (self.rule['es_username'], self.rule['es_password'])
 
             payload = {"rule": { "name": self.rule['play_title'],"case_template": self.rule['play_id'],"uuid": self.rule['play_id'],"category": self.rule['rule.category']},"event":{ "severity": self.rule['event.severity'],"module": self.rule['event.module'],"dataset": self.rule['event.dataset'],"severity_label": self.rule['sigma_level']},"kibana_pivot": self.rule['kibana_pivot'],"soc_pivot": self.rule['soc_pivot'],"play_url": self.rule['play_url'],"sigma_level": self.rule['sigma_level'],"event_data": match, "@timestamp": timestamp}
-            url = f"{self.rule['es_hosts']}/so-playbook-alerts-{today}/_doc/"
+            url = f"{self.rule['es_hosts']}/logs-playbook-alerts-so/_doc/"
             requests.post(url, data=json.dumps(payload), headers=headers, verify=False, auth=creds)
                             
     def get_info(self):
