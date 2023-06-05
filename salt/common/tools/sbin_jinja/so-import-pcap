@@ -142,10 +142,6 @@ for i in $INPUT_FILES; do
   fi
 done
 
-# track if we have any valid or invalid pcaps
-INVALID_PCAPS="no"
-VALID_PCAPS="no"
-
 # track oldest start and newest end so that we can generate the Kibana search hyperlink at the end
 START_OLDEST="2050-12-31"
 END_NEWEST="1971-01-01"
@@ -237,7 +233,6 @@ for PCAP in $INPUT_FILES; do
 done # end of for-loop processing pcap files
 
 # remove temp files
-status "Cleaning up:"
 for TEMP_PCAP in ${TEMP_PCAPS[@]}; do
   status "- removing temporary pcap $TEMP_PCAP"
   rm -f $TEMP_PCAP
@@ -263,10 +258,12 @@ if [[ $VALID_PCAPS_COUNT -gt 0 ]] || [[ $SKIPPED_PCAPS_COUNT -gt 0 ]]; then
   status "From: $START_OLDEST    To: $END_NEWEST"
   status
   status "Note: It can take 30 seconds or more for events to appear in Security Onion Console."
+  RESULT=0
 else
   START_OLDEST=
   END_NEWEST=
   URL=
+  RESULT=1
 fi
 
 if [[ $json -eq 1 ]]; then
@@ -288,3 +285,5 @@ if [[ $json -eq 1 ]]; then
       hash: ($hashes / " ")
     }'''
 fi
+
+exit $RESULT
