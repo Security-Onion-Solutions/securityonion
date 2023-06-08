@@ -1,17 +1,17 @@
-## Security Onion 2.4 Beta 3
+## Security Onion 2.4 Release Candidate 1 (RC1)
 
-Security Onion 2.4 Beta 3 is here!
+Security Onion 2.4 Release Candidate 1 (RC1) is here!
 
 ## Screenshots
 
 Alerts
-![Alerts](./assets/images/screenshots/alerts.png)
+![Alerts](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/39_alerts.png)
 
 Dashboards
-![Dashboards](./assets/images/screenshots/dashboards.png)
+![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/40_dashboards.png)
 
 Hunt
-![Hunt](./assets/images/screenshots/hunt.png)
+![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/41_hunt.png)
 
 Cases
 ![Cases](./assets/images/screenshots/cases-comments.png)
