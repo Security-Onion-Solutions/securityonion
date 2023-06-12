@@ -22,6 +22,9 @@
         {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
   {% endif %}
   {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
+{% elif grains.id.split('_') | last == 'heavynode' %}
+  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data_hot', 'remote_cluster_client']}) %}
+  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.hostname]}}) %}
 {% endif %}
 {% if HIGHLANDER %}
       {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
