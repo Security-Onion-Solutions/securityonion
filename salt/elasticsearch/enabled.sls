@@ -32,7 +32,7 @@ so-elasticsearch:
       {% endfor %}
     {% endif %}
     - environment:
-      {% if LOGSTASH_NODES | length == 1 %}
+      {% if LOGSTASH_NODES | length == 1 or GLOBALS.role == 'so-heavynode' %}
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
