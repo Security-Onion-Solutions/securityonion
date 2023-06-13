@@ -227,11 +227,11 @@ function import_file() {
   log "importing..."
   case $importer in
     pcap)
-      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file'")
+      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
       exit_code=$?
       ;;
     evtx)
-      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file'")
+      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
       exit_code=$?
       ;;
     *)
@@ -246,7 +246,8 @@ function import_file() {
   log "Exit Code: $exit_code"
 
   if [[ exit_code -eq 0 ]]; then
-    url=$(echo "$response" | sed ':a;N;$!ba;s/\n//g' | grep -E -o "https://\S*")
+    # trim off the node header ("manager_standalone:\n") and parse out the URL
+    url=$(echo "$response" | tail -n +2 | jq -r .url)
     $(echo "$url" > "${SOC_PIPE}")
   else
     log "false"
