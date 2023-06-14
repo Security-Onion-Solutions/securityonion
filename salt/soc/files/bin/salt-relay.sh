@@ -188,9 +188,14 @@ function send_file() {
   gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from"
 
   fromgpg="$from.gpg"
+  filename=$(basename "$fromgpg")
 
   log "sending..."
   response=$($CMD_PREFIX salt-cp -C "$node" "$fromgpg" "$to")
+  # salt-cp returns 0 even if the file transfer fails, so we need to check the response.
+  # Remove the node and filename from the response on the off-chance they contain
+  # the word "True" in them
+  echo $response | sed "s/$node//" | sed "s/$filename//" | grep True
   exit_code=$?
 
   rm -f "$fromgpg"
@@ -198,11 +203,12 @@ function send_file() {
   log Response:$'\n'"$response"
   log "Exit Code: $exit_code"
 
+  if [[ $cleanup -eq 1 ]]; then
+    log "Cleaning up file $from"
+    rm -f "$from"
+  fi
+
   if [[ exit_code -eq 0 ]]; then
-    if [[ $cleanup -eq 1 ]]; then
-      log "Cleaning up file $from"
-      rm -f "$from"
-    fi
     $(echo "true" > "${SOC_PIPE}")
   else
     $(echo "false" > "${SOC_PIPE}")
@@ -222,25 +228,31 @@ function import_file() {
   filegpg="$file.gpg"
 
   log "decrypting..."
-  gpg --passphrase "infected" --batch --decrypt "$filegpg" > "$file"
+  $CMD_PREFIX "salt '$node' cmd.run 'gpg --passphrase \"infected\" --batch --decrypt \"$filegpg\" > \"$file\"'"
+  decrypt_code=$?
 
-  log "importing..."
-  case $importer in
-    pcap)
-      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
-      exit_code=$?
-      ;;
-    evtx)
-      response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
-      exit_code=$?
-      ;;
-    *)
-      response="Unsupported importer: $importer"
-      exit_code=1
-      ;;
-  esac
+  if [[ $decrypt_code -eq 0 ]]; then
+    log "importing..."
+    case $importer in
+      pcap)
+        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
+        exit_code=$?
+        ;;
+      evtx)
+        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
+        exit_code=$?
+        ;;
+      *)
+        response="Unsupported importer: $importer"
+        exit_code=1
+        ;;
+    esac
+  else
+    response="Failed to decrypt file: $file"
+    exit_code=$decrypt_code
+  fi
 
-  rm "$file" "$filegpg"
+  rm -f "$file" "$filegpg"
 
   log Response:$'\n'"$response"
   log "Exit Code: $exit_code"
