@@ -1,28 +1,38 @@
 #!/bin/bash
 #
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
 . /usr/sbin/so-common
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-TOTAL_AVAILABLE_SPACE=0
+TOTAL_USED_SPACE=0
 
-# Iterate through the output of _cat/allocation for each node in the cluster to determine the total available space
+# Iterate through the output of _cat/allocation for each node in the cluster to determine the total used space
 {% if GLOBALS.role == 'so-manager' %}
+# Get total disk space - disk.total
 for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | grep -v {{ GLOBALS.manager }} | awk '{print $3}'); do
 {% else %}
-for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $3}'); do
+# Get disk space taken up by indices - disk.indices
+for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $2}'); do
 {% endif %}
   size=$(echo $i | grep -oE '[0-9].*' | awk '{print int($1+0.5)}')
   unit=$(echo $i | grep -oE '[A-Za-z]+')
   if [ $unit = "tb" ]; then
-    size=$(( size * 1024 ))
+    size=$(( size * 1000 * 1000 * 1000 * 1000 ))
+  elif [ $unit = "gb" ]; then
+    size=$(( size * 1000 * 1000 * 1000 ))
+  elif [ $unit = "mb" ]; then
+    size=$(( size * 1000 * 1000 ))
+  elif [ $unit = "kb" ]; then
+    size=$(( size * 1000 ))
+  elif [ $unit = "b" ]; then
+    size=size
   fi
-  TOTAL_AVAILABLE_SPACE=$(( TOTAL_AVAILABLE_SPACE + size ))
+  TOTAL_USED_SPACE=$(( TOTAL_USED_SPACE + size ))
 done
 
-# Calculate the percentage of available space based on our previously defined value
-echo "$TOTAL_AVAILABLE_SPACE"
+# Calculate the percentage of used space based on our previously defined value
+echo "$TOTAL_USED_SPACE"

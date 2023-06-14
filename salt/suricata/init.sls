@@ -3,11 +3,15 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'suricata/map.jinja' import SURICATAMERGED %}
 
 include:
-{% if SURICATAMERGED.enabled %}
+{% if SURICATAMERGED.enabled and GLOBALS.role != 'so-import' %}
   - suricata.enabled
+{% elif GLOBALS.role == 'so-import' %}
+  - suricata.config
+  - suricata.disabled
 {% else %}
   - suricata.disabled
 {% endif %}

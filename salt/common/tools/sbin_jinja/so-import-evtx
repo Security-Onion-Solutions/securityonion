@@ -14,19 +14,56 @@
 {%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 INDEX_DATE=$(date +'%Y.%m.%d')
-RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
 LOG_FILE=/nsm/import/evtx-import.log
 
 . /usr/sbin/so-common
 
 function usage {
   cat << EOF
-Usage: $0 <evtx-file-1> [evtx-file-2] [evtx-file-*]
+Usage: $0 [options] <evtx-file-1> [evtx-file-2] [evtx-file-*]
 
 Imports one or more evtx files into Security Onion. The evtx files will be analyzed and made available for review in the Security Onion toolset.
+
+Options:
+  --json      Outputs summary in JSON format. Implies --quiet.
+  --quiet     Silences progress information to stdout.
 EOF
 }
 
+quiet=0
+json=0
+INPUT_FILES=
+while [[ $# -gt 0 ]]; do
+  param=$1
+  shift
+  case "$param" in
+    --json)
+      json=1
+      quiet=1
+      ;;
+    --quiet)
+      quiet=1
+      ;;
+    -*) 
+      echo "Encountered unexpected parameter: $param"
+      usage
+      exit 1
+      ;;
+    *) 
+      if [[ "$INPUT_FILES" != "" ]]; then
+        INPUT_FILES="$INPUT_FILES $param"
+      else
+        INPUT_FILES="$param"
+      fi
+      ;;
+  esac
+done
+
+function status {
+  msg=$1
+  [[ $quiet -eq 1 ]] && return
+  echo "$msg"
+}
 
 function evtx2es() {
   EVTX=$1
@@ -42,30 +79,29 @@ function evtx2es() {
 }
 
 # if no parameters supplied, display usage
-if [ $# -eq 0 ]; then
+if [ "$INPUT_FILES" == "" ]; then
   usage
   exit 1
 fi
 
 # ensure this is a Manager node
-require_manager
+require_manager @> /dev/null
 
 # verify that all parameters are files
-for i in "$@"; do
+for i in $INPUT_FILES; do
   if ! [ -f "$i" ]; then
-    usage
     echo "\"$i\" is not a valid file!"
     exit 2
   fi
 done
 
-# track if we have any valid or invalid evtx
-INVALID_EVTXS="no"
-VALID_EVTXS="no"
-
 # track oldest start and newest end so that we can generate the Kibana search hyperlink at the end
 START_OLDEST="2050-12-31"
 END_NEWEST="1971-01-01"
+
+INVALID_EVTXS_COUNT=0
+VALID_EVTXS_COUNT=0
+SKIPPED_EVTXS_COUNT=0
 
 touch /nsm/import/evtx-start_oldest
 touch /nsm/import/evtx-end_newest
@@ -74,27 +110,39 @@ echo $START_OLDEST > /nsm/import/evtx-start_oldest
 echo $END_NEWEST > /nsm/import/evtx-end_newest
 
 # paths must be quoted in case they include spaces
-for EVTX in "$@"; do
+for EVTX in $INPUT_FILES; do
   EVTX=$(/usr/bin/realpath "$EVTX")
-  echo "Processing Import: ${EVTX}"
+  status "Processing Import: ${EVTX}"
 
   # generate a unique hash to assist with dedupe checks
   HASH=$(md5sum "${EVTX}" | awk '{ print $1 }')
   HASH_DIR=/nsm/import/${HASH}
-  echo "- assigning unique identifier to import: $HASH"
+  status "- assigning unique identifier to import: $HASH"
+
+  if [[ "$HASH_FILTERS" == "" ]]; then
+    HASH_FILTERS="import.id:${HASH}"
+    HASHES="${HASH}"
+  else
+    HASH_FILTERS="$HASH_FILTERS%20OR%20import.id:${HASH}"
+    HASHES="${HASHES} ${HASH}"
+  fi
 
   if [ -d $HASH_DIR ]; then
-    echo "- this EVTX has already been imported; skipping"
-    INVALID_EVTXS="yes"
+    status "- this EVTX has already been imported; skipping"
+    SKIPPED_EVTXS_COUNT=$((SKIPPED_EVTXS_COUNT + 1))
   else
-    VALID_EVTXS="yes"
-
     EVTX_DIR=$HASH_DIR/evtx
     mkdir -p $EVTX_DIR
 
     # import evtx and write them to import ingest pipeline
-    echo "- importing logs to Elasticsearch..."
+    status "- importing logs to Elasticsearch..."
     evtx2es "${EVTX}" $HASH
+    if [[ $? -ne 0 ]]; then
+      INVALID_EVTXS_COUNT=$((INVALID_EVTXS_COUNT + 1))
+      status "- WARNING: This evtx file may not have fully imported successfully"
+    else
+      VALID_EVTXS_COUNT=$((VALID_EVTXS_COUNT + 1))
+    fi
 
     # compare $START to $START_OLDEST
     START=$(cat /nsm/import/evtx-start_oldest)
@@ -118,38 +166,60 @@ for EVTX in "$@"; do
 
   fi # end of valid evtx
 
-  echo
+  status
 
 done # end of for-loop processing evtx files
 
-# remove temp files
-echo "Cleaning up:"
-for TEMP_EVTX in ${TEMP_EVTXS[@]}; do
-  echo "- removing temporary evtx $TEMP_EVTX"
-  rm -f $TEMP_EVTX
-done
-
 # output final messages
-if [ "$INVALID_EVTXS" = "yes" ]; then
-  echo
-  echo "Please note!  One or more evtx was invalid!  You can scroll up to see which ones were invalid."
+if [[ $INVALID_EVTXS_COUNT -gt 0 ]]; then
+  status
+  status "Please note!  One or more evtx was invalid!  You can scroll up to see which ones were invalid."
 fi
 
 START_OLDEST_FORMATTED=`date +%Y-%m-%d --date="$START_OLDEST"`
 START_OLDEST_SLASH=$(echo $START_OLDEST_FORMATTED | sed -e 's/-/%2F/g')
 END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
 
-if [ "$VALID_EVTXS" = "yes" ]; then
-cat << EOF
+if [[ $VALID_EVTXS_COUNT -gt 0 ]] || [[ $SKIPPED_EVTXS_COUNT -gt 0 ]]; then
+  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
 
-Import complete!
-
-You can use the following hyperlink to view data in the time range of your import.  You can triple-click to quickly highlight the entire hyperlink and you can then copy it into your browser:
-https://{{ URLBASE }}/#/dashboards?q=import.id:${RUNID}%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC
-
-or you can manually set your Time Range to be (in UTC):
-From: $START_OLDEST_FORMATTED    To: $END_NEWEST
-
-Please note that it may take 30 seconds or more for events to appear in Security Onion Console.
-EOF
+  status "Import complete!"
+  status
+  status "Use the following hyperlink to view the imported data. Triple-click to quickly highlight the entire hyperlink and then copy it into a browser:"
+  status
+  status "$URL"
+  status
+  status "or, manually set the Time Range to be (in UTC):"
+  status
+  status "From: $START_OLDEST_FORMATTED    To: $END_NEWEST"
+  status
+  status "Note: It can take 30 seconds or more for events to appear in Security Onion Console."
+  RESULT=0
+else
+  START_OLDEST=
+  END_NEWEST=
+  URL=
+  RESULT=1
 fi
+
+if [[ $json -eq 1 ]]; then
+  jq -n \
+    --arg success_count "$VALID_EVTXS_COUNT" \
+    --arg fail_count "$INVALID_EVTXS_COUNT" \
+    --arg skipped_count "$SKIPPED_EVTXS_COUNT" \
+    --arg begin_date "$START_OLDEST" \
+    --arg end_date "$END_NEWEST" \
+    --arg url "$URL" \
+    --arg hashes "$HASHES" \
+    '''{
+      success_count: $success_count,
+      fail_count: $fail_count,
+      skipped_count: $skipped_count,
+      begin_date: $begin_date,
+      end_date: $end_date,
+      url: $url,
+      hash: ($hashes / " ")
+    }'''
+fi
+
+exit $RESULT

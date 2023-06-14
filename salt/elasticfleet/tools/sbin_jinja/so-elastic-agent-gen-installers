@@ -9,16 +9,20 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 . /usr/sbin/so-common
-
-#FLEETHOST="https://{{ GLOBALS.manager_ip }}:8220"
+. /usr/sbin/so-elastic-fleet-common
 
 for i in {1..30}
 do
    ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
    FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' | jq -r  '.item.host_urls[]' | paste -sd ',')
-if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]]; then break; else sleep 10; fi
+if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]] && [[  $ELASTICVERSION ]]; then break; else sleep 10; fi
 done
-if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then printf "\nFleet Host URL or Enrollment Token empty - exiting..." && exit; fi
+
+if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then 
+  printf "\nFleet Host URL, Enrollment Token or Elastic Version empty - exiting..."
+  printf "\nFleet Host: $FLEETHOST, Enrollment Token: $ENROLLMENTOKEN\n"
+  exit 
+fi
 
 OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
 
@@ -27,7 +31,7 @@ rm -rf /nsm/elastic-agent-workspace
 mkdir -p /nsm/elastic-agent-workspace
 
 printf "\n### Extracting outer tarball and then each individual tarball/zip\n"
-tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-{{ GLOBALS.so_version }}.tar.gz -C /nsm/elastic-agent-workspace/
+tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz -C /nsm/elastic-agent-workspace/
 unzip -q /nsm/elastic-agent-workspace/elastic-agent-*.zip -d /nsm/elastic-agent-workspace/
 for archive in /nsm/elastic-agent-workspace/*.tar.gz
 do

@@ -4,6 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls.split('.')[0] in allowed_states %}
 
 # Add EA Group
@@ -51,6 +52,36 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+{%   if GLOBALS.role != "so-fleet" %}
+eaintegrationsdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - user: 947
+    - group: 939
+    - makedirs: True
+
+eadynamicintegration:
+  file.recurse:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - source: salt://elasticfleet/files/integrations-dynamic
+    - user: 947
+    - group: 939
+    - template: jinja
+
+eaintegration:
+  file.recurse:
+    - name: /opt/so/conf/elastic-fleet/integrations
+    - source: salt://elasticfleet/files/integrations
+    - user: 947
+    - group: 939
+
+ea-integrations-load:
+  file.absent:
+    - name: /opt/so/state/eaintegrations.txt
+    - onchanges:
+      - file: eaintegration
+      - file: eadynamicintegration
+{% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
