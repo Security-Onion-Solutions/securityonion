@@ -149,6 +149,25 @@ elasticsearch:
         data_stream:
           hidden: false
           allow_custom_routing: false
+    so-logs-system.system:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-system.system*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        composed_of:
+          - "event-mappings"
+          - "logs-system.system@package"
+          - "logs-system.system@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
     so-logs-system.application:
       index_sorting: False
       index_template:
@@ -467,13 +486,8 @@ elasticsearch:
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.endpoint_security@package"
           - "logs-elastic_agent.endpoint_security@custom"
           - "so-fleet_globals-1"
