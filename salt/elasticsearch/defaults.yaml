@@ -111,6 +111,63 @@ elasticsearch:
             name: elastic_agent
           managed_by: security_onion
           managed: true  
+    so-logs-system.auth:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-system.auth*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        composed_of:
+          - "event-mappings"
+          - "logs-system.auth@package"
+          - "logs-system.auth@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+    so-logs-system.syslog:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-system.syslog*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        composed_of:
+          - "event-mappings"
+          - "logs-system.syslog@package"
+          - "logs-system.syslog@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+    so-logs-system.system:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-system.system*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        composed_of:
+          - "event-mappings"
+          - "logs-system.system@package"
+          - "logs-system.system@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
     so-logs-system.application:
       index_sorting: False
       index_template:
@@ -121,6 +178,7 @@ elasticsearch:
             index:
               number_of_replicas: 0
         composed_of:
+          - "event-mappings"
           - "logs-system.application@package"
           - "logs-system.application@custom"
           - "so-fleet_globals-1"
@@ -139,6 +197,7 @@ elasticsearch:
             index:
               number_of_replicas: 0
         composed_of:
+          - "event-mappings"
           - "logs-system.security@package"
           - "logs-system.security@custom"
           - "so-fleet_globals-1"
@@ -219,16 +278,34 @@ elasticsearch:
         data_stream:
           hidden: false
           allow_custom_routing: false
- 
-    so-logs-osquery-manager:
+    so-logs-osquery-manager-actions:
       index_sorting: False
       index_template:
         index_patterns:
-          - "logs-osquery*"
+          - ".logs-osquery_manager.actions*"
         template:
           settings:
             index:
               number_of_replicas: 0
+        composed_of:
+          - "logs-osquery_manager.actions"
+        priority: 501
+        _meta:
+          package:
+            name: elastic_agent
+          managed_by: security_onion
+          managed: true
+    so-logs-osquery-manager-action.responses:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - ".logs-osquery_manager.action.responses*"
+        template:
+          settings:
+            index:
+              number_of_replicas: 0
+        composed_of:
+          - "logs-osquery_manager.action.responses"
         priority: 501
         _meta:
           package:
@@ -261,7 +338,7 @@ elasticsearch:
           - "logs-elastic_agent.apm_server@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -315,7 +392,7 @@ elasticsearch:
           - "logs-elastic_agent.auditbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -369,7 +446,7 @@ elasticsearch:
           - "logs-elastic_agent.cloudbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
       policy:
         phases:
           hot:
@@ -409,18 +486,13 @@ elasticsearch:
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.endpoint_security@package"
           - "logs-elastic_agent.endpoint_security@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -463,18 +535,13 @@ elasticsearch:
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.filebeat@package"
           - "logs-elastic_agent.filebeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -511,24 +578,16 @@ elasticsearch:
           settings:
             index:
               number_of_replicas: 0
-              mapping:
-                total_fields:
-                  limit: 5000
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.fleet_server@package"
           - "logs-elastic_agent.fleet_server@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -582,7 +641,7 @@ elasticsearch:
           - "logs-elastic_agent.heartbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
       policy:
         phases:
           hot:
@@ -629,11 +688,12 @@ elasticsearch:
               managed_by: security_onion
               managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent@package"
           - "logs-elastic_agent@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -676,18 +736,13 @@ elasticsearch:
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.metricbeat@package"
           - "logs-elastic_agent.metricbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -730,18 +785,13 @@ elasticsearch:
               sort:
                 field: "@timestamp"
                 order: desc
-          mappings:
-            _meta:
-              package:
-                name: elastic_agent
-              managed_by: security_onion
-              managed: true
         composed_of:
+          - "event-mappings"
           - "logs-elastic_agent.osquerybeat@package"
           - "logs-elastic_agent.osquerybeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
@@ -795,7 +845,7 @@ elasticsearch:
           - "logs-elastic_agent.packetbeat@custom"
           - "so-fleet_globals-1"
           - "so-fleet_agent_id_verification-1"
-        priority: 200
+        priority: 501
         data_stream:
           hidden: false
           allow_custom_routing: false
