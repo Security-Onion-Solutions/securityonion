@@ -140,7 +140,7 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
 # Create cert for Elastic Fleet Host
 
 etc_elasticfleet_key:
