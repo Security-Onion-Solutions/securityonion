@@ -31,6 +31,10 @@ log_has_errors() {
 
     # Ignore Failed: 0 since that is the salt state output, and we detect state failures
     # via Result: False already.
+
+    # This is ignored for Ubuntu
+    # Failed to restart snapd.mounts-pre.target: Operation refused, unit snapd.mounts-pre.target
+    # may be requested by dependency only (it is configured to refuse manual start/stop).
     
     grep -E "FAILED|Failed|failed|ERROR|Result: False" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
@@ -46,6 +50,7 @@ log_has_errors() {
         grep -vE "code: 100" | \
         grep -vE "/nsm/rules/sigma*" | \
         grep -vE "/nsm/rules/yara*" | \
+        grep -vE "Failed to restart snapd" | \
         grep -vE "Running scope as unit" &> "$error_log"
     
     if [[ $? -eq 0 ]]; then
