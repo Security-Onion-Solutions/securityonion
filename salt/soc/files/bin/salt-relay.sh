@@ -17,7 +17,7 @@ function log() {
 function make_pipe() {
   path=$1
 
-  log "Creating pipe: $path"  
+  log "Creating pipe: $path"
   rm -f "${path}"
   mkfifo "${path}"
   chmod 0660 "${path}"
@@ -172,6 +172,101 @@ function manage_salt() {
   fi
 }
 
+function send_file() {
+  request=$1
+  from=$(echo "$request" | jq -r .from)
+  to=$(echo "$request" | jq -r .to)
+  node=$(echo "$request" | jq -r .node)
+  [ $(echo "$request" | jq -r .cleanup) != "true" ] ; cleanup=$?
+
+  log "From: $from"
+  log "To: $to"
+  log "Node: $node"
+  log "Cleanup: $cleanup"
+
+  log "encrypting..."
+  gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from"
+
+  fromgpg="$from.gpg"
+  filename=$(basename "$fromgpg")
+
+  log "sending..."
+  response=$($CMD_PREFIX salt-cp -C "$node" "$fromgpg" "$to")
+  # salt-cp returns 0 even if the file transfer fails, so we need to check the response.
+  # Remove the node and filename from the response on the off-chance they contain
+  # the word "True" in them
+  echo $response | sed "s/$node//" | sed "s/$filename//" | grep True
+  exit_code=$?
+
+  rm -f "$fromgpg"
+
+  log Response:$'\n'"$response"
+  log "Exit Code: $exit_code"
+
+  if [[ $cleanup -eq 1 ]]; then
+    log "Cleaning up file $from"
+    rm -f "$from"
+  fi
+
+  if [[ exit_code -eq 0 ]]; then
+    $(echo "true" > "${SOC_PIPE}")
+  else
+    $(echo "false" > "${SOC_PIPE}")
+  fi
+}
+
+function import_file() {
+  request=$1
+  node=$(echo "$request" | jq -r .node)
+  file=$(echo "$request" | jq -r .file)
+  importer=$(echo "$request" | jq -r .importer)
+
+  log "Node: $node"
+  log "File: $file"
+  log "Importer: $importer"
+
+  filegpg="$file.gpg"
+
+  log "decrypting..."
+  $CMD_PREFIX "salt '$node' cmd.run 'gpg --passphrase \"infected\" --batch --decrypt \"$filegpg\" > \"$file\"'"
+  decrypt_code=$?
+
+  if [[ $decrypt_code -eq 0 ]]; then
+    log "importing..."
+    case $importer in
+      pcap)
+        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
+        exit_code=$?
+        ;;
+      evtx)
+        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
+        exit_code=$?
+        ;;
+      *)
+        response="Unsupported importer: $importer"
+        exit_code=1
+        ;;
+    esac
+  else
+    response="Failed to decrypt file: $file"
+    exit_code=$decrypt_code
+  fi
+
+  rm -f "$file" "$filegpg"
+
+  log Response:$'\n'"$response"
+  log "Exit Code: $exit_code"
+
+  if [[ exit_code -eq 0 ]]; then
+    # trim off the node header ("manager_standalone:\n") and parse out the URL
+    url=$(echo "$response" | tail -n +2 | jq -r .url)
+    $(echo "$url" > "${SOC_PIPE}")
+  else
+    log "false"
+    $(echo "false" > "${SOC_PIPE}")
+  fi
+}
+
 while true; do
   log "Listening for request"
   request=$(cat ${SOC_PIPE})
@@ -190,6 +285,12 @@ while true; do
         ;;
       manage-salt)
         manage_salt "${request}"
+        ;;
+      send-file)
+        send_file "${request}"
+        ;;
+      import-file)
+        import_file "${request}"
         ;;
       *)
         log "Unsupported command: $command"
