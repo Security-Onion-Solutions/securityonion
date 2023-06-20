@@ -10,6 +10,10 @@ include:
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
+net.core.wmem_default:
+  sysctl.present:
+    - value: 26214400
+
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
   file.absent:
