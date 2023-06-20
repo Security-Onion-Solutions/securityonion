@@ -4,7 +4,7 @@
 {% if GLOBALS.os == 'Rocky' %}
 
 include:
-  - workstation.packages
+  - desktop.packages
 
 graphical_target:
   file.symlink:
@@ -12,13 +12,12 @@ graphical_target:
     - target: /lib/systemd/system/graphical.target
     - force: True
     - require:
-      - pkg: X Window System
-      - pkg: graphical_extras
+      - pkg: cinnamon
 
 {% else %}
 
 workstation_xwindows_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on CentOS'
+    - comment: 'SO Analyst Workstation can only be installed on Rocky'
 
 {% endif %}
