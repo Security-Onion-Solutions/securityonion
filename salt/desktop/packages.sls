@@ -319,13 +319,12 @@ desktop_packages:
 
 desktop_remove:
   pkg.removed:
-    pkgs:
-      - hplip
-      - isdn4k-utils
-      - mpage
-      - shim-unsigned-*64
-      - xane-gimp
-      - xsane
+    - hplip
+    - isdn4k-utils
+    - mpage
+    - shim-unsigned-*64
+    - xane-gimp
+    - xsane
 
 {% else %}
 
