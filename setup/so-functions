@@ -2402,7 +2402,12 @@ update_sudoers_for_testing() {
 update_packages() {
 	if [[ $is_rocky ]]; then
 		logCmd "dnf repolist"
-		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*,rocky-repos"
+		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
+		RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
+		info "Removing repo files added by rocky-repos package update"
+		for FILE in ${RMREPOFILES[@]}; do
+			logCmd "rm -f /etc/yum.repos.d/$FILE"
+		done
 	else
 		info "Running apt-get update"
 		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
