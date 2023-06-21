@@ -98,8 +98,6 @@ desktop_packages:
       - google-noto-sans-sinhala-vf-fonts
       - google-noto-serif-cjk-ttc-fonts
       - grub2-common
-      - grub2-efi-*64
-      - grub2-efi-*64-cdboot
       - grub2-pc-modules
       - grub2-tools
       - grub2-tools-efi
@@ -244,7 +242,6 @@ desktop_packages:
       - sg3_utils
       - sg3_utils-libs
       - shadow-utils
-      - shim-*64
       - sil-abyssinica-fonts
       - sil-nuosu-fonts
       - sil-padauk-fonts
@@ -296,6 +293,14 @@ desktop_packages:
       - yum
       - zip
 
+desktop_remove:
+  pkg.removed:
+    - hplip
+    - isdn4k-utils
+    - mpage
+    - shim-unsigned-*64
+    - xane-gimp
+    - xsane
 {% else %}
 
 workstation_packages_os_fail:
