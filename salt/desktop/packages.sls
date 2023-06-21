@@ -317,15 +317,6 @@ desktop_packages:
       - xed
       - xreader
 
-desktop_remove:
-  pkg.removed:
-    - hplip
-    - isdn4k-utils
-    - mpage
-    - shim-unsigned-*64
-    - xane-gimp
-    - xsane
-
 {% else %}
 
 workstation_packages_os_fail:
