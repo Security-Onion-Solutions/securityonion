@@ -12,7 +12,7 @@ graphical_target:
     - target: /lib/systemd/system/graphical.target
     - force: True
     - require:
-      - pkg: cinnamon
+      - desktop_packages
 
 {% else %}
 
