@@ -10,8 +10,8 @@ remove_graphical_target:
     - force: True
 
 {% else %}
-workstation_trusted-ca_os_fail:
+desktop_trusted-ca_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on CentOS'
+    - comment: 'SO Desktop can only be installed on Rocky'
 
 {% endif %}

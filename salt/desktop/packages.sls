@@ -295,7 +295,7 @@ desktop_packages:
 
 {% else %}
 
-workstation_packages_os_fail:
+desktop_packages_os_fail:
   test.fail_without_changes:
     - comment: 'SO Analyst Workstation can only be installed on Rocky'
 

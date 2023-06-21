@@ -16,7 +16,7 @@ graphical_target:
 
 {% else %}
 
-workstation_xwindows_os_fail:
+desktop_xwindows_os_fail:
   test.fail_without_changes:
     - comment: 'SO Analyst Workstation can only be installed on Rocky'
 
