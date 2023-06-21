@@ -26,10 +26,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.20-3.1.el9
-      - docker-ce: 23.0.5-1.el9
-      - docker-ce-cli: 23.0.5-1.el9
-      - docker-ce-rootless-extras: 23.0.5-1.el9
+      - containerd.io: 1.6.21-3.1.el9
+      - docker-ce: 24.0.2-1.el9
+      - docker-ce-cli: 24.0.2-1.el9
+      - docker-ce-rootless-extras: 24.0.2-1.el9
     - hold: True
     - update_holds: True
 {% endif %}
