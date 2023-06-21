@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -23,6 +23,7 @@ so-soc:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
+      - /nsm/soc/uploads:/opt/sensoroni/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
