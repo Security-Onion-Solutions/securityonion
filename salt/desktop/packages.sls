@@ -318,14 +318,13 @@ workstation_packages:
       - xreader
 
 desktop_remove:
-  pkg.absent:
-    pkgs:
-      - hplip
-      - isdn4k-utils
-      - mpage
-      - shim-unsigned-*64
-      - xane-gimp
-      - xsane
+  pkg.removed:
+    - hplip
+    - isdn4k-utils
+    - mpage
+    - shim-unsigned-*64
+    - xane-gimp
+    - xsane
 
 {% else %}
 
