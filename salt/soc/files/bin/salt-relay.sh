@@ -185,7 +185,8 @@ function send_file() {
   log "Cleanup: $cleanup"
 
   log "encrypting..."
-  gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from"
+  response=$(gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from")
+  log Response:$'\n'"$response"
 
   fromgpg="$from.gpg"
   filename=$(basename "$fromgpg")
