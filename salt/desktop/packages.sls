@@ -293,14 +293,6 @@ desktop_packages:
       - yum
       - zip
 
-desktop_remove:
-  pkg.removed:
-    pkgs:
-      - hplip
-      - isdn4k-utils
-      - mpage
-      - xane-gimp
-      - xsane
 {% else %}
 
 workstation_packages_os_fail:
