@@ -4,7 +4,7 @@
 {% if GLOBALS.os == 'Rocky' %}
 
 
-workstation_packages:
+desktop_packages:
   pkg.installed:
     - pkgs:
       - audit
