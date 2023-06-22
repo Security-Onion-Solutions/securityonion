@@ -209,6 +209,7 @@ base:
     - suricata
     - zeek
     - elasticfleet.install_agent_grid
+    - elasticagent
     - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':

@@ -1,0 +1,118 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{%- set ES_USER = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') %}
+{%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
+
+id: aea1ba80-1065-11ee-a369-97538913b6a9
+revision: 2
+outputs:
+  default:
+    type: elasticsearch
+    hosts:
+      - 'https://{{ GLOBALS.hostname }}:9200'
+    username: '{{ ES_USER }}'
+    password: '{{ ES_PASS }}'
+output_permissions: {}
+agent:
+  download:
+    sourceURI: 'http://{{ GLOBALS.manager }}:8443/artifacts/'
+  monitoring:
+    enabled: false
+    logs: false
+    metrics: false
+  features: {}
+inputs:
+  - id: logfile-logs-80ffa884-2cfc-459a-964a-34df25714d85
+    name: suricata-logs
+    revision: 1
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version: 1.1.2
+    data_stream:
+      namespace: so
+    package_policy_id: 80ffa884-2cfc-459a-964a-34df25714d85
+    streams:
+      - id: logfile-log.log-80ffa884-2cfc-459a-964a-34df25714d85
+        data_stream:
+          dataset: suricata
+        paths:
+          - /nsm/suricata/eve*.json
+        processors:
+          - add_fields:
+              target: event
+              fields:
+                category: network
+                module: suricata
+        pipeline: suricata.common
+  - id: logfile-logs-90103ac4-f6bd-4a4a-b596-952c332390fc
+    name: strelka-logs
+    revision: 1
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version: 1.1.2
+    data_stream:
+      namespace: so
+    package_policy_id: 90103ac4-f6bd-4a4a-b596-952c332390fc
+    streams:
+      - id: logfile-log.log-90103ac4-f6bd-4a4a-b596-952c332390fc
+        data_stream:
+          dataset: strelka
+        paths:
+          - /nsm/strelka/log/strelka.log
+        processors:
+          - add_fields:
+              target: event
+              fields:
+                category: file
+                module: strelka
+        pipeline: strelka.file
+  - id: logfile-logs-6197fe84-9b58-4d9b-8464-3d517f28808d
+    name: zeek-logs
+    revision: 1
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version: 1.1.2
+    data_stream:
+      namespace: so
+    package_policy_id: 6197fe84-9b58-4d9b-8464-3d517f28808d
+    streams:
+      - id: logfile-log.log-6197fe84-9b58-4d9b-8464-3d517f28808d
+        data_stream:
+          dataset: zeek
+        paths:
+          - /nsm/zeek/logs/current/*.log
+        processors:
+          - dissect:
+              tokenizer: '/nsm/zeek/logs/current/%{pipeline}.log'
+              field: log.file.path
+              trim_chars: .log
+              target_prefix: ''
+          - script:
+              lang: javascript
+              source: |
+                function process(event) {
+                  var pl = event.Get("pipeline");
+                  event.Put("@metadata.pipeline", "zeek." + pl);
+                }
+          - add_fields:
+              target: event
+              fields:
+                category: network
+                module: zeek
+          - add_tags:
+              tags: ics
+              when:
+                regexp:
+                  pipeline: >-
+                    ^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*
+        exclude_files:
+          - >-
+            broker|capture_loss|cluster|ecat_arp_info|known_hosts|known_services|loaded_scripts|ntp|ocsp|packet_filter|reporter|stats|stderr|stdout.log$
