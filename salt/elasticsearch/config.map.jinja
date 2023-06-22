@@ -1,13 +1,23 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS with context %}
-{% from 'logstash/map.jinja' import LOGSTASH_NODES with context %}
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
+{# ES_LOGSTASH_NODES is the same as LOGSTASH_NODES from logstash/map.jinja but heavynodes are removed #}
+{% set ES_LOGSTASH_NODES = [] %}
+{% set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{% for node_type, node_details in node_data.items() | sort %}
+{%   if node_type != 'heavynode' %}
+{%     for hostname in node_data[node_type].keys() %}
+{%       do ES_LOGSTASH_NODES.append({hostname:node_details[hostname].ip}) %}
+{%     endfor %}
+{%   endif %}
+{% endfor %}
+
 {% if grains.id.split('_') | last in ['manager','managersearch','standalone'] %}
-    {% if LOGSTASH_NODES | length > 1 %}
+    {% if ES_LOGSTASH_NODES | length > 1 %}
       {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': []}}) %}
-      {% for NODE in LOGSTASH_NODES %}
+      {% for NODE in ES_LOGSTASH_NODES %}
         {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
       {% endfor %}
       {% if grains.id.split('_') | last == 'manager' %}
@@ -23,7 +33,7 @@
   {% endif %}
   {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
 {% elif grains.id.split('_') | last == 'heavynode' %}
-  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client']}) %}
+  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client', 'ingest']}) %}
 {% endif %}
 {% if HIGHLANDER %}
       {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.xpack.ml.update({'enabled': true}) %}

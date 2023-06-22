@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
+{%   from 'elasticsearch/config.map.jinja' import ES_LOGSTASH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
@@ -32,7 +33,7 @@ so-elasticsearch:
       {% endfor %}
     {% endif %}
     - environment:
-      {% if LOGSTASH_NODES | length == 1 or GLOBALS.role == 'so-heavynode' %}
+      {% if ES_LOGSTASH_NODES | length == 1 or GLOBALS.role == 'so-heavynode' %}
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
