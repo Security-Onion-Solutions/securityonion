@@ -23,7 +23,7 @@ so-soc:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
-      - /nsm/soc/uploads:/opt/sensoroni/uploads:rw
+      - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
