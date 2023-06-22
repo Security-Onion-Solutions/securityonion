@@ -235,8 +235,8 @@ function updatePassword() {
     # Update DB with new hash
     echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), created_at=datetime('now'), updated_at=datetime('now') where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='password');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     # Deactivate MFA
-    echo "delete from identity_credential_identifiers where identity_credential_id=(select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
-    echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='totp');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    echo "delete from identity_credential_identifiers where identity_credential_id=(select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name in ('totp', 'webauthn')));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name in ('totp', 'webauthn'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
   fi
 }

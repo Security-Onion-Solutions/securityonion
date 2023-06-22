@@ -2046,8 +2046,8 @@ saltify() {
 		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt_rc/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
+		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
 		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
 
 		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
@@ -2062,7 +2062,7 @@ saltify() {
 		# Ain't nothing but a GPG 
 
 		retry 150 20 "apt-get update" "" "Err:" || fail_setup
-		retry 150 20 "apt-get -y install salt-common-$SALTVERSION salt-minion-$SALTVERSION" || fail_setup
+		retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
 		retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
 		#retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
 
@@ -2402,7 +2402,12 @@ update_sudoers_for_testing() {
 update_packages() {
 	if [[ $is_rocky ]]; then
 		logCmd "dnf repolist"
-		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
+		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
+		RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
+		info "Removing repo files added by rocky-repos package update"
+		for FILE in ${RMREPOFILES[@]}; do
+			logCmd "rm -f /etc/yum.repos.d/$FILE"
+		done
 	else
 		info "Running apt-get update"
 		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
