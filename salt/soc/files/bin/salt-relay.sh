@@ -229,18 +229,19 @@ function import_file() {
   filegpg="$file.gpg"
 
   log "decrypting..."
-  $CMD_PREFIX "salt '$node' cmd.run 'gpg --passphrase \"infected\" --batch --decrypt \"$filegpg\" > \"$file\"'"
+  $CMD_PREFIX salt "$node" cmd.run "gpg --passphrase \"infected\" -o \"$file.tmp\" --batch --decrypt \"$filegpg\""
   decrypt_code=$?
 
   if [[ $decrypt_code -eq 0 ]]; then
+    mv "$file.tmp" "$file"
     log "importing..."
     case $importer in
       pcap)
-        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
+        response=$($CMD_PREFIX salt "$node" cmd.run "so-import-pcap $file --json")
         exit_code=$?
         ;;
       evtx)
-        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
+        response=$($CMD_PREFIX salt "$node" cmd.run "so-import-evtx $file --json")
         exit_code=$?
         ;;
       *)
