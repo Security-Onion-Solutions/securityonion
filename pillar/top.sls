@@ -189,8 +189,6 @@ base:
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
-    - elasticagent.soc_elasticagent
-    - elasticagent.adv_elasticagent
     - curator.soc_curator
     - curator.adv_curator
     - redis.soc_redis
