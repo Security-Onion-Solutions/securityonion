@@ -62,8 +62,11 @@ curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fle
 # Initial Endpoints Policy
 elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"
 
-# Grid Nodes Policy
-elastic_fleet_policy_create "so-grid-nodes" "SO Grid Node Policy" "false" "1209600"
+# Grid Nodes - General Policy
+elastic_fleet_policy_create "so-grid-nodes_general" "SO Grid Nodes - General Purpose" "false" "1209600"
+
+# Grid Nodes - Heavy Node Policy
+elastic_fleet_policy_create "so-grid-nodes_heavy" "SO Grid Nodes - Heavy Node" "false" "1209600"
 
 # Load Integrations for default policies
 so-elastic-fleet-integration-policy-load
@@ -81,7 +84,8 @@ curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fl
 
 # Query for Enrollment Tokens for default policies
 ENDPOINTSENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
-GRIDNODESENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes")) | .api_key')
+GRIDNODESENROLLMENTOKENGENERAL=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_general")) | .api_key')
+GRIDNODESENROLLMENTOKENHEAVY=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_heavy")) | .api_key')
 
 # Store needed data in minion pillar
 pillar_file=/opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
@@ -92,13 +96,15 @@ printf '%s\n'\
     "    server:"\
     "      es_token: '$ESTOKEN'"\
     "      endpoints_enrollment: '$ENDPOINTSENROLLMENTOKEN'"\
-    "      grid_enrollment: '$GRIDNODESENROLLMENTOKEN'"\
+    "      grid_enrollment_general: '$GRIDNODESENROLLMENTOKENGENERAL'"\
+    "      grid_enrollment_heavy: '$GRIDNODESENROLLMENTOKENHEAVY'"\
     "" >> "$pillar_file"
 
 #Store Grid Nodes Enrollment token in Global pillar
 global_pillar_file=/opt/so/saltstack/local/pillar/global/soc_global.sls
 printf '%s\n'\
-    "  fleet_grid_enrollment_token: '$GRIDNODESENROLLMENTOKEN'"\
+    "  fleet_grid_enrollment_token_general: '$GRIDNODESENROLLMENTOKENGENERAL'"\
+    "  fleet_grid_enrollment_token_heavy: '$GRIDNODESENROLLMENTOKENHEAVY'"\
     "" >> "$global_pillar_file"
 
 # Call Elastic-Fleet Salt State

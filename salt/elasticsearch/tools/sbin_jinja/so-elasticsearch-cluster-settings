@@ -3,6 +3,8 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
+{%- from 'vars/globals.map.jinja' import GLOBALS %}
+{%- set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
 
 . /usr/sbin/so-common
 
@@ -14,17 +16,17 @@ COUNT=0
 ELASTICSEARCH_CONNECTED="no"
 while [[ "$COUNT" -le 30 ]]; do
   curl -K /opt/so/conf/elasticsearch/curl.config -k --output /dev/null --silent --head --fail -L https://localhost:"$ELASTICSEARCH_PORT"
-  if [ $? -eq 0 ]; then 
+  if [ $? -eq 0 ]; then
     ELASTICSEARCH_CONNECTED="yes"
     echo "connected!"
-    break   
+    break
   else
     ((COUNT+=1))
-    sleep 1 
+    sleep 1
     echo -n "."
   fi
 done
-if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then 
+if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
   echo
   echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'docker ps' \n  -running 'sudo so-elastic-restart'"
   echo
@@ -32,9 +34,12 @@ if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
   exit
 fi
 
-# Check to see if config already exists
-CLUSTER_SETTINGS=$(so-elasticsearch-query _cluster/settings | jq .persistent.cluster.remote)
-if [[ ! -z "$CLUSTER_SETTINGS" ]]; then
+{%- if GLOBALS.role in GLOBALS.manager_roles %}
   echo "Applying cross cluster search config..."
   so-elasticsearch-query _cluster/settings -d "{\"persistent\": {\"cluster\": {\"remote\": {\"{{ GLOBALS.manager }}\": {\"seeds\": [\"127.0.0.1:9300\"]}}}}}" -XPUT
-fi
+{%-   if node_data['heavynode'] is defined %}
+{%-     for hostname, node_details in node_data['heavynode'].items() %}
+  so-elasticsearch-query _cluster/settings -d "{\"persistent\": {\"cluster\": {\"remote\": {\"{{ hostname }}\": {\"seeds\": [\"{{node_details.ip}}:9300\"]}}}}}" -XPUT
+{%-     endfor %}
+{%-   endif %}
+{%- endif %}
