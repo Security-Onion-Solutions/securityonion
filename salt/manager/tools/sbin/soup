@@ -583,22 +583,22 @@ upgrade_salt() {
 verify_latest_update_script() {
   # Check to see if the update scripts match. If not run the new one.
   CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
-  GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/soup | awk '{print $1}')
   CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
-  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
+  GITCMN=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-common | awk '{print $1}')
   CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
-  GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+  GITIMGCMN=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-image-common | awk '{print $1}')
   CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
-  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-firewall | awk '{print $1}')
+  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
 
   if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
-    cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/manager/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/manager/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
     echo ""
     echo "The soup script has been modified. Please run soup again to continue the upgrade."
