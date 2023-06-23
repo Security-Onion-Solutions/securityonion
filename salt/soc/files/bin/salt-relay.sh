@@ -4,6 +4,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+. /usr/sbin/so-common
+
 PIPE_OWNER=${PIPE_OWNER:-socore}
 PIPE_GROUP=${PIPE_GROUP:-socore}
 SOC_PIPE=${SOC_PIPE:-/opt/so/conf/soc/salt/pipe}
@@ -185,7 +187,8 @@ function send_file() {
   log "Cleanup: $cleanup"
 
   log "encrypting..."
-  response=$(gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from")
+  password=$(lookup_pillar_secret import_pass)
+  response=$(gpg --passphrase "$password" --batch --symmetric --cipher-algo AES256 "$from")
   log Response:$'\n'"$response"
 
   fromgpg="$from.gpg"
@@ -229,7 +232,8 @@ function import_file() {
   filegpg="$file.gpg"
 
   log "decrypting..."
-  decrypt_cmd="gpg --passphrase infected -o $file.tmp --batch --decrypt $filegpg"
+  password=$(lookup_pillar_secret import_pass)
+  decrypt_cmd="gpg --passphrase $password -o $file.tmp --batch --decrypt $filegpg"
   $CMD_PREFIX salt "$node" cmd.run "\"$decrypt_cmd\""
   decrypt_code=$?
 
