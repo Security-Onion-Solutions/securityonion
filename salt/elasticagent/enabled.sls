@@ -31,19 +31,16 @@ so-elastic-agent:
         - {{ XTRAHOST }}
           {% endfor %}
         {% endif %}
-    - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elastic-agent'].port_bindings %}
-      - {{ BINDING }}
-      {% endfor %}
     - binds:
       - /opt/so/conf/elastic-agent/elastic-agent.yml:/usr/share/elastic-agent/elastic-agent.yml:ro
+      - /nsm:/nsm:ro
      {% if DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}      
-    - environment:
       {% if DOCKER.containers['so-elastic-agent'].extra_env %}
+    - environment:
         {% for XTRAENV in DOCKER.containers['so-elastic-agent'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}

@@ -7,10 +7,12 @@
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% if not AGENT_STATUS  %}
 
+{% if grains.role not in ['so-heavy'] %}
 run_installer:
   cmd.script:
     - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
     - cwd: /opt/so
     - args: -token={{ GRIDNODETOKEN }}
+{% endif %}  
 
 {% endif %}
