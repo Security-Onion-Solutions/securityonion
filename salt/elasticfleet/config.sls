@@ -8,13 +8,13 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 # Add EA Group
-elasticsagentgroup:
+elasticfleetgroup:
   group.present:
-    - name: elastic-agent
+    - name: elastic-fleet
     - gid: 947
 
 # Add EA user
-elastic-agent:
+elastic-fleet:
   user.present:
     - uid: 947
     - gid: 947

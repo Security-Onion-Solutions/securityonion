@@ -51,6 +51,21 @@ elastic_fleet_integration_update() {
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
+elastic_fleet_package_version_check() {
+    PACKAGE=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.version'
+}
+
+elastic_fleet_package_install() {
+    PKGKEY=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' "localhost:5601/api/fleet/epm/packages/$PKGKEY"
+}
+
+elastic_fleet_package_is_installed() {
+    PACKAGE=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.status'
+}
+
 elastic_fleet_policy_create() {
 
     NAME=$1

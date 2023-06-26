@@ -25,11 +25,30 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
     fi
   done
 
-  # Grid Nodes
-  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes/*.json
+  # Grid Nodes - General
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_general/*.json
   do
-    printf "\n\nGrid Nodes Policy - Loading $INTEGRATION\n"
-    elastic_fleet_integration_check "so-grid-nodes" "$INTEGRATION"
+    printf "\n\nGrid Nodes Policy_General - Loading $INTEGRATION\n"
+    elastic_fleet_integration_check "so-grid-nodes_general" "$INTEGRATION"
+    if [ -n "$INTEGRATION_ID" ]; then
+      printf "\n\nIntegration $NAME exists - Updating integration\n"
+      elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
+    else
+      printf "\n\nIntegration does not exist - Creating integration\n"
+      if [ "$NAME" != "elasticsearch-logs" ]; then
+        elastic_fleet_integration_create "@$INTEGRATION"
+      fi
+    fi
+  done
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/eaintegrations.txt
+  fi
+
+  # Grid Nodes - Heavy
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_heavy/*.json
+  do
+    printf "\n\nGrid Nodes Policy_Heavy - Loading $INTEGRATION\n"
+    elastic_fleet_integration_check "so-grid-nodes_heavy" "$INTEGRATION"
     if [ -n "$INTEGRATION_ID" ]; then
       printf "\n\nIntegration $NAME exists - Updating integration\n"
       elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"

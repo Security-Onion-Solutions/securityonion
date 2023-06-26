@@ -1,0 +1,33 @@
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{%- raw -%}
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "id": "zeek-logs",
+  "name": "zeek-logs",
+  "namespace": "so",
+  "description": "Zeek logs",
+  "policy_id": "so-grid-nodes_general",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/zeek/logs/current/*.log"
+            ],
+            "data_stream.dataset": "zeek",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"/nsm/zeek/logs/current/%{pipeline}.log\"\n    field: \"log.file.path\"\n    trim_chars: \".log\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\");\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        pipeline: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"",
+            "custom": "exclude_files: [\"{%- endraw -%}{{ ELASTICFLEETMERGED.logging.zeek.excluded | join('|') }}{%- raw -%}.log$\"]\n"
+          }
+        }
+      }
+    }
+  }
+}
+{%- endraw -%}
