@@ -5,22 +5,22 @@ Security Onion 2.4 Release Candidate 1 (RC1) is here!
 ## Screenshots
 
 Alerts
-![Alerts](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/39_alerts.png)
+![Alerts](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/50_alerts.png)
 
 Dashboards
-![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/40_dashboards.png)
+![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/51_dashboards.png)
 
 Hunt
-![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/41_hunt.png)
+![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/52_hunt.png)
 
 PCAP
-![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/42_pcap.png)
+![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/53_pcap.png)
 
 Grid
-![Grid](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/46_grid.png)
+![Grid](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/57_grid.png)
 
 Config
-![Config](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/50_config.png)
+![Config](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/61_config.png)
 
 ### Release Notes
 
