@@ -3,15 +3,21 @@
 {# we only want this state to run it is CentOS #}
 {% if GLOBALS.os == 'Rocky' %}
 
-remove_graphical_target:
+include:
+  - desktop.packages
+
+graphical_target:
   file.symlink:
     - name: /etc/systemd/system/default.target
-    - target: /lib/systemd/system/multi-user.target
+    - target: /lib/systemd/system/graphical.target
     - force: True
+    - require:
+      - desktop_packages
 
 {% else %}
-workstation_trusted-ca_os_fail:
+
+desktop_xwindows_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on CentOS'
+    - comment: 'SO Analyst Workstation can only be installed on Rocky'
 
 {% endif %}

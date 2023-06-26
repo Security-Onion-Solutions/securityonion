@@ -29,7 +29,7 @@ update_ca_certs:
 
 {% else %}
 
-workstation_trusted-ca_os_fail:
+desktop_trusted-ca_os_fail:
   test.fail_without_changes:
     - comment: 'SO Analyst Workstation can only be installed on CentOS'
 
