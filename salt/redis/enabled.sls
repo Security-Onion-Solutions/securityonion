@@ -30,7 +30,7 @@ so-redis:
       - /opt/so/conf/redis/working:/redis:rw
       - /etc/pki/redis.crt:/certs/redis.crt:ro
       - /etc/pki/redis.key:/certs/redis.key:ro
-      {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/certs/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/certs/ca.crt:ro
@@ -59,7 +59,7 @@ so-redis:
       - file: redisconf
       - x509: redis_crt
       - x509: redis_key
-      {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - x509: pki_public_ca_crt
       {% else %}
       - x509: trusttheca

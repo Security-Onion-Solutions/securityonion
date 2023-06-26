@@ -31,6 +31,6 @@ update_ca_certs:
 
 desktop_trusted-ca_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on CentOS'
+    - comment: 'SO Desktop can only be installed on CentOS'
 
 {% endif %}
