@@ -4,6 +4,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+. /usr/sbin/so-common
+
 PIPE_OWNER=${PIPE_OWNER:-socore}
 PIPE_GROUP=${PIPE_GROUP:-socore}
 SOC_PIPE=${SOC_PIPE:-/opt/so/conf/soc/salt/pipe}
@@ -185,7 +187,9 @@ function send_file() {
   log "Cleanup: $cleanup"
 
   log "encrypting..."
-  gpg --passphrase "infected" --batch --symmetric --cipher-algo AES256 "$from"
+  password=$(lookup_pillar_secret import_pass)
+  response=$(gpg --passphrase "$password" --batch --symmetric --cipher-algo AES256 "$from")
+  log Response:$'\n'"$response"
 
   fromgpg="$from.gpg"
   filename=$(basename "$fromgpg")
@@ -228,18 +232,23 @@ function import_file() {
   filegpg="$file.gpg"
 
   log "decrypting..."
-  $CMD_PREFIX "salt '$node' cmd.run 'gpg --passphrase \"infected\" --batch --decrypt \"$filegpg\" > \"$file\"'"
+  password=$(lookup_pillar_secret import_pass)
+  decrypt_cmd="gpg --passphrase $password -o $file.tmp --batch --decrypt $filegpg"
+  $CMD_PREFIX salt "$node" cmd.run "\"$decrypt_cmd\""
   decrypt_code=$?
 
   if [[ $decrypt_code -eq 0 ]]; then
+    mv "$file.tmp" "$file"
     log "importing..."
     case $importer in
       pcap)
-        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-pcap $file --json'")
+        import_cmd="so-import-pcap $file --json"
+        response=$($CMD_PREFIX salt "$node" cmd.run "\"$import_cmd\"")
         exit_code=$?
         ;;
       evtx)
-        response=$($CMD_PREFIX "salt '$node' cmd.run 'so-import-evtx $file --json'")
+        import_cmd="so-import-evtx $file --json"
+        response=$($CMD_PREFIX salt "$node" cmd.run "\"$import_cmd\"")
         exit_code=$?
         ;;
       *)

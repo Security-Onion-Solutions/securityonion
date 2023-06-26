@@ -1296,6 +1296,7 @@ generate_passwords(){
   KRATOSKEY=$(get_random_value)
   REDISPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
+  IMPORTPASS=$(get_random_value)
 }
 
 generate_interface_vars() {
@@ -2102,6 +2103,7 @@ secrets_pillar(){
 		"  playbook_admin: $PLAYBOOKADMINPASS"\
 		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
 		"  playbook_automation_api_key: "\
+		"  import_pass: $IMPORTPASS"\
 		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
   fi
 }
@@ -2402,7 +2404,12 @@ update_sudoers_for_testing() {
 update_packages() {
 	if [[ $is_rocky ]]; then
 		logCmd "dnf repolist"
-		logCmd "dnf -y update --allowerasing --exclude=salt*,wazuh*,docker*,containerd*"
+		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
+		RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
+		info "Removing repo files added by rocky-repos package update"
+		for FILE in ${RMREPOFILES[@]}; do
+			logCmd "rm -f /etc/yum.repos.d/$FILE"
+		done
 	else
 		info "Running apt-get update"
 		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
