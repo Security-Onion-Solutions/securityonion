@@ -950,6 +950,11 @@ detect_os() {
 			OSVER=9
 			is_rocky=true
 			pkgman="dnf"
+		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
+		    OS=centos
+			OSVER=9
+			is_centos=true
+			pkgman=dnf
 		else
 			info "We do not support the operating system you are trying to use."
 			fail_setup
@@ -1847,7 +1852,7 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky || $is_centos ]]; then
 		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
@@ -1893,7 +1898,7 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky || $is_centos ]]; then
 		if rpm -qa | grep -q "$package_name"; then
 			logCmd "dnf remove -y $package_name"
 		fi
@@ -1914,7 +1919,7 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky || $is_centos ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
@@ -1939,8 +1944,13 @@ securityonion_repo() {
 		# update this package because the repo config files get added back
 		# if the package is updated when the update_packages function is called
 		if [ -f "/etc/yum.repos.d/rocky.repo" ]; then
-			info "Backing up the .repo files that were added by the centos-release package."
+			info "Backing up the .repo files that were added by the rocky-release package."
 			logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
+			logCmd "dnf repolist all"
+		fi
+		if [ -f "/etc/yum.repos.d/centos.repo" ]; then
+			info "Backing up the .repo files that were added by the centos-release package."
+			logCmd "mv -bvf /etc/yum.repos.d/centos* /root/oldrepos/"
 			logCmd "dnf repolist all"
 		fi
 		if [[ $waitforstate ]]; then
@@ -1959,8 +1969,13 @@ repo_sync_local() {
 	info "Backing up old repos"
 	mkdir -p /nsm/repo
 	mkdir -p /opt/so/conf/reposync/cache
-	echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rocky/9" > /opt/so/conf/reposync/mirror.txt
-	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rocky/9" >> /opt/so/conf/reposync/mirror.txt
+	if [[ $is_rocky ]]; then
+		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rocky/9" > /opt/so/conf/reposync/mirror.txt
+		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rocky/9" >> /opt/so/conf/reposync/mirror.txt
+	else 
+		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/centos/9" > /opt/so/conf/reposync/mirror.txt
+		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/centos/9" >> /opt/so/conf/reposync/mirror.txt
+	fi	
 	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
 	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
@@ -1971,7 +1986,6 @@ repo_sync_local() {
 	echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
 	echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
 	echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
-	echo "#baseurl=https://repo.securityonion.net/file/so-repo/2.4/" >> /opt/so/conf/reposync/repodownload.conf
 	echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
 	echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
@@ -2031,7 +2045,7 @@ saltify() {
 
 	fi
 		
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky || $is_centos ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
 			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
@@ -2169,7 +2183,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky | $is_centos ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
@@ -2364,11 +2378,16 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_rocky ]]; then
+	if [[ $is_rocky || $is_centos ]]; then
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
-		RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
-		info "Removing repo files added by rocky-repos package update"
+		if [[ $is_rocky ]]; then
+			RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
+			info "Removing repo files added by rocky-repos package update"
+		else
+			RMREPOFILES=("centos-addons.repo" "centos-devel.repo" "centos-extras.repo" "centos.repo")
+			info "Removing repo files added by centos-repos package update"
+		fi
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
 		done
