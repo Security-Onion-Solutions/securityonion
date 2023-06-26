@@ -65,13 +65,13 @@ done
 # Let's see what OS we are dealing with here
 detect_os
 
-# Check to see if this is the setup type of "analyst".
-is_analyst=
-if [ "$setup_type" = 'analyst' ]; then
-	is_analyst=true
+# Check to see if this is the setup type of "desktop".
+is_desktop=
+if [ "$setup_type" = 'desktop' ]; then
+	is_desktop=true
 	# Check to see if this is an ISO. Usually this dir on exists on ISO installs.
 	if [ -d /root/SecurityOnion ]; then
-		is_analyst_iso=true
+		is_desktop_iso=true
 	fi
 fi
 
@@ -86,19 +86,19 @@ if [[ "$setup_type" == 'iso' ]]; then
 	fi
 fi
 
-# Check to see if this is an analyst install. If it is let's run things differently
-if [[ $is_analyst ]]; then
-	title "This is an analyst workstation install"
+# Check to see if this is an desktop install. If it is let's run things differently
+if [[ $is_desktop ]]; then
+	title "This is a desktop install"
 
 	# Make sure it's CentOS or Rocky Linux
-	if [[ ! $is_centos ]]; then
-		info "Analyst Workstation is only supported on CentOS 7 or Rocky Linux 8"
+	if [[ ! $is_rocky ]]; then
+		info "Security Onion Desktop is only supported on Rocky Linux 9"
 		exit 1
 	fi
 
-	if ! whiptail_analyst_install; then
-		if [[ $is_analyst_iso ]]; then
-			if whiptail_analyst_nongrid_iso; then
+	if ! whiptail_desktop_install; then
+		if [[ $is_desktop_iso ]]; then
+			if whiptail_desktop_nongrid_iso; then
 				# Remove setup from auto launching
 				parse_install_username
 				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
@@ -111,13 +111,13 @@ if [[ $is_analyst ]]; then
 				exit 0
 			fi
 		else
-			if whiptail_analyst_nongrid_network; then
+			if whiptail_desktop_nongrid_network; then
 				info ""
 				info ""
-				info "Kicking off the automated setup of the analyst workstation. This can take a while depending on your network connection."
+				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
 				info ""
 				info ""
-				analyst_salt_local
+				desktop_salt_local
 			else
 				# Abort!
 				exit 0
@@ -231,11 +231,11 @@ fi
 
 # Make sure the setup type is suppoted.
 case "$setup_type" in
-	iso | network | analyst) # Accepted values
+	iso | network | desktop) # Accepted values
 		info "Beginning Security Onion $setup_type install"
 		;;
 	*)
-		error "Invalid install type, must be 'iso', 'network' or 'analyst'."
+		error "Invalid install type, must be 'iso', 'network' or 'desktop'."
 		fail_setup
 		;;
 esac
@@ -277,11 +277,11 @@ if ! [[ -f $install_opt_file ]]; then
 		info "User cancelled setup."
 		whiptail_cancel
 	fi
-	# If this is an analyst install lets streamline the process. 
-	if [[ $is_analyst ]]; then
+	# If this is an desktop install lets streamline the process. 
+	if [[ $is_desktop ]]; then
 		# Prompt for hostname
 		collect_hostname
-		if [[ $is_analyst_iso ]]; then
+		if [[ $is_desktop_iso ]]; then
 			# Prompt Network Setup
 			whiptail_management_nic
 			whiptail_dhcp_or_static
@@ -294,7 +294,7 @@ if ! [[ -f $install_opt_file ]]; then
 			fi
 		
 		fi
-		if [[ ! $is_analyst_iso ]]; then
+		if [[ ! $is_desktop_iso ]]; then
 			# This should be a network install
 			whiptail_network_notice
 			# Warn about the dangers of DHCP
@@ -326,7 +326,7 @@ if ! [[ -f $install_opt_file ]]; then
 			true
 		fi
 	fi
-	if [[ ! $is_analyst ]]; then
+	if [[ ! $is_desktop ]]; then
 		whiptail_install_type
 	fi
 else

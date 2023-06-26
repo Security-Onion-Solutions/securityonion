@@ -305,6 +305,6 @@ desktop_packages:
 
 desktop_packages_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on Rocky'
+    - comment: 'SO desktop can only be installed on Rocky'
 
 {% endif %}

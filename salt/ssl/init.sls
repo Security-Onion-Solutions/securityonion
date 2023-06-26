@@ -16,7 +16,7 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
-{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'helixsensor'] %}
+{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import'] %}
 include:
   - ca
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -94,7 +94,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
 # Create a cert for Redis encryption
 redis_key:
   x509.private_key_managed:
@@ -332,7 +332,7 @@ eflogstashcrtlink:
 
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
@@ -554,7 +554,7 @@ msslkeyperms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-helix', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:

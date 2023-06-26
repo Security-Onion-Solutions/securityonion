@@ -18,6 +18,6 @@ graphical_target:
 
 desktop_xwindows_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Analyst Workstation can only be installed on Rocky'
+    - comment: 'SO Desktop can only be installed on Rocky'
 
 {% endif %}
