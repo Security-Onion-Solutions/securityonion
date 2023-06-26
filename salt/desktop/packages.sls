@@ -43,6 +43,7 @@ desktop_packages:
       - bpftool
       - bzip2
       - chkconfig
+      - chromium
       - chrony
       - cinnamon
       - cinnamon-control-center
@@ -67,6 +68,7 @@ desktop_packages:
       - dosfstools
       - dracut-config-rescue
       - dracut-live
+      - dsniff
       - e2fsprogs
       - ed
       - efi-filesystem
@@ -192,6 +194,7 @@ desktop_packages:
       - nemo-preview
       - net-tools
       - netronome-firmware
+      - ngrep
       - nm-connection-editor
       - nmap-ncat
       - nvme-cli
@@ -220,6 +223,7 @@ desktop_packages:
       - psacct
       - pt-sans-fonts
       - python3-libselinux
+      - python3-scapy
       - qemu-guest-agent
       - quota
       - realmd
@@ -251,6 +255,7 @@ desktop_packages:
       - smc-meera-fonts
       - sos
       - spice-vdagent
+      - ssldump
       - sssd
       - sssd-common
       - sssd-kcm
@@ -263,6 +268,7 @@ desktop_packages:
       - systemd-udev
       - tar
       - tcpdump
+      - tcpflow
       - teamd
       - thai-scalable-waree-fonts
       - time
@@ -282,8 +288,10 @@ desktop_packages:
       - vim-powerline
       - virt-what
       - wget
+      - whois
       - which
       - wireplumber
+      - wireshark
       - words
       - xdg-user-dirs-gtk
       - xed
