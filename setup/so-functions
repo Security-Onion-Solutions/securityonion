@@ -683,7 +683,7 @@ configure_ntp() {
 	if [[ $is_rocky || $is_centos ]]; then
 		systemctl enable chronyd
 		systemctl restart chronyd
-	elif [ "$OS" == 'ubuntu' ]; then
+	elif [[ $is_ubuntu ]]; then
 		systemctl enable chrony
 		systemctl restart chrony
 	fi
@@ -1022,7 +1022,7 @@ installer_prereq_packages() {
 #		logCmd "systemctl start NetworkManager"
 #	el
 	
-	if [ "$OS" == ubuntu ]; then
+	if [[ $is_ubuntu ]]; then
 		# Print message to stdout so the user knows setup is doing something
 		info "Running apt-get update"
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
@@ -1832,7 +1832,7 @@ reinstall_init() {
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
-		if [[ $OS == 'ubuntu' ]]; then
+		if [[ $is_ubuntu ]]; then
 			info "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
@@ -2356,7 +2356,7 @@ so_add_user() {
 }
 
 ubuntu_check() {
-	if [[ $OS == "ubuntu" ]]; then
+	if [[ $is_ubuntu ]]; then
 		if [[ $waitforstate ]]; then
 			whiptail_ubuntu_notsupported
 			fail_setup
