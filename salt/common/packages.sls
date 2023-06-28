@@ -77,7 +77,7 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
-      - mariadb-devel
+      - MariaDB-devel
       - python3-dnf-plugin-versionlock
       - nmap-ncat
       - yum-utils
