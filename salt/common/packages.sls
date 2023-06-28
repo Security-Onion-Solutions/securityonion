@@ -90,10 +90,9 @@ commonpkgs:
       - rsync
       - python3-rich
       - python3-pyyaml
-      #- python3-watchdog
       - python3-packaging
       - unzip
-      - fuse3
+      - fuse
       - fuse-libs
       - fuse-overlayfs
 {% endif %}
