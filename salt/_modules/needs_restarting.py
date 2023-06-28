@@ -10,6 +10,14 @@ def check():
     if path.exists('/var/run/reboot-required'):
       retval = 'True'
 
+  elif os == 'CentOS Stream':
+    cmd = 'needs-restarting -r > /dev/null 2>&1'
+    
+    try:
+      needs_restarting = subprocess.check_call(cmd, shell=True)
+    except subprocess.CalledProcessError:
+      retval = 'True'
+
   elif os == 'Rocky':
     cmd = 'needs-restarting -r > /dev/null 2>&1'
     
