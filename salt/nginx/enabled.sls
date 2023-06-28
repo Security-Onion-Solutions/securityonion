@@ -83,12 +83,17 @@ so-nginx:
 {%   endif%}
     - require:
       - file: nginxconf
-      {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+{%   if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+{%     if NGINXMERGED.ssl.replace_cert %}
+      - file: managerssl_key
+      - file: managerssl_crt
+{%     else %}
       - x509: managerssl_key
       - x509: managerssl_crt
+{%     endif%}
       - file: navigatorconfig
       - file: navigatordefaultlayer
-      {% endif %}
+{%   endif %}
 
 delete_so-nginx_so-status.disabled:
   file.uncomment:
