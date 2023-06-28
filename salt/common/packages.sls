@@ -90,7 +90,7 @@ commonpkgs:
       - rsync
       - python3-rich
       - python3-pyyaml
-      - python3-watchdog
+      #- python3-watchdog
       - python3-packaging
       - unzip
 {% endif %}
