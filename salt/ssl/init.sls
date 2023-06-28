@@ -76,12 +76,6 @@ influxdb_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/influxdb.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -121,12 +115,6 @@ redis_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/redis.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -169,12 +157,6 @@ etc_elasticfleet_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticfleet.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -250,12 +232,6 @@ etc_elasticfleetlogstash_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -359,12 +335,6 @@ etc_filebeat_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -436,10 +406,6 @@ registry_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/registry.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
     - retry:
         attempts: 5
@@ -478,12 +444,6 @@ regkeyperms:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -506,48 +466,6 @@ elasticp12perms:
     - name: /etc/pki/elasticsearch.p12
     - mode: 640
     - group: 930
-
-managerssl_key:
-  x509.private_key_managed:
-    - name: /etc/pki/managerssl.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
-    - prereq:
-      - x509: /etc/pki/managerssl.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-
-# Create a cert for the reverse proxy
-managerssl_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/managerssl.crt
-    - ca_server: {{ ca_server }}
-    - signing_policy: managerssl
-    - private_key: /etc/pki/managerssl.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-msslkeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/managerssl.key
-    - mode: 640
-    - group: 939
 
   {% endif %}
 
@@ -587,12 +505,6 @@ conf_filebeat_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-{% if grains.role not in ['so-heavynode'] %}
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /opt/so/conf/filebeat/etc/pki/filebeat.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
-{% endif %}
     - timeout: 30
     - retry:
         attempts: 5
@@ -647,10 +559,6 @@ chownfilebeatp8:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/elasticsearch.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
     - retry:
         attempts: 5
