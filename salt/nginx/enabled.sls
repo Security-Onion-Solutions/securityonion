@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'nginx/map.jinja' import NGINXMERGED %}
 
 include:
   - nginx.ssl
@@ -73,6 +74,13 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+{%   if NGINXMERGED.ssl.replace_cert %}
+      - file: managerssl_key
+      - file: managerssl_crt
+{%   else %}
+      - x509: managerssl_key
+      - x509: managerssl_crt
+{%   endif%}
     - require:
       - file: nginxconf
       {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
