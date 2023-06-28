@@ -64,10 +64,6 @@ managerssl_crt:
     - days_remaining: 0
     - days_valid: 820
     - backup: True
-    - unless:
-      # https://github.com/saltstack/salt/issues/52167
-      # Will trigger 5 days (432000 sec) from cert expiration
-      - 'enddate=$(date -d "$(openssl x509 -in /etc/pki/managerssl.crt -enddate -noout | cut -d= -f2)" +%s) ; now=$(date +%s) ; expire_date=$(( now + 432000)); [ $enddate -gt $expire_date ]'
     - timeout: 30
     - retry:
         attempts: 5
