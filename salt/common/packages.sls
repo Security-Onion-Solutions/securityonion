@@ -23,6 +23,9 @@ commonpkgs:
       - python3-lxml
       - git
       - vim
+      - fuse3
+      - fuse-overlayfs
+      - fuse3-libs
 
 # since Ubuntu requires and internet connection we can use pip to install modules
 python3-pip:
