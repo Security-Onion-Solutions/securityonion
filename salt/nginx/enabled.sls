@@ -8,7 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
-{%   set ca_server = GLOBALS.hostname %}
+{%   set ca_server = GLOBALS.minion_id %}
 
 include:
   - nginx.config
