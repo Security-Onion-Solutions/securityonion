@@ -93,4 +93,7 @@ commonpkgs:
       #- python3-watchdog
       - python3-packaging
       - unzip
+      - fuse3
+      - fuse-libs
+      - fuse-overlayfs
 {% endif %}
