@@ -9,6 +9,7 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
+  - nginx.ssl
   - nginx.config
   - nginx.sostatus
 
