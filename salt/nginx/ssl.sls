@@ -7,6 +7,8 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
+{#   since nginx runs on the manager we can just use the hostname as the ca server #}
+{%   set ca_server = GLOBALS.hostname %}
 
 {#   if the user has selected to replace the crt and key in the ui #}
 {%   if NGINXMERGED.ssl.replace_cert %}

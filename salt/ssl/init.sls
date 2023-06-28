@@ -507,8 +507,6 @@ elasticp12perms:
     - mode: 640
     - group: 930
 
-
-
   {% endif %}
 
 
