@@ -95,4 +95,5 @@ commonpkgs:
       - fuse
       - fuse-libs
       - fuse-overlayfs
+      - fuse-common
 {% endif %}
