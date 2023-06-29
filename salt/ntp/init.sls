@@ -19,6 +19,8 @@ chronyconf:
 
 {% if GLOBALS.os == 'Rocky' %}
 chronyd:
+{% elif GLOBALS.os == 'CentOS Stream' %}
+chronyd:
 {% else %}
 chrony:
 {% endif %}
