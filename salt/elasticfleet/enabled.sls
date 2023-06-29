@@ -9,10 +9,21 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
+{%   set ENABLEAUTOCONFIGURATION = salt['pillar.get']('elasticfleet:config:server:enable_auto_configuration','') %}
 
 include:
   - elasticfleet.config
   - elasticfleet.sostatus
+
+{% if ENABLEAUTOCONFIGURATION %}
+so-elastic-fleet-auto-configure-logstash-outputs:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-outputs-update
+
+#so-elastic-fleet-auto-configure-server-urls:
+#  cmd.run:
+#    - name: /usr/sbin/so-elastic-fleet-urls-update
+{% endif %}
 
 {%   if SERVICETOKEN != '' %}
 so-elastic-fleet:
