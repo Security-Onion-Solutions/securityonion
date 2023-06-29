@@ -7,7 +7,7 @@
 {% from 'repo/client/map.jinja' import ABSENTFILES with context %}
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
 
-{% if GLOBALS.os == 'CentOS' %}
+{% if GLOBALS.os == 'CentOS Stream' %}
 
 {% if ABSENTFILES|length > 0%}
   {% for file in ABSENTFILES  %}
