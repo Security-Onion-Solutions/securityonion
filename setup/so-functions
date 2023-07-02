@@ -964,6 +964,11 @@ detect_os() {
 		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
 			OSVER=focal
+			UBVER=20.04
+			is_ubuntu=true
+		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
+			OSVER=jammy
+			UBVER=22.04
 			is_ubuntu=true
 		else
 			info "We do not support your current version of Ubuntu."
@@ -2023,8 +2028,8 @@ saltify() {
 		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
+		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
 		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
 
 		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
@@ -2045,7 +2050,7 @@ saltify() {
 
 	fi
 		
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rocky || $is_centos || $is_ubuntu ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
 			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
