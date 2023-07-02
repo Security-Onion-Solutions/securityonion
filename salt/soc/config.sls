@@ -32,9 +32,10 @@ soclogdir:
 
 socsaltdir:
   file.directory:
-    - name: /opt/so/conf/soc/salt
+    - name: /opt/so/conf/soc/queue
     - user: 939
     - group: 939
+    - mode: 770
     - makedirs: True
 
 socconfig:
