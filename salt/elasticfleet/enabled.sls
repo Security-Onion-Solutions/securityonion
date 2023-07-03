@@ -50,17 +50,19 @@ so-elastic-fleet:
       {% endif %}      
     - environment:
       - FLEET_SERVER_ENABLE=true
-      - FLEET_URL=https://{{ GLOBALS.node_ip }}:8220
+      - FLEET_URL=https://{{ GLOBALS.hostname }}:8220
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
-      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
       {% if GLOBALS.os == 'Ubuntu' %}
       - FLEET_CA=/etc/ssl/certs/intca.crt     
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
       {% else %}
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
+
       {% endif %}
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
