@@ -18,6 +18,7 @@ commonpkgs:
       - sqlite3
       - libssl-dev
       - python3-dateutil
+      - python3-docker
       - python3-packaging
       - python3-watchdog
       - python3-lxml
