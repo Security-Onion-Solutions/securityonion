@@ -39,6 +39,9 @@ so-elastic-fleet:
       {% endfor %}
     - binds:
       - /etc/pki:/etc/pki:ro
+      {% if GLOBALS.os == 'Ubuntu' %}
+      - /etc/ssl:/etc/ssl:ro
+      {% endif %}
       #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -54,7 +57,11 @@ so-elastic-fleet:
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
+      {% if GLOBALS.os == 'Ubuntu' %}
+      - FLEET_CA=/etc/ssl/certs/intca.crt     
+      {% else %}
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      {% endif %}
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
