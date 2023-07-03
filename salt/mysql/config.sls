@@ -17,6 +17,8 @@ mysqlpkgs:
       - python3-mysqldb
         {% elif grains['oscodename'] == 'focal' %}
       - python3-mysqldb
+        {% elif grains['oscodename'] == 'jammy' %}
+      - python3-mysqldb
         {% endif %}
       {% else %}
       - python3-mysqlclient
