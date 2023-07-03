@@ -23,7 +23,13 @@ commonpkgs:
       - python3-lxml
       - git
       - vim
+      - tar
+      - unzip
+      {% if grains.oscodename == 'jammy' %}
+      - python3-rich
+      {% endif %}
 
+{% if grains.oscodename == 'focal' %}
 # since Ubuntu requires and internet connection we can use pip to install modules
 python3-pip:
   pkg.installed
@@ -34,7 +40,7 @@ python-rich:
     - target: /usr/local/lib/python3.8/dist-packages/
     - require:
       - pkg: python3-pip
-  
+{% endif %}
 
 {% elif GLOBALS.os == 'Rocky' %}     
 commonpkgs:
