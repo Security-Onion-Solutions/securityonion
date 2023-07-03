@@ -14,6 +14,7 @@ base:
     - repo.client
     - ntp
     - schedule
+    - logrotate
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
