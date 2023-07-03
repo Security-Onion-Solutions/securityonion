@@ -31,7 +31,7 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
-      - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
+      - /opt/so/conf/soc/queue:/opt/sensoroni/queue:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
       {% if DOCKER.containers['so-soc'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-soc'].custom_bind_mounts %}
@@ -73,7 +73,7 @@ delete_so-soc_so-status.disabled:
 
 salt-relay:
   cron.present:
-    - name: 'ps -ef | grep salt-relay.sh | grep -v grep > /dev/null 2>&1 || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+    - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh &'
     - identifier: salt-relay
 
 {% else %}
