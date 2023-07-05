@@ -659,6 +659,7 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		logCmd "salt-call schedule.disable -linfo --local"
 		if [[ ! $is_airgap ]]; then
 			title "Downloading IDS Rules"
 			logCmd "so-rule-update"
@@ -683,6 +684,7 @@ if ! [[ -f $install_opt_file ]]; then
 		fi
 		checkin_at_boot
 		set_initial_firewall_access
+		logCmd "salt-call schedule.enable -linfo --local"
 		systemctl restart salt-master
 		systemctl restart salt-minion
 		verify_setup
