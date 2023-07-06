@@ -4,17 +4,20 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 {%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+{%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
 . /usr/sbin/so-common
+{% if GLOBALS.role != 'so-heavynode' %}
 . /usr/sbin/so-elastic-fleet-common
-
+{% endif %}
 
 default_conf_dir=/opt/so/conf
 
 # Define a default directory to load pipelines from
 ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
 
+{% if GLOBALS.role != 'so-heavynode' %}
 if [ -f /usr/sbin/so-elastic-fleet-common ]; then
 	# Wait for ElasticSearch to initialize
 	echo -n "Waiting for ElasticSearch..."
@@ -77,4 +80,61 @@ else
 	echo "Elastic Fleet not configured. Exiting..."
 	exit 0
 fi
+{% else %}
+    # Wait for ElasticSearch to initialize
+    echo -n "Waiting for ElasticSearch..."
+    COUNT=0
+    ELASTICSEARCH_CONNECTED="no"
+    while [[ "$COUNT" -le 240 ]]; do
+            so-elasticsearch-query / -k --output /dev/null --silent --head --fail
+            if [ $? -eq 0 ]; then
+                    ELASTICSEARCH_CONNECTED="yes"
+                    echo "connected!"
+                    break
+            else
+                    ((COUNT+=1))
+                    sleep 1
+                    echo -n "."
+            fi
+    done
+    if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
+            echo
+            echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+            echo
+            exit 1
+    fi
+
+    set -e
+
+    cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
+
+    echo "Loading ECS component templates..."
+    for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; so-elasticsearch-query _component_template/$TEMPLATE-mappings -d@$i -XPUT 2>/dev/null; echo; done
+
+    cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
+
+    echo "Loading Elastic Agent component templates..."
+    for i in so-*; do TEMPLATE=${i::-5}; echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
+
+    # Load SO-specific component templates
+    cd ${ELASTICSEARCH_TEMPLATES}/component/so
+
+    echo "Loading Security Onion component templates..."
+    for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
+    echo
+
+    # Load SO index templates
+    cd ${ELASTICSEARCH_TEMPLATES}/index
+
+    echo "Loading Security Onion index templates..."
+    shopt -s extglob
+    exclude_pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
+    for i in $exclude_pattern; do
+        TEMPLATE=${i::-14};
+        echo "$TEMPLATE";
+        so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null;
+        echo;
+    done
+    echo
+{% endif %}
 	cd - >/dev/null
