@@ -209,7 +209,7 @@ efcrtlink:
 etc_elasticfleetlogstash_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet-logstash.key
-    - bits: 4096
+    - keysize: 4096
     - backup: True
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
