@@ -96,7 +96,7 @@ strelkarepos:
 yara_update_script:
   file.managed:
     - name: /usr/sbin/so-yara-update
-    - source: salt://manager/files/so-yara-update.jinja
+    - source: salt://manager/tools/sbin_jinja/so-yara-update
     - user: root
     - group: root
     - mode: 755
