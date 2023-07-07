@@ -1,6 +1,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% if GLOBALS.os == 'Ubuntu' %}
+{% if GLOBALS.os_family == 'Debian' %}
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -23,6 +23,7 @@ commonpkgs:
       - python3-watchdog
       - python3-lxml
       - git
+      - rsync
       - vim
       - tar
       - unzip
