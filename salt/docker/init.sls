@@ -12,8 +12,18 @@ dockergroup:
     - name: docker
     - gid: 920
 
-{% if GLOBALS.os == 'Ubuntu' %}
-{%    if grains.oscodename == 'jammy' %}
+{% if GLOBALS.os_family == 'Debian' %}
+{%    if grains.oscodename == 'bookworm' %}
+dockerheldpackages:
+  pkg.installed:
+    - pkgs:
+      - containerd.io: 1.6.21-1
+      - docker-ce: 5:24.0.3-1~debian.12~bookworm
+      - docker-ce-cli: 5:24.0.3-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:24.0.3-1~debian.12~bookworm
+    - hold: True
+    - update_holds: True
+{%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
