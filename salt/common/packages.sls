@@ -14,7 +14,7 @@ commonpkgs:
       - software-properties-common
       - apt-transport-https
       - openssl
-      - netcat
+      - netcat-openbsd
       - sqlite3
       - libssl-dev
       - python3-dateutil
