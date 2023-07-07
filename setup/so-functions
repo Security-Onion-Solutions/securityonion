@@ -949,17 +949,12 @@ detect_os() {
 			OS=rocky
 			OSVER=9
 			is_rocky=true
-			pkgman="dnf"
+			is_rpm=true
 		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
 			OS=centos
 			OSVER=9
 			is_centos=true
-			pkgman=dnf
-		else
-			info "We do not support the operating system you are trying to use."
-			fail_setup
-		fi
-
+			is_rpm=true
 	elif [ -f /etc/os-release ]; then
 		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
@@ -970,9 +965,13 @@ detect_os() {
 			OSVER=jammy
 			UBVER=22.04
 			is_ubuntu=true
-		else
-			info "We do not support your current version of Ubuntu."
-			fail_setup
+			is_deb=true
+		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
+			OSVER=bookworm
+			DEBVER=12
+			is_debian=true
+			OS=debian
+			is_deb=true
 		fi
 		installer_prereq_packages
 
@@ -1859,7 +1858,7 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rpm ]]; then
 		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
@@ -1905,7 +1904,7 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rpm ]]; then
 		if rpm -qa | grep -q "$package_name"; then
 			logCmd "dnf remove -y $package_name"
 		fi
@@ -1926,7 +1925,7 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
@@ -2365,22 +2364,6 @@ so_add_user() {
 	fi
 }
 
-ubuntu_check() {
-	if [[ $is_ubuntu ]]; then
-		if [[ $waitforstate ]]; then
-			whiptail_ubuntu_notsupported
-			fail_setup
-		else
-		    if [[ $UBUNTUINSTALL == "needtoupgrade" ]]; then
-				whiptail_ubuntu_warning
-			else
-				whiptail_ubuntu_notsupported
-				fail_setup
-			fi
-		fi
-	fi
-}
-
 update_sudoers_for_testing() {
 	if [ -n "$TESTING" ]; then
 		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
@@ -2389,15 +2372,12 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rocky ]]; then
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
 		if [[ $is_rocky ]]; then
 			RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
 			info "Removing repo files added by rocky-repos package update"
-		else
-			RMREPOFILES=("centos-addons.repo" "centos-devel.repo" "centos-extras.repo" "centos.repo")
-			info "Removing repo files added by centos-repos package update"
 		fi
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
