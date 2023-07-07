@@ -66,8 +66,8 @@ so-elastic-fleet:
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
-      - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
-      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
+      - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}

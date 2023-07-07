@@ -1,11 +1,15 @@
-output {
-  http {
-    url => 'https://{{ GLOBALS.manager }}:5056'
-    cacert => ["/usr/share/filebeat/ca.crt"]
-    http_method => post
-    retry_non_idempotent => true
-    format => json_batch
-    http_compression => true
-    ecs_compatibility => v8
+filter {
+       mutate {
+                    add_tag => "fleet-lumberjack-{{ GLOBALS.hostname }}"
+          }
   }
-}
+
+output { 
+    lumberjack { 
+        codec => json 
+        hosts => "{{ GLOBALS.manager }}"
+        ssl_certificate => "/usr/share/filebeat/ca.crt"
+        port => 5056 
+        id => "fleet-lumberjack-{{ GLOBALS.hostname }}"
+        } 
+    }
