@@ -680,10 +680,10 @@ configure_ntp() {
 		'rtcsync' \
 		'logdir /var/log/chrony' >> $chrony_conf
 
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rpm ]]; then
 		systemctl enable chronyd
 		systemctl restart chronyd
-	elif [[ $is_ubuntu ]]; then
+	else 
 		systemctl enable chrony
 		systemctl restart chrony
 	fi
@@ -1027,7 +1027,7 @@ installer_prereq_packages() {
 #		logCmd "systemctl start NetworkManager"
 #	el
 	
-	if [[ $is_ubuntu ]]; then
+	if [[ $is_deb ]]; then
 		# Print message to stdout so the user knows setup is doing something
 		info "Running apt-get update"
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
@@ -1837,7 +1837,7 @@ reinstall_init() {
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
-		if [[ $is_ubuntu ]]; then
+		if [[ $is_deb ]]; then
 			info "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
@@ -2009,7 +2009,7 @@ repo_sync_local() {
 
 saltify() {
 	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
-	if [[ $is_ubuntu ]]; then
+	if [[ $is_deb ]]; then
 
 		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
 		update-alternatives --install /usr/bin/python python /usr/bin/python3.10 10
@@ -2022,6 +2022,7 @@ saltify() {
 			'openssl'
 			'netcat'
 			'jq'
+			'gnupg'
 		)
 		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || fail_setup
 
@@ -2029,8 +2030,26 @@ saltify() {
 		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/ $OSVER main" | sudo tee /etc/apt/sources.list.d/salt.list
+		if [[ $is_ubuntu ]]; then
+
+			# Add Salt Repo
+			logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+			echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/ $OSVER main" | sudo tee /etc/apt/sources.list.d/salt.list
+
+			# Add Docker Repo
+			add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
+		
+		else
+			# Add Salt Repo *NOTE* You have to use debian 11 since it isn't out for
+			logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg
+			echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/ 11 main" | sudo tee /etc/apt/sources.list.d/salt.list"
+
+			# Add Docker Repo
+			curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+			echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" > /etc/apt/sources.list.d/docker.list 
+		
+		fi
+
 		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
 
 		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
@@ -2055,7 +2074,7 @@ saltify() {
 		fi
 	fi
 		
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rpm ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
 			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
@@ -2193,7 +2212,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_rocky || $is_centos ]]; then
+	if [[ $is_rpm ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
