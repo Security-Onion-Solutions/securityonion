@@ -27,7 +27,7 @@ commonpkgs:
       - vim
       - tar
       - unzip
-      {% if grains.oscodename == 'jammy' %}
+      {% if grains.oscodename != 'focal' %}
       - python3-rich
       {% endif %}
 
