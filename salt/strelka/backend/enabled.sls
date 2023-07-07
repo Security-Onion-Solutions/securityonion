@@ -17,7 +17,7 @@ strelka_backend:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-backend:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
-      - /opt/so/conf/strelka/rules/:/etc/yara/:ro
+      - /nsm/rules/yara/:/etc/yara/:ro
       {% if DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
       - {{ BIND }}
