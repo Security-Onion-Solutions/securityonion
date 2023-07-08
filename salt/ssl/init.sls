@@ -234,7 +234,7 @@ chownelasticfleetlogstashcrt:
     - replace: False
     - name: /etc/pki/elasticfleet-logstash.crt
     - mode: 640
-    - user: 947
+    - user: 931
     - group: 939
 
 chownelasticfleetlogstashkey:
@@ -242,7 +242,7 @@ chownelasticfleetlogstashkey:
     - replace: False
     - name: /etc/pki/elasticfleet-logstash.key
     - mode: 640
-    - user: 947
+    - user: 931
     - group: 939
 # End -- Elastic Fleet Logstash Input Cert
 {% endif %} # endif is for not including HeavyNodes & Receivers 
