@@ -153,8 +153,8 @@ etc_elasticfleet_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-server.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
+    - CN: {{ GLOBALS.url_base }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -208,8 +208,8 @@ etc_elasticfleet_logstash_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-logstash.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
+    - CN: {{ GLOBALS.url_base }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
