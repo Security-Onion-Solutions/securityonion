@@ -62,7 +62,7 @@ so-logstash:
       - /etc/pki/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
       - /etc/pki/elasticfleet-logstash.key:/usr/share/logstash/elasticfleet-logstash.key:ro
       - /etc/pki/elasticfleet-lumberjack.crt:/usr/share/logstash/elasticfleet-lumberjack.crt:ro
-      - /etc/pki/elasticfleet-lumberjack.p8:/usr/share/logstash/elasticfleet-lumberjack.key:ro
+      - /etc/pki/elasticfleet-lumberjack.key:/usr/share/logstash/elasticfleet-lumberjack.key:ro
       {% endif %}
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro

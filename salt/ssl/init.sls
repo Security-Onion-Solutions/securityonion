@@ -186,7 +186,9 @@ chownelasticfleetkey:
     - user: 947
     - group: 939
 # End -- Elastic Fleet Host Cert
+{% endif %} # endif is for not including HeavyNodes & Receivers 
 
+{% if grains['role'] not in [ 'so-heavynode'] %}
 # Start -- Elastic Fleet Logstash Input Cert
 etc_elasticfleet_logstash_key:
   x509.private_key_managed:
@@ -220,7 +222,7 @@ etc_elasticfleet_logstash_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-logstash.key -topk8 -out /etc/pki/elasticfleet-logstash.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_logstash_key
 
 eflogstashperms:
   file.managed:
@@ -245,7 +247,7 @@ chownelasticfleetlogstashkey:
     - user: 931
     - group: 939
 # End -- Elastic Fleet Logstash Input Cert
-{% endif %} # endif is for not including HeavyNodes & Receivers 
+{% endif %} # endif is for not including HeavyNodes 
 
 # Start -- Elastic Fleet Node - Logstash Lumberjack Input / Output
 # Cert needed on: Managers, Receivers
