@@ -93,25 +93,45 @@ strelkarepos:
     - makedirs: True
 {%   endif %}
 
-yara_update_script:
-  file.managed:
-    - name: /usr/sbin/so-yara-update
-    - source: salt://manager/tools/sbin_jinja/so-yara-update
-    - user: root
-    - group: root
+yara_update_scripts:
+  file.recurse:
+    - name: /usr/sbin/
+    - source: salt://manager/tools/sbin_jinja/
+    - user: socore
+    - group: socore
     - mode: 755
     - template: jinja
     - defaults:
-        ISAIRGAP: {{ GLOBALS.airgap }}
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
+
+{%   if GLOBALS.airgap %}
+remove_strelka-yara-download:
+  cron.absent:
+    - user: socore
+    - identifier: strelka-yara-download
 
 strelka-yara-update:
   cron.present:
-    - user: root
+    - user: socore
     - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
     - identifier: strelka-yara-update
     - hour: '7'
     - minute: '1'
+{%   else %}
+remove_strelka-yara-update:
+  cron.absent:
+    - user: socore
+    - identifier: strelka-yara-update
+
+strelka-yara-download:
+  cron.present:
+    - user: socore
+    - name: '/usr/sbin/so-yara-download >> /nsm/strelka/log/yara-download.log 2>&1'
+    - identifier: strelka-yara-download
+    - hour: '7'
+    - minute: '1'
+{%   endif %}
+
 
 {% else %}
 
