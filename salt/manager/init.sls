@@ -109,6 +109,7 @@ rules_dir:
     - name: /nsm/rules/yara
     - user: socore
     - group: socore
+    - makedirs: True
 
 {%   if GLOBALS.airgap %}
 remove_strelka-yara-download:
