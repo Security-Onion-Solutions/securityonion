@@ -104,6 +104,12 @@ yara_update_scripts:
     - defaults:
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
+rules_dir:
+  file.directory:
+    - name: /nsm/rules/yara
+    - user: socore
+    - group: socore
+
 {%   if GLOBALS.airgap %}
 remove_strelka-yara-download:
   cron.absent:
