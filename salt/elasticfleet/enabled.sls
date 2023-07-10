@@ -18,7 +18,7 @@ include:
   - elasticfleet.config
   - elasticfleet.sostatus
 
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
