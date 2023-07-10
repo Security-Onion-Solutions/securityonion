@@ -1,0 +1,25 @@
+{% set FAILOVER_LOGSTASH_NODES = [] %}
+{% set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{% for node_type, node_details in node_data.items() | sort %}
+{%   if node_type not in ['heavynode', 'fleet', 'searchnode'] %}
+{%     for hostname in node_data[node_type].keys() %}
+{%       do FAILOVER_LOGSTASH_NODES.append(node_details[hostname].ip) %}
+{%     endfor %}
+{%   endif %}
+{% endfor %}
+
+filter {
+       mutate {
+                    add_tag => "fleet-lumberjack-{{ GLOBALS.hostname }}"
+          }
+  }
+
+output { 
+    lumberjack { 
+        codec => json 
+        hosts => {{  FAILOVER_LOGSTASH_NODES }}
+        ssl_certificate => "/usr/share/filebeat/ca.crt"
+        port => 5056 
+        id => "fleet-lumberjack-{{ GLOBALS.hostname }}"
+        } 
+    }

@@ -7,6 +7,7 @@
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+{% set CUSTOMFQDN = salt['pillar.get']('elasticfleet:config:server:custom_fqdn') %}
 
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
@@ -129,15 +130,16 @@ rediskeyperms:
 {% endif %}
 
 {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
-# Create cert for Elastic Fleet Host
 
+{% if grains['role'] not in [ 'so-heavynode', 'so-receiver'] %}
+# Start -- Elastic Fleet Host Cert
 etc_elasticfleet_key:
   x509.private_key_managed:
-    - name: /etc/pki/elasticfleet.key
+    - name: /etc/pki/elasticfleet-server.key
     - keysize: 4096
     - backup: True
     - new: True
-    {% if salt['file.file_exists']('/etc/pki/elasticfleet.key') -%}
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-server.key') -%}
     - prereq:
       - x509: etc_elasticfleet_crt
     {%- endif %}
@@ -145,15 +147,14 @@ etc_elasticfleet_key:
         attempts: 5
         interval: 30
 
-# Request a cert and drop it where it needs to go to be distributed
 etc_elasticfleet_crt:
   x509.certificate_managed:
-    - name: /etc/pki/elasticfleet.crt
+    - name: /etc/pki/elasticfleet-server.crt
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
-    - private_key: /etc/pki/elasticfleet.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - private_key: /etc/pki/elasticfleet-server.key
+    - CN: {{ GLOBALS.url_base }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -161,22 +162,18 @@ etc_elasticfleet_crt:
     - retry:
         attempts: 5
         interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet.key -topk8 -out /etc/pki/elasticfleet.p8 -nocrypt"
-    - onchanges:
-      - x509: etc_elasticfleet_key
 
 efperms:
   file.managed:
     - replace: False
-    - name: /etc/pki/elasticfleet.key
+    - name: /etc/pki/elasticfleet-server.key
     - mode: 640
     - group: 939
 
 chownelasticfleetcrt:
   file.managed:
     - replace: False
-    - name: /etc/pki/elasticfleet.crt
+    - name: /etc/pki/elasticfleet-server.crt
     - mode: 640
     - user: 947
     - group: 939
@@ -184,29 +181,16 @@ chownelasticfleetcrt:
 chownelasticfleetkey:
   file.managed:
     - replace: False
-    - name: /etc/pki/elasticfleet.key
+    - name: /etc/pki/elasticfleet-server.key
     - mode: 640
     - user: 947
     - group: 939
+# End -- Elastic Fleet Host Cert
+{% endif %} # endif is for not including HeavyNodes & Receivers 
 
-# Create Symlinks to the keys to distribute it to all the things
-elasticfleetdircerts:
-  file.directory:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs
-    - makedirs: True
-
-efcrtlink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet.crt
-    - target: /etc/pki/elasticfleet.crt
-    - user: socore
-    - group: socore
-
-
-{% if grains.role not in ['so-fleet'] %}
-# Create Cert for Elastic Fleet Logstash Input (Same cert used across all Fleet nodes)
-
-etc_elasticfleetlogstash_key:
+{% if grains['role'] not in [ 'so-heavynode'] %}
+# Start -- Elastic Fleet Logstash Input Cert
+etc_elasticfleet_logstash_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet-logstash.key
     - keysize: 4096
@@ -220,15 +204,14 @@ etc_elasticfleetlogstash_key:
         attempts: 5
         interval: 30
 
-# Request a cert and drop it where it needs to go to be distributed
-etc_elasticfleetlogstash_crt:
+etc_elasticfleet_logstash_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-logstash.crt
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-logstash.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - CN: {{ GLOBALS.url_base }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -239,7 +222,7 @@ etc_elasticfleetlogstash_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-logstash.key -topk8 -out /etc/pki/elasticfleet-logstash.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_logstash_key
 
 eflogstashperms:
   file.managed:
@@ -248,63 +231,150 @@ eflogstashperms:
     - mode: 640
     - group: 939
 
-chownilogstashelasticfleetp8:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/elasticfleet-logstash.p8
-    - mode: 640
-    - user: 947
-    - group: 939
-
-chownilogstashelasticfleetlogstashcrt:
+chownelasticfleetlogstashcrt:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticfleet-logstash.crt
     - mode: 640
-    - user: 947
+    - user: 931
     - group: 939
 
-chownilogstashelasticfleetlogstashkey:
+chownelasticfleetlogstashkey:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticfleet-logstash.key
     - mode: 640
+    - user: 931
+    - group: 939
+# End -- Elastic Fleet Logstash Input Cert
+{% endif %} # endif is for not including HeavyNodes 
+
+# Start -- Elastic Fleet Node - Logstash Lumberjack Input / Output
+# Cert needed on: Managers, Receivers
+etc_elasticfleetlumberjack_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet-lumberjack.key
+    - bits: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-lumberjack.key') -%}
+    - prereq:
+      - x509: etc_elasticfleet_crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+etc_elasticfleetlumberjack_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet-lumberjack.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - private_key: /etc/pki/elasticfleet-lumberjack.key
+    - CN: {{ GLOBALS.node_ip }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-lumberjack.key -topk8 -out /etc/pki/elasticfleet-lumberjack.p8 -nocrypt"
+    - onchanges:
+      - x509: etc_elasticfleet_key
+
+eflogstashlumberjackperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-lumberjack.key
+    - mode: 640
+    - group: 939
+
+chownilogstashelasticfleetlumberjackp8:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-lumberjack.p8
+    - mode: 640
+    - user: 931
+    - group: 939
+
+chownilogstashelasticfleetlogstashlumberjackcrt:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-lumberjack.crt
+    - mode: 640
+    - user: 931
+    - group: 939
+
+chownilogstashelasticfleetlogstashlumberjackkey:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-lumberjack.key
+    - mode: 640
+    - user: 931
+    - group: 939
+
+# End -- Elastic Fleet Node - Logstash Lumberjack Input / Output
+
+# Start -- Elastic Fleet Client Cert for Agent (Mutual Auth with Logstash Output)
+etc_elasticfleet_agent_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet-agent.key
+    - keysize: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-agent.key') -%}
+    - prereq:
+      - x509: etc_elasticfleet_crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+etc_elasticfleet_agent_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet-agent.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - private_key: /etc/pki/elasticfleet-agent.key
+    - CN: {{ GLOBALS.hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-agent.key -topk8 -out /etc/pki/elasticfleet-agent.p8 -nocrypt"
+    - onchanges:
+      - x509: etc_elasticfleet_key
+
+efagentperms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-agent.key
+    - mode: 640
+    - group: 939
+
+chownelasticfleetagentcrt:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-agent.crt
+    - mode: 640
     - user: 947
     - group: 939
 
-eflogstashkeylink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.p8
-    - target: /etc/pki/elasticfleet.p8
-    - user: socore
-    - group: socore
-
-eflogstashcrtlink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/elasticfleet/files/certs/elasticfleet-logstash.crt
-    - target: /etc/pki/elasticfleet.crt
-    - user: socore
-    - group: socore
-
-{% endif %}
-
-/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:
+chownelasticfleetagentkey:
   file.managed:
-    - replace: True
-    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.p8
-    - makedirs: True
+    - replace: False
+    - name: /etc/pki/elasticfleet-agent.key
     - mode: 640
-    - user: 931
+    - user: 947
     - group: 939
-
-/opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:
-  file.managed:
-    - replace: True
-    - source: salt://elasticfleet/files/certs/elasticfleet-logstash.crt
-    - makedirs: True
-    - mode: 640
-    - user: 931
-    - group: 939
+# End -- Elastic Fleet Client Cert for Agent (Mutual Auth with Logstash Output)
 
 {% endif %}
 

@@ -7,12 +7,26 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+
+{% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+{% set ELASTICFLEETMERGED = salt['pillar.get']('elasticfleet', ELASTICFLEETDEFAULTS.elasticfleet, merge=True) %}
+
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
 
 include:
   - elasticfleet.config
   - elasticfleet.sostatus
+
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
+so-elastic-fleet-auto-configure-logstash-outputs:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-outputs-update
+
+#so-elastic-fleet-auto-configure-server-urls:
+#  cmd.run:
+#    - name: /usr/sbin/so-elastic-fleet-urls-update
+{% endif %}
 
 {%   if SERVICETOKEN != '' %}
 so-elastic-fleet:
@@ -52,8 +66,8 @@ so-elastic-fleet:
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
-      - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
-      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
+      - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
