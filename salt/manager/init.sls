@@ -99,7 +99,7 @@ yara_update_scripts:
     - source: salt://manager/tools/sbin_jinja/
     - user: socore
     - group: socore
-    - mode: 755
+    - file_mode: 755
     - template: jinja
     - defaults:
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
