@@ -955,6 +955,11 @@ detect_os() {
 			OSVER=9
 			is_centos=true
 			is_rpm=true
+		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
+			OS=rhel
+			OSVER=9
+			is_rhel=true
+			is_rpm=true
 		fi
 	elif [ -f /etc/os-release ]; then
 		OS=ubuntu
@@ -1926,7 +1931,7 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
@@ -1960,6 +1965,10 @@ securityonion_repo() {
 			logCmd "mv -bvf /etc/yum.repos.d/centos* /root/oldrepos/"
 			logCmd "dnf repolist all"
 		fi
+		if [ -f "/etc/yum.repos.d/redhat.repo" ]; then
+			info "Backing up the .repo files that were added by the redhat-release package."
+			logCmd "mv -bvf /etc/yum.repos.d/redhat* /root/oldrepos/"
+			logCmd "dnf repolist all"
 		if [[ $waitforstate ]]; then
 			if [[ ! $is_airgap ]]; then
 				# Build the repo locally so we can use it
@@ -1979,9 +1988,12 @@ repo_sync_local() {
 	if [[ $is_rocky ]]; then
 		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rocky/9" > /opt/so/conf/reposync/mirror.txt
 		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rocky/9" >> /opt/so/conf/reposync/mirror.txt
-	else 
+	elif [[ $is_centos ]]; then
 		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/centos/9" > /opt/so/conf/reposync/mirror.txt
 		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/centos/9" >> /opt/so/conf/reposync/mirror.txt
+	elif [[ $is_rhel ]]; then
+		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rhel/9" > /opt/so/conf/reposync/mirror.txt
+		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rhel/9" >> /opt/so/conf/reposync/mirror.txt
 	fi	
 	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
 	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
@@ -2389,12 +2401,20 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
 		if [[ $is_rocky ]]; then
 			RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
 			info "Removing repo files added by rocky-repos package update"
+		fi
+		if [[ $is_centos ]]; then
+			RMREPOFILES=("centos-addons.repo" "centos-devel.repo" "centos-extras.repo" "centos.repo")
+			info "Removing repo files added by centos-repos package update"
+		fi
+		if [[ $is_rhel ]]; then
+			RMREPOFILES=("redhat-addons.repo" "redhat-devel.repo" "redhat-extras.repo" "redhat.repo")
+			info "Removing repo files added by redhat-repos package update"
 		fi
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
