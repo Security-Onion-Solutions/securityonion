@@ -7,9 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
-
-{% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
-{% set ELASTICFLEETMERGED = salt['pillar.get']('elasticfleet', ELASTICFLEETDEFAULTS.elasticfleet, merge=True) %}
+{%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
