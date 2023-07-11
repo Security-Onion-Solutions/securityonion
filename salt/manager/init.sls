@@ -124,6 +124,12 @@ strelka-yara-update:
     - identifier: strelka-yara-update
     - hour: '7'
     - minute: '1'
+
+update_yara_rules:
+  cmd.run:
+    - name: /usr/sbin/so-yara-update
+    - onchanges:
+      - file: yara_update_scripts
 {%   else %}
 remove_strelka-yara-update:
   cron.absent:
@@ -137,6 +143,12 @@ strelka-yara-download:
     - identifier: strelka-yara-download
     - hour: '7'
     - minute: '1'
+
+download_yara_rules:
+  cmd.run:
+    - name: /usr/sbin/so-yara-download
+    - onchanges:
+      - file: yara_update_scripts
 {%   endif %}
 
 
