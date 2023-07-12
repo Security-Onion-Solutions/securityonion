@@ -14,6 +14,7 @@ base:
     - repo.client
     - ntp
     - schedule
+    - logrotate
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
@@ -29,7 +30,7 @@ base:
     - salt.lasthighstate
     - docker
 
-  'not *_workstation and G@saltversion:{{saltversion}}':
+  'not *_desktop and G@saltversion:{{saltversion}}':
     - match: compound
     - common
   
@@ -209,6 +210,7 @@ base:
     - suricata
     - zeek
     - elasticfleet.install_agent_grid
+    - elasticagent
     - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':
@@ -270,10 +272,10 @@ base:
     - schedule
     - docker_clean
 
-  'J@workstation:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
+  'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
-    - workstation
+    - desktop
 
-  'J@workstation:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
+  'J@desktop:gui:enabled:^[Ff][Aa][Ll][Ss][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:Rocky )':
     - match: compound
-    - workstation.remove_gui
+    - desktop.remove_gui

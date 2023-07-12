@@ -54,20 +54,22 @@ so-logstash:
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-      {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-eval','so-fleet'] %}
-      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
-      - /opt/so/conf/elastic-fleet/certs/elasticfleet-logstash.p8:/usr/share/logstash/elasticfleet-logstash.key:ro
+      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-eval','so-fleet', 'so-heavynode', 'so-receiver'] %}
+      - /etc/pki/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
+      - /etc/pki/elasticfleet-logstash.key:/usr/share/logstash/elasticfleet-logstash.key:ro
+      - /etc/pki/elasticfleet-lumberjack.crt:/usr/share/logstash/elasticfleet-lumberjack.crt:ro
+      - /etc/pki/elasticfleet-lumberjack.key:/usr/share/logstash/elasticfleet-lumberjack.key:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {% else %}
       - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
       {% endif %}
@@ -91,15 +93,15 @@ so-logstash:
         {% endfor %}
       {% endfor %}
     - require:
-      {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_filebeat_crt
       {% endif %}
-      {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - x509: pki_public_ca_crt
       {% else %}
       - x509: trusttheca
       {% endif %}
-      {% if grains.role in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - file: cacertz
       - file: capemz
       {% endif %}

@@ -1,20 +1,26 @@
-## Security Onion 2.4 Beta 3
+## Security Onion 2.4 Beta 4
 
-Security Onion 2.4 Beta 3 is here!
+Security Onion 2.4 Beta 4 is here!
 
 ## Screenshots
 
 Alerts
-![Alerts](./assets/images/screenshots/alerts.png)
+![Alerts](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/50_alerts.png)
 
 Dashboards
-![Dashboards](./assets/images/screenshots/dashboards.png)
+![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/51_dashboards.png)
 
 Hunt
-![Hunt](./assets/images/screenshots/hunt.png)
+![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/52_hunt.png)
 
-Cases
-![Cases](./assets/images/screenshots/cases-comments.png)
+PCAP
+![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/53_pcap.png)
+
+Grid
+![Grid](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/57_grid.png)
+
+Config
+![Config](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/61_config.png)
 
 ### Release Notes
 

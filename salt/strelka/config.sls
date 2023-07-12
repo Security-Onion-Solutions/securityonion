@@ -43,15 +43,6 @@ strelka_sbin:
     - group: 939
     - file_mode: 755
 
-strelka_sbin_jinja:
-  file.recurse:
-    - name: /usr/sbin
-    - source: salt://strelka/tools/sbin_jinja
-    - user: 939
-    - group: 939 
-    - file_mode: 755
-    - template: jinja
-
 {% else %}
 
 {{sls}}_state_not_allowed:

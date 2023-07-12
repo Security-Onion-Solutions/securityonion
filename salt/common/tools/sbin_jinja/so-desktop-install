@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+{# we only want the script to install the desktop if it is Rocky -#}
+{% if grains.os == 'Rocky' -%}
+{#   if this is a manager -#}
+{%   if grains.master == grains.id.split('_')|first -%}
+
+source /usr/sbin/so-common
+doc_desktop_url="$DOC_BASE_URL/desktop.html"
+pillar_file="/opt/so/saltstack/local/pillar/minions/{{grains.id}}.sls"
+
+if [ -f "$pillar_file" ]; then
+  if ! grep -q "^desktop:$" "$pillar_file"; then
+
+    FIRSTPASS=yes
+    while [[ $INSTALL != "yes" ]] && [[ $INSTALL != "no" ]]; do
+      if [[ "$FIRSTPASS" == "yes" ]]; then
+        echo "###########################################"
+        echo "##          ** W A R N I N G **          ##"
+        echo "##    _______________________________    ##"
+        echo "##                                       ##"
+        echo "##    Installing the Security Onion      ##"
+        echo "##     Desktop on this device will       ##"
+        echo "##       make permanent changes to       ##"
+        echo "##              the system.              ##"
+        echo "##    A system reboot will be required   ##"
+        echo "##        to complete the install.       ##"
+        echo "##                                       ##"
+        echo "###########################################"
+        echo "Do you wish to continue? (Type the entire word 'yes' to proceed or 'no' to exit)"
+        FIRSTPASS=no
+      else
+        echo "Please type 'yes' to continue or 'no' to exit."
+      fi      
+      read INSTALL
+    done
+
+    if [[ $INSTALL == "no" ]]; then
+      echo "Exiting desktop node installation."
+      exit 0
+    fi
+
+    # Add desktop pillar to the minion's pillar file
+    printf '%s\n'\
+      "desktop:"\
+      "  gui:"\
+      "    enabled: true"\
+		  "" >> "$pillar_file"
+    echo "Applying the desktop state. This could take some time since there are many packages that need to be installed."
+    if salt-call state.apply desktop -linfo queue=True; then # make sure the state ran successfully
+      echo ""
+      echo "Security Onion Desktop has been installed!"
+      echo "Press ENTER to reboot or Ctrl-C to cancel."
+      read pause
+
+      reboot;
+    else
+      echo "There was an issue applying the desktop state. Please review the log above or at /opt/so/log/salt/minion."
+    fi
+  else # desktop is already added
+    echo "The desktop pillar already exists in $pillar_file."
+    echo "To enable/disable the gui, set 'desktop:gui:enabled' to true or false in $pillar_file."
+    echo "Additional documentation can be found at $doc_desktop_url."
+  fi
+else # if the pillar file doesn't exist
+  echo "Could not find $pillar_file and add the desktop pillar."
+fi
+
+{#-  if this is not a manager #}
+{%   else -%}
+
+echo "Since this is not a manager, the pillar values to enable Security Onion Desktop must be set manually. Please view the documentation at $doc_desktop_url."
+
+{#- endif if this is a manager #}
+{%   endif -%}
+
+{#- if not Rocky #}
+{%- else %}
+
+echo "The Security Onion Desktop can only be installed on Rocky Linux. Please view the documentation at $doc_desktop_url."
+
+{#- endif grains.os == Rocky #}
+{% endif -%}
+
+exit 0

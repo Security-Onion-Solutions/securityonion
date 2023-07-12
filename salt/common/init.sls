@@ -10,6 +10,10 @@ include:
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
+net.core.wmem_default:
+  sysctl.present:
+    - value: 26214400
+
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
   file.absent:
@@ -147,55 +151,7 @@ so-sensor-clean:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
-
-sensorrotatescript:
-  file.managed:
-    - name: /usr/local/bin/sensor-rotate
-    - source: salt://common/cron/sensor-rotate
-    - mode: 755
-
-sensorrotateconf:
-  file.managed:
-    - name: /opt/so/conf/sensor-rotate.conf
-    - source: salt://common/files/sensor-rotate.conf
-    - mode: 644
-
-sensor-rotate:
-  cron.present:
-    - name: /usr/local/bin/sensor-rotate
-    - identifier: sensor-rotate
-    - user: root
-    - minute: '1'
-    - hour: '0'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
 {% endif %}
-
-commonlogrotatescript:
-  file.managed:
-    - name: /usr/local/bin/common-rotate
-    - source: salt://common/cron/common-rotate
-    - mode: 755
-
-commonlogrotateconf:
-  file.managed:
-    - name: /opt/so/conf/log-rotate.conf
-    - source: salt://common/files/log-rotate.conf
-    - template: jinja
-    - mode: 644
-
-common-rotate:
-  cron.present:
-    - name: /usr/local/bin/common-rotate
-    - identifier: common-rotate
-    - user: root
-    - minute: '1'
-    - hour: '0'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
 
 # Create the status directory
 sostatusdir:

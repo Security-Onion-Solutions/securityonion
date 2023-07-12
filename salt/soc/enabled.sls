@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -23,6 +23,7 @@ so-soc:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
+      - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
@@ -30,13 +31,8 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
-      - /opt/so/conf/soc/salt:/opt/sensoroni/salt:rw
+      - /opt/so/conf/soc/queue:/opt/sensoroni/queue:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
-      {% if DOCKER.containers['so-soc'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-soc'].custom_bind_mounts %}
-      - {{ BIND }}
-        {% endfor %}
-      {% endif %}
     - extra_hosts: {{ DOCKER_EXTRA_HOSTS }}
       {% if DOCKER.containers['so-soc'].extra_hosts %}
         {% for XTRAHOST in DOCKER.containers['so-soc'].extra_hosts %}
@@ -72,7 +68,7 @@ delete_so-soc_so-status.disabled:
 
 salt-relay:
   cron.present:
-    - name: 'ps -ef | grep salt-relay.sh | grep -v grep > /dev/null 2>&1 || /opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh >> /opt/so/log/soc/salt-relay.log 2>&1 &'
+    - name: '/opt/so/saltstack/default/salt/soc/files/bin/salt-relay.sh &'
     - identifier: salt-relay
 
 {% else %}

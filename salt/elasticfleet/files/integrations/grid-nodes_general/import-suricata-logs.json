@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "import-suricata-logs",
+  "namespace": "so",
+  "description": "Import Suricata logs",
+  "policy_id": "so-grid-nodes_general",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/import/*/suricata/eve*.json"
+            ],
+            "data_stream.dataset": "import",
+            "tags": [],
+            "processors": "- add_fields:\n    target: event\n    fields:\n      category: network\n      module: suricata\n      imported: true\n- dissect:\n      tokenizer: \"/nsm/import/%{import.id}/suricata/%{import.file}\"\n      field: \"log.file.path\"\n      target_prefix: \"\"",
+            "custom": "pipeline: suricata.common"
+          }
+        }
+      }
+    }
+  }
+}

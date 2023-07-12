@@ -40,6 +40,7 @@ base:
     - logstash.adv_logstash
     - soc.soc_soc
     - soc.adv_soc
+    - soc.license
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
     - kibana.soc_kibana
@@ -103,6 +104,7 @@ base:
     - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
+    - soc.license
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
     - kibana.soc_kibana
@@ -161,6 +163,7 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - soc.license
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
     - kibana.soc_kibana
@@ -258,6 +261,7 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
+    - soc.license
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
     - kibana.soc_kibana

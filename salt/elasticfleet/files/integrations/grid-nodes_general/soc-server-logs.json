@@ -1,0 +1,29 @@
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "soc-server-logs",
+  "namespace": "so",
+  "description": "Security Onion Console Logs",
+  "policy_id": "so-grid-nodes_general",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.log": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/soc/sensoroni-server.log"
+            ],
+            "data_stream.dataset": "soc",
+            "tags": ["so-soc"],
+            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"soc\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: server\n- rename:\n    fields:\n      - from: \"soc.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"soc.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"soc.fields.method\"\n        to: \"http.request.method\"\n      - from: \"soc.fields.path\"\n        to: \"url.path\"\n      - from: \"soc.message\"\n        to: \"event.action\"\n      - from: \"soc.level\"\n        to: \"log.level\"\n    ignore_missing: true",
+            "custom": "pipeline: common"
+          }
+        }
+      }
+    }
+  }
+}

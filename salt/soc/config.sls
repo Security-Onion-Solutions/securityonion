@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -32,9 +32,10 @@ soclogdir:
 
 socsaltdir:
   file.directory:
-    - name: /opt/so/conf/soc/salt
+    - name: /opt/so/conf/soc/queue
     - user: 939
     - group: 939
+    - mode: 770
     - makedirs: True
 
 socconfig:
@@ -78,7 +79,7 @@ soc_sbin:
 #    - name: /usr/sbin
 #    - source: salt://soc/tools/sbin_jinja
 #    - user: 939
-#    - group: 939 
+#    - group: 939
 #    - file_mode: 755
 #    - template: jinja
 
@@ -105,6 +106,13 @@ socusersroles:
     - name: /opt/so/conf/soc/soc_users_roles
     - require:
       - sls: manager.sync_es_users
+
+socuploaddir:
+  file.directory:
+    - name: /nsm/soc/uploads
+    - user: 939
+    - group: 939
+    - makedirs: True
 
 {% else %}
 

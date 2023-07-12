@@ -7,6 +7,7 @@
 
 
 . /usr/sbin/so-common
+. /usr/sbin/so-image-common
 
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
@@ -178,7 +179,7 @@ update_registry() {
 
 check_airgap() {
   # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global.sls | grep airgap: | awk '{print $2}')
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}')
   if [[ "$AIRGAP" == "True" ]]; then
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
@@ -303,7 +304,7 @@ check_log_size_limit() {
 check_os_updates() {
   # Check to see if there are OS updates
   NEEDUPDATES="We have detected missing operating system (OS) updates. Do you want to install these OS updates now? This could take a while depending on the size of your grid and how many packages are missing, but it is recommended to keep your system updated."
-  OSUPDATES=$(yum -q list updates | wc -l)
+  OSUPDATES=$(dnf -q list updates | grep -v docker | grep -v containerd | grep -v salt | grep -v Available | wc -l)
   if [[ "$OSUPDATES" -gt 0 ]]; then
       if [[ -z $UNATTENDED ]]; then
         echo "$NEEDUPDATES"
@@ -509,7 +510,7 @@ update_version() {
   echo "Updating the Security Onion version file."
   echo $NEWVERSION > /etc/soversion
   echo $HOTFIXVERSION > /etc/sohotfix
-  sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global.sls
+  sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global/soc_global.sls
 }
 
 upgrade_check() {
@@ -583,22 +584,22 @@ upgrade_salt() {
 verify_latest_update_script() {
   # Check to see if the update scripts match. If not run the new one.
   CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
-  GITSOUP=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/soup | awk '{print $1}')
   CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
   GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
   CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
   CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
-  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-firewall | awk '{print $1}')
+  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
 
   if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
-    cp $UPDATE_DIR/salt/common/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/manager/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+    cp $UPDATE_DIR/salt/manager/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
     echo ""
     echo "The soup script has been modified. Please run soup again to continue the upgrade."
@@ -746,7 +747,7 @@ main() {
 
     stop_salt_master
 
-    update_repo
+    #update_repo
 
     # Does salt need upgraded. If so update it.
     if [[ $UPGRADESALT -eq 1 ]]; then
@@ -839,13 +840,13 @@ main() {
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
         echo "Cleaning repos on remote Security Onion nodes."
-        salt -C 'not *_eval and not *_helixsensor and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+        salt -C 'not *_eval and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
         echo ""
       fi
     fi
 
-    echo "Checking for local modifications."
-    check_local_mods
+    #echo "Checking for local modifications."
+    #check_local_mods
 
     echo "Checking sudoers file."
     check_sudoers
