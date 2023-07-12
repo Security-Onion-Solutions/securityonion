@@ -31,7 +31,7 @@ commonpkgs:
       - python3-rich
       {% endif %}
 
-{% if grains.oscodename == 'focal' %}
+{%     if grains.oscodename == 'focal' %}
 # since Ubuntu requires and internet connection we can use pip to install modules
 python3-pip:
   pkg.installed
@@ -42,9 +42,10 @@ python-rich:
     - target: /usr/local/lib/python3.8/dist-packages/
     - require:
       - pkg: python3-pip
+{%     endif %}
 {% endif %}
 
-{% elif GLOBALS.os == 'Rocky' %}     
+{% if GLOBALS.os_family == 'RedHat' %}
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -56,7 +57,11 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
+      {% if GLOBALS.os == 'CentOS Stream' %}
+      - MariaDB-devel
+      {% else %}
       - mariadb-devel
+      {% endif %}
       - python3-dnf-plugin-versionlock
       - nmap-ncat
       - yum-utils
@@ -70,34 +75,6 @@ commonpkgs:
       - python3-rich
       - python3-pyyaml
       - python3-watchdog
-      - python3-packaging
-      - unzip
-
-{% elif GLOBALS.os == 'CentOS Stream' %}     
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - wget
-      - jq
-      - tcpdump
-      - httpd-tools
-      - net-tools
-      - curl
-      - sqlite
-      - MariaDB-devel
-      - python3-dnf-plugin-versionlock
-      - nmap-ncat
-      - yum-utils
-      - device-mapper-persistent-data
-      - lvm2
-      - openssl
-      - git
-      - python3-docker
-      - python3-m2crypto
-      - rsync
-      - python3-rich
-      - python3-pyyaml
       - python3-packaging
       - unzip
       - fuse
