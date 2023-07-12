@@ -958,22 +958,31 @@ detect_os() {
 			is_rpm=true
 			not_supported=true
 		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
-			OS=rhel
-			OSVER=9
-			is_rhel=true
-			is_rpm=true
-			not_supported=true
+			if [ -f /etc/oracle-release ]; then
+				OS=oracle
+				OSVER=9
+				is_oracle=true
+				is_rpm=true
+				is_supported=true
+			else
+				OS=rhel
+				OSVER=9
+				is_rhel=true
+				is_rpm=true
+				not_supported=true
+			fi
 		fi
 	elif [ -f /etc/os-release ]; then
-		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
 			OSVER=focal
 			UBVER=20.04
+			OS=ubuntu
 			is_ubuntu=true
 			is_supported=true
 		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
 			OSVER=jammy
 			UBVER=22.04
+			OS=ubuntu
 			is_ubuntu=true
 			is_deb=true
 			not_supported=true
@@ -2080,7 +2089,7 @@ saltify() {
 			add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
 		
 		else
-			# Add Salt Repo *NOTE* You have to use debian 11 since it isn't out for
+			# Add Salt Repo *NOTE* You have to use debian 11 since it isn't out for 12
 			logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
 			echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/ bullseye main" | sudo tee /etc/apt/sources.list.d/salt.list
 
