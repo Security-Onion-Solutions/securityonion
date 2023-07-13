@@ -14,12 +14,14 @@ run_installer:
     - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
     - cwd: /opt/so
     - args: -token={{ GRIDNODETOKENGENERAL }}
+    - retry: True
 {% else %} 
 run_installer:
   cmd.script:
     - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
     - cwd: /opt/so
     - args: -token={{ GRIDNODETOKENHEAVY }}
+    - retry: True
 {% endif %}  
 
 {% endif %}
