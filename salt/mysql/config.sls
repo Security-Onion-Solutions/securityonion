@@ -12,7 +12,7 @@ mysqlpkgs:
   pkg.installed:
     - skip_suggestions: False
     - pkgs:
-      {% if grains['os'] != 'Rocky' %}
+      {% if grains['os_family'] != 'RedHat' %}
         {% if grains['oscodename'] == 'bionic' %}
       - python3-mysqldb
         {% elif grains['oscodename'] == 'focal' %}

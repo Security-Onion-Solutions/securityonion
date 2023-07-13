@@ -17,9 +17,7 @@ chronyconf:
     - defaults:
         NTPCONFIG: {{ NTPCONFIG }}
 
-{% if GLOBALS.os == 'Rocky' %}
-chronyd:
-{% elif GLOBALS.os == 'CentOS Stream' %}
+{% if GLOBALS.os_family == 'RedHat' %}
 chronyd:
 {% else %}
 chrony:
