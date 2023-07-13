@@ -4,18 +4,26 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 {%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+{%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
 . /usr/sbin/so-common
+{% if GLOBALS.role != 'so-heavynode' %}
 . /usr/sbin/so-elastic-fleet-common
-
+{% endif %}
 
 default_conf_dir=/opt/so/conf
 
 # Define a default directory to load pipelines from
 ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
 
-if [ -f /usr/sbin/so-elastic-fleet-common ]; then
+{% if GLOBALS.role == 'so-heavynode' %}
+file="/opt/so/conf/elasticsearch/templates/index/so-common-template.json"
+{% else %}
+file="/usr/sbin/so-elastic-fleet-common"
+{% endif %}
+
+if [ -f "$file" ]; then
 	# Wait for ElasticSearch to initialize
 	echo -n "Waiting for ElasticSearch..."
 	COUNT=0
@@ -39,7 +47,8 @@ if [ -f /usr/sbin/so-elastic-fleet-common ]; then
 		exit 1
 	fi
 
-	SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+	{% if GLOBALS.role != 'so-heavynode' %}
+        SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 	INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
 	if [ "$INSTALLED" != "installed" ]; then
         	echo
@@ -47,7 +56,7 @@ if [ -f /usr/sbin/so-elastic-fleet-common ]; then
         	echo
         	exit 0
 	fi
-
+        {% endif %}
 	set -e
 
 	cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
@@ -58,7 +67,12 @@ if [ -f /usr/sbin/so-elastic-fleet-common ]; then
 	cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
 
 	echo "Loading Elastic Agent component templates..."
-	for i in *; do TEMPLATE=${i::-5}; echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
+	{% if GLOBALS.role == 'so-heavynode' %}
+        component_pattern="so-*"
+        {% else %}
+        component_pattern="*"
+        {% endif %}
+        for i in $component_pattern; do TEMPLATE=${i::-5}; echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
 
 	# Load SO-specific component templates
 	cd ${ELASTICSEARCH_TEMPLATES}/component/so
@@ -71,10 +85,25 @@ if [ -f /usr/sbin/so-elastic-fleet-common ]; then
 	cd ${ELASTICSEARCH_TEMPLATES}/index
 
 	echo "Loading Security Onion index templates..."
-	for i in *; do TEMPLATE=${i::-14}; echo "$TEMPLATE"; so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
+	shopt -s extglob
+        {% if GLOBALS.role == 'so-heavynode' %}
+        pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
+        {% else %}
+        pattern="*"
+        {% endif %}
+        for i in $pattern; do
+            TEMPLATE=${i::-14};
+            echo "$TEMPLATE";
+            so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null;
+            echo;
+        done
 	echo
 else
-	echo "Elastic Fleet not configured. Exiting..."
-	exit 0
+	{% if GLOBALS.role == 'so-heavynode' %}
+        echo "Common template does not exist. Exiting..."
+        {% else %}
+        echo "Elastic Fleet not configured. Exiting..."
+	{% endif %}
+        exit 0
 fi
 	cd - >/dev/null

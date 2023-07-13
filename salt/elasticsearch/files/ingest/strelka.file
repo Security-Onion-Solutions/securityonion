@@ -1,5 +1,5 @@
 {
-  "description" : "strelka",
+  "description" : "Strelka logs",
   "processors" : [
     { "set": { "field": "event.dataset", "value": "file" } },
     { "json":           { "field": "message",                        "target_field": "message2",                   "ignore_failure": true  } },
@@ -54,8 +54,8 @@
     { "set":         { "if": "ctx.exiftool?.FileInodeChangeDate != null", "field": "file.ctime",        "value": "{{exiftool.FileInodeChangeDate}}", "ignore_failure": true }},
     { "set":         { "if": "ctx.exiftool?.FileDirectory != null", "field": "file.directory",        "value": "{{exiftool.FileDirectory}}", "ignore_failure": true }},
     { "set":         { "if": "ctx.exiftool?.Subsystem != null", "field": "host.subsystem",        "value": "{{exiftool.Subsystem}}", "ignore_failure": true }},
-    { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "rule.name",        "value": "{{scan.yara.matches.0}}" }},
-    { "set":         { "if": "ctx.scan?.yara?.matches != null", "field": "dataset",        "value": "alert", "override": true }},
+    { "set":         { "if": "ctx.scan?.yara?.matches instanceof List", "field": "rule.name",        "value": "{{scan.yara.matches.0}}" }},
+    { "set":         { "if": "ctx.rule?.name != null", "field": "event.dataset",        "value": "alert", "override": true }},
     { "rename":         { "field": "file.flavors.mime", "target_field": "file.mime_type",        "ignore_missing": true }},
     { "set":         { "if": "ctx.rule?.name != null && ctx.rule?.score == null",   "field": "event.severity", "value": 3, "override": true }  },
     { "convert" :    { "if": "ctx.rule?.score != null", "field" : "rule.score","type": "integer"}},
@@ -63,6 +63,8 @@
     { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 50 && ctx.rule?.score <=69",   "field": "event.severity", "value": 2, "override": true }  },
     { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 70 && ctx.rule?.score <=89",   "field": "event.severity", "value": 3, "override": true }  },
     { "set":         { "if": "ctx.rule?.score != null && ctx.rule?.score >= 90",   "field": "event.severity", "value": 4, "override": true }  },
+    { "set":         { "if": "ctx.scan?.entropy?.entropy == 0",   "field": "scan.entropy.entropy", "value": "0.0", "override": true }  },
+    { "set":         { "if": "ctx.scan?.pe?.image_version == 0",   "field": "scan.pe.image_version", "value": "0.0", "override": true }  },
     { "set":         { "field": "observer.name",        "value": "{{agent.name}}" }},
     { "convert" :    { "field" : "scan.exiftool","type": "string", "ignore_missing":true }},
     { "remove":         { "field": ["host", "path", "message", "exiftool", "scan.yara.meta"],                                         "ignore_missing": true  } },

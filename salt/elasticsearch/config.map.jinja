@@ -3,11 +3,11 @@
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
-{# ES_LOGSTASH_NODES is the same as LOGSTASH_NODES from logstash/map.jinja but heavynodes are removed #}
+{# ES_LOGSTASH_NODES is the same as LOGSTASH_NODES from logstash/map.jinja but heavynodes and fleet nodes are removed #}
 {% set ES_LOGSTASH_NODES = [] %}
 {% set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
 {% for node_type, node_details in node_data.items() | sort %}
-{%   if node_type != 'heavynode' %}
+{%   if node_type not in ['heavynode', 'fleet'] %}
 {%     for hostname in node_data[node_type].keys() %}
 {%       do ES_LOGSTASH_NODES.append({hostname:node_details[hostname].ip}) %}
 {%     endfor %}

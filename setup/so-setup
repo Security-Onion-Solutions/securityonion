@@ -660,13 +660,14 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
 		logCmd "salt-call state.highstate -l info"
+		logCmd "salt-call schedule.disable -linfo --local"
 		if [[ ! $is_airgap ]]; then
 			title "Downloading IDS Rules"
 			logCmd "so-rule-update"
 			title "Restarting Suricata to pick up the new rules"
 			logCmd "so-suricata-restart"
 			title "Downloading YARA rules"
-			logCmd "runuser -l socore 'so-yara-update'"
+			logCmd "su socore -c '/usr/sbin/so-yara-download'"
 			title "Restarting Strelka to use new rules"
 			logCmd "so-strelka-restart"
 		fi
@@ -684,6 +685,7 @@ if ! [[ -f $install_opt_file ]]; then
 		fi
 		checkin_at_boot
 		set_initial_firewall_access
+		logCmd "salt-call schedule.enable -linfo --local"
 		systemctl restart salt-master
 		systemctl restart salt-minion
 		verify_setup

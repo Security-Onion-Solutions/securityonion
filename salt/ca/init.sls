@@ -20,7 +20,6 @@ pki_private_key:
     - name: /etc/pki/ca.key
     - keysize: 4096
     - passphrase:
-    - cipher: aes_256_cbc
     - backup: True
     {% if salt['file.file_exists']('/etc/pki/ca.key') -%}
     - prereq:
