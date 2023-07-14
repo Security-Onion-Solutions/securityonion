@@ -195,7 +195,7 @@ soversionfile:
 {% endif %}
 
 {% if GLOBALS.so_model and GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
-  {% if GLOBALS.os == 'CentOS Stream' %}     
+  {% if GLOBALS.os == 'OEL' %}     
 # Install Raid tools
 raidpkgs:
   pkg.installed:
@@ -217,33 +217,7 @@ so-raid-status:
     - month: '*'
     - dayweek: '*'
 
-{% endif %}
-
-{% if GLOBALS.so_model and GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
-  {% if GLOBALS.os == 'Rocky' %}     
-# Install Raid tools
-raidpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - securityonion-raidtools
-      - securityonion-megactl
   {% endif %}
-
-# Install raid check cron
-so-raid-status:
-  cron.present:
-    - name: '/usr/sbin/so-raid-status > /dev/null 2>&1'
-    - identifier: so-raid-status
-    - user: root
-    - minute: '*/15'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-
-{% endif %}
-
 {% else %}
 
 {{sls}}_state_not_allowed:
