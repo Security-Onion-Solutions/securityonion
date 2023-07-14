@@ -1,0 +1,53 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
+function update_es_urls() {
+	# Generate updated JSON payload
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"is_default":false,"is_default_monitoring":false,"config_yaml":""}')
+
+    # Update Fleet Elasticsearch URLs
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+# Get current list of Fleet Elasticsearch URLs
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_elasticsearch')
+
+# Check to make sure that the server responded with good data - else, bail from script
+CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")
+if [ "$CHECKSUM" != "so-manager_elasticsearch" ]; then
+ printf "Failed to query for current Fleet Server Elasticsearch URLs..."
+ exit 1
+fi
+
+# Get the current list of Fleet Server Elasticsearch & hash them
+CURRENT_LIST=$(jq -c -r '.item.hosts' <<<  "$RAW_JSON")
+CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
+
+# Create array & add initial elements
+NEW_LIST=("https://{{ GLOBALS.hostname }}:9200")
+
+
+# Sort & hash the new list of Fleet Elasticsearch URLs
+NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
+NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
+
+# Compare the current & new list of URLs - if different, update the Fleet Elasticsearch URLs
+if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
+    printf "\nHashes match - no update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    exit 0
+else
+    printf "\nHashes don't match - update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    update_es_urls
+fi

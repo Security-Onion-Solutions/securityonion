@@ -30,6 +30,13 @@ so-elastic-fleet-auto-configure-server-urls:
     - name: /usr/sbin/so-elastic-fleet-urls-update
 {% endif %}
 
+# Automatically update Fleet Server Elasticsearch URLs
+{% if grains.role not in ['so-fleet'] %}
+so-elastic-fleet-auto-configure-elasticsearch-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-es-url-update
+{% endif %}
+
 {%   if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
