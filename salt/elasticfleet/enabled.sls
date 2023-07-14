@@ -77,8 +77,8 @@ so-elastic-fleet:
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
-      - FLEET_SERVER_CERT=/etc/pki/elasticfleet.crt
-      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet.key
+      - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
       {% if GLOBALS.os_family == 'Debian' %}
       - FLEET_CA=/etc/ssl/certs/intca.crt     
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
