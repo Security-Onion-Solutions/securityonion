@@ -16,14 +16,25 @@ include:
   - elasticfleet.config
   - elasticfleet.sostatus
 
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval'] %}
+# If enabled, automatically update Fleet Logstash Outputs
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
+{% endif %}
 
-#so-elastic-fleet-auto-configure-server-urls:
-#  cmd.run:
-#    - name: /usr/sbin/so-elastic-fleet-urls-update
+# If enabled, automatically update Fleet Server URLs & ES Connection
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-fleet'] %}
+so-elastic-fleet-auto-configure-server-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-urls-update
+{% endif %}
+
+# Automatically update Fleet Server Elasticsearch URLs
+{% if grains.role not in ['so-fleet'] %}
+so-elastic-fleet-auto-configure-elasticsearch-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-es-url-update
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
