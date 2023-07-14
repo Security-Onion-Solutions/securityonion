@@ -2083,6 +2083,12 @@ saltify() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
 
+	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
+	if [ $SALTVERSION == "3006.1" ]; then
+		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
+		\cp -v ./files/patch/states/x509_v2.py /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py
+	fi
+
 }
 
 
