@@ -1953,6 +1953,7 @@ securityonion_repo() {
 }
 
 repo_sync_local() {
+	info "Repo Sync"
 	if [[ $is_supported ]]; then
 		# Sync the repo from the the SO repo locally.
 		# Check for reposync
@@ -2392,25 +2393,11 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_rpm ]]; then
+	if [[ $is_oracle ]]; then
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
-		if [[ $is_rocky ]]; then
-			RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
-			info "Removing repo files added by rocky-repos package update"
-		fi
-		if [[ $is_centos ]]; then
-			RMREPOFILES=("centos-addons.repo" "centos-devel.repo" "centos-extras.repo" "centos.repo")
-			info "Removing repo files added by centos-repos package update"
-		fi
-		if [[ $is_rhel ]]; then
-			RMREPOFILES=("redhat-addons.repo" "redhat-devel.repo" "redhat-extras.repo" "redhat.repo")
-			info "Removing repo files added by redhat-repos package update"
-		fi
-		if [[ $is_oracle ]]; then
-			RMREPOFILES=("oracle-linux-ol9.repo" "uek-ol9.repo" "virt-ol9.repo")
-			info "Removing repo files added by oracle-repos package update"
-		fi
+		RMREPOFILES=("oracle-linux-ol9.repo" "uek-ol9.repo" "virt-ol9.repo")
+		info "Removing repo files added by oracle-repos package update"
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
 		done
