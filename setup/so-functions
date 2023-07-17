@@ -1924,7 +1924,7 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_supported ]]; then
+	if [[ $is_oracle ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
@@ -1942,11 +1942,13 @@ securityonion_repo() {
 			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
 		fi
-		logCmd "dnf repolist all"
-		if [[ $waitforstate ]]; then
-			if [[ ! $is_airgap ]]; then
+	fi
+	logCmd "dnf repolist all"
+	if [[ $waitforstate ]]; then
+		if [[ ! $is_airgap ]]; then
+			if [[ $is_rpm ]]; then
 				# Build the repo locally so we can use it
-				echo "Syncing Repo"
+				echo "Syncing Repos"
 				repo_sync_local
 			fi
 		fi

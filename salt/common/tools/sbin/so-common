@@ -199,18 +199,14 @@ get_random_value() {
 }
 
 gpg_rpm_import() {
-	if [[ $is_supported ]]; then
+	if [[ $is_oracle ]]; then
 	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
 	        local RPMKEYSLOC="../salt/repo/client/files/$OS/keys"
 	    else
 	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
 	    fi
-		if [[ $is_rocky ]]; then
-	    	RPMKEYS=('RPM-GPG-KEY-rockyofficial' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
-		else
-			RPMKEYS=('RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub' 'MariaDB-Server-GPG-KEY')
-		fi
-	    for RPMKEY in "${RPMKEYS[@]}"; do
+		RPMKEYS=('RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub' 'MariaDB-Server-GPG-KEY')
+		for RPMKEY in "${RPMKEYS[@]}"; do
     	        rpm --import $RPMKEYSLOC/$RPMKEY
 	        echo "Imported $RPMKEY"
 	    done
