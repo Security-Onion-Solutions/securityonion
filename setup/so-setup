@@ -64,12 +64,25 @@ done
 
 # Let's see what OS we are dealing with here
 detect_os
+
+# Ubuntu/Debian whiptail pallete to make it look the same as CentOS and Rocky.
+set_palette >> $setup_log 2>&1
+
 if [[ $not_supported ]]; then
-	if (whiptail_unsupported_os_warning); then
-		true
+	if [[ "$OSVER" == "focal" ]]; then
+		if (whiptail_focal_warning); then
+			true
+		else
+			info "User cancelled setup."
+			whiptail_cancel
+		fi
 	else
-		info "User cancelled setup."
-		whiptail_cancel
+		if (whiptail_unsupported_os_warning); then
+			true
+		else
+			info "User cancelled setup."
+			whiptail_cancel
+		fi
 	fi
 fi
 
@@ -254,9 +267,6 @@ esac
 local_sbin="$(pwd)/../salt/common/tools/sbin"
 manager_sbin="$(pwd)/../salt/manager/tools/sbin"
 export PATH=$PATH:$local_sbin:$manager_sbin
-
-# Ubuntu/Debian whiptail pallete to make it look the same as CentOS and Rocky.
-set_palette >> $setup_log 2>&1
 
 # Kernel messages can overwrite whiptail screen #812
 # https://github.com/Security-Onion-Solutions/securityonion/issues/812
