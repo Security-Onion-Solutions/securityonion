@@ -1948,7 +1948,7 @@ securityonion_repo() {
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
 		fi
 	fi
-	logCmd "dnf repolist all"
+	if [[ $is_rpm ]]; then logCmd "dnf repolist all"; fi
 	if [[ $waitforstate ]]; then
 		if [[ ! $is_airgap ]]; then
 			if [[ $is_rpm ]]; then
@@ -2019,6 +2019,7 @@ repo_sync_local() {
 }
 
 saltify() {
+	info "Installing Salt"
 	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	if [[ $is_deb ]]; then
 
