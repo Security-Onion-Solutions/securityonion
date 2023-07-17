@@ -951,6 +951,7 @@ detect_os() {
 			is_rocky=true
 			is_rpm=true
 			not_supported=true
+			unset is_supported
 		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
 			OS=centos
 			OSVER=9
@@ -978,7 +979,7 @@ detect_os() {
 			UBVER=20.04
 			OS=ubuntu
 			is_ubuntu=true
-			is_supported=true
+			not_supported=true
 		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
 			OSVER=jammy
 			UBVER=22.04
@@ -2401,7 +2402,7 @@ update_packages() {
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
 		done
-	else
+	elif [[ $is_deb ]]; then
 		info "Running apt-get update"
 		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
 		info "Running apt-get upgrade"
