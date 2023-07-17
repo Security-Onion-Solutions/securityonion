@@ -455,6 +455,28 @@ __append_end_msg() {
 	EOM
 }
 
+whiptail_focal_warning() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' focal_warning_continue <<- EOM
+
+	WARNING: Ubuntu 20.04 is only supported as a minion role.
+
+	This node may not install or operate as expected if installed
+	as a manager, managersearch, standalone, eval, or import.
+
+	Would you like to continue the install?
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$focal_warning_continue" 14 75 --defaultno
+
+	local exitstatus=$?
+	return $exitstatus
+
+}
+
 whiptail_gauge_post_setup() {
 
 	if [ -n "$TESTING" ]; then
