@@ -28,14 +28,6 @@ elasticagentconfdir:
     - group: 939
     - makedirs: True
 
-elasticagent_sbin:
-  file.recurse:
-    - name: /usr/sbin
-    - source: salt://elasticagent/tools/sbin
-    - user: 949
-    - group: 939
-    - file_mode: 755
-
 elasticagent_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
