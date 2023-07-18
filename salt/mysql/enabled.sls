@@ -61,7 +61,8 @@ so-mysql:
         {% endfor %}
       {% endif %}
     - watch:
-      - /opt/so/conf/mysql/etc
+      - file: mysqlcnf
+      - file: mysqlpass
     - require:
       - file: mysqlcnf
       - file: mysqlpass
