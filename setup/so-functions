@@ -1052,6 +1052,8 @@ installer_prereq_packages() {
 		if ! command -v nmcli > /dev/null 2>&1; then
 			info "Installing network-manager"
 			retry 150 10 "apt-get -y install network-manager ethtool" >> "$setup_log" 2>&1 || fail_setup
+			if [[ $is_debian ]]; then
+				logcmd "sed -i 's/managed=false/managed=true/g' /etc/NetworkManager/NetworkManager.conf" 
 			{
 				systemctl enable NetworkManager
 				systemctl start NetworkManager
