@@ -13,13 +13,7 @@ mysqlpkgs:
     - skip_suggestions: False
     - pkgs:
       {% if grains['os_family'] != 'RedHat' %}
-        {% if grains['oscodename'] == 'bionic' %}
       - python3-mysqldb
-        {% elif grains['oscodename'] == 'focal' %}
-      - python3-mysqldb
-        {% elif grains['oscodename'] == 'jammy' %}
-      - python3-mysqldb
-        {% endif %}
       {% else %}
       - python3-mysqlclient
       {% endif %}
