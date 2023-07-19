@@ -8,7 +8,7 @@
 
 {% set role = grains.id.split('_') | last %}
 {% set MANAGER = salt['grains.get']('master') %}
-{% if grains['os'] == 'Rocky' %}
+{% if grains['os'] == 'OEL' %}
 
 {% if ABSENTFILES|length > 0%}
   {% for file in ABSENTFILES  %}
@@ -29,7 +29,7 @@ cleandnf:
 yumconf:
   file.managed:
     - name: /etc/yum.conf
-    - source: salt://repo/client/files/rocky/yum.conf.jinja
+    - source: salt://repo/client/files/oracle/yum.conf.jinja
     - mode: 644
     - template: jinja
     - show_changes: False
@@ -43,7 +43,7 @@ repair_yumdb:
 crsynckeys:
   file.recurse:
     - name: /etc/pki/rpm-gpg
-    - source: salt://repo/client/files/rocky/keys/
+    - source: salt://repo/client/files/oracle/keys/
 
 so_repo:
   pkgrepo.managed:

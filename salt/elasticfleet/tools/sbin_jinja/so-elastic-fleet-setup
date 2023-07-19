@@ -6,6 +6,12 @@
 # this file except in compliance with the Elastic License 2.0.
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+{% if GLOBALS.os_family == 'Debian' %}
+INTCA=/etc/ssl/certs/intca.crt
+{% else %}
+INTCA=/etc/pki/tls/certs/intca.crt
+{% endif %}
+
 . /usr/sbin/so-elastic-fleet-common
 
 printf "\n### Create ES Token ###\n"
@@ -13,7 +19,7 @@ ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5
 
 ### Create Outputs & Fleet URLs ###
 printf "\nAdd Manager Elasticsearch Output...\n"
-ESCACRT=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+ESCACRT=$(openssl x509 -in  $INTCA)
 JSON_STRING=$( jq -n \
                   --arg ESCACRT "$ESCACRT" \
                   '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
@@ -22,9 +28,9 @@ printf "\n\n"
 
 printf "\nCreate Logstash Output Config if node is not an Import or Eval install\n"
 {% if grains.role not in ['so-import', 'so-eval'] %}
-LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-agent.crt)
-LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-agent.key)
-LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+LOGSTASHCA=$(openssl x509 -in  $INTCA)
 JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \
