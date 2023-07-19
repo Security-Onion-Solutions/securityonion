@@ -1,6 +1,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% if GLOBALS.os == 'Ubuntu' %}
+{% if GLOBALS.os_family == 'Debian' %}
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -14,16 +14,24 @@ commonpkgs:
       - software-properties-common
       - apt-transport-https
       - openssl
-      - netcat
+      - netcat-openbsd
       - sqlite3
       - libssl-dev
       - python3-dateutil
+      - python3-docker
       - python3-packaging
       - python3-watchdog
       - python3-lxml
       - git
+      - rsync
       - vim
+      - tar
+      - unzip
+      {% if grains.oscodename != 'focal' %}
+      - python3-rich
+      {% endif %}
 
+{%     if grains.oscodename == 'focal' %}
 # since Ubuntu requires and internet connection we can use pip to install modules
 python3-pip:
   pkg.installed
@@ -34,9 +42,10 @@ python-rich:
     - target: /usr/local/lib/python3.8/dist-packages/
     - require:
       - pkg: python3-pip
-  
+{%     endif %}
+{% endif %}
 
-{% elif GLOBALS.os == 'Rocky' %}     
+{% if GLOBALS.os_family == 'RedHat' %}
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -48,7 +57,11 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
+      {% if GLOBALS.os == 'CentOS Stream' %}
+      - MariaDB-devel
+      {% else %}
       - mariadb-devel
+      {% endif %}
       - python3-dnf-plugin-versionlock
       - nmap-ncat
       - yum-utils
@@ -64,4 +77,8 @@ commonpkgs:
       - python3-watchdog
       - python3-packaging
       - unzip
+      - fuse
+      - fuse-libs
+      - fuse-overlayfs
+      - fuse-common
 {% endif %}

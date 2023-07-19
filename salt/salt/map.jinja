@@ -1,7 +1,7 @@
 {% import_yaml 'salt/minion.defaults.yaml' as saltminion %}
 {% set SALTVERSION = saltminion.salt.minion.version %}
 
-{% if grains.os == 'Ubuntu' %}
+{% if grains.os_family == 'Debian' %}
   {% set SPLITCHAR = '+' %}
   {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep -q salt ; echo $?', python_shell=True) %}
   {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion'] %}
@@ -20,9 +20,9 @@
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 {% if grains.saltversion|string != SALTVERSION|string %}
-  {% if grains.os|lower in ['Rocky', 'redhat'] %}
+  {% if grains.os|lower in ['Rocky', 'redhat', 'CentOS Stream'] %}
       {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
-  {% elif grains.os|lower == 'ubuntu' %}
+  {% elif grains.os_family|lower == 'debian' %}
     {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
   {% endif %}
 {% else %}

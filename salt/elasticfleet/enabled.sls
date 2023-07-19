@@ -62,6 +62,9 @@ so-elastic-fleet:
       {% endfor %}
     - binds:
       - /etc/pki:/etc/pki:ro
+      {% if GLOBALS.os_family == 'Debian' %}
+      - /etc/ssl:/etc/ssl:ro
+      {% endif %}
       #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -70,14 +73,20 @@ so-elastic-fleet:
       {% endif %}      
     - environment:
       - FLEET_SERVER_ENABLE=true
-      - FLEET_URL=https://{{ GLOBALS.node_ip }}:8220
+      - FLEET_URL=https://{{ GLOBALS.hostname }}:8220
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
-      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
+      {% if GLOBALS.os_family == 'Debian' %}
+      - FLEET_CA=/etc/ssl/certs/intca.crt     
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
+      {% else %}
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
+
+      {% endif %}
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
