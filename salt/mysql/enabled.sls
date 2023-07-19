@@ -60,6 +60,8 @@ so-mysql:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
+    - cap_add:
+      - SYS_NICE
     - watch:
       - file: mysqlcnf
       - file: mysqlpass
