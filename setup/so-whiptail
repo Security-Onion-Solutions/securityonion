@@ -545,7 +545,7 @@ whiptail_install_type() {
 	[ -n "$TESTING" ] && return
 
 	# What kind of install are we doing?
-#	if [[ $is_rocky || $is_centos ]]; then
+	if [[ "$OSVER" != "focal" ]]; then
 		install_type=$(whiptail --title "$whiptail_title" --menu \
 		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
 			"IMPORT" "Import PCAP or log files " \
@@ -555,14 +555,14 @@ whiptail_install_type() {
 			"OTHER" "Other install types" \
 			3>&1 1>&2 2>&3
 		)
-#	elif [[ $is_ubuntu ]]; then
-#		install_type=$(whiptail --title "$whiptail_title" --menu \
-#		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
-#			"DISTRIBUTED" "Distributed install submenu " \
-#			"OTHER" "Other install types" \
-#			3>&1 1>&2 2>&3
-#		)
-#	fi
+	elif [[ "$OSVER" == "focal" ]]; then
+		install_type=$(whiptail --title "$whiptail_title" --menu \
+		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
+			"DISTRIBUTED" "Distributed install submenu " \
+			"OTHER" "Other install types" \
+			3>&1 1>&2 2>&3
+		)
+	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
