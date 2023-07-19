@@ -66,6 +66,7 @@ so-elastic-fleet:
       - /etc/ssl:/etc/ssl:ro
       {% endif %}
       #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
+      - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
       - {{ BIND }}
@@ -85,8 +86,8 @@ so-elastic-fleet:
       {% else %}
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
-
       {% endif %}
+      - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
