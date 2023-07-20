@@ -45,6 +45,13 @@ eaconfdir:
     - group: 939
     - makedirs: True
 
+ealogdir:
+  file.directory:
+    - name: /opt/so/log/elasticfleet
+    - user: 947
+    - group: 939
+    - makedirs: True
+
 eastatedir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/state
