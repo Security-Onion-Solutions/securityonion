@@ -959,6 +959,13 @@ detect_os() {
 			is_rpm=true
 			not_supported=true
 			unset is_supported
+		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
+			OS=alma
+			OSVER=9
+			is_alma=true
+			is_rpm=true
+			not_supported=true
+			unset is_supported
 		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
 			if [ -f /etc/oracle-release ]; then
 				OS=oracle
@@ -2011,7 +2018,7 @@ repo_sync_local() {
 				dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 				curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
 			fi
-			if [[ $is_rocky ]]; then
+			if [[ ! $is_oracle ]]; then
 				dnf config-manager --set-enabled crb
 				dnf repolist
 			fi
