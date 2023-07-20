@@ -2007,21 +2007,22 @@ repo_sync_local() {
 		# Add the proper repos for unsupported stuff
 		echo "Adding Repos"
 		if [[ $is_rpm ]]; then
-			dnf -y install epel-release
+			if [[ $is_rhel ]]; then
+				logCmd "subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms"
+				info "Install epel for rhel" 
+				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm"
+			else  
+				logCmd "dnf config-manager --set-enabled crb"
+				logCmd "dnf -y install epel-release epel-next"
+			fi
 			dnf install -y yum-utils device-mapper-persistent-data lvm2
 			curl -fsSL https://repo.securityonion.net/file/so-repo/prod/2.4/so/so.repo | tee /etc/yum.repos.d/so.repo
 			rpm --import https://repo.saltproject.io/salt/py3/redhat/9/x86_64/SALT-PROJECT-GPG-PUBKEY-2023.pub
-			if [[ $is_rhel ]]; then
-				dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
-				curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
-			else
-				dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-				curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
-			fi
-			if [[ ! $is_oracle ]]; then
-				dnf config-manager --set-enabled crb
-				dnf repolist
-			fi
+			dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+			curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
+			dnf repolist
+			curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
 		else
 			echo "Not sure how you got here."
 			exit 1
