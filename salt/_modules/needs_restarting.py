@@ -3,22 +3,14 @@ import subprocess
 
 def check():
 
-  os = __grains__['os']
+  osfam = __grains__['os_family']
   retval = 'False'
 
-  if os == 'Ubuntu':
+  if osfam == 'Ubuntu':
     if path.exists('/var/run/reboot-required'):
       retval = 'True'
 
-  elif os == 'CentOS Stream':
-    cmd = 'needs-restarting -r > /dev/null 2>&1'
-    
-    try:
-      needs_restarting = subprocess.check_call(cmd, shell=True)
-    except subprocess.CalledProcessError:
-      retval = 'True'
-
-  elif os == 'Rocky':
+  elif 
     cmd = 'needs-restarting -r > /dev/null 2>&1'
     
     try:
