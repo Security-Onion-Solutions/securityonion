@@ -1,7 +1,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'Rocky' %}
+{% if GLOBALS.os == 'OEL' %}
 
 
 desktop_packages:
@@ -327,6 +327,6 @@ desktop_packages:
 
 desktop_packages_os_fail:
   test.fail_without_changes:
-    - comment: 'SO desktop can only be installed on Rocky'
+    - comment: 'SO desktop can only be installed on Oracle Linux'
 
 {% endif %}
