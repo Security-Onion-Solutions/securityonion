@@ -103,7 +103,7 @@ sos_docker_net:
   docker_network.present:
     - name: sobridge
     - subnet: {{ DOCKER.range }}
-    - gateway: {{ DOCKER.bip | split("/")[0]}}
+    - gateway: {{ DOCKER.bip.split("/")[0] }}
     - options:
         com.docker.network.bridge.name: 'sobridge'
         com.docker.network.driver.mtu: '1500'
