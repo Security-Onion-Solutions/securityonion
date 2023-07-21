@@ -7,20 +7,6 @@
 desktop_packages:
   pkg.installed:
     - pkgs:
-      - NetworkManager
-      - NetworkManager-adsl
-      - NetworkManager-bluetooth
-      - NetworkManager-l2tp-gnome
-      - NetworkManager-libreswan-gnome
-      - NetworkManager-openconnect-gnome
-      - NetworkManager-openvpn-gnome
-      - NetworkManager-ppp
-      - NetworkManager-pptp-gnome
-      - NetworkManager-team
-      - NetworkManager-tui
-      - NetworkManager-wifi
-      - NetworkManager-wwan
-      - PackageKit-gstreamer-plugin
       - aajohan-comfortaa-fonts
       - abattis-cantarell-fonts
       - acl
@@ -68,8 +54,8 @@ desktop_packages:
       - dsniff
       - e2fsprogs
       - ed
-      - efi-filesystem
       - efibootmgr
+      - efi-filesystem
       - efivar-libs
       - eom
       - ethtool
@@ -110,11 +96,6 @@ desktop_packages:
       - gnome-terminal
       - gnome-terminal-nautilus
       - gnome-tour
-      - gnome-calculator
-      - gnome-disk-utility
-      - gnome-screenshot
-      - gnome-system-monitor
-      - gnome-terminal
       - gnupg2
       - google-noto-emoji-color-fonts
       - google-noto-sans-cjk-ttc-fonts
@@ -151,8 +132,8 @@ desktop_packages:
       - iprutils
       - iputils
       - irqbalance
-      - iwl100-firmware
       - iwl1000-firmware
+      - iwl100-firmware
       - iwl105-firmware
       - iwl135-firmware
       - iwl2000-firmware
@@ -214,16 +195,30 @@ desktop_packages:
       - nemo-fileroller
       - nemo-image-converter
       - nemo-preview
-      - net-tools
       - netronome-firmware
+      - net-tools
+      - NetworkManager
+      - NetworkManager-adsl
+      - NetworkManager-bluetooth
+      - NetworkManager-l2tp-gnome
+      - NetworkManager-libreswan-gnome
+      - NetworkManager-openconnect-gnome
+      - NetworkManager-openvpn-gnome
+      - NetworkManager-ppp
+      - NetworkManager-pptp-gnome
+      - NetworkManager-team
+      - NetworkManager-tui
+      - NetworkManager-wifi
+      - NetworkManager-wwan
       - ngrep
-      - nm-connection-editor
       - nmap-ncat
+      - nm-connection-editor
       - nvme-cli
-      - open-vm-tools-desktop
       - openssh-clients
       - openssh-server
+      - open-vm-tools-desktop
       - p11-kit
+      - PackageKit-gstreamer-plugin
       - paktype-naskh-basic-fonts
       - parole
       - parted
@@ -310,8 +305,8 @@ desktop_packages:
       - vim-powerline
       - virt-what
       - wget
-      - whois
       - which
+      - whois
       - wireplumber
       - wireshark
       - words
