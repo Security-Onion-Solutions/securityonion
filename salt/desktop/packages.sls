@@ -14,7 +14,6 @@ desktop_packages:
       - alsa-utils
       - anaconda
       - anaconda-install-env-deps
-      - anaconda-live
       - at
       - attr
       - audit
@@ -155,8 +154,6 @@ desktop_packages:
       - kexec-tools
       - khmer-os-system-fonts
       - kmod-kvdo
-      - kpatch
-      - kpatch-dnf
       - ledmon
       - less
       - liberation-mono-fonts
@@ -192,9 +189,6 @@ desktop_packages:
       - mtr
       - nano
       - ncurses
-      - nemo-fileroller
-      - nemo-image-converter
-      - nemo-preview
       - netronome-firmware
       - net-tools
       - NetworkManager
@@ -245,8 +239,6 @@ desktop_packages:
       - quota
       - realmd
       - redshift-gtk
-      - rocky-backgrounds
-      - rocky-release
       - rootfiles
       - rpm
       - rpm-plugin-audit
