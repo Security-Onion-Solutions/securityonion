@@ -102,8 +102,8 @@ dockerreserveports:
 sos_docker_net:
   docker_network.present:
     - name: sobridge
-    - subnet: {{ DOCKER.sorange }}
-    - gateway: {{ DOCKER.sobip }}
+    - subnet: {{ DOCKER.range }}
+    - gateway: {{ DOCKER.bip }}
     - options:
         com.docker.network.bridge.name: 'sobridge'
         com.docker.network.driver.mtu: '1500'

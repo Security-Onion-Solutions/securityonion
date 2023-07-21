@@ -254,15 +254,10 @@ collect_dns_domain() {
 collect_dockernet() {
 	if ! whiptail_dockernet_check; then
 		whiptail_dockernet_sosnet "172.17.1.0"
-		whiptail_dockernet_nososnet "172.17.0.0"
 
 		while ! valid_ip4 "$DOCKERNET"; do
 			whiptail_invalid_input
-			whiptail_dockernet_nonsosnet "$DOCKERNET"
-		done
-		while ! valid_ip4 "$DOCKERNET2"; do
-			whiptail_invalid_input
-			whiptail_dockernet_sosnet "$DOCKERNET2"
+			whiptail_dockernet_sosnet "$DOCKERNET"
 		done
 	fi
 }
@@ -1105,10 +1100,7 @@ docker_registry() {
 	logCmd "mkdir -p /etc/docker"
 	# This will get applied so docker can attempt to start
 	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.0.0
-	fi
-	if [ -z "$DOCKERNET2" ]; then
-		DOCKERNET2=172.17.1.0
+		DOCKERNET=172.17.1.0
 	fi
 	# Make the host use the manager docker registry
 	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
@@ -1491,13 +1483,10 @@ create_global() {
 	fi
 
 	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.0.0
-		DOCKERNET2=172.17.1.0
+		DOCKERNET=172.17.1.0
 		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
 	else
 		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
 	fi
 
 	if [ -f "$global_pillar_file" ]; then
@@ -1562,8 +1551,6 @@ docker_pillar() {
 	touch $adv_docker_pillar_file
 	printf '%s\n'\
 		"docker:"\
-		"  sorange: '$DOCKERNET2/24'"\
-		"  sobip: '$DOCKER2BIP'"\
 		"  range: '$DOCKERNET/24'"\
 		"  bip: '$DOCKERBIP'" > $docker_pillar_file
 }
