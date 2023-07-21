@@ -45,9 +45,6 @@ desktop_packages:
       - chkconfig
       - chromium
       - chrony
-      - cinnamon
-      - cinnamon-control-center
-      - cinnamon-screensaver
       - cockpit
       - coreutils
       - cpio
@@ -76,18 +73,43 @@ desktop_packages:
       - efivar-libs
       - eom
       - ethtool
-      - f36-backgrounds-extras-gnome
-      - f36-backgrounds-gnome
-      - f37-backgrounds-extras-gnome
-      - f37-backgrounds-gnome
       - file
       - filesystem
       - firewall-config
       - firewalld
       - fprintd-pam
+      - gdm
       - git
       - glibc
       - glibc-all-langpacks
+      - gnome-autoar
+      - gnome-bluetooth
+      - gnome-bluetooth-libs
+      - gnome-calculator
+      - gnome-characters
+      - gnome-color-manager
+      - gnome-control-center
+      - gnome-desktop3
+      - gnome-disk-utility
+      - gnome-font-viewer
+      - gnome-initial-setup
+      - gnome-keyring
+      - gnome-keyring-pam
+      - gnome-logs
+      - gnome-menus
+      - gnome-online-accounts
+      - gnome-remote-desktop
+      - gnome-screenshot
+      - gnome-session
+      - gnome-session-wayland-session
+      - gnome-session-xsession
+      - gnome-settings-daemon
+      - gnome-shell
+      - gnome-software
+      - gnome-system-monitor
+      - gnome-terminal
+      - gnome-terminal-nautilus
+      - gnome-tour
       - gnome-calculator
       - gnome-disk-utility
       - gnome-screenshot
