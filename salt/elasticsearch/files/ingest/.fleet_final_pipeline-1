@@ -72,8 +72,8 @@
     { "set":        { "ignore_failure": true,  "field": "event.module", "value": "elastic_agent" } },
     { "split":      { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "module_temp"  } },
     { "set":        { "if": "ctx.module_temp != null", "override": true, "field": "event.module", "value": "{{module_temp.0}}" } },
-    { "split":      { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "dataset_tag_temp" } },
-    { "append":        { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp.1}}"  } },
+    { "gsub":       { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "pattern": "^[^.]*.", "replacement": "", "target_field": "dataset_tag_temp" } },
+    { "append":     { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp}}"  } },
     { "remove":     { "field": [ "message2", "type", "fields", "category", "module", "dataset", "event.dataset_temp", "dataset_tag_temp", "module_temp" ], "ignore_missing": true, "ignore_failure": true } } 
   ],
   "on_failure": [
