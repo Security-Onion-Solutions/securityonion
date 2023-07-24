@@ -1094,32 +1094,6 @@ disable_ipv6() {
 	} >> /etc/sysctl.conf
 }
 
-docker_registry() {
-
-	title "Setting up Docker Registry"
-	logCmd "mkdir -p /etc/docker"
-	# This will get applied so docker can attempt to start
-	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.1.0
-	fi
-	# Make the host use the manager docker registry
-	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
-	printf '%s\n'\
-		"{"\
-		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
-		"  \"bip\": \"$DNETBIP\","\
-		"  \"default-address-pools\": ["\
-		"    {"\
-		"      \"base\" : \"$DOCKERNET/24\","\
-		"      \"size\" : 24"\
-		"    }"\
-		"  ]"\
-		"}" > /etc/docker/daemon.json
-	info "Docker Registry Setup - Complete"
-
-}
-
 docker_seed_update() {
 	local name=$1
 	local percent_delta=1
@@ -1482,13 +1456,6 @@ create_global() {
 		fi
 	fi
 
-	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.1.0
-		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-	else
-		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-	fi
-
 	if [ -f "$global_pillar_file" ]; then
 		rm $global_pillar_file
 	fi
@@ -1549,10 +1516,15 @@ soctopus_pillar() {
 docker_pillar() {
 	title "Create the docker pillar file"
 	touch $adv_docker_pillar_file
-	printf '%s\n'\
-		"docker:"\
-		"  range: '$DOCKERNET/24'"\
-		"  bip: '$DOCKERBIP'" > $docker_pillar_file
+	touch $docker_pillar_file
+
+	if [ ! -z "$DOCKERNET" ]; then
+		DOCKERGATEWAY=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
+		printf '%s\n'\
+			"docker:"\
+			"  range: '$DOCKERNET/24'"\
+			"  gateway: '$DOCKERGATEWAY'" > $docker_pillar_file
+	fi
 }
 
 redis_pillar() {
