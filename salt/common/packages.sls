@@ -50,41 +50,37 @@ commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
-      - wget
-      - jq
-      - tcpdump
-      - httpd-tools
-      - net-tools
       - curl
-      - sqlite
+      - device-mapper-persistent-data
       - fuse
-      - fuse3
-      - fuse-overlayfs
       - fuse-libs
-      - fuse3-libs
+      - fuse-overlayfs
       - fuse-common
+      - fuse3
+      - fuse3-libs
+      - git
+      - httpd-tools
+      - jq
+      - lvm2
       {% if GLOBALS.os == 'CentOS Stream' %}
       - MariaDB-devel
       {% else %}
       - mariadb-devel
       {% endif %}
-      - python3-dnf-plugin-versionlock
+      - net-tools
       - nmap-ncat
-      - yum-utils
-      - device-mapper-persistent-data
-      - lvm2
       - openssl
-      - git
+      - python3-dnf-plugin-versionlock
       - python3-docker
       - python3-m2crypto
-      - rsync
-      - python3-rich
-      - python3-pyyaml
-      - python3-watchdog
       - python3-packaging
+      - python3-pyyaml
+      - python3-rich
+      - python3-watchdog
+      - rsync
+      - sqlite
+      - tcpdump
       - unzip
-      - fuse
-      - fuse-libs
-      - fuse-overlayfs
-      - fuse-common
+      - wget
+      - yum-utils
 {% endif %}
