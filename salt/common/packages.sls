@@ -57,6 +57,12 @@ commonpkgs:
       - net-tools
       - curl
       - sqlite
+      - fuse
+      - fuse3
+      - fuse-overlayfs
+      - fuse-libs
+      - fuse3-libs
+      - fuse-common
       {% if GLOBALS.os == 'CentOS Stream' %}
       - MariaDB-devel
       {% else %}
