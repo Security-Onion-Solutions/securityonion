@@ -60,8 +60,11 @@ so-mysql:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
+    - cap_add:
+      - SYS_NICE
     - watch:
-      - /opt/so/conf/mysql/etc
+      - file: mysqlcnf
+      - file: mysqlpass
     - require:
       - file: mysqlcnf
       - file: mysqlpass

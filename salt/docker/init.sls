@@ -12,7 +12,28 @@ dockergroup:
     - name: docker
     - gid: 920
 
-{% if GLOBALS.os == 'Ubuntu' %}
+{% if GLOBALS.os_family == 'Debian' %}
+{%    if grains.oscodename == 'bookworm' %}
+dockerheldpackages:
+  pkg.installed:
+    - pkgs:
+      - containerd.io: 1.6.21-1
+      - docker-ce: 5:24.0.3-1~debian.12~bookworm
+      - docker-ce-cli: 5:24.0.3-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:24.0.3-1~debian.12~bookworm
+    - hold: True
+    - update_holds: True
+{%    elif grains.oscodename == 'jammy' %}
+dockerheldpackages:
+  pkg.installed:
+    - pkgs:
+      - containerd.io: 1.6.21-1
+      - docker-ce: 5:24.0.2-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:24.0.2-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:24.0.2-1~ubuntu.22.04~jammy
+    - hold: True
+    - update_holds: True
+{%    else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
@@ -22,14 +43,15 @@ dockerheldpackages:
       - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
     - hold: True
     - update_holds: True
+{% endif %}
 {% else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
       - containerd.io: 1.6.21-3.1.el9
-      - docker-ce: 24.0.2-1.el9
-      - docker-ce-cli: 24.0.2-1.el9
-      - docker-ce-rootless-extras: 24.0.2-1.el9
+      - docker-ce: 24.0.4-1.el9
+      - docker-ce-cli: 24.0.4-1.el9
+      - docker-ce-rootless-extras: 24.0.4-1.el9
     - hold: True
     - update_holds: True
 {% endif %}

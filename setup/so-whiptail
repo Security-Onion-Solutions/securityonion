@@ -455,6 +455,28 @@ __append_end_msg() {
 	EOM
 }
 
+whiptail_focal_warning() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' focal_warning_continue <<- EOM
+
+	WARNING: Ubuntu 20.04 is only supported as a minion role.
+
+	This node may not install or operate as expected if installed
+	as a manager, managersearch, standalone, eval, or import.
+
+	Would you like to continue the install?
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$focal_warning_continue" 14 75 --defaultno
+
+	local exitstatus=$?
+	return $exitstatus
+
+}
+
 whiptail_gauge_post_setup() {
 
 	if [ -n "$TESTING" ]; then
@@ -523,7 +545,7 @@ whiptail_install_type() {
 	[ -n "$TESTING" ] && return
 
 	# What kind of install are we doing?
-	if [[ $OS = 'rocky' ]]; then
+	if [[ "$OSVER" != "focal" ]]; then
 		install_type=$(whiptail --title "$whiptail_title" --menu \
 		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
 			"IMPORT" "Import PCAP or log files " \
@@ -533,11 +555,10 @@ whiptail_install_type() {
 			"OTHER" "Other install types" \
 			3>&1 1>&2 2>&3
 		)
-	elif [[ $OS = 'ubuntu' ]]; then
+	elif [[ "$OSVER" == "focal" ]]; then
 		install_type=$(whiptail --title "$whiptail_title" --menu \
 		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture.html" 18 65 5 \
 			"DISTRIBUTED" "Distributed install submenu " \
-			"OTHER" "Other install types" \
 			3>&1 1>&2 2>&3
 		)
 	fi
@@ -563,13 +584,13 @@ whiptail_install_type_dist() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ $OS = 'rocky' ]]; then
+	if [[ "$OSVER" != "focal" ]]; then
 	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to \nan existing deployment?" 11 75 2 \
 		"New Deployment         " "Create a new Security Onion deployment" \
 		"Existing Deployment    " "Join to an existing Security Onion deployment " \
 		 3>&1 1>&2 2>&3
 	)
-	elif [[ $OS = 'ubuntu' ]]; then
+	elif [[ "$OSVER" == "focal" ]]; then
 	dist_option=$(whiptail --title "$whiptail_title" --menu "Since this is Ubuntu, this box can only be connected to \nan existing deployment." 11 75 2 \
 		"Existing Deployment    " "Join to an existing Security Onion deployment " \
 		 3>&1 1>&2 2>&3
@@ -1426,6 +1447,27 @@ whiptail_ubuntu_warning() {
 	whiptail --title "$whiptail_title"  --msgbox "$message" 14 75
 
 }
+
+whiptail_unsupported_os_warning() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' unsupported_os_continue <<- EOM
+	
+	WARNING: An unsupported operating system has been detected. 
+	Security Onion may not install or operate as expected. 
+
+	Would you like to continue the install?
+
+	EOM
+	whiptail --title "$whiptail_title" \
+		--yesno "$unsupported_os_continue" 14 75 --defaultno
+
+	local exitstatus=$?
+	return $exitstatus
+
+}
+
 whiptail_uppercase_warning() {
 
 	[ -n "$TESTING" ] && return
