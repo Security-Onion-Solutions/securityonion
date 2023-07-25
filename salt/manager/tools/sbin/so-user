@@ -341,14 +341,19 @@ function syncElastic() {
       "  and ic.identity_id=i.id " \
       "  and ict.id=ic.identity_credential_type_id " \
       "  and ict.name='password' " \
-      "  and instr(ic.config, 'hashed_password') " \
       "  and i.state == 'active' " \
       "order by ici.identifier;" | \
       sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath")
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
-    echo "${userData}" | \
-      jq -r '.user + ":" + .data.hashed_password' \
-      >> "$usersTmpFile"
+
+    user_data_formatted=$(echo "${userData}" | jq -r '.user + ":" + .data.hashed_password')
+    if lookup_salt_value "licensed_features" "" "pillar" | grep -x oidc; then
+      # generate random placeholder salt/hash for users without passwords
+      random_crypt=$(get_random_value 53)
+      user_data_formatted=$(echo "${user_data_formatted}" | sed -r "s/^(.+:)\$/\\1\$2a\$12${random_crypt}/")
+    fi
+
+    echo "${user_data_formatted}" >> "$usersTmpFile"
 
     # Append the user roles
     while IFS="" read -r rolePair || [ -n "$rolePair" ]; do
