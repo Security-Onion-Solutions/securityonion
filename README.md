@@ -1,6 +1,6 @@
-## Security Onion 2.4 Beta 4
+## Security Onion 2.4 Release Candidate 1 (RC1)
 
-Security Onion 2.4 Beta 4 is here!
+Security Onion 2.4 Release Candidate 1 (RC1) is here!
 
 ## Screenshots
 
