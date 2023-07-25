@@ -86,6 +86,16 @@ if [[ $not_supported ]]; then
 	fi
 fi
 
+# we need to upgrade packages on debian prior to install and reboot if there are due to iptables-restore not running properly
+# if packages are updated and the box isn't rebooted
+if [[ $is_debian ]]; then
+	update_packages
+	if [[ -f "/var/run/reboot-required" ]]; then
+		whiptail_debian_reboot_required
+		reboot
+	fi
+fi
+
 # Check to see if this is the setup type of "desktop".
 is_desktop=
 if [ "$setup_type" = 'desktop' ]; then
