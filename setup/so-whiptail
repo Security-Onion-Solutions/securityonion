@@ -329,20 +329,8 @@ whiptail_dockernet_sosnet() {
 
 	[ -n "$TESTING" ] && return
 
-	DOCKERNET2=$(whiptail --title "$whiptail_title" --inputbox \
-	"\nEnter a /24 size network range for SOS containers to use WITHOUT the /24 suffix. This range will be used on ALL nodes." 11 65 "$1" 3>&1 1>&2 2>&3)
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-
-}
-
-whiptail_dockernet_nososnet() {
-
-	[ -n "$TESTING" ] && return
-
 	DOCKERNET=$(whiptail --title "$whiptail_title" --inputbox \
-	"\nEnter a /24 size network range for NON SOS containers to use WITHOUT the /24 suffix. This range will be used on ALL nodes." 11 65 "$1" 3>&1 1>&2 2>&3)
+	"\nEnter a /24 size network range for SOS containers to use WITHOUT the /24 suffix. This range will be used on ALL nodes. Any range within 172.17.0.0/24 cannot be used." 11 65 "$1" 3>&1 1>&2 2>&3)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -410,7 +398,7 @@ whiptail_end_settings() {
 
 	[[ -n $WEBUSER ]] && __append_end_msg "Web User: $WEBUSER"
 
-	[[ -n $DOCKERNET ]] && __append_end_msg "Docker network: $DOCKERNET"
+	[[ -n $DOCKERNET ]] && __append_end_msg "Docker network: $DOCKERNET/24"
 	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
 		__append_end_msg "NTP Servers:"
 		for server in "${ntp_servers[@]}"; do
