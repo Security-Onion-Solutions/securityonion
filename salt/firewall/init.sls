@@ -23,6 +23,10 @@ disable_firewalld:
 iptables_restore:
   cmd.run:
     - name: iptables-restore < /etc/sysconfig/iptables
+    - require:
+      - file: iptables_config
+    - onlyif:
+      - iptables-restore --test /etc/sysconfig/iptables
 
 enable_firewalld:
   service.running:
