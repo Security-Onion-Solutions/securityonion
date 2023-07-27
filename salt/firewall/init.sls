@@ -13,7 +13,7 @@ iptables_persist:
 iptables_service:
   service.running:
     - name: {{ iptmap.service }}
-    - enabled: True
+    - enable: True
 
 create_sysconfig_iptables:
   file.touch:
