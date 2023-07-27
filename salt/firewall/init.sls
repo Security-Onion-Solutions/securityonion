@@ -1,15 +1,29 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
+{%   from 'firewall/ipt.map.jinja' import iptmap %}
+
+install_iptables:
+  pkg.installed:
+    - name: {{ iptmap.iptpkg }}
+
+iptables_persist:
+  pkg.installed:
+    - name: {{ iptmap.persistpkg }}
+
+iptables_service:
+  service.running:
+    - name: {{ iptmap.service }}
+    - enabled: True
 
 create_sysconfig_iptables:
   file.touch:
-    - name: /etc/sysconfig/iptables
+    - name: {{ iptmap.configfile }}
     - makedirs: True
-    - unless: 'ls /etc/sysconfig/iptables'
+    - unless: 'ls {{ iptmap.configfile }}'
 
 iptables_config:
   file.managed:
-    - name: /etc/sysconfig/iptables
+    - name: {{ iptmap.configfile }}
     - source: salt://firewall/iptables.jinja
     - template: jinja
 
@@ -24,11 +38,11 @@ disable_firewalld:
 
 iptables_restore:
   cmd.run:
-    - name: iptables-restore < /etc/sysconfig/iptables
+    - name: iptables-restore < {{ iptmap.configfile }}
     - require:
       - file: iptables_config
     - onlyif:
-      - iptables-restore --test /etc/sysconfig/iptables
+      - iptables-restore --test {{ iptmap.configfile }}
 
 {%   if grains.os_family == 'RedHat' %}
 enable_firewalld:
