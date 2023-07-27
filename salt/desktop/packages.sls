@@ -46,8 +46,6 @@ desktop_packages:
       - cairo-gobject
       - cairomm
       - checkpolicy
-      - cheese
-      - cheese-libs
       - chkconfig
       - chrome-gnome-shell
       - chromium
@@ -78,7 +76,6 @@ desktop_packages:
       - evolution-data-server
       - evolution-data-server-langpacks
       - file
-      - firefox
       - flac-libs
       - flashrom
       - flatpak
@@ -298,7 +295,6 @@ desktop_packages:
       - mesa-vulkan-drivers
       - microcode_ctl
       - mobile-broadband-provider-info
-      - mozilla-filesystem
       - mpfr
       - mpg123-libs
       - mtdev
