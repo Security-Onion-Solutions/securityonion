@@ -1,7 +1,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'Rocky' %}
+{% if GLOBALS.os == 'OEL' %}
 
 remove_graphical_target:
   file.symlink:
@@ -12,6 +12,6 @@ remove_graphical_target:
 {% else %}
 desktop_trusted-ca_os_fail:
   test.fail_without_changes:
-    - comment: 'SO Desktop can only be installed on Rocky'
+    - comment: 'SO Desktop can only be installed on Oracle Linux'
 
 {% endif %}
