@@ -687,12 +687,14 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ ! $is_airgap ]]; then
 			title "Downloading IDS Rules"
 			logCmd "so-rule-update"
-			title "Restarting Suricata to pick up the new rules"
-			logCmd "so-suricata-restart"
 			title "Downloading YARA rules"
 			logCmd "su socore -c '/usr/sbin/so-yara-download'"
-			title "Restarting Strelka to use new rules"
-			logCmd "so-strelka-restart"
+			if [[ $monints ]]; then
+				title "Restarting Suricata to pick up the new rules"
+				logCmd "so-suricata-restart"
+				title "Restarting Strelka to use new rules"
+				logCmd "so-strelka-restart"
+			fi
 		fi
 		title "Setting up Kibana Default Space"
 		logCmd "so-kibana-space-defaults"
