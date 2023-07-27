@@ -13,12 +13,14 @@ iptables_config:
     - source: salt://firewall/iptables.jinja
     - template: jinja
 
+{%   if grains.os_family == 'RedHat' %}
 disable_firewalld:
   service.dead:
     - name: firewalld
     - enable: False
     - require:
       - file: iptables_config
+{%   endif %}
 
 iptables_restore:
   cmd.run:
@@ -28,6 +30,7 @@ iptables_restore:
     - onlyif:
       - iptables-restore --test /etc/sysconfig/iptables
 
+{%   if grains.os_family == 'RedHat' %}
 enable_firewalld:
   service.running:
     - name: firewalld
@@ -35,6 +38,7 @@ enable_firewalld:
     - onfail:
       - file: iptables_config
       - cmd: iptables_restore
+{%   endif %}
 
 {% else %}
 
