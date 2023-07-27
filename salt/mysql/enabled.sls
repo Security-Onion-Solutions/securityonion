@@ -43,7 +43,7 @@ so-mysql:
       - {{ BINDING }}
       {% endfor %}
     - environment:
-      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_bip }}
+      - MYSQL_ROOT_HOST={{ GLOBALS.so_docker_gateway }}
       - MYSQL_ROOT_PASSWORD=/etc/mypass
       {% if DOCKER.containers['so-mysql'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-mysql'].extra_env %}
@@ -60,8 +60,11 @@ so-mysql:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
+    - cap_add:
+      - SYS_NICE
     - watch:
-      - /opt/so/conf/mysql/etc
+      - file: mysqlcnf
+      - file: mysqlpass
     - require:
       - file: mysqlcnf
       - file: mysqlpass

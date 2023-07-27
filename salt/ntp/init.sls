@@ -17,7 +17,7 @@ chronyconf:
     - defaults:
         NTPCONFIG: {{ NTPCONFIG }}
 
-{% if GLOBALS.os == 'Rocky' %}
+{% if GLOBALS.os_family == 'RedHat' %}
 chronyd:
 {% else %}
 chrony:

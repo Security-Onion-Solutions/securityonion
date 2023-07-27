@@ -254,15 +254,10 @@ collect_dns_domain() {
 collect_dockernet() {
 	if ! whiptail_dockernet_check; then
 		whiptail_dockernet_sosnet "172.17.1.0"
-		whiptail_dockernet_nososnet "172.17.0.0"
 
-		while ! valid_ip4 "$DOCKERNET"; do
+		while ! valid_ip4 "$DOCKERNET" || [[ $DOCKERNET =~ "172.17.0." ]]; do
 			whiptail_invalid_input
-			whiptail_dockernet_nonsosnet "$DOCKERNET"
-		done
-		while ! valid_ip4 "$DOCKERNET2"; do
-			whiptail_invalid_input
-			whiptail_dockernet_sosnet "$DOCKERNET2"
+			whiptail_dockernet_sosnet "$DOCKERNET"
 		done
 	fi
 }
@@ -680,10 +675,10 @@ configure_ntp() {
 		'rtcsync' \
 		'logdir /var/log/chrony' >> $chrony_conf
 
-	if [ "$OS" == 'rocky' ]; then
+	if [[ $is_rpm ]]; then
 		systemctl enable chronyd
 		systemctl restart chronyd
-	elif [ "$OS" == 'ubuntu' ]; then
+	else 
 		systemctl enable chrony
 		systemctl restart chrony
 	fi
@@ -949,21 +944,66 @@ detect_os() {
 			OS=rocky
 			OSVER=9
 			is_rocky=true
-			pkgman="dnf"
-		else
-			info "We do not support the operating system you are trying to use."
-			fail_setup
+			is_rpm=true
+			not_supported=true
+			unset is_supported
+		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
+			OS=centos
+			OSVER=9
+			is_centos=true
+			is_rpm=true
+			not_supported=true
+			unset is_supported
+		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
+			OS=alma
+			OSVER=9
+			is_alma=true
+			is_rpm=true
+			not_supported=true
+			unset is_supported
+		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
+			if [ -f /etc/oracle-release ]; then
+				OS=oracle
+				OSVER=9
+				is_oracle=true
+				is_rpm=true
+				is_supported=true
+			else
+				OS=rhel
+				OSVER=9
+				is_rhel=true
+				is_rpm=true
+				not_supported=true
+				unset is_supported
+			fi
 		fi
-
 	elif [ -f /etc/os-release ]; then
-		OS=ubuntu
 		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
 			OSVER=focal
+			UBVER=20.04
+			OS=ubuntu
 			is_ubuntu=true
-		else
-			info "We do not support your current version of Ubuntu."
-			fail_setup
+			is_deb=true
+			not_supported=true
+			unset is_supported
+		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
+			OSVER=jammy
+			UBVER=22.04
+			OS=ubuntu
+			is_ubuntu=true
+			is_deb=true
+			not_supported=true
+			unset is_supported
+		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
+			OSVER=bookworm
+			DEBVER=12
+			is_debian=true
+			OS=debian
+			is_deb=true
+			not_supported=true
+			unset is_supported
 		fi
+		installer_prereq_packages
 
 	else
 		info "We were unable to determine if you are using a supported OS."
@@ -971,7 +1011,6 @@ detect_os() {
 	fi
 
 	info "Found OS: $OS $OSVER"
-
 }
 
 download_elastic_agent_artifacts() {
@@ -1006,29 +1045,21 @@ installer_progress_loop() {
 	done
 }
 
-installer_prereq_packages() {
-#	if [ "$OS" == rocky ]; then
-#		if [[ ! $is_iso ]]; then
-#			if ! command -v nmcli > /dev/null 2>&1; then
-#				logCmd "dnf -y install NetworkManager"
-#			fi
-#		fi
-#		logCmd "systemctl enable NetworkManager"
-#		logCmd "systemctl start NetworkManager"
-#	el
-	
-	if [ "$OS" == ubuntu ]; then
+installer_prereq_packages() {	
+	if [[ $is_deb ]]; then
 		# Print message to stdout so the user knows setup is doing something
 		info "Running apt-get update"
 		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
 		# Install network manager so we can do interface stuff
 		if ! command -v nmcli > /dev/null 2>&1; then
 			info "Installing network-manager"
-			retry 150 10 "apt-get -y install network-manager" >> "$setup_log" 2>&1 || fail_setup
-			{
-				systemctl enable NetworkManager
-				systemctl start NetworkManager
-			} >> "$setup_log" 2<&1
+			retry 150 10 "apt-get -y install network-manager ethtool" >> "$setup_log" 2>&1 || fail_setup
+			if [[ $is_debian ]]; then
+				info "Enabling network manager for the main interface"
+				logCmd "sed -i 's/managed=false/managed=true/g' /etc/NetworkManager/NetworkManager.conf" 
+			fi
+			logCmd systemctl enable NetworkManager
+			logCmd systemctl start NetworkManager			
 		fi
 		if ! command -v curl > /dev/null 2>&1; then
 			retry 150 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || fail_setup
@@ -1061,35 +1092,6 @@ disable_ipv6() {
 		echo "net.ipv6.conf.default.disable_ipv6 = 1"
 		echo "net.ipv6.conf.lo.disable_ipv6 = 1" 
 	} >> /etc/sysctl.conf
-}
-
-docker_registry() {
-
-	title "Setting up Docker Registry"
-	logCmd "mkdir -p /etc/docker"
-	# This will get applied so docker can attempt to start
-	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.0.0
-	fi
-	if [ -z "$DOCKERNET2" ]; then
-		DOCKERNET2=172.17.1.0
-	fi
-	# Make the host use the manager docker registry
-	DNETBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-	if [ -n "$TURBO" ]; then local proxy="$TURBO"; else local proxy="https://$MSRV"; fi
-	printf '%s\n'\
-		"{"\
-		"  \"registry-mirrors\": [ \"$proxy:5000\" ],"\
-		"  \"bip\": \"$DNETBIP\","\
-		"  \"default-address-pools\": ["\
-		"    {"\
-		"      \"base\" : \"$DOCKERNET/24\","\
-		"      \"size\" : 24"\
-		"    }"\
-		"  ]"\
-		"}" > /etc/docker/daemon.json
-	info "Docker Registry Setup - Complete"
-
 }
 
 docker_seed_update() {
@@ -1454,16 +1456,6 @@ create_global() {
 		fi
 	fi
 
-	if [ -z "$DOCKERNET" ]; then
-		DOCKERNET=172.17.0.0
-		DOCKERNET2=172.17.1.0
-		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
-	else
-		DOCKERBIP=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')/24
-		DOCKER2BIP=$(echo $DOCKERNET2 | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
-	fi
-
 	if [ -f "$global_pillar_file" ]; then
 		rm $global_pillar_file
 	fi
@@ -1524,12 +1516,15 @@ soctopus_pillar() {
 docker_pillar() {
 	title "Create the docker pillar file"
 	touch $adv_docker_pillar_file
-	printf '%s\n'\
-		"docker:"\
-		"  sorange: '$DOCKERNET2/24'"\
-		"  sobip: '$DOCKER2BIP'"\
-		"  range: '$DOCKERNET/24'"\
-		"  bip: '$DOCKERBIP'" > $docker_pillar_file
+	touch $docker_pillar_file
+
+	if [ ! -z "$DOCKERNET" ]; then
+		DOCKERGATEWAY=$(echo $DOCKERNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
+		printf '%s\n'\
+			"docker:"\
+			"  range: '$DOCKERNET/24'"\
+			"  gateway: '$DOCKERGATEWAY'" > $docker_pillar_file
+	fi
 }
 
 redis_pillar() {
@@ -1575,7 +1570,7 @@ network_init() {
 	title "Initializing Network"
 	disable_ipv6
 	set_hostname
-	if [[ ( $is_iso || $is_desktop_iso ) ]]; then
+	if [[ ( $is_iso || $is_desktop_iso || $is_debian ) ]]; then
 		set_management_interface
 	fi
 }
@@ -1740,7 +1735,7 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
-	if [[ $install_type =~ ^(MANAGER|EVAL|HELIXSENSOR|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
 		local salt_services=( "salt-minion" )
@@ -1815,7 +1810,7 @@ reinstall_init() {
 		# Remove the old launcher package in case the config changes
 		remove_package launcher-final
 
-		if [[ $OS == 'ubuntu' ]]; then
+		if [[ $is_deb ]]; then
 			info "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
@@ -1836,7 +1831,7 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		sed -i "/proxy=/d" /etc/dnf/dnf.conf
 	else
 		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
@@ -1882,7 +1877,7 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		if rpm -qa | grep -q "$package_name"; then
 			logCmd "dnf remove -y $package_name"
 		fi
@@ -1903,11 +1898,10 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_rocky ]]; then
+	if [[ $is_oracle ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
-		logCmd "ls -la /etc/yum.repos.d/"
 		if [[ ! $waitforstate ]]; then
 			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
 			echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
@@ -1922,20 +1916,13 @@ securityonion_repo() {
 			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
 		fi
-
-		# need to yum clean all before repo conf files are removed or clean,cleans nothing
-		logCmd "dnf repolist all"
-		# update this package because the repo config files get added back
-		# if the package is updated when the update_packages function is called
-		if [ -f "/etc/yum.repos.d/rocky.repo" ]; then
-			info "Backing up the .repo files that were added by the centos-release package."
-			logCmd "mv -bvf /etc/yum.repos.d/rocky* /root/oldrepos/"
-			logCmd "dnf repolist all"
-		fi
-		if [[ $waitforstate ]]; then
-			if [[ ! $is_airgap ]]; then
+	fi
+	if [[ $is_rpm ]]; then logCmd "dnf repolist all"; fi
+	if [[ $waitforstate ]]; then
+		if [[ ! $is_airgap ]]; then
+			if [[ $is_rpm ]]; then
 				# Build the repo locally so we can use it
-				echo "Syncing Repo"
+				echo "Syncing Repos"
 				repo_sync_local
 			fi
 		fi
@@ -1943,45 +1930,72 @@ securityonion_repo() {
 }
 
 repo_sync_local() {
-	# Sync the repo from the the SO repo locally.
-	# Check for reposync
-	info "Backing up old repos"
-	mkdir -p /nsm/repo
-	mkdir -p /opt/so/conf/reposync/cache
-	echo "https://repo.securityonion.net/file/so-repo/prod/2.4/rocky/9" > /opt/so/conf/reposync/mirror.txt
-	echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/rocky/9" >> /opt/so/conf/reposync/mirror.txt
-	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
-	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
-	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
-	echo "clean_requirements_on_remove=True" >> /opt/so/conf/reposync/repodownload.conf
-	echo "best=True" >> /opt/so/conf/reposync/repodownload.conf
-	echo "skip_if_unavailable=False" >> /opt/so/conf/reposync/repodownload.conf
-	echo "cachedir=/opt/so/conf/reposync/cache" >> /opt/so/conf/reposync/repodownload.conf
-	echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
-	echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
-	echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
-	echo "#baseurl=https://repo.securityonion.net/file/so-repo/2.4/" >> /opt/so/conf/reposync/repodownload.conf
-	echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
-	echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
-	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
+	info "Repo Sync"
+	if [[ $is_supported ]]; then
+		# Sync the repo from the the SO repo locally.
+		# Check for reposync
+		info "Backing up old repos"
+		mkdir -p /nsm/repo
+		mkdir -p /opt/so/conf/reposync/cache
+		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /opt/so/conf/reposync/mirror.txt
+		echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/oracle/9" >> /opt/so/conf/reposync/mirror.txt
+		echo "[main]" > /opt/so/conf/reposync/repodownload.conf
+		echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
+		echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
+		echo "clean_requirements_on_remove=True" >> /opt/so/conf/reposync/repodownload.conf
+		echo "best=True" >> /opt/so/conf/reposync/repodownload.conf
+		echo "skip_if_unavailable=False" >> /opt/so/conf/reposync/repodownload.conf
+		echo "cachedir=/opt/so/conf/reposync/cache" >> /opt/so/conf/reposync/repodownload.conf
+		echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
+		echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
+		echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
+		echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
+		echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
+		echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
 	
-	logCmd "dnf repolist"
-	# Make sure we can get to the sig repo
-	# TODO Add if for ISO install
-        curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
-	logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+		logCmd "dnf repolist"
+		
+		if [[ ! $is_airgap ]]; then
+        	curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
+			logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+		fi
 
 	# After the download is complete run createrepo
 	create_repo
-
+	else
+		# Add the proper repos for unsupported stuff
+		echo "Adding Repos"
+		if [[ $is_rpm ]]; then
+			if [[ $is_rhel ]]; then
+				logCmd "subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms"
+				info "Install epel for rhel" 
+				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm"
+			else  
+				logCmd "dnf config-manager --set-enabled crb"
+				logCmd "dnf -y install epel-release epel-next"
+			fi
+			dnf install -y yum-utils device-mapper-persistent-data lvm2
+			curl -fsSL https://repo.securityonion.net/file/so-repo/prod/2.4/so/so.repo | tee /etc/yum.repos.d/so.repo
+			rpm --import https://repo.saltproject.io/salt/py3/redhat/9/x86_64/SALT-PROJECT-GPG-PUBKEY-2023.pub
+			dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+			curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
+			dnf repolist
+			curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
+		else
+			echo "Not sure how you got here."
+			exit 1
+		fi
+	fi
 }
 
 saltify() {
+	info "Installing Salt"
 	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
-	if [[ $is_ubuntu ]]; then
+	if [[ $is_deb ]]; then
 
 		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
-		update-alternatives --install /usr/bin/python python /usr/bin/python3.8 10 
+		if [ $OSVER == "focal" ]; then update-alternatives --install /usr/bin/python python /usr/bin/python3.10 10; fi
 		local pkg_arr=(
 			'apache2-utils'
 			'ca-certificates'
@@ -1989,17 +2003,35 @@ saltify() {
 			'software-properties-common'
 			'apt-transport-https'
 			'openssl'
-			'netcat'
+			'netcat-openbsd'
 			'jq'
+			'gnupg'
 		)
 		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || fail_setup
 
 		logCmd "mkdir -vp /etc/apt/keyrings"
-		#logCmd "wget -q --inet4-only -O /opt/so/gpg/SALTSTACK-GPG-KEY.pub https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt/SALTSTACK-GPG-KEY.pub"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
 
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/20.04/amd64/minor/$SALTVERSION/ focal main" | sudo tee /etc/apt/sources.list.d/salt.list
+		if [[ $is_ubuntu ]]; then
+
+			# Add Salt Repo
+			logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+			echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/ubuntu/$UBVER/amd64/minor/$SALTVERSION/ $OSVER main" | sudo tee /etc/apt/sources.list.d/salt.list
+
+			# Add Docker Repo
+			add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
+		
+		else
+			# Add Salt Repo *NOTE* You have to use debian 11 since it isn't out for 12
+			logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.gpg https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/SALT-PROJECT-GPG-PUBKEY-2023.gpg"
+			echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.gpg] https://repo.saltproject.io/salt/py3/debian/11/amd64/minor/$SALTVERSION/ bullseye main" | sudo tee /etc/apt/sources.list.d/salt.list
+
+			# Add Docker Repo
+			curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+			echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $OSVER stable" > /etc/apt/sources.list.d/docker.list 
+		
+		fi
+
 		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.gpg"
 
 		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
@@ -2008,19 +2040,20 @@ saltify() {
 		# Add SO Saltstack Repo
 		#echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
 
-		# Add Docker Repo
-		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
-		
 		# Ain't nothing but a GPG 
 
 		retry 150 20 "apt-get update" "" "Err:" || fail_setup
-		retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
-		retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
-		#retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
-
+		if [[ $waitforstate ]]; then
+			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION salt-master=$SALTVERSION" || fail_setup
+			retry 150 20 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
+			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+		else
+			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
+			retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
+		fi
 	fi
 		
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
 			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
@@ -2033,7 +2066,7 @@ saltify() {
 	logCmd "mkdir -p /etc/salt/minion.d"
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
-	
+
 	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
 	if [ $SALTVERSION == "3006.1" ]; then
 		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
@@ -2164,7 +2197,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_rocky ]]; then
+	if [[ $is_rpm ]]; then
 		echo "proxy=$so_proxy" >> /etc/yum.conf
 	else
 		# Set it up so the updates roll through the manager
@@ -2292,6 +2325,7 @@ set_management_interface() {
 	if [ "$address_type" = 'DHCP' ]; then
 		logCmd "nmcli con mod $MNIC connection.autoconnect yes"
 		logCmd "nmcli con up $MNIC"
+		logCmd "nmcli -p connection show $MNIC"
 	else
 		# Set Static IP
 		nmcli con mod "$MNIC" ipv4.addresses "$MIP"/"$MMASK"\
@@ -2335,22 +2369,6 @@ so_add_user() {
 	fi
 }
 
-ubuntu_check() {
-	if [[ $OS == "ubuntu" ]]; then
-		if [[ $waitforstate ]]; then
-			whiptail_ubuntu_notsupported
-			fail_setup
-		else
-		    if [[ $UBUNTUINSTALL == "needtoupgrade" ]]; then
-				whiptail_ubuntu_warning
-			else
-				whiptail_ubuntu_notsupported
-				fail_setup
-			fi
-		fi
-	fi
-}
-
 update_sudoers_for_testing() {
 	if [ -n "$TESTING" ]; then
 		info "Ensuring $INSTALLUSERNAME has password-less sudo access for automated testing purposes."
@@ -2359,15 +2377,15 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_rocky ]]; then
+	if [[ $is_oracle ]]; then
 		logCmd "dnf repolist"
 		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
-		RMREPOFILES=("rocky-addons.repo" "rocky-devel.repo" "rocky-extras.repo" "rocky.repo")
-		info "Removing repo files added by rocky-repos package update"
+		RMREPOFILES=("oracle-linux-ol9.repo" "uek-ol9.repo" "virt-ol9.repo")
+		info "Removing repo files added by oracle-repos package update"
 		for FILE in ${RMREPOFILES[@]}; do
 			logCmd "rm -f /etc/yum.repos.d/$FILE"
 		done
-	else
+	elif [[ $is_deb ]]; then
 		info "Running apt-get update"
 		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
 		info "Running apt-get upgrade"

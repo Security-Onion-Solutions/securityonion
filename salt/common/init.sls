@@ -195,7 +195,7 @@ soversionfile:
 {% endif %}
 
 {% if GLOBALS.so_model and GLOBALS.so_model not in ['SO2AMI01', 'SO2AZI01', 'SO2GCI01'] %}
-  {% if GLOBALS.os == 'Rocky' %}     
+  {% if GLOBALS.os == 'OEL' %}     
 # Install Raid tools
 raidpkgs:
   pkg.installed:
@@ -217,8 +217,7 @@ so-raid-status:
     - month: '*'
     - dayweek: '*'
 
-{% endif %}
-
+  {% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:

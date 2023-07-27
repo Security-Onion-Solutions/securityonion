@@ -42,7 +42,7 @@ nginxtmp:
 
 navigatorconfig:
   file.managed:
-    - name: /opt/so/conf/navigator/navigator_config.json
+    - name: /opt/so/conf/navigator/config.json
     - source: salt://nginx/files/navigator_config.json
     - user: 939
     - group: 939
@@ -51,7 +51,7 @@ navigatorconfig:
 
 navigatordefaultlayer:
   file.managed:
-    - name: /opt/so/conf/navigator/nav_layer_playbook.json
+    - name: /opt/so/conf/navigator/layers/nav_layer_playbook.json
     - source: salt://nginx/files/nav_layer_playbook.json
     - user: 939
     - group: 939
@@ -61,7 +61,7 @@ navigatordefaultlayer:
 
 navigatorpreattack:
   file.managed:
-    - name: /opt/so/conf/navigator/pre-attack.json
+    - name: /opt/so/conf/navigator/layers/pre-attack.json
     - source: salt://nginx/files/pre-attack.json
     - user: 939
     - group: 939
@@ -70,7 +70,7 @@ navigatorpreattack:
 
 navigatorenterpriseattack:
   file.managed:
-    - name: /opt/so/conf/navigator/enterprise-attack.json
+    - name: /opt/so/conf/navigator/layers/enterprise-attack.json
     - source: salt://nginx/files/enterprise-attack.json
     - user: 939
     - group: 939

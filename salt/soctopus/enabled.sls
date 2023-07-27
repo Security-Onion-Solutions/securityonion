@@ -24,7 +24,7 @@ so-soctopus:
       - /opt/so/conf/soctopus/SOCtopus.conf:/SOCtopus/SOCtopus.conf:ro
       - /opt/so/log/soctopus/:/var/log/SOCtopus/:rw
       - /opt/so/rules/elastalert/playbook:/etc/playbook-rules:rw
-      - /opt/so/conf/navigator/nav_layer_playbook.json:/etc/playbook/nav_layer_playbook.json:rw
+      - /opt/so/conf/navigator/layers/:/etc/playbook/:rw
       - /opt/so/conf/soctopus/sigma-import/:/SOCtopus/sigma-import/:rw    
       {% if GLOBALS.airgap %}
       - /nsm/repo/rules/sigma:/soctopus/sigma
