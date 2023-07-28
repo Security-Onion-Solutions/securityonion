@@ -1,18 +1,18 @@
-### 2.4.3-20230711 ISO image built on 2023/07/11
+### 2.4.4-20230728 ISO image built on 2023/07/28
 
 
 
 ### Download and Verify
 
-2.4.3-20230711 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.4.3-20230711.iso
+2.4.4-20230728 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-2.4.4-20230728.iso
 
-MD5: F481ED39E02A5AF05EB50D319D97A6C7  
-SHA1: 20F9BAA8F73A44C21A8DFE81F36247BCF33CEDA6  
-SHA256: D805522E02CD4941641385F6FF86FAAC240DA6C5FD98F78460348632C7C631B0 
+MD5: F63E76245F3E745B5BDE9E6E647A7CB6  
+SHA1: 6CE4E4A3399CD282D4F8592FB19D510388AB3EEA  
+SHA256: BF8FEB91B1D94B67C3D4A79D209B068F4A46FEC7C15EEF65B0FCE9851D7E6C9F 
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.3-20230711.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.4-20230728.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.4/main/KEYS  
@@ -26,17 +26,17 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.3-20230711.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.4-20230728.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.4.3-20230711.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-2.4.4-20230728.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.4.3-20230711.iso.sig securityonion-2.4.3-20230711.iso
+gpg --verify securityonion-2.4.4-20230728.iso.sig securityonion-2.4.4-20230728.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
