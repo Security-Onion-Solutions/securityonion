@@ -1898,14 +1898,41 @@ securityonion_repo() {
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
 		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
-		if [[ ! $waitforstate ]]; then
+		if [[ $is_desktop_iso ]]; then
+			if [[ ! is_airgap ]]; then
+				echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /etc/yum/mirror.txt
+				echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/2.4/oracle/9" >> /etc/yum/mirror.txt
+				echo "[main]" > /etc/yum.repos.d/securityonion.repo
+				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+				echo "installonly_limit=3" >> /etc/yum.repos.d/securityonion.repo
+				echo "clean_requirements_on_remove=True" >> /etc/yum.repos.d/securityonion.repo
+				echo "best=True" >> /etc/yum.repos.d/securityonion.repo
+				echo "skip_if_unavailable=False" >> /etc/yum.repos.d/securityonion.repo
+				echo "cachedir=/opt/so/conf/reposync/cache" >> /etc/yum.repos.d/securityonion.repo
+				echo "keepcache=0" >> /etc/yum.repos.d/securityonion.repo
+				echo "[securityonionsync]" >> /etc/yum.repos.d/securityonion.repo
+				echo "name=Security Onion Repo repo" >> /etc/yum.repos.d/securityonion.repo
+				echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /etc/yum.repos.d/securityonion.repo
+				echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
+				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+				logCmd "dnf repolist"
+			else
+				echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
+				echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
+				echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/securityonion.repo
+				echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
+				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+				echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo
+				logCmd "dnf repolist"
+			fi
+		elif [[ ! $waitforstate ]]; then
 			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
 			echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
 			echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/securityonion.repo
 			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
 			echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo		
-		else
+		elif [[ $waitforstate ]]; then
 			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
 			echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
 			echo "baseurl=file:///nsm/repo/" >> /etc/yum.repos.d/securityonion.repo
