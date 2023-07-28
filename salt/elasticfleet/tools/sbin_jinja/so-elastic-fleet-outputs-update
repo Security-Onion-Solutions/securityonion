@@ -4,6 +4,14 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set CUSTOMFQDN = salt['pillar.get']('elasticfleet:config:server:custom_fqdn') %}
 
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
 function update_logstash_outputs() {
 	# Generate updated JSON payload
     JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":""}')
@@ -27,10 +35,10 @@ CURRENT_LIST=$(jq -c -r '.item.hosts' <<<  "$RAW_JSON")
 CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
 
 # Create array & add initial elements
-if [ "{{ GLOBALS.manager_ip }}" = "{{ GLOBALS.url_base }}" ]; then
+if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then
     NEW_LIST=("{{ GLOBALS.url_base }}:5055")
 else
-    NEW_LIST=("{{ GLOBALS.url_base }}:5055" "{{ GLOBALS.manager_ip }}:5055")
+    NEW_LIST=("{{ GLOBALS.url_base }}:5055" "{{ GLOBALS.hostname }}:5055")
 fi
 
 {% if CUSTOMFQDN != "" %}

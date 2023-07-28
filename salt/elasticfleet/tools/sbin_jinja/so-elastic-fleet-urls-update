@@ -1,0 +1,74 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% set CUSTOMFQDN = salt['pillar.get']('elasticfleet:config:server:custom_fqdn') %}
+
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
+function update_fleet_urls() {
+	# Generate updated JSON payload
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"grid-default","is_default":true,"host_urls": $UPDATEDLIST}')
+
+    # Update Fleet Server URLs
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/fleet_server_hosts/grid-default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+# Get current list of Fleet Server URLs
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default')
+
+# Check to make sure that the server responded with good data - else, bail from script
+CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")
+if [ "$CHECKSUM" != "grid-default" ]; then
+ printf "Failed to query for current Fleet Server URLs..."
+ exit 1
+fi
+
+# Get the current list of Fleet Server URLs & hash them
+CURRENT_LIST=$(jq -c -r '.item.host_urls' <<<  "$RAW_JSON")
+CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
+
+# Create array & add initial elements
+if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then
+    NEW_LIST=("https://{{ GLOBALS.url_base }}:8220")
+else
+    NEW_LIST=("https://{{ GLOBALS.url_base }}:8220" "https://{{ GLOBALS.hostname }}:8220")
+fi
+
+{% if CUSTOMFQDN != "" %}
+# Add Custom Hostname to list
+NEW_LIST+=("https://{{ CUSTOMFQDN }}:8220")
+{% endif %}
+
+# Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
+LOGSTASHNODES=$(salt-call --out=json pillar.get logstash:nodes | jq '.local')
+
+# Query for Fleet Nodes & add them to the list (Hostname)
+if grep -q "fleet" <<< $LOGSTASHNODES; then
+   readarray -t FLEETNODES < <(jq -r ' .fleet | keys_unsorted[]'  <<< $LOGSTASHNODES)
+   for NODE in "${FLEETNODES[@]}"
+   do
+    NEW_LIST+=("https://$NODE:8220")
+   done
+fi
+
+# Sort & hash the new list of Fleet Server URLs
+NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
+NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
+
+# Compare the current & new list of URLs - if different, update the Fleet Server URLs
+if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
+    printf "\nHashes match - no update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    exit 0
+else
+    printf "\nHashes don't match - update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    update_fleet_urls
+fi

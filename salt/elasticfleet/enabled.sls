@@ -16,14 +16,25 @@ include:
   - elasticfleet.config
   - elasticfleet.sostatus
 
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval'] %}
+# If enabled, automatically update Fleet Logstash Outputs
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
+{% endif %}
 
-#so-elastic-fleet-auto-configure-server-urls:
-#  cmd.run:
-#    - name: /usr/sbin/so-elastic-fleet-urls-update
+# If enabled, automatically update Fleet Server URLs & ES Connection
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-fleet'] %}
+so-elastic-fleet-auto-configure-server-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-urls-update
+{% endif %}
+
+# Automatically update Fleet Server Elasticsearch URLs
+{% if grains.role not in ['so-fleet'] %}
+so-elastic-fleet-auto-configure-elasticsearch-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-es-url-update
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
@@ -51,7 +62,11 @@ so-elastic-fleet:
       {% endfor %}
     - binds:
       - /etc/pki:/etc/pki:ro
+      {% if GLOBALS.os_family == 'Debian' %}
+      - /etc/ssl:/etc/ssl:ro
+      {% endif %}
       #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
+      - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
       - {{ BIND }}
@@ -59,14 +74,20 @@ so-elastic-fleet:
       {% endif %}      
     - environment:
       - FLEET_SERVER_ENABLE=true
-      - FLEET_URL=https://{{ GLOBALS.node_ip }}:8220
+      - FLEET_URL=https://{{ GLOBALS.hostname }}:8220
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
       - FLEET_SERVER_SERVICE_TOKEN={{ SERVICETOKEN }}
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
-      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
+      {% if GLOBALS.os_family == 'Debian' %}
+      - FLEET_CA=/etc/ssl/certs/intca.crt     
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
+      {% else %}
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
+      {% endif %}
+      - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
