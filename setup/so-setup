@@ -86,6 +86,16 @@ if [[ $not_supported ]]; then
 	fi
 fi
 
+# we need to upgrade packages on debian prior to install and reboot if there are due to iptables-restore not running properly
+# if packages are updated and the box isn't rebooted
+if [[ $is_debian ]]; then
+	update_packages
+	if [[ -f "/var/run/reboot-required" ]]; then
+		whiptail_debian_reboot_required
+		reboot
+	fi
+fi
+
 # Check to see if this is the setup type of "desktop".
 is_desktop=
 if [ "$setup_type" = 'desktop' ]; then
@@ -105,52 +115,6 @@ if [[ "$setup_type" == 'iso' ]]; then
 		echo "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
 		fail_setup
 	fi
-fi
-
-# Check to see if this is an desktop install. If it is let's run things differently
-if [[ $is_desktop ]]; then
-	title "This is a desktop install"
-
-	# Make sure it's CentOS or Rocky Linux
-	if [[ $is_rpm ]]; then
-		info "Security Onion Desktop is supported on this OS."
-	else
-		info "Security Onion Desktop is not supported on this OS."
-		exit 1
-	fi
-
-	if ! whiptail_desktop_install; then
-		if [[ $is_desktop_iso ]]; then
-			if whiptail_desktop_nongrid_iso; then
-				# Remove setup from auto launching
-				parse_install_username
-				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-				info "Enabling graphical interface and setting it to load at boot"
-				systemctl set-default graphical.target
-				startx
-				exit 0
-			else
-				# Abort!
-				exit 0
-			fi
-		else
-			if whiptail_desktop_nongrid_network; then
-				info ""
-				info ""
-				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
-				info ""
-				info ""
-				desktop_salt_local
-			else
-				# Abort!
-				exit 0
-			fi
-		fi
-	fi
-
-	# If you got this far then you want to join the grid
-	is_minion=true
-
 fi
 
 if ! [ -f $install_opt_file ] && [ -d /root/manager_setup/securityonion ] && [[ $(pwd) != /root/manager_setup/securityonion/setup ]]; then
@@ -356,6 +320,57 @@ fi
 # Process the install type
 process_installtype
 
+# Check to see if this is an desktop install. If it is let's run things differently
+if [[ $is_desktop ]]; then
+	title "This is a desktop install"
+
+	# Make sure it's oracle
+	if [[ $is_oracle ]]; then
+		info "Security Onion Desktop is supported on this OS."
+	else
+		info "Security Onion Desktop is not supported on this OS."
+		exit 1
+	fi
+
+#	if ! whiptail_desktop_install; then
+	if [[ $is_desktop_iso ]]; then
+		if whiptail_desktop_nongrid_iso; then
+			# Remove setup from auto launching
+			parse_install_username
+			sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+			securityonion_repo
+			info "Enabling graphical interface and setting it to load at boot"
+			systemctl set-default graphical.target
+			echo "Desktop Install Complete!"
+			echo ""
+			echo "Please reboot to start graphical interface."
+			exit 0
+		else
+			# Abort!
+			exit 0
+		fi
+	else
+		if whiptail_desktop_nongrid_network; then
+			info ""
+			info ""
+			info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
+			info ""
+			info ""
+			desktop_salt_local
+		else
+			# Abort!
+			exit 0
+		fi
+	fi
+#	fi
+
+	# If you got this far then you want to join the grid
+	is_minion=true
+
+fi
+
+
+
 # If this is not an automated install prompt
 if ! [[ -f $install_opt_file ]]; then
 	# If you are a manager ask ALL the manager things here. I know there is code re-use but this makes it easier to add new roles
@@ -459,7 +474,6 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
 		info "Setting up as node type sensor"
-		installer_prereq_packages
 		monints=true
 		check_requirements "sensor"
 		calculate_useable_cores
@@ -489,7 +503,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_searchnode ]]; then
 		info "Setting up as node type searchnode"
-		installer_prereq_packages
 		check_requirements "elasticsearch"
 		networking_needful
 		check_network_manager_conf
@@ -503,7 +516,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_heavynode ]]; then
 		info "Setting up as node type heavynode"
-		installer_prereq_packages
 		monints=true
 		check_requirements "heavynode"
 		calculate_useable_cores
@@ -520,7 +532,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_idh ]]; then
 		info "Setting up as node type idh"
-		installer_prereq_packages
 		check_requirements "idh"
 		networking_needful
 		collect_mngr_hostname
@@ -553,7 +564,6 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_receiver ]]; then
 		info "Setting up as node type receiver"
-		installer_prereq_packages
 		check_requirements "receiver"
 		networking_needful
 		collect_mngr_hostname
@@ -682,12 +692,14 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ ! $is_airgap ]]; then
 			title "Downloading IDS Rules"
 			logCmd "so-rule-update"
-			title "Restarting Suricata to pick up the new rules"
-			logCmd "so-suricata-restart"
 			title "Downloading YARA rules"
 			logCmd "su socore -c '/usr/sbin/so-yara-download'"
-			title "Restarting Strelka to use new rules"
-			logCmd "so-strelka-restart"
+			if [[ $monints ]]; then
+				title "Restarting Suricata to pick up the new rules"
+				logCmd "so-suricata-restart"
+				title "Restarting Strelka to use new rules"
+				logCmd "so-strelka-restart"
+			fi
 		fi
 		title "Setting up Kibana Default Space"
 		logCmd "so-kibana-space-defaults"
