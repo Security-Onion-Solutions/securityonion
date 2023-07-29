@@ -881,8 +881,8 @@ check_requirements() {
 	local req_cores
 	local req_storage
 	local nic_list
-	local exclude_grep = "lo|vir|veth|br|docker|wl"
-	readarray -t nic_list <<< "$(ip link | egrep '^[0-9]+:' | awk '{print $2}' | sed 's/:$//g' | awk -F@ '{print $1}' | egrep -v $exclude_grep | grep -vwe "bond0")
+	local exclude_grep="lo|vir|veth|br|docker|wl"
+	readarray -t nic_list <<< "$(ip link | egrep '^[0-9]+:' | awk '{print $2}' | sed 's/:$//g' | awk -F@ '{print $1}' | egrep -v $exclude_grep | grep -vwe bond0)"
 	local num_nics=${#nic_list[@]}
 	
 	if [[ "$standalone_or_dist" == 'standalone' ]]; then
@@ -1431,8 +1431,8 @@ filter_unused_nics() {
 	fi
 
 	# Finally, set filtered_nics to any NICs we aren't using (and ignore interfaces that aren't of use)
-	local exclude_grep = "lo|vir|veth|br|docker|wl"
-	filtered_nics=$(ip link | egrep '^[0-9]+:' | awk '{print $2}' | sed 's/:$//g' | awk -F@ '{print $1}' | egrep -v "lo|vir|veth|br|docker|wl" | grep -vwe $grep_string)
+	local exclude_grep="lo|vir|veth|br|docker|wl"
+	filtered_nics=$(ip link | egrep '^[0-9]+:' | awk '{print $2}' | sed 's/:$//g' | awk -F@ '{print $1}' | egrep -v "$exclude_grep" | grep -vwe $grep_string)
 	readarray -t filtered_nics <<< "$filtered_nics"
 	
 	nic_list=()
