@@ -35,6 +35,7 @@ so-elastic-agent:
       - /opt/so/conf/elastic-agent/elastic-agent.yml:/usr/share/elastic-agent/elastic-agent.yml:ro
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro 
       - /nsm:/nsm:ro
+      - /opt/so/log:/opt/so/log:ro
      {% if DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
       - {{ BIND }}
@@ -47,6 +48,8 @@ so-elastic-agent:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    - require:
+      - file: create-elastic-agent-config
     - watch:
       - file: create-elastic-agent-config
 
