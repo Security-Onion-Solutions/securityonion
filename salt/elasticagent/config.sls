@@ -30,7 +30,7 @@ elasticagentconfdir:
 
 elasticagentlogdir:
    file.directory:
-     - name: /opt/so/log/elastic-agent
+     - name: /opt/so/log/elasticagent
      - user: 949
      - group: 939
      - makedirs: True
