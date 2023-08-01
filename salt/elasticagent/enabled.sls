@@ -42,9 +42,9 @@ so-elastic-agent:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-      - LOGS_PATH=logs
     - environment:
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-agent'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-agent'].extra_env %}
       - {{ XTRAENV }}
