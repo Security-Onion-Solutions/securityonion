@@ -3,7 +3,7 @@
 {%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 id: aea1ba80-1065-11ee-a369-97538913b6a9
-revision: 2
+revision: 1
 outputs:
   default:
     type: elasticsearch
@@ -22,56 +22,369 @@ agent:
     metrics: false
   features: {}
 inputs:
-  - id: logfile-logs-80ffa884-2cfc-459a-964a-34df25714d85
-    name: suricata-logs
-    revision: 1
+  - id: logfile-logs-fefef78c-422f-4cfa-8abf-4cd1b9428f62
+    name: import-evtx-logs
+    revision: 2
     type: logfile
     use_output: default
     meta:
       package:
         name: log
-        version: 
+        version:
     data_stream:
       namespace: so
-    package_policy_id: 80ffa884-2cfc-459a-964a-34df25714d85
+    package_policy_id: fefef78c-422f-4cfa-8abf-4cd1b9428f62
     streams:
-      - id: logfile-log.log-80ffa884-2cfc-459a-964a-34df25714d85
+      - id: logfile-log.log-fefef78c-422f-4cfa-8abf-4cd1b9428f62
+        data_stream:
+          dataset: import
+        paths:
+          - /nsm/import/*/evtx/*.json
+        processors:
+          - dissect:
+              field: log.file.path
+              tokenizer: '/nsm/import/%{import.id}/evtx/%{import.file}'
+              target_prefix: ''
+          - decode_json_fields:
+              fields:
+                - message
+              target: ''
+          - drop_fields:
+              ignore_missing: true
+              fields:
+                - host
+          - add_fields:
+              fields:
+                dataset: system.security
+                type: logs
+                namespace: default
+              target: data_stream
+          - add_fields:
+              fields:
+                dataset: system.security
+                module: system
+                imported: true
+              target: event
+          - then:
+              - add_fields:
+                  fields:
+                    dataset: windows.sysmon_operational
+                  target: data_stream
+              - add_fields:
+                  fields:
+                    dataset: windows.sysmon_operational
+                    module: windows
+                    imported: true
+                  target: event
+            if:
+              equals:
+                winlog.channel: Microsoft-Windows-Sysmon/Operational
+          - then:
+              - add_fields:
+                  fields:
+                    dataset: system.application
+                  target: data_stream
+              - add_fields:
+                  fields:
+                    dataset: system.application
+                  target: event
+            if:
+              equals:
+                winlog.channel: Application
+          - then:
+              - add_fields:
+                  fields:
+                    dataset: system.system
+                  target: data_stream
+              - add_fields:
+                  fields:
+                    dataset: system.system
+                  target: event
+            if:
+              equals:
+                winlog.channel: System
+          - then:
+              - add_fields:
+                  fields:
+                    dataset: windows.powershell_operational
+                  target: data_stream
+              - add_fields:
+                  fields:
+                    dataset: windows.powershell_operational
+                    module: windows
+                  target: event
+            if:
+              equals:
+                winlog.channel: Microsoft-Windows-PowerShell/Operational
+        tags:
+          - import
+  - id: logfile-redis-fc98c947-7d17-4861-a318-7ad075f6d1b0
+    name: redis-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: redis
+        version:
+    data_stream:
+      namespace: default
+    package_policy_id: fc98c947-7d17-4861-a318-7ad075f6d1b0
+    streams:
+      - id: logfile-redis.log-fc98c947-7d17-4861-a318-7ad075f6d1b0
+        data_stream:
+          dataset: redis.log
+          type: logs
+        exclude_files:
+          - .gz$
+        paths:
+          - /opt/so/log/redis/redis.log
+        tags:
+          - redis-log
+        exclude_lines:
+          - '^\s+[\-`(''.|_]'
+  - id: logfile-logs-3b56803d-5ade-4c93-b25e-9b37182f66b8
+    name: import-suricata-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: 3b56803d-5ade-4c93-b25e-9b37182f66b8
+    streams:
+      - id: logfile-log.log-3b56803d-5ade-4c93-b25e-9b37182f66b8
+        data_stream:
+          dataset: import
+        pipeline: suricata.common
+        paths:
+          - /nsm/import/*/suricata/eve*.json
+        processors:
+          - add_fields:
+              fields:
+                module: suricata
+                imported: true
+                category: network
+              target: event
+          - dissect:
+              field: log.file.path
+              tokenizer: '/nsm/import/%{import.id}/suricata/%{import.file}'
+              target_prefix: ''
+  - id: logfile-logs-c327e1a3-1ebe-449c-a8eb-f6f35032e69d
+    name: soc-server-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: c327e1a3-1ebe-449c-a8eb-f6f35032e69d
+    streams:
+      - id: logfile-log.log-c327e1a3-1ebe-449c-a8eb-f6f35032e69d
+        data_stream:
+          dataset: soc
+        pipeline: common
+        paths:
+          - /opt/so/log/soc/sensoroni-server.log
+        processors:
+          - decode_json_fields:
+              add_error_key: true
+              process_array: true
+              max_depth: 2
+              fields:
+                - message
+              target: soc
+          - add_fields:
+              fields:
+                module: soc
+                dataset_temp: server
+                category: host
+              target: event
+          - rename:
+              ignore_missing: true
+              fields:
+                - from: soc.fields.sourceIp
+                  to: source.ip
+                - from: soc.fields.status
+                  to: http.response.status_code
+                - from: soc.fields.method
+                  to: http.request.method
+                - from: soc.fields.path
+                  to: url.path
+                - from: soc.message
+                  to: event.action
+                - from: soc.level
+                  to: log.level
+        tags:
+          - so-soc
+  - id: logfile-logs-906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+    name: soc-sensoroni-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: 906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+    streams:
+      - id: logfile-log.log-906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+        data_stream:
+          dataset: soc
+        pipeline: common
+        paths:
+          - /opt/so/log/sensoroni/sensoroni.log
+        processors:
+          - decode_json_fields:
+              add_error_key: true
+              process_array: true
+              max_depth: 2
+              fields:
+                - message
+              target: sensoroni
+          - add_fields:
+              fields:
+                module: soc
+                dataset_temp: sensoroni
+                category: host
+              target: event
+          - rename:
+              ignore_missing: true
+              fields:
+                - from: sensoroni.fields.sourceIp
+                  to: source.ip
+                - from: sensoroni.fields.status
+                  to: http.response.status_code
+                - from: sensoroni.fields.method
+                  to: http.request.method
+                - from: sensoroni.fields.path
+                  to: url.path
+                - from: sensoroni.message
+                  to: event.action
+                - from: sensoroni.level
+                  to: log.level
+  - id: logfile-logs-df0d7f2c-221f-433b-b18b-d1cf83250515
+    name: soc-salt-relay-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: df0d7f2c-221f-433b-b18b-d1cf83250515
+    streams:
+      - id: logfile-log.log-df0d7f2c-221f-433b-b18b-d1cf83250515
+        data_stream:
+          dataset: soc
+        pipeline: common
+        paths:
+          - /opt/so/log/soc/salt-relay.log
+        processors:
+          - dissect:
+              field: message
+              tokenizer: '%{soc.ts} | %{event.action}'
+              target_prefix: ''
+          - add_fields:
+              fields:
+                module: soc
+                dataset_temp: salt_relay
+                category: host
+              target: event
+        tags:
+          - so-soc
+  - id: logfile-logs-74bd2366-fe52-493c-bddc-843a017fc4d0
+    name: soc-auth-sync-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: 74bd2366-fe52-493c-bddc-843a017fc4d0
+    streams:
+      - id: logfile-log.log-74bd2366-fe52-493c-bddc-843a017fc4d0
+        data_stream:
+          dataset: soc
+        pipeline: common
+        paths:
+          - /opt/so/log/soc/sync.log
+        processors:
+          - dissect:
+              field: message
+              tokenizer: '%{event.action}'
+              target_prefix: ''
+          - add_fields:
+              fields:
+                module: soc
+                dataset_temp: auth_sync
+                category: host
+              target: event
+        tags:
+          - so-soc
+  - id: logfile-logs-d151d9bf-ff2a-4529-9520-c99244bc0253
+    name: suricata-logs
+    revision: 2
+    type: logfile
+    use_output: default
+    meta:
+      package:
+        name: log
+        version:
+    data_stream:
+      namespace: so
+    package_policy_id: d151d9bf-ff2a-4529-9520-c99244bc0253
+    streams:
+      - id: logfile-log.log-d151d9bf-ff2a-4529-9520-c99244bc0253
         data_stream:
           dataset: suricata
+        pipeline: suricata.common
         paths:
           - /nsm/suricata/eve*.json
         processors:
           - add_fields:
-              target: event
               fields:
-                category: network
                 module: suricata
-        pipeline: suricata.common
-  - id: logfile-logs-90103ac4-f6bd-4a4a-b596-952c332390fc
+                category: network
+              target: event
+  - id: logfile-logs-31f94d05-ae75-40ee-b9c5-0e0356eff327
     name: strelka-logs
-    revision: 1
+    revision: 2
     type: logfile
     use_output: default
     meta:
       package:
         name: log
-        version: 
+        version:
     data_stream:
       namespace: so
-    package_policy_id: 90103ac4-f6bd-4a4a-b596-952c332390fc
+    package_policy_id: 31f94d05-ae75-40ee-b9c5-0e0356eff327
     streams:
-      - id: logfile-log.log-90103ac4-f6bd-4a4a-b596-952c332390fc
+      - id: logfile-log.log-31f94d05-ae75-40ee-b9c5-0e0356eff327
         data_stream:
           dataset: strelka
+        pipeline: strelka.file
         paths:
           - /nsm/strelka/log/strelka.log
         processors:
           - add_fields:
-              target: event
               fields:
-                category: file
                 module: strelka
-        pipeline: strelka.file
+                category: file
+              target: event
   - id: logfile-logs-6197fe84-9b58-4d9b-8464-3d517f28808d
     name: zeek-logs
     revision: 1
