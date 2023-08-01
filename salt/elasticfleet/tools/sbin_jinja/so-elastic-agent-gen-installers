@@ -11,6 +11,12 @@
 . /usr/sbin/so-common
 . /usr/sbin/so-elastic-fleet-common
 
+LOG="/opt/so/log/elasticfleet/so-elastic-agent-gen-installers.log"
+
+# Check to see if we are already running
+NUM_RUNNING=$(pgrep -cf "/bin/bash /sbin/so-elastic-agent-gen-installers")
+[ "$NUM_RUNNING" -gt 1 ] && echo "$(date) - $NUM_RUNNING gen installers script processes running...exiting." >>$LOG && exit 0
+
 for i in {1..30}
 do
    ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
