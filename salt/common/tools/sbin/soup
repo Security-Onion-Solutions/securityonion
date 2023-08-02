@@ -17,9 +17,30 @@
 
 . /usr/sbin/so-common
 
+INSTALLEDVERSION=$(cat /etc/soversion)
+
+if [[ $INSTALLEDVERSION == "2.4.4" ]]; then
+
+  echo "Initiating supersoup mode"
+  mkdir -p /tmp/supersoup
+  cd /tmp/supersoup
+  echo "Updating soup..."
+  wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.4/main/salt/manager/tools/sbin/soup
+  cp soup /opt/so/saltstack/default/salt/manager/tools/sbin
+  echo "Updating soup..."
+  salt-call state.apply manager
+  echo "Please run soup a second time."
+
+  exit 0
+fi
+
+if [ "$INSTALLEDVERSION" = '2.4.3' ] || [ "$INSTALLEDVERSION" = '2.4.2' ] || [ "$INSTALLEDVERSION" = '2.4.1' ] || [ "$INSTALLEDVERSION" = '2.4.0' ]; then
+  echo "soup is not supported on $INSTALLEDVERSION. Please install the latest 2.4 release."
+  exit 1
+fi
+
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
-INSTALLEDVERSION=$(cat /etc/soversion)
 POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
