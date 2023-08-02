@@ -28,6 +28,13 @@ elasticagentconfdir:
     - group: 939
     - makedirs: True
 
+elasticagentlogdir:
+   file.directory:
+     - name: /opt/so/log/elasticagent
+     - user: 949
+     - group: 939
+     - makedirs: True
+
 elasticagent_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
