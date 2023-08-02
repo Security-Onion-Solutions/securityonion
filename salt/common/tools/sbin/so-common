@@ -5,7 +5,16 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+# Elastic agent is not managed by salt. Because of this we must store this base information in a 
+# script that accompanies the soup system. Since so-common is one of those special soup files, 
+# and since this same logic is required during installation, it's included in this file.
 ELASTIC_AGENT_TARBALL_VERSION="8.8.2"
+ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
+
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 DOC_BASE_URL="https://docs.securityonion.net/en/2.4"
 
@@ -161,6 +170,37 @@ disable_fastestmirror() {
 	sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 }
 
+download_and_verify() {
+	source_url=$1
+	source_md5_url=$2
+	dest_file=$3
+	md5_file=$4
+	expand_dir=$5
+
+	if [[ -n "$expand_dir" ]]; then
+		mkdir -p "$expand_dir"
+	fi
+
+	if ! verify_md5_checksum "$dest_file" "$md5_file"; then
+		retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L '$source_url' --output '$dest_file'" "" ""
+		retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L '$source_md5_url' --output '$md5_file'"  "" ""
+			
+		SOURCEHASH=$(md5sum "$dest_file" | awk '{ print $1 }')
+		HASH=$(cat "$md5_file")
+
+		if verify_md5_checksum "$dest_file" "$md5_file"; then
+		  echo "Source file and checksum are good."
+		else
+		  echo "Unable to download and verify the source file and checksum."
+		  return 1
+		fi
+	fi
+
+	if [[ -n "$expand_dir" ]]; then
+		tar -xf "$dest_file" -C "$expand_dir"
+	fi
+}
+
 elastic_license() {
 
 read -r -d '' message <<- EOM
@@ -211,7 +251,7 @@ gpg_rpm_import() {
 	        echo "Imported $RPMKEY"
 	    done
 	elif [[ $is_rpm ]]; then
-		info "Importing the security onion GPG key"
+		echo "Importing the security onion GPG key"
 		rpm --import ../salt/repo/client/files/oracle/keys/securityonion.pub
 	fi
 }
@@ -470,6 +510,11 @@ has_uppercase() {
 		|| return 1
 }
 
+update_elastic_agent() {
+	echo "Checking if Elastic Agent update is necessary..."
+	download_and_verify "$ELASTIC_AGENT_URL" "$ELASTIC_AGENT_MD5_URL" "$ELASTIC_AGENT_FILE" "$ELASTIC_AGENT_MD5" "$ELASTIC_AGENT_EXPANSION_DIR"
+}
+
 valid_cidr() {
 	# Verify there is a backslash in the string
 	echo "$1" | grep -qP "^[^/]+/[^/]+$" || return 1
@@ -621,6 +666,23 @@ valid_username() {
 	local user=$1
 
 	echo "$user" | grep -qP '^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$' && return 0 || return 1
+}
+
+verify_md5_checksum() {
+	data_file=$1
+	md5_file=${2:-${data_file}.md5}
+
+	if [[ ! -f "$dest_file" || ! -f "$md5_file" ]]; then
+		return 2
+	fi
+
+	SOURCEHASH=$(md5sum "$data_file" | awk '{ print $1 }')
+	HASH=$(cat "$md5_file")
+
+	if [[ "$HASH" == "$SOURCEHASH" ]]; then
+		return 0
+	fi
+	return 1
 }
 
 wait_for_web_response() {
