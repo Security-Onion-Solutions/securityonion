@@ -71,7 +71,7 @@ commonpkgs:
       - net-tools
       - nmap-ncat
       - openssl
-      - procps
+      - procps-ng
       - python3-dnf-plugin-versionlock
       - python3-docker
       - python3-m2crypto
