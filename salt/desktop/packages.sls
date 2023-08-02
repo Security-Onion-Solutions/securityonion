@@ -295,6 +295,7 @@ desktop_packages:
       - mesa-vulkan-drivers
       - microcode_ctl
       - mobile-broadband-provider-info
+      - mono-devel
       - mpfr
       - mpg123-libs
       - mtdev
