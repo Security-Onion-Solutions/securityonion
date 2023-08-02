@@ -479,7 +479,26 @@ up_to_2.4.4() {
 }
 
 up_to_2.4.5() {
-   echo "Nothing to do for 2.4.5"
+  echo "Downloading Elastic Agent Tarball...."
+  ELASTIC_AGENT_TARBALL_VERSION="8.8.2"
+  agentArchive=/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz
+  agentMd5=/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5
+  beatsDir=/nsm/elastic-fleet/artifacts/beats/elastic-agent
+  if [[ ! -f "$agentArchive" ]]; then
+    retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz --output $agentArchive"  "" ""
+    retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5 --output $agentMd5"  "" ""
+      
+    SOURCEHASH=$(md5sum $agentArchive | awk '{ print $1 }')
+    HASH=$(cat $agentMd5)
+  
+    if [[ "$HASH" == "$SOURCEHASH" ]]; then
+      info "Elastic Agent source hash is good."
+    else
+      info "Unable to download the Elastic Agent source files."
+      exit 1
+    fi
+  fi
+  tar -xf $agentArchive -C $beatsDir
    ##
    INSTALLEDVERSION=2.4.5
 }
