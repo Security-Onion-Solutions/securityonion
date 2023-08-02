@@ -17,6 +17,7 @@ commonpkgs:
       - netcat-openbsd
       - sqlite3
       - libssl-dev
+      - procps
       - python3-dateutil
       - python3-docker
       - python3-packaging
@@ -70,6 +71,7 @@ commonpkgs:
       - net-tools
       - nmap-ncat
       - openssl
+      - procps-ng
       - python3-dnf-plugin-versionlock
       - python3-docker
       - python3-m2crypto

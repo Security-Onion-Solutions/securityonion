@@ -419,7 +419,8 @@ post_to_2.4.4() {
 }
 
 post_to_2.4.5() {
-  echo "Nothing to apply"
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
   POSTVERSION=2.4.5
 }
 
@@ -436,7 +437,7 @@ stop_salt_master() {
 
     echo ""
     echo "Storing salt-master pid."
-    MASTERPID=$(pgrep salt-master | head -1)
+    MASTERPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-master MainProcess')
     echo "Found salt-master PID $MASTERPID"
     systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
@@ -455,7 +456,7 @@ stop_salt_minion() {
     set -e
 
     echo "Storing salt-minion pid."
-    MINIONPID=$(pgrep salt-minion | head -1)
+    MINIONPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-minion' | head -1)
     echo "Found salt-minion PID $MINIONPID"
     systemctl_func "stop" "salt-minion"
 
@@ -859,7 +860,7 @@ main() {
     set +e
 
     echo "Checking the number of minions."
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | grep -v adv_ | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
@@ -874,9 +875,6 @@ main() {
 
     echo "Checking sudoers file."
     check_sudoers
-
-    echo "Checking for necessary user migrations."
-    so-user migrate
 
     systemctl_func "start" "$cron_service_name"
 
