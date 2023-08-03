@@ -44,6 +44,10 @@ while [[ $# -gt 0 ]]; do
     --quiet)
       quiet=1
       ;;
+    --shift)
+      SHIFTDATE=$1
+      shift
+      ;;
     -*) 
       echo "Encountered unexpected parameter: $param"
       usage
@@ -68,8 +72,10 @@ function status {
 function evtx2es() {
   EVTX=$1
   HASH=$2
+  SHIFTDATE=$3
   
-  docker run --rm \
+  docker run \
+    -e "SHIFTTS=$SHIFTDATE" \
     -v "$EVTX:/tmp/data.evtx" \
     -v "/nsm/import/$HASH/evtx/:/tmp/evtx/" \
     -v "/nsm/import/evtx-end_newest:/tmp/newest" \
@@ -113,7 +119,9 @@ echo $END_NEWEST > /nsm/import/evtx-end_newest
 for EVTX in $INPUT_FILES; do
   EVTX=$(/usr/bin/realpath "$EVTX")
   status "Processing Import: ${EVTX}"
-
+  if ! [ -z "$SHIFTDATE" ]; then
+    status "- timeshifting logs to end date of $SHIFTDATE"
+  fi
   # generate a unique hash to assist with dedupe checks
   HASH=$(md5sum "${EVTX}" | awk '{ print $1 }')
   HASH_DIR=/nsm/import/${HASH}
@@ -136,7 +144,7 @@ for EVTX in $INPUT_FILES; do
 
     # import evtx and write them to import ingest pipeline
     status "- importing logs to Elasticsearch..."
-    evtx2es "${EVTX}" $HASH
+    evtx2es "${EVTX}" $HASH "$SHIFTDATE"
     if [[ $? -ne 0 ]]; then
       INVALID_EVTXS_COUNT=$((INVALID_EVTXS_COUNT + 1))
       status "- WARNING: This evtx file may not have fully imported successfully"
