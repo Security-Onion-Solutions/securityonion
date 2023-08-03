@@ -2,6 +2,7 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 . /usr/sbin/so-common
 
@@ -41,7 +42,8 @@ else
 fi
 
 # Query for FQDN entries & add them to the list
-CUSTOMFQDNLIST=$( salt-call --out=json pillar.get elasticfleet:config:server:custom_fqdn | jq -r '.local | .[]')
+{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %}
+CUSTOMFQDNLIST=({{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(' ') }})
 if [ -n "$CUSTOMFQDNLIST" ]; then
     readarray -t CUSTOMFQDN <<< $CUSTOMFQDNLIST
     for CUSTOMNAME in "${CUSTOMFQDN[@]}"
@@ -49,6 +51,7 @@ if [ -n "$CUSTOMFQDNLIST" ]; then
     NEW_LIST+=("https://$CUSTOMNAME:8220")
     done
 fi
+{% endif %}
 
 # Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
 LOGSTASHNODES=$(salt-call --out=json pillar.get logstash:nodes | jq '.local')
