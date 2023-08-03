@@ -14,6 +14,10 @@ graphical_target:
     - require:
       - desktop_packages
 
+convert_gnome_classic:
+  cmd.script:
+    - name: salt://desktop/scripts/convert-gnome-classic.sh
+
 {% else %}
 
 desktop_xwindows_os_fail:
