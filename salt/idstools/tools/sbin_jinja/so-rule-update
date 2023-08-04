@@ -3,17 +3,21 @@
 
 {%- from 'vars/globals.map.jinja' import GLOBALS %}
 {%- from 'idstools/map.jinja' import IDSTOOLSMERGED %}
-{%-   set proxy = salt['pillar.get']('manager:proxy') %}
+
+{%- set proxy = salt['pillar.get']('manager:proxy') %}
+{%- set noproxy = salt['pillar.get']('manager:no_proxy', '') %}
+
+# Download the rules from the internet
+{%- if proxy %}
+export http_proxy={{ proxy }} 
+export https_proxy={{ proxy }} 
+export no_proxy="{{ noproxy }}" 
+{%- endif %}
 
 mkdir -p /nsm/rules/suricata
 chown -R socore:socore /nsm/rules/suricata
 # Download the rules from the internet
 {%- if GLOBALS.airgap != 'True' %}
-{%- if proxy %}
-export http_proxy={{ proxy }} 
-export https_proxy={{ proxy }} 
-export no_proxy=salt['pillar.get']('manager:no_proxy') 
-{%- endif %}
 {%-   if IDSTOOLSMERGED.config.ruleset == 'ETOPEN' %}
 docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force
 {%-   elif IDSTOOLSMERGED.config.ruleset == 'ETPRO' %}
