@@ -43,14 +43,12 @@ fi
 
 # Query for FQDN entries & add them to the list
 {% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %}
-CUSTOMFQDNLIST=({{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(' ') }})
-if [ -n "$CUSTOMFQDNLIST" ]; then
-    readarray -t CUSTOMFQDN <<< $CUSTOMFQDNLIST
-    for CUSTOMNAME in "${CUSTOMFQDN[@]}"
-    do
-    NEW_LIST+=("https://$CUSTOMNAME:8220")
-    done
-fi
+CUSTOMFQDNLIST=('{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(' ') }}')
+readarray -t -d ' ' CUSTOMFQDN < <(printf '%s' "$CUSTOMFQDNLIST")
+for CUSTOMNAME in "${CUSTOMFQDN[@]}"
+do
+ NEW_LIST+=("$CUSTOMNAME:5055")
+done
 {% endif %}
 
 # Query for the current Grid Nodes that are running Logstash
