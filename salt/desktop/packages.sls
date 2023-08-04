@@ -349,6 +349,7 @@ desktop_packages:
       - snappy
       - sound-theme-freedesktop
       - soundtouch
+      - securityonion-networkminer
       - speech-dispatcher
       - speech-dispatcher-espeak-ng
       - speex
