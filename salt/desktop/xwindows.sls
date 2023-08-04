@@ -18,10 +18,10 @@ convert_gnome_classic:
   cmd.script:
     - name: salt://desktop/scripts/convert-gnome-classic.sh
 
-{% for username in salt['file.find'](path='/home/',mindepth=1,maxdepth=1,type='d') %}
-{%   set username = username.split('/')[2] %}
-{%   if username != 'zeek' %}
-{%     if not salt['file.file_exists']('/var/lib/AccountsService/users/' ~ username) %}
+{%   for username in salt['file.find'](path='/home/',mindepth=1,maxdepth=1,type='d') %}
+{%     set username = username.split('/')[2] %}
+{%     if username != 'zeek' %}
+{%       if not salt['file.file_exists']('/var/lib/AccountsService/users/' ~ username) %}
 
 {{username}}_session:
   file.managed:
@@ -31,9 +31,9 @@ convert_gnome_classic:
     - defaults:
         USERNAME: {{username}}
 
+{%       endif %}
 {%     endif %}
-{%   endif %}
-{% endfor %}
+{%   endfor %}
 
 {% else %}
 
