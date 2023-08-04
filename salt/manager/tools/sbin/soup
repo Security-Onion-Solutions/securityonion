@@ -184,7 +184,7 @@ check_airgap() {
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
+      AGREPO=/tmp/soagupdate/minimal/Packages
   else 
       is_airgap=1
   fi
@@ -402,9 +402,7 @@ postupgrade_changes() {
     
     [[ "$POSTVERSION" == 2.4.2 ]] && post_to_2.4.3
     [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
-    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5
-    
-
+    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
     true
 }
 
@@ -479,9 +477,21 @@ up_to_2.4.4() {
 }
 
 up_to_2.4.5() {
-  update_elastic_agent
+  determine_elastic_agent_upgrade
 
   INSTALLEDVERSION=2.4.5
+}
+
+determine_elastic_agent_upgrade() {
+  if [[ $is_airgap -eq 0 ]]; then
+    update_elastic_agent_airgap
+  else
+    update_elastic_agent
+  fi
+}
+
+update_elastic_agent_airgap() {
+  rsync -av /tmp/soagupdate/fleet/* /nsm/elastic-fleet/artifacts/
 }
 
 verify_upgradespace() {
@@ -521,6 +531,7 @@ update_centos_repo() {
   echo "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
   echo "Creating repo"
+  dnf -y install yum-utils createrepo
   createrepo /nsm/repo
 }
 

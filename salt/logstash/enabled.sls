@@ -22,6 +22,7 @@ include:
 {%   endif %}
   - logstash.config
   - logstash.sostatus
+  - ssl
 
 so-logstash:
   docker_container.running:
@@ -90,6 +91,10 @@ so-logstash:
         {% endfor %}
       {% endif %}
     - watch:
+      {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-fleet', 'so-receiver'] %}
+      - x509: etc_elasticfleet_logstash_key
+      - x509: etc_elasticfleet_logstash_crt
+      {% endif %}
       - file: lsetcsync
       {% for assigned_pipeline in LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
       - file: ls_pipeline_{{assigned_pipeline}}
