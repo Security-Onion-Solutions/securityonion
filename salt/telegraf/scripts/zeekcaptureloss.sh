@@ -11,15 +11,9 @@
 # This script returns the average of all the workers average capture loss to telegraf / influxdb in influx format include nanosecond precision timestamp
 
 # if this script isn't already running
-{%- from 'zeek/config.map.jinja' import ZEEKMERGED %}
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     if [ -d "/host/nsm/zeek/spool/logger" ]; then
-{%- if ZEEKMERGED.config.node.pins %}
-      WORKERS={{ ZEEKMERGED.config.node.pins | length }}
-{%- else %}
-      WORKERS={{ ZEEKMERGED.config.node.lb_procs }}
-{%- endif %}
       ZEEKLOG=/host/nsm/zeek/spool/logger/capture_loss.log
     elif [ -d "/host/nsm/zeek/spool/zeeksa" ]; then
       WORKERS=1
