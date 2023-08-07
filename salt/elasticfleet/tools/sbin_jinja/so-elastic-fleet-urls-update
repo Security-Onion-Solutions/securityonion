@@ -2,7 +2,7 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% set CUSTOMFQDN = salt['pillar.get']('elasticfleet:config:server:custom_fqdn') %}
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 . /usr/sbin/so-common
 
@@ -41,9 +41,14 @@ else
     NEW_LIST=("https://{{ GLOBALS.url_base }}:8220" "https://{{ GLOBALS.hostname }}:8220")
 fi
 
-{% if CUSTOMFQDN != "" %}
-# Add Custom Hostname to list
-NEW_LIST+=("https://{{ CUSTOMFQDN }}:8220")
+# Query for FQDN entries & add them to the list
+{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %}
+CUSTOMFQDNLIST=('{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(' ') }}')
+readarray -t -d ' ' CUSTOMFQDN < <(printf '%s' "$CUSTOMFQDNLIST")
+for CUSTOMNAME in "${CUSTOMFQDN[@]}"
+do
+ NEW_LIST+=("https://$CUSTOMNAME:8220")
+done
 {% endif %}
 
 # Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
@@ -62,7 +67,7 @@ fi
 NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
 NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 
-# Compare the current & new list of URLs - if different, update the Fleet Server URLs
+# Compare the current & new list of URLs - if different, update the Fleet Server URLs & regenerate the agent installer
 if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
@@ -71,4 +76,5 @@ else
     printf "\nHashes don't match - update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
     update_fleet_urls
+    /sbin/so-elastic-agent-gen-installers >> /opt/so/log/elasticfleet/so-elastic-agent-gen-installers.log &
 fi

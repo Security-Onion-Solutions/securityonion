@@ -179,12 +179,12 @@ update_registry() {
 
 check_airgap() {
   # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}')
-  if [[ "$AIRGAP" == "True" ]]; then
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}' | tr '[:upper:]' '[:lower:]')
+  if [[ "$AIRGAP" == "true" ]]; then
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
+      AGREPO=/tmp/soagupdate/minimal/Packages
   else 
       is_airgap=1
   fi
@@ -346,7 +346,7 @@ clone_to_tmp() {
   # Make a temp location for the files
   mkdir -p /tmp/sogh
   cd /tmp/sogh
-  SOUP_BRANCH=""
+  SOUP_BRANCH="-b 2.4/main"
   if [ -n "$BRANCH" ]; then
     SOUP_BRANCH="-b $BRANCH"
   fi
@@ -391,6 +391,8 @@ preupgrade_changes() {
     echo "Checking to see if changes are needed."
 
     [[ "$INSTALLEDVERSION" == 2.4.2 ]] && up_to_2.4.3
+    [[ "$INSTALLEDVERSION" == 2.4.3 ]] && up_to_2.4.4
+    [[ "$INSTALLEDVERSION" == 2.4.4 ]] && up_to_2.4.5
     true
 }
 
@@ -399,8 +401,8 @@ postupgrade_changes() {
     echo "Running post upgrade processes."
     
     [[ "$POSTVERSION" == 2.4.2 ]] && post_to_2.4.3
-    
-
+    [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
+    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
     true
 }
 
@@ -409,6 +411,16 @@ post_to_2.4.3() {
   POSTVERSION=2.4.3
 }
 
+post_to_2.4.4() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.4
+}
+
+post_to_2.4.5() {
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+  POSTVERSION=2.4.5
+}
 
 stop_salt_master() {
     # kill all salt jobs across the grid because the hang indefinitely if they are queued and salt-master restarts
@@ -423,7 +435,7 @@ stop_salt_master() {
 
     echo ""
     echo "Storing salt-master pid."
-    MASTERPID=$(pgrep salt-master | head -1)
+    MASTERPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-master MainProcess')
     echo "Found salt-master PID $MASTERPID"
     systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
@@ -442,7 +454,7 @@ stop_salt_minion() {
     set -e
 
     echo "Storing salt-minion pid."
-    MINIONPID=$(pgrep salt-minion | head -1)
+    MINIONPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-minion' | head -1)
     echo "Found salt-minion PID $MINIONPID"
     systemctl_func "stop" "salt-minion"
 
@@ -453,9 +465,33 @@ stop_salt_minion() {
 
 
 up_to_2.4.3() {
-   echo "Nothing to do for 2.4.3"
-   ##
-   INSTALLEDVERSION=2.3.140
+  echo "Nothing to do for 2.4.3"
+
+  INSTALLEDVERSION=2.4.3
+}
+
+up_to_2.4.4() {
+  echo "Nothing to do for 2.4.4"
+
+  INSTALLEDVERSION=2.4.4
+}
+
+up_to_2.4.5() {
+  determine_elastic_agent_upgrade
+
+  INSTALLEDVERSION=2.4.5
+}
+
+determine_elastic_agent_upgrade() {
+  if [[ $is_airgap -eq 0 ]]; then
+    update_elastic_agent_airgap
+  else
+    update_elastic_agent
+  fi
+}
+
+update_elastic_agent_airgap() {
+  rsync -av /tmp/soagupdate/fleet/* /nsm/elastic-fleet/artifacts/
 }
 
 verify_upgradespace() {
@@ -495,6 +531,7 @@ update_centos_repo() {
   echo "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
   echo "Creating repo"
+  dnf -y install yum-utils createrepo
   createrepo /nsm/repo
 }
 
@@ -834,7 +871,7 @@ main() {
     set +e
 
     echo "Checking the number of minions."
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | grep -v adv_ | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
@@ -849,9 +886,6 @@ main() {
 
     echo "Checking sudoers file."
     check_sudoers
-
-    echo "Checking for necessary user migrations."
-    so-user migrate
 
     systemctl_func "start" "$cron_service_name"
 
@@ -937,6 +971,11 @@ while getopts ":b:f:y" opt; do
   esac
 done
 shift $((OPTIND - 1))
+
+if [ -f $SOUP_LOG ]; then
+  CURRENT_TIME=$(date +%Y%m%d.%H%M%S)
+  mv $SOUP_LOG $SOUP_LOG.$INSTALLEDVERSION.$CURRENT_TIME
+fi
 
 if [[ -z $UNATTENDED ]]; then
   cat << EOF

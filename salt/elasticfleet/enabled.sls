@@ -15,6 +15,7 @@
 include:
   - elasticfleet.config
   - elasticfleet.sostatus
+  - ssl
 
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
@@ -61,11 +62,14 @@ so-elastic-fleet:
       - {{ BINDING }}
       {% endfor %}
     - binds:
-      - /etc/pki:/etc/pki:ro
+      - /etc/pki/elasticfleet-server.crt:/etc/pki/elasticfleet-server.crt:ro
+      - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
+      - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
       {% if GLOBALS.os_family == 'Debian' %}
-      - /etc/ssl:/etc/ssl:ro
+      - /etc/ssl/elasticfleet-server.crt:/etc/ssl/elasticfleet-server.crt:ro
+      - /etc/ssl/elasticfleet-server.key:/etc/ssl/elasticfleet-server.key:ro
+      - /etc/ssl/tls/certs/intca.crt:/etc/ssl/tls/certs/intca.crt:ro
       {% endif %}
-      #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
       - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -93,6 +97,9 @@ so-elastic-fleet:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    - watch:
+      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_crt
 {%   endif %}
 
 {%  if GLOBALS.role != "so-fleet" %}

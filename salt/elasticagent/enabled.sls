@@ -33,20 +33,25 @@ so-elastic-agent:
         {% endif %}
     - binds:
       - /opt/so/conf/elastic-agent/elastic-agent.yml:/usr/share/elastic-agent/elastic-agent.yml:ro
+      - /opt/so/log/elasticagent:/usr/share/elastic-agent/logs
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro 
       - /nsm:/nsm:ro
+      - /opt/so/log:/opt/so/log:ro
      {% if DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
-      {% endif %}      
+      {% endif %}
     - environment:
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-agent'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-agent'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    - require:
+      - file: create-elastic-agent-config
     - watch:
       - file: create-elastic-agent-config
 
