@@ -2,6 +2,14 @@
    or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
    https://securityonion.net/license; you may not use this file except in compliance with the
    Elastic License 2.0. #}
-   
+
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'telegraf/defaults.yaml' as TELEGRAFDEFAULTS %}
 {% set TELEGRAFMERGED = salt['pillar.get']('telegraf', TELEGRAFDEFAULTS.telegraf, merge=True) %}
+{% from 'zeek/config.map.jinja' import ZEEKMERGED %}
+
+{# if the md engine isn't zeek or zeek is disabled, dont run the zeek scripts for telegraf #}
+{% if (GLOBALS.role in ['so-eval', 'so-standalone', 'so-sensor', 'so-heavynode']) and (GLOBALS.md_engine != 'ZEEK' or not ZEEKMERGED.enabled) %}
+{%   do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('zeekloss.sh') %}
+{%   do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('zeekcaptureloss.sh') %}
+{% endif %}
