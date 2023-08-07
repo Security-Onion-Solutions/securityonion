@@ -1,6 +1,6 @@
-## Security Onion 2.4 Release Candidate 2 (RC2)
+## Security Onion 2.4
 
-Security Onion 2.4 Release Candidate 2 (RC2) is here!
+Security Onion 2.4 is here!
 
 ## Screenshots
 
