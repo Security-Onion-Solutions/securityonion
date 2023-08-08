@@ -69,6 +69,14 @@ so-rule-update:
     - minute: '1'
     - hour: '7'
 
+run_so-rule-update:
+  cmd.run:
+    - name: '/usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1'
+    - require:
+      - docker_container: so-idstools
+    - onchanges:
+      - file: idstoolsetcsync
+
 {% else %}
 
 {{sls}}_state_not_allowed:
