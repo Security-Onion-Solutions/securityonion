@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'strelka/map.jinja' import STRELKAMERGED %}
-{%   from 'strelka/map.jinja' import filecheck_runas %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - strelka.config
@@ -87,11 +87,33 @@ filecheck_restart:
       - file: filecheck_script
       - file: filecheck_conf
 
-filecheck_run:
+{% if GLOBALS.md_engine == 'ZEEK' %}
+
+filecheck_run_socore:
   cron.present:
     - name: 'ps -ef | grep filecheck | grep -v grep > /dev/null 2>&1 || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
-    - identifier: filecheck_run
-    - user: {{ filecheck_runas }}
+    - identifier: filecheck_run_socore
+    - user: socore
+
+remove_filecheck_run_suricata:
+  cron.absent:
+    - identifier: filecheck_run_suricata
+    - user: suricata
+
+{% elif GLOBALS.md_engine == 'SURICATA'%}
+
+filecheck_run_suricata:
+  cron.present:
+    - name: 'ps -ef | grep filecheck | grep -v grep > /dev/null 2>&1 || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
+    - identifier: filecheck_run_suricata
+    - user: suricata
+
+remove_filecheck_run_socore:
+  cron.absent:
+    - identifier: filecheck_run_socore
+    - user: socore
+
+{% endif %}
 
 filcheck_history_clean:
   cron.present:
