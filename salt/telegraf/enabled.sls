@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
 
 include:
@@ -67,8 +68,10 @@ so-telegraf:
     {% endif %}
     - watch:
       - file: tgrafconf
-      - file: tgrafsyncscripts
       - file: node_config
+    {% for script in TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]] %}
+      - file: tgraf_sync_script_{{script}}
+    {% endfor %}
     - require: 
       - file: tgrafconf
       - file: node_config
