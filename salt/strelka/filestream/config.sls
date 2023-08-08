@@ -79,6 +79,12 @@ filecheck_script:
     - group: 939
     - mode: 755
 
+filecheck.log:
+  file.managed:
+    - name: /opt/so/log/strelka/filecheck.log
+    - user: {{ filecheck_runas }}
+    - group: {{ filecheck_runas }}
+
 filecheck_stdout.log:
   file.managed:
     - name: /opt/so/log/strelka/filecheck_stdout.log
