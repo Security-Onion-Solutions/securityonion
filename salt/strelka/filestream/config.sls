@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'strelka/map.jinja' import STRELKAMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'strelka/map.jinja' import filecheck_runas %}
 
 include:
   - strelka.config
@@ -77,6 +78,12 @@ filecheck_script:
     - user: 939
     - group: 939
     - mode: 755
+
+filecheck_stdout.log:
+  file.managed:
+    - name: /opt/so/log/strelka/filecheck_stdout.log
+    - user: {{ filecheck_runas }}
+    - group: {{ filecheck_runas }}
 
 {% if GLOBALS.md_engine == 'ZEEK' %}
 
