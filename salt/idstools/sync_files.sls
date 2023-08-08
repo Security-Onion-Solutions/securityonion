@@ -19,6 +19,12 @@ idstoolsetcsync:
     - group: 939
     - template: jinja
 
+run_so-rule-update:
+  cmd.run:
+    - name: '/usr/sbin/so-rule-update > /opt/so/log/idstools/download.log 2>&1'
+    - onchanges:
+      - file: idstoolsetcsync
+
 rulesdir:
   file.directory:
     - name: /opt/so/rules/nids
