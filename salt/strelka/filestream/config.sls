@@ -85,6 +85,7 @@ filecheck_restart:
     - success_retcodes: [0,1]
     - onchanges:
       - file: filecheck_script
+      - file: filecheck_conf
 
 filecheck_run:
   cron.present:
