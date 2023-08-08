@@ -11,7 +11,11 @@
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     if [ -d "/host/nsm/zeek/spool/logger" ]; then
-      WORKERS={{ salt['pillar.get']('sensor:zeek_lbprocs', salt['pillar.get']('sensor:zeek_pins') | length) }}
+{%- if ZEEKMERGED.config.node.pins %}
+      WORKERS={{ ZEEKMERGED.config.node.pins | length }}
+{%- else %}
+      WORKERS={{ ZEEKMERGED.config.node.lb_procs }}
+{%- endif %}
       ZEEKLOG=/host/nsm/zeek/spool/logger/capture_loss.log
     elif [ -d "/host/nsm/zeek/spool/zeeksa" ]; then
       WORKERS=1
