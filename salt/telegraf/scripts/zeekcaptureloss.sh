@@ -5,9 +5,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-
-
 # This script returns the average of all the workers average capture loss to telegraf / influxdb in influx format include nanosecond precision timestamp
 
 # if this script isn't already running
