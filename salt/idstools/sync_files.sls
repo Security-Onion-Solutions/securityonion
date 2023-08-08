@@ -26,11 +26,28 @@ rulesdir:
     - group: 939
     - makedirs: True
 
+SOrulesdir:
+  file.directory:
+    - name: /opt/so/rules/nids/sorules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 # Don't show changes because all.rules can be large
 synclocalnidsrules:
   file.recurse:
     - name: /opt/so/rules/nids/
     - source: salt://idstools/rules/
+    - user: 939
+    - group: 939
+    - show_changes: False
+    - include_pat: 'E@.rules'
+
+# Don't show changes because all.rules can be large
+syncnidsSOrules:
+  file.recurse:
+    - name: /opt/so/rules/nids/sorules
+    - source: salt://idstools/sorules/
     - user: 939
     - group: 939
     - show_changes: False
