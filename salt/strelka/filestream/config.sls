@@ -78,15 +78,6 @@ filecheck_script:
     - group: 939
     - mode: 755
 
-filecheck_restart:
-  cmd.run:
-    - name: pkill -f "python3 /opt/so/conf/strelka/filecheck"
-    - hide_output: True
-    - success_retcodes: [0,1]
-    - onchanges:
-      - file: filecheck_script
-      - file: filecheck_conf
-
 {% if GLOBALS.md_engine == 'ZEEK' %}
 
 filecheck_run_socore:
@@ -114,6 +105,15 @@ remove_filecheck_run_socore:
     - user: socore
 
 {% endif %}
+
+filecheck_restart:
+  cmd.run:
+    - name: pkill -f "python3 /opt/so/conf/strelka/filecheck"
+    - hide_output: True
+    - success_retcodes: [0,1]
+    - onchanges:
+      - file: filecheck_script
+      - file: filecheck_conf
 
 filcheck_history_clean:
   cron.present:
