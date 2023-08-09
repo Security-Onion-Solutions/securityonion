@@ -153,8 +153,8 @@ etc_elasticfleet_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-server.key
-    - CN: {{ GLOBALS.url_base }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -210,8 +210,8 @@ etc_elasticfleet_logstash_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-logstash.key
-    - CN: {{ GLOBALS.url_base }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
