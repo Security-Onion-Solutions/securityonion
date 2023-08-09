@@ -46,28 +46,26 @@ elasticsearch:
             description: Max number of boolean clauses per query.
             global: True
             helpLink: elasticsearch.html
-  index_settings: 
-    so-elasticsearch: &indexSettings
-      warm: 
-        description: Age (in days) of this index before it will move to warm storage, if warm nodes are present. Once moved, events on this index can take longer to fetch.
-        global: True
-        helpLink: elasticsearch.html
-      close: 
-        description: Age (in days) of this index before it will be closed. Once closed, events on this index cannot be retrieved without first re-opening the index.
-        global: True
-        helpLink: elasticsearch.html
-      delete: 
-        description: Age (in days) of this index before it will be deleted. Once deleted, events are permanently unrecoverable.
-        global: True
-        helpLink: elasticsearch.html
+  index_settings:
+    so-logs: &indexSettings
       index_sorting: 
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
         global: True
         helpLink: elasticsearch.html
       index_template:
+        index_patterns:
+          description: Patterns for matching multiple indices or tables.
+          forceType: "[]string"
+          multiline: True
+          global: True
+          helpLink: elasticsearch.html
         template:
           settings:
             index:
+              number_of_replicas: 
+                description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                global: True
+                helpLink: elasticsearch.html
               mapping:
                 total_fields:
                   limit:
@@ -75,17 +73,59 @@ elasticsearch:
                     global: True
                     helpLink: elasticsearch.html
               refresh_interval: 
-                  description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
-                  global: True
-                  helpLink: elasticsearch.html
+                description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
+                global: True
+                helpLink: elasticsearch.html
               number_of_shards: 
-                  description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                global: True
+                helpLink: elasticsearch.html
+              sort:
+                field:
+                  description: The field to sort by. Must set index_sorting to True.
                   global: True
                   helpLink: elasticsearch.html
-              number_of_replicas: 
-                  description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                order:
+                  description: The order to sort by. Must set index_sorting to True.
                   global: True
                   helpLink: elasticsearch.html
+          mappings:
+            _meta:
+              package:
+                name:
+                  description: Meta settings for the mapping.
+                  global: True
+                  helpLink: elasticsearch.html
+              managed_by:
+                  description: Meta settings for the mapping.
+                  global: True
+                  helpLink: elasticsearch.html
+              managed:
+                  description: Meta settings for the mapping.
+                  forcedType: bool
+                  global: True
+                  helpLink: elasticsearch.html
+        composed_of:
+          description: The index template is composed of these component templates.
+          forcedType: "[]string"
+          global: True
+          helpLink: elasticsearch.html
+        priority:
+          description: The priority of the index template.
+          forcedType: int
+          global: True
+          helpLink: elasticsearch.html
+        data_stream:
+          hidden:
+            description: Hide the data stream.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
+          allow_custom_routing:
+            description: Allow custom routing for the data stream.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
       policy:
         phases:
           hot:
@@ -97,6 +137,7 @@ elasticsearch:
               set_priority:
                 priority:
                   description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
                   global: True
                   helpLink: elasticsearch.html
               rollover:
@@ -117,20 +158,26 @@ elasticsearch:
               set_priority:
                 priority:
                   description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
                   global: True
                   helpLink: elasticsearch.html
           delete:
             min_age:
               description: Minimum age of index. This determines when the index should be deleted.
               global: True
-              helpLink: elastic
-    so-endgame: *indexSettings
-    so-firewall: *indexSettings
-    so-import: *indexSettings
-    so-kibana: *indexSettings
-    so-logstash: *indexSettings
-    so-osquery: *indexSettings
-    so-redis: *indexSettings
-    so-strelka: *indexSettings
-    so-syslog: *indexSettings
-    so-zeek: *indexSettings
+              helpLink: elasticsearch.html
+        _meta:
+          package:
+            name:
+              description: Meta settings for the mapping.
+              global: True
+              helpLink: elasticsearch.html
+          managed_by:
+            description: Meta settings for the mapping.
+            global: True
+            helpLink: elasticsearch.html
+          managed:
+            description: Meta settings for the mapping.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
