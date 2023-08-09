@@ -14,8 +14,8 @@ fi
 RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/agents?perPage=20&page=1&kuery=policy_id%20%3A%20so-grid-nodes_%2A&showInactive=false&showUpgradeable=true&getStatusSummary=true")
 
 # Check to make sure that the server responded with good data - else, bail from script
-CHECKSUM=$(jq -r '.statusSummary.online' <<< "$RAW_JSON")
-if [ "$CHECKSUM" -lt 1 ]; then
+CHECKSUM=$(jq -r '.page' <<< "$RAW_JSON")
+if [ "$CHECKSUM" -ne 1 ]; then
  printf "Failed to query for current Grid Agents...\n"
  exit 1
 fi
