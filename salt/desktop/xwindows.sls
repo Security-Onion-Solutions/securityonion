@@ -35,6 +35,23 @@ convert_gnome_classic:
 {%     endif %}
 {%   endfor %}
 
+desktop_wallpaper:
+  file.managed:
+    - name: /usr/local/share/backgrounds/so-wallpaper.jpg
+    - source: salt://desktop/files/so-wallpaper.jpg
+    - makedirs: True
+
+set_wallpaper:
+  file.managed:
+    - name: /etc/dconf/db/local.d/00-background
+    - source: salt://desktop/files/00-background
+
+run_dconf_update:
+  cmd.run:
+    - name: 'dconf update'
+    - onchanges:
+      - file: set_wallpaper
+
 {% else %}
 
 desktop_xwindows_os_fail:
