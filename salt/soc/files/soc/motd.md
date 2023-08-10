@@ -8,6 +8,10 @@ If you're ready to dive in, take a look at the [Alerts](/#/alerts) interface to 
 
 To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/release-notes.html) link.
 
+## Enterprise Appliances
+
+Want the best hardware for your enterprise deployment? Check out our [enterprise appliances](https://securityonionsolutions.com/hardware/)!
+
 ## Customize This Space
 
 Make this area your own by customizing the content in the [Config](/#/config?s=soc.files.soc.motd__md) interface.
