@@ -46,6 +46,13 @@ NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "$
 NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 
 # Compare the current & new list of URLs - if different, update the Fleet Elasticsearch URLs
+if [ "$1" = "--force" ]; then
+    printf "\nUpdating List, since --force was specified.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    update_es_urls
+    exit 0
+fi
+
 if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
