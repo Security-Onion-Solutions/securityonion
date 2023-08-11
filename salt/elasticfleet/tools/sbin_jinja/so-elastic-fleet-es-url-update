@@ -12,9 +12,13 @@ if ! is_manager_node; then
 fi
 
 function update_es_urls() {
-	# Generate updated JSON payload
+	
+    # Generate updated JSON payload
+{% if grains.role not in ['so-import', 'so-eval'] %}
     JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"config_yaml":""}')
-
+{%- else %}
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":""}')
+{%- endif %}
     # Update Fleet Elasticsearch URLs
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
