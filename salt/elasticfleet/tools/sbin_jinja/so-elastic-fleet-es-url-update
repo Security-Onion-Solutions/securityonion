@@ -12,9 +12,13 @@ if ! is_manager_node; then
 fi
 
 function update_es_urls() {
-	# Generate updated JSON payload
+	
+    # Generate updated JSON payload
+{% if grains.role not in ['so-import', 'so-eval'] %}
     JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"config_yaml":""}')
-
+{%- else %}
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":""}')
+{%- endif %}
     # Update Fleet Elasticsearch URLs
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
@@ -42,6 +46,13 @@ NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "$
 NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 
 # Compare the current & new list of URLs - if different, update the Fleet Elasticsearch URLs
+if [ "$1" = "--force" ]; then
+    printf "\nUpdating List, since --force was specified.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    update_es_urls
+    exit 0
+fi
+
 if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
