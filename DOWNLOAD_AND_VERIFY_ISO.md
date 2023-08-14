@@ -1,4 +1,4 @@
-### 2.4.10-20230815 ISO image released on 2023/08/07
+### 2.4.10-20230815 ISO image released on 2023/08/15
 
 
 
