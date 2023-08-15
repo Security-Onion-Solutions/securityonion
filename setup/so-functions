@@ -117,7 +117,7 @@ desktop_pillar() {
 		"  mainint: '$MNIC'"\
 		"desktop:"\
 		"  gui:"\
-		"    enabled: true" >> "$pillar_file"\
+		"    enabled: true"\
 		"sensoroni:"\
 		"  config:"\
 		"    node_description: '${NODE_DESCRIPTION//\'/''}'" > $pillar_file
@@ -2300,6 +2300,15 @@ set_default_log_size() {
 	disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
 
 	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
+}
+
+set_desktop_background() {
+
+	logCmd "mkdir /usr/local/share/backgrounds"
+	logCmd "cp ../salt/desktop/files/so-wallpaper.jpg /usr/local/share/backgrounds/so-wallpaper.jpg"
+	logCmd "cp ../salt/desktop/files/00-background /etc/dconf/db/local.d/00-background"
+	logCmd "dconf update"
+
 }
 
 set_hostname() {

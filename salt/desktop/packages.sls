@@ -3,7 +3,6 @@
 {# we only want this state to run it is CentOS #}
 {% if GLOBALS.os == 'OEL' %}
 
-
 desktop_packages:
   pkg.installed:
     - pkgs:

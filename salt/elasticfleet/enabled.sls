@@ -22,6 +22,7 @@ include:
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
+    - retry: True
 {% endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection
@@ -29,6 +30,7 @@ so-elastic-fleet-auto-configure-logstash-outputs:
 so-elastic-fleet-auto-configure-server-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-urls-update
+    - retry: True
 {% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs
@@ -36,6 +38,7 @@ so-elastic-fleet-auto-configure-server-urls:
 so-elastic-fleet-auto-configure-elasticsearch-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
+    - retry: True
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
@@ -106,6 +109,11 @@ so-elastic-fleet:
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
+
+so-elastic-agent-grid-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-agent-grid-upgrade
+    - retry: True
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
