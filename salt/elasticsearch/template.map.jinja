@@ -12,17 +12,17 @@
 {% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
 
 {% set ES_INDEX_SETTINGS_GLOBAL_OVERRIDES = {} %}
-{% for index, settings in ES_INDEX_SETTINGS_ORIG.items() %}
-{% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ELASTICSEARCHDEFAULTS.elasticsearch.index_settings[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
-  {% if settings.index_template is defined %}
-    {% if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
-      {% do settings.index_template.template.settings.index.pop('sort') %}
-    {% endif %}
-  {% endif %}
+{% for index in ES_INDEX_SETTINGS_ORIG.keys() %}
+{%   do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ELASTICSEARCHDEFAULTS.elasticsearch.index_settings[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
 {% endfor %}
 
 {% set ES_INDEX_SETTINGS = {} %}
 {% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update(salt['defaults.merge'](ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
-{% for index in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.keys() %}
-  {% do ES_INDEX_SETTINGS.update({index | replace("_x_", "."): ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index]}) %}
+{% for index, settings in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.items() %}
+{%   if settings.index_template is defined %}
+{%     if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
+{%       do settings.index_template.template.settings.index.pop('sort') %}
+{%     endif %}
+{%   endif %}
+{%   do ES_INDEX_SETTINGS.update({index | replace("_x_", "."): ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index]}) %}
 {% endfor %}
