@@ -68,6 +68,14 @@ surilogdir:
     - user: 940
     - group: 939
 
+surinsmdir:
+  file.directory:
+    - name: /nsm/suricata
+    - user: 940
+    - group: 939
+    - mode: 755
+    - makedirs: True
+
 suridatadir:
   file.directory:
     - name: /nsm/suricata/extracted
