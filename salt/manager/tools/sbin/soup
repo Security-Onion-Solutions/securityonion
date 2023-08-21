@@ -569,6 +569,9 @@ upgrade_check() {
   # Let's make sure we actually need to update.
   NEWVERSION=$(cat $UPDATE_DIR/VERSION)
   HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
+  if [ ! -f /etc/sohotfix ]; then
+    touch /etc/sohotfix
+  fi
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
     echo "Checking to see if there are hotfixes needed"
@@ -660,15 +663,15 @@ verify_latest_update_script() {
 }
 
 # Keeping this block in case we need to do a hotfix that requires salt update
-#apply_hotfix() {
+apply_hotfix() {
 #  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
 #    fix_wazuh
 #  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
 #    2_3_10_hotfix_1
 #  else
-#    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
 #  fi
-#}
+}
 
 
 #upgrade salt to 3004.1
@@ -790,7 +793,7 @@ main() {
     else
       update_registry
       set +e
-      update_docker_containers "soup"
+      update_docker_containers "soup" "" "" "$SOUP_LOG"
       set -e
     fi
 

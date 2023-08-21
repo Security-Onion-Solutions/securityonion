@@ -198,7 +198,7 @@ etc_elasticfleet_logstash_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleet_logstash_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -259,7 +259,7 @@ etc_elasticfleetlumberjack_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-lumberjack.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleetlumberjack_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -283,7 +283,7 @@ etc_elasticfleetlumberjack_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-lumberjack.key -topk8 -out /etc/pki/elasticfleet-lumberjack.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleetlumberjack_key
 
 eflogstashlumberjackperms:
   file.managed:
@@ -327,7 +327,7 @@ etc_elasticfleet_agent_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-agent.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleet_agent_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -350,7 +350,7 @@ etc_elasticfleet_agent_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-agent.key -topk8 -out /etc/pki/elasticfleet-agent.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_agent_key
 
 efagentperms:
   file.managed:
