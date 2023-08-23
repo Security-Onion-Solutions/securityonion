@@ -41,7 +41,7 @@ include:
 # Trust the CA
 trusttheca:
   x509.pem_managed:
-    - name: /etc/ssl/certs/intca.crt
+    - name: /etc/pki/tls/certs/intca.crt
     - text:  {{ trusttheca_text }}
 
 # Install packages needed for the sensor

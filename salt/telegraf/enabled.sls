@@ -46,7 +46,7 @@ so-telegraf:
       {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/etc/telegraf/ca.crt:ro
       {% endif %}
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
