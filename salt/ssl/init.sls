@@ -52,7 +52,7 @@ symlinkca:
   file.symlink:
     - source: /etc/pki/tls/certs/intca.crt
     - name: /etc/ssl/certs/intca.crt
-{% end %}
+{% endif %}
 
 # Install packages needed for the sensor
 m2cryptopkgs:
