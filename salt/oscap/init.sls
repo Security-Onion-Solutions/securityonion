@@ -1,3 +1,8 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls in allowed_states and GLOBALS.os == 'OEL' %}
@@ -41,7 +46,7 @@ oscap_report_logdir:
     - makedirs: True
     - mode: 755
 
-#Create custom tailoring file to disable problematic STIGs can then run remediate daily via salt schedule
+#Create custom tailoring file to explicity disable problematic STIGs
 oscap_initial_remediate:
   cmd.run:
     - name: /usr/bin/oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_stig --remediate {{ oscap_profile }} || true
