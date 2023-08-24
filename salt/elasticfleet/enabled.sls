@@ -68,11 +68,6 @@ so-elastic-fleet:
       - /etc/pki/elasticfleet-server.crt:/etc/pki/elasticfleet-server.crt:ro
       - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
-      {% if GLOBALS.os_family == 'Debian' %}
-      - /etc/ssl/elasticfleet-server.crt:/etc/ssl/elasticfleet-server.crt:ro
-      - /etc/ssl/elasticfleet-server.key:/etc/ssl/elasticfleet-server.key:ro
-      - /etc/ssl/tls/certs/intca.crt:/etc/ssl/tls/certs/intca.crt:ro
-      {% endif %}
       - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -87,13 +82,8 @@ so-elastic-fleet:
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
-      {% if GLOBALS.os_family == 'Debian' %}
-      - FLEET_CA=/etc/ssl/certs/intca.crt     
-      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
-      {% else %}
-      - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - FLEET_CA=/etc/pki/tls/certs/intca.crt     
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
-      {% endif %}
       - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}

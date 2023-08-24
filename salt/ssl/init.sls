@@ -36,13 +36,23 @@ include:
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
-
+cacertdir:
+  file.directory:
+    - name: /etc/pki/tls/certs
+    - makedirs: True
 
 # Trust the CA
 trusttheca:
   x509.pem_managed:
-    - name: /etc/ssl/certs/intca.crt
+    - name: /etc/pki/tls/certs/intca.crt
     - text:  {{ trusttheca_text }}
+
+{% if GLOBALS.os_family == 'Debian' %}
+symlinkca:
+  file.symlink:
+    - target: /etc/pki/tls/certs/intca.crt
+    - name: /etc/ssl/certs/intca.crt
+{% endif %}
 
 # Install packages needed for the sensor
 m2cryptopkgs:
