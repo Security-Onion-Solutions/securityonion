@@ -49,7 +49,7 @@ oscap_initial_remediate:
 
 oscap_report:
   cmd.run:
-    - name: /usr/bin/oscap xccdf eval --profile stig --report /opt/so/log/oscap/latest-oscap-report.html {{ oscap_profile }} || true
+    - name: /usr/bin/oscap xccdf eval --profile stig --results /opt/so/log/oscap/latest-oscap-results.xml --report /opt/so/log/oscap/latest-oscap-report.html {{ oscap_profile }} || true
 
 oscap_schedule:
   schedule.present:
