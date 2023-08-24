@@ -50,7 +50,7 @@ trusttheca:
 {% if GLOBALS.os_family == 'Debian' %}
 symlinkca:
   file.symlink:
-    - source: /etc/pki/tls/certs/intca.crt
+    - target: /etc/pki/tls/certs/intca.crt
     - name: /etc/ssl/certs/intca.crt
 {% endif %}
 
