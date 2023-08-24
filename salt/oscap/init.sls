@@ -16,10 +16,6 @@ ensure-fips:
     - name: /usr/bin/fips-mode-setup --enable
     - unless: /usr/bin/fips-mode-setup --is-enabled
 
-python3-pkg-fips-error:
-  cmd.run:
-    - name: rpm -U --nofiledigest /nsm/repo/python3-watchdog-1.0-securityonion.rpm || true
-
 #Move to deployed SO instance and run this state. Then add schedule to run state every 24h.
 oscap_pkgs:
   pkg.installed:
