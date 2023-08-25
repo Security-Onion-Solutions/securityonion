@@ -47,6 +47,14 @@ filestream_config:
         FILESTREAMCONFIG: {{ STRELKAMERGED.filestream.config }}
 
 # Filecheck Section
+remove_old_watchdog:
+  pkg.removed:
+    - name: python3-watchdog
+
+install_watchdog:
+  pkg.installed:
+    - name: securityonion-python39-watchdog
+
 filecheck_logdir:
   file.directory:
     - name: /opt/so/log/strelka
