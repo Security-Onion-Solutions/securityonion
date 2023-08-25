@@ -135,6 +135,7 @@ filecheck_restart:
     - onchanges:
       - file: filecheck_script
       - file: filecheck_conf
+      - pkg: install_watchdog
 
 filcheck_history_clean:
   cron.present:
