@@ -28,12 +28,12 @@ base:
     - motd
     - salt.minion-check
     - salt.lasthighstate
-    - docker
 
   'not *_desktop and G@saltversion:{{saltversion}}':
     - match: compound
     - common
-  
+    - docker
+
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
