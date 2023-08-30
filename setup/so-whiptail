@@ -58,6 +58,12 @@ whiptail_desktop_install() {
 	whiptail --title "$whiptail_title" \
 		--yesno "$message" 11 75 --defaultno
 
+	if [ $? -eq 0 ]; then
+		is_desktop_grid=true
+	else
+		is_desktop_grid=false
+	fi
+
 }
 
 whiptail_desktop_nongrid_iso() {
@@ -678,9 +684,7 @@ whiptail_install_type_dist_existing() {
 	elif [ "$install_type" = 'RECEIVER' ]; then
 		is_receiver=true
 	elif [ "$install_type" = 'DESKTOP' ]; then
-		if [ "$setup_type" != 'desktop' ]; then
-			exec bash so-setup desktop
-		fi
+		is_desktop=true
 	fi
 
 	local exitstatus=$?
@@ -694,7 +698,7 @@ whiptail_install_type_other() {
 
 	install_type=$(whiptail --title "$whiptail_title" --menu \
 		"Choose node type:" 10 65 2 \
-		"DESKTOP" "Setup will run 'so-setup desktop' " 3>&1 1>&2 2>&3)
+		"DESKTOP" "Install Security Onion Desktop " 3>&1 1>&2 2>&3)
 	
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
