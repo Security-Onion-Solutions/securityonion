@@ -1,7 +1,5 @@
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'OEL' %}
+{% if grains.os == 'OEL' %}
 
 remove_graphical_target:
   file.symlink:
