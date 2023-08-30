@@ -333,38 +333,39 @@ if [[ $is_desktop ]]; then
 		exit 1
 	fi
 
-	if ! whiptail_desktop_install; then
-	if [[ $is_desktop_iso ]]; then
-		if whiptail_desktop_nongrid_iso; then
-			# Remove setup from auto launching
-			parse_install_username
-			sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-			securityonion_repo
-			info "Enabling graphical interface and setting it to load at boot"
-			systemctl set-default graphical.target
-			info "Setting desktop background"
-			set_desktop_background
-			echo "Desktop Install Complete!"
-			echo ""
-			echo "Please reboot to start graphical interface."
-			exit 0
+	whiptail_desktop_install
+	if ! is_desktop_grid; then
+		if [[ $is_desktop_iso ]]; then
+			if whiptail_desktop_nongrid_iso; then
+				# Remove setup from auto launching
+				parse_install_username
+				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+				securityonion_repo
+				info "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				info "Setting desktop background"
+				set_desktop_background
+				echo "Desktop Install Complete!"
+				echo ""
+				echo "Please reboot to start graphical interface."
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
 		else
-			# Abort!
-			exit 0
+			if whiptail_desktop_nongrid_network; then
+				info ""
+				info ""
+				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
+				info ""
+				info ""
+				desktop_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
 		fi
-	else
-		if whiptail_desktop_nongrid_network; then
-			info ""
-			info ""
-			info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
-			info ""
-			info ""
-			desktop_salt_local
-		else
-			# Abort!
-			exit 0
-		fi
-	fi
 	fi
 
 	# If you got this far then you want to join the grid
