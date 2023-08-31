@@ -12,10 +12,7 @@ graphical_target:
     - require:
       - desktop_packages
 
-convert_gnome_classic:
-  cmd.script:
-    - name: salt://desktop/scripts/convert-gnome-classic.sh
-
+{# set users to use gnome-classic #}
 {%   for username in salt['file.find'](path='/home/',mindepth=1,maxdepth=1,type='d') %}
 {%     set username = username.split('/')[2] %}
 {%     if username != 'zeek' %}
