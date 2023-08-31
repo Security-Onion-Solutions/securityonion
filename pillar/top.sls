@@ -2,6 +2,7 @@ base:
   '*':
     - global.soc_global
     - global.adv_global
+    - influxdb.token
     - logrotate.soc_logrotate
     - logrotate.adv_logrotate
     - ntp.soc_ntp
@@ -9,20 +10,19 @@ base:
     - patch.needs_restarting
     - patch.soc_patch
     - patch.adv_patch
+    - sensoroni.soc_sensoroni
+    - sensoroni.adv_sensoroni
+    - telegraf.soc_telegraf
+    - telegraf.adv_telegraf
 
   '* and not *_desktop':
     - docker.soc_docker
     - docker.adv_docker
     - firewall.soc_firewall
     - firewall.adv_firewall
-    - influxdb.token
     - nginx.soc_nginx
     - nginx.adv_nginx
     - node_data.ips
-    - sensoroni.soc_sensoroni
-    - sensoroni.adv_sensoroni
-    - telegraf.soc_telegraf
-    - telegraf.adv_telegraf
 
   '*_manager or *_managersearch':
     - match: compound

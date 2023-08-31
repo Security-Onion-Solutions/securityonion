@@ -28,18 +28,18 @@ base:
     - motd
     - salt.minion-check
     - salt.lasthighstate
+    - common
+    - sensoroni
+    - telegraf
 
   'not *_desktop and G@saltversion:{{saltversion}}':
     - match: compound
-    - common
     - docker
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
     - ssl
-    - sensoroni
-    - telegraf
     - firewall
     - nginx
     - pcap
@@ -57,11 +57,9 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - backup.config_backup
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
@@ -92,9 +90,7 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
@@ -124,11 +120,9 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - backup.config_backup
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
@@ -157,9 +151,7 @@ base:
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
-    - sensoroni
     - nginx
-    - telegraf
     - firewall
     - elasticsearch
     - logstash
@@ -172,9 +164,7 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
@@ -201,9 +191,7 @@ base:
     - match: compound
     - sensor
     - ssl
-    - sensoroni
     - nginx
-    - telegraf
     - firewall
     - elasticsearch
     - logstash
@@ -224,10 +212,8 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
@@ -247,8 +233,6 @@ base:
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
-    - sensoroni
-    - telegraf
     - firewall
     - logstash
     - redis
@@ -258,8 +242,6 @@ base:
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
-    - sensoroni
-    - telegraf
     - firewall
     - elasticfleet.install_agent_grid
     - docker_clean
@@ -268,8 +250,6 @@ base:
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
-    - sensoroni
-    - telegraf
     - firewall
     - logstash
     - elasticfleet
