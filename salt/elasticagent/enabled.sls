@@ -31,6 +31,10 @@ so-elastic-agent:
         - {{ XTRAHOST }}
           {% endfor %}
         {% endif %}
+    - port_bindings:
+      {% for BINDING in DOCKER.containers['so-elastic-agent'].port_bindings %}
+      - {{ BINDING }}
+      {% endfor %}
     - binds:
       - /opt/so/conf/elastic-agent/elastic-agent.yml:/usr/share/elastic-agent/elastic-agent.yml:ro
       - /opt/so/log/elasticagent:/usr/share/elastic-agent/logs
