@@ -174,6 +174,7 @@ if [ -n "$test_profile" ]; then
 
 	# The below settings are hardcoded purely for automated testing purposes.
 	TESTING=true
+	is_desktop_grid=false
 	
 	if [[ "$test_profile" =~ "-sensor" ]]; then
 		install_type=SENSOR
@@ -183,8 +184,25 @@ if [ -n "$test_profile" ]; then
 		install_type=SEARCHNODE
 		HOSTNAME=search
 		MSRVIP_OFFSET=-1
-	else
+	elif [[ "$test_profile" =~ "-managersearch" ]]; then
+		install_type=MANAGERSEARCH
+	elif [[ "$test_profile" =~ "-heavynode" ]]; then
+		install_type=HEAVYNODE
+		HOSTNAME=sensor
+		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-desktop" ]]; then
+		install_type=DESKTOP
+		MSRVIP_OFFSET=-3
+		is_desktop_grid=true
+	fi
+	
+	if [[ -z "$HOSTNAME" ]]; then
 		HOSTNAME=manager
+	fi
+
+	if [[ "$install_type" =~ "DESKTOP" ]]; then
+		is_desktop=true
+		HOSTNAME=desktop
 	fi
 	
 	info "Activating test profile; profile=$test_profile; install_type=$install_type"
