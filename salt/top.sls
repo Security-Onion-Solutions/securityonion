@@ -268,6 +268,7 @@ base:
     - ssl
     - sensoroni
     - telegraf
+    - elasticfleet.install_agent_grid
 
   'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:OEL )':
     - match: compound
