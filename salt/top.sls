@@ -30,14 +30,14 @@ base:
     - salt.lasthighstate
     - common
     - docker
-    - sensoroni
-    - telegraf
     - docker_clean
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
     - ssl
+    - sensoroni
+    - telegraf
     - firewall
     - nginx
     - pcap
@@ -60,6 +60,8 @@ base:
     - influxdb
     - soc
     - kratos
+    - sensoroni
+    - telegraf
     - firewall
     - idstools
     - suricata.manager
@@ -92,6 +94,8 @@ base:
     - kratos
     - firewall
     - manager
+    - sensoroni
+    - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
@@ -122,6 +126,8 @@ base:
     - soc
     - kratos
     - firewall
+    - sensoroni
+    - telegraf
     - idstools
     - suricata.manager    
     - healthcheck
@@ -145,6 +151,8 @@ base:
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - sensoroni
+    - telegraf
     - nginx
     - firewall
     - elasticsearch
@@ -163,6 +171,8 @@ base:
     - kratos
     - firewall
     - manager
+    - sensoroni
+    - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
@@ -183,6 +193,8 @@ base:
     - match: compound
     - sensor
     - ssl
+    - sensoroni
+    - telegraf
     - nginx
     - firewall
     - elasticsearch
@@ -208,6 +220,8 @@ base:
     - influxdb
     - soc
     - kratos
+    - sensoroni
+    - telegraf
     - firewall
     - idstools
     - suricata.manager
@@ -223,6 +237,8 @@ base:
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - sensoroni
+    - telegraf
     - firewall
     - logstash
     - redis
@@ -231,6 +247,8 @@ base:
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - sensoroni
+    - telegraf
     - firewall
     - elasticfleet.install_agent_grid
     - idh
@@ -238,11 +256,18 @@ base:
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - sensoroni
+    - telegraf
     - firewall
     - logstash
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
+
+  '*_desktop and G@saltversion:{{saltversion}}':
+    - ssl
+    - sensoroni
+    - telegraf
 
   'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:OEL )':
     - match: compound
