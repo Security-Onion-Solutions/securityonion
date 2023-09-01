@@ -32,6 +32,7 @@ base:
     - docker
     - sensoroni
     - telegraf
+    - docker_clean
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
@@ -44,7 +45,6 @@ base:
     - healthcheck
     - zeek
     - strelka
-    - docker_clean
     - elasticfleet.install_agent_grid
 
   '*_eval and G@saltversion:{{saltversion}}':
@@ -79,7 +79,6 @@ base:
     - playbook
     - redis
     - elasticfleet
-    - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -108,7 +107,6 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -143,7 +141,6 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -153,7 +150,6 @@ base:
     - elasticsearch
     - logstash
     - elasticfleet.install_agent_grid
-    - docker_clean
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -182,7 +178,6 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -200,7 +195,6 @@ base:
     - zeek
     - elasticfleet.install_agent_grid
     - elasticagent
-    - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
@@ -225,7 +219,6 @@ base:
     - suricata
     - zeek
     - elasticfleet
-    - docker_clean
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
@@ -234,14 +227,12 @@ base:
     - logstash
     - redis
     - elasticfleet.install_agent_grid
-    - docker_clean
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
     - firewall
     - elasticfleet.install_agent_grid
-    - docker_clean
     - idh
 
   '*_fleet and G@saltversion:{{saltversion}}':
@@ -252,7 +243,6 @@ base:
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
-    - docker_clean
 
   'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:OEL )':
     - match: compound
