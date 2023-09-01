@@ -29,12 +29,9 @@ base:
     - salt.minion-check
     - salt.lasthighstate
     - common
+    - docker
     - sensoroni
     - telegraf
-
-  'not *_desktop and G@saltversion:{{saltversion}}':
-    - match: compound
-    - docker
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound

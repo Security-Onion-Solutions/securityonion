@@ -2,6 +2,8 @@ base:
   '*':
     - global.soc_global
     - global.adv_global
+    - docker.soc_docker
+    - docker.adv_docker
     - influxdb.token
     - logrotate.soc_logrotate
     - logrotate.adv_logrotate
@@ -16,8 +18,6 @@ base:
     - telegraf.adv_telegraf
 
   '* and not *_desktop':
-    - docker.soc_docker
-    - docker.adv_docker
     - firewall.soc_firewall
     - firewall.adv_firewall
     - nginx.soc_nginx
