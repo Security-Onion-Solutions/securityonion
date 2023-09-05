@@ -94,6 +94,9 @@ desktop_salt_local() {
 	logCmd "yum -y install salt-minion-$SALTVERSION httpd-tools python3 python3-dateutil yum-utils device-mapper-persistent-data lvm2 openssl jq"
 	logCmd "yum -y update --exclude=salt*"
 
+	salt_install_module_deps
+	salt_patch_x509_v2
+
 	logCmd "salt-call state.apply desktop --local --file-root=../salt/ -l info"
 	read -r -d '' message <<- EOM
 		Finished Security Onion Desktop installation.
@@ -2075,21 +2078,27 @@ saltify() {
 	fi
 
 	logCmd "mkdir -p /etc/salt/minion.d"
+	salt_install_module_deps
+	salt_patch_x509_v2
+
+}
+
+# Run a salt command to generate the minion key
+salt_firstcheckin() {
+	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
+}
+
+salt_install_module_deps() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
+}
 
+salt_patch_x509_v2() {
 	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
 	if [ $SALTVERSION == "3006.1" ]; then
 		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
 		\cp -v ./files/patch/states/x509_v2.py /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py
 	fi
-
-}
-
-
-# Run a salt command to generate the minion key
-salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
 }
 
 # Create an secrets pillar so that passwords survive re-install
