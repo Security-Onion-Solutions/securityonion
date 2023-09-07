@@ -35,7 +35,18 @@
 {% endif %}
 
 {% set standard_actions = SOCMERGED.config.pop('actions') %}
-{% if pillar.global.endgamehost is defined %}
+
+{% if pillar.global.endgamehost != '' %}
+{# this is added to prevent endgame_dict from being added to standard_actions for each time this file is rendered #}
+{# since this map file is rendered 3 times, it causes endgame_dict to appened 3 times if custom actions are defined in the pillar #}
+{%   set endgame = namespace(add=true) %}
+{%   for d in standard_actions %}
+{%     if d.name is defined %}
+{%       if d.name == 'Endgame' %}
+{%         set endgame.add = false %}
+{%       endif %}
+{%     endif %}
+{%   endfor %}
 {%   set endgame_dict = {
        "name": "Endgame",
        "description": "Endgame Endpoint Investigation and Response",
@@ -44,7 +55,9 @@
        "links": ["https://" ~ pillar.global.endgamehost ~ "/endpoints/{:agent.id}"]
      }
 %}
-{%   do standard_actions.append(endgame_dict) %}
+{%   if endgame.add %}
+{%     do standard_actions.append(endgame_dict) %}
+{%   endif %}
 {% endif %}
 
 {%   do SOCMERGED.config.server.client.hunt.update({'actions': standard_actions}) %}
