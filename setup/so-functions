@@ -398,20 +398,22 @@ collect_mngr_hostname() {
 		sed -i "/$MSRV/d" /etc/hosts
 	fi
 
-	if ! getent hosts "$MSRV"; then
-		whiptail_manager_ip
+	if [[ -z "$MSRVIP" ]]; then
+		if ! getent hosts "$MSRV"; then
+			whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		else
+			MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
 			whiptail_manager_ip "$MSRVIP"
-		done
-	else
-		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
-		whiptail_manager_ip "$MSRVIP"
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
-			whiptail_manager_ip "$MSRVIP"
-		done
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		fi
 	fi
 }
 
