@@ -77,6 +77,7 @@ run_so-rule-update:
       - docker_container: so-idstools
     - onchanges:
       - file: idstoolsetcsync
+      - file: synclocalnidsrules
     - order: last
 
 {% else %}
