@@ -239,6 +239,10 @@ function add_sensor_to_minion() {
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
 	echo "pcap:" >> $PILLARFILE
 	echo "  enabled: True" >> $PILLARFILE
+	if [[ $is_pcaplimit ]]; then
+		echo "  config:" >> $PILLARFILE
+		echo "    diskfreepercentage: 60" >> $PILLARFILE
+	fi
 	echo "  " >> $PILLARFILE
 }
 
@@ -409,6 +413,7 @@ function apply_ES_state() {
 	salt-call state.apply elasticsearch concurrent=True
 }
 function createEVAL() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
@@ -429,6 +434,7 @@ function createEVAL() {
 }
 
 function createSTANDALONE() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
@@ -520,8 +526,9 @@ function createIDH() {
 }
 
 function createHEAVYNODE() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
-    add_elastic_agent_to_minion
+	add_elastic_agent_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
