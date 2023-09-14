@@ -509,6 +509,26 @@ if ! [[ -f $install_opt_file ]]; then
 		get_redirect
 		collect_so_allow
 		whiptail_end_settings
+	elif [[ $is_mom ]]; then
+		info "Setting up as node type mom"
+		check_elastic_license
+		waitforstate=true
+		[[ $is_iso ]] && whiptail_airgap
+		check_requirements "mom"
+		networking_needful
+		[[ ! $is_airgap ]] && collect_net_method
+		collect_dockernet
+		[[ ! $is_airgap ]] && detect_cloud
+		set_minion_info
+		set_default_log_size >> $setup_log 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
+		check_network_manager_conf
+		set_network_dev_status_list
+		calculate_useable_cores
+		collect_webuser_inputs
+		get_redirect
+		collect_so_allow
+		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
 		info "Setting up as node type sensor"
 		monints=true
