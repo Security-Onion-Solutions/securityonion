@@ -24,7 +24,7 @@ base:
     - nginx.adv_nginx
     - node_data.ips
 
-  '*_manager or *_managersearch *_mom':
+  '*_manager or *_managersearch or *_mom':
     - match: compound
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
