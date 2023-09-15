@@ -17,7 +17,7 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
-{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import'] %}
+{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'mom'] %}
 include:
   - ca
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -99,7 +99,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver', 'so-mom'] %}
 # Create a cert for Redis encryption
 redis_key:
   x509.private_key_managed:
@@ -139,7 +139,7 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver', 'so-mom'] %}
 
 {% if grains['role'] not in [ 'so-heavynode', 'so-receiver'] %}
 # Start -- Elastic Fleet Host Cert
@@ -388,7 +388,7 @@ chownelasticfleetagentkey:
 
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver', 'so-mom'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
@@ -552,7 +552,7 @@ elasticp12perms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
+{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver', 'so-mom'] %}
    
 fbcertdir:
   file.directory:
