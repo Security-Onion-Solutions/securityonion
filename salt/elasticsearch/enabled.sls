@@ -108,6 +108,7 @@ escomponenttemplates:
     - source: salt://elasticsearch/templates/component
     - user: 930
     - group: 939
+    - clean: True
     - onchanges_in:
       - cmd: so-elasticsearch-templates
       
