@@ -112,6 +112,36 @@ base:
     - playbook
     - elasticfleet
 
+  '*_mom and G@saltversion:{{saltversion}}':
+    - match: compound
+    - salt.master
+    - ca
+    - ssl
+    - registry
+    - nginx
+    - influxdb
+    - soc
+    - kratos
+    - firewall
+    - manager
+    - sensoroni
+    - telegraf
+    - backup.config_backup
+    - idstools
+    - suricata.manager
+    - mysql
+    - elasticsearch
+    - logstash
+    - redis
+    - elastic-fleet-package-registry
+    - kibana
+    - curator
+    - elastalert
+    - utility
+    - soctopus
+    - playbook
+    - elasticfleet
+
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
