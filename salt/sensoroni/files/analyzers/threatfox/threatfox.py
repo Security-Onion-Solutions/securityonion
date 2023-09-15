@@ -3,6 +3,7 @@ import yaml
 import requests
 import json
 import os
+import helpers
 from pprint import pprint
 # pprint should (probably?) not be present in the final version.
 
@@ -83,6 +84,17 @@ def prepareResults(raw):
 #prepareResults(buildReq('domain', 'a'))
 
 
+#py -m threatfox '{\"artifactType\":\"hash\", \"value\":\"2151c4b970eff0071948dbbc19066aa4\"}'
+
+def analyze(conf, input):
+        # loads the artifact string into a dict and sends it to be checked 
+        # and formatted by buildReq
+        data = helpers.parseArtifact(input)
+        #meta?
+        query = buildReq(data["artifactType"], data["value"])      
+        response = sendReq(conf, query)
+        return response
+
 def main():
         # gets current directory (for finding yaml file)
         dir = os.path.dirname(os.path.realpath(__file__))
@@ -99,23 +111,10 @@ def main():
         args = parser.parse_args()
         
         # run if an artifact argument was given
-        if args.artifact:
-                # loads the artifact string into a dict and sends it to be checked 
-                # and formatted by buildReq
-                data = json.loads(args.artifact)
-                query = buildReq(data["artifactType"], data["value"])
-                
-                # open() is a temporary way to access the yaml file. may need to
-                # do it differently.
-                config = open(args.config)
-                
-                # loads the yaml file (containing the threatfox url) and sends a request
-                # using the query we built in buildReq
-                response = sendReq(yaml.safe_load(config), query)
-                
-                results = prepareResults(response)
+        if args.artifact:              
+                results = analyze(helpers.loadConfig(args.config), args.artifact)
                 pprint(results)
-                config.close()
+                
 
 if __name__ == '__main__':
         main()
