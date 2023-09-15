@@ -4,10 +4,13 @@ import requests
 import json
 import os
 from pprint import pprint
-# pprint should (probably) not be present in the final version.
+# pprint should (probably?) not be present in the final version.
 
 
 def buildReq(observ_type, observ_value):
+        """buildReq takes an input observable type and an input observable value and properly formats them
+        such that we can send a python dictionary object to sendReq."""
+        
         if observ_type == 'hash':
                 qterms = {'query':'search_hash', 'hash':observ_value}
         elif observ_type == 'ip':
@@ -20,12 +23,19 @@ def buildReq(observ_type, observ_value):
         
 
 def sendReq(meta, query):
+        """sendReq takes metadata (the threatfox.yaml file or an optional config file) and 
+        a query (dict object from buildReq containing observable type/value) to request a 
+        report on an observable."""
+        
         url = meta['base_url']
         response = requests.post(url, json.dumps(query))
         return response.json()
 
 
 def prepareResults(raw):
+        """prepareResults takes json data from sendReq and compiles the response with a
+        summary and status report."""
+        
         if raw['query_status'] == 'ok':
                 # look into deserializing json since raw['data'][0] is a little scuffed
                 parsed = raw['data'][0]
@@ -43,7 +53,11 @@ def prepareResults(raw):
                         status = 'info'
                 else:
                         status = 'ok'
+                        
+        # 'illegl_hash' is not a typo!
         elif raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
+                # not sure if I should set raw to empty here, as leaving it as-is would
+                # give more information other than "no result"
                 #raw = {}
                 status = 'info'
                 summary = 'no result'
@@ -58,6 +72,7 @@ def prepareResults(raw):
 
 
 # dont delete could be used for unit testing
+# code is invalid now, but the values can be saved for tests
 
 #prepareResults(buildReq('hash','2151c4b970eff0071948dbbc19066aa4')))
 #prepareResults(buildReq('hash','2151c4b970eff0071948dbbc19066ab4'))
@@ -69,23 +84,38 @@ def prepareResults(raw):
 
 
 def main():
-    dir = os.path.dirname(os.path.realpath(__file__))
-    print('found dir')
-    parser = argparse.ArgumentParser(description='Query Threatfox for a suspect domain, hash, or IP')
-    print('created parser')
-    parser.add_argument('artifact', help='JSON with artifact type and value')
-    parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '\\threatfox.yaml',
+        # gets current directory (for finding yaml file)
+        dir = os.path.dirname(os.path.realpath(__file__))
+        
+        # create an ArgumentParser object for passing in arguments via command line
+        parser = argparse.ArgumentParser(description='Query Threatfox for a suspect domain, hash, or IP')
+        parser.add_argument('artifact', help='JSON with artifact type and value')
+        parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '\\threatfox.yaml', 
                         help='Parameter for the use of a custom config file in place of the default yaml')
 
-    args = parser.parse_args()
-    if args.artifact:
-        data = json.loads(args.artifact)
-        query = buildReq(data["artifactType"], data["value"])
-        config = open(args.config)
-        response = sendReq(yaml.safe_load(config), query)
-        results = prepareResults(response)
-        pprint(results)
-        config.close()
+        # by default, the arg parser stores each argument in a dictionary. parse_args separates
+        # the arguments into their correspondent parts. they can be accessed as a property of
+        # a Namespace(?) object.
+        args = parser.parse_args()
+        
+        # run if an artifact argument was given
+        if args.artifact:
+                # loads the artifact string into a dict and sends it to be checked 
+                # and formatted by buildReq
+                data = json.loads(args.artifact)
+                query = buildReq(data["artifactType"], data["value"])
+                
+                # open() is a temporary way to access the yaml file. may need to
+                # do it differently.
+                config = open(args.config)
+                
+                # loads the yaml file (containing the threatfox url) and sends a request
+                # using the query we built in buildReq
+                response = sendReq(yaml.safe_load(config), query)
+                
+                results = prepareResults(response)
+                pprint(results)
+                config.close()
 
 if __name__ == '__main__':
         main()
