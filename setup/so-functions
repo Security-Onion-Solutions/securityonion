@@ -707,8 +707,6 @@ checkin_at_boot() {
 }
 
 check_requirements() {
-	local standalone_or_dist=$1
-	local node_type=$2 # optional
 	local req_mem
 	local req_cores
 	local req_storage
@@ -716,27 +714,57 @@ check_requirements() {
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
-	if [[ "$standalone_or_dist" == 'standalone' ]]; then
+	if [[ $is_eval ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
-	elif [[ "$standalone_or_dist" == 'dist' ]]; then
-		req_mem=8
+	elif [[ $is_standalone ]]; then
+		req_mem=24
 		req_cores=4
-		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
-		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
-		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
-	elif [[ "$standalone_or_dist" == 'import' ]]; then
+		req_nics=2
+	elif [[ $is_manager ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_managersearch ]]; then
+		req_mem=16
+		req_cores=8
+		req_nics=1
+	elif [[ $is_sensor ]]; then
+		req_mem=12
+		req_cores=4
+		req_nics=2
+	elif [[ $is_fleet ]]; then
 		req_mem=4
+		req_cores=4
+		req_nics=1
+	elif [[ $is_searchnode ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_heavynode ]]; then
+		req_mem=24
+		req_cores=4
+		req_nics=2
+	elif [[ $is_idh ]]; then
+		req_mem=1
+		req_cores=2
+		req_nics=1
+	elif [[ $is_import ]]; then
+		req_mem=4
+		req_cores=2
+		req_nics=1
+	elif [[ $is_receiver ]]; then
+		req_mem=8
 		req_cores=2
 		req_nics=1
 	fi
 
 	if [[ $setup_type == 'network' ]] ; then
-		if [[ -n $nsm_mount ]]; then
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+		if [[ -n $nsm_mount ]]; then # does a /nsm mount exist
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
+			elif [[ $is_idh ]]; then
 			    req_storage=12
 			else
 				req_storage=100
@@ -748,10 +776,10 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
-			        req_storage=12
+			elif [[ $is_idh ]]; then
+			    req_storage=12
 			else
 				req_storage=200
 			fi

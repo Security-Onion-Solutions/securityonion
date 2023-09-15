@@ -232,7 +232,7 @@ whiptail_requirements_error() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ $(echo "$requirement_needed" | tr '[:upper:]' '[:lower:]') == 'nics' ]]; then
+	if [[ $(echo "$requirement_needed" | tr '[:upper:]' '[:lower:]') =~ 'nic' ]]; then
 		whiptail --title "$whiptail_title" \
 			--msgbox "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Select OK to exit setup and reconfigure the machine."  10 75
 		
@@ -1181,21 +1181,6 @@ whiptail_reinstall() {
 	whiptail --title "$whiptail_title" \
 		--yesno "$message" 13 75 \
 		--yes-button "Continue" --no-button "Exit" --defaultno
-
-	local exitstatus=$?
-	whiptail_check_exitstatus $exitstatus
-}
-
-whiptail_requirements_error() {
-
-	local requirement_needed=$1
-	local current_val=$2
-	local needed_val=$3
-
-	[ -n "$TESTING" ] && return
-
-	whiptail --title "$whiptail_title" \
-	--yesno "This machine currently has $current_val $requirement_needed, but needs $needed_val to meet minimum requirements. Select YES to continue anyway, or select NO to cancel."  10 75
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
