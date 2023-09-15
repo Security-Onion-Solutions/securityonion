@@ -73,7 +73,7 @@ so-logstash:
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% endif %}
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro

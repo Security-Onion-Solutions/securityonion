@@ -33,7 +33,7 @@ so-redis:
       {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/certs/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/certs/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/certs/ca.crt:ro
       {% endif %}
       {% if DOCKER.containers['so-redis'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-redis'].custom_bind_mounts %}

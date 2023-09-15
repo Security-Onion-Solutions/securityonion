@@ -21,7 +21,6 @@ commonpkgs:
       - python3-dateutil
       - python3-docker
       - python3-packaging
-      - python3-watchdog
       - python3-lxml
       - git
       - rsync
@@ -63,11 +62,7 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
-      {% if GLOBALS.os == 'CentOS Stream' %}
-      - MariaDB-devel
-      {% else %}
       - mariadb-devel
-      {% endif %}
       - net-tools
       - nmap-ncat
       - openssl
@@ -78,7 +73,6 @@ commonpkgs:
       - python3-packaging
       - python3-pyyaml
       - python3-rich
-      - python3-watchdog
       - rsync
       - sqlite
       - tcpdump

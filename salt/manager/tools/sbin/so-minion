@@ -187,15 +187,9 @@ function add_logstash_to_minion() {
 # Security Onion Desktop
 function add_desktop_to_minion() {
     printf '%s\n'\
-		"host:"\
-		"  mainint: '$MNIC'"\
 		"desktop:"\
 		"  gui:"\
-		"    enabled: true"\
-		"sensoroni:"\
-		"  enabled: True"\
-		"  config:"\		
-		"    node_description: '${NODE_DESCRIPTION//\'/''}'" >> $PILLARFILE
+		"    enabled: true"\ >> $PILLARFILE
 }
 
 # Add basic host info to the minion file
@@ -245,6 +239,10 @@ function add_sensor_to_minion() {
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
 	echo "pcap:" >> $PILLARFILE
 	echo "  enabled: True" >> $PILLARFILE
+	if [[ $is_pcaplimit ]]; then
+		echo "  config:" >> $PILLARFILE
+		echo "    diskfreepercentage: 60" >> $PILLARFILE
+	fi
 	echo "  " >> $PILLARFILE
 }
 
@@ -415,6 +413,7 @@ function apply_ES_state() {
 	salt-call state.apply elasticsearch concurrent=True
 }
 function createEVAL() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
@@ -435,6 +434,7 @@ function createEVAL() {
 }
 
 function createSTANDALONE() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
@@ -526,8 +526,9 @@ function createIDH() {
 }
 
 function createHEAVYNODE() {
+	is_pcaplimit=true
 	add_elasticsearch_to_minion
-    add_elastic_agent_to_minion
+	add_elastic_agent_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
@@ -556,6 +557,10 @@ function createRECEIVER() {
 	add_telegraf_to_minion
 }
 
+function createDESKTOP() {
+	add_desktop_to_minion
+	add_telegraf_to_minion
+}
 
 function testConnection() {
 	retry 15 3 "salt '$MINION_ID' test.ping" True

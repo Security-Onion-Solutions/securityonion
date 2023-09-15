@@ -69,7 +69,7 @@ detect_os
 # Ubuntu/Debian whiptail pallete to make it look the same as CentOS and Rocky.
 set_palette >> $setup_log 2>&1
 
-if [[ $not_supported ]]; then
+if [[ $not_supported ]] && [ -z "$test_profile" ]; then
 	if [[ "$OSVER" == "focal" ]]; then
 		if (whiptail_focal_warning); then
 			true
@@ -104,6 +104,7 @@ if [ "$setup_type" = 'desktop' ]; then
 	# Check to see if this is an ISO. Usually this dir on exists on ISO installs.
 	if [ -d /root/SecurityOnion ]; then
 		is_desktop_iso=true
+		install_type='DESKTOP'
 	fi
 fi
 
@@ -182,8 +183,39 @@ if [ -n "$test_profile" ]; then
 		install_type=SEARCHNODE
 		HOSTNAME=search
 		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-managersearch" ]]; then
+		install_type=MANAGERSEARCH
+		HOSTNAME=manager
+	elif [[ "$test_profile" =~ "-heavynode" ]]; then
+		install_type=HEAVYNODE
+		HOSTNAME=sensor
+		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-desktop" ]]; then
+		install_type=DESKTOP
+		MSRVIP_OFFSET=-3
+		is_desktop_grid=true
+	elif [[ "$test_profile" =~ "-idh" ]]; then
+		install_type=IDH
+		HOSTNAME=idh
+		MSRVIP_OFFSET=-4
+	elif [[ "$test_profile" =~ "-receiver" ]]; then
+		install_type=RECEIVER
+		HOSTNAME=receiver
+		MSRVIP_OFFSET=-5
+	elif [[ "$test_profile" =~ "-fleet" ]]; then
+		install_type=FLEET
+		HOSTNAME=fleet
+		MSRVIP_OFFSET=-6
 	else
 		HOSTNAME=manager
+	fi
+
+	if [[ "$install_type" =~ "DESKTOP" ]]; then
+		is_desktop=true
+		HOSTNAME=desktop
+		if [[ -z "$is_desktop_grid" ]]; then
+			is_desktop_grid=false
+		fi
 	fi
 	
 	info "Activating test profile; profile=$test_profile; install_type=$install_type"
@@ -333,39 +365,41 @@ if [[ $is_desktop ]]; then
 		exit 1
 	fi
 
-#	if ! whiptail_desktop_install; then
-	if [[ $is_desktop_iso ]]; then
-		if whiptail_desktop_nongrid_iso; then
-			# Remove setup from auto launching
-			parse_install_username
-			sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-			securityonion_repo
-			info "Enabling graphical interface and setting it to load at boot"
-			systemctl set-default graphical.target
-			info "Setting desktop background"
-			set_desktop_background
-			echo "Desktop Install Complete!"
-			echo ""
-			echo "Please reboot to start graphical interface."
-			exit 0
+	whiptail_desktop_install
+	if ! $is_desktop_grid; then
+		if [[ $is_desktop_iso ]]; then
+			if whiptail_desktop_nongrid_iso; then
+				# Remove setup from auto launching
+				parse_install_username
+				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+				securityonion_repo
+				info "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				info "Setting desktop background"
+				set_desktop_background
+				echo "Desktop Install Complete!"
+				echo ""
+				echo "Please reboot to start graphical interface."
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
 		else
-			# Abort!
-			exit 0
-		fi
-	else
-		if whiptail_desktop_nongrid_network; then
-			info ""
-			info ""
-			info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
-			info ""
-			info ""
-			desktop_salt_local
-		else
-			# Abort!
-			exit 0
+			if whiptail_desktop_nongrid_network; then
+				networking_needful
+				info ""
+				info ""
+				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
+				info ""
+				info ""
+				desktop_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
 		fi
 	fi
-#	fi
 
 	# If you got this far then you want to join the grid
 	is_minion=true
@@ -574,10 +608,22 @@ if ! [[ -f $install_opt_file ]]; then
 		check_manager_connection
 		set_minion_info
 		whiptail_end_settings
+
+	# desktop install will only get this far if joining the grid
+	elif [[ $is_desktop ]]; then
+		info "Setting up as node type desktop"
+		networking_needful
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		set_minion_info
+		whiptail_end_settings
+
 	fi
 
 	if [[ $waitforstate ]]; then
 		touch /root/accept_changes
+		touch /etc/sohotfix
 		make_some_dirs
 		percentage=0
 		es_heapsize
