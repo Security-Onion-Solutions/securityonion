@@ -35,9 +35,8 @@ def sendReq(meta, query):
 
 def prepareResults(raw):
         """prepareResults takes json data from sendReq and compiles the response with a
-        summary and status report."""
-        
-        if raw['query_status'] == 'ok':
+        summary and status report."""        
+        if raw != {} and raw['query_status'] == 'ok':
                 # look into deserializing json since raw['data'][0] is a little scuffed
                 parsed = raw['data'][0]
                 
@@ -56,7 +55,7 @@ def prepareResults(raw):
                         status = 'ok'
                         
         # 'illegl_hash' is not a typo!
-        elif raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
+        elif raw != {} and raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
                 # not sure if I should set raw to empty here, as leaving it as-is would
                 # give more information other than "no result"
                 #raw = {}
@@ -93,7 +92,7 @@ def analyze(conf, input):
         #meta?
         query = buildReq(data["artifactType"], data["value"])      
         response = sendReq(conf, query)
-        return response
+        return prepareResults(response)
 
 def main():
         # gets current directory (for finding yaml file)
