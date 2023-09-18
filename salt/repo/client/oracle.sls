@@ -49,7 +49,7 @@ so_repo:
   pkgrepo.managed:
     - name: securityonion
     - humanname: Security Onion Repo
-  {% if GLOBALS.role in ['so-eval', 'so-standalone', 'so-import', 'so-manager', 'so-managersearch'] %}
+  {% if GLOBALS.role in ['so-eval', 'so-standalone', 'so-import', 'so-manager', 'so-managersearch', 'so-mom'] %}
     - baseurl: file:///nsm/repo/
   {% else %}
     - baseurl: https://{{ GLOBALS.repo_host }}/repo
