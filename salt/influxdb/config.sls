@@ -25,7 +25,7 @@ influxlogdir:
     - group: 939
     - makedirs: True
 
-influxlogdir:
+influxetcdir:
   file.directory:
     - name: /opt/so/conf/influxdb/etc
     - dir_mode: 750
