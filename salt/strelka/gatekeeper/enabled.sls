@@ -31,13 +31,13 @@ strelka_gatekeeper:
       {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
     - binds:
       - /nsm/strelka/gk-redis-data:/data:rw
-      {% for BIND in DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+      {% if DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
       - {{ BIND }}
-      {% endfor %}
-    {% endif %}
+        {% endfor %}
+      {% endif %}
     {% if DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
     - environment:
       {% for XTRAENV in DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
