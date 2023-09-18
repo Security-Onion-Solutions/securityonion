@@ -101,7 +101,7 @@ Etc/UTC:
   timezone.system
 
 # Sync curl configuration for Elasticsearch authentication
-{% if GLOBALS.role in ['so-eval', 'so-heavynode', 'so-import', 'so-manager', 'so-managersearch', 'so-searchnode', 'so-standalone'] %}
+{% if GLOBALS.role in ['so-eval', 'so-heavynode', 'so-import', 'so-manager', 'so-managersearch', 'so-searchnode', 'so-standalone', 'so-mom'] %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
