@@ -33,6 +33,7 @@ strelka_gatekeeper:
       {% endfor %}
     {% if DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
     - binds:
+      - /nsm/strelka/gk-redis-data:/data:rw
       {% for BIND in DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
       - {{ BIND }}
       {% endfor %}

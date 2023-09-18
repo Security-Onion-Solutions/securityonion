@@ -39,6 +39,7 @@ strelka_coordinator:
     {% endif %}
   {% if DOCKER.containers['so-strelka-coordinator'].custom_bind_mounts %}
     - binds:
+      - /nsm/strelka/coord-redis-data:/data:rw
         {% for BIND in DOCKER.containers['so-strelka-coordinator'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
