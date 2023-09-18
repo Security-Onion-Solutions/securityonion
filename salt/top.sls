@@ -82,7 +82,7 @@ base:
     - redis
     - elasticfleet
 
-  '*_manager and G@saltversion:{{saltversion}}':
+  '*_mom and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
@@ -101,8 +101,6 @@ base:
     - suricata.manager
     - mysql
     - elasticsearch
-    - logstash
-    - redis
     - elastic-fleet-package-registry
     - kibana
     - curator
@@ -112,7 +110,7 @@ base:
     - playbook
     - elasticfleet
 
-  '*_mom and G@saltversion:{{saltversion}}':
+  '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca

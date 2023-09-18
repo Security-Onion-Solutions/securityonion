@@ -32,14 +32,18 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
-    - secrets
-    - manager.soc_manager
-    - manager.adv_manager
+    {% if not *_mom %}
     - idstools.soc_idstools
     - idstools.adv_idstools
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
+    - redis.soc_redis
+    - redis.adv_redis
+    {% endif %}
+    - secrets
+    - manager.soc_manager
+    - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
@@ -49,8 +53,6 @@ base:
     - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
-    - redis.soc_redis
-    - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
     - elasticsearch.soc_elasticsearch
