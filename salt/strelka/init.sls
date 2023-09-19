@@ -197,6 +197,8 @@ filcheck_history_clean:
 strelka_coordinator:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - bind:
+      - /nsm/strelka/coord-redis-data:/data:rw
     - name: so-strelka-coordinator
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
@@ -210,6 +212,8 @@ append_so-strelka-coordinator_so-status.conf:
 strelka_gatekeeper:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - bind:
+      - /nsm/strelka/gk-redis-data:/data:rw
     - name: so-strelka-gatekeeper
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
