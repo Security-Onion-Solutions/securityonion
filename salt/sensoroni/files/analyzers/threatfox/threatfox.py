@@ -1,5 +1,4 @@
 import argparse
-import yaml
 import requests
 import json
 import os
@@ -83,9 +82,9 @@ def prepareResults(raw):
 #prepareResults(buildReq('domain', 'a'))
 
 
-#py -m threatfox '{\"artifactType\":\"hash\", \"value\":\"2151c4b970eff0071948dbbc19066aa4\"}'
-
 def analyze(conf, input):
+        """Takes configuration and input, then processes it through
+        a set of methods to get back the final result (json object)."""
         # loads the artifact string into a dict and sends it to be checked 
         # and formatted by buildReq
         data = helpers.parseArtifact(input)
@@ -93,6 +92,7 @@ def analyze(conf, input):
         query = buildReq(data["artifactType"], data["value"])      
         response = sendReq(conf, query)
         return prepareResults(response)
+
 
 def main():
         # gets current directory (for finding yaml file)
@@ -117,3 +117,6 @@ def main():
 
 if __name__ == '__main__':
         main()
+        
+# to run from shell:
+# py -m threatfox '{\"artifactType\":\"hash\", \"value\":\"2151c4b970eff0071948dbbc19066aa4\"}'
