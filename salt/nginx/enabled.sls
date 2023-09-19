@@ -110,7 +110,7 @@ so-nginx:
       - /opt/so/tmp/nginx/:/run:rw
       - /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/:/opt/socore/html/packages
       - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
-      {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-mom'] %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
@@ -140,7 +140,7 @@ so-nginx:
       - file: nginxconfdir
     - require:
       - file: nginxconf
-{%   if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+{%   if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-mom'] %}
 {%     if NGINXMERGED.ssl.replace_cert %}
       - file: managerssl_key
       - file: managerssl_crt
