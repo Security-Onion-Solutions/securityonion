@@ -160,8 +160,18 @@ for EVTX in $INPUT_FILES; do
 
   fi # end of valid evtx
 
-  # compare $START to $START_OLDEST
+  # determine start and end and make sure they aren't reversed
   START=$(cat /nsm/import/$HASH/evtx-start_oldest)
+  END=$(cat /nsm/import/$HASH/evtx-end_newest)
+  START_EPOCH=`date -d "$START" +"%s"`
+  END_EPOCH=`date -d "$END" +"%s"`
+  if [ "$START_EPOCH" -gt "$END_EPOCH" ]; then
+    TEMP=$START
+    START=$END
+    END=$TEMP
+  fi
+
+  # compare $START to $START_OLDEST
   START_COMPARE=$(date -d $START +%s)
   START_OLDEST_COMPARE=$(date -d $START_OLDEST +%s)
   if [ $START_COMPARE -lt $START_OLDEST_COMPARE ]; then
@@ -169,7 +179,6 @@ for EVTX in $INPUT_FILES; do
   fi
 
   # compare $ENDNEXT to $END_NEWEST
-  END=$(cat /nsm/import/$HASH/evtx-end_newest)
   ENDNEXT=`date +%Y-%m-%d --date="$END 1 day"`
   ENDNEXT_COMPARE=$(date -d $ENDNEXT +%s)
   END_NEWEST_COMPARE=$(date -d $END_NEWEST +%s)
