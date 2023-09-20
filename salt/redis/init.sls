@@ -52,6 +52,13 @@ redisconf:
     - group: 939
     - template: jinja
 
+redisdatadir:
+  file.directory:
+    - name: /nsm/redis/data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-redis:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
@@ -64,6 +71,7 @@ so-redis:
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
+      - /nsm/redis/data:/data:rw
       - /etc/pki/redis.crt:/certs/redis.crt:ro
       - /etc/pki/redis.key:/certs/redis.key:ro
   {% if grains['role'] in ['so-manager', 'so-helix', 'so-managersearch', 'so-standalone', 'so-import'] %}
