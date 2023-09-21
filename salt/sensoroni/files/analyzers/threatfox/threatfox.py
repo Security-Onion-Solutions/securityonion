@@ -2,6 +2,7 @@ import argparse
 import requests
 import json
 import os
+import sys
 import helpers
 from pprint import pprint
 # pprint should (probably?) not be present in the final version.
@@ -9,8 +10,8 @@ from pprint import pprint
 
 def buildReq(observ_type, observ_value):
         """buildReq takes an input observable type and an input observable value and properly formats them
-        such that we can send a python dictionary object to sendReq."""
-        
+         such that we can send a python dictionary object to sendReq."""
+
         if observ_type == 'hash':
                 qterms = {'query':'search_hash', 'hash':observ_value}
         elif observ_type == 'ip':
@@ -38,7 +39,7 @@ def prepareResults(raw):
         if raw != {} and raw['query_status'] == 'ok':
                 # look into deserializing json since raw['data'][0] is a little scuffed
                 parsed = raw['data'][0]
-                
+
                 if parsed['threat_type_desc'] != '' :
                         summary = parsed['threat_type_desc']
                 else:
@@ -85,13 +86,13 @@ def prepareResults(raw):
 def analyze(conf, input):
         """Takes configuration and input, then processes it through
         a set of methods to get back the final result (json object)."""
-        # loads the artifact string into a dict and sends it to be checked 
-        # and formatted by buildReq
+
         data = helpers.parseArtifact(input)
-        #meta?
-        query = buildReq(data["artifactType"], data["value"])      
+        query = buildReq(data['artifactType'], data['value'])
         response = sendReq(conf, query)
         return prepareResults(response)
+
+
 
 
 def main():
@@ -108,11 +109,19 @@ def main():
         # the arguments into their correspondent parts. they can be accessed as a property of
         # a Namespace(?) object.
         args = parser.parse_args()
-        
         # run if an artifact argument was given
-        if args.artifact:              
+        if args.artifact:
                 results = analyze(helpers.loadConfig(args.config), args.artifact)
                 pprint(results)
+        else:
+                print('ERROR: Input is not in proper JSON format')
+
+# def main():
+#     if len(sys.argv) == 2:
+#         results = analyze(helpers.loadMetadata(__file__), sys.argv[1])
+#         pprint(results)
+#     else:
+#         print("ERROR: Input is not in proper JSON format")
                 
 
 if __name__ == '__main__':
