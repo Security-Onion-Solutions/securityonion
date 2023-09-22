@@ -5,26 +5,26 @@ import threatfox
 import unittest
 
 
-
 class TestThreatfoxMethods(unittest.TestCase):
     # This should 1. create a fake cmd input with no args
     # and 2. hit the else statement in main. It then
     # compares the console output to a hardcoded string.
-    
+
     # DOES NOT WORK WITH ARGPARSE/MAIN METHOD
-    
+
     def test_main_missing_input(self):
         with patch('sys.stdout', new=StringIO()) as mock_cmd:
             sys.argv = ["cmd"]
             threatfox.main()
-            self.assertEqual(mock_cmd.getvalue(), 'ERROR: Input is not in proper JSON format\n')
-
+            self.assertEqual(mock_cmd.getvalue(),
+                             'ERROR: Input is not in proper JSON format\n')
 
     # This should 1. create a fake cmd input with 1 arg
     # and 2. hit the if statement in main which runs a mock
     # analyze method with return value of {'test': 'val'}.
     # threatfox.main() should then print that to the console,
     # which is then asserted equal against an expected value.
+
     def test_main_success(self):
         with patch('sys.stdout', new=StringIO()) as mock_cmd:
             with patch('threatfox.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
@@ -59,25 +59,28 @@ class TestThreatfoxMethods(unittest.TestCase):
     # should simulate API response and makes sure sendReq gives a response
     def test_sendReq(self):
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
-            response = threatfox.sendReq({'base_url': 'https://www.randurl.xyz'}, 'example_data')
+            response = threatfox.sendReq(
+                {'baseUrl': 'https://www.randurl.xyz'}, 'example_data')
             self.assertIsNotNone(response)
 
     def test_prepareResults_noinput(self):
         # no/improper given input
         raw = {}
-        sim_results = {'response': raw, 'status': 'caution', 'summary': 'internal_failure'}
+        sim_results = {'response': raw, 'status': 'caution',
+                       'summary': 'internal_failure'}
         results = threatfox.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_prepareResults_none(self):
         # no results
         raw = {'query_status': 'no_result'}
-        sim_results = {'response': raw, 'status': 'info', 'summary': 'no result'}
+        sim_results = {'response': raw,
+                       'status': 'info', 'summary': 'no result'}
         results = threatfox.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_prepareResults_illegal_search_term(self):
-        #illegal search term
+        # illegal search term
         raw = {'query_status': 'illegal_search_term'}
         expected = {'response': raw, 'status': 'info', 'summary': 'no result'}
         results = threatfox.prepareResults(raw)
@@ -85,25 +88,28 @@ class TestThreatfoxMethods(unittest.TestCase):
 
     def test_prepareResults_threat(self):
         # threat exists
-        raw = {'query_status': 'ok', 'data':[{'threat_type_desc':'threat', 'confidence_level':94}]}
-        sim_results = {'response':raw, 'summary':'threat', 'status':'threat'}
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type_desc': 'threat', 'confidence_level': 94}]}
+        sim_results = {'response': raw,
+                       'summary': 'threat', 'status': 'threat'}
         results = threatfox.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_prepareResults_error(self):
         raw = {}
-        sim_results = {'response': raw, 'status': 'caution', 'summary': 'internal_failure'}
+        sim_results = {'response': raw, 'status': 'caution',
+                       'summary': 'internal_failure'}
         results = threatfox.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_analyze(self):
-        sendReqOutput = {'threat':'no_result'}
-        conf = {'base_url': 'myurl'}
+        sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
-        prepareResultOutput = {'response':'', 'summary':'no result', 'status':''}
+        prepareResultOutput = {'response': '',
+                               'summary': 'no result', 'status': ''}
 
-        with patch('threatfox.sendReq', new=MagicMock(return_value = sendReqOutput)) as mock:
-                with patch('threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
-                        results = threatfox.analyze(conf, input)
-                        self.assertEqual(results["summary"], "no result")
-                        mock.assert_called_once()
+        with patch('threatfox.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
+            with patch('threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
+                results = threatfox.analyze(input)
+                self.assertEqual(results["summary"], "no result")
+                mock.assert_called_once()
