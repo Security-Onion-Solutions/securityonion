@@ -54,13 +54,21 @@ class TestThreatfoxMethods(unittest.TestCase):
     def test_buildReqFalse(self):
         result = threatfox.buildReq('hash', '2151c4b970eff0071948dbbc19066aa4')
         self.assertNotEqual(result, {})
+    
+    def test_buildReqFalseEmptyInput(self):
+        result=threatfox.buildReq(' ', '')
+        self.assertIsNone(result)
 
-    # should simulate API response and makes sure sendReq gives a response
+    # simulate API response and makes sure sendReq gives a response
+    # we are just checking if sendReq gives back anything
     def test_sendReq(self):
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
             response = threatfox.sendReq(
                 {'baseUrl': 'https://www.randurl.xyz'}, 'example_data')
             self.assertIsNotNone(response)
+
+    # result stores the output of the prepareResults method
+    # comparing result with expected output
 
     def test_prepareResults_noinput(self):
         # no/improper given input
