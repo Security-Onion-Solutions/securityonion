@@ -471,7 +471,9 @@ if ! [[ -f $install_opt_file ]]; then
 		whiptail_end_settings
 	elif [[ $is_manager ]]; then
 		info "Setting up as node type manager"
-		check_elastic_license
+		if [[ "$dist_option" == "NEWDEPLOYMENT" ]]; then
+			check_elastic_license
+		fi
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
 		check_requirements
@@ -485,9 +487,11 @@ if ! [[ -f $install_opt_file ]]; then
 		check_network_manager_conf
 		set_network_dev_status_list
 		calculate_useable_cores
-		collect_webuser_inputs
-		get_redirect
-		collect_so_allow
+		if [[ "$dist_option" == "NEWDEPLOYMENT" ]]; then
+			collect_webuser_inputs
+			get_redirect
+			collect_so_allow
+		fi
 		whiptail_end_settings
 	elif [[ $is_managersearch ]]; then
 		info "Setting up as node type managersearch"
