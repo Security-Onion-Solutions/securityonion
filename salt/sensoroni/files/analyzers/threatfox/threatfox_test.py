@@ -50,8 +50,7 @@ class TestThreatfoxMethods(unittest.TestCase):
         result = threatfox.buildReq('domain', 'https://google.com')
         self.assertEqual(
             result, {'query': 'search_ioc', 'search_term': 'https://google.com'})
-
-    # seems redundant with test_buildReqHash
+    
     def test_buildReqFalse(self):
         result = threatfox.buildReq('hash', '2151c4b970eff0071948dbbc19066aa4')
         self.assertNotEqual(result, {})
@@ -103,6 +102,8 @@ class TestThreatfoxMethods(unittest.TestCase):
         self.assertEqual(results, sim_results)
 
     def test_analyze(self):
+        """simulated sendReq and prepareResults with 2 mock objects and variables sendReqOutput and prepareResultOutput,
+            input created for analyze method call and then we compared results['summary'] with 'no result' """
         sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
         prepareResultOutput = {'response': '',

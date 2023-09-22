@@ -5,11 +5,15 @@ import os
 import sys
 
 from pprint import pprint
-# pprint should (probably?) not be present in the final version.
+#will remove for final version
 
 
 def loadMetadataFix(file):
-    dir = os.path.dirname(os.path.realpath(file))
+    """gets to the directory that the file is in, in our case it would be the threatfox directory
+    filename is obtained by parsing, in our case we are getting threatfox as the file
+    we are appending the filename plus json to access threatfox.json"""
+
+    dir = os.path.dirname(os.path.realpath(file)) 
     filename = os.path.realpath(file).rsplit('\\', 1)[1].split('.')[0]
     with open(str(dir + "\\" + filename + ".json"), "r") as metafile:
         return json.load(metafile)
@@ -44,7 +48,7 @@ def prepareResults(raw):
     """prepareResults takes json data from sendReq and compiles the response with a
     summary and status report."""
     if raw != {} and raw['query_status'] == 'ok':
-        # look into deserializing json since raw['data'][0] is a little scuffed
+        
         parsed = raw['data'][0]
 
         if parsed['threat_type_desc'] != '':
