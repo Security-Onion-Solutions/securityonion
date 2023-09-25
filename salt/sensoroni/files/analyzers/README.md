@@ -141,6 +141,7 @@ Additionally, to support airgapped users, the dependency packages themselves, an
 pip download -r <my-analyzer-path>/requirements.txt -d <my-analyzer-path>/source-packages
 ```
 
+
 ### Analyzer Architecture
 
 The Sensoroni Docker container is responsible for executing analyzers. Only the manager's Sensoroni container will process analyzer jobs. Other nodes in the grid, such as sensors and search nodes, will not be assigned analyzer jobs.
