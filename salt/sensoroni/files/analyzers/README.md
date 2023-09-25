@@ -141,7 +141,6 @@ Additionally, to support airgapped users, the dependency packages themselves, an
 pip download -r <my-analyzer-path>/requirements.txt -d <my-analyzer-path>/source-packages
 ```
 
-
 ### Analyzer Architecture
 
 The Sensoroni Docker container is responsible for executing analyzers. Only the manager's Sensoroni container will process analyzer jobs. Other nodes in the grid, such as sensors and search nodes, will not be assigned analyzer jobs.
@@ -152,6 +151,12 @@ The analyzer itself will only run when a user in SOC enqueues an analyzer job, s
 
 ```bash
 python -m urlhaus '{"artifactType":"url","value":"https://bigbadbotnet.invalid",...}'
+```
+
+To manually test an analyzer outside of the Sensoroni Docker container, use a command similar to the following:
+
+```bash
+PYTHONPATH=. python urlhaus/urlhaus.py '{"artifactType":"url","value":"https://bigbadbotnet.invalid",...}'
 ```
 
 It is up to each analyzer to determine whether the provided input is compatible with that analyzer. This is assisted by the analyzer metadata, as described earlier in this document, with the use of the `supportedTypes` list.
