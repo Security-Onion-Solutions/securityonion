@@ -171,6 +171,13 @@ airgap_update_dockers() {
   fi
 }
 
+backup_old_states_pillars() {
+
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
+
+}
+
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -789,6 +796,7 @@ main() {
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
+    backup_old_states_pillars
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
@@ -844,6 +852,10 @@ main() {
     if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
       update_centos_repo
     fi
+
+    echo ""
+    echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
+    backup_old_states_pillars
 
     echo ""
     echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
