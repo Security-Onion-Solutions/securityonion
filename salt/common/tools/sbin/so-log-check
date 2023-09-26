@@ -1,0 +1,174 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+RECENT_LOG_LINES=200
+EXCLUDE_STARTUP_ERRORS=N
+EXCLUDE_FALSE_POSITIVE_ERRORS=N
+EXCLUDE_KNOWN_ERRORS=N
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --exclude-connection-errors)
+            EXCLUDE_STARTUP_ERRORS=Y
+            ;;
+        --exclude-false-positives)
+            EXCLUDE_FALSE_POSITIVE_ERRORS=Y
+            ;;
+        --exclude-known-errors)
+            EXCLUDE_KNOWN_ERRORS=Y
+            ;;
+        --unknown)
+            EXCLUDE_STARTUP_ERRORS=Y
+            EXCLUDE_FALSE_POSITIVE_ERRORS=Y
+            EXCLUDE_KNOWN_ERRORS=Y
+            ;;
+        --recent-log-lines)
+            shift
+            RECENT_LOG_LINES=$1
+            ;;
+        *)
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "where options are:"
+            echo "  --recent-log-lines N            looks at the most recent N log lines per file or container; defaults to 200"
+            echo "  --exclude-connection-errors     exclude errors caused by a recent server or container restart"
+            echo "  --exclude-false-positives       exclude logs that are not actual errors but contain the error string"
+            echo "  --exclude-known-errors          exclude errors that are known and non-critical issues"
+            echo "  --unknown                       exclude everything mentioned above; only show unknown errors"
+            echo ""
+            echo "A non-zero return value indicates errors were found"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+echo "Security Onion Log Check - $(date)"
+echo "-------------------------------------------"
+echo ""
+echo "- RECENT_LOG_LINES:                $RECENT_LOG_LINES"
+echo "- EXCLUDE_STARTUP_ERRORS:          $EXCLUDE_STARTUP_ERRORS"
+echo "- EXCLUDE_FALSE_POSITIVE_ERRORS:   $EXCLUDE_FALSE_POSITIVE_ERRORS"
+echo "- EXCLUDE_KNOWN_ERRORS:            $EXCLUDE_KNOWN_ERRORS"
+echo ""
+
+function status() {
+    header "$1"
+}
+
+function exclude_container() {
+    name=$1
+
+    exclude_id=$(docker ps | grep "$name" | awk '{print $1}')
+    if [[ -n "$exclude_id" ]]; then
+        CONTAINER_IDS=$(echo $CONTAINER_IDS | sed -e "s/$exclude_id//g")
+        return $?
+    fi
+    return $?
+}
+
+function exclude_log() {
+    name=$1
+
+    LOG_FILES=$(echo "$LOG_FILES" | sed -e "s/$name//g")
+}
+
+function check_for_errors() {
+    if cat /tmp/log_check | grep -i error | grep -vEi "$EXCLUDED_ERRORS"; then
+        RESULT=1
+    fi
+}
+
+EXCLUDED_ERRORS="__LOG_CHECK_PLACEHOLDER_EXCLUSION__"
+
+if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|database is locked"           # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|econnreset"                   # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unreachable"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no route to host"             # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|not running"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unavailable"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|request.py"                   # server not yet ready (python stack output)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|httperror"                    # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|servfail"                     # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|connection refused"           # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing shards"               # server not yet ready
+fi
+
+if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|elastalert_status_error"      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|elastalert_error.json"        # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error: '0'"                   # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|errors_index"                 # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noerror"                      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|emerging-all.rules"           # false positive (error in rulename)
+fi
+
+if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|eof"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|bookkeeper"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noindices"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to start transient scope"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status 200"                   # request successful, contained error string in content
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so-user.lock exists"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|systemd-run"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|retcode: 1"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|telemetry-task"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|redisqueue"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fleet_detail_query"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|num errors=0"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisioning/alerting"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisioning/notifiers"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisoning/plugins"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|active-responses.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|scanentropy"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|integration policy"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|blob unknown"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|token required"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|zeekcaptureloss"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unable to create detection"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error installing new prebuilt rules"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parent.error"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|example"                      # example test data
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so_long_term"                 # setup in progress, influxdb not yet setup
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|stats.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context deadline exceeded"
+fi
+
+RESULT=0
+
+# Check Security Onion container stdout/stderr logs
+CONTAINER_IDS=$(docker ps -q)
+exclude_container so-kibana
+exclude_container so-idstools
+
+for container_id in $CONTAINER_IDS; do
+    status "Checking container $container_id"
+    docker logs -n $RECENT_LOG_LINES $container_id > /tmp/log_check 2>&1
+    check_for_errors
+done
+
+# Check Security Onion related log files
+LOG_FILES=$(find /opt/so/log/ /nsm -name \*.log)
+exclude_log "\s?.*kibana.log"
+LOG_FILES="$LOG_FILES /var/log/cron"
+
+for log_file in $LOG_FILES; do
+    status "Checking log file $log_file"
+    tail -n $RECENT_LOG_LINES $log_file > /tmp/log_check
+    check_for_errors
+done
+
+exit $RESULT
