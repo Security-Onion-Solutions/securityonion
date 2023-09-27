@@ -6,7 +6,7 @@
 include:
   - common.soup_scripts
   - common.packages
-{% if GLOBALS.role in GLOBALS.manager_roles %}
+{% if GLOBALS.manager == GLOBALS.hostname %}
   - manager.elasticsearch # needed for elastic_curl_config state
 {% endif %}
 
