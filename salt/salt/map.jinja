@@ -1,3 +1,4 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltminion %}
 {% set SALTVERSION = saltminion.salt.minion.version %}
 
@@ -21,9 +22,17 @@
 
 {% if grains.saltversion|string != SALTVERSION|string %}
   {% if grains.os|lower in ['Rocky', 'redhat', 'CentOS Stream'] %}
-      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+      {% if GLOBALS.is_manager %}
+        {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -M -x python3 stable ' ~ SALTVERSION %}
+      {% else %}
+        {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+      {% fi %}
   {% elif grains.os_family|lower == 'debian' %}
-    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+    {% if GLOBALS.is_manager %}
+      {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -r -F -M -x python3 stable ' ~ SALTVERSION %}
+    {% else %}
+      {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+    {% fi %}
   {% endif %}
 {% else %}
   {% set UPGRADECOMMAND = 'echo Already running Salt Minion version ' ~ SALTVERSION %}
