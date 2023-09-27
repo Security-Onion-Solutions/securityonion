@@ -617,28 +617,23 @@ configure_minion() {
 
 	echo "id: '$MINION_ID'" > "$minion_config"
 
-	case "$minion_type" in
-		'workstation')
-			echo "master: '$MSRV'" >> "$minion_config"
-			;;
-		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import' | 'mom')
-			cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
-			printf '%s\n'\
-				"master: '$HOSTNAME'"\
-				"mysql.host: '$MAINIP'"\
-				"mysql.port: '3306'"\
-				"mysql.user: 'root'" >> "$minion_config"
-			if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
-				echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
-			else
-				OLDPASS=$(grep "mysql" $local_salt_dir/pillar/secrets.sls | awk '{print $2}')
-				echo "mysql.pass: '$OLDPASS'" >> "$minion_config"
-			fi
-			;;
-		*)
-			echo "master: '$MSRV'" >> "$minion_config"
-			;;
-	esac
+
+	if [[ ! $waitforstate ]]; then
+		echo "master: '$MSRV'" >> "$minion_config"
+	elif [[ $waitforstate ]]; then
+		cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
+		printf '%s\n'\
+			"master: '$HOSTNAME'"\
+			"mysql.host: '$MAINIP'"\
+			"mysql.port: '3306'"\
+			"mysql.user: 'root'" >> "$minion_config"
+		if [ ! -f $local_salt_dir/pillar/secrets.sls ]; then
+			echo "mysql.pass: '$MYSQLPASS'" >> "$minion_config"
+		else
+			OLDPASS=$(grep "mysql" $local_salt_dir/pillar/secrets.sls | awk '{print $2}')
+			echo "mysql.pass: '$OLDPASS'" >> "$minion_config"
+		fi
+	fi
 
 	printf '%s\n'\
 		"use_superseded:"\
