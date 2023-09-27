@@ -107,6 +107,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no ingest nodes"              # server not yet ready (logstash waiting on elastic)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to poll"               # server not yet ready (sensoroni waiting on soc)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|minions returned with non"    # server not yet ready (salt waiting on minions)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so_long_term"                 # server not yet ready (influxdb not yet setup)
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -121,23 +122,25 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|id.orig_h"                    # false positive (zeek test data)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|emerging-all.rules"           # false positive (error in rulename)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|invalid query input"          # false positive (Invalid user input in hunt query)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|example"                      # false positive (example test data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status 200"                   # false positive (request successful, contained error string in content)
 fi
 
 if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|eof"
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|raise error"                 # redis/python generic stack line, rely on other lines for actual error
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fail(error)"                 # redis/python generic stack line, rely on other lines for actual error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|raise error"                  # redis/python generic stack line, rely on other lines for actual error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fail\\(error\\)"              # redis/python generic stack line, rely on other lines for actual error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|urlerror"                     # idstools connection timeout
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeouterror"                 # idstools connection timeout
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|forbidden"                    # playbook
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context canceled"             # elastic agent during shutdown
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|bookkeeper"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noindices"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to start transient scope"
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status 200"                   # request successful, contained error string in content
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so-user.lock exists"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|systemd-run"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|retcode: 1"
@@ -159,8 +162,6 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parent.error"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue in GH
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|example"                      # example test data
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so_long_term"                 # setup in progress, influxdb not yet setup
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|stats.log"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context deadline exceeded"
 fi
