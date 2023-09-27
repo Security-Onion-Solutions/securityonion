@@ -101,7 +101,12 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|connect"                      # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing shards"               # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to send metrics"       # server not yet ready
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|influxsize kbytes"            # server not yet ready (telegraf)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|influxsize kbytes"            # server not yet ready (telegraf waiting on influx)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|expected field at"            # server not yet ready (telegraf waiting on health data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cached the public key"        # server not yet ready (salt minion waiting on key acceptance)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no ingest nodes"              # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to poll"               # server not yet ready (sensoroni waiting on soc)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|minions returned with non"    # server not yet ready (salt waiting on minions)
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -110,14 +115,18 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error: '0'"                   # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|errors_index"                 # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noerror"                      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error-template"               # false positive (elastic templates)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|deprecated"                   # false positive (playbook)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|could cause errors"           # false positive (playbook)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|id.orig_h"                    # false positive (zeek test data)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|emerging-all.rules"           # false positive (error in rulename)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|invalid query input"          # false positive (Invalid user input in hunt query)
 fi
 
 if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|eof"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|urlerror"                     # idstools connection timeout
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeouterror"                 # idstools connection timeout
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|forbidden"                    # playbook
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
@@ -146,7 +155,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unable to create detection"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error installing new prebuilt rules"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parent.error"
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue in GH
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|example"                      # example test data
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so_long_term"                 # setup in progress, influxdb not yet setup
@@ -172,6 +181,7 @@ find /opt/so/log/ /nsm -name \*.log > /tmp/log_check_files
 echo "/var/log/cron" >> /tmp/log_check_files
 exclude_log "kibana.log"
 exclude_log "spool"
+exclude_log "import"
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"
