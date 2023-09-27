@@ -796,7 +796,10 @@ main() {
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
-    backup_old_states_pillars
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      backup_old_states_pillars
+    fi
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
@@ -853,9 +856,12 @@ main() {
       update_centos_repo
     fi
 
-    echo ""
-    echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
-    backup_old_states_pillars
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      echo ""
+      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
+      backup_old_states_pillars
+    fi
 
     echo ""
     echo "Copying new Security Onion code from $UPDATE_DIR to $DEFAULT_SALT_DIR."
