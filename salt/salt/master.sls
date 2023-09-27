@@ -1,12 +1,18 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
+{% from 'salt/map.jinja' import UPGRADECOMMAND %}
+{% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
 
-
 include:
   - salt.minion
+
+install_salt_master:
+  pkg.installed:
+    - name: salt-master
+    - update_holds: True
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
@@ -36,6 +42,7 @@ hold_salt_master_package:
     - pkg.hold:
       - pkgs:
         - salt-master
+{% endif %}
 {% endif %}
 
 ensure_local_salt:
