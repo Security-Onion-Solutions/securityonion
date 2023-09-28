@@ -102,6 +102,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing shards"               # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to send metrics"       # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|broken pipe"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeout exceeded"             # server not yet ready (telegraf waiting on elasticsearch)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|influxsize kbytes"            # server not yet ready (telegraf waiting on influx)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|expected field at"            # server not yet ready (telegraf waiting on health data)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cached the public key"        # server not yet ready (salt minion waiting on key acceptance)
@@ -117,6 +118,7 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error: '0'"                   # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|errors_index"                 # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noerror"                      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fs_errors"                    # false positive (suricata stats)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error-template"               # false positive (elastic templates)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|deprecated"                   # false positive (playbook)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|windows"                      # false positive (playbook)
@@ -143,6 +145,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|filenotfounderror"            # bug in 2.4.10 filecheck salt state caused duplicate cronjobs
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|salt-minion-check"            # bug in early 2.4 place Jinja script in non-jinja salt dir causing cron output errors
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|generating elastalert config" # playbook expected error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|activerecord"                 # playbook expected error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
@@ -192,9 +195,10 @@ find /opt/so/log/ /nsm -name \*.log > /tmp/log_check_files
 if [[ -f /var/log/cron ]]; then
     echo "/var/log/cron" >> /tmp/log_check_files
 fi
-exclude_log "kibana.log"
-exclude_log "spool"
-exclude_log "import"
+exclude_log "kibana.log"  # kibana error logs are too verbose with large varieties of errors most of which are temporary
+exclude_log "spool"       # disregard zeek analyze logs
+exclude_log "import"      # disregard imported test data the contains error strings
+exclude_log "update.log"  # ignore playbook updates due to known issues
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"
