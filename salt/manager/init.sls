@@ -26,6 +26,15 @@ repo_log_dir:
       - user
       - group
 
+yara_log_dir:
+  file.directory:
+    - name: /opt/so/log/yarasync
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+
 repo_conf_dir:
   file.directory:
     - name: /opt/so/conf/reposync
