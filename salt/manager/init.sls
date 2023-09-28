@@ -73,7 +73,7 @@ yara_update_scripts:
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
 so-repo-sync:
-  {%     if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
+  {%     if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
   cron.present:
   {%     else %}
   cron.absent:
@@ -112,7 +112,7 @@ strelkarepos:
     - makedirs: True
 
 strelka-yara-update:
-  {%       if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
+  {%       if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
   cron.present:
   {%       else %}
   cron.absent:
@@ -124,18 +124,18 @@ strelka-yara-update:
     - minute: '1'
 
 strelka-yara-download:
-  {%       if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
+  {%       if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
   cron.present:
   {%       else %}
   cron.absent:
   {%       endif %}
     - user: socore
-    - name: '/usr/sbin/so-yara-download >> /nsm/strelka/log/yara-download.log 2>&1'
+    - name: '/usr/sbin/so-yara-download >> /opt/so/log/yarasync/yara-download.log 2>&1'
     - identifier: strelka-yara-download
     - hour: '7'
     - minute: '1'
 
-{%      if ! GLOBALS.airgap %}
+{%      if not GLOBALS.airgap %}
 update_yara_rules:
   cmd.run:
     - name: /usr/sbin/so-yara-update
