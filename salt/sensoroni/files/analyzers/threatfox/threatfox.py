@@ -1,5 +1,5 @@
 import requests
-#import helpers
+import helpers
 import json
 import os
 import sys
@@ -8,15 +8,15 @@ from pprint import pprint
 #will remove for final version
 
 
-def loadMetadataFix(file):
-    """gets to the directory that the file is in, in our case it would be the threatfox directory
-    filename is obtained by parsing, in our case we are getting threatfox as the file
-    we are appending the filename plus json to access threatfox.json"""
+# def loadMetadataFix(file):
+#     """gets to the directory that the file is in, in our case it would be the threatfox directory
+#     filename is obtained by parsing, in our case we are getting threatfox as the file
+#     we are appending the filename plus json to access threatfox.json"""
 
-    dir = os.path.dirname(os.path.realpath(file)) 
-    filename = os.path.realpath(file).rsplit('\\', 1)[1].split('.')[0]
-    with open(str(dir + "\\" + filename + ".json"), "r") as metafile:
-        return json.load(metafile)
+#     dir = os.path.dirname(os.path.realpath(file)) 
+#     filename = os.path.realpath(file).rsplit('\\', 1)[1].split('.')[0]
+#     with open(str(dir + "\\" + filename + ".json"), "r") as metafile:
+#         return json.load(metafile)
 
 
 def buildReq(observ_type, observ_value):
@@ -87,7 +87,7 @@ def analyze(input):
     json for supported types and url, then sends formatted data to
     buildReq -> sendReq -> prepareResults chain."""
     data = json.loads(input)
-    meta = loadMetadataFix(__file__)
+    meta = helpers.loadMetadata(__file__)
     
     # commented, since helpers isn't found properly
     #helpers.checkSupportedType(meta, data['artifactType'])
