@@ -73,7 +73,7 @@ yara_update_scripts:
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
 so-repo-sync:
-  {%     if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
+  {%     if MANAGERMERGED.reposync.enabled %}
   cron.present:
   {%     else %}
   cron.absent:
@@ -112,7 +112,7 @@ strelkarepos:
     - makedirs: True
 
 strelka-yara-update:
-  {%       if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
+  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %} 
   cron.present:
   {%       else %}
   cron.absent:
@@ -124,7 +124,7 @@ strelka-yara-update:
     - minute: '1'
 
 strelka-yara-download:
-  {%       if MANAGERMERGED.reposync.enabled or not GLOBALS.airgap %}
+  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %}
   cron.present:
   {%       else %}
   cron.absent:
