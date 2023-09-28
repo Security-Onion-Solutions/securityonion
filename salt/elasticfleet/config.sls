@@ -59,6 +59,14 @@ eastatedir:
     - group: 939
     - makedirs: True
 
+eapackageupgrade:
+  file.managed:
+    - name: /usr/sbin/so-elastic-fleet-package-upgrade
+    - source: salt://elasticfleet/tools/sbin_jinja/so-elastic-fleet-package-upgrade
+    - user: 947
+    - group: 939
+    - template: jinja
+
 {%   if GLOBALS.role != "so-fleet" %}
 eaintegrationsdir:
   file.directory:
@@ -88,6 +96,7 @@ ea-integrations-load:
     - onchanges:
       - file: eaintegration
       - file: eadynamicintegration
+      - file: eapackageupgrade
 {% endif %}
 {% else %}
 
