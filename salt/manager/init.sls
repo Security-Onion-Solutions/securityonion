@@ -61,21 +61,23 @@ manager_sbin:
     - group: 939
     - file_mode: 755
 
-#manager_sbin_jinja:
-#  file.recurse:
-#    - name: /usr/sbin
-#    - source: salt://manager/tools/sbin_jinja
-#    - user: 939
-#    - group: 939 
-#    - file_mode: 755
-#    - template: jinja
+yara_update_scripts:
+  file.recurse:
+    - name: /usr/sbin/
+    - source: salt://manager/tools/sbin_jinja/
+    - user: socore
+    - group: socore
+    - file_mode: 755
+    - template: jinja
+    - defaults:
+        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
 so-repo-sync:
-  {% if MANAGERMERGED.reposync.enabled %}
+  {%     if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
   cron.present:
-  {% else %}
+  {%     else %}
   cron.absent:
-  {% endif %}
+  {%     endif %}
     - user: socore
     - name: '/usr/sbin/so-repo-sync >> /opt/so/log/reposync/reposync.log 2>&1'
     - identifier: so-repo-sync
@@ -91,7 +93,15 @@ socore_own_saltstack:
       - user
       - group
 
-{%   if STRELKAMERGED.rules.enabled %}
+rules_dir:
+  file.directory:
+    - name: /nsm/rules/yara
+    - user: socore
+    - group: socore
+    - makedirs: True
+
+{%    if STRELKAMERGED.rules.enabled %}
+
 strelkarepos:
   file.managed:
     - name: /opt/so/conf/strelka/repos.txt
@@ -100,67 +110,45 @@ strelkarepos:
     - defaults:
         STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
     - makedirs: True
-{%   endif %}
-
-yara_update_scripts:
-  file.recurse:
-    - name: /usr/sbin/
-    - source: salt://manager/tools/sbin_jinja/
-    - user: socore
-    - group: socore
-    - file_mode: 755
-    - template: jinja
-    - defaults:
-        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
-
-rules_dir:
-  file.directory:
-    - name: /nsm/rules/yara
-    - user: socore
-    - group: socore
-    - makedirs: True
-
-{%   if GLOBALS.airgap %}
-remove_strelka-yara-download:
-  cron.absent:
-    - user: socore
-    - identifier: strelka-yara-download
 
 strelka-yara-update:
+  {%       if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
   cron.present:
+  {%       else %}
+  cron.absent:
+  {%       endif %}
     - user: socore
-    - name: '/usr/sbin/so-yara-update >> /nsm/strelka/log/yara-update.log 2>&1'
+    - name: '/usr/sbin/so-yara-update >> /opt/so/log/yarasync/yara-update.log 2>&1'
     - identifier: strelka-yara-update
     - hour: '7'
     - minute: '1'
 
-update_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-update
-    - onchanges:
-      - file: yara_update_scripts
-{%   else %}
-remove_strelka-yara-update:
-  cron.absent:
-    - user: socore
-    - identifier: strelka-yara-update
-
 strelka-yara-download:
+  {%       if MANAGERMERGED.reposync.enabled or ! GLOBALS.airgap %}
   cron.present:
+  {%       else %}
+  cron.absent:
+  {%       endif %}
     - user: socore
     - name: '/usr/sbin/so-yara-download >> /nsm/strelka/log/yara-download.log 2>&1'
     - identifier: strelka-yara-download
     - hour: '7'
     - minute: '1'
 
+{%      if ! GLOBALS.airgap %}
+update_yara_rules:
+  cmd.run:
+    - name: /usr/sbin/so-yara-update
+    - onchanges:
+      - file: yara_update_scripts
+
 download_yara_rules:
   cmd.run:
     - name: /usr/sbin/so-yara-download
     - onchanges:
       - file: yara_update_scripts
-{%   endif %}
-
-
+{%      endif %}
+{%     endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
