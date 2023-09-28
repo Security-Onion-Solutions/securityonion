@@ -37,6 +37,8 @@ elasticfleet_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+    - exclude_pat:
+      - so-elastic-fleet-package-upgrade # exclude this because we need to watch it for changes
 
 eaconfdir:
   file.directory:
