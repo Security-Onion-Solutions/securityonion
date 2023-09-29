@@ -55,7 +55,7 @@ def prepareResults(raw):
         summary = 'no result'
     else:
         
-        raw = {}
+        #raw = {}
         status = 'caution'
         summary = 'internal_failure'
 
