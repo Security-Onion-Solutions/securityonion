@@ -56,8 +56,8 @@ def prepareResults(raw):
     else:
         
         raw = {}
-        status = ''
-        summary = ''
+        status = 'caution'
+        summary = 'internal_failure'
 
     results = {'response': raw, 'summary': summary, 'status': status}    
     return results
