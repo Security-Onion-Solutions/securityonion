@@ -59,8 +59,7 @@ def prepareResults(raw):
         status = 'caution'
         summary = 'internal_failure'
 
-    #results = {'response': raw, 'summary': summary, 'status': status}
-    results = {'response': raw, 'summary': 'test', 'status': 'test2'}
+    results = {'response': raw, 'summary': summary, 'status': status}    
     return results
 
 
