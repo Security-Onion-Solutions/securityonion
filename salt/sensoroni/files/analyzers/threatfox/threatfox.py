@@ -29,8 +29,8 @@ def sendReq(meta, query):
 
 
 def prepareResults(raw):
-    #need to fix for raw != {} in all the big condition statementsin unit test also
-    if raw['query_status'] == 'ok':
+    
+    if raw != {} and raw['query_status'] == 'ok':
         
         parsed = raw['data'][0]
 
@@ -49,13 +49,13 @@ def prepareResults(raw):
             status = 'ok'
 
    
-    elif raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
+    elif raw != {} and raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
        
         status = 'info'
         summary = 'no result'
     else:
         
-        #raw = {}
+        raw = {}
         status = 'caution'
         summary = 'internal_failure'
 
@@ -67,11 +67,11 @@ def analyze(input):
     
     data = json.loads(input)
     meta = helpers.loadMetadata(__file__)
-    #check supported type
-    
+    helpers.checkSupportedType(meta, data["artifactType"])    
     query = buildReq(data['artifactType'], data['value'])
-    response = sendReq(meta, query)
+    response = sendReq(meta, query)   
     return prepareResults(response)
+    
 
 
 def main():
