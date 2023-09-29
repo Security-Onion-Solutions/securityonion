@@ -118,6 +118,8 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error: '0'"                   # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|errors_index"                 # false positive
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noerror"                      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|adding component template"    # false positive (elastic security)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|adding index template"        # false positive (elastic security)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fs_errors"                    # false positive (suricata stats)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error-template"               # false positive (elastic templates)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|deprecated"                   # false positive (playbook)
@@ -141,7 +143,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context canceled"             # elastic agent during shutdown
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exited with code 128"         # soctopus errors during forced restart by highstate
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|geoip database update"        # airgap can't update GeoIP DB
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|geoip databases update"       # airgap can't update GeoIP DB
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|filenotfounderror"            # bug in 2.4.10 filecheck salt state caused duplicate cronjobs
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|salt-minion-check"            # bug in early 2.4 place Jinja script in non-jinja salt dir causing cron output errors
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|generating elastalert config" # playbook expected error
@@ -181,11 +183,13 @@ RESULT=0
 
 # Check Security Onion container stdout/stderr logs
 CONTAINER_IDS=$(docker ps -q)
-exclude_container so-kibana
-exclude_container so-idstools
+exclude_container so-kibana   # kibana error logs are too verbose with large varieties of errors most of which are temporary
+exclude_container so-idstools # ignore due to known issues and noisy logging
+exclude_container so-playbook # ignore due to several playbook known issues
 
 for container_id in $CONTAINER_IDS; do
-    status "Checking container $container_id"
+    container_name=$(docker ps --format json | jq ". | select(.ID==\"$container_id\")|.Names")
+    status "Checking container $container_name"
     docker logs -n $RECENT_LOG_LINES $container_id > /tmp/log_check 2>&1
     check_for_errors
 done
@@ -195,10 +199,11 @@ find /opt/so/log/ /nsm -name \*.log > /tmp/log_check_files
 if [[ -f /var/log/cron ]]; then
     echo "/var/log/cron" >> /tmp/log_check_files
 fi
-exclude_log "kibana.log"  # kibana error logs are too verbose with large varieties of errors most of which are temporary
-exclude_log "spool"       # disregard zeek analyze logs
-exclude_log "import"      # disregard imported test data the contains error strings
-exclude_log "update.log"  # ignore playbook updates due to known issues
+exclude_log "kibana.log"   # kibana error logs are too verbose with large varieties of errors most of which are temporary
+exclude_log "spool"        # disregard zeek analyze logs as this is data specific
+exclude_log "import"       # disregard imported test data the contains error strings
+exclude_log "update.log"   # ignore playbook updates due to several known issues
+exclude_log "playbook.log" # ignore due to several playbook known issues
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"
