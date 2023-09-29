@@ -29,7 +29,7 @@ def sendReq(meta, query):
 
 
 def prepareResults(raw):
-    #need to fix for raw = {} in unit test also
+    #need to fix for raw != {} in all the big condition statementsin unit test also
     if raw['query_status'] == 'ok':
         
         parsed = raw['data'][0]
@@ -67,7 +67,7 @@ def analyze(input):
     
     data = json.loads(input)
     meta = helpers.loadMetadata(__file__)
-       
+    #check supported type
     
     query = buildReq(data['artifactType'], data['value'])
     response = sendReq(meta, query)
