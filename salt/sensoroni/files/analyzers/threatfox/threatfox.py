@@ -5,19 +5,6 @@ import os
 import sys
 
 
-#will remove for final version
-
-
-# def loadMetadataFix(file):
-#     """gets to the directory that the file is in, in our case it would be the threatfox directory
-#     filename is obtained by parsing, in our case we are getting threatfox as the file
-#     we are appending the filename plus json to access threatfox.json"""
-
-#     dir = os.path.dirname(os.path.realpath(file)) 
-#     filename = os.path.realpath(file).rsplit('\\', 1)[1].split('.')[0]
-#     with open(str(dir + "\\" + filename + ".json"), "r") as metafile:
-#         return json.load(metafile)
-
 
 def buildReq(observ_type, observ_value):
     """buildReq takes an input observable type and an input observable value and properly formats them
