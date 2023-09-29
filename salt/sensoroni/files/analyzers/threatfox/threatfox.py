@@ -121,7 +121,7 @@ def analyze(input):
 def main():
     if len(sys.argv) == 2:
         results = analyze(sys.argv[1])
-        print(results)
+        print(json.dumps(results))
     else:
         print("ERROR: Input is not in proper JSON format")
 
