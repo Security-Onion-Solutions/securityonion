@@ -49,7 +49,7 @@ def prepareResults(raw):
             status = 'ok'
 
    
-    elif raw != {} and raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
+    elif raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
        
         status = 'info'
         summary = 'no result'
