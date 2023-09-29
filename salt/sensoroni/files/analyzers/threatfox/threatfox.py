@@ -29,8 +29,8 @@ def sendReq(meta, query):
 
 
 def prepareResults(raw):
-    
-    if raw != {} and raw['query_status'] == 'ok':
+    #need to fix for raw = {} in unit test also
+    if raw['query_status'] == 'ok':
         
         parsed = raw['data'][0]
 
