@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from pprint import pprint
+
 #will remove for final version
 
 
@@ -121,7 +121,7 @@ def analyze(input):
 def main():
     if len(sys.argv) == 2:
         results = analyze(sys.argv[1])
-        pprint(results)
+        print(results)
     else:
         print("ERROR: Input is not in proper JSON format")
 
