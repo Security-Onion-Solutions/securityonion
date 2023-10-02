@@ -49,7 +49,7 @@ python-rich:
 
 holdversion_openssl:
   pkg.held:
-    - name: - openssl
+    - name: openssl
     - version: 1:3.0.7-16.0.1.el9_2
 
 commonpkgs:
