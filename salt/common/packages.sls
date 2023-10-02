@@ -64,11 +64,6 @@ holdversion_openssl-libs:
     - name: openssl-libs
     - version: 1:3.0.7-16.0.1.el9_2
 
-holdversion_openssl-devel:
-  pkg.held:
-    - name: openssl-devel
-    - version: 1:3.0.7-16.0.1.el9_2
-
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -85,10 +80,10 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
+      - openssl: 1:3.0.7-16.0.1.el9_2
       - mariadb-devel
       - net-tools
       - nmap-ncat
-      - openssl: 1:3.0.7-16.0.1.el9_2
       - procps-ng
       - python3-docker
       - python3-m2crypto
@@ -101,7 +96,5 @@ commonpkgs:
       - unzip
       - wget
       - yum-utils
-
-
 
 {% endif %}
