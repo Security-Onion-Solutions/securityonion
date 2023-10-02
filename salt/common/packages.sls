@@ -71,7 +71,6 @@ openssl_pkgs:
     - pkgs:
       - openssl: 1:3.0.7-16.0.1.el9_2
       - openssl-libs: 1:3.0.7-16.0.1.el9_2
-      - openssl-devel: 1:3.0.7-16.0.1.el9_2
 
 commonpkgs:
   pkg.installed:
