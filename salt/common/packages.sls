@@ -52,6 +52,11 @@ holdversion_openssl:
     - name: openssl
     - version: 1:3.0.7-16.0.1.el9_2
 
+holdversion_openssl-libs:
+  pkg.held:
+    - name: openssl-libs
+    - version: 1:3.0.7-16.0.1.el9_2
+
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
