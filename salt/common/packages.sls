@@ -47,6 +47,8 @@ python-rich:
 
 {% if GLOBALS.os_family == 'RedHat' %}
 
+# holding these since openssl-devel-1:3.0.7-16.0.1.el9_2 seems to be a requirement for mariadb-devel-3:10.5.16-2.el9_0
+# https://github.com/Security-Onion-Solutions/securityonion/discussions/11443
 holdversion_openssl:
   pkg.held:
     - name: openssl
