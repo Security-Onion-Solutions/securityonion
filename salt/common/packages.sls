@@ -46,6 +46,12 @@ python-rich:
 {% endif %}
 
 {% if GLOBALS.os_family == 'RedHat' %}
+
+holdversion_openssl:
+  pkg.held:
+    - name: - openssl
+    - version: 1:3.0.7-16.0.1.el9_2
+
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -65,7 +71,7 @@ commonpkgs:
       - mariadb-devel
       - net-tools
       - nmap-ncat
-      - openssl
+      - openssl: 1:3.0.7-16.0.1.el9_2
       - procps-ng
       - python3-dnf-plugin-versionlock
       - python3-docker
@@ -79,4 +85,7 @@ commonpkgs:
       - unzip
       - wget
       - yum-utils
+
+
+
 {% endif %}
