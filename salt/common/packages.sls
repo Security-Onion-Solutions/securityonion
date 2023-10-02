@@ -81,6 +81,7 @@ commonpkgs:
       - jq
       - lvm2
       - openssl: 1:3.0.7-16.0.1.el9_2
+      - openssl-libs: 1:3.0.7-16.0.1.el9_2
       - mariadb-devel
       - net-tools
       - nmap-ncat
