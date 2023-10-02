@@ -67,6 +67,7 @@ holdversion_openssl-libs:
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
+    - update_holds: True
     - pkgs:
       - curl
       - device-mapper-persistent-data
