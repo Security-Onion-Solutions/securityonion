@@ -64,10 +64,18 @@ holdversion_openssl-libs:
     - name: openssl-libs
     - version: 1:3.0.7-16.0.1.el9_2
 
-commonpkgs:
+openssl_pkgs:
   pkg.installed:
     - skip_suggestions: True
     - update_holds: True
+    - pkgs:
+      - openssl: 1:3.0.7-16.0.1.el9_2
+      - openssl-libs: 1:3.0.7-16.0.1.el9_2
+      - openssl-devel: 1:3.0.7-16.0.1.el9_2
+
+commonpkgs:
+  pkg.installed:
+    - skip_suggestions: True
     - pkgs:
       - curl
       - device-mapper-persistent-data
@@ -81,8 +89,6 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
-      - openssl: 1:3.0.7-16.0.1.el9_2
-      - openssl-libs: 1:3.0.7-16.0.1.el9_2
       - mariadb-devel
       - net-tools
       - nmap-ncat
