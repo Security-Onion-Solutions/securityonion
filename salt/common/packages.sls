@@ -47,6 +47,10 @@ python-rich:
 
 {% if GLOBALS.os_family == 'RedHat' %}
 
+remove_mariadb:
+  pkg.removed:
+    - name: mariadb-devel
+
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
