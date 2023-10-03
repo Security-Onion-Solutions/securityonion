@@ -9,7 +9,7 @@
 
 # MySQL Setup
 mysqlpkgs:
-  pkg.installed:
+  pkg.removed:
     - skip_suggestions: False
     - pkgs:
       {% if grains['os_family'] != 'RedHat' %}
