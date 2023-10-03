@@ -91,6 +91,7 @@ vimconfig:
 alwaysupdated:
   pkg.latest:
     - pkgs:
+      - openssl
       - openssh-server
       - bash
     - skip_suggestions: True

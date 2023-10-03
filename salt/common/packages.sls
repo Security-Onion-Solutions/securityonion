@@ -47,35 +47,15 @@ python-rich:
 
 {% if GLOBALS.os_family == 'RedHat' %}
 
-# install versionlock first so we can hold packages in the next states
-install_versionlock:
-  pkg.installed:
-    - name: python3-dnf-plugin-versionlock
-
-# holding these since openssl-devel-1:3.0.7-16.0.1.el9_2 seems to be a requirement for mariadb-devel-3:10.5.16-2.el9_0
-# https://github.com/Security-Onion-Solutions/securityonion/discussions/11443
-holdversion_openssl:
-  pkg.held:
-    - name: openssl
-    - version: 1:3.0.7-16.0.1.el9_2
-
-holdversion_openssl-libs:
-  pkg.held:
-    - name: openssl-libs
-    - version: 1:3.0.7-16.0.1.el9_2
-
-openssl_pkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - update_holds: True
-    - pkgs:
-      - openssl: 1:3.0.7-16.0.1.el9_2
-      - openssl-libs: 1:3.0.7-16.0.1.el9_2
+remove_mariadb:
+  pkg.removed:
+    - name: mariadb-devel
 
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
+      - python3-dnf-plugin-versionlock
       - curl
       - device-mapper-persistent-data
       - fuse
@@ -88,7 +68,6 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
-      - mariadb-devel
       - net-tools
       - nmap-ncat
       - procps-ng
