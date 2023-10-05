@@ -14,6 +14,8 @@ import argparse
 
 #print(testHash("438b6ccd84f4dd32d9684ed7d58fd7d1e5a75fe3f3d12ab6c788e6bb0ffad5e7"))
 
+def analyze(conf, input):
+    print(1)
 
 def checkConfigRequirements(conf):
     if "api_key" not in conf:
