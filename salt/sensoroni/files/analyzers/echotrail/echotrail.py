@@ -28,3 +28,15 @@ def sendReq(conf, meta, observ_value):
     response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
+def main():
+    dir = os.path.dirname(os.path.realpath(__file__))
+    parser = argparse.ArgumentParser(description='Search Echotrail for a given artifact')
+    parser.add_argument('artifact', help='the artifact represented in JSON format')
+    parser.add_argument('-c','--config', metavar = 'CONFIG_FILE', default=dir + '/echotrail.yaml', help='optional config file to use instead of the default config file')
+    args = parser.parse_args()
+    if args.artifact:
+        results = analyze(helpers.loadConfig(args.config), args.artifact)
+        print(json.dumps(results))
+
+if __name__ == '__main__':
+    main()
