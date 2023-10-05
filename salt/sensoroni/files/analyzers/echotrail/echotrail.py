@@ -22,9 +22,9 @@ def checkConfigRequirements(conf):
         return True
     
 def sendReq(conf, meta, observ_value):        
-    url = "https://api.echotrail.io/insights/" + observ_value
+    url = conf['base_url'] + observ_value
     #need to account for pro version?
-    headers = {"x-api-key": "I7TXsJcq6p2TVwxnsFKcO5rflwLlhjewarRkUPq7"}
+    headers = {'x-api-key': conf['api_key']}
     response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
