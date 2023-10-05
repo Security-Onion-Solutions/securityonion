@@ -1,4 +1,4 @@
-### 2.4.20-20231006 ISO image released on 2023/08/21
+### 2.4.20-20231006 ISO image released on 2023/10/06
 
 
 
