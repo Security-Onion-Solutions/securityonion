@@ -7,8 +7,6 @@ import sys
 
 
 def buildReq(observ_type, observ_value):
-    
-
     if observ_type == 'hash':
         qterms = {'query': 'search_hash', 'hash': observ_value}
     elif observ_type == 'ip':
@@ -21,17 +19,13 @@ def buildReq(observ_type, observ_value):
 
 
 def sendReq(meta, query):
-   
-
     url = meta['baseUrl']
     response = requests.post(url, json.dumps(query))
     return response.json()
 
 
 def prepareResults(raw):
-    
     if raw != {} and raw['query_status'] == 'ok':
-        
         parsed = raw['data'][0]
 
         if parsed['threat_type_desc'] != '':
@@ -47,14 +41,10 @@ def prepareResults(raw):
             status = 'info'
         else:
             status = 'ok'
-
-   
     elif raw != {} and raw['query_status'] in ['no_result', 'illegal_search_term', 'illegl_hash']:
-       
         status = 'info'
         summary = 'no result'
     else:
-        
         raw = {}
         status = 'caution'
         summary = 'internal_failure'
@@ -64,7 +54,6 @@ def prepareResults(raw):
 
 
 def analyze(input):
-    
     data = json.loads(input)
     meta = helpers.loadMetadata(__file__)
     helpers.checkSupportedType(meta, data["artifactType"])    
