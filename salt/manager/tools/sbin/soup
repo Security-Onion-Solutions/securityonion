@@ -171,6 +171,13 @@ airgap_update_dockers() {
   fi
 }
 
+backup_old_states_pillars() {
+
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
+
+}
+
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -303,6 +310,7 @@ check_log_size_limit() {
 
 check_os_updates() {
   # Check to see if there are OS updates
+  echo "Checking for OS updates."
   NEEDUPDATES="We have detected missing operating system (OS) updates. Do you want to install these OS updates now? This could take a while depending on the size of your grid and how many packages are missing, but it is recommended to keep your system updated."
   OSUPDATES=$(dnf -q list updates | grep -v docker | grep -v containerd | grep -v salt | grep -v Available | wc -l)
   if [[ "$OSUPDATES" -gt 0 ]]; then
@@ -394,6 +402,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.3 ]] && up_to_2.4.4
     [[ "$INSTALLEDVERSION" == 2.4.4 ]] && up_to_2.4.5
     [[ "$INSTALLEDVERSION" == 2.4.5 ]] && up_to_2.4.10
+    [[ "$INSTALLEDVERSION" == 2.4.10 ]] && up_to_2.4.20
     true
 }
 
@@ -405,6 +414,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
     [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
     [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10 
+    [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20 
     true
 }
 
@@ -428,6 +438,17 @@ post_to_2.4.10() {
   echo "Updating Elastic Fleet ES URLs...."
   /sbin/so-elastic-fleet-es-url-update --force
   POSTVERSION=2.4.10
+}
+
+post_to_2.4.20() {
+  echo "Pruning unused docker volumes on all nodes - This process will run in the background."
+  salt --async \* cmd.run "docker volume prune -f"
+  POSTVERSION=2.4.20
+}
+
+repo_sync() {
+  echo "Sync the local repo."
+  su socore -c '/usr/sbin/so-repo-sync' || fail "Unable to complete so-repo-sync."
 }
 
 stop_salt_master() {
@@ -494,6 +515,12 @@ up_to_2.4.10() {
   echo "Nothing to do for 2.4.10"
   
   INSTALLEDVERSION=2.4.10
+}
+
+up_to_2.4.20() {
+  echo "Nothing to do for 2.4.20"
+  
+  INSTALLEDVERSION=2.4.20
 }
 
 determine_elastic_agent_upgrade() {
@@ -749,9 +776,7 @@ main() {
   fi
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
-  echo "Checking for OS updates."
-  check_os_updates
-  
+
   echo "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
@@ -763,10 +788,18 @@ main() {
   if [[ $is_airgap -eq 0 ]]; then
     yum clean all
     check_os_updates
+  elif [[ $OS == 'oel' ]]; then
+    # sync remote repo down to local if not airgap
+    repo_sync
+    check_os_updates
   fi
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      backup_old_states_pillars
+    fi
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
@@ -821,6 +854,13 @@ main() {
     # Only update the repo if its airgap
     if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
       update_centos_repo
+    fi
+
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      echo ""
+      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
+      backup_old_states_pillars
     fi
 
     echo ""

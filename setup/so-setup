@@ -58,6 +58,7 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+set_timezone
 # Preserve old setup/error logs
 [ -f "$error_log" ] && mv "$error_log" "$error_log.$(date +%Y-%m-%dT%H:%M:%S)"
 [ -f "$setup_log" ] && mv "$setup_log" "$setup_log.$(date +%Y-%m-%dT%H:%M:%S)"
@@ -68,7 +69,7 @@ detect_os
 # Ubuntu/Debian whiptail pallete to make it look the same as CentOS and Rocky.
 set_palette >> $setup_log 2>&1
 
-if [[ $not_supported ]]; then
+if [[ $not_supported ]] && [ -z "$test_profile" ]; then
 	if [[ "$OSVER" == "focal" ]]; then
 		if (whiptail_focal_warning); then
 			true
@@ -103,6 +104,7 @@ if [ "$setup_type" = 'desktop' ]; then
 	# Check to see if this is an ISO. Usually this dir on exists on ISO installs.
 	if [ -d /root/SecurityOnion ]; then
 		is_desktop_iso=true
+		install_type='DESKTOP'
 	fi
 fi
 
@@ -181,8 +183,39 @@ if [ -n "$test_profile" ]; then
 		install_type=SEARCHNODE
 		HOSTNAME=search
 		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-managersearch" ]]; then
+		install_type=MANAGERSEARCH
+		HOSTNAME=manager
+	elif [[ "$test_profile" =~ "-heavynode" ]]; then
+		install_type=HEAVYNODE
+		HOSTNAME=sensor
+		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-desktop" ]]; then
+		install_type=DESKTOP
+		MSRVIP_OFFSET=-3
+		is_desktop_grid=true
+	elif [[ "$test_profile" =~ "-idh" ]]; then
+		install_type=IDH
+		HOSTNAME=idh
+		MSRVIP_OFFSET=-4
+	elif [[ "$test_profile" =~ "-receiver" ]]; then
+		install_type=RECEIVER
+		HOSTNAME=receiver
+		MSRVIP_OFFSET=-5
+	elif [[ "$test_profile" =~ "-fleet" ]]; then
+		install_type=FLEET
+		HOSTNAME=fleet
+		MSRVIP_OFFSET=-6
 	else
 		HOSTNAME=manager
+	fi
+
+	if [[ "$install_type" =~ "DESKTOP" ]]; then
+		is_desktop=true
+		HOSTNAME=desktop
+		if [[ -z "$is_desktop_grid" ]]; then
+			is_desktop_grid=false
+		fi
 	fi
 	
 	info "Activating test profile; profile=$test_profile; install_type=$install_type"
@@ -332,39 +365,41 @@ if [[ $is_desktop ]]; then
 		exit 1
 	fi
 
-#	if ! whiptail_desktop_install; then
-	if [[ $is_desktop_iso ]]; then
-		if whiptail_desktop_nongrid_iso; then
-			# Remove setup from auto launching
-			parse_install_username
-			sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-			securityonion_repo
-			info "Enabling graphical interface and setting it to load at boot"
-			systemctl set-default graphical.target
-			info "Setting desktop background"
-			set_desktop_background
-			echo "Desktop Install Complete!"
-			echo ""
-			echo "Please reboot to start graphical interface."
-			exit 0
+	whiptail_desktop_install
+	if ! $is_desktop_grid; then
+		if [[ $is_desktop_iso ]]; then
+			if whiptail_desktop_nongrid_iso; then
+				# Remove setup from auto launching
+				parse_install_username
+				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+				securityonion_repo
+				info "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				info "Setting desktop background"
+				set_desktop_background
+				echo "Desktop Install Complete!"
+				echo ""
+				echo "Please reboot to start graphical interface."
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
 		else
-			# Abort!
-			exit 0
-		fi
-	else
-		if whiptail_desktop_nongrid_network; then
-			info ""
-			info ""
-			info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
-			info ""
-			info ""
-			desktop_salt_local
-		else
-			# Abort!
-			exit 0
+			if whiptail_desktop_nongrid_network; then
+				networking_needful
+				info ""
+				info ""
+				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
+				info ""
+				info ""
+				desktop_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
 		fi
 	fi
-#	fi
 
 	# If you got this far then you want to join the grid
 	is_minion=true
@@ -387,7 +422,7 @@ if ! [[ -f $install_opt_file ]]; then
 		# If it is an install from ISO is this airgap?
 		[[ $is_iso ]] && whiptail_airgap
 		# Make sure minimum requirements are met
-		check_requirements "manager"
+		check_requirements
 		# Do networking things
 		networking_needful
 		# Do we need a proxy?
@@ -418,7 +453,7 @@ if ! [[ -f $install_opt_file ]]; then
 		monints=true
 		check_elastic_license
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -439,7 +474,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -459,7 +494,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -477,7 +512,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_sensor ]]; then
 		info "Setting up as node type sensor"
 		monints=true
-		check_requirements "sensor"
+		check_requirements
 		calculate_useable_cores
 		networking_needful
 		check_network_manager_conf
@@ -492,7 +527,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_fleet ]]; then
 		info "Setting up as node type fleet"
-		check_requirements "fleet"
+		check_requirements
 		networking_needful
 		check_network_manager_conf
 		set_network_dev_status_list
@@ -505,7 +540,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_searchnode ]]; then
 		info "Setting up as node type searchnode"
-		check_requirements "elasticsearch"
+		check_requirements
 		networking_needful
 		check_network_manager_conf
 		set_network_dev_status_list
@@ -519,7 +554,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_heavynode ]]; then
 		info "Setting up as node type heavynode"
 		monints=true
-		check_requirements "heavynode"
+		check_requirements
 		calculate_useable_cores
 		networking_needful
 		check_network_manager_conf
@@ -534,7 +569,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_idh ]]; then
 		info "Setting up as node type idh"
-		check_requirements "idh"
+		check_requirements
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
@@ -548,7 +583,7 @@ if ! [[ -f $install_opt_file ]]; then
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
 		check_elastic_license
-		check_requirements "import"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && detect_cloud
 		collect_dockernet
@@ -566,13 +601,24 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_receiver ]]; then
 		info "Setting up as node type receiver"
-		check_requirements "receiver"
+		check_requirements
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
 		check_manager_connection
 		set_minion_info
 		whiptail_end_settings
+
+	# desktop install will only get this far if joining the grid
+	elif [[ $is_desktop ]]; then
+		info "Setting up as node type desktop"
+		networking_needful
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		set_minion_info
+		whiptail_end_settings
+
 	fi
 
 	if [[ $waitforstate ]]; then

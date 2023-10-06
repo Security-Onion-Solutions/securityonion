@@ -19,4 +19,5 @@ soup_manager_scripts:
     - source: salt://manager/tools/sbin
     - include_pat:
         - so-firewall
+        - so-repo-sync
         - soup

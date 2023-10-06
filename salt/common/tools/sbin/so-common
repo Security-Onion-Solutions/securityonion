@@ -154,13 +154,11 @@ check_salt_minion_status() {
 	return $status
 }
 
-
-
 copy_new_files() {
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
-  rsync -a salt $DEFAULT_SALT_DIR/
-  rsync -a pillar $DEFAULT_SALT_DIR/
+  rsync -a salt $DEFAULT_SALT_DIR/ --delete
+  rsync -a pillar $DEFAULT_SALT_DIR/ --delete
   chown -R socore:socore $DEFAULT_SALT_DIR/
   chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
@@ -242,7 +240,7 @@ gpg_rpm_import() {
 	    else
 	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
 	    fi
-		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub' 'MariaDB-Server-GPG-KEY')
+		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
 		for RPMKEY in "${RPMKEYS[@]}"; do
     	        rpm --import $RPMKEYSLOC/$RPMKEY
 	        echo "Imported $RPMKEY"
@@ -446,6 +444,10 @@ set_os() {
 			OS=centos
 			OSVER=9
 			is_centos=true
+		elif grep -q "Oracle Linux Server release 9" /etc/system-release; then
+			OS=oel
+			OSVER=9
+			is_oracle=true
 		fi
 		cron_service_name="crond"
 	else

@@ -38,6 +38,7 @@ so-influxdb:
     - binds:
       - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/config.yaml:/conf/config.yaml:ro
+      - /opt/so/conf/influxdb/etc:/etc/influxdb2:rw
       - /nsm/influxdb:/var/lib/influxdb2:rw
       - /etc/pki/influxdb.crt:/conf/influxdb.crt:ro
       - /etc/pki/influxdb.key:/conf/influxdb.key:ro

@@ -28,12 +28,10 @@ base:
     - motd
     - salt.minion-check
     - salt.lasthighstate
-    - docker
-
-  'not *_desktop and G@saltversion:{{saltversion}}':
-    - match: compound
     - common
-  
+    - docker
+    - docker_clean
+
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
@@ -47,7 +45,6 @@ base:
     - healthcheck
     - zeek
     - strelka
-    - docker_clean
     - elasticfleet.install_agent_grid
 
   '*_eval and G@saltversion:{{saltversion}}':
@@ -57,14 +54,14 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - backup.config_backup
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
+    - sensoroni
+    - telegraf
     - firewall
     - idstools
     - suricata.manager
@@ -82,9 +79,7 @@ base:
     - utility
     - soctopus
     - playbook
-    - redis
     - elasticfleet
-    - docker_clean
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -92,14 +87,14 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
     - firewall
     - manager
+    - sensoroni
+    - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
@@ -115,7 +110,6 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -124,15 +118,15 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - backup.config_backup
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
     - firewall
+    - sensoroni
+    - telegraf
     - idstools
     - suricata.manager    
     - healthcheck
@@ -152,19 +146,17 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
     - sensoroni
-    - nginx
     - telegraf
+    - nginx
     - firewall
     - elasticsearch
     - logstash
     - elasticfleet.install_agent_grid
-    - docker_clean
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -172,14 +164,14 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
     - firewall
     - manager
+    - sensoroni
+    - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
@@ -195,15 +187,14 @@ base:
     - soctopus
     - playbook
     - elasticfleet
-    - docker_clean
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
     - ssl
     - sensoroni
-    - nginx
     - telegraf
+    - nginx
     - firewall
     - elasticsearch
     - logstash
@@ -215,7 +206,6 @@ base:
     - zeek
     - elasticfleet.install_agent_grid
     - elasticagent
-    - docker_clean
   
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
@@ -224,13 +214,13 @@ base:
     - ca
     - ssl
     - registry
-    - sensoroni
     - manager
     - nginx
-    - telegraf
     - influxdb
     - soc
     - kratos
+    - sensoroni
+    - telegraf
     - firewall
     - idstools
     - suricata.manager
@@ -242,7 +232,6 @@ base:
     - suricata
     - zeek
     - elasticfleet
-    - docker_clean
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
@@ -253,7 +242,6 @@ base:
     - logstash
     - redis
     - elasticfleet.install_agent_grid
-    - docker_clean
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
@@ -262,7 +250,6 @@ base:
     - telegraf
     - firewall
     - elasticfleet.install_agent_grid
-    - docker_clean
     - idh
 
   '*_fleet and G@saltversion:{{saltversion}}':
@@ -275,7 +262,12 @@ base:
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
-    - docker_clean
+
+  '*_desktop and G@saltversion:{{saltversion}}':
+    - ssl
+    - sensoroni
+    - telegraf
+    - elasticfleet.install_agent_grid
 
   'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:OEL )':
     - match: compound
