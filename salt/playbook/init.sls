@@ -84,6 +84,14 @@ playbook_password_none:
 
 {% else %}
 
+playbookfilesdir:
+  file.directory:
+    - name: /opt/so/conf/playbook/redmine-files
+    - dir_mode: 775
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 so-playbook:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-playbook:{{ VERSION }}
@@ -91,6 +99,7 @@ so-playbook:
     - name: so-playbook
     - binds:
       - /opt/so/log/playbook:/playbook/log:rw
+      - /opt/so/conf/playbook/redmine-files:/usr/src/redmine/files:rw
     - environment:
       - REDMINE_DB_MYSQL={{ MANAGERIP }}
       - REDMINE_DB_DATABASE=playbook

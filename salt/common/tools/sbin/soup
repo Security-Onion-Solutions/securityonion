@@ -579,6 +579,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.3.230 ]] && up_to_2.3.240
     [[ "$INSTALLEDVERSION" == 2.3.240 ]] && up_to_2.3.250
     [[ "$INSTALLEDVERSION" == 2.3.250 ]] && up_to_2.3.260
+    [[ "$INSTALLEDVERSION" == 2.3.260 ]] && up_to_2.3.270
     
     true
 }
@@ -610,6 +611,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.3.230 ]] && post_to_2.3.240
     [[ "$POSTVERSION" == 2.3.240 ]] && post_to_2.3.250
     [[ "$POSTVERSION" == 2.3.250 ]] && post_to_2.3.260
+    [[ "$POSTVERSION" == 2.3.260 ]] && post_to_2.3.270
 
     true
 }
@@ -761,6 +763,13 @@ post_to_2.3.250() {
 post_to_2.3.260() {
   echo "Nothing to do for .260"
   POSTVERSION=2.3.260
+}
+
+post_to_2.3.270() {
+  echo "Pruning unused docker volumes on all nodes - This process will run in the background."
+  salt --async \* cmd.run "docker volume prune -f"
+
+  POSTVERSION=2.3.270
 }
 
 stop_salt_master() {
@@ -1121,6 +1130,11 @@ up_to_2.3.250() {
 up_to_2.3.260() {
   echo "Upgrading to 2.3.260"
   INSTALLEDVERSION=2.3.260
+}
+
+up_to_2.3.270() {
+  echo "Upgrading to 2.3.270"
+  INSTALLEDVERSION=2.3.270
 }
 
 verify_upgradespace() {

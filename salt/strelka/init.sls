@@ -194,9 +194,25 @@ filcheck_history_clean:
     - minute: '33'
 # End Filecheck Section
 
+strelkagkredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/gk-redis-data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkacoordredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/coord-redis-data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 strelka_coordinator:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - binds:
+      - /nsm/strelka/coord-redis-data:/data:rw
     - name: so-strelka-coordinator
     - entrypoint: redis-server --save "" --appendonly no
     - port_bindings:
@@ -210,6 +226,8 @@ append_so-strelka-coordinator_so-status.conf:
 strelka_gatekeeper:
   docker_container.running:
     - image: {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-redis:{{ VERSION }}
+    - binds:
+      - /nsm/strelka/gk-redis-data:/data:rw
     - name: so-strelka-gatekeeper
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - port_bindings:
