@@ -20,7 +20,7 @@ def buildReq(observ_type, observ_value):
 
 def sendReq(meta, query):
     url = meta['baseUrl']
-    response = requests.post(url, json.dumps(query))
+    response = requests.post(url, json=(query))
     return response.json()
 
 
