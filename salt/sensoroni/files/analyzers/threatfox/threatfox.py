@@ -58,7 +58,7 @@ def analyze(input):
     meta = helpers.loadMetadata(__file__)
     helpers.checkSupportedType(meta, data["artifactType"])    
     query = buildReq(data['artifactType'], data['value'])
-    response = sendReq(meta, query)   
+    response = sendReq(meta, [query])   
     return prepareResults(response)
     
 
