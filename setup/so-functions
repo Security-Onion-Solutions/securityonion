@@ -649,8 +649,8 @@ configure_minion() {
 		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
-	cp -f ../salt/salt/etc/minion.d/mine_functions.conf.jinja /etc/salt/minion.d/mine_functions.conf
-	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
 
 	{
 		logCmd "systemctl enable salt-minion";
