@@ -60,8 +60,8 @@ def main():
     args = parser.parse_args()
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
-        #print(json.dumps(results))
-        pprint(results)
+        print(json.dumps(results))
+        #print(results)
 
 if __name__ == '__main__':
     main()
